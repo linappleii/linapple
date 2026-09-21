@@ -125,12 +125,12 @@ TEST_CASE("DiskErrors: [ERR-04] The loader answers a bad argument as one") {
       reinterpret_cast<const DiskFormatDriver_t*>(1);
   void* instance = reinterpret_cast<void*>(1);
 
-  CHECK(disk_loader_open(nullptr, nullptr, &driver, &instance) ==
+  CHECK(disk_loader_open(nullptr, &driver, &instance) ==
         disk_err_invalid_argument);
   CHECK(driver == nullptr);
   CHECK(instance == nullptr);
 
-  CHECK(disk_loader_open("/tmp", nullptr, nullptr, &instance) ==
+  CHECK(disk_loader_open("/tmp", nullptr, &instance) ==
         disk_err_invalid_argument);
   CHECK(disk_loader_create(nullptr, "DOS Order") ==
         disk_err_invalid_argument);

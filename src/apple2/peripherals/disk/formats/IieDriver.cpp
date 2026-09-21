@@ -128,7 +128,7 @@ auto iie_probe(const uint8_t* header_data, size_t header_size,
 // Why: Opens a SimSystem //e disk image and pre-calculates track offsets.
 // These images store either raw sectors (legacy) or raw nibbles (modern), so
 // offset caching is required for constant-time track seeking.
-auto iie_open(const char* path, uint32_t file_offset, bool* out_is_read_only,
+auto iie_open(const char* path, uint32_t file_offset, bool read_only,
               void** out_instance) -> DiskError_e {
   if (path == nullptr || out_instance == nullptr) {
     return disk_err_io;
@@ -137,8 +137,10 @@ auto iie_open(const char* path, uint32_t file_offset, bool* out_is_read_only,
 
   auto instance_ptr = std::unique_ptr<IieInstance_t>(new IieInstance_t());
 
-  instance_ptr->file.reset(fopen(path, "r+b"));
-  instance_ptr->os_readonly = false;
+  instance_ptr->os_readonly = read_only;
+  if (!read_only) {
+    instance_ptr->file.reset(fopen(path, "r+b"));
+  }
 
   if (instance_ptr->file == nullptr) {
     instance_ptr->file.reset(fopen(path, "rb"));
@@ -147,10 +149,6 @@ auto iie_open(const char* path, uint32_t file_offset, bool* out_is_read_only,
 
   if (instance_ptr->file == nullptr) {
     return disk_err_io;
-  }
-
-  if (out_is_read_only != nullptr) {
-    *out_is_read_only = instance_ptr->os_readonly;
   }
 
   const int64_t total_file_size = Path::file_size(instance_ptr->file.get());

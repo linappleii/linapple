@@ -81,7 +81,6 @@ struct Disk_t {
   uint32_t bit_position = 0;
   uint32_t bit_count = 0;
   bool is_user_write_protected = false;
-  bool is_os_read_only = false;
   bool is_data_loaded = false;
   bool is_dirty = false;
   uint32_t spinning_ticks = 0;
@@ -160,11 +159,9 @@ auto read_floating_bus(void* instance, uint32_t executed_cycles) -> uint8_t {
   return dp->host->ReadFloatingBus(executed_cycles);
 }
 
-// Why: Implements multi-layered write protection:
-// 1. User manual toggle (the "notch" on a physical disk).
-// 2. OS file system permissions.
-// 3. Hardware format capabilities (some formats are read-only).
-// 4. Format-driver specific runtime protection (e.g. internal container flags).
+// Why: Three layers decide whether the head may write: the user's notch on
+// the drive, what the format can express, and what the driver knows about the
+// medium and the file under it.
 auto is_disk_write_protected(const DiskPeripheral_t* disk_peripheral,
                              int drive_index) -> bool {
   if (disk_peripheral == nullptr || !is_drive_valid(drive_index)) {
@@ -174,7 +171,7 @@ auto is_disk_write_protected(const DiskPeripheral_t* disk_peripheral,
   const auto& disk =
       disk_peripheral->drives.at(static_cast<size_t>(drive_index));
 
-  if (disk.is_user_write_protected || disk.is_os_read_only) {
+  if (disk.is_user_write_protected) {
     return true;
   }
 
@@ -409,8 +406,7 @@ auto insert_disk_into_drive(DiskPeripheral_t* disk_peripheral, int drive_index,
 
   drive.is_user_write_protected = write_protected;
   const DiskError_e error =
-      disk_loader_open(image_path, &drive.is_os_read_only, &drive.driver,
-                       &drive.driver_instance);
+      disk_loader_open(image_path, &drive.driver, &drive.driver_instance);
 
   drive.last_error = error;
 
@@ -1108,7 +1104,7 @@ auto disk_abi_save_state(void* instance, void* buffer, size_t* size)
     ds.current_byte_pos =
         static_cast<int32_t>(d.bit_position / physical::cells_per_byte);
     ds.user_write_protected = d.is_user_write_protected ? 1 : 0;
-    ds.is_os_read_only = d.is_os_read_only ? 1 : 0;
+    ds.is_os_read_only = 0;
     ds.is_data_loaded = d.is_data_loaded ? 1 : 0;
     ds.is_dirty = d.is_dirty ? 1 : 0;
     ds.spinning_ticks = d.spinning_ticks;
@@ -1182,7 +1178,6 @@ auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
     }
     d.track = (ds.track >= 0 && ds.track < tracks_per_disk) ? ds.track : 0;
     d.phase = (ds.phase >= 0 && ds.phase < max_disk_phases) ? ds.phase : 0;
-    d.is_os_read_only = (ds.is_os_read_only != 0);
     d.spinning_ticks = ds.spinning_ticks;
     d.write_light_ticks = ds.write_light_ticks;
 

@@ -127,28 +127,23 @@ static auto woz2_probe(const uint8_t* header_data, size_t header_size,
   return disk_probe_no;
 }
 
-static auto woz2_open(const char* path, uint32_t file_offset,
-                      bool* out_is_read_only, void** out_instance)
-    -> DiskError_e {
+static auto woz2_open(const char* path, uint32_t file_offset, bool read_only,
+                      void** out_instance) -> DiskError_e {
   if (path == nullptr || out_instance == nullptr) {
     return disk_err_io;
   }
   auto wi_ptr = std::unique_ptr<WozInstance_t>(new WozInstance_t());
 
-  wi_ptr->file.reset(fopen(path, "r+b"));
-  if (wi_ptr->file != nullptr) {
-    wi_ptr->os_readonly = false;
-  } else {
-    wi_ptr->file.reset(fopen(path, "rb"));
-    if (wi_ptr->file != nullptr) {
-      wi_ptr->os_readonly = true;
-    } else {
-      return disk_err_io;
-    }
+  wi_ptr->os_readonly = read_only;
+  if (!read_only) {
+    wi_ptr->file.reset(fopen(path, "r+b"));
   }
-
-  if (out_is_read_only != nullptr) {
-    *out_is_read_only = wi_ptr->os_readonly;
+  if (wi_ptr->file == nullptr) {
+    wi_ptr->file.reset(fopen(path, "rb"));
+    wi_ptr->os_readonly = true;
+  }
+  if (wi_ptr->file == nullptr) {
+    return disk_err_io;
   }
 
   if (fseek(wi_ptr->file.get(), static_cast<long>(file_offset), SEEK_SET) !=

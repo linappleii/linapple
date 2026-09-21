@@ -38,13 +38,13 @@ auto nib_probe(const uint8_t* header_data, size_t header_size,
   return disk_probe_no;
 }
 
-auto nib_open(const char* path, uint32_t file_offset, bool* out_is_read_only,
+auto nib_open(const char* path, uint32_t file_offset, bool read_only,
               void** out_instance) -> DiskError_e {
   if (path == nullptr || out_instance == nullptr) {
     return disk_err_io;
   }
   auto* image_ptr = bitstream_disk_image_open(
-      path, file_offset, nibbles_per_track, out_is_read_only);
+      path, file_offset, nibbles_per_track, read_only);
   if (image_ptr == nullptr) {
     return disk_err_io;
   }

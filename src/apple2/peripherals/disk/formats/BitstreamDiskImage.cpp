@@ -45,7 +45,7 @@ struct BitstreamDiskImage_t {
 extern "C" auto bitstream_disk_image_open(const char* path,
                                           uint32_t file_offset,
                                           uint32_t nibbles_per_track,
-                                          bool* out_is_read_only)
+                                          bool read_only)
     -> BitstreamDiskImage_t* {
   if (path == nullptr) {
     return nullptr;
@@ -54,23 +54,18 @@ extern "C" auto bitstream_disk_image_open(const char* path,
   auto image_ptr =
       std::unique_ptr<BitstreamDiskImage_t>(new BitstreamDiskImage_t());
 
-  // 1. Attempt Read/Write acquisition
-  image_ptr->file.reset(fopen(path, "r+b"));
-  image_ptr->os_readonly = false;
+  image_ptr->os_readonly = read_only;
+  if (!read_only) {
+    image_ptr->file.reset(fopen(path, "r+b"));
+  }
 
-  // 2. Fallback to Read-Only if Write access was denied
   if (image_ptr->file == nullptr) {
     image_ptr->file.reset(fopen(path, "rb"));
     image_ptr->os_readonly = true;
   }
 
-  // 3. Return null if both attempts failed
   if (image_ptr->file == nullptr) {
     return nullptr;
-  }
-
-  if (out_is_read_only != nullptr) {
-    *out_is_read_only = image_ptr->os_readonly;
   }
 
   image_ptr->data_offset = file_offset;

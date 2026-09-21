@@ -40,13 +40,13 @@ auto nb2_probe(const uint8_t* header_data, size_t header_size,
   return disk_probe_no;
 }
 
-auto nb2_open(const char* path, uint32_t file_offset, bool* out_is_read_only,
+auto nb2_open(const char* path, uint32_t file_offset, bool read_only,
               void** out_instance) -> DiskError_e {
   if (path == nullptr || out_instance == nullptr) {
     return disk_err_io;
   }
   auto* image_ptr = bitstream_disk_image_open(
-      path, file_offset, physical::track_size, out_is_read_only);
+      path, file_offset, physical::track_size, read_only);
   if (image_ptr == nullptr) {
     return disk_err_io;
   }

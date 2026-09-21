@@ -21,7 +21,7 @@ typedef struct BitstreamDiskImage_t BitstreamDiskImage_t;
 BitstreamDiskImage_t* bitstream_disk_image_open(const char* path,
                                                 uint32_t file_offset,
                                                 uint32_t nibbles_per_track,
-                                                bool* out_is_read_only);
+                                                bool read_only);
 
 void bitstream_disk_image_close(BitstreamDiskImage_t* image_ptr);
 

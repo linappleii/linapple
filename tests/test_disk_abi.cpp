@@ -411,7 +411,7 @@ TEST_CASE("DiskABI: [REG-15] DiskLoader registration validation") {
   usable.probe = [](const uint8_t*, size_t, uint32_t, const char*) {
     return disk_probe_no;
   };
-  usable.open = [](const char*, uint32_t, bool*, void**) {
+  usable.open = [](const char*, uint32_t, bool, void**) {
     return disk_err_none;
   };
   usable.close = [](void*) {};

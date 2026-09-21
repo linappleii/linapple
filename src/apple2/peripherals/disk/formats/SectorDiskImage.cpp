@@ -80,7 +80,7 @@ auto quarter_track_to_cylinder(uint32_t quarter_track) -> int {
 }  // namespace
 
 auto sector_disk_image_open(const char* path, uint32_t file_offset,
-                            bool is_dos_order, bool* out_is_read_only)
+                            bool is_dos_order, bool read_only)
     -> SectorDiskImage_t* {
   if (path == nullptr) {
     return nullptr;
@@ -88,8 +88,10 @@ auto sector_disk_image_open(const char* path, uint32_t file_offset,
 
   auto image_ptr = std::unique_ptr<SectorDiskImage_t>(new SectorDiskImage_t());
 
-  image_ptr->file.reset(fopen(path, "r+b"));
-  image_ptr->os_readonly = false;
+  image_ptr->os_readonly = read_only;
+  if (!read_only) {
+    image_ptr->file.reset(fopen(path, "r+b"));
+  }
 
   if (image_ptr->file == nullptr) {
     image_ptr->file.reset(fopen(path, "rb"));
@@ -108,10 +110,6 @@ auto sector_disk_image_open(const char* path, uint32_t file_offset,
   if (effective_size < static_cast<size_t>(dos::track_size) ||
       (effective_size % dos::page_size != 0)) {
     return nullptr;
-  }
-
-  if (out_is_read_only != nullptr) {
-    *out_is_read_only = image_ptr->os_readonly;
   }
 
   image_ptr->data_offset = file_offset;

@@ -34,7 +34,7 @@ typedef void (*DiskDriverRejectionFn_t)(void* context, const char* driver_name,
    holds refusals until a caller with somewhere to put them asks. */
 void disk_loader_drain_rejections(DiskDriverRejectionFn_t sink, void* context);
 
-DiskError_e disk_loader_open(const char* image_path, bool* out_is_read_only,
+DiskError_e disk_loader_open(const char* image_path,
                              const DiskFormatDriver_t** out_driver,
                              void** out_instance);
 

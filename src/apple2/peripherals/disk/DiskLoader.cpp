@@ -189,7 +189,7 @@ auto disk_loader_drain_rejections(DiskDriverRejectionFn_t sink, void* context)
   rejections().clear();
 }
 
-auto disk_loader_open(const char* image_path, bool* out_is_read_only,
+auto disk_loader_open(const char* image_path,
                       const DiskFormatDriver_t** out_driver,
                       void** out_instance) -> DiskError_e {
   if (out_driver != nullptr) {
@@ -253,15 +253,10 @@ auto disk_loader_open(const char* image_path, bool* out_is_read_only,
     return disk_err_unsupported_format;
   }
 
-  bool os_readonly = false;
-  const DiskError_e err =
-      (*out_driver)->open(load_path, file_offset, &os_readonly, out_instance);
-
-  if (err == disk_err_none && out_is_read_only != nullptr) {
-    *out_is_read_only = os_readonly || is_temporary;
-  }
-
-  return err;
+  // A decompressed temporary is unlinked the moment this call returns, so
+  // anything written to it would be thrown away with it.
+  return (*out_driver)
+      ->open(load_path, file_offset, is_temporary, out_instance);
 }
 
 auto disk_loader_driver_count(void) -> uint32_t {

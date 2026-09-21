@@ -58,8 +58,12 @@ typedef struct DiskFormatDriver_t {
   DiskProbe_e (*probe)(const uint8_t* header_data, size_t header_size,
                        uint32_t file_size, const char* ext_hint);
 
-  DiskError_e (*open)(const char* path, uint32_t file_offset,
-                      bool* out_is_read_only, void** out_instance);
+  /* read_only is the drive's answer before the medium is even read: a file
+     the host will not let us write, or one the loader made and will delete.
+     The driver folds it into is_write_protected rather than handing the same
+     fact back a second way. */
+  DiskError_e (*open)(const char* path, uint32_t file_offset, bool read_only,
+                      void** out_instance);
 
   void (*close)(void* instance);
 

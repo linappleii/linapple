@@ -20,8 +20,7 @@ typedef struct SectorDiskImage_t SectorDiskImage_t;
 
 SectorDiskImage_t* sector_disk_image_open(const char* path,
                                           uint32_t file_offset,
-                                          bool is_dos_order,
-                                          bool* out_is_read_only);
+                                          bool is_dos_order, bool read_only);
 
 void sector_disk_image_close(SectorDiskImage_t* image_ptr);
 

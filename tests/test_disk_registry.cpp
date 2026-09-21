@@ -26,11 +26,8 @@ auto probe_possible(const uint8_t*, size_t, uint32_t, const char*)
   return disk_probe_possible;
 }
 
-auto fake_open(const char*, uint32_t, bool* out_is_read_only,
-               void** out_instance) -> DiskError_e {
-  if (out_is_read_only != nullptr) {
-    *out_is_read_only = false;
-  }
+auto fake_open(const char*, uint32_t, bool, void** out_instance)
+    -> DiskError_e {
   *out_instance = const_cast<char*>("fake");
   return disk_err_none;
 }
@@ -130,9 +127,7 @@ TEST_CASE("DiskRegistry: an ambiguous image always resolves the same way") {
 
     const DiskFormatDriver_t* chosen = nullptr;
     void* instance = nullptr;
-    bool read_only = false;
-    CHECK(disk_loader_open(image.path, &read_only, &chosen, &instance) ==
-          disk_err_none);
+    CHECK(disk_loader_open(image.path, &chosen, &instance) == disk_err_none);
     CHECK(chosen == &first);
   }
 

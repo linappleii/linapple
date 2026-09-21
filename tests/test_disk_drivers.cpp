@@ -187,8 +187,7 @@ TEST_CASE("DiskDrivers: [DRV-07] NIB Track Round-trip") {
   REQUIRE(g_nib_driver.create(tmp_file.c_str()) == disk_err_none);
 
   void* instance = nullptr;
-  bool os_ro = false;
-  REQUIRE(g_nib_driver.open(tmp_file.c_str(), 0, &os_ro, &instance) ==
+  REQUIRE(g_nib_driver.open(tmp_file.c_str(), 0, false, &instance) ==
           disk_err_none);
 
   // Every byte a Disk II can find again carries bit 7; a run of cells that
@@ -217,9 +216,8 @@ TEST_CASE("DiskDrivers: [DRV-07] NIB Track Round-trip") {
 
   // Verify persistence across re-open through the driver ABI (Seam 4)
   void* reopen_instance = nullptr;
-  bool reopen_ro = false;
-  REQUIRE(g_nib_driver.open(tmp_file.c_str(), 0, &reopen_ro,
-                            &reopen_instance) == disk_err_none);
+  REQUIRE(g_nib_driver.open(tmp_file.c_str(), 0, false, &reopen_instance) ==
+          disk_err_none);
 
   std::vector<uint8_t> persisted_bits(max_track_bits / 8, 0);
   uint32_t persisted_bit_count = 0;
@@ -238,8 +236,7 @@ TEST_CASE("DiskDrivers: [DRV-08] NB2 Track Round-trip") {
   REQUIRE(g_nb2_driver.create(tmp_file.c_str()) == disk_err_none);
 
   void* instance = nullptr;
-  bool os_ro = false;
-  REQUIRE(g_nb2_driver.open(tmp_file.c_str(), 0, &os_ro, &instance) ==
+  REQUIRE(g_nb2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
           disk_err_none);
 
   constexpr size_t nb2_nibbles_per_track = 6384;
@@ -292,8 +289,7 @@ TEST_CASE("DiskDrivers: [DRV-10] WOZ 3.5\" Rejection") {
   fclose(f);
 
   void* instance = nullptr;
-  bool os_ro = false;
-  CHECK(g_woz2_driver.open(tmp_file.c_str(), 0, &os_ro, &instance) ==
+  CHECK(g_woz2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
         disk_err_unsupported_format);
 }
 
@@ -317,16 +313,15 @@ TEST_CASE("DiskDrivers: [DRV-11] WOZ Write Protect") {
   };
 
   void* instance = nullptr;
-  bool os_ro = false;
 
   create_woz_wp(tmp_file.c_str(), 1);
-  REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, &os_ro, &instance) ==
+  REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
           disk_err_none);
   CHECK(g_woz2_driver.is_write_protected(instance) == true);
   g_woz2_driver.close(instance);
 
   create_woz_wp(tmp_file.c_str(), 0);
-  REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, &os_ro, &instance) ==
+  REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
           disk_err_none);
   CHECK(g_woz2_driver.is_write_protected(instance) == false);
   g_woz2_driver.close(instance);
@@ -349,8 +344,7 @@ TEST_CASE("DiskDrivers: [DRV-12] WOZ Unrecorded Track") {
   fclose(f);
 
   void* instance = nullptr;
-  bool os_ro = false;
-  REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, &os_ro, &instance) ==
+  REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
           disk_err_none);
 
   std::vector<uint8_t> bits(max_track_bits / 8, 0);
@@ -370,8 +364,7 @@ TEST_CASE("DiskDrivers: [DRV-13] DO Track Round-trip") {
   REQUIRE(g_do_driver.create(tmp_do.c_str()) == disk_err_none);
 
   void* inst = nullptr;
-  bool ro = false;
-  REQUIRE(g_do_driver.open(tmp_do.c_str(), 0, &ro, &inst) == disk_err_none);
+  REQUIRE(g_do_driver.open(tmp_do.c_str(), 0, false, &inst) == disk_err_none);
 
   std::vector<uint8_t> bits(max_track_bits / 8, 0);
   uint32_t bit_count = 0;
@@ -400,8 +393,7 @@ TEST_CASE("DiskDrivers: [SEC-01] WOZ Malicious trks_index") {
   fclose(f);
 
   void* instance = nullptr;
-  bool os_ro = false;
-  REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, &os_ro, &instance) ==
+  REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
           disk_err_none);
 
   std::vector<uint8_t> bits(max_track_bits / 8, 0);
@@ -445,8 +437,7 @@ TEST_CASE("DiskDrivers: [SEC-02] WOZ Malicious bit_count") {
   fclose(f);
 
   void* instance = nullptr;
-  bool os_ro = false;
-  REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, &os_ro, &instance) ==
+  REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
           disk_err_none);
 
   std::vector<uint8_t> bits(max_track_bits / 8, 0);
@@ -464,8 +455,7 @@ TEST_CASE("DiskDrivers: [SEC-03] DO Out of Bounds track") {
   REQUIRE(g_do_driver.create(tmp_do.c_str()) == disk_err_none);
 
   void* inst = nullptr;
-  bool ro = false;
-  REQUIRE(g_do_driver.open(tmp_do.c_str(), 0, &ro, &inst) == disk_err_none);
+  REQUIRE(g_do_driver.open(tmp_do.c_str(), 0, false, &inst) == disk_err_none);
 
   std::vector<uint8_t> bits(max_track_bits / 8, 0);
   uint32_t bit_count = 123;
@@ -523,8 +513,7 @@ TEST_CASE("DiskDrivers: [IIE-1] Reject truncated IIE disk image") {
   }
 
   void* inst = nullptr;
-  bool ro = false;
-  CHECK(g_iie_driver.open(tmp_iie.c_str(), 0, &ro, &inst) != disk_err_none);
+  CHECK(g_iie_driver.open(tmp_iie.c_str(), 0, false, &inst) != disk_err_none);
   CHECK(inst == nullptr);
 }
 
@@ -539,8 +528,7 @@ TEST_CASE("DiskDrivers: [DSK-2] Reject unaligned sector disk image") {
   }
 
   void* inst = nullptr;
-  bool ro = false;
-  CHECK(g_do_driver.open(tmp_unaligned.c_str(), 0, &ro, &inst) !=
+  CHECK(g_do_driver.open(tmp_unaligned.c_str(), 0, false, &inst) !=
         disk_err_none);
   CHECK(inst == nullptr);
 }
@@ -614,9 +602,8 @@ TEST_CASE("DiskDrivers: [NIB-3] A truncated nibble track ends where it ends") {
   fwrite(short_track.data(), 1, short_track.size(), f);
   fclose(f);
 
-  bool is_readonly = false;
   void* instance = nullptr;
-  CHECK(g_nib_driver.open(tmp_nib.c_str(), 0, &is_readonly, &instance) ==
+  CHECK(g_nib_driver.open(tmp_nib.c_str(), 0, false, &instance) ==
         disk_err_none);
   REQUIRE(instance != nullptr);
 
@@ -642,10 +629,8 @@ TEST_CASE("DiskDrivers: [IIE-14] IIE Driver invalid variant rejection") {
   fwrite(header.data(), 1, header.size(), f);
   fclose(f);
 
-  bool is_readonly = false;
   void* instance = nullptr;
-  DiskError_e err =
-      g_iie_driver.open(tmp_iie.c_str(), 0, &is_readonly, &instance);
+  DiskError_e err = g_iie_driver.open(tmp_iie.c_str(), 0, false, &instance);
   CHECK(err == disk_err_unsupported_format);
   CHECK(instance == nullptr);
 }
