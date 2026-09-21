@@ -1094,11 +1094,17 @@ auto disk_abi_query(void* instance, uint32_t cmd, void* data, size_t* size)
   return peripheral_incompatible;
 }
 
-auto disk_abi_save_state(void* instance, void* buffer, size_t* size)
+// The v1 compatibility shim. Everything below, down to the end of
+// disk_state_v1_read, is the only code that knows the shape of
+// DiskSavedState_t; the card itself works in cells. Save files have carried
+// this 13,897-byte layout since 1.x and keep carrying it until 4.0.0, so each
+// place the conversion loses something says so beside the field that loses it.
+
+static_assert(sizeof(DiskSavedState_t) == 13897,
+              "the v1 disk save state is a fixed 13,897 bytes");
+
+auto disk_state_v1_write(DiskPeripheral_t* dp, void* buffer, size_t* size)
     -> PeripheralStatus_t {
-  if (instance == nullptr || size == nullptr) {
-    return peripheral_error;
-  }
   const size_t required_size = sizeof(DiskSavedState_t);
   if (buffer == nullptr) {
     *size = required_size;
@@ -1109,7 +1115,6 @@ auto disk_abi_save_state(void* instance, void* buffer, size_t* size)
     return peripheral_error;
   }
 
-  auto* dp = static_cast<DiskPeripheral_t*>(instance);
   auto* s = static_cast<DiskSavedState_t*>(buffer);
   *s = DiskSavedState_t{};
 
@@ -1122,50 +1127,69 @@ auto disk_abi_save_state(void* instance, void* buffer, size_t* size)
     copy_string_to_buffer(d.full_path, ds.full_path, sizeof(ds.full_path));
     ds.track = d.track;
     ds.phase = d.phase;
+
+    // v1 counts whole bytes from the index hole, so a head standing inside a
+    // self-sync byte's two blank cells comes back at the boundary before it.
     ds.current_byte_pos =
         static_cast<int32_t>(d.bit_position / physical::cells_per_byte);
+
     ds.user_write_protected = d.is_user_write_protected ? 1 : 0;
-    ds.is_os_read_only = 0;
-    ds.is_data_loaded = d.is_data_loaded ? 1 : 0;
-    ds.is_dirty = d.is_dirty ? 1 : 0;
     ds.spinning_ticks = d.spinning_ticks;
     ds.write_light_ticks = d.write_light_ticks;
-    ds.nibble_count = static_cast<int32_t>(decode_medium_bytes(
-        d, ds.track_buffer, static_cast<uint32_t>(sizeof(ds.track_buffer))));
+
+    // v1 carries bytes where the card carries cells, and it has nowhere to
+    // put the medium's cell timing. A track the guest has part-written is
+    // read out the way the data register reads it, so those changes survive;
+    // a clean track is left empty, because the image still holds it and the
+    // medium is re-read on the way back in.
+    if (d.is_dirty) {
+      ds.nibble_count = static_cast<int32_t>(decode_medium_bytes(
+          d, ds.track_buffer, static_cast<uint32_t>(sizeof(ds.track_buffer))));
+      ds.is_dirty = 1;
+      ds.is_data_loaded = 1;
+    }
+
+    // The driver answers for the file's permissions now, so v1's own copy of
+    // that answer has nothing left to say.
+    ds.reserved_os_read_only = 0;
   }
+
   s->stepper_phase_mask = dp->stepper_phase_mask;
   s->active_drive_index = dp->active_drive_index;
-  s->was_accessed_this_tick =
-      static_cast<uint8_t>(dp->was_accessed_this_tick ? 1 : 0);
-  s->reserved_speed = 0;
   s->io_latch = dp->io_latch;
   s->is_motor_on = static_cast<uint8_t>(dp->is_motor_on ? 1 : 0);
   s->is_write_mode = static_cast<uint8_t>(dp->sequencer.q7 ? 1 : 0);
+
+  // v1 has no room for Q6 or for the state the sequencer walks, and the
+  // within-slice access mark is not state a save file can be asked to hold.
+  s->reserved_tick = 0;
+  s->reserved_speed = 0;
 
   *size = required_size;
   return peripheral_ok;
 }
 
-auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
+auto disk_state_v1_read(DiskPeripheral_t* dp, const void* buffer, size_t size)
     -> PeripheralStatus_t {
   const size_t required_size = sizeof(DiskSavedState_t);
-  if (instance == nullptr || buffer == nullptr || size < required_size) {
+  if (buffer == nullptr || size < required_size) {
     return peripheral_error;
   }
-  auto* dp = static_cast<DiskPeripheral_t*>(instance);
   const auto* s = static_cast<const DiskSavedState_t*>(buffer);
 
-  if (s->header.version != static_cast<uint32_t>(disk_state_version)) {
+  if (s->header.version != static_cast<uint32_t>(disk_state_version) ||
+      s->header.size != required_size) {
     return peripheral_error;
   }
 
   dp->stepper_phase_mask = s->stepper_phase_mask & regs::phase_mask;
   dp->active_drive_index =
       (s->active_drive_index < disk_drive_count) ? s->active_drive_index : 0;
-  dp->was_accessed_this_tick = (s->was_accessed_this_tick != 0);
   dp->io_latch = s->io_latch;
   dp->is_motor_on = (s->is_motor_on != 0);
+  dp->sequencer = DiskSequencer_t{};
   dp->sequencer.q7 = (s->is_write_mode != 0);
+  dp->was_accessed_this_tick = false;
 
   for (int i = 0; i < disk_drive_count; ++i) {
     const auto& ds = s->drives[i];
@@ -1184,11 +1208,11 @@ auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
     auto& d = dp->drives.at(static_cast<size_t>(i));
     const bool is_out_of_bounds =
         ds.track < 0 || ds.track >= tracks_per_disk || ds.phase < 0 ||
-        ds.phase >= max_disk_phases || ds.nibble_count <= 0 ||
+        ds.phase >= max_disk_phases || ds.nibble_count < 0 ||
         ds.nibble_count > static_cast<int>(sizeof(ds.track_buffer)) ||
         ds.current_byte_pos < 0 ||
-        static_cast<uint32_t>(ds.current_byte_pos) >=
-            static_cast<uint32_t>(ds.nibble_count);
+        static_cast<uint32_t>(ds.current_byte_pos) >
+            static_cast<uint32_t>(sizeof(ds.track_buffer));
 
     if (is_out_of_bounds && dp->host != nullptr && dp->host->Log != nullptr) {
       dp->host->Log(
@@ -1197,19 +1221,21 @@ auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
           "phase: %d, nibble_count: %d, pos: %d)",
           i, ds.track, ds.phase, ds.nibble_count, ds.current_byte_pos);
     }
+
     d.track = (ds.track >= 0 && ds.track < tracks_per_disk) ? ds.track : 0;
     d.phase = (ds.phase >= 0 && ds.phase < max_disk_phases) ? ds.phase : 0;
     d.spinning_ticks = ds.spinning_ticks;
     d.write_light_ticks = ds.write_light_ticks;
 
-    // The saved bytes describe one revolution of a medium the image still
-    // holds, so the head is put back over the track and the medium re-read;
-    // only a track the guest had part-written is restored from the state.
+    // The head goes back over the track and the medium is re-read from the
+    // image, which is what carries the cell timing v1 cannot. Only a track
+    // the guest had part-written comes back out of the state instead.
     read_track_from_driver(dp, i);
-    d.is_dirty = (ds.is_dirty != 0);
-    if (d.is_dirty && !is_out_of_bounds) {
+    d.is_dirty = (ds.is_dirty != 0) && !is_out_of_bounds;
+    if (d.is_dirty) {
       encode_medium_bytes(&d, ds.track_buffer,
                           static_cast<uint32_t>(ds.nibble_count));
+      d.is_data_loaded = (d.bit_count != 0);
     }
 
     const uint32_t byte_pos =
@@ -1219,8 +1245,29 @@ auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
             ? 0U
             : std::min(byte_pos * physical::cells_per_byte, d.bit_count - 1U);
   }
+
   notify_status_changed(dp);
   return peripheral_ok;
+}
+
+// End of the v1 compatibility shim.
+
+auto disk_abi_save_state(void* instance, void* buffer, size_t* size)
+    -> PeripheralStatus_t {
+  if (instance == nullptr || size == nullptr) {
+    return peripheral_error;
+  }
+  return disk_state_v1_write(static_cast<DiskPeripheral_t*>(instance), buffer,
+                             size);
+}
+
+auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
+    -> PeripheralStatus_t {
+  if (instance == nullptr) {
+    return peripheral_error;
+  }
+  return disk_state_v1_read(static_cast<DiskPeripheral_t*>(instance), buffer,
+                            size);
 }
 
 }  // namespace

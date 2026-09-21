@@ -7,11 +7,11 @@
 #include <vector>
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Internal.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "core/LinAppleCore.h"
-#include "apple2/peripherals/Peripheral.h"
-#include "apple2/peripherals/Peripheral_Internal.h"
 #include "core/Util_Text.h"
 #include "doctest.h"
 #include "test_fixtures.h"
@@ -26,9 +26,9 @@ using TestConfig_t = TestFixtures::ScopedTestConfig_t;
 namespace {
 constexpr int slot_6 = 6;
 constexpr size_t dsk_140k_size = 143360;
-// Gap 1 and sixteen sectors with their own gaps: what a synthesised track
-// holds once the head has read it back off the medium.
-constexpr int32_t nominal_track_nibbles = 6208;
+// A track the guest has not written to is left out of the v1 state: the
+// image still holds it and the medium is re-read on the way back in.
+constexpr int32_t clean_track_nibbles = 0;
 }  // namespace
 
 TEST_CASE("DiskSaveState: [SS-01] Round-trip fidelity") {
@@ -173,8 +173,7 @@ TEST_CASE(
   CHECK(saved_state->drives[0].track == 0);
   CHECK(saved_state->drives[0].phase == 0);
   CHECK(saved_state->drives[0].current_byte_pos == 0);
-  CHECK(saved_state->drives[0].nibble_count ==
-        static_cast<int32_t>(nominal_track_nibbles));
+  CHECK(saved_state->drives[0].nibble_count == clean_track_nibbles);
 
   linapple_shutdown();
 }
@@ -228,8 +227,109 @@ TEST_CASE(
   CHECK(saved_state->drives[0].track == 0);
   CHECK(saved_state->drives[0].phase == 0);
   CHECK(saved_state->drives[0].current_byte_pos == 0);
-  CHECK(saved_state->drives[0].nibble_count ==
-        static_cast<int32_t>(nominal_track_nibbles));
+  CHECK(saved_state->drives[0].nibble_count == clean_track_nibbles);
+
+  linapple_shutdown();
+}
+
+TEST_CASE(
+    "DiskSaveState: [SNAP-3] A save state written before the bit medium") {
+  TestConfig_t machine(TestConfig_t::disk_ii_only());
+  machine.load();
+  linapple_init();
+  peripheral_manager_init();
+  peripheral_register_internal();
+
+  std::vector<uint8_t> blob(sizeof(DiskSavedState_t));
+  {
+    std::ifstream ifs(TestFixtures::get_fixture_path("disk_state_v1.bin"),
+                      std::ios::binary);
+    REQUIRE(ifs.is_open());
+    ifs.read(reinterpret_cast<char*>(blob.data()),
+             static_cast<std::streamsize>(blob.size()));
+    REQUIRE(ifs.gcount() == static_cast<std::streamsize>(blob.size()));
+  }
+
+  // The capture names the image it was taken with; only the path has to be
+  // moved to one this run can open.
+  auto fixture = TestFixtures::create_ephemeral("minimal.dsk");
+  auto* state = reinterpret_cast<DiskSavedState_t*>(blob.data());
+  util_safe_strcpy(state->drives[0].full_path, fixture.c_str(),
+                   sizeof(state->drives[0].full_path));
+
+  peripheral_load_state(slot_6, blob.data(), blob.size());
+
+  DiskStatus_t status{};
+  size_t s_size = sizeof(status);
+  peripheral_query(slot_6, disk_query_status, &status, &s_size);
+  CHECK(status.drive0_loaded == 1);
+  CHECK(status.drive0_last_error == disk_err_none);
+
+  // The head comes back where the capture left it, 37 bytes past the index
+  // hole, and the medium comes back off the image rather than out of the file.
+  DiskSavedState_t round{};
+  size_t round_size = sizeof(round);
+  peripheral_save_state(slot_6, &round, &round_size);
+  constexpr int32_t captured_byte_pos = 37;
+  CHECK(round.header.size == sizeof(DiskSavedState_t));
+  CHECK(round.drives[0].track == 0);
+  CHECK(round.drives[0].phase == 0);
+  CHECK(round.drives[0].current_byte_pos == captured_byte_pos);
+  CHECK(round.drives[0].nibble_count == clean_track_nibbles);
+
+  linapple_shutdown();
+}
+
+TEST_CASE("DiskSaveState: [SNAP-4] A save state of the wrong size is refused") {
+  TestConfig_t machine(TestConfig_t::disk_ii_only());
+  machine.load();
+  linapple_init();
+  peripheral_manager_init();
+  peripheral_register_internal();
+
+  auto first = TestFixtures::create_ephemeral("minimal.dsk");
+  auto second = TestFixtures::create_ephemeral("minimal.dsk");
+  DiskInsertCmd_t cmd{};
+  cmd.drive = disk_drive_0;
+  util_safe_strcpy(cmd.path, first.c_str(), disk_insert_path_max);
+  peripheral_command(slot_6, disk_cmd_insert, &cmd, sizeof(cmd));
+  peripheral_manager_think(0);
+
+  std::vector<uint8_t> buffer(sizeof(DiskSavedState_t));
+  size_t state_size = buffer.size();
+  peripheral_save_state(slot_6, buffer.data(), &state_size);
+
+  // The state names a different image, so whether the card took it or turned
+  // it away is visible in which image the drive holds afterwards.
+  auto* state = reinterpret_cast<DiskSavedState_t*>(buffer.data());
+  util_safe_strcpy(state->drives[0].full_path, second.c_str(),
+                   sizeof(state->drives[0].full_path));
+
+  DiskStatus_t status{};
+  size_t s_size = sizeof(status);
+
+  // A header that disagrees with the layout it claims is a file this build
+  // cannot read, whatever the buffer beside it measures.
+  state->header.size = sizeof(DiskSavedState_t) - 1;
+  peripheral_load_state(slot_6, buffer.data(), buffer.size());
+  peripheral_query(slot_6, disk_query_status, &status, &s_size);
+  CHECK(status.drive0_full_path == first.path());
+
+  state->header.size = 0;
+  peripheral_load_state(slot_6, buffer.data(), buffer.size());
+  peripheral_query(slot_6, disk_query_status, &status, &s_size);
+  CHECK(status.drive0_full_path == first.path());
+
+  state->header.size = sizeof(DiskSavedState_t);
+  state->header.version = disk_state_version + 1;
+  peripheral_load_state(slot_6, buffer.data(), buffer.size());
+  peripheral_query(slot_6, disk_query_status, &status, &s_size);
+  CHECK(status.drive0_full_path == first.path());
+
+  state->header.version = disk_state_version;
+  peripheral_load_state(slot_6, buffer.data(), buffer.size());
+  peripheral_query(slot_6, disk_query_status, &status, &s_size);
+  CHECK(status.drive0_full_path == second.path());
 
   linapple_shutdown();
 }

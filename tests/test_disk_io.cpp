@@ -84,10 +84,9 @@ class DiskIoHarness_t {
       // Ensure track 0 is primed into memory
       read_byte();
 
-      // Reset head byte position and access flag to clean initial baseline
+      // Put the head back at the index hole and start a fresh slice
       DiskSavedState_t state = get_saved_state();
       state.drives[0].current_byte_pos = 0;
-      state.was_accessed_this_tick = 0;
       load_saved_state(state);
     }
   }
@@ -164,9 +163,10 @@ class DiskIoHarness_t {
     peripheral_load_state(slot_6, &in_state, sizeof(in_state));
   }
 
+  // The within-slice access mark is a transient the save state does not
+  // carry, so a round trip through it starts the slice over.
   auto clear_accessed_flag() -> void {
-    DiskSavedState_t state = get_saved_state();
-    state.was_accessed_this_tick = 0;
+    const DiskSavedState_t state = get_saved_state();
     load_saved_state(state);
   }
 
@@ -230,8 +230,6 @@ TEST_CASE("DiskIO: [IO-02] Spindle Rotation") {
   const uint8_t b_start = harness.read_byte();
   const DiskSavedState_t state_before = harness.get_saved_state();
   const int32_t pos_before = state_before.drives[0].current_byte_pos;
-  const int32_t nibble_count = state_before.drives[0].nibble_count;
-  REQUIRE(nibble_count > 0);
 
   // Clear single-cycle access latch to simulate completion of the read cycle
   harness.clear_accessed_flag();
@@ -242,10 +240,11 @@ TEST_CASE("DiskIO: [IO-02] Spindle Rotation") {
   harness.think(elapsed_cycles);
 
   // Assert that current_byte_pos has deterministically advanced by 20000 >> 5
-  // (625 nibbles)
+  // (625 bytes). One revolution is 6308 bytes, so the head cannot lap the
+  // index hole and wrap inside this window.
   constexpr int32_t expected_advance =
       static_cast<int32_t>(elapsed_cycles >> 5);
-  const int32_t expected_pos = (pos_before + expected_advance) % nibble_count;
+  const int32_t expected_pos = pos_before + expected_advance;
 
   const DiskSavedState_t state_after = harness.get_saved_state();
   CHECK(state_after.drives[0].current_byte_pos == expected_pos);

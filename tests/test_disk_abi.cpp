@@ -117,7 +117,7 @@ TEST_CASE("DiskABI: [ABI-07a] DiskSavedState_t layout stability") {
   CHECK(offsetof(DiskDriveState_t, phase) == 260);
   CHECK(offsetof(DiskDriveState_t, current_byte_pos) == 264);
   CHECK(offsetof(DiskDriveState_t, user_write_protected) == 268);
-  CHECK(offsetof(DiskDriveState_t, is_os_read_only) == 269);
+  CHECK(offsetof(DiskDriveState_t, reserved_os_read_only) == 269);
   CHECK(offsetof(DiskDriveState_t, is_data_loaded) == 270);
   CHECK(offsetof(DiskDriveState_t, is_dirty) == 271);
   CHECK(offsetof(DiskDriveState_t, spinning_ticks) == 272);
@@ -130,7 +130,7 @@ TEST_CASE("DiskABI: [ABI-07a] DiskSavedState_t layout stability") {
   CHECK(offsetof(DiskSavedState_t, drives) == 8);
   CHECK(offsetof(DiskSavedState_t, stepper_phase_mask) == 13888);
   CHECK(offsetof(DiskSavedState_t, active_drive_index) == 13890);
-  CHECK(offsetof(DiskSavedState_t, was_accessed_this_tick) == 13892);
+  CHECK(offsetof(DiskSavedState_t, reserved_tick) == 13892);
   CHECK(offsetof(DiskSavedState_t, reserved_speed) == 13893);
   CHECK(offsetof(DiskSavedState_t, io_latch) == 13894);
   CHECK(offsetof(DiskSavedState_t, is_motor_on) == 13895);

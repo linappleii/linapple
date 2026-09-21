@@ -139,7 +139,7 @@ typedef struct {
   int32_t phase;
   int32_t current_byte_pos;
   uint8_t user_write_protected;
-  uint8_t is_os_read_only;
+  uint8_t reserved_os_read_only;
   uint8_t is_data_loaded;
   uint8_t is_dirty;
   uint32_t spinning_ticks;
@@ -153,7 +153,7 @@ typedef struct {
   DiskDriveState_t drives[disk_drive_count];
   uint16_t stepper_phase_mask;
   uint16_t active_drive_index;
-  uint8_t was_accessed_this_tick;
+  uint8_t reserved_tick;
   uint8_t reserved_speed;
   uint8_t io_latch;
   uint8_t is_motor_on;
