@@ -471,7 +471,8 @@ auto insert_disk_into_drive(DiskPeripheral_t* disk_peripheral, int drive_index,
 }
 
 auto disk_io_control_motor(void* instance, uint16_t, uint16_t memory_address,
-                           uint8_t, uint8_t, uint32_t executed_cycles) -> uint8_t {
+                           uint8_t, uint8_t, uint32_t executed_cycles)
+    -> uint8_t {
   if (instance == nullptr) {
     return read_floating_bus(instance, executed_cycles);
   }
@@ -821,7 +822,6 @@ auto disk_io_mode_switch(void* instance, uint16_t, uint16_t memory_address,
       }
     }
   }
-
 
   return disk_peripheral->io_latch;
 }
@@ -1241,8 +1241,7 @@ auto disk_abi_query(void* instance, uint32_t cmd, void* data, size_t* size)
         return peripheral_error;
       }
       auto* query = static_cast<DiskFormatNameQuery_t*>(data);
-      const DiskFormatDriver_t* driver =
-          disk_loader_driver_at(query->index);
+      const DiskFormatDriver_t* driver = disk_loader_driver_at(query->index);
       if (driver == nullptr || driver->name == nullptr) {
         return peripheral_error;
       }
