@@ -100,6 +100,17 @@ struct Disk_t {
   auto operator=(Disk_t&&) -> Disk_t& = default;
 };
 
+// The two 9334 bits that tell the P6 what to do with the data register.
+// Their present values are tracked from the switches that set them; what the
+// sequencer makes of them, and the state it walks while doing so, arrive with
+// the P6 ROM, so state and step are carried and restored but never stepped.
+struct DiskSequencer_t {
+  bool q6 = false;
+  bool q7 = false;
+  uint8_t state = 0;
+  uint32_t step = 0;
+};
+
 struct DiskPeripheral_t {
   // Attached physical drives
   std::array<Disk_t, disk_drive_count> drives{};
@@ -109,7 +120,7 @@ struct DiskPeripheral_t {
   uint8_t io_latch = 0;
   uint16_t stepper_phase_mask = 0;
   bool is_motor_on = false;
-  bool is_write_mode = false;
+  DiskSequencer_t sequencer{};
 
   // Rotational and timing simulation state
   bool was_accessed_this_tick = false;
@@ -548,6 +559,7 @@ auto disk_io_read_write(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
   auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
   auto& drive = get_active_drive(disk_peripheral);
 
+  disk_peripheral->sequencer.q6 = false;
   disk_peripheral->was_accessed_this_tick = true;
 
   if (!drive.is_data_loaded && drive.driver != nullptr) {
@@ -567,7 +579,7 @@ auto disk_io_read_write(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
 
   // Writing shifts the register out onto the medium and leaves it loaded, so
   // the byte the 6502 wrote survives until it loads the next one.
-  if (disk_peripheral->is_write_mode) {
+  if (disk_peripheral->sequencer.q7) {
     if (!is_protected &&
         (disk_peripheral->io_latch & physical::latch_bit) != 0) {
       write_medium_byte(&drive, disk_peripheral->io_latch);
@@ -590,6 +602,8 @@ auto disk_io_set_latch(void* instance, uint16_t, uint16_t, uint8_t is_write,
 
   auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
 
+  disk_peripheral->sequencer.q6 = true;
+
   if (is_write != 0) {
     disk_peripheral->io_latch = data_value;
   }
@@ -605,7 +619,7 @@ auto disk_io_set_read_mode(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
 
   auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
 
-  disk_peripheral->is_write_mode = false;
+  disk_peripheral->sequencer.q7 = false;
 
   const bool is_protected = is_disk_write_protected(
       disk_peripheral, disk_peripheral->active_drive_index);
@@ -625,7 +639,7 @@ auto disk_io_set_write_mode(void* instance, uint16_t, uint16_t, uint8_t,
 
   auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
 
-  disk_peripheral->is_write_mode = true;
+  disk_peripheral->sequencer.q7 = true;
 
   auto& active_drive = get_active_drive(disk_peripheral);
 
@@ -663,7 +677,7 @@ auto update_drive_physics(DiskPeripheral_t* disk_peripheral, Disk_t* disk_ptr,
 
   const bool is_active_drive = (&get_active_drive(disk_peripheral) == disk_ptr);
 
-  if (disk_peripheral->is_write_mode && is_active_drive &&
+  if (disk_peripheral->sequencer.q7 && is_active_drive &&
       disk_ptr->spinning_ticks > 0) {
     disk_ptr->write_light_ticks = physical::write_light_ticks;
   } else if (disk_ptr->write_light_ticks > 0) {
@@ -740,7 +754,7 @@ auto initialize_peripheral(DiskPeripheral_t* disk_peripheral) -> void {
   disk_peripheral->io_latch = 0;
   disk_peripheral->stepper_phase_mask = 0;
   disk_peripheral->is_motor_on = false;
-  disk_peripheral->is_write_mode = false;
+  disk_peripheral->sequencer = DiskSequencer_t{};
   disk_peripheral->was_accessed_this_tick = false;
   disk_peripheral->spin_cycle_accumulator = 0;
   disk_peripheral->rotation_cycle_accumulator = 0;
@@ -1126,7 +1140,7 @@ auto disk_abi_save_state(void* instance, void* buffer, size_t* size)
   s->reserved_speed = 0;
   s->io_latch = dp->io_latch;
   s->is_motor_on = static_cast<uint8_t>(dp->is_motor_on ? 1 : 0);
-  s->is_write_mode = static_cast<uint8_t>(dp->is_write_mode ? 1 : 0);
+  s->is_write_mode = static_cast<uint8_t>(dp->sequencer.q7 ? 1 : 0);
 
   *size = required_size;
   return peripheral_ok;
@@ -1151,7 +1165,7 @@ auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
   dp->was_accessed_this_tick = (s->was_accessed_this_tick != 0);
   dp->io_latch = s->io_latch;
   dp->is_motor_on = (s->is_motor_on != 0);
-  dp->is_write_mode = (s->is_write_mode != 0);
+  dp->sequencer.q7 = (s->is_write_mode != 0);
 
   for (int i = 0; i < disk_drive_count; ++i) {
     const auto& ds = s->drives[i];
