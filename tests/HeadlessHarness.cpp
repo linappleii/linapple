@@ -77,7 +77,6 @@ auto HeadlessHarness_t::mount_disk(int slot, int drive, const std::string& path)
   cmd.drive = (drive == 0) ? disk_drive_0 : disk_drive_1;
   util_safe_strcpy(cmd.path, path.c_str(), disk_insert_path_max);
   cmd.write_protected = 0;
-  cmd.create_if_necessary = 0;
   peripheral_command(slot, disk_cmd_insert, &cmd, sizeof(cmd));
   peripheral_manager_think(100);
 }

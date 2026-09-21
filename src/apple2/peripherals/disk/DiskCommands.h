@@ -38,6 +38,11 @@ enum {
   interleave_modes_count = 3,
 
   disk_insert_path_max = 504,
+  disk_format_name_max = 64,
+  // The command queue carries at most PERIPHERAL_CMD_MAX_DATA bytes, so a
+  // path travelling beside a format name has less room than one travelling
+  // alone.
+  disk_create_path_max = 448,
   disk_status_name_max = 32,
   disk_status_path_max = 256
 };
@@ -56,6 +61,7 @@ typedef enum {
   disk_cmd_eject = 0x0002,
   disk_cmd_swap_drives = 0x0003,
   disk_cmd_set_protect = 0x0004,
+  disk_cmd_create_image = 0x0007,
   // disk_driver_cmd_* commands are issued by the peripheral layer to format
   // drivers rather than by frontends to the controller.
   disk_driver_cmd_set_enhanced_speed = 0x1001
@@ -63,15 +69,32 @@ typedef enum {
 
 // Query IDs are dispatched through the query ABI callback, separate from
 // command IDs, so numeric values do not need to be unique across both spaces.
-enum { disk_query_status = 0x0001, disk_query_supported_extensions = 0x0002 };
+enum {
+  disk_query_status = 0x0001,
+  disk_query_supported_extensions = 0x0002,
+  disk_query_format_count = 0x0003,
+  disk_query_format_name = 0x0004
+};
 
 typedef struct {
   char path[disk_insert_path_max];
   uint8_t drive;
   uint8_t write_protected;
-  uint8_t create_if_necessary;
+  uint8_t reserved;
   uint8_t padding[5];
 } DiskInsertCmd_t;
+
+typedef struct {
+  char path[disk_create_path_max];
+  char format_name[disk_format_name_max];
+} DiskCreateImageCmd_t;
+
+// The query ABI has no input buffer, so the index the caller wants travels in
+// the same struct the name comes back in.
+typedef struct {
+  uint32_t index;
+  char name[disk_format_name_max];
+} DiskFormatNameQuery_t;
 
 typedef struct {
   uint8_t drive;

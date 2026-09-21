@@ -8,7 +8,6 @@ void disk_abi_c_smoke(void) {
   DiskInsertCmd_t cmd;
   cmd.drive = disk_drive_0;
   cmd.write_protected = 0;
-  cmd.create_if_necessary = 0;
   cmd.path[0] = '\0';
 
   DiskFormatDriver_t driver;

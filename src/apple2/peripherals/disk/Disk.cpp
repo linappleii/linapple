@@ -314,8 +314,8 @@ auto sync_drive_motor_state(DiskPeripheral_t* disk_peripheral) -> void {
 }
 
 auto insert_disk_into_drive(DiskPeripheral_t* disk_peripheral, int drive_index,
-                            const char* image_path, bool write_protected,
-                            bool create_if_necessary) -> DiskError_e {
+                            const char* image_path, bool write_protected)
+    -> DiskError_e {
   if (disk_peripheral == nullptr || image_path == nullptr ||
       !is_drive_valid(drive_index)) {
     return disk_err_io;
@@ -329,8 +329,7 @@ auto insert_disk_into_drive(DiskPeripheral_t* disk_peripheral, int drive_index,
 
   drive.is_user_write_protected = write_protected;
   const DiskError_e error = disk_loader_open(
-      image_path, create_if_necessary,
-      static_cast<uint8_t>(disk_peripheral->is_speed_enhanced),
+      image_path, static_cast<uint8_t>(disk_peripheral->is_speed_enhanced),
       &drive.is_os_read_only, const_cast<DiskFormatDriver_t**>(&drive.driver),
       &drive.driver_instance);
 
@@ -810,8 +809,7 @@ auto cmd_handle_insert(DiskPeripheral_t* dp, const void* data, size_t size)
     return peripheral_error;
   }
   const DiskError_e error =
-      insert_disk_into_drive(dp, c->drive, c->path, c->write_protected != 0,
-                             c->create_if_necessary != 0);
+      insert_disk_into_drive(dp, c->drive, c->path, c->write_protected != 0);
   return (error == disk_err_none) ? peripheral_ok : peripheral_error;
 }
 
@@ -841,6 +839,26 @@ auto cmd_handle_set_protect(DiskPeripheral_t* dp, const void* data, size_t size)
       (c->write_protected != 0);
   notify_status_changed(dp);
   return peripheral_ok;
+}
+
+// A command larger than the queue's payload is dropped before it reaches the
+// card, which would look like a silent refusal to create anything.
+static_assert(sizeof(DiskCreateImageCmd_t) <= PERIPHERAL_CMD_MAX_DATA,
+              "DiskCreateImageCmd_t must fit in one queued command");
+
+auto cmd_handle_create_image(const void* data, size_t size)
+    -> PeripheralStatus_t {
+  if (data == nullptr || size < sizeof(DiskCreateImageCmd_t)) {
+    return peripheral_error;
+  }
+  const auto* c = static_cast<const DiskCreateImageCmd_t*>(data);
+  if (memchr(c->path, '\0', sizeof(c->path)) == nullptr ||
+      memchr(c->format_name, '\0', sizeof(c->format_name)) == nullptr) {
+    return peripheral_error;
+  }
+  return (disk_loader_create(c->path, c->format_name) == disk_err_none)
+             ? peripheral_ok
+             : peripheral_error;
 }
 
 auto cmd_handle_set_speed(DiskPeripheral_t* dp, const void* data, size_t size)
@@ -891,10 +909,10 @@ auto disk_abi_init(int slot, HostInterface_t* host) -> void* {
   }
 
   if (p1.at(0) != '\0') {
-    insert_disk_into_drive(dp.get(), 0, p1.data(), false, false);
+    insert_disk_into_drive(dp.get(), 0, p1.data(), false);
   }
   if (p2.at(0) != '\0') {
-    insert_disk_into_drive(dp.get(), 1, p2.data(), false, false);
+    insert_disk_into_drive(dp.get(), 1, p2.data(), false);
   }
 
 #if ENABLE_ROM_DISK2
@@ -947,6 +965,8 @@ auto disk_abi_command(void* instance, uint32_t cmd, const void* data,
       return swap_drives(dp) ? peripheral_ok : peripheral_error;
     case disk_cmd_set_protect:
       return cmd_handle_set_protect(dp, data, size);
+    case disk_cmd_create_image:
+      return cmd_handle_create_image(data, size);
     case disk_driver_cmd_set_enhanced_speed:
       return cmd_handle_set_speed(dp, data, size);
     default:
@@ -985,6 +1005,40 @@ auto disk_abi_query(void* instance, uint32_t cmd, void* data, size_t* size)
       }
       disk_loader_get_supported_extensions(static_cast<char*>(data), *size);
       *size = strlen(static_cast<const char*>(data)) + 1;
+      return peripheral_ok;
+    }
+    case disk_query_format_count: {
+      const size_t required_size = sizeof(uint32_t);
+      if (data == nullptr) {
+        *size = required_size;
+        return peripheral_ok;
+      }
+      if (*size < required_size) {
+        *size = required_size;
+        return peripheral_error;
+      }
+      *static_cast<uint32_t*>(data) = disk_loader_driver_count();
+      *size = required_size;
+      return peripheral_ok;
+    }
+    case disk_query_format_name: {
+      const size_t required_size = sizeof(DiskFormatNameQuery_t);
+      if (data == nullptr) {
+        *size = required_size;
+        return peripheral_ok;
+      }
+      if (*size < required_size) {
+        *size = required_size;
+        return peripheral_error;
+      }
+      auto* query = static_cast<DiskFormatNameQuery_t*>(data);
+      const DiskFormatDriver_t* driver =
+          disk_loader_driver_at(query->index);
+      if (driver == nullptr || driver->name == nullptr) {
+        return peripheral_error;
+      }
+      copy_string_to_buffer(driver->name, query->name, sizeof(query->name));
+      *size = required_size;
       return peripheral_ok;
     }
     default:
@@ -1079,7 +1133,7 @@ auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
                                 static_cast<size_t>(end_it - ds.full_path));
 
     const DiskError_e insert_err = insert_disk_into_drive(
-        dp, i, safe_path.c_str(), ds.user_write_protected != 0, false);
+        dp, i, safe_path.c_str(), ds.user_write_protected != 0);
     if (insert_err != disk_err_none) {
       continue;
     }

@@ -7,6 +7,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <array>
 #include <cstddef>
+#include <cstdio>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -32,15 +33,16 @@ constexpr uint8_t BUFFER_INIT_VAL = 0xAA;
 constexpr uint32_t BAD_VERSION = 0xdeadbeef;
 }  // namespace
 
-TEST_CASE("DiskABI: [DISK-01] DiskInsertCmd_t is exactly 512 bytes") {
+TEST_CASE("DiskABI: [DISK-01] Command payloads fit the command queue") {
   CHECK(sizeof(DiskInsertCmd_t) == DISK_ABI_CMD_SIZE);
+  CHECK(sizeof(DiskCreateImageCmd_t) == DISK_ABI_CMD_SIZE);
 }
 
 TEST_CASE("DiskABI: [DISK-02] DiskInsertCmd_t field offsets are stable") {
   CHECK(offsetof(DiskInsertCmd_t, path) == 0);
   CHECK(offsetof(DiskInsertCmd_t, drive) == 504);
   CHECK(offsetof(DiskInsertCmd_t, write_protected) == 505);
-  CHECK(offsetof(DiskInsertCmd_t, create_if_necessary) == 506);
+  CHECK(offsetof(DiskInsertCmd_t, reserved) == 506);
 }
 
 TEST_CASE("DiskABI: [DISK-03] Enum values match ABI specification") {
@@ -221,7 +223,6 @@ TEST_CASE("DiskABI: [DISK-11] Insert Command NUL Terminator Check") {
   memset(&cmd, 'A', sizeof(cmd));  // No NUL terminator anywhere in struct
   cmd.drive = 0;
   cmd.write_protected = 0;
-  cmd.create_if_necessary = 0;
 
   PeripheralStatus_t status =
       descriptor->command(instance, disk_cmd_insert, &cmd, sizeof(cmd));
@@ -277,7 +278,7 @@ TEST_CASE("DiskABI: [ABI-15] Mechanical events never write the config") {
   CHECK(g_set_config_calls == 0);
 }
 
-TEST_CASE("DiskABI: [ABI-16] Insert cannot make the blank image it asks for") {
+TEST_CASE("DiskABI: [ABI-16] A created image is one a drive can take") {
   TestConfig_t machine(TestConfig_t::disk_ii_only());
   machine.load();
   linapple_init();
@@ -287,11 +288,20 @@ TEST_CASE("DiskABI: [ABI-16] Insert cannot make the blank image it asks for") {
   TestFixtures::ScopedTempDir_t work_dir("linapple_disk_create_test_");
   const std::string image_path = work_dir.path() + "/blank.dsk";
 
+  DiskCreateImageCmd_t create{};
+  strncpy(create.path, image_path.c_str(), sizeof(create.path) - 1);
+  strncpy(create.format_name, "DOS Order", sizeof(create.format_name) - 1);
+  peripheral_command(SL6, disk_cmd_create_image, &create, sizeof(create));
+  peripheral_manager_think(0);
+
+  constexpr int64_t dos_33_image_size = 143360;
+  struct stat created {};
+  REQUIRE(stat(image_path.c_str(), &created) == 0);
+  CHECK(created.st_size == dos_33_image_size);
+
   DiskInsertCmd_t cmd{};
   cmd.drive = disk_drive_0;
   strncpy(cmd.path, image_path.c_str(), sizeof(cmd.path) - 1);
-  cmd.create_if_necessary = 1;
-
   peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
   peripheral_manager_think(0);
 
@@ -299,14 +309,91 @@ TEST_CASE("DiskABI: [ABI-16] Insert cannot make the blank image it asks for") {
   size_t size = sizeof(status);
   REQUIRE(peripheral_query(SL6, disk_query_status, &status, &size) ==
           peripheral_ok);
-  CHECK(status.drive0_loaded == 0);
-  CHECK(status.drive0_last_error == disk_err_unsupported_format);
+  CHECK(status.drive0_loaded == 1);
+  CHECK(status.drive0_last_error == disk_err_none);
 
-  // The loader opened the path for writing before it knew what to put there,
-  // so the failed insert leaves an empty file behind that no driver can read.
-  struct stat created {};
-  REQUIRE(stat(image_path.c_str(), &created) == 0);
-  CHECK(created.st_size == 0);
+  linapple_shutdown();
+}
+
+TEST_CASE("DiskABI: [ABI-17] Creating an image refuses to overwrite") {
+  TestConfig_t machine(TestConfig_t::disk_ii_only());
+  machine.load();
+  linapple_init();
+  peripheral_manager_init();
+  linapple_register_peripherals();
+
+  auto* descriptor = disk_get_descriptor();
+  REQUIRE(descriptor != nullptr);
+  void* instance = descriptor->init(SL6, &g_test_disk_host);
+  REQUIRE(instance != nullptr);
+
+  TestFixtures::ScopedTempDir_t work_dir("linapple_disk_create_test_");
+  const std::string image_path = work_dir.path() + "/occupied.dsk";
+  const std::string contents = "not a disk image";
+  {
+    FILE* existing = fopen(image_path.c_str(), "wb");
+    REQUIRE(existing != nullptr);
+    fwrite(contents.data(), 1, contents.size(), existing);
+    fclose(existing);
+  }
+
+  DiskCreateImageCmd_t create{};
+  strncpy(create.path, image_path.c_str(), sizeof(create.path) - 1);
+  strncpy(create.format_name, "DOS Order", sizeof(create.format_name) - 1);
+  CHECK(descriptor->command(instance, disk_cmd_create_image, &create,
+                            sizeof(create)) == peripheral_error);
+
+  struct stat untouched {};
+  REQUIRE(stat(image_path.c_str(), &untouched) == 0);
+  CHECK(untouched.st_size == static_cast<int64_t>(contents.size()));
+
+  // A format nobody registered is not a format the card can make
+  DiskCreateImageCmd_t unknown{};
+  strncpy(unknown.path, (work_dir.path() + "/unknown.dsk").c_str(),
+          sizeof(unknown.path) - 1);
+  strncpy(unknown.format_name, "Tape", sizeof(unknown.format_name) - 1);
+  CHECK(descriptor->command(instance, disk_cmd_create_image, &unknown,
+                            sizeof(unknown)) == peripheral_error);
+  struct stat not_created {};
+  CHECK(stat(unknown.path, &not_created) != 0);
+
+  descriptor->shutdown(instance);
+  linapple_shutdown();
+}
+
+TEST_CASE("DiskABI: [ABI-18] The card lists the formats it can make") {
+  TestConfig_t machine(TestConfig_t::disk_ii_only());
+  machine.load();
+  linapple_init();
+  peripheral_manager_init();
+  linapple_register_peripherals();
+
+  uint32_t count = 0;
+  size_t size = sizeof(count);
+  REQUIRE(peripheral_query(SL6, disk_query_format_count, &count, &size) ==
+          peripheral_ok);
+  CHECK(size == sizeof(uint32_t));
+  CHECK(count == 6);
+
+  bool found_dos_order = false;
+  for (uint32_t i = 0; i < count; ++i) {
+    DiskFormatNameQuery_t name_query{};
+    name_query.index = i;
+    size = sizeof(name_query);
+    REQUIRE(peripheral_query(SL6, disk_query_format_name, &name_query,
+                             &size) == peripheral_ok);
+    CHECK(strlen(name_query.name) > 0);
+    if (strcmp(name_query.name, "DOS Order") == 0) {
+      found_dos_order = true;
+    }
+  }
+  CHECK(found_dos_order);
+
+  DiskFormatNameQuery_t past_the_end{};
+  past_the_end.index = count;
+  size = sizeof(past_the_end);
+  CHECK(peripheral_query(SL6, disk_query_format_name, &past_the_end, &size) ==
+        peripheral_error);
 
   linapple_shutdown();
 }

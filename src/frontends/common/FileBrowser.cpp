@@ -615,7 +615,6 @@ auto disk_browser_confirm(DiskBrowser_t* b) -> bool {
   cmd.drive = static_cast<uint8_t>(b->drive);
   util_safe_strcpy(cmd.path, full_path.c_str(), sizeof(cmd.path));
   cmd.write_protected = 0;
-  cmd.create_if_necessary = 1;
   const int target_slot = (b->slot != 0) ? b->slot : disk_default_slot;
   if (peripheral_command(target_slot, disk_cmd_insert, &cmd, sizeof(cmd)) ==
           peripheral_ok &&

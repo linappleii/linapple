@@ -133,10 +133,9 @@ auto disk_loader_register(DiskFormatDriver_t* driver) -> void {
   g_drivers.push_back(driver);
 }
 
-auto disk_loader_open(const char* image_path, bool create_if_necessary,
-                      uint8_t enhanced_speed, bool* out_is_read_only,
-                      DiskFormatDriver_t** out_driver, void** out_instance)
-    -> DiskError_e {
+auto disk_loader_open(const char* image_path, uint8_t enhanced_speed,
+                      bool* out_is_read_only, DiskFormatDriver_t** out_driver,
+                      void** out_instance) -> DiskError_e {
   if (image_path == nullptr || out_driver == nullptr ||
       out_instance == nullptr) {
     return disk_err_io;
@@ -164,18 +163,6 @@ auto disk_loader_open(const char* image_path, bool create_if_necessary,
       image_file.reset(fopen(found.c_str(), "rb"));
     }
   }
-  if (image_file == nullptr) {
-    if (!create_if_necessary || is_temporary) {
-      return disk_err_file_not_found;
-    }
-    FilePtr_t create_file(fopen(load_path, "wb"), fclose);
-    if (create_file == nullptr) {
-      return disk_err_file_not_found;
-    }
-    create_file.reset();
-    image_file.reset(fopen(load_path, "rb"));
-  }
-
   if (image_file == nullptr) {
     return disk_err_file_not_found;
   }
@@ -214,6 +201,49 @@ auto disk_loader_open(const char* image_path, bool create_if_necessary,
   }
 
   return err;
+}
+
+auto disk_loader_driver_count(void) -> uint32_t {
+  return static_cast<uint32_t>(g_drivers.size());
+}
+
+auto disk_loader_driver_at(uint32_t index) -> const DiskFormatDriver_t* {
+  if (index >= g_drivers.size()) {
+    return nullptr;
+  }
+  return g_drivers[index];
+}
+
+auto disk_loader_create(const char* path, const char* driver_name)
+    -> DiskError_e {
+  if (path == nullptr || driver_name == nullptr || path[0] == '\0') {
+    return disk_err_io;
+  }
+
+  // Refusing a path that exists is the whole safety of this call: a driver
+  // truncates whatever it opens, and a mistyped name must not cost a disk.
+  if (access(path, F_OK) == 0) {
+    return disk_err_io;
+  }
+
+  const DiskFormatDriver_t* driver = nullptr;
+  for (const auto* candidate : g_drivers) {
+    if (candidate != nullptr && candidate->name != nullptr &&
+        strcmp(candidate->name, driver_name) == 0) {
+      driver = candidate;
+      break;
+    }
+  }
+
+  if (driver == nullptr || driver->create == nullptr) {
+    return disk_err_unsupported_format;
+  }
+
+  const DiskError_e error = driver->create(path);
+  if (error != disk_err_none) {
+    unlink(path);
+  }
+  return error;
 }
 
 auto disk_loader_get_supported_extensions(char* out_buffer, size_t buffer_size)

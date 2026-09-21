@@ -72,7 +72,6 @@ void disk_select_image(int drive, char* pszFilename) {
   cmd.drive = static_cast<uint8_t>(drive);
   util_safe_strcpy(cmd.path, fullPath.c_str(), sizeof(cmd.path));
   cmd.write_protected = 0;
-  cmd.create_if_necessary = 1;
 
   if (peripheral_command(disk_default_slot, disk_cmd_insert, &cmd,
                          sizeof(cmd)) == peripheral_ok) {
@@ -168,7 +167,6 @@ void disk_ftp_select_image(int drive) {
     cmd.drive = static_cast<uint8_t>(drive);
     util_safe_strcpy(cmd.path, localPath.c_str(), sizeof(cmd.path));
     cmd.write_protected = 0;
-    cmd.create_if_necessary = 1;
 
     if (peripheral_command(disk_default_slot, disk_cmd_insert, &cmd,
                            sizeof(cmd)) == peripheral_ok) {

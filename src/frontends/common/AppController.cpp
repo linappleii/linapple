@@ -317,7 +317,6 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
       cmd.drive = disk_drive_0;
       util_safe_strcpy(cmd.path, disk1.c_str(), disk_insert_path_max);
       cmd.write_protected = 0;
-      cmd.create_if_necessary = 0;
       peripheral_command(disk_default_slot, disk_cmd_insert, &cmd, sizeof(cmd));
 
       std::string disk2;
@@ -329,7 +328,6 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
           cmd2.drive = disk_drive_1;
           util_safe_strcpy(cmd2.path, disk2.c_str(), disk_insert_path_max);
           cmd2.write_protected = 0;
-          cmd2.create_if_necessary = 0;
           peripheral_command(disk_default_slot, disk_cmd_insert, &cmd2,
                              sizeof(cmd2));
         }

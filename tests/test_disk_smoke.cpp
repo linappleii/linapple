@@ -241,7 +241,7 @@ TEST_CASE(
   DiskFormatDriver_t* selected_driver = nullptr;
   void* disk_instance = nullptr;
   bool is_ro = false;
-  CHECK(disk_loader_open(tmp_dos.c_str(), false, 0, &is_ro, &selected_driver,
+  CHECK(disk_loader_open(tmp_dos.c_str(), 0, &is_ro, &selected_driver,
                          &disk_instance) == disk_err_none);
   CHECK(selected_driver == &g_do_driver);
   if (selected_driver != nullptr && disk_instance != nullptr &&
