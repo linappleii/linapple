@@ -725,7 +725,6 @@ if(BUILD_TESTING)
     add_executable(test-disk-adapter tests/test_disk_adapter.cpp src/apple2/peripherals/disk/DiskEncoding.cpp)
     target_include_directories(test-disk-adapter PRIVATE src ${DOCTEST_INCLUDE_DIR})
     add_test(NAME test-disk-adapter COMMAND test-disk-adapter)
-    set_tests_properties(test-disk-adapter PROPERTIES TIMEOUT 1)
 
     add_executable(test-disk-drivers tests/test_disk_drivers.cpp src/core/Log.cpp src/frontends/headless/Headless_Path.cpp src/apple2/peripherals/disk/DiskLoader.cpp ${DISK_BACKEND_SOURCES} ${DISK_FORMAT_SOURCES})
     target_include_directories(test-disk-drivers PRIVATE src ${DOCTEST_INCLUDE_DIR})
@@ -737,7 +736,6 @@ if(BUILD_TESTING)
     target_compile_definitions(test-disk-registry PRIVATE DISK_FORMAT_DRIVER_COUNT=${DISK_FORMAT_DRIVER_COUNT})
     target_link_libraries(test-disk-registry PRIVATE ${COMMON_LIBS})
     add_test(NAME test-disk-registry COMMAND test-disk-registry)
-    set_tests_properties(test-disk-registry PROPERTIES TIMEOUT 1)
 
     # The P6 sequencer PROM is a verbatim Apple part; a wrong or truncated
     # image would mis-clock every read instead of failing loudly.
@@ -755,7 +753,6 @@ if [ "$size" -ne 256 ]; then
 fi
 ]=]
         sh "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/DISK2-P6.rom")
-    set_tests_properties(test-disk-p6-rom PROPERTIES TIMEOUT 1)
 
     add_linapple_test(program-loader tests/test_program_loader.cpp)
     add_linapple_test(system-roms "tests/test_main.cpp;tests/test_system_roms.cpp")
@@ -801,14 +798,39 @@ fi
     add_linapple_test(tui-disk-select "tests/test_main.cpp;tests/test_tui_disk_select.cpp;src/frontends/tui/TuiDiskSelect.cpp;src/frontends/tui/TuiVideo.cpp;src/frontends/tui/TuiShapeDetector.cpp")
 
     add_linapple_test(disk-e2e tests/test_disk_e2e.cpp)
-    set_tests_properties(test-disk-e2e PROPERTIES TIMEOUT 1)
 
     foreach(T disk_motor;disk_prot;disk_woz;disk_savestate;disk_errors;disk_stepper;disk_io;disk_compression;disk_modes;disk_lss;disk_bits)
         string(REPLACE "_" "-" TEST_NAME ${T})
         add_linapple_test(${TEST_NAME} tests/test_${T}.cpp)
     endforeach()
-    set_tests_properties(test-disk-modes test-disk-lss test-disk-bits
-                         PROPERTIES TIMEOUT 1)
+    # A Disk II case is one unit of hardware behaviour, never a soak: one
+    # that stops finishing inside a second has found a regression rather
+    # than a slow machine, and the budget says so instead of printing it.
+    set(DISK_TEST_CASES
+        test-disk-abi
+        test-disk-adapter
+        test-disk-bits
+        test-disk-compression
+        test-disk-config-runtime-eject
+        test-disk-config-runtime-insert
+        test-disk-config-startup
+        test-disk-drivers
+        test-disk-e2e
+        test-disk-errors
+        test-disk-gcr
+        test-disk-io
+        test-disk-lss
+        test-disk-modes
+        test-disk-motor
+        test-disk-p6-rom
+        test-disk-prot
+        test-disk-registry
+        test-disk-savestate
+        test-disk-smoke
+        test-disk-stepper
+        test-disk-ui
+        test-disk-woz)
+    set_tests_properties( PROPERTIES TIMEOUT 1)
 
     if(FRONTEND_LOWER STREQUAL "all")
         set(CPU_TEST_TARGET linapple-sdl3)
@@ -942,12 +964,17 @@ if(ENABLE_FUZZING)
     add_linapple_fuzzer(fuzz-via6522 tests/fuzz/fuzz_via6522.cpp)
 
     if(BUILD_TESTING)
+        # Every fuzz case is given ten seconds of search; libFuzzer needs a
+        # second more to load its corpus and print its summary, so the wall
+        # clock that calls one hung is three times the budget it was given.
+        set(FUZZ_CASE_TIMEOUT 30)
+
         add_test(NAME fuzz-disk-loader
                  COMMAND fuzz-disk-loader
                          ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/disk-loader
                          -dict=${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/dictionaries/disk_formats.dict
                          -max_total_time=10)
-        set_tests_properties(fuzz-disk-loader PROPERTIES LABELS "fuzz")
+        set_tests_properties(fuzz-disk-loader PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
 
         # Six bytes a record and a sequence long enough to spin the medium
         # past a whole sector.
@@ -956,7 +983,7 @@ if(ENABLE_FUZZING)
                          ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/disk-controller
                          -max_len=1024
                          -max_total_time=10)
-        set_tests_properties(fuzz-disk-controller PROPERTIES LABELS "fuzz")
+        set_tests_properties(fuzz-disk-controller PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
 
         # One control byte and then one nibble per byte, so this covers a
         # track two thirds the length of a real one.
@@ -965,21 +992,21 @@ if(ENABLE_FUZZING)
                          ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/disk-adapter
                          -max_len=4096
                          -max_total_time=10)
-        set_tests_properties(fuzz-disk-adapter PROPERTIES LABELS "fuzz")
+        set_tests_properties(fuzz-disk-adapter PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
 
         add_test(NAME fuzz-snapshot
                  COMMAND fuzz-snapshot
                          ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/snapshot
                          -max_len=131824
                          -max_total_time=10)
-        set_tests_properties(fuzz-snapshot PROPERTIES LABELS "fuzz")
+        set_tests_properties(fuzz-snapshot PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
 
         add_test(NAME fuzz-memory
                  COMMAND fuzz-memory
                          ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/memory
                          -dict=${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/dictionaries/memory_text.dict
                          -max_total_time=10)
-        set_tests_properties(fuzz-memory PROPERTIES LABELS "fuzz")
+        set_tests_properties(fuzz-memory PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
 
         # One record is ten bytes of control plus an SsIoSpeaker_t; eight of
         # them is enough of a sequence to reach the interesting states.
@@ -988,7 +1015,7 @@ if(ENABLE_FUZZING)
                          ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/speaker
                          -max_len=400
                          -max_total_time=10)
-        set_tests_properties(fuzz-speaker PROPERTIES LABELS "fuzz")
+        set_tests_properties(fuzz-speaker PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
 
         # No record structure to mirror: the harness reads a byte at a time and
         # turns each into one mixer call, so this is simply enough bytes for a
@@ -998,7 +1025,7 @@ if(ENABLE_FUZZING)
                          ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/audio-mixer
                          -max_len=512
                          -max_total_time=10)
-        set_tests_properties(fuzz-audio-mixer PROPERTIES LABELS "fuzz")
+        set_tests_properties(fuzz-audio-mixer PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
 
         # One record is eight bytes of control plus a MockingboardSaveState_t;
         # eight of them reach an armed timer, a loaded state and a rendered
@@ -1008,7 +1035,7 @@ if(ENABLE_FUZZING)
                          ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/mockingboard
                          -max_len=1920
                          -max_total_time=10)
-        set_tests_properties(fuzz-mockingboard PROPERTIES LABELS "fuzz")
+        set_tests_properties(fuzz-mockingboard PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
 
         # Four bytes per record: a register write and a run of the generators.
         add_test(NAME fuzz-ay8910
@@ -1016,7 +1043,7 @@ if(ENABLE_FUZZING)
                          ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/ay8910
                          -max_len=256
                          -max_total_time=10)
-        set_tests_properties(fuzz-ay8910 PROPERTIES LABELS "fuzz")
+        set_tests_properties(fuzz-ay8910 PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
 
         # Five bytes per record: a register access and a run of the timers.
         add_test(NAME fuzz-via6522
@@ -1024,7 +1051,7 @@ if(ENABLE_FUZZING)
                          ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/via6522
                          -max_len=320
                          -max_total_time=10)
-        set_tests_properties(fuzz-via6522 PROPERTIES LABELS "fuzz")
+        set_tests_properties(fuzz-via6522 PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
     endif()
 endif()
 
