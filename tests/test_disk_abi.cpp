@@ -373,21 +373,21 @@ TEST_CASE("DiskABI: [ABI-18] The card lists the formats it can make") {
   REQUIRE(peripheral_query(SL6, disk_query_format_count, &count, &size) ==
           peripheral_ok);
   CHECK(size == sizeof(uint32_t));
-  CHECK(count == 6);
-
-  bool found_dos_order = false;
+  // Alphabetical, because the probe's fallback picks the first driver that
+  // calls an image possible and that must not depend on link order.
+  const char* const expected_order[] = {"DOS Order",         "IIE",
+                                        "NB2 (6384-nibble)",
+                                        "NIB (6656-nibble)", "ProDOS Order",
+                                        "WOZ 2"};
+  REQUIRE(count == sizeof(expected_order) / sizeof(expected_order[0]));
   for (uint32_t i = 0; i < count; ++i) {
     DiskFormatNameQuery_t name_query{};
     name_query.index = i;
     size = sizeof(name_query);
     REQUIRE(peripheral_query(SL6, disk_query_format_name, &name_query,
                              &size) == peripheral_ok);
-    CHECK(strlen(name_query.name) > 0);
-    if (strcmp(name_query.name, "DOS Order") == 0) {
-      found_dos_order = true;
-    }
+    CHECK(std::string(name_query.name) == expected_order[i]);
   }
-  CHECK(found_dos_order);
 
   DiskFormatNameQuery_t past_the_end{};
   past_the_end.index = count;

@@ -86,6 +86,20 @@ auto already_registered(const DiskFormatDriver_t* driver) -> bool {
          registry().end();
 }
 
+// A probe that finds no definite claim settles for the first driver that says
+// "possible", so the order drivers sit in decides which one opens an ambiguous
+// image. Link order is not an answer a user can reason about; alphabetical by
+// name is, and two drivers sharing a name keep the order they arrived in.
+auto insert_by_name(std::vector<DiskFormatDriver_t*>& drivers,
+                    DiskFormatDriver_t* driver) -> void {
+  const auto at = std::upper_bound(
+      drivers.begin(), drivers.end(), driver,
+      [](const DiskFormatDriver_t* lhs, const DiskFormatDriver_t* rhs) {
+        return strcmp(driver_label(lhs), driver_label(rhs)) < 0;
+      });
+  drivers.insert(at, driver);
+}
+
 constexpr size_t path_max_len = 260;
 
 // Disk Loading & Decompression parameters
@@ -152,7 +166,7 @@ auto disk_loader_register(DiskFormatDriver_t* driver) -> void {
   if (!driver_is_usable(driver) || already_registered(driver)) {
     return;
   }
-  registry().push_back(driver);
+  insert_by_name(registry(), driver);
 }
 
 auto disk_loader_register_permanent(const DiskFormatDriver_t* driver) -> void {
@@ -160,8 +174,8 @@ auto disk_loader_register_permanent(const DiskFormatDriver_t* driver) -> void {
     return;
   }
   auto* entry = const_cast<DiskFormatDriver_t*>(driver);
-  permanent_registry().push_back(entry);
-  registry().push_back(entry);
+  insert_by_name(permanent_registry(), entry);
+  insert_by_name(registry(), entry);
 }
 
 auto disk_loader_reset(void) -> void {
