@@ -44,15 +44,14 @@ auto po_probe(const uint8_t* header_data, size_t header_size,
   return sig_probe;
 }
 
-auto po_open(const char* path, uint32_t file_offset, uint8_t enhanced_speed,
-             bool* out_is_read_only, void** out_instance_handle)
-    -> DiskError_e {
+auto po_open(const char* path, uint32_t file_offset, bool* out_is_read_only,
+             void** out_instance_handle) -> DiskError_e {
   if (path == nullptr || out_instance_handle == nullptr) {
     return disk_err_io;
   }
 
-  auto* image_ptr = sector_disk_image_open(path, file_offset, false,
-                                           enhanced_speed, out_is_read_only);
+  auto* image_ptr =
+      sector_disk_image_open(path, file_offset, false, out_is_read_only);
   if (image_ptr == nullptr) {
     return disk_err_io;
   }

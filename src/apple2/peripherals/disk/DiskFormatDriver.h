@@ -50,8 +50,7 @@ typedef struct DiskFormatDriver_t {
                        uint32_t file_size, const char* ext_hint);
 
   DiskError_e (*open)(const char* path, uint32_t file_offset,
-                      uint8_t enhanced_speed, bool* out_is_read_only,
-                      void** out_instance);
+                      bool* out_is_read_only, void** out_instance);
 
   void (*close)(void* instance);
 

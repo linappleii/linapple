@@ -422,10 +422,6 @@ static auto host_notify_activity_changed(int slot, bool active) -> void {
   }
 }
 
-static auto host_request_precise_timing() -> void {
-  g_state.needsprecision = static_cast<uint32_t>(cumulative_cycles);
-}
-
 static auto host_audio_push_channels(void* instance,
                                      const float* const* channel_buffers,
                                      size_t num_channels, size_t num_samples)
@@ -527,7 +523,6 @@ static const HostInterface_t g_host_interface = {host_log,
                                                  host_set_config,
                                                  host_notify_status_changed,
                                                  host_notify_activity_changed,
-                                                 host_request_precise_timing,
                                                  host_audio_push_channels,
                                                  host_reset_system,
                                                  host_printer_put_char,

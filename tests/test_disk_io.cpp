@@ -60,14 +60,7 @@ class DiskIoHarness_t {
     linapple_init();
     peripheral_manager_init();
 
-    // Ensure enhanced speed is disabled so realistic rotational physics apply
-    config_save_string("Slots", "Enhance Disk Speed", "0");
-
     linapple_register_peripherals();
-
-    uint8_t speed_disabled = 0;
-    peripheral_command(slot_6, disk_driver_cmd_set_enhanced_speed,
-                       &speed_disabled, sizeof(speed_disabled));
 
     if (insert_default_disk) {
       disk_fixture_ = TestFixtures::create_ephemeral("Master.dsk");

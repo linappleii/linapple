@@ -15,8 +15,7 @@ auto disk_loader_init() -> void;
 auto disk_loader_shutdown() -> void;
 auto disk_loader_register(DiskFormatDriver_t* driver) -> void;
 
-auto disk_loader_open(const char* image_path, uint8_t enhanced_speed,
-                      bool* out_is_read_only,
+auto disk_loader_open(const char* image_path, bool* out_is_read_only,
                       DiskFormatDriver_t** out_driver, void** out_instance)
     -> DiskError_e;
 

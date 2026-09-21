@@ -385,7 +385,7 @@ class ScopedEnvVar_t {
  * test, while CI — having none — gets the Registry defaults instead, which
  * put Mockingboards in slots 4 and 5, a Disk II in 6 and a Harddisk in 7.
  * The ambient file also decides the machine type, auto-mounts image paths
- * from the developer's filesystem, and sets Enhance Disk Speed.
+ * from the developer's filesystem, and sets disk turbo.
  *
  * The config is written into a temporary directory and the XDG variables are
  * pointed at it, so nothing under $HOME is read or created. Any slot the

@@ -107,7 +107,7 @@ TEST_CASE("DiskWOZ: [WOZ-3] All-zero bitstream does not infinite loop") {
   void* instance = nullptr;
   bool is_ro = false;
   DiskError_e err =
-      g_woz2_driver.open(temp_woz.c_str(), 0, 0, &is_ro, &instance);
+      g_woz2_driver.open(temp_woz.c_str(), 0, &is_ro, &instance);
   REQUIRE(err == disk_err_none);
   REQUIRE(instance != nullptr);
 
@@ -145,7 +145,7 @@ TEST_CASE(
   void* instance = nullptr;
   bool is_ro = false;
   DiskError_e err =
-      g_woz2_driver.open(corrupted_file.c_str(), 0, 0, &is_ro, &instance);
+      g_woz2_driver.open(corrupted_file.c_str(), 0, &is_ro, &instance);
   CHECK(err == disk_err_corrupt);
   CHECK(instance == nullptr);
 }

@@ -133,9 +133,9 @@ auto disk_loader_register(DiskFormatDriver_t* driver) -> void {
   g_drivers.push_back(driver);
 }
 
-auto disk_loader_open(const char* image_path, uint8_t enhanced_speed,
-                      bool* out_is_read_only, DiskFormatDriver_t** out_driver,
-                      void** out_instance) -> DiskError_e {
+auto disk_loader_open(const char* image_path, bool* out_is_read_only,
+                      DiskFormatDriver_t** out_driver, void** out_instance)
+    -> DiskError_e {
   if (image_path == nullptr || out_driver == nullptr ||
       out_instance == nullptr) {
     return disk_err_io;
@@ -193,8 +193,8 @@ auto disk_loader_open(const char* image_path, uint8_t enhanced_speed,
 
   bool os_readonly = false;
   const DiskError_e err = (*out_driver)
-                              ->open(load_path, file_offset, enhanced_speed,
-                                     &os_readonly, out_instance);
+                              ->open(load_path, file_offset, &os_readonly,
+                                     out_instance);
 
   if (err == disk_err_none && out_is_read_only != nullptr) {
     *out_is_read_only = os_readonly || is_temporary;

@@ -131,7 +131,7 @@ TEST_CASE("DiskABI: [ABI-07a] DiskSavedState_t layout stability") {
   CHECK(offsetof(DiskSavedState_t, stepper_phase_mask) == 13888);
   CHECK(offsetof(DiskSavedState_t, active_drive_index) == 13890);
   CHECK(offsetof(DiskSavedState_t, was_accessed_this_tick) == 13892);
-  CHECK(offsetof(DiskSavedState_t, is_speed_enhanced) == 13893);
+  CHECK(offsetof(DiskSavedState_t, reserved_speed) == 13893);
   CHECK(offsetof(DiskSavedState_t, io_latch) == 13894);
   CHECK(offsetof(DiskSavedState_t, is_motor_on) == 13895);
   CHECK(offsetof(DiskSavedState_t, is_write_mode) == 13896);
@@ -417,7 +417,7 @@ TEST_CASE("DiskABI: [REG-15] DiskLoader registration validation") {
   bad_drv2.probe = [](const uint8_t*, size_t, uint32_t, const char*) {
     return disk_probe_no;
   };
-  bad_drv2.open = [](const char*, uint32_t, uint8_t, bool*, void**) {
+  bad_drv2.open = [](const char*, uint32_t, bool*, void**) {
     return disk_err_none;
   };
   bad_drv2.close = [](void*) {};

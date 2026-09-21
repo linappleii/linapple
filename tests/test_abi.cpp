@@ -212,7 +212,6 @@ TEST_CASE(
   g_captured_host->NotifyStatusChanged(2);
   g_captured_host->NotifyActivityChanged(2, true);
   g_captured_host->NotifyActivityChanged(2, false);
-  g_captured_host->RequestPreciseTiming();
 
   peripheral_manager_shutdown();
 }

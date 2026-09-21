@@ -38,9 +38,6 @@ auto disk_encoding_nibblize_track_custom_order(uint8_t* work_buffer,
 auto disk_encoding_denibblize_track(uint8_t* work_buffer, uint8_t* track_image,
                                     bool is_dos_order, int nibbles) -> void;
 
-auto disk_encoding_skew_track(uint8_t* track_image_buffer, uint8_t* work_buffer,
-                              int track, int nibbles) -> void;
-
 #ifdef __cplusplus
 }
 #endif

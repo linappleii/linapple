@@ -46,7 +46,6 @@ constexpr int max_gcr_markers_per_track = 48;
 constexpr int max_nibblized_sector_size = 384;
 constexpr int gap1_size = 48;
 constexpr int gap2_size = 6;
-constexpr int skew_factor = 768;
 constexpr size_t sector_size = 256;
 
 const std::array<uint8_t, disk_encoding_encode_table_size> disk_encoding_table =
@@ -331,13 +330,4 @@ auto disk_encoding_nibblize_track(uint8_t* work_buffer,
       track);
 }
 
-auto disk_encoding_skew_track(uint8_t* track_image_buffer, uint8_t* work_buffer,
-                              int track, int nibbles) -> void {
-  int skew_bytes = (track * skew_factor) % nibbles;
-  std::copy_n(track_image_buffer, static_cast<size_t>(nibbles), work_buffer);
-  std::copy_n(&work_buffer[skew_bytes],
-              static_cast<size_t>(nibbles - skew_bytes), track_image_buffer);
-  std::copy_n(work_buffer, static_cast<size_t>(skew_bytes),
-              &track_image_buffer[nibbles - skew_bytes]);
-}
 // NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-type-member-init)

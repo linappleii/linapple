@@ -299,41 +299,6 @@ TEST_CASE(
   }
 }
 
-TEST_CASE("DiskGCR: [GCR-06] Skewed Track Rotational Phase Invariance") {
-  const std::array<int, 4> test_tracks = {{0, 1, 17, 34}};
-
-  for (size_t t = 0; t < test_tracks.size(); ++t) {
-    const int track_num = test_tracks[t];
-
-    std::array<uint8_t, track_data_size> original_track{};
-    populate_test_track(original_track);
-
-    std::array<uint8_t, disk_encoding_work_buffer_size> work_buffer{};
-    std::copy(original_track.begin(), original_track.end(),
-              work_buffer.begin());
-
-    std::array<uint8_t, nibbles_per_track> track_image{};
-
-    const uint32_t nibbles = disk_encoding_nibblize_track(
-        work_buffer.data(), track_image.data(), true, track_num);
-
-    CHECK(nibbles == expected_nibble_count);
-
-    // Skew the track buffer across the rotational surface
-    disk_encoding_skew_track(track_image.data(), work_buffer.data(), track_num,
-                             static_cast<int>(nibbles));
-
-    std::fill(work_buffer.begin(), work_buffer.end(), static_cast<uint8_t>(0));
-
-    disk_encoding_denibblize_track(work_buffer.data(), track_image.data(), true,
-                                   static_cast<int>(nibbles));
-
-    for (size_t i = 0; i < track_data_size; ++i) {
-      CHECK(work_buffer[i] == original_track[i]);
-    }
-  }
-}
-
 TEST_CASE(
     "DiskGCR: [GCR-07] Corrupted and Malformed Nibble Streams Robustness") {
   std::array<uint8_t, disk_encoding_work_buffer_size> work_buffer{};

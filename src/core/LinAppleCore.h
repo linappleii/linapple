@@ -155,7 +155,6 @@ using SystemState_t = struct SystemState_tag {
   uint32_t screen_width;
   uint32_t screen_height;
   bool reset_timing;
-  uint32_t needsprecision;
   std::array<char, path_max_len> program_dir;
   std::array<char, path_max_len> current_dir;
   std::array<char, path_max_len> hdd_dir;

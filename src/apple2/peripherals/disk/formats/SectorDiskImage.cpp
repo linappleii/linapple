@@ -32,7 +32,6 @@ struct SectorDiskImage_t {
   uint32_t data_offset = 0;
   bool os_readonly = false;
   bool is_dos_order = false;
-  bool is_enhanced = false;
   std::array<uint8_t, disk_encoding_work_buffer_offset * 3> work_buffer{};
 
   SectorDiskImage_t() = default;
@@ -75,8 +74,8 @@ constexpr int create_buffer_size = 1024;
 }  // namespace
 
 auto sector_disk_image_open(const char* path, uint32_t file_offset,
-                            bool is_dos_order, uint8_t enhanced_speed,
-                            bool* out_is_read_only) -> SectorDiskImage_t* {
+                            bool is_dos_order, bool* out_is_read_only)
+    -> SectorDiskImage_t* {
   if (path == nullptr) {
     return nullptr;
   }
@@ -111,7 +110,6 @@ auto sector_disk_image_open(const char* path, uint32_t file_offset,
 
   image_ptr->data_offset = file_offset;
   image_ptr->is_dos_order = is_dos_order;
-  image_ptr->is_enhanced = (enhanced_speed != 0);
 
   return image_ptr.release();
 }
@@ -162,14 +160,8 @@ auto sector_disk_image_read_track(SectorDiskImage_t* image_ptr, int track,
     return;
   }
 
-  const uint32_t nibbles =
-      disk_encoding_nibblize_track(image_ptr->work_buffer.data(), track_buffer,
-                                   image_ptr->is_dos_order, track);
-
-  if (!image_ptr->is_enhanced) {
-    disk_encoding_skew_track(track_buffer, image_ptr->work_buffer.data(), track,
-                             static_cast<int>(nibbles));
-  }
+  disk_encoding_nibblize_track(image_ptr->work_buffer.data(), track_buffer,
+                               image_ptr->is_dos_order, track);
 
   if (out_nibbles != nullptr) {
     *out_nibbles = static_cast<int>(nibbles_per_track);
@@ -304,16 +296,11 @@ auto sector_disk_image_probe_signature(const uint8_t* header_data,
 auto sector_disk_image_command(SectorDiskImage_t* image_ptr, uint32_t cmd_id,
                                const void* payload, size_t payload_size)
     -> PeripheralStatus_t {
+  (void)cmd_id;
+  (void)payload;
+  (void)payload_size;
   if (image_ptr == nullptr) {
     return peripheral_error;
-  }
-
-  if (cmd_id == disk_driver_cmd_set_enhanced_speed) {
-    if (payload_size < sizeof(uint8_t)) {
-      return peripheral_error;
-    }
-    image_ptr->is_enhanced = (*static_cast<const uint8_t*>(payload) != 0);
-    return peripheral_ok;
   }
   return peripheral_incompatible;
 }

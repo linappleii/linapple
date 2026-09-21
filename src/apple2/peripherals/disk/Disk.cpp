@@ -120,8 +120,7 @@ struct DiskPeripheral_t {
   uint32_t spin_cycle_accumulator = 0;
   uint32_t rotation_cycle_accumulator = 0;
 
-  // Emulator configuration and host bridge
-  bool is_speed_enhanced = true;
+  // Host bridge
   HostInterface_t* host = nullptr;
   int slot = 0;
 
@@ -329,8 +328,7 @@ auto insert_disk_into_drive(DiskPeripheral_t* disk_peripheral, int drive_index,
 
   drive.is_user_write_protected = write_protected;
   const DiskError_e error = disk_loader_open(
-      image_path, static_cast<uint8_t>(disk_peripheral->is_speed_enhanced),
-      &drive.is_os_read_only, const_cast<DiskFormatDriver_t**>(&drive.driver),
+      image_path, &drive.is_os_read_only, const_cast<DiskFormatDriver_t**>(&drive.driver),
       &drive.driver_instance);
 
   drive.last_error = error;
@@ -345,22 +343,6 @@ auto insert_disk_into_drive(DiskPeripheral_t* disk_peripheral, int drive_index,
   notify_status_changed(disk_peripheral);
 
   return error;
-}
-
-auto sync_driver_options(DiskPeripheral_t* disk_peripheral) -> void {
-  if (disk_peripheral == nullptr) {
-    return;
-  }
-
-  for (int i = 0; i < disk_drive_count; ++i) {
-    auto* disk_ptr = &disk_peripheral->drives.at(static_cast<size_t>(i));
-    if (disk_ptr->driver != nullptr && disk_ptr->driver->command != nullptr) {
-      const uint8_t enhanced_flag = disk_peripheral->is_speed_enhanced ? 1 : 0;
-      disk_ptr->driver->command(disk_ptr->driver_instance,
-                                disk_driver_cmd_set_enhanced_speed,
-                                &enhanced_flag, sizeof(uint8_t));
-    }
-  }
 }
 
 auto disk_io_control_motor(void* instance, uint16_t, uint16_t memory_address,
@@ -616,15 +598,9 @@ auto update_drive_physics(DiskPeripheral_t* disk_peripheral, Disk_t* disk_ptr,
     }
   }
 
-  if (disk_peripheral->is_speed_enhanced ||
-      disk_peripheral->was_accessed_this_tick ||
+  if (disk_peripheral->was_accessed_this_tick ||
       disk_ptr->spinning_ticks == 0) {
     return;
-  }
-
-  if (disk_peripheral->host != nullptr &&
-      disk_peripheral->host->RequestPreciseTiming != nullptr) {
-    disk_peripheral->host->RequestPreciseTiming();
   }
 
   disk_ptr->current_byte_pos += rotation_ticks;
@@ -861,16 +837,6 @@ auto cmd_handle_create_image(const void* data, size_t size)
              : peripheral_error;
 }
 
-auto cmd_handle_set_speed(DiskPeripheral_t* dp, const void* data, size_t size)
-    -> PeripheralStatus_t {
-  if (dp == nullptr || data == nullptr || size < sizeof(uint8_t)) {
-    return peripheral_error;
-  }
-  dp->is_speed_enhanced = (*static_cast<const uint8_t*>(data) != 0);
-  sync_driver_options(dp);
-  return peripheral_ok;
-}
-
 auto disk_abi_init(int slot, HostInterface_t* host) -> void* {
   if (host == nullptr || host->RegisterIO == nullptr) {
     return nullptr;
@@ -891,13 +857,6 @@ auto disk_abi_init(int slot, HostInterface_t* host) -> void* {
   disk_loader_register(const_cast<DiskFormatDriver_t*>(&g_nb2_driver));
   disk_loader_register(const_cast<DiskFormatDriver_t*>(&g_do_driver));
   disk_loader_register(const_cast<DiskFormatDriver_t*>(&g_po_driver));
-
-  if (host->GetConfig != nullptr) {
-    constexpr size_t enh_buf_size = 16;
-    std::array<char, enh_buf_size> enh{};
-    host->GetConfig("Slots", "Enhance Disk Speed", enh.data(), enh.size());
-    dp->is_speed_enhanced = (enh.at(0) != '0');
-  }
 
   initialize_peripheral(dp.get());
 
@@ -967,8 +926,6 @@ auto disk_abi_command(void* instance, uint32_t cmd, const void* data,
       return cmd_handle_set_protect(dp, data, size);
     case disk_cmd_create_image:
       return cmd_handle_create_image(data, size);
-    case disk_driver_cmd_set_enhanced_speed:
-      return cmd_handle_set_speed(dp, data, size);
     default:
       break;
   }
@@ -1093,7 +1050,7 @@ auto disk_abi_save_state(void* instance, void* buffer, size_t* size)
   s->active_drive_index = dp->active_drive_index;
   s->was_accessed_this_tick =
       static_cast<uint8_t>(dp->was_accessed_this_tick ? 1 : 0);
-  s->is_speed_enhanced = static_cast<uint8_t>(dp->is_speed_enhanced ? 1 : 0);
+  s->reserved_speed = 0;
   s->io_latch = dp->io_latch;
   s->is_motor_on = static_cast<uint8_t>(dp->is_motor_on ? 1 : 0);
   s->is_write_mode = static_cast<uint8_t>(dp->is_write_mode ? 1 : 0);
@@ -1119,7 +1076,6 @@ auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
   dp->active_drive_index =
       (s->active_drive_index < disk_drive_count) ? s->active_drive_index : 0;
   dp->was_accessed_this_tick = (s->was_accessed_this_tick != 0);
-  dp->is_speed_enhanced = (s->is_speed_enhanced != 0);
   dp->io_latch = s->io_latch;
   dp->is_motor_on = (s->is_motor_on != 0);
   dp->is_write_mode = (s->is_write_mode != 0);
@@ -1178,7 +1134,6 @@ auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
     }
   }
   notify_status_changed(dp);
-  sync_driver_options(dp);
   return peripheral_ok;
 }
 

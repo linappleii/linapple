@@ -125,12 +125,11 @@ static auto woz2_probe(const uint8_t* header_data, size_t header_size,
 }
 
 static auto woz2_open(const char* path, uint32_t file_offset,
-                      uint8_t enhanced_speed, bool* out_is_read_only,
-                      void** out_instance) -> DiskError_e {
+                      bool* out_is_read_only, void** out_instance)
+    -> DiskError_e {
   if (path == nullptr || out_instance == nullptr) {
     return disk_err_io;
   }
-  (void)enhanced_speed;
   auto wi_ptr = std::unique_ptr<WozInstance_t>(new WozInstance_t());
 
   wi_ptr->file.reset(fopen(path, "r+b"));

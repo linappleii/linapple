@@ -123,13 +123,12 @@ auto iie_probe(const uint8_t* header_data, size_t header_size,
 // Why: Opens a SimSystem //e disk image and pre-calculates track offsets.
 // These images store either raw sectors (legacy) or raw nibbles (modern), so
 // offset caching is required for constant-time track seeking.
-auto iie_open(const char* path, uint32_t file_offset, uint8_t enhanced_speed,
-              bool* out_is_read_only, void** out_instance) -> DiskError_e {
+auto iie_open(const char* path, uint32_t file_offset, bool* out_is_read_only,
+              void** out_instance) -> DiskError_e {
   if (path == nullptr || out_instance == nullptr) {
     return disk_err_io;
   }
   (void)file_offset;
-  (void)enhanced_speed;
 
   auto instance_ptr = std::unique_ptr<IieInstance_t>(new IieInstance_t());
 

@@ -61,10 +61,7 @@ typedef enum {
   disk_cmd_eject = 0x0002,
   disk_cmd_swap_drives = 0x0003,
   disk_cmd_set_protect = 0x0004,
-  disk_cmd_create_image = 0x0007,
-  // disk_driver_cmd_* commands are issued by the peripheral layer to format
-  // drivers rather than by frontends to the controller.
-  disk_driver_cmd_set_enhanced_speed = 0x1001
+  disk_cmd_create_image = 0x0007
 } DiskCmd_t;
 
 // Query IDs are dispatched through the query ABI callback, separate from
@@ -155,7 +152,7 @@ typedef struct {
   uint16_t stepper_phase_mask;
   uint16_t active_drive_index;
   uint8_t was_accessed_this_tick;
-  uint8_t is_speed_enhanced;
+  uint8_t reserved_speed;
   uint8_t io_latch;
   uint8_t is_motor_on;
   uint8_t is_write_mode;
