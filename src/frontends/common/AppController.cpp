@@ -49,7 +49,9 @@ static void initialize_directory(const char* reg_key, char* target_buffer,
       path.pop_back();
     }
     util_safe_strcpy(target_buffer, path.c_str(), buffer_size);
-    Path::ensure_dir_exists(path);
+    // The helper creates the directory before each separator, so the leaf is
+    // only made when the path ends in one.
+    Path::ensure_dir_exists(path + "/");
   }
 }
 
