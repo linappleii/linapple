@@ -11,6 +11,7 @@
 
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
+#include "apple2/peripherals/disk/DiskFormatDriver.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -25,6 +26,18 @@ enum {
   nibble_image_tracks = 35,
   nibble_image_max_bytes = nibble_image_tracks * nibbles_per_track
 };
+
+/* The probe NIB and NB2 share, each passing the length of its whole image
+   and its own dotted lowercase extension. A WOZ signature at the front is
+   disk_probe_no whatever the length: a WOZ can be exactly as long as a nibble
+   image and only its magic tells them apart. Otherwise a file_size other than
+   image_bytes is disk_probe_no, a matching ext_hint disk_probe_definite, and
+   the length alone disk_probe_possible. A null header_data is disk_probe_no
+   for a direct caller; the loader never passes one. */
+DiskProbe_e nibble_disk_image_probe(const uint8_t* header_data,
+                                    size_t header_size, uint32_t file_size,
+                                    const char* ext_hint, uint32_t image_bytes,
+                                    const char* ext);
 
 /* Opens the image at file_offset within path, its tracks track_nibbles bytes
    each, and hands the instance back through out_instance, which is nulled

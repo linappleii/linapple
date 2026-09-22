@@ -24,17 +24,9 @@ constexpr int disk_size = tracks * static_cast<int>(nibbles_per_track);
 
 auto nib_probe(const uint8_t* header_data, size_t header_size,
                uint32_t file_size, const char* ext_hint) -> DiskProbe_e {
-  if (header_data == nullptr) {
-    return disk_probe_no;
-  }
-  (void)header_size;
-  (void)ext_hint;
-
-  if (file_size == static_cast<uint32_t>(physical::disk_size)) {
-    return disk_probe_definite;
-  }
-
-  return disk_probe_no;
+  return nibble_disk_image_probe(header_data, header_size, file_size, ext_hint,
+                                 static_cast<uint32_t>(physical::disk_size),
+                                 ".nib");
 }
 
 auto nib_open(const char* path, uint32_t file_offset, bool read_only,

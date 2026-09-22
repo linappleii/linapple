@@ -22,6 +22,15 @@
 
 namespace {
 constexpr uint8_t sync_byte = 0xFF;
+constexpr size_t woz_magic_len = 4;
+
+auto has_woz_magic(const uint8_t* header_data, size_t header_size) -> bool {
+  if (header_size < woz_magic_len) {
+    return false;
+  }
+  return memcmp(header_data, "WOZ1", woz_magic_len) == 0 ||
+         memcmp(header_data, "WOZ2", woz_magic_len) == 0;
+}
 }  // namespace
 
 // NOLINTBEGIN(google-runtime-int, cppcoreguidelines-owning-memory, bugprone-easily-swappable-parameters, modernize-make-unique)
@@ -49,6 +58,28 @@ struct NibbleDiskImage_t {
   NibbleDiskImage_t(NibbleDiskImage_t&&) = default;
   auto operator=(NibbleDiskImage_t&&) -> NibbleDiskImage_t& = default;
 };
+
+extern "C" auto nibble_disk_image_probe(const uint8_t* header_data,
+                                        size_t header_size, uint32_t file_size,
+                                        const char* ext_hint,
+                                        uint32_t image_bytes, const char* ext)
+    -> DiskProbe_e {
+  if (header_data == nullptr) {
+    return disk_probe_no;
+  }
+  // 455 blocks of 512 is a legal WOZ length and also every byte of a NIB, so
+  // the size test below would claim such a file; its magic settles it first.
+  if (has_woz_magic(header_data, header_size)) {
+    return disk_probe_no;
+  }
+  if (file_size != image_bytes) {
+    return disk_probe_no;
+  }
+  if (ext_hint != nullptr && strcmp(ext_hint, ext) == 0) {
+    return disk_probe_definite;
+  }
+  return disk_probe_possible;
+}
 
 extern "C" auto nibble_disk_image_open(const char* path, uint32_t file_offset,
                                        uint32_t track_nibbles, bool read_only,

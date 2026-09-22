@@ -321,3 +321,142 @@ TEST_CASE("DiskNibble: [NIB-O3] a file past the family ceiling is refused") {
   CHECK(g_nib_driver.open(at_ceiling.c_str(), 0, false, &instance) ==
         disk_err_unsupported);
 }
+
+namespace {
+
+constexpr size_t probe_window = 80 * 1024;
+constexpr uint32_t nib_bytes = 35 * 6656;
+constexpr uint32_t nb2_bytes = 35 * 6384;
+
+auto write_file(const std::string& path, const std::vector<uint8_t>& bytes)
+    -> void {
+  std::ofstream out(path, std::ios::binary | std::ios::trunc);
+  REQUIRE(out.is_open());
+  out.write(reinterpret_cast<const char*>(bytes.data()),
+            static_cast<std::streamsize>(bytes.size()));
+  REQUIRE(out.good());
+}
+
+// minimal-track.woz stretched with zeros to exactly a nibble image's length.
+auto woz_padded_to(size_t size) -> std::vector<uint8_t> {
+  std::vector<uint8_t> bytes =
+      read_file(TestFixtures::get_fixture_path("minimal-track.woz"));
+  REQUIRE(bytes.size() == 2048);
+  bytes.resize(size, 0);
+  return bytes;
+}
+
+struct LoaderChoice_t {
+  std::string driver_name;
+  DiskError_e error = disk_err_none;
+};
+
+auto loader_choice(const std::string& path) -> LoaderChoice_t {
+  disk_loader_reset();
+  const DiskFormatDriver_t* driver = nullptr;
+  void* instance = nullptr;
+  LoaderChoice_t choice;
+  choice.error = disk_loader_open(path.c_str(), &driver, &instance);
+  REQUIRE(driver != nullptr);
+  choice.driver_name = driver->name;
+  if (instance != nullptr) {
+    driver->close(instance);
+  }
+  return choice;
+}
+
+}  // namespace
+
+TEST_CASE(
+    "DiskNibble: [NIB-P1] a WOZ of a nibble image's length goes to WOZ 2 "
+    "whatever it is named") {
+  struct Case_t {
+    const DiskFormatDriver_t* driver;
+    uint32_t bytes;
+    const char* ext;
+  };
+  const Case_t cases[] = {{&g_nib_driver, nib_bytes, ".nib"},
+                          {&g_nb2_driver, nb2_bytes, ".nb2"}};
+  for (const Case_t& c : cases) {
+    CAPTURE(c.ext);
+    const std::vector<uint8_t> woz = woz_padded_to(c.bytes);
+
+    CHECK(c.driver->probe(woz.data(), probe_window, c.bytes, ".woz") ==
+          disk_probe_no);
+    CHECK(c.driver->probe(woz.data(), probe_window, c.bytes, c.ext) ==
+          disk_probe_no);
+    CHECK(c.driver->probe(woz.data(), 4, c.bytes, c.ext) == disk_probe_no);
+    // Three bytes of window cannot show the magic, so the length alone speaks.
+    CHECK(c.driver->probe(woz.data(), 3, c.bytes, c.ext) ==
+          disk_probe_definite);
+
+    auto as_woz = TestFixtures::create_ephemeral_blank("padded.woz", 0);
+    write_file(as_woz.path(), woz);
+    const LoaderChoice_t by_woz_name = loader_choice(as_woz.path());
+    CHECK(by_woz_name.driver_name == "WOZ 2");
+    CHECK(by_woz_name.error == disk_err_none);
+
+    auto as_nibble =
+        TestFixtures::create_ephemeral_blank(std::string("padded") + c.ext, 0);
+    write_file(as_nibble.path(), woz);
+    const LoaderChoice_t by_nibble_name = loader_choice(as_nibble.path());
+    CHECK(by_nibble_name.driver_name == "WOZ 2");
+    CHECK(by_nibble_name.error == disk_err_none);
+  }
+}
+
+TEST_CASE(
+    "DiskNibble: [NIB-P2] the extension turns a size match from possible "
+    "into definite") {
+  struct Case_t {
+    const DiskFormatDriver_t* driver;
+    const char* fixture;
+    uint32_t bytes;
+    const char* ext;
+    const char* name;
+  };
+  const Case_t cases[] = {
+      {&g_nib_driver, "minimal.nib", nib_bytes, ".nib", "NIB (6656-nibble)"},
+      {&g_nb2_driver, "minimal.nb2", nb2_bytes, ".nb2", "NB2 (6384-nibble)"}};
+  for (const Case_t& c : cases) {
+    CAPTURE(c.ext);
+    const std::vector<uint8_t> image =
+        read_file(TestFixtures::get_fixture_path(c.fixture));
+    REQUIRE(image.size() == c.bytes);
+
+    CHECK(c.driver->probe(image.data(), probe_window, c.bytes, c.ext) ==
+          disk_probe_definite);
+    CHECK(c.driver->probe(image.data(), probe_window, c.bytes, ".dsk") ==
+          disk_probe_possible);
+    CHECK(c.driver->probe(image.data(), probe_window, c.bytes, "") ==
+          disk_probe_possible);
+    CHECK(c.driver->probe(image.data(), probe_window, c.bytes, nullptr) ==
+          disk_probe_possible);
+    CHECK(c.driver->probe(image.data(), probe_window, c.bytes + 1, c.ext) ==
+          disk_probe_no);
+    CHECK(c.driver->probe(image.data(), probe_window, c.bytes - 1, c.ext) ==
+          disk_probe_no);
+
+    auto as_own = TestFixtures::create_ephemeral(c.fixture);
+    const LoaderChoice_t by_own_name = loader_choice(as_own.path());
+    CHECK(by_own_name.driver_name == c.name);
+    CHECK(by_own_name.error == disk_err_none);
+
+    // Nothing else claims a file of this length, so the one "possible" still
+    // wins the loader's vote.
+    auto as_dsk = TestFixtures::create_ephemeral_blank("renamed.dsk", 0);
+    write_file(as_dsk.path(), image);
+    const LoaderChoice_t by_dsk_name = loader_choice(as_dsk.path());
+    CHECK(by_dsk_name.driver_name == c.name);
+    CHECK(by_dsk_name.error == disk_err_none);
+  }
+}
+
+TEST_CASE("DiskNibble: [NIB-P3] each nibble length is claimed by one driver") {
+  const std::vector<uint8_t> nib =
+      read_file(TestFixtures::get_fixture_path("minimal.nib"));
+  CHECK(g_nb2_driver.probe(nib.data(), probe_window, nib_bytes, ".nb2") ==
+        disk_probe_no);
+  CHECK(g_nib_driver.probe(nib.data(), probe_window, nb2_bytes, ".nib") ==
+        disk_probe_no);
+}
