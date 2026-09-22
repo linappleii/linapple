@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#include <unistd.h>
+
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -12,6 +14,7 @@
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
+#include "apple2/peripherals/disk/DiskLoader.h"
 #include "apple2/peripherals/disk/formats/Woz2Driver.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
@@ -106,8 +109,7 @@ TEST_CASE("DiskWOZ: [WOZ-3] All-zero bitstream does not infinite loop") {
   write_all_zero_woz2(temp_woz.c_str());
 
   void* instance = nullptr;
-  DiskError_e err =
-      g_woz2_driver.open(temp_woz.c_str(), 0, false, &instance);
+  DiskError_e err = g_woz2_driver.open(temp_woz.c_str(), 0, false, &instance);
   REQUIRE(err == disk_err_none);
   REQUIRE(instance != nullptr);
 
@@ -115,7 +117,8 @@ TEST_CASE("DiskWOZ: [WOZ-3] All-zero bitstream does not infinite loop") {
   uint32_t bit_count = 0;
   uint8_t bit_timing = 0;
   CHECK(g_woz2_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
-                                      &bit_count, &bit_timing) == disk_err_none);
+                                      &bit_count,
+                                      &bit_timing) == disk_err_none);
 
   CHECK(bit_count == woz_data_block_size * 8);
   CHECK(bit_timing == disk_default_bit_timing);
@@ -152,4 +155,125 @@ TEST_CASE(
       g_woz2_driver.open(corrupted_file.c_str(), 0, false, &instance);
   CHECK(err == disk_err_corrupt);
   CHECK(instance == nullptr);
+}
+
+namespace {
+
+constexpr uint32_t macbinary_header_size = 128;
+constexpr uint32_t track_fixture_bit_count = 4096;
+constexpr uint32_t track_fixture_bytes = 2048;
+constexpr uint32_t unmapped_quarter_track = 4;
+constexpr uint32_t last_quarter_track = 159;
+
+// The first cells of minimal-track.woz's only record; a shifted read lands in
+// the TRKS chunk padding instead and sees zeros.
+const uint8_t track_fixture_pattern[] = {0x01, 0x08, 0x0F, 0x16,
+                                         0x1D, 0x24, 0x2B, 0x32};
+
+auto read_file(const std::string& path) -> std::vector<uint8_t> {
+  FilePtr_t f(fopen(path.c_str(), "rb"), fclose);
+  REQUIRE(f != nullptr);
+  std::vector<uint8_t> data(static_cast<size_t>(Path::file_size(f.get())), 0);
+  REQUIRE(fread(data.data(), 1, data.size(), f.get()) == data.size());
+  return data;
+}
+
+auto read_quarter_track(const DiskFormatDriver_t& driver, void* instance,
+                        uint32_t quarter_track, std::vector<uint8_t>* bits,
+                        uint32_t* bit_count, uint8_t* bit_timing)
+    -> DiskError_e {
+  bits->assign(max_track_bits / 8, 0xEE);
+  *bit_count = 0;
+  *bit_timing = 0;
+  return driver.read_track_bits(instance, quarter_track, bits->data(),
+                                max_track_bits, bit_count, bit_timing);
+}
+
+auto check_wrapped_track_reads(const DiskFormatDriver_t& driver, void* instance)
+    -> void {
+  const std::vector<uint8_t> bare =
+      read_file(TestFixtures::get_fixture_path("minimal-track.woz"));
+  REQUIRE(bare.size() == track_fixture_bytes);
+  const uint8_t* const bare_block_3 = bare.data() + woz_header_size;
+
+  std::vector<uint8_t> bits;
+  uint32_t bit_count = 0;
+  uint8_t bit_timing = 0;
+
+  CHECK(read_quarter_track(driver, instance, 0, &bits, &bit_count,
+                           &bit_timing) == disk_err_none);
+  CHECK(bit_count == track_fixture_bit_count);
+  CHECK(bit_timing == 32);
+  CHECK(std::memcmp(bits.data(), track_fixture_pattern,
+                    sizeof(track_fixture_pattern)) == 0);
+  CHECK(std::memcmp(bits.data(), bare_block_3, woz_data_block_size) == 0);
+  CHECK(bits[0] == 0x01);
+  CHECK(bits[woz_data_block_size - 1] == bare_block_3[woz_data_block_size - 1]);
+
+  CHECK(read_quarter_track(driver, instance, unmapped_quarter_track, &bits,
+                           &bit_count, &bit_timing) == disk_err_none);
+  CHECK(bit_count == 0);
+  CHECK(bit_timing == 32);
+
+  CHECK(read_quarter_track(driver, instance, last_quarter_track, &bits,
+                           &bit_count, &bit_timing) == disk_err_none);
+  CHECK(bit_count == 0);
+  CHECK(bit_timing == 32);
+}
+
+}  // namespace
+
+TEST_CASE(
+    "DiskWOZ: a MacBinary-wrapped image reads its tracks past the wrapper") {
+  auto image = TestFixtures::create_ephemeral("minimal-macbinary.woz");
+  REQUIRE(read_file(image.path()).size() ==
+          macbinary_header_size + track_fixture_bytes);
+
+  void* instance = nullptr;
+  REQUIRE(g_woz2_driver.open(image.c_str(), macbinary_header_size, false,
+                             &instance) == disk_err_none);
+  REQUIRE(instance != nullptr);
+
+  check_wrapped_track_reads(g_woz2_driver, instance);
+
+  g_woz2_driver.close(instance);
+}
+
+TEST_CASE(
+    "DiskWOZ: a wrapped image cut one byte short of its track is corrupt") {
+  auto image = TestFixtures::create_ephemeral("minimal-macbinary.woz");
+  REQUIRE(truncate(image.c_str(),
+                   macbinary_header_size + track_fixture_bytes - 1) == 0);
+
+  void* instance = nullptr;
+  REQUIRE(g_woz2_driver.open(image.c_str(), macbinary_header_size, false,
+                             &instance) == disk_err_none);
+
+  std::vector<uint8_t> bits;
+  uint32_t bit_count = 0;
+  uint8_t bit_timing = 0;
+  CHECK(read_quarter_track(g_woz2_driver, instance, 0, &bits, &bit_count,
+                           &bit_timing) == disk_err_corrupt);
+  CHECK(bit_count == 0);
+  CHECK(bits[0] == 0xEE);
+
+  g_woz2_driver.close(instance);
+}
+
+TEST_CASE("DiskWOZ: the loader strips MacBinary and reads the tracks past it" *
+          doctest::skip(true) *
+          doctest::description(
+              "loader MacBinary II detection lands in a parallel lane")) {
+  auto image = TestFixtures::create_ephemeral("minimal-macbinary.woz");
+  disk_loader_reset();
+
+  const DiskFormatDriver_t* driver = nullptr;
+  void* instance = nullptr;
+  REQUIRE(disk_loader_open(image.c_str(), &driver, &instance) == disk_err_none);
+  REQUIRE(driver == &g_woz2_driver);
+  REQUIRE(instance != nullptr);
+
+  check_wrapped_track_reads(*driver, instance);
+
+  driver->close(instance);
 }

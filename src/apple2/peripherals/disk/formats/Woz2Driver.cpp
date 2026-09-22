@@ -37,6 +37,7 @@ struct WozInstance_t {
   std::array<uint8_t, woz2::header_size> header{};
   uint32_t tmap_offset = 0;
   uint32_t trks_offset = 0;
+  uint32_t base_offset = 0;
   uint8_t optimal_bit_timing = disk_default_bit_timing;
   bool format_write_protected = false;
   bool os_readonly = false;
@@ -82,6 +83,7 @@ static auto woz2_open(const char* path, uint32_t file_offset, bool read_only,
   }
   auto wi_ptr = std::unique_ptr<WozInstance_t>(new WozInstance_t());
 
+  wi_ptr->base_offset = file_offset;
   wi_ptr->os_readonly = read_only;
   if (!read_only) {
     wi_ptr->file.reset(fopen(path, "r+b"));
@@ -213,8 +215,11 @@ static auto woz2_read_track_bits(void* instance_handle, uint32_t quarter_track,
   }
 
   const int64_t total_file_size = Path::file_size(wi_ptr->file.get());
+  // Block numbers count from the WOZ header, which a container may place
+  // anywhere in the file, so the seek starts from where the header was read.
   const uint64_t file_offset =
-      static_cast<uint64_t>(starting_block) * woz2::data_block_size;
+      static_cast<uint64_t>(wi_ptr->base_offset) +
+      (static_cast<uint64_t>(starting_block) * woz2::data_block_size);
   if (file_offset + byte_count > static_cast<uint64_t>(total_file_size)) {
     return disk_err_corrupt;
   }

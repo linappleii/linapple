@@ -249,3 +249,102 @@ TEST_CASE("DiskWOZ1: a missing TMAP chunk is corrupt") {
         disk_err_corrupt);
   CHECK(instance == nullptr);
 }
+
+namespace {
+
+constexpr uint32_t macbinary_header_size = 128;
+constexpr uint32_t v1_fixture_bytes = 13568;
+
+auto file_size_of(const std::string& path) -> uint32_t {
+  FilePtr_t f(fopen(path.c_str(), "rb"), fclose);
+  REQUIRE(f != nullptr);
+  return static_cast<uint32_t>(Path::file_size(f.get()));
+}
+
+auto check_wrapped_track_reads(const DiskFormatDriver_t& driver, void* instance)
+    -> void {
+  std::vector<uint8_t> bits;
+  uint32_t bit_count = 0;
+  uint8_t bit_timing = 0;
+
+  CHECK(read_quarter_track(driver, instance, 0, &bits, &bit_count,
+                           &bit_timing) == disk_err_none);
+  CHECK(bit_count == track0_bit_count);
+  CHECK(bit_timing == 32);
+  CHECK(std::memcmp(bits.data(), track0_pattern, sizeof(track0_pattern)) == 0);
+  CHECK(bits[0] == 0xFF);
+  for (size_t i = sizeof(track0_pattern); i < track0_bit_count / 8; ++i) {
+    REQUIRE(bits[i] == 0);
+  }
+
+  CHECK(read_quarter_track(driver, instance, 4, &bits, &bit_count,
+                           &bit_timing) == disk_err_none);
+  CHECK(bit_count == track1_bit_count);
+  CHECK(bit_timing == 32);
+  CHECK(std::memcmp(bits.data(), track1_pattern, sizeof(track1_pattern)) == 0);
+
+  CHECK(read_quarter_track(driver, instance, 8, &bits, &bit_count,
+                           &bit_timing) == disk_err_none);
+  CHECK(bit_count == 0);
+  CHECK(bit_timing == 32);
+}
+
+}  // namespace
+
+TEST_CASE(
+    "DiskWOZ1: a MacBinary-wrapped image reads its records past the wrapper") {
+  auto image = TestFixtures::create_ephemeral("minimal-macbinary-v1.woz");
+  REQUIRE(file_size_of(image.path()) ==
+          macbinary_header_size + v1_fixture_bytes);
+
+  void* instance = nullptr;
+  REQUIRE(g_woz1_driver.open(image.c_str(), macbinary_header_size, false,
+                             &instance) == disk_err_none);
+  REQUIRE(instance != nullptr);
+
+  check_wrapped_track_reads(g_woz1_driver, instance);
+
+  g_woz1_driver.close(instance);
+}
+
+TEST_CASE(
+    "DiskWOZ1: a wrapped image cut one byte short of a record is corrupt") {
+  auto image = TestFixtures::create_ephemeral("minimal-macbinary-v1.woz");
+  REQUIRE(truncate(image.c_str(),
+                   macbinary_header_size + v1_fixture_bytes - 1) == 0);
+
+  void* instance = nullptr;
+  REQUIRE(g_woz1_driver.open(image.c_str(), macbinary_header_size, false,
+                             &instance) == disk_err_none);
+
+  std::vector<uint8_t> bits;
+  uint32_t bit_count = 0;
+  uint8_t bit_timing = 0;
+  CHECK(read_quarter_track(g_woz1_driver, instance, 0, &bits, &bit_count,
+                           &bit_timing) == disk_err_none);
+  CHECK(bit_count == track0_bit_count);
+  CHECK(read_quarter_track(g_woz1_driver, instance, 4, &bits, &bit_count,
+                           &bit_timing) == disk_err_corrupt);
+  CHECK(bit_count == 0);
+
+  g_woz1_driver.close(instance);
+}
+
+TEST_CASE(
+    "DiskWOZ1: the loader strips MacBinary and reads the records past it" *
+    doctest::skip(true) *
+    doctest::description(
+        "loader MacBinary II detection lands in a parallel lane")) {
+  auto image = TestFixtures::create_ephemeral("minimal-macbinary-v1.woz");
+  disk_loader_reset();
+
+  const DiskFormatDriver_t* driver = nullptr;
+  void* instance = nullptr;
+  REQUIRE(disk_loader_open(image.c_str(), &driver, &instance) == disk_err_none);
+  REQUIRE(driver == &g_woz1_driver);
+  REQUIRE(instance != nullptr);
+
+  check_wrapped_track_reads(*driver, instance);
+
+  driver->close(instance);
+}

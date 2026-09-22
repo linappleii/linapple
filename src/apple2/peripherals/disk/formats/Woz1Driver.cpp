@@ -41,6 +41,7 @@ struct Woz1Instance_t {
   uint32_t tmap_offset = 0;
   uint32_t trks_offset = 0;
   uint32_t trks_record_count = 0;
+  uint32_t base_offset = 0;
   bool format_write_protected = false;
   bool os_readonly = false;
 
@@ -85,6 +86,7 @@ static auto woz1_open(const char* path, uint32_t file_offset, bool read_only,
   }
   auto wi_ptr = std::unique_ptr<Woz1Instance_t>(new Woz1Instance_t());
 
+  wi_ptr->base_offset = file_offset;
   wi_ptr->os_readonly = read_only;
   if (!read_only) {
     wi_ptr->file.reset(fopen(path, "r+b"));
@@ -186,7 +188,10 @@ static auto woz1_read_track_bits(void* instance_handle, uint32_t quarter_track,
     return disk_err_corrupt;
   }
 
+  // Track offsets are relative to the WOZ header, which a container may place
+  // anywhere in the file, so every seek starts from where the header was read.
   const uint64_t record_offset =
+      static_cast<uint64_t>(wi_ptr->base_offset) +
       static_cast<uint64_t>(wi_ptr->trks_offset) +
       (static_cast<uint64_t>(trks_index) * woz1::trks_record_size);
 
