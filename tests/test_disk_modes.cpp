@@ -232,18 +232,20 @@ TEST_CASE("DiskModes: [MODE-04] A stopped drive holds the data register") {
   CHECK(harness.data_register() == held);
 }
 
-TEST_CASE("DiskModes: [MODE-05] Motor off drops the magnets and keeps Q6") {
+TEST_CASE("DiskModes: [MODE-05] Motor off keeps the magnets and Q6") {
   DiskModesHarness_t harness(false);
   harness.start_drive();
 
   harness.read(io_phase_1_on);
   harness.load_register(marker);
-  REQUIRE(harness.state().stepper_phase_mask != 0);
+  constexpr uint16_t phase_1_bit = 0x02;
+  REQUIRE(harness.state().stepper_phase_mask == phase_1_bit);
 
   harness.read(io_motor_off);
 
+  // The 9334 holds its phase bits through DRIVES OFF; only RESET' clears them.
   const DiskSavedState_t after_off = harness.state();
-  CHECK(after_off.stepper_phase_mask == 0);
+  CHECK(after_off.stepper_phase_mask == phase_1_bit);
   CHECK(after_off.is_write_mode != 0);
   CHECK(after_off.io_latch == marker);
 

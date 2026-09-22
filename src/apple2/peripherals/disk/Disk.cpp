@@ -152,6 +152,14 @@ auto get_active_drive(DiskPeripheral_t* dp) -> Disk_t& {
   return dp->drives[index];
 }
 
+// Why: The 9334 latches the phase bits, but the coil drivers in the drive
+// are powered from the enable line the 556 holds up, so a latched bit only
+// pulls on the cog while that line is asserted.
+auto energised_magnets(DiskPeripheral_t* dp) -> uint16_t {
+  return (get_active_drive(dp).motor_enable_cycles > 0) ? dp->stepper_phase_mask
+                                                        : 0;
+}
+
 auto notify_status_changed(const DiskPeripheral_t* dp) -> void {
   if (dp != nullptr && dp->host != nullptr &&
       dp->host->NotifyStatusChanged != nullptr) {
@@ -405,6 +413,8 @@ auto eject_disk_from_drive(DiskPeripheral_t* disk_peripheral, int drive_index)
   disk = Disk_t();
 }
 
+auto settle_head(DiskPeripheral_t* disk_peripheral) -> void;
+
 auto sync_drive_motor_state(DiskPeripheral_t* disk_peripheral) -> void {
   if (disk_peripheral == nullptr) {
     return;
@@ -415,6 +425,12 @@ auto sync_drive_motor_state(DiskPeripheral_t* disk_peripheral) -> void {
     drive.motor_enable_cycles = physical::motor_off_delay_cycles;
   }
   const bool now_spinning = (drive.motor_enable_cycles > 0);
+
+  // Why: The enable coming up powers the coil drivers, so whatever phase bits
+  // the 9334 held while the drive was dark energise at once and pull the cog.
+  if (!was_spinning && now_spinning) {
+    settle_head(disk_peripheral);
+  }
 
   if (was_spinning != now_spinning) {
     notify_activity_changed(disk_peripheral, now_spinning);
@@ -465,12 +481,9 @@ auto disk_io_control_motor(void* instance, uint16_t, uint16_t memory_address,
 
   disk_peripheral->is_motor_on = (memory_address & 0x01) != 0;
 
-  // Dropping the magnets at DRIVES OFF is a simplification: the 9334 keeps
-  // the phase bits and the 556's enable powers the drivers through the hold.
-  if (!disk_peripheral->is_motor_on) {
-    disk_peripheral->stepper_phase_mask = 0;
-  }
-
+  // Why: DRIVES OFF leaves the 9334's phase bits latched; only RESET' clears
+  // them. The coil drivers run off the 556's enable, so the magnets hold for
+  // the motor-off delay and then drop together when it lapses.
   sync_drive_motor_state(disk_peripheral);
 
   return read_floating_bus(instance, executed_cycles);
@@ -501,11 +514,12 @@ auto settle_head(DiskPeripheral_t* disk_peripheral) -> void {
   const auto here = static_cast<int32_t>(drive.quarter_track);
   const int32_t half_track = here - (here % 2);
   const uint32_t cog_phase = (drive.quarter_track / 2U) & 0x03U;
+  const uint16_t live = energised_magnets(disk_peripheral);
 
   int32_t sum = 0;
   int32_t magnets = 0;
   for (uint32_t magnet = 0; magnet < physical::stepper_magnets; ++magnet) {
-    if ((disk_peripheral->stepper_phase_mask & (1U << magnet)) == 0) {
+    if ((live & (1U << magnet)) == 0) {
       continue;
     }
     const uint32_t offset = (magnet - cog_phase) & 0x03U;
@@ -814,9 +828,17 @@ auto update_drive_physics(DiskPeripheral_t* disk_peripheral, Disk_t* disk_ptr,
     return;
   }
 
+  const bool is_active_drive = (&get_active_drive(disk_peripheral) == disk_ptr);
+
   if (disk_ptr->motor_enable_cycles > 0 && !disk_peripheral->is_motor_on) {
     if (elapsed_cycles >= disk_ptr->motor_enable_cycles) {
       disk_ptr->motor_enable_cycles = 0;
+      // Why: The enable lapsing cuts every coil at once, so no magnet
+      // outlives another for the head to chase and there is no half-made
+      // move left to take back.
+      if (is_active_drive) {
+        disk_peripheral->magnet_released = false;
+      }
       if (disk_ptr->is_dirty) {
         const int drive_index =
             (disk_ptr == &disk_peripheral->drives.at(0)) ? 0 : 1;
@@ -828,8 +850,6 @@ auto update_drive_physics(DiskPeripheral_t* disk_peripheral, Disk_t* disk_ptr,
       disk_ptr->motor_enable_cycles -= elapsed_cycles;
     }
   }
-
-  const bool is_active_drive = (&get_active_drive(disk_peripheral) == disk_ptr);
 
   if (disk_peripheral->sequencer.q7 && is_active_drive &&
       disk_ptr->motor_enable_cycles > 0) {

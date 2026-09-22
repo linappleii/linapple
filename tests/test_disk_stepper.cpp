@@ -856,3 +856,54 @@ TEST_CASE(
   }
   CHECK(found);
 }
+
+TEST_CASE(
+    "DiskStepper: [STEP-11] The 9334 holds the magnets through DRIVES OFF") {
+  QuarterTrackHarness_t harness;
+
+  // Phase 1 alone pulls the cog from quarter track 0 onto its own half track.
+  harness.strobe(1, true);
+  REQUIRE(harness.quarter_track() == 2);
+
+  // DRIVES OFF leaves phase 1 latched and the drivers powered for the hold, so
+  // adding phase 2 parks the head between the two magnets. A card that had
+  // forgotten phase 1 would have let phase 2 drag the head on to 4.
+  io_map_dispatch(0, motor_off_switch, 0, 0, 0);
+  harness.strobe(2, true);
+  CHECK(harness.quarter_track() == 3);
+
+  // The hold lapses: every coil drops at once, so the head stays where it was
+  // while the latch still reads both bits.
+  peripheral_manager_think(motor_spindown_cycles);
+  DiskSavedState_t lapsed{};
+  size_t lapsed_size = sizeof(lapsed);
+  peripheral_save_state(slot_6, &lapsed, &lapsed_size);
+  CHECK(lapsed.drives[0].spinning_ticks == 0);
+  CHECK(lapsed.stepper_phase_mask == 0x06);
+  CHECK(lapsed.drives[0].phase == 1);
+
+  // Strobes now reach only the latch. With live drivers, dropping phase 1
+  // would have left phase 2 to pull the head on to 4, which v1 rounds to half
+  // track 2; a dark drive leaves it at 3, which rounds to 1.
+  harness.strobe(3, true);
+  harness.strobe(1, false);
+  DiskSavedState_t dark{};
+  size_t dark_size = sizeof(dark);
+  peripheral_save_state(slot_6, &dark, &dark_size);
+  CHECK(dark.stepper_phase_mask == 0x0C);
+  CHECK(dark.drives[0].phase == 1);
+
+  // DRIVES ON powers the drivers with phases 2 and 3 latched. From quarter
+  // track 3 the cog sits on phase 1's half track, quarter track 2: phase 2 is
+  // one ahead and pulls it to 2 + 2 = 4, phase 3 is directly across and pulls
+  // it nowhere, so one live magnet settles the head at 4.
+  io_map_dispatch(0, motor_on_switch, 0, 0, 0);
+  CHECK(harness.quarter_track() == 4);
+
+  // RESET' is the only line that clears the 9334.
+  peripheral_manager_reset();
+  DiskSavedState_t reset{};
+  size_t reset_size = sizeof(reset);
+  peripheral_save_state(slot_6, &reset, &reset_size);
+  CHECK(reset.stepper_phase_mask == 0);
+}
