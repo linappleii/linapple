@@ -160,6 +160,13 @@ static auto woz2_open(const char* path, uint32_t file_offset, bool read_only,
     wi_ptr->optimal_bit_timing = *timing;
   }
 
+  const DiskError_e crc_err =
+      woz_verify_crc32(wi_ptr->file.get(), wi_ptr->base_offset,
+                       read_u32_le(wi_ptr->header.data() + woz::crc32_offset));
+  if (crc_err != disk_err_none) {
+    return crc_err;
+  }
+
   *out_instance = reinterpret_cast<void*>(wi_ptr.release());
   return disk_err_none;
 }

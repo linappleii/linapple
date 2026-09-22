@@ -380,3 +380,26 @@ TEST_CASE("DiskWOZ1: a WOZ1 file accepts INFO version 1 only") {
         disk_err_unsupported_format);
   CHECK(open_patched_v1_image(info_version_offset, 1) == disk_err_none);
 }
+
+namespace {
+constexpr long crc32_field_offset = 8;
+constexpr uint32_t v1_fixture_crc32 = 0x3E9FC695;
+}  // namespace
+
+TEST_CASE("DiskWOZ1: a 1.0 image's CRC32 is verified over its chunks") {
+  auto image = TestFixtures::create_ephemeral("minimal-v1.woz");
+  const uint8_t crc_le[] = {0x95, 0xC6, 0x9F, 0x3E};
+  patch(image.path(), crc32_field_offset, crc_le, sizeof(crc_le));
+
+  void* instance = nullptr;
+  REQUIRE(g_woz1_driver.open(image.c_str(), 0, false, &instance) ==
+          disk_err_none);
+  g_woz1_driver.close(instance);
+  instance = nullptr;
+
+  const uint8_t flipped = static_cast<uint8_t>(track0_pattern[0] ^ 0x80);
+  patch(image.path(), 256, &flipped, 1);
+  CHECK(g_woz1_driver.open(image.c_str(), 0, false, &instance) ==
+        disk_err_corrupt);
+  CHECK(instance == nullptr);
+}

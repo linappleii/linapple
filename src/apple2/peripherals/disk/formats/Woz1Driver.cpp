@@ -137,6 +137,13 @@ static auto woz1_open(const char* path, uint32_t file_offset, bool read_only,
       (info_data[woz::info_write_protect_offset] != 0);
   wi_ptr->trks_record_count = trks_size / woz1::trks_record_size;
 
+  const DiskError_e crc_err =
+      woz_verify_crc32(wi_ptr->file.get(), wi_ptr->base_offset,
+                       read_u32_le(wi_ptr->header.data() + woz::crc32_offset));
+  if (crc_err != disk_err_none) {
+    return crc_err;
+  }
+
   *out_instance = reinterpret_cast<void*>(wi_ptr.release());
   return disk_err_none;
 }

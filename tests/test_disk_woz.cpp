@@ -18,6 +18,7 @@
 #include "apple2/peripherals/disk/formats/Woz2Driver.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Crc32.h"
+#include "core/Util_Endian.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 #include "doctest.h"
@@ -445,4 +446,69 @@ TEST_CASE("Crc32: a WOZ fixture's body hashes to the CRC its twin carries") {
   CHECK(crc32_compute(bare.data() + woz_file_header_size,
                       bare.size() - woz_file_header_size) ==
         track_fixture_crc32);
+}
+
+namespace {
+constexpr long crc32_field_offset = 8;
+constexpr long track_first_cell_offset = 1536;
+constexpr size_t macbinary_pad_bytes = 80;
+
+auto open_v2(const std::string& path, uint32_t base_offset) -> DiskError_e {
+  void* instance = nullptr;
+  const DiskError_e err =
+      g_woz2_driver.open(path.c_str(), base_offset, false, &instance);
+  if (instance != nullptr) {
+    g_woz2_driver.close(instance);
+  }
+  return err;
+}
+}  // namespace
+
+TEST_CASE("DiskWOZ: an image whose CRC32 matches its chunks opens") {
+  auto image = TestFixtures::create_ephemeral("minimal-crc.woz");
+  const std::vector<uint8_t> bytes = read_file(image.path());
+  REQUIRE(bytes.size() == track_fixture_bytes);
+  REQUIRE(read_u32_le(bytes.data() + crc32_field_offset) ==
+          track_fixture_crc32);
+  CHECK(open_v2(image.path(), 0) == disk_err_none);
+}
+
+TEST_CASE("DiskWOZ: one flipped cell byte under a CRC32 is corrupt") {
+  auto image = TestFixtures::create_ephemeral("minimal-crc.woz");
+  const uint8_t flipped = static_cast<uint8_t>(track_fixture_pattern[0] ^ 0x80);
+  patch(image.path(), track_first_cell_offset, &flipped, 1);
+  CHECK(open_v2(image.path(), 0) == disk_err_corrupt);
+
+  SUBCASE("and the same image with its CRC32 zeroed is trusted as is") {
+    const uint8_t zero_crc[] = {0, 0, 0, 0};
+    patch(image.path(), crc32_field_offset, zero_crc, sizeof(zero_crc));
+    CHECK(open_v2(image.path(), 0) == disk_err_none);
+  }
+}
+
+TEST_CASE("DiskWOZ: bytes after the last chunk are outside the CRC32") {
+  auto image = TestFixtures::create_ephemeral("minimal-crc.woz");
+  {
+    FilePtr_t f(fopen(image.c_str(), "ab"), fclose);
+    REQUIRE(f != nullptr);
+    const std::vector<uint8_t> pad(macbinary_pad_bytes, 0);
+    REQUIRE(fwrite(pad.data(), 1, pad.size(), f.get()) == pad.size());
+  }
+  REQUIRE(read_file(image.path()).size() ==
+          track_fixture_bytes + macbinary_pad_bytes);
+  CHECK(open_v2(image.path(), 0) == disk_err_none);
+}
+
+TEST_CASE(
+    "DiskWOZ: a wrapped image carrying a CRC32 is verified past the wrapper") {
+  auto image = TestFixtures::create_ephemeral("minimal-macbinary.woz");
+  const uint8_t crc_le[] = {0x2A, 0x9D, 0x0E, 0x71};
+  patch(image.path(), macbinary_header_size + crc32_field_offset, crc_le,
+        sizeof(crc_le));
+  CHECK(open_v2(image.path(), macbinary_header_size) == disk_err_none);
+
+  const uint8_t flipped = static_cast<uint8_t>(track_fixture_pattern[0] ^ 0x80);
+  patch(image.path(), macbinary_header_size + track_first_cell_offset, &flipped,
+        1);
+  CHECK(open_v2(image.path(), macbinary_header_size) == disk_err_corrupt);
 }
