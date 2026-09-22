@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include "apple2/peripherals/disk/formats/DiskContainer.h"
+#include "apple2/media/image_container/ImageContainer.h"
 
 #include <strings.h>
 #include <sys/stat.h>
@@ -8,6 +8,7 @@
 #include <zlib.h>
 
 #include <array>
+#include <cerrno>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -28,9 +29,10 @@ namespace macbinary {
 namespace {
 // Header layout per the MacBinary II standard (1987) and the MacBinary III
 // standard (1996). The zero-fill bytes are the ones the standard says a reader
-// must check; 122 carries the
-// writer's version (129 = II, 130 = III) and 123 the minimum version a
-// reader needs (129 for both), and 124-125 hold the CRC-16 of bytes 0-123.
+// must check; 122 carries the writer's version (129 = II, 130 = III) and 123
+// the minimum version a reader needs (129 for both), and 124-125 hold the
+// CRC-16 of bytes 0-123.
+constexpr size_t header_size = image_container_macbinary_header_len;
 constexpr uint8_t old_version_offset = 0;
 constexpr uint8_t name_len_offset = 1;
 constexpr uint8_t zero_fill_offset_a = 74;
@@ -73,17 +75,16 @@ const char* const supported_extensions[] = {gzip_extension, zip_extension,
                                             nullptr};
 constexpr const char* macosx_sidecar_dir = "__MACOSX/";
 constexpr const char* appledouble_prefix = "._";
+constexpr const char* temp_template_suffix = "/linapple_XXXXXX";
 
-// A truncated path names a different file and a truncated payload name
-// can lose the extension that picks the driver, so a string that does not fit
-// is refused rather than shortened.
-auto copy_whole(char* dest, const char* src, size_t size) -> bool {
+auto copy_whole(char* dest, const char* src, size_t size)
+    -> ImageContainerError_e {
   if (strlen(src) >= size) {
     dest[0] = '\0';
-    return false;
+    return image_container_invalid_argument;
   }
   util_safe_strcpy(dest, src, size);
-  return true;
+  return image_container_ok;
 }
 
 auto has_extension(const char* path, const char* extension) -> bool {
@@ -101,12 +102,51 @@ auto get_file_size(const char* path) -> size_t {
   return 0;
 }
 
+// Whether the bytes written so far have passed the bound the header states.
+auto output_exceeds_bound(size_t total_written, size_t compressed_size,
+                          size_t uncompressed_threshold) -> bool {
+  return total_written > uncompressed_threshold &&
+         (compressed_size == 0 ||
+          total_written > compressed_size * image_container_ratio_limit);
+}
+
+// libzip reports a missing archive, a host read failure and a damaged archive
+// through one error object; the caller needs them told apart.
+auto map_zip_error(const zip_error_t* error) -> ImageContainerError_e {
+  switch (zip_error_code_zip(error)) {
+    case ZIP_ER_NOENT:
+      return image_container_not_found;
+    case ZIP_ER_OPEN:
+    case ZIP_ER_READ:
+    case ZIP_ER_SEEK:
+    case ZIP_ER_TMPOPEN:
+    case ZIP_ER_MEMORY:
+      return image_container_io;
+    default:
+      return image_container_corrupt;
+  }
+}
+
+auto open_zip(const char* path, zip** out_archive) -> ImageContainerError_e {
+  int code = 0;
+  *out_archive = zip_open(path, ZIP_RDONLY, &code);
+  if (*out_archive != nullptr) {
+    return image_container_ok;
+  }
+  zip_error_t error;
+  zip_error_init_with_code(&error, code);
+  const ImageContainerError_e mapped = map_zip_error(&error);
+  zip_error_fini(&error);
+  return mapped;
+}
+
 auto decompress_gzip(const char* compressed_path, FILE* output_file,
-                     size_t uncompressed_threshold) -> bool {
+                     size_t uncompressed_threshold) -> ImageContainerError_e {
+  errno = 0;
   const std::unique_ptr<gzFile_s, decltype(&gzclose)> compressed_file(
       gzopen(compressed_path, "rb"), gzclose);
   if (compressed_file == nullptr) {
-    return false;
+    return errno == ENOENT ? image_container_not_found : image_container_io;
   }
 
   const size_t compressed_size = get_file_size(compressed_path);
@@ -117,22 +157,24 @@ auto decompress_gzip(const char* compressed_path, FILE* output_file,
   while ((bytes_read = gzread(compressed_file.get(), buffer.data(),
                               static_cast<unsigned int>(buffer.size()))) > 0) {
     total_written += static_cast<size_t>(bytes_read);
-
-    if (total_written > uncompressed_threshold) {
-      if (compressed_size == 0 ||
-          total_written >
-              compressed_size * disk_container::compression_ratio_limit) {
-        return false;
-      }
+    if (output_exceeds_bound(total_written, compressed_size,
+                             uncompressed_threshold)) {
+      return image_container_too_large;
     }
-
     if (fwrite(buffer.data(), 1, static_cast<size_t>(bytes_read),
                output_file) != static_cast<size_t>(bytes_read)) {
-      return false;
+      return image_container_io;
     }
   }
-
-  return bytes_read == 0;
+  // A stream cut short is reported as an ordinary end of file by gzread and
+  // only gzerror tells it apart from a complete one, so the status is asked
+  // for even when the read loop ended quietly.
+  int zlib_status = Z_OK;
+  gzerror(compressed_file.get(), &zlib_status);
+  if (bytes_read == 0 && zlib_status == Z_OK) {
+    return image_container_ok;
+  }
+  return zlib_status == Z_ERRNO ? image_container_io : image_container_corrupt;
 }
 
 // The image is rarely entry 0. Many archivers store a directory entry
@@ -162,16 +204,17 @@ auto first_payload_entry(zip* archive) -> int64_t {
 }
 
 auto decompress_zip(const char* compressed_path, FILE* output_file,
-                    size_t uncompressed_threshold) -> bool {
-  zip* zip_archive = zip_open(compressed_path, ZIP_RDONLY, nullptr);
-  if (zip_archive == nullptr) {
-    return false;
+                    size_t uncompressed_threshold) -> ImageContainerError_e {
+  zip* zip_archive = nullptr;
+  const ImageContainerError_e opened = open_zip(compressed_path, &zip_archive);
+  if (opened != image_container_ok) {
+    return opened;
   }
   std::unique_ptr<zip, int (*)(zip*)> zip_closer(zip_archive, zip_close);
 
   const int64_t payload_index = first_payload_entry(zip_archive);
   if (payload_index < 0) {
-    return false;
+    return image_container_corrupt;
   }
   const auto entry = static_cast<uint64_t>(payload_index);
 
@@ -187,7 +230,7 @@ auto decompress_zip(const char* compressed_path, FILE* output_file,
 
   zip_file* file_in_zip = zip_fopen_index(zip_archive, entry, 0);
   if (file_in_zip == nullptr) {
-    return false;
+    return map_zip_error(zip_get_error(zip_archive));
   }
   std::unique_ptr<zip_file, int (*)(zip_file*)> file_closer(file_in_zip,
                                                             zip_fclose);
@@ -199,22 +242,19 @@ auto decompress_zip(const char* compressed_path, FILE* output_file,
   while ((bytes_read = zip_fread(file_in_zip, buffer.data(), buffer.size())) >
          0) {
     total_written += static_cast<size_t>(bytes_read);
-
-    if (total_written > uncompressed_threshold) {
-      if (compressed_entry_size == 0 ||
-          total_written >
-              compressed_entry_size * disk_container::compression_ratio_limit) {
-        return false;
-      }
+    if (output_exceeds_bound(total_written, compressed_entry_size,
+                             uncompressed_threshold)) {
+      return image_container_too_large;
     }
-
     if (fwrite(buffer.data(), 1, static_cast<size_t>(bytes_read),
                output_file) != static_cast<size_t>(bytes_read)) {
-      return false;
+      return image_container_io;
     }
   }
-
-  return bytes_read == 0;
+  if (bytes_read == 0) {
+    return image_container_ok;
+  }
+  return map_zip_error(zip_file_get_error(file_in_zip));
 }
 
 }  // namespace
@@ -224,9 +264,9 @@ auto decompress_zip(const char* compressed_path, FILE* output_file,
 // version bytes alone are a heuristic; the standard's own test is the CRC over
 // the header, so both are required. MacBinary I has no CRC and is not
 // recognised: its only marks (zero at 0, 74 and 82) occur in ordinary images.
-extern "C" auto disk_container_detect_macbinary(const uint8_t* header_data,
-                                                size_t header_len,
-                                                uint32_t file_size)
+extern "C" auto image_container_detect_macbinary(const uint8_t* header_data,
+                                                 size_t header_len,
+                                                 uint32_t file_size)
     -> uint32_t {
   if (header_data == nullptr || header_len < macbinary::header_size ||
       file_size <= macbinary::header_size) {
@@ -256,15 +296,14 @@ extern "C" auto disk_container_detect_macbinary(const uint8_t* header_data,
   return static_cast<uint32_t>(macbinary::header_size);
 }
 
-// A probe that sees only "game.dsk.gz" asks every driver about a ".gz",
-// which none of them handle. The extension that decides the format is the
-// payload's, so the container is the only layer that can supply it.
-extern "C" auto disk_container_payload_name(const char* image_path,
-                                            char* out_name, size_t max_name_len)
-    -> bool {
+extern "C" auto image_container_payload_name(const char* image_path,
+                                             char* out_name,
+                                             size_t max_name_len)
+    -> ImageContainerError_e {
   if (image_path == nullptr || out_name == nullptr || max_name_len == 0) {
-    return false;
+    return image_container_invalid_argument;
   }
+  out_name[0] = '\0';
 
   const char* slash = strrchr(image_path, '/');
   const char* basename = (slash != nullptr) ? (slash + 1) : image_path;
@@ -276,41 +315,43 @@ extern "C" auto disk_container_payload_name(const char* image_path,
   }
 
   if (is_zip) {
-    zip* archive = zip_open(image_path, ZIP_RDONLY, nullptr);
-    if (archive != nullptr) {
-      const std::unique_ptr<zip, int (*)(zip*)> closer(archive, zip_close);
-      const int64_t payload_index = first_payload_entry(archive);
-      if (payload_index >= 0) {
-        const char* entry =
-            zip_get_name(archive, static_cast<uint64_t>(payload_index), 0);
-        const char* entry_slash = strrchr(entry, '/');
-        return copy_whole(out_name,
-                          (entry_slash != nullptr) ? (entry_slash + 1) : entry,
-                          max_name_len);
-      }
+    zip* archive = nullptr;
+    const ImageContainerError_e opened = open_zip(image_path, &archive);
+    if (opened != image_container_ok) {
+      return opened;
     }
+    const std::unique_ptr<zip, int (*)(zip*)> closer(archive, zip_close);
+    const int64_t payload_index = first_payload_entry(archive);
+    if (payload_index < 0) {
+      return image_container_corrupt;
+    }
+    const char* entry =
+        zip_get_name(archive, static_cast<uint64_t>(payload_index), 0);
+    const char* entry_slash = strrchr(entry, '/');
+    return copy_whole(out_name,
+                      (entry_slash != nullptr) ? (entry_slash + 1) : entry,
+                      max_name_len);
   }
 
-  // Dropping the archive suffix is all that is left. gzip's FNAME field is
-  // optional, and the gzFile API used here never surfaces it; only a raw
-  // inflate with inflateGetHeader would, a second pass over the stream for a
-  // field the writer may have left out.
-  const std::string stripped(
-      basename,
-      strlen(basename) - strlen(is_gz ? gzip_extension : zip_extension) - 1);
+  // gzip's FNAME field is optional, and the gzFile API used here never
+  // surfaces it; only a raw inflate with inflateGetHeader would, a second pass
+  // over the stream for a field the writer may have left out.
+  const std::string stripped(basename,
+                             strlen(basename) - strlen(gzip_extension) - 1);
   return copy_whole(out_name, stripped.c_str(), max_name_len);
 }
 
-extern "C" auto disk_container_prepare_compressed_path(
+extern "C" auto image_container_prepare_compressed_path(
     const char* image_path, char* out_load_path, size_t max_path_len,
-    size_t uncompressed_threshold, bool* out_is_temporary) -> bool {
+    size_t uncompressed_threshold, bool* out_is_temporary)
+    -> ImageContainerError_e {
   if (image_path == nullptr || out_load_path == nullptr ||
       out_is_temporary == nullptr) {
-    return false;
+    return image_container_invalid_argument;
   }
   *out_is_temporary = false;
   if (max_path_len == 0) {
-    return false;
+    return image_container_invalid_argument;
   }
   out_load_path[0] = '\0';
 
@@ -326,19 +367,19 @@ extern "C" auto disk_container_prepare_compressed_path(
     tmp_dir = "/tmp";
   }
 
-  std::string temp_template = std::string(tmp_dir) + "/linapple_XXXXXX";
+  const std::string temp_template = std::string(tmp_dir) + temp_template_suffix;
   if (temp_template.size() >= max_path_len) {
-    return false;
+    return image_container_invalid_argument;
   }
   util_safe_strcpy(out_load_path, temp_template.c_str(), max_path_len);
 
   // mkstemp is POSIX, declared by the <stdlib.h> behind <cstdlib>, which
   // include-cleaner does not credit.
   // NOLINTNEXTLINE(misc-include-cleaner)
-  int fd = mkstemp(out_load_path);
+  const int fd = mkstemp(out_load_path);
   if (fd == -1) {
     out_load_path[0] = '\0';
-    return false;
+    return image_container_io;
   }
 
   // fdopen is POSIX, declared by the <stdio.h> behind <cstdio>, which
@@ -349,29 +390,32 @@ extern "C" auto disk_container_prepare_compressed_path(
     close(fd);
     unlink(out_load_path);
     out_load_path[0] = '\0';
-    return false;
+    return image_container_io;
   }
 
-  const bool success = is_gz ? decompress_gzip(image_path, temp_stream.get(),
-                                               uncompressed_threshold)
-                             : decompress_zip(image_path, temp_stream.get(),
-                                              uncompressed_threshold);
+  ImageContainerError_e result =
+      is_gz ? decompress_gzip(image_path, temp_stream.get(),
+                              uncompressed_threshold)
+            : decompress_zip(image_path, temp_stream.get(),
+                             uncompressed_threshold);
 
   // The last chunk may still sit in the stdio buffer, so a full disk or a
   // failing device surfaces only when the stream is closed. A temporary that
   // did not close cleanly is short and must not reach a driver.
-  const bool closed = success && fclose(temp_stream.release()) == 0;
-  if (!closed) {
+  if (result == image_container_ok && fclose(temp_stream.release()) != 0) {
+    result = image_container_io;
+  }
+  if (result != image_container_ok) {
     unlink(out_load_path);
     out_load_path[0] = '\0';
-    return false;
+    return result;
   }
 
   *out_is_temporary = true;
-  return true;
+  return image_container_ok;
 }
 
-extern "C" auto disk_container_supported_extensions(void) -> const
+extern "C" auto image_container_supported_extensions(void) -> const
     char* const* {
   return supported_extensions;
 }

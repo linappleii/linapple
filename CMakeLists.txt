@@ -537,10 +537,10 @@ set(DISK_BACKEND_SOURCES
     src/apple2/peripherals/disk/DiskEncoding.cpp
     src/apple2/peripherals/disk/formats/SectorDiskImage.cpp
     src/apple2/peripherals/disk/formats/NibbleDiskImage.cpp
-    src/apple2/peripherals/disk/formats/DiskContainer.cpp)
+    src/apple2/media/image_container/ImageContainer.cpp)
 
 add_peripheral(disk "Disk II" "src/apple2/peripherals/disk/Disk.cpp;src/apple2/peripherals/disk/DiskLoader.cpp;${DISK_BACKEND_SOURCES};${DISK_FORMAT_SOURCES}" "${ZLIB_LIBRARIES};${LIBZIP_LIBRARIES}" TRUE)
-add_peripheral(harddisk "Harddisk (SmartPort)" "src/apple2/peripherals/harddisk/Harddisk.cpp;src/apple2/peripherals/harddisk/HarddiskLoader.cpp;src/apple2/peripherals/harddisk/formats/RawHdDriver.cpp;src/apple2/peripherals/harddisk/formats/TwoImgDriver.cpp;src/apple2/peripherals/harddisk/formats/BlockDiskImage.cpp;src/apple2/peripherals/disk/formats/DiskContainer.cpp" "${ZLIB_LIBRARIES};${LIBZIP_LIBRARIES}" TRUE)
+add_peripheral(harddisk "Harddisk (SmartPort)" "src/apple2/peripherals/harddisk/Harddisk.cpp;src/apple2/peripherals/harddisk/HarddiskLoader.cpp;src/apple2/peripherals/harddisk/formats/RawHdDriver.cpp;src/apple2/peripherals/harddisk/formats/TwoImgDriver.cpp;src/apple2/peripherals/harddisk/formats/BlockDiskImage.cpp;src/apple2/media/image_container/ImageContainer.cpp" "${ZLIB_LIBRARIES};${LIBZIP_LIBRARIES}" TRUE)
 add_peripheral(mouse "Mouse Interface" "src/apple2/peripherals/mouse/Mouse.cpp" "" TRUE)
 add_peripheral(mockingboard "Mockingboard" "src/apple2/peripherals/mockingboard/Mockingboard.cpp;src/apple2/chips/AY8910.cpp;src/apple2/chips/6522.cpp" "" FALSE)
 add_peripheral(super_serial "Super Serial Card" "src/apple2/peripherals/super_serial_card/SuperSerial.cpp" "" TRUE)
@@ -827,7 +827,7 @@ done
 
     add_linapple_test(disk-e2e tests/test_disk_e2e.cpp)
 
-    foreach(T disk_motor;disk_prot;disk_woz;disk_woz1;disk_savestate;disk_errors;disk_stepper;disk_io;disk_compression;disk_modes;disk_lss;disk_bits;disk_sector;disk_nibble;disk_container)
+    foreach(T disk_motor;disk_prot;disk_woz;disk_woz1;disk_savestate;disk_errors;disk_stepper;disk_io;disk_compression;disk_modes;disk_lss;disk_bits;disk_sector;disk_nibble;disk_container;image_container)
         string(REPLACE "_" "-" TEST_NAME ${T})
         add_linapple_test(${TEST_NAME} tests/test_${T}.cpp)
     endforeach()
@@ -869,7 +869,8 @@ done
         test-disk-stepper
         test-disk-ui
         test-disk-woz
-        test-disk-woz1)
+        test-disk-woz1
+        test-image-container)
     set_tests_properties(${DISK_TEST_CASES} PROPERTIES TIMEOUT ${DISK_TEST_TIMEOUT})
 
     if(FRONTEND_LOWER STREQUAL "all")
@@ -993,6 +994,7 @@ if(ENABLE_FUZZING)
     endmacro()
 
     add_linapple_fuzzer(fuzz-disk-loader tests/fuzz/fuzz_disk_loader.cpp)
+    add_linapple_fuzzer(fuzz-image-container tests/fuzz/fuzz_image_container.cpp)
     add_linapple_fuzzer(fuzz-disk-controller tests/fuzz/fuzz_disk_controller.cpp)
     add_linapple_fuzzer(fuzz-disk-adapter tests/fuzz/fuzz_disk_adapter.cpp)
     add_linapple_fuzzer(fuzz-snapshot tests/fuzz/fuzz_snapshot.cpp)
@@ -1018,6 +1020,19 @@ if(ENABLE_FUZZING)
                          -malloc_limit_mb=256
                          -max_total_time=10)
         set_tests_properties(fuzz-disk-loader PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
+
+        # One selector byte picks the container the rest of the input is
+        # written as, so a well-formed archive reaches its own extractor. The
+        # harness passes a 64 KiB threshold, which with this length bounds one
+        # extraction at 100 x 64 KiB of temporary file.
+        add_test(NAME fuzz-image-container
+                 COMMAND fuzz-image-container
+                         ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/image-container
+                         -max_len=65536
+                         -rss_limit_mb=512
+                         -malloc_limit_mb=256
+                         -max_total_time=10)
+        set_tests_properties(fuzz-image-container PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
 
         # Six bytes a record and a sequence long enough to spin the medium
         # past a whole sector.

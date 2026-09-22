@@ -1,12 +1,19 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* C99 compilation smoke test — if this file compiles, the headers are
  * C99-compatible. */
+#include "apple2/media/image_container/ImageContainer.h"
 #include "apple2/peripherals/disk/Disk.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "apple2/peripherals/disk/DiskLoader.h"
 
 void disk_abi_c_smoke(void) {
+  ImageContainerError_e container_error = image_container_ok;
+  uint32_t wrapper_len = image_container_macbinary_header_len;
+  (void)container_error;
+  (void)wrapper_len;
+  (void)image_container_supported_extensions();
+
   DiskInsertCmd_t cmd;
   cmd.drive = disk_drive_0;
   cmd.write_protected = 0;
