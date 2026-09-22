@@ -111,6 +111,12 @@ extern "C" auto nibble_disk_image_read_track_bits(
   image_ptr->nibbles.fill(sync_byte);
   const size_t read_count = fread(image_ptr->nibbles.data(), 1,
                                   image_ptr->track_size, image_ptr->file.get());
+  // A track cut short by the end of the file is the image's own shape; one
+  // cut short by the device is not.
+  if (read_count < image_ptr->track_size &&
+      ferror(image_ptr->file.get()) != 0) {
+    return disk_err_io;
+  }
 
   // A nibble image keeps no record of which bytes were written as sync, so
   // the adapter is left to read the track's own shape.
@@ -155,7 +161,9 @@ extern "C" auto nibble_disk_image_write_track_bits(NibbleDiskImage_t* image_ptr,
              image_ptr->file.get()) != nibble_count) {
     return disk_err_io;
   }
-  fflush(image_ptr->file.get());
+  if (fflush(image_ptr->file.get()) != 0) {
+    return disk_err_io;
+  }
   return disk_err_none;
 }
 

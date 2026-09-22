@@ -223,7 +223,9 @@ auto sector_disk_image_write_track_bits(SectorDiskImage_t* image_ptr,
              image_ptr->file.get()) != static_cast<size_t>(dos::track_size)) {
     return disk_err_io;
   }
-  fflush(image_ptr->file.get());
+  if (fflush(image_ptr->file.get()) != 0) {
+    return disk_err_io;
+  }
   return disk_err_none;
 }
 
