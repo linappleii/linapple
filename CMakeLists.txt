@@ -1010,6 +1010,9 @@ if(ENABLE_FUZZING)
                  COMMAND fuzz-disk-loader
                          ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/disk-loader
                          -dict=${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/dictionaries/disk_formats.dict
+                         -max_len=65536
+                         -rss_limit_mb=512
+                         -malloc_limit_mb=256
                          -max_total_time=10)
         set_tests_properties(fuzz-disk-loader PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
 
@@ -1019,6 +1022,8 @@ if(ENABLE_FUZZING)
                  COMMAND fuzz-disk-controller
                          ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/disk-controller
                          -max_len=1024
+                         -rss_limit_mb=512
+                         -malloc_limit_mb=256
                          -max_total_time=10)
         set_tests_properties(fuzz-disk-controller PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
 
@@ -1028,6 +1033,8 @@ if(ENABLE_FUZZING)
                  COMMAND fuzz-disk-adapter
                          ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/disk-adapter
                          -max_len=4096
+                         -rss_limit_mb=512
+                         -malloc_limit_mb=256
                          -max_total_time=10)
         set_tests_properties(fuzz-disk-adapter PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
 
@@ -1035,6 +1042,8 @@ if(ENABLE_FUZZING)
                  COMMAND fuzz-snapshot
                          ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/snapshot
                          -max_len=131824
+                         -rss_limit_mb=512
+                         -malloc_limit_mb=256
                          -max_total_time=10)
         set_tests_properties(fuzz-snapshot PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
 
@@ -1042,6 +1051,9 @@ if(ENABLE_FUZZING)
                  COMMAND fuzz-memory
                          ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/memory
                          -dict=${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/dictionaries/memory_text.dict
+                         -max_len=65536
+                         -rss_limit_mb=512
+                         -malloc_limit_mb=256
                          -max_total_time=10)
         set_tests_properties(fuzz-memory PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
 
@@ -1051,6 +1063,8 @@ if(ENABLE_FUZZING)
                  COMMAND fuzz-speaker
                          ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/speaker
                          -max_len=400
+                         -rss_limit_mb=512
+                         -malloc_limit_mb=256
                          -max_total_time=10)
         set_tests_properties(fuzz-speaker PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
 
@@ -1061,6 +1075,8 @@ if(ENABLE_FUZZING)
                  COMMAND fuzz-audio-mixer
                          ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/audio-mixer
                          -max_len=512
+                         -rss_limit_mb=512
+                         -malloc_limit_mb=256
                          -max_total_time=10)
         set_tests_properties(fuzz-audio-mixer PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
 
@@ -1071,6 +1087,8 @@ if(ENABLE_FUZZING)
                  COMMAND fuzz-mockingboard
                          ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/mockingboard
                          -max_len=1920
+                         -rss_limit_mb=512
+                         -malloc_limit_mb=256
                          -max_total_time=10)
         set_tests_properties(fuzz-mockingboard PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
 
@@ -1079,6 +1097,8 @@ if(ENABLE_FUZZING)
                  COMMAND fuzz-ay8910
                          ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/ay8910
                          -max_len=256
+                         -rss_limit_mb=512
+                         -malloc_limit_mb=256
                          -max_total_time=10)
         set_tests_properties(fuzz-ay8910 PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
 
@@ -1087,6 +1107,8 @@ if(ENABLE_FUZZING)
                  COMMAND fuzz-via6522
                          ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/via6522
                          -max_len=320
+                         -rss_limit_mb=512
+                         -malloc_limit_mb=256
                          -max_total_time=10)
         set_tests_properties(fuzz-via6522 PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
     endif()
