@@ -29,6 +29,7 @@ enum { dos_track_size = 4096 };
 struct SectorDiskImage_t {
   FilePtr_t file{nullptr, fclose};
   uint32_t data_offset = 0;
+  uint32_t track_count = 0;
   bool os_readonly = false;
   DiskSectorOrder_e order = disk_sector_order_prodos;
   std::array<uint8_t, disk_encoding_scratch_size> scratch{};
@@ -77,8 +78,8 @@ constexpr uint32_t quarter_tracks_per_cylinder = 4;
 
 // A sector image records nothing between cylinders, so all four quarter
 // tracks of a cylinder synthesise the same surface.
-auto quarter_track_to_cylinder(uint32_t quarter_track) -> int {
-  return static_cast<int>(quarter_track / quarter_tracks_per_cylinder);
+auto quarter_track_to_cylinder(uint32_t quarter_track) -> uint32_t {
+  return quarter_track / quarter_tracks_per_cylinder;
 }
 }  // namespace
 
@@ -116,6 +117,8 @@ auto sector_disk_image_open(const char* path, uint32_t file_offset,
   }
 
   image_ptr->data_offset = file_offset;
+  image_ptr->track_count = static_cast<uint32_t>(
+      effective_size / static_cast<size_t>(dos::track_size));
   image_ptr->order =
       is_dos_order ? disk_sector_order_dos : disk_sector_order_prodos;
 
@@ -148,9 +151,11 @@ auto sector_disk_image_read_track_bits(SectorDiskImage_t* image_ptr,
   *out_bit_count = 0;
   *out_bit_timing = disk_default_bit_timing;
 
-  const int track = quarter_track_to_cylinder(quarter_track);
-  if (track >= tracks_per_disk) {
-    return disk_err_invalid_argument;
+  // Beyond the last recorded track the surface is blank, as a WOZ treats an
+  // unrecorded track; the head reads nothing rather than an error.
+  const uint32_t track = quarter_track_to_cylinder(quarter_track);
+  if (track >= image_ptr->track_count) {
+    return disk_err_none;
   }
 
   const auto offset = static_cast<int64_t>(image_ptr->data_offset) +
@@ -167,10 +172,9 @@ auto sector_disk_image_read_track_bits(SectorDiskImage_t* image_ptr,
 
   uint32_t nibble_count = 0;
   const DiskError_e synthesised = disk_encoding_nibblize_track(
-      disk_encoding_sector_order(image_ptr->order),
-      static_cast<uint32_t>(track), image_ptr->sectors.data(),
-      image_ptr->nibbles.data(), image_ptr->sync_mask.data(), &nibble_count,
-      image_ptr->scratch.data());
+      disk_encoding_sector_order(image_ptr->order), track,
+      image_ptr->sectors.data(), image_ptr->nibbles.data(),
+      image_ptr->sync_mask.data(), &nibble_count, image_ptr->scratch.data());
   if (synthesised != disk_err_none) {
     return synthesised;
   }
@@ -191,9 +195,11 @@ auto sector_disk_image_write_track_bits(SectorDiskImage_t* image_ptr,
     return disk_err_write_protected;
   }
 
-  const int track = quarter_track_to_cylinder(quarter_track);
-  if (track >= tracks_per_disk) {
-    return disk_err_invalid_argument;
+  // A write past the last recorded track has nowhere to land; it is dropped
+  // the way an unrecorded WOZ track drops it.
+  const uint32_t track = quarter_track_to_cylinder(quarter_track);
+  if (track >= image_ptr->track_count) {
+    return disk_err_none;
   }
 
   uint32_t nibble_count = 0;
@@ -207,9 +213,9 @@ auto sector_disk_image_write_track_bits(SectorDiskImage_t* image_ptr,
   // Nothing reaches the file unless all sixteen sectors came back, so a
   // track the head only half-read cannot cost the image the other half.
   const DiskError_e decoded_track = disk_encoding_denibblize_track(
-      disk_encoding_sector_order(image_ptr->order),
-      static_cast<uint32_t>(track), image_ptr->nibbles.data(), nibble_count,
-      image_ptr->sectors.data(), image_ptr->scratch.data());
+      disk_encoding_sector_order(image_ptr->order), track,
+      image_ptr->nibbles.data(), nibble_count, image_ptr->sectors.data(),
+      image_ptr->scratch.data());
   if (decoded_track != disk_err_none) {
     return decoded_track;
   }

@@ -523,7 +523,7 @@ TEST_CASE("DiskDrivers: [SEC-02] WOZ rejects a bit_count past block_count") {
   g_woz2_driver.close(instance);
 }
 
-TEST_CASE("DiskDrivers: [SEC-03] DO Out of Bounds track") {
+TEST_CASE("DiskDrivers: [SEC-03] DO track past the image is blank surface") {
   ScopedTempFile_t tmp_do(".do");
   REQUIRE(g_do_driver.create(tmp_do.c_str()) == disk_err_none);
 
@@ -537,13 +537,13 @@ TEST_CASE("DiskDrivers: [SEC-03] DO Out of Bounds track") {
   constexpr uint32_t quarter_track_40 = 160;
   CHECK(g_do_driver.read_track_bits(inst, quarter_track_40, bits.data(),
                                     max_track_bits, &bit_count,
-                                    &bit_timing) == disk_err_invalid_argument);
+                                    &bit_timing) == disk_err_none);
   CHECK(bit_count == 0);
 
   bit_count = 123;
   CHECK(g_do_driver.read_track_bits(inst, UINT32_MAX, bits.data(),
                                     max_track_bits, &bit_count,
-                                    &bit_timing) == disk_err_invalid_argument);
+                                    &bit_timing) == disk_err_none);
   CHECK(bit_count == 0);
 
   g_do_driver.close(inst);

@@ -309,3 +309,110 @@ TEST_CASE(
   CHECK(g_do_driver.probe(image.data(), image.size(), size, "") ==
         disk_probe_possible);
 }
+
+namespace {
+
+// Sixteen patterned sectors of one cylinder, laid down as cells the way the
+// image would synthesise them, so a write-back has a track to land.
+struct SynthesisedTrack_t {
+  std::vector<uint8_t> sectors;
+  std::vector<uint8_t> nibbles;
+  TrackBits_t track;
+};
+
+auto synthesise_track(uint32_t cylinder, DiskSectorOrder_e order)
+    -> SynthesisedTrack_t {
+  SynthesisedTrack_t out;
+  out.sectors.assign(track_size, 0);
+  for (size_t i = 0; i < track_size; ++i) {
+    out.sectors[i] = static_cast<uint8_t>(0xA0 + (i / sector_size));
+  }
+  out.nibbles.assign(nibbles_per_track, 0);
+  std::vector<uint8_t> sync_mask(nibbles_per_track, 0);
+  std::array<uint8_t, disk_encoding_scratch_size> scratch{};
+  uint32_t nibble_count = 0;
+  REQUIRE(disk_encoding_nibblize_track(
+              disk_encoding_sector_order(order), cylinder, out.sectors.data(),
+              out.nibbles.data(), sync_mask.data(), &nibble_count,
+              scratch.data()) == disk_err_none);
+  out.nibbles.resize(nibble_count);
+  out.track.bits.assign(max_track_bits / 8, 0);
+  REQUIRE(disk_encoding_nibbles_to_bits(out.nibbles.data(), nibble_count,
+                                        sync_mask.data(), out.track.bits.data(),
+                                        max_track_bits,
+                                        &out.track.bit_count) == disk_err_none);
+  return out;
+}
+
+auto check_blank_read(const DiskFormatDriver_t& driver, void* instance,
+                      uint32_t quarter_track) -> void {
+  std::vector<uint8_t> bits(max_track_bits / 8, 0xEE);
+  uint32_t bit_count = 123;
+  uint8_t bit_timing = 0;
+  CHECK(driver.read_track_bits(instance, quarter_track, bits.data(),
+                               max_track_bits, &bit_count,
+                               &bit_timing) == disk_err_none);
+  CHECK(bit_count == 0);
+  CHECK(bit_timing == disk_default_bit_timing);
+}
+
+}  // namespace
+
+TEST_CASE(
+    "DiskSector: [SEC-B1] a write past the last track is dropped and "
+    "one on it lands") {
+  auto image = TestFixtures::create_ephemeral("minimal.dsk");
+  const std::vector<uint8_t> before = read_file(image.path());
+  REQUIRE(before.size() == 143360);
+
+  void* instance = nullptr;
+  REQUIRE(g_do_driver.open(image.c_str(), 0, false, &instance) ==
+          disk_err_none);
+
+  const SynthesisedTrack_t beyond = synthesise_track(35, disk_sector_order_dos);
+  CHECK(g_do_driver.write_track_bits(instance, 35 * 4, beyond.track.bits.data(),
+                                     beyond.track.bit_count) == disk_err_none);
+  CHECK(read_file(image.path()) == before);
+
+  const SynthesisedTrack_t last = synthesise_track(34, disk_sector_order_dos);
+  CHECK(g_do_driver.write_track_bits(instance, 34 * 4, last.track.bits.data(),
+                                     last.track.bit_count) == disk_err_none);
+  g_do_driver.close(instance);
+
+  const std::vector<uint8_t> after = read_file(image.path());
+  REQUIRE(after.size() == 143360);
+  // DOS order keeps file sector s at logical s, so the track lands verbatim.
+  CHECK(std::vector<uint8_t>(after.begin() + (34 * track_size), after.end()) ==
+        last.sectors);
+  CHECK(after[34 * track_size] == 0xA0);
+  CHECK(after[(34 * track_size) + (15 * sector_size)] == 0xAF);
+
+  REQUIRE(g_do_driver.open(image.c_str(), 0, false, &instance) ==
+          disk_err_none);
+  const TrackBits_t read_back = read_track(g_do_driver, instance, 34 * 4);
+  CHECK(decode_track(read_back, 34, disk_sector_order_dos) == last.sectors);
+  g_do_driver.close(instance);
+}
+
+TEST_CASE("DiskSector: [SEC-B2] reads past the last track are blank surface") {
+  auto dsk = TestFixtures::create_ephemeral("minimal.dsk");
+  auto legacy = TestFixtures::create_ephemeral("minimal-legacy.iie");
+  auto nibble = TestFixtures::create_ephemeral("minimal-nibble.iie");
+
+  void* instance = nullptr;
+  REQUIRE(g_do_driver.open(dsk.c_str(), 0, false, &instance) == disk_err_none);
+  check_blank_read(g_do_driver, instance, 35 * 4);
+  check_blank_read(g_do_driver, instance, 39 * 4);
+  check_blank_read(g_do_driver, instance, UINT32_MAX);
+  g_do_driver.close(instance);
+
+  REQUIRE(g_iie_driver.open(legacy.c_str(), 0, false, &instance) ==
+          disk_err_none);
+  check_blank_read(g_iie_driver, instance, 35 * 4);
+  g_iie_driver.close(instance);
+
+  REQUIRE(g_iie_driver.open(nibble.c_str(), 0, false, &instance) ==
+          disk_err_none);
+  check_blank_read(g_iie_driver, instance, 35 * 4);
+  g_iie_driver.close(instance);
+}

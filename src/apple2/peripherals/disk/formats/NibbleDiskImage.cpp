@@ -31,6 +31,7 @@ struct NibbleDiskImage_t {
   FilePtr_t file{nullptr, fclose};
   uint32_t data_offset = 0;
   uint32_t track_size = 0;
+  uint32_t track_count = 0;
   bool os_readonly = false;
   std::array<uint8_t, nibbles_per_track> nibbles{};
 
@@ -66,8 +67,18 @@ extern "C" auto nibble_disk_image_open(const char* path, uint32_t file_offset,
     return nullptr;
   }
 
+  const int64_t total_size = Path::file_size(image_ptr->file.get());
+  if (total_size < 0 || static_cast<uint64_t>(total_size) < file_offset) {
+    return nullptr;
+  }
+
   image_ptr->data_offset = file_offset;
   image_ptr->track_size = nibbles_per_track;
+  // A slot the file ends inside still counts: a truncated track reads as far
+  // as it goes, and the tracks after it as blank surface.
+  const uint64_t recorded = static_cast<uint64_t>(total_size) - file_offset;
+  image_ptr->track_count = static_cast<uint32_t>(
+      (recorded + nibbles_per_track - 1) / nibbles_per_track);
 
   return image_ptr.release();
 }
@@ -95,9 +106,12 @@ extern "C" auto nibble_disk_image_read_track_bits(
   *out_bit_count = 0;
   *out_bit_timing = disk_default_bit_timing;
 
+  // All four quarter tracks of a cylinder read the one whole track the image
+  // holds for it; past the last slot the surface is blank, as a WOZ treats an
+  // unrecorded track.
   const uint32_t track = quarter_track / quarter_tracks_per_cylinder;
-  if (track >= static_cast<uint32_t>(tracks_per_disk)) {
-    return disk_err_invalid_argument;
+  if (track >= image_ptr->track_count) {
+    return disk_err_none;
   }
 
   const auto offset = static_cast<int64_t>(image_ptr->data_offset) +
@@ -137,9 +151,11 @@ extern "C" auto nibble_disk_image_write_track_bits(NibbleDiskImage_t* image_ptr,
     return disk_err_write_protected;
   }
 
+  // A write past the last slot has nowhere to land; it is dropped the way an
+  // unrecorded WOZ track drops it, rather than growing the file.
   const uint32_t track = quarter_track / quarter_tracks_per_cylinder;
-  if (track >= static_cast<uint32_t>(tracks_per_disk)) {
-    return disk_err_invalid_argument;
+  if (track >= image_ptr->track_count) {
+    return disk_err_none;
   }
 
   uint32_t nibble_count = 0;

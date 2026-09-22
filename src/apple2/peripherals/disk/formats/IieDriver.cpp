@@ -241,9 +241,11 @@ auto iie_read_track_bits(void* instance_handle, uint32_t quarter_track,
 
   auto* ii_ptr = reinterpret_cast<IieInstance_t*>(instance_handle);
 
+  // The image holds 35 tracks; past them the surface is blank, as a WOZ
+  // treats an unrecorded track.
   const uint32_t track = quarter_track / quarter_tracks_per_cylinder;
   if (track >= static_cast<uint32_t>(iie::tracks)) {
-    return disk_err_invalid_argument;
+    return disk_err_none;
   }
 
   const uint32_t offset = ii_ptr->track_offsets[track];
