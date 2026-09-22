@@ -1,4 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#include <dirent.h>
+#include <signal.h>
+#include <sys/resource.h>
+#include <unistd.h>
+#include <zip.h>
+#include <zlib.h>
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -235,4 +242,216 @@ TEST_CASE(
   CHECK(track.sectors[0] == 0x00);
   CHECK(track.sectors[1] == 0x05);
   CHECK(memcmp(track.sectors.data(), image.data(), dos_track_size) == 0);
+}
+
+namespace {
+
+constexpr size_t temp_path_len = 512;
+
+struct ScopedExtractedFile_t {
+  std::array<char, temp_path_len> path{};
+  bool is_temporary = false;
+
+  ScopedExtractedFile_t() = default;
+  ~ScopedExtractedFile_t() {
+    if (is_temporary && path[0] != '\0') {
+      unlink(path.data());
+    }
+  }
+  ScopedExtractedFile_t(const ScopedExtractedFile_t&) = delete;
+  auto operator=(const ScopedExtractedFile_t&)
+      -> ScopedExtractedFile_t& = delete;
+  ScopedExtractedFile_t(ScopedExtractedFile_t&&) = delete;
+  auto operator=(ScopedExtractedFile_t&&) -> ScopedExtractedFile_t& = delete;
+
+  auto prepare(const std::string& archive) -> bool {
+    return disk_container_prepare_compressed_path(
+        archive.c_str(), path.data(), path.size(),
+        disk_container::floppy_decompression_threshold, &is_temporary);
+  }
+};
+
+auto payload_name_of(const std::string& archive) -> std::string {
+  std::array<char, 256> name{};
+  REQUIRE(
+      disk_container_payload_name(archive.c_str(), name.data(), name.size()));
+  return std::string(name.data());
+}
+
+auto count_container_temps(const std::string& dir) -> int {
+  DIR* handle = opendir(dir.c_str());
+  REQUIRE(handle != nullptr);
+  int count = 0;
+  for (dirent* entry = readdir(handle); entry != nullptr;
+       entry = readdir(handle)) {
+    if (strncmp(entry->d_name, "linapple_", 9) == 0) {
+      ++count;
+    }
+  }
+  closedir(handle);
+  return count;
+}
+
+auto write_gz(const std::string& path, const std::vector<uint8_t>& payload)
+    -> void {
+  gzFile gz = gzopen(path.c_str(), "wb");
+  REQUIRE(gz != nullptr);
+  REQUIRE(
+      gzwrite(gz, payload.data(), static_cast<unsigned int>(payload.size())) ==
+      static_cast<int>(payload.size()));
+  REQUIRE(gzclose(gz) == Z_OK);
+}
+
+// Caps the size a file may grow to for the enclosing scope. The kernel also
+// raises SIGXFSZ at the cap, which would kill the test, so it is ignored for
+// the same scope.
+struct ScopedFileSizeLimit_t {
+  struct rlimit saved{};
+  void (*saved_handler)(int) = nullptr;
+
+  explicit ScopedFileSizeLimit_t(rlim_t limit) {
+    REQUIRE(getrlimit(RLIMIT_FSIZE, &saved) == 0);
+    saved_handler = signal(SIGXFSZ, SIG_IGN);
+    REQUIRE(saved_handler != SIG_ERR);
+    struct rlimit capped = saved;
+    capped.rlim_cur = limit;
+    REQUIRE(setrlimit(RLIMIT_FSIZE, &capped) == 0);
+  }
+  ~ScopedFileSizeLimit_t() {
+    setrlimit(RLIMIT_FSIZE, &saved);
+    signal(SIGXFSZ, saved_handler);
+  }
+  ScopedFileSizeLimit_t(const ScopedFileSizeLimit_t&) = delete;
+  auto operator=(const ScopedFileSizeLimit_t&)
+      -> ScopedFileSizeLimit_t& = delete;
+  ScopedFileSizeLimit_t(ScopedFileSizeLimit_t&&) = delete;
+  auto operator=(ScopedFileSizeLimit_t&&) -> ScopedFileSizeLimit_t& = delete;
+};
+
+}  // namespace
+
+TEST_CASE(
+    "DiskContainer: [CT-1] gzip and zip archives extract the bare image") {
+  const std::vector<uint8_t> bare =
+      read_file(TestFixtures::get_fixture_path("minimal.dsk"));
+  REQUIRE(bare.size() == dsk_image_size);
+
+  const char* archive_name = "minimal.dsk.gz";
+  SUBCASE("gzip") { archive_name = "minimal.dsk.gz"; }
+  SUBCASE("zip") { archive_name = "minimal.dsk.zip"; }
+
+  const std::string archive = TestFixtures::get_fixture_path(archive_name);
+  CHECK(payload_name_of(archive) == "minimal.dsk");
+
+  ScopedExtractedFile_t out;
+  REQUIRE(out.prepare(archive));
+  CHECK(out.is_temporary);
+  CHECK(std::string(out.path.data()).find("/linapple_") != std::string::npos);
+  const std::vector<uint8_t> extracted = read_file(out.path.data());
+  CHECK(extracted.size() == dsk_image_size);
+  CHECK(extracted == bare);
+}
+
+TEST_CASE(
+    "DiskContainer: [CT-2] a zip's directory and AppleDouble entries are "
+    "passed over") {
+  const std::vector<uint8_t> bare =
+      read_file(TestFixtures::get_fixture_path("minimal.dsk"));
+
+  const char* archive_name = "minimal-dir-first.zip";
+  SUBCASE("a directory entry first") { archive_name = "minimal-dir-first.zip"; }
+  SUBCASE("a __MACOSX sidecar first") { archive_name = "minimal-macosx.zip"; }
+
+  const std::string archive = TestFixtures::get_fixture_path(archive_name);
+  CHECK(payload_name_of(archive) == "minimal.dsk");
+
+  ScopedExtractedFile_t out;
+  REQUIRE(out.prepare(archive));
+  CHECK(out.is_temporary);
+  const std::vector<uint8_t> extracted = read_file(out.path.data());
+  CHECK(extracted.size() == dsk_image_size);
+  CHECK(extracted == bare);
+}
+
+TEST_CASE(
+    "DiskContainer: [CT-3] a zip with no file entry is refused, not "
+    "extracted as nothing") {
+  TestFixtures::ScopedTempFile_t archive(".zip");
+  {
+    int err = 0;
+    zip* za = zip_open(archive.c_str(), ZIP_CREATE | ZIP_TRUNCATE, &err);
+    REQUIRE(za != nullptr);
+    REQUIRE(zip_dir_add(za, "folder", 0) >= 0);
+    REQUIRE(zip_close(za) == 0);
+  }
+  ScopedExtractedFile_t out;
+  out.is_temporary = true;
+  out.path[0] = 'x';
+  CHECK_FALSE(out.prepare(archive.path()));
+  CHECK_FALSE(out.is_temporary);
+  CHECK(out.path[0] == '\0');
+}
+
+TEST_CASE(
+    "DiskContainer: [CT-4] a path or name that does not fit is refused, "
+    "not truncated") {
+  const std::string image = TestFixtures::get_fixture_path("minimal.dsk");
+  std::vector<char> path(image.size() + 1, 'x');
+  bool is_temporary = true;
+
+  CHECK_FALSE(disk_container_prepare_compressed_path(
+      image.c_str(), path.data(), image.size(),
+      disk_container::floppy_decompression_threshold, &is_temporary));
+  CHECK_FALSE(is_temporary);
+  CHECK(path[0] == '\0');
+
+  CHECK(disk_container_prepare_compressed_path(
+      image.c_str(), path.data(), image.size() + 1,
+      disk_container::floppy_decompression_threshold, &is_temporary));
+  CHECK_FALSE(is_temporary);
+  CHECK(std::string(path.data()) == image);
+
+  std::array<char, 12> name{};
+  CHECK_FALSE(disk_container_payload_name(image.c_str(), name.data(), 11));
+  CHECK(disk_container_payload_name(image.c_str(), name.data(), 12));
+  CHECK(std::string(name.data()) == "minimal.dsk");
+
+  const std::string archive = TestFixtures::get_fixture_path("minimal.dsk.zip");
+  CHECK_FALSE(disk_container_payload_name(archive.c_str(), name.data(), 11));
+  CHECK(disk_container_payload_name(archive.c_str(), name.data(), 12));
+  CHECK(std::string(name.data()) == "minimal.dsk");
+}
+
+TEST_CASE(
+    "DiskContainer: [CT-5] a temporary that does not close cleanly is "
+    "refused and removed") {
+  // Six full 16 KiB chunks and a 1,000-byte tail: the tail is smaller than any
+  // stdio block, so it waits in the buffer for fclose, and a size cap 100
+  // bytes short of the payload fails that final flush rather than a write.
+  constexpr size_t payload_size = 6 * 16384 + 1000;
+  std::vector<uint8_t> payload(payload_size);
+  for (size_t i = 0; i < payload.size(); ++i) {
+    payload[i] = static_cast<uint8_t>(i * 7);
+  }
+  TestFixtures::ScopedTempFile_t archive(".dsk.gz");
+  write_gz(archive.path(), payload);
+
+  const TestFixtures::ScopedTempDir_t temp_dir("linapple_container_case_");
+  const TestFixtures::ScopedEnvVar_t tmpdir("TMPDIR", temp_dir.path());
+  REQUIRE(count_container_temps(temp_dir.path()) == 0);
+
+  ScopedExtractedFile_t control;
+  REQUIRE(control.prepare(archive.path()));
+  CHECK(read_file(control.path.data()) == payload);
+  REQUIRE(count_container_temps(temp_dir.path()) == 1);
+
+  ScopedExtractedFile_t out;
+  out.is_temporary = true;
+  {
+    const ScopedFileSizeLimit_t cap(payload_size - 100);
+    CHECK_FALSE(out.prepare(archive.path()));
+  }
+  CHECK_FALSE(out.is_temporary);
+  CHECK(out.path[0] == '\0');
+  CHECK(count_container_temps(temp_dir.path()) == 1);
 }

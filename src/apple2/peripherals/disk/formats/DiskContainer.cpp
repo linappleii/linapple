@@ -71,6 +71,20 @@ constexpr const char* k_gzip_extension = "gz";
 constexpr const char* k_zip_extension = "zip";
 const char* const k_supported_extensions[] = {k_gzip_extension, k_zip_extension,
                                               nullptr};
+constexpr const char* macosx_sidecar_dir = "__MACOSX/";
+constexpr const char* appledouble_prefix = "._";
+
+// Why: a truncated path names a different file and a truncated payload name
+// can lose the extension that picks the driver, so a string that does not fit
+// is refused rather than shortened.
+auto copy_whole(char* dest, const char* src, size_t size) -> bool {
+  if (strlen(src) >= size) {
+    dest[0] = '\0';
+    return false;
+  }
+  util_safe_strcpy(dest, src, size);
+  return true;
+}
 
 auto has_extension(const char* path, const char* extension) -> bool {
   const size_t name_len = strlen(path);
@@ -127,6 +141,32 @@ auto decompress_gzip(const char* compressed_path, FILE* output_file,
   return bytes_read == 0;
 }
 
+// Why: the image is rarely entry 0. Many archivers store a directory entry
+// before the files it holds, and macOS adds a __MACOSX/._name AppleDouble
+// sidecar per file, often first. The payload is the first entry that is
+// neither. Returns -1 when the archive holds no file at all.
+auto first_payload_entry(zip* archive) -> int64_t {
+  const int64_t entry_count = zip_get_num_entries(archive, 0);
+  for (int64_t index = 0; index < entry_count; ++index) {
+    const char* name = zip_get_name(archive, static_cast<uint64_t>(index), 0);
+    if (name == nullptr || name[0] == '\0') {
+      continue;
+    }
+    const size_t name_len = strlen(name);
+    if (name[name_len - 1] == '/' ||
+        strncmp(name, macosx_sidecar_dir, strlen(macosx_sidecar_dir)) == 0) {
+      continue;
+    }
+    const char* slash = strrchr(name, '/');
+    const char* base = (slash != nullptr) ? (slash + 1) : name;
+    if (strncmp(base, appledouble_prefix, strlen(appledouble_prefix)) == 0) {
+      continue;
+    }
+    return index;
+  }
+  return -1;
+}
+
 auto decompress_zip(const char* compressed_path, FILE* output_file,
                     size_t uncompressed_threshold) -> bool {
   int err = 0;
@@ -136,21 +176,23 @@ auto decompress_zip(const char* compressed_path, FILE* output_file,
   }
   std::unique_ptr<zip, int (*)(zip*)> zip_closer(zip_archive, zip_close);
 
-  if (zip_get_num_entries(zip_archive, 0) <= 0) {
+  const int64_t payload_index = first_payload_entry(zip_archive);
+  if (payload_index < 0) {
     return false;
   }
+  const auto entry = static_cast<uint64_t>(payload_index);
 
   zip_stat_t sb{};
   zip_stat_init(&sb);
   size_t compressed_entry_size = 0;
-  if (zip_stat_index(zip_archive, 0, 0, &sb) == 0 &&
+  if (zip_stat_index(zip_archive, entry, 0, &sb) == 0 &&
       (sb.valid & ZIP_STAT_COMP_SIZE) != 0 && sb.comp_size > 0) {
     compressed_entry_size = static_cast<size_t>(sb.comp_size);
   } else {
     compressed_entry_size = get_file_size(compressed_path);
   }
 
-  zip_file* file_in_zip = zip_fopen_index(zip_archive, 0, 0);
+  zip_file* file_in_zip = zip_fopen_index(zip_archive, entry, 0);
   if (file_in_zip == nullptr) {
     return false;
   }
@@ -237,22 +279,21 @@ extern "C" auto disk_container_payload_name(const char* image_path,
   const bool is_gz = has_extension(image_path, k_gzip_extension);
   const bool is_zip = has_extension(image_path, k_zip_extension);
   if (!is_gz && !is_zip) {
-    util_safe_strcpy(out_name, basename, max_name_len);
-    return true;
+    return copy_whole(out_name, basename, max_name_len);
   }
 
   if (is_zip) {
-    int err = 0;
-    zip* archive = zip_open(image_path, ZIP_RDONLY, &err);
+    zip* archive = zip_open(image_path, ZIP_RDONLY, nullptr);
     if (archive != nullptr) {
       const std::unique_ptr<zip, int (*)(zip*)> closer(archive, zip_close);
-      const char* entry = zip_get_name(archive, 0, 0);
-      if (entry != nullptr && entry[0] != '\0') {
+      const int64_t payload_index = first_payload_entry(archive);
+      if (payload_index >= 0) {
+        const char* entry =
+            zip_get_name(archive, static_cast<uint64_t>(payload_index), 0);
         const char* entry_slash = strrchr(entry, '/');
-        util_safe_strcpy(out_name,
-                         (entry_slash != nullptr) ? (entry_slash + 1) : entry,
-                         max_name_len);
-        return true;
+        return copy_whole(out_name,
+                          (entry_slash != nullptr) ? (entry_slash + 1) : entry,
+                          max_name_len);
       }
     }
   }
@@ -262,8 +303,7 @@ extern "C" auto disk_container_payload_name(const char* image_path,
   const std::string stripped(
       basename, strlen(basename) -
                     strlen(is_gz ? k_gzip_extension : k_zip_extension) - 1);
-  util_safe_strcpy(out_name, stripped.c_str(), max_name_len);
-  return true;
+  return copy_whole(out_name, stripped.c_str(), max_name_len);
 }
 
 // Why: Extracts compressed images (.gz and .zip) to a secure temporary path
@@ -272,17 +312,20 @@ extern "C" auto disk_container_prepare_compressed_path(
     const char* image_path, char* out_load_path, size_t max_path_len,
     size_t uncompressed_threshold, bool* out_is_temporary) -> bool {
   if (image_path == nullptr || out_load_path == nullptr ||
-      out_is_temporary == nullptr || max_path_len == 0) {
+      out_is_temporary == nullptr) {
     return false;
   }
+  *out_is_temporary = false;
+  if (max_path_len == 0) {
+    return false;
+  }
+  out_load_path[0] = '\0';
 
   const bool is_gz = has_extension(image_path, k_gzip_extension);
   const bool is_zip = has_extension(image_path, k_zip_extension);
 
   if (!is_gz && !is_zip) {
-    util_safe_strcpy(out_load_path, image_path, max_path_len);
-    *out_is_temporary = false;
-    return true;
+    return copy_whole(out_load_path, image_path, max_path_len);
   }
 
   const char* tmp_dir = getenv("TMPDIR");
@@ -299,6 +342,7 @@ extern "C" auto disk_container_prepare_compressed_path(
   // NOLINTNEXTLINE(misc-include-cleaner)
   int fd = mkstemp(out_load_path);
   if (fd == -1) {
+    out_load_path[0] = '\0';
     return false;
   }
 
@@ -307,6 +351,7 @@ extern "C" auto disk_container_prepare_compressed_path(
   if (temp_stream == nullptr) {
     close(fd);
     unlink(out_load_path);
+    out_load_path[0] = '\0';
     return false;
   }
 
@@ -315,9 +360,13 @@ extern "C" auto disk_container_prepare_compressed_path(
                              : decompress_zip(image_path, temp_stream.get(),
                                               uncompressed_threshold);
 
-  if (!success) {
-    temp_stream.reset();
+  // Why: the last chunk may still sit in the stdio buffer, so a full disk or a
+  // failing device surfaces only when the stream is closed. A temporary that
+  // did not close cleanly is short and must not reach a driver.
+  const bool closed = success && fclose(temp_stream.release()) == 0;
+  if (!closed) {
     unlink(out_load_path);
+    out_load_path[0] = '\0';
     return false;
   }
 
