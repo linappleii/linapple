@@ -133,7 +133,6 @@ auto iie_open(const char* path, uint32_t file_offset, bool read_only,
   if (path == nullptr || out_instance == nullptr) {
     return disk_err_io;
   }
-  (void)file_offset;
 
   auto instance_ptr = std::unique_ptr<IieInstance_t>(new IieInstance_t());
 
@@ -152,8 +151,14 @@ auto iie_open(const char* path, uint32_t file_offset, bool read_only,
   }
 
   const int64_t total_file_size = Path::file_size(instance_ptr->file.get());
-  if (total_file_size < static_cast<int64_t>(iie::header_size)) {
+  if (total_file_size < static_cast<int64_t>(file_offset) +
+                            static_cast<int64_t>(iie::header_size)) {
     return disk_err_corrupt;
+  }
+
+  if (fseek(instance_ptr->file.get(), static_cast<long>(file_offset),
+            SEEK_SET) != 0) {
+    return disk_err_io;
   }
 
   if (fread(instance_ptr->header.data(), 1, iie::header_size,
@@ -173,6 +178,7 @@ auto iie_open(const char* path, uint32_t file_offset, bool read_only,
                              instance_ptr->sector_order.data());
     for (int t = 0; t < iie::tracks; ++t) {
       const uint32_t offset =
+          file_offset +
           static_cast<uint32_t>(t * dos::track_size + iie::track_data_offset);
       if (static_cast<int64_t>(offset) + dos::track_size > total_file_size) {
         return disk_err_corrupt;
@@ -182,7 +188,7 @@ auto iie_open(const char* path, uint32_t file_offset, bool read_only,
           static_cast<uint16_t>(nibbles_per_track);
     }
   } else {
-    uint32_t running_offset = iie::header_size;
+    uint32_t running_offset = file_offset + iie::header_size;
     for (int t = 0; t < iie::tracks; ++t) {
       const size_t map_offset =
           (static_cast<size_t>(t) * iie::header_map_stride) +
