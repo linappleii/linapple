@@ -3,6 +3,7 @@
 
 #include <unistd.h>
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <cstdio>
@@ -33,7 +34,9 @@ struct NibbleDiskImage_t {
   uint32_t track_size = 0;
   uint32_t track_count = 0;
   bool os_readonly = false;
-  std::array<uint8_t, nibbles_per_track> nibbles{};
+  // One byte over the slot, so a stream one nibble too long is caught by the
+  // count rather than silently cut to fit.
+  std::array<uint8_t, nibbles_per_track + 1> nibbles{};
 
   NibbleDiskImage_t() = default;
   ~NibbleDiskImage_t() = default;
@@ -161,10 +164,20 @@ extern "C" auto nibble_disk_image_write_track_bits(NibbleDiskImage_t* image_ptr,
   uint32_t nibble_count = 0;
   const DiskError_e decoded =
       disk_encoding_bits_to_nibbles(bits, bit_count, image_ptr->nibbles.data(),
-                                    image_ptr->track_size, &nibble_count);
+                                    image_ptr->track_size + 1, &nibble_count);
   if (decoded != disk_err_none) {
     return decoded;
   }
+  if (nibble_count > image_ptr->track_size) {
+    return disk_err_unsupported;
+  }
+
+  // The slot is rewritten whole: the pad after a shorter track joins its
+  // closing gap as sync, where the old track's tail would have left stale
+  // address and data fields for DOS to find. One fwrite of the slot is the
+  // atomicity on offer; a device failing mid-slot tears it.
+  std::fill(image_ptr->nibbles.begin() + nibble_count,
+            image_ptr->nibbles.begin() + image_ptr->track_size, sync_byte);
 
   const auto offset = static_cast<int64_t>(image_ptr->data_offset) +
                       (static_cast<int64_t>(track) *
@@ -173,8 +186,8 @@ extern "C" auto nibble_disk_image_write_track_bits(NibbleDiskImage_t* image_ptr,
   if (fseek(image_ptr->file.get(), static_cast<long>(offset), SEEK_SET) != 0) {
     return disk_err_io;
   }
-  if (fwrite(image_ptr->nibbles.data(), 1, nibble_count,
-             image_ptr->file.get()) != nibble_count) {
+  if (fwrite(image_ptr->nibbles.data(), 1, image_ptr->track_size,
+             image_ptr->file.get()) != image_ptr->track_size) {
     return disk_err_io;
   }
   if (fflush(image_ptr->file.get()) != 0) {

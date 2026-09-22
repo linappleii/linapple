@@ -496,12 +496,19 @@ auto disk_encoding_bits_to_nibbles(const uint8_t* bits, uint32_t bit_count,
 
   uint32_t cell = 0;
   uint32_t written = 0;
-  while (written < max_nibbles) {
+  for (;;) {
     while (cell < bit_count && cell_at(cell) == 0) {
       ++cell;
     }
     if (bit_count < cells_per_nibble || cell > bit_count - cells_per_nibble) {
       break;
+    }
+    // A full buffer with another nibble still on the medium is a track the
+    // caller cannot hold, which it must be able to tell from a track that
+    // merely fills it.
+    if (written == max_nibbles) {
+      *out_count = written;
+      return disk_err_unsupported;
     }
     uint8_t value = 0;
     for (uint32_t i = 0; i < cells_per_nibble; ++i) {

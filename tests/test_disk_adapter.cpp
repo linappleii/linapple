@@ -126,8 +126,8 @@ TEST_CASE("DiskAdapter: [ADAPT-03] A short nibble buffer stops, not overruns") {
   recovered.fill(0x11);
   uint32_t recovered_count = 0;
   CHECK(disk_encoding_bits_to_nibbles(cells.data(), cell_count,
-                                      recovered.data(), 2,
-                                      &recovered_count) == disk_err_none);
+                                      recovered.data(), 2, &recovered_count) ==
+        disk_err_unsupported);
   CHECK(recovered_count == 2);
   CHECK(recovered[0] == 0xD5);
   CHECK(recovered[1] == 0xAA);

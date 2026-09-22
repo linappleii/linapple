@@ -203,3 +203,62 @@ TEST_CASE(
   CHECK(bit_timing == disk_default_bit_timing);
   g_nib_driver.close(instance);
 }
+
+namespace {
+
+auto write_nibbles(void* instance, uint32_t quarter_track,
+                   const std::vector<uint8_t>& nibbles) -> DiskError_e {
+  std::vector<uint8_t> bits(max_track_bits / 8, 0);
+  uint32_t bit_count = 0;
+  REQUIRE(disk_encoding_nibbles_to_bits(
+              nibbles.data(), static_cast<uint32_t>(nibbles.size()), nullptr,
+              bits.data(), max_track_bits, &bit_count) == disk_err_none);
+  return g_nib_driver.write_track_bits(instance, quarter_track, bits.data(),
+                                       bit_count);
+}
+
+}  // namespace
+
+TEST_CASE("DiskNibble: [NIB-W2] a shorter track rewrites the whole slot") {
+  auto image = TestFixtures::create_ephemeral("minimal.nib");
+  void* instance = nullptr;
+  REQUIRE(g_nib_driver.open(image.c_str(), 0, false, &instance) ==
+          disk_err_none);
+
+  // Every byte of the slot distinct from 0xFF and from what follows, so a
+  // stale tail cannot pass for a pad.
+  std::vector<uint8_t> ramp(6656, 0);
+  for (size_t i = 0; i < ramp.size(); ++i) {
+    ramp[i] = static_cast<uint8_t>(0x80 | (i % 127));
+  }
+  REQUIRE(write_nibbles(instance, 3 * 4, ramp) == disk_err_none);
+  {
+    const std::vector<uint8_t> file = read_file(image.path());
+    CHECK(std::vector<uint8_t>(file.begin() + (3 * 6656),
+                               file.begin() + (4 * 6656)) == ramp);
+  }
+
+  const SynthesisedTrack_t shorter = synthesise_track(3);
+  REQUIRE(shorter.nibbles.size() == 6208);
+  REQUIRE(
+      g_nib_driver.write_track_bits(instance, 3 * 4, shorter.track.bits.data(),
+                                    shorter.track.bit_count) == disk_err_none);
+
+  const std::vector<uint8_t> file = read_file(image.path());
+  REQUIRE(file.size() == 232960);
+  const std::vector<uint8_t> slot(file.begin() + (3 * 6656),
+                                  file.begin() + (4 * 6656));
+  CHECK(std::vector<uint8_t>(slot.begin(), slot.begin() + 6208) ==
+        shorter.nibbles);
+  CHECK(std::vector<uint8_t>(slot.begin() + 6208, slot.end()) ==
+        std::vector<uint8_t>(448, 0xFF));
+
+  // Over-long: one nibble past the slot, and well past it.
+  const std::vector<uint8_t> one_over(6657, 0xAA);
+  CHECK(write_nibbles(instance, 3 * 4, one_over) == disk_err_unsupported);
+  const std::vector<uint8_t> far_over(7000, 0xAA);
+  CHECK(write_nibbles(instance, 3 * 4, far_over) == disk_err_unsupported);
+  CHECK(read_file(image.path()) == file);
+
+  g_nib_driver.close(instance);
+}
