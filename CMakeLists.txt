@@ -754,6 +754,31 @@ fi
 ]=]
         sh "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/DISK2-P6.rom")
 
+    # The disk fixtures are generated, so a hand edit to one, or a generator
+    # that stopped being deterministic, would quietly move every golden built
+    # on it. The committed copies and a fresh regeneration are both held to
+    # the same pins. Raw images and stored archives are pinned byte for byte;
+    # the gzip member's deflate bytes depend on which zlib perl links, so it
+    # is pinned by its extracted payload instead.
+    add_test(NAME test-disk-fixtures COMMAND sh -c
+[=[
+set -e
+scratch=$(mktemp -d "${TMPDIR:-/tmp}/linapple_fixtures_XXXXXX")
+trap 'rm -rf "$scratch"' EXIT
+perl "$1/build_fixtures.pl" "$scratch"
+for dir in "$1" "$scratch"; do
+  (cd "$dir" && sha1sum -c --quiet "$1/SHA1SUMS")
+  while read -r digest name; do
+    actual=$(gzip -dc "$dir/$name" | sha1sum | cut -d " " -f 1)
+    if [ "$actual" != "$digest" ]; then
+      echo "$dir/$name payload sha1 is $actual"
+      exit 1
+    fi
+  done < "$1/PAYLOAD_SHA1SUMS"
+done
+]=]
+        sh "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures")
+
     add_linapple_test(program-loader tests/test_program_loader.cpp)
     add_linapple_test(system-roms "tests/test_main.cpp;tests/test_system_roms.cpp")
     add_linapple_test(basic-live-sync "tests/test_main.cpp;tests/test_basic_live_sync.cpp")
@@ -824,6 +849,7 @@ fi
         test-disk-drivers
         test-disk-e2e
         test-disk-errors
+        test-disk-fixtures
         test-disk-gcr
         test-disk-io
         test-disk-lss
