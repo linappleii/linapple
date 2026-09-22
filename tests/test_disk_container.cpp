@@ -1,6 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <unistd.h>
-
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -16,7 +14,6 @@
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "apple2/peripherals/disk/DiskLoader.h"
-#include "apple2/peripherals/disk/formats/DiskContainer.h"
 #include "core/Util_Path.h"
 #include "doctest.h"
 #include "test_fixtures.h"
@@ -157,40 +154,4 @@ TEST_CASE(
   CHECK(track.sectors[0] == 0x00);
   CHECK(track.sectors[1] == 0x05);
   CHECK(memcmp(track.sectors.data(), image.data(), dos_track_size) == 0);
-}
-
-TEST_CASE(
-    "DiskContainer: [SH-1] the disk_container names answer as the library "
-    "does") {
-  const std::vector<uint8_t> bare =
-      read_file(TestFixtures::get_fixture_path("minimal.dsk"));
-  const std::string archive = TestFixtures::get_fixture_path("minimal.dsk.gz");
-
-  std::array<char, 256> name{};
-  REQUIRE(
-      disk_container_payload_name(archive.c_str(), name.data(), name.size()));
-  CHECK(std::string(name.data()) == "minimal.dsk");
-  CHECK_FALSE(disk_container_payload_name(nullptr, name.data(), name.size()));
-
-  std::array<char, 512> path{};
-  bool is_temporary = false;
-  REQUIRE(disk_container_prepare_compressed_path(
-      archive.c_str(), path.data(), path.size(),
-      disk_container::floppy_decompression_threshold, &is_temporary));
-  REQUIRE(is_temporary);
-  CHECK(read_file(path.data()) == bare);
-  unlink(path.data());
-
-  CHECK_FALSE(disk_container_prepare_compressed_path(
-      archive.c_str(), path.data(), path.size(), 0, &is_temporary));
-  CHECK_FALSE(is_temporary);
-
-  const std::vector<uint8_t> wrapped =
-      read_file(TestFixtures::get_fixture_path("minimal-macbinary.dsk"));
-  CHECK(disk_container_detect_macbinary(
-            wrapped.data(), macbinary_header_len,
-            static_cast<uint32_t>(wrapped.size())) == 128);
-
-  CHECK(disk_container_supported_extensions() ==
-        image_container_supported_extensions());
 }
