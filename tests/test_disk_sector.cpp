@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#include <unistd.h>
+
 #include <algorithm>
 #include <array>
 #include <cstddef>
@@ -328,13 +330,12 @@ struct SynthesisedTrack_t {
   TrackBits_t track;
 };
 
-auto synthesise_track(uint32_t cylinder, DiskSectorOrder_e order)
+auto synthesise_sectors(uint32_t cylinder, DiskSectorOrder_e order,
+                        const std::vector<uint8_t>& sectors)
     -> SynthesisedTrack_t {
+  REQUIRE(sectors.size() == track_size);
   SynthesisedTrack_t out;
-  out.sectors.assign(track_size, 0);
-  for (size_t i = 0; i < track_size; ++i) {
-    out.sectors[i] = static_cast<uint8_t>(0xA0 + (i / sector_size));
-  }
+  out.sectors = sectors;
   out.nibbles.assign(nibbles_per_track, 0);
   std::vector<uint8_t> sync_mask(nibbles_per_track, 0);
   std::array<uint8_t, disk_encoding_scratch_size> scratch{};
@@ -350,6 +351,15 @@ auto synthesise_track(uint32_t cylinder, DiskSectorOrder_e order)
                                         max_track_bits,
                                         &out.track.bit_count) == disk_err_none);
   return out;
+}
+
+auto synthesise_track(uint32_t cylinder, DiskSectorOrder_e order)
+    -> SynthesisedTrack_t {
+  std::vector<uint8_t> sectors(track_size, 0);
+  for (size_t i = 0; i < track_size; ++i) {
+    sectors[i] = static_cast<uint8_t>(0xA0 + (i / sector_size));
+  }
+  return synthesise_sectors(cylinder, order, sectors);
 }
 
 auto check_blank_read(const DiskFormatDriver_t& driver, void* instance,
@@ -781,4 +791,218 @@ TEST_CASE(
                              bytes.begin() + track_3_at + count_of_track_0));
 
   g_iie_driver.close(instance);
+}
+
+namespace {
+
+// Physical slot p of a synthesised track holds file sector table[p]: the DOS
+// 3.3 table from Beneath Apple DOS ch. 3, the ProDOS one from its block map.
+// A driver that swapped or mirrored a table lands the pattern in the wrong
+// slots, so these are the goldens rather than the encoder's own copies.
+constexpr std::array<uint8_t, sectors_per_track> prodos_slots = {
+    0x00, 0x08, 0x01, 0x09, 0x02, 0x0A, 0x03, 0x0B,
+    0x04, 0x0C, 0x05, 0x0D, 0x06, 0x0E, 0x07, 0x0F};
+constexpr std::array<uint8_t, sectors_per_track> dos_slots = {
+    0x00, 0x07, 0x0E, 0x06, 0x0D, 0x05, 0x0C, 0x04,
+    0x0B, 0x03, 0x0A, 0x02, 0x09, 0x01, 0x08, 0x0F};
+
+// Sector s filled with s, so every byte names the sector it belongs to.
+auto numbered_sectors() -> std::vector<uint8_t> {
+  std::vector<uint8_t> sectors(track_size, 0);
+  for (size_t i = 0; i < track_size; ++i) {
+    sectors[i] = static_cast<uint8_t>(i / sector_size);
+  }
+  return sectors;
+}
+
+struct SectorWriter_t {
+  const DiskFormatDriver_t* driver;
+  DiskSectorOrder_e order;
+  const std::array<uint8_t, sectors_per_track>* slots;
+  const char* fixture;
+  const char* extension;
+};
+
+const std::array<SectorWriter_t, 2> sector_writers = {
+    SectorWriter_t{&g_po_driver, disk_sector_order_prodos, &prodos_slots,
+                   "minimal.po", ".po"},
+    SectorWriter_t{&g_do_driver, disk_sector_order_dos, &dos_slots,
+                   "minimal.dsk", ".do"}};
+
+}  // namespace
+
+TEST_CASE(
+    "DiskSector: [SEC-F1-1] the same bytes interleave by the order they are "
+    "opened as") {
+  constexpr uint32_t cylinder = 1;
+  auto po = TestFixtures::create_ephemeral("minimal.po");
+  const std::vector<uint8_t> bytes = read_file(po.path());
+  auto as_dos = TestFixtures::create_ephemeral_blank("same-bytes.dsk", 0);
+  write_file(as_dos.path(), bytes);
+
+  disk_loader_reset();
+  const DiskFormatDriver_t* driver = nullptr;
+  void* po_instance = nullptr;
+  REQUIRE(disk_loader_open(po.c_str(), &driver, &po_instance) == disk_err_none);
+  REQUIRE(driver == &g_po_driver);
+  void* do_instance = nullptr;
+  REQUIRE(g_do_driver.open(as_dos.c_str(), 0, false, &do_instance) ==
+          disk_err_none);
+
+  const TrackBits_t po_track =
+      read_track(g_po_driver, po_instance, cylinder * 4);
+  const TrackBits_t do_track =
+      read_track(g_do_driver, do_instance, cylinder * 4);
+  const std::vector<uint8_t> via_po = decode_physical(po_track, cylinder);
+  const std::vector<uint8_t> via_do = decode_physical(do_track, cylinder);
+
+  // Track 1's file sector s is 0x10 + s, so slot 1 carries sector 8 under
+  // ProDOS and sector 7 under DOS.
+  CHECK(via_po[1 * sector_size] == 0x18);
+  CHECK(via_do[1 * sector_size] == 0x17);
+  for (size_t slot = 0; slot < sectors_per_track; ++slot) {
+    CAPTURE(slot);
+    CHECK(via_po[slot * sector_size] == 0x10 + prodos_slots[slot]);
+    CHECK(via_po[(slot * sector_size) + 255] == 0x10 + prodos_slots[slot]);
+    CHECK(via_do[slot * sector_size] == 0x10 + dos_slots[slot]);
+    CHECK(via_do[(slot * sector_size) + 255] == 0x10 + dos_slots[slot]);
+  }
+
+  CHECK(decode_track(po_track, cylinder, disk_sector_order_prodos) ==
+        file_track(bytes, 0, cylinder));
+  CHECK(decode_track(do_track, cylinder, disk_sector_order_dos) ==
+        file_track(bytes, 0, cylinder));
+
+  g_po_driver.close(po_instance);
+  g_do_driver.close(do_instance);
+}
+
+TEST_CASE(
+    "DiskSector: [SEC-F1-2] a numbered track written through each order "
+    "lands in file order") {
+  constexpr uint32_t cylinder = 3;
+  const std::vector<uint8_t> pattern = numbered_sectors();
+
+  for (const SectorWriter_t& writer : sector_writers) {
+    INFO("driver := ", std::string(writer.driver->name));
+    auto image = TestFixtures::create_ephemeral_blank(
+        std::string("fresh") + writer.extension, 0);
+    REQUIRE(unlink(image.c_str()) == 0);
+    REQUIRE(writer.driver->create(image.c_str()) == disk_err_none);
+
+    void* instance = nullptr;
+    REQUIRE(writer.driver->open(image.c_str(), 0, false, &instance) ==
+            disk_err_none);
+    const SynthesisedTrack_t written =
+        synthesise_sectors(cylinder, writer.order, pattern);
+    REQUIRE(writer.driver->write_track_bits(
+                instance, cylinder * 4, written.track.bits.data(),
+                written.track.bit_count) == disk_err_none);
+    writer.driver->close(instance);
+
+    // The file keeps sector s at s * 256 whatever the order; only the surface
+    // differs between the two.
+    const std::vector<uint8_t> after = read_file(image.path());
+    REQUIRE(after.size() == 143360);
+    CHECK(file_track(after, 0, cylinder) == pattern);
+    for (size_t sector = 0; sector < sectors_per_track; ++sector) {
+      CAPTURE(sector);
+      const size_t at = (cylinder * track_size) + (sector * sector_size);
+      CHECK(after[at] == sector);
+      CHECK(after[at + 255] == sector);
+    }
+    CHECK(std::vector<uint8_t>(after.begin(),
+                               after.begin() + (cylinder * track_size)) ==
+          std::vector<uint8_t>(cylinder * track_size, 0));
+    CHECK(
+        std::vector<uint8_t>(after.begin() + ((cylinder + 1) * track_size),
+                             after.end()) ==
+        std::vector<uint8_t>(after.size() - ((cylinder + 1) * track_size), 0));
+
+    REQUIRE(writer.driver->open(image.c_str(), 0, false, &instance) ==
+            disk_err_none);
+    const TrackBits_t read_back =
+        read_track(*writer.driver, instance, cylinder * 4);
+    CHECK(decode_track(read_back, cylinder, writer.order) == pattern);
+    const std::vector<uint8_t> physical = decode_physical(read_back, cylinder);
+    for (size_t slot = 0; slot < sectors_per_track; ++slot) {
+      CAPTURE(slot);
+      CHECK(physical[slot * sector_size] == (*writer.slots)[slot]);
+    }
+    writer.driver->close(instance);
+  }
+}
+
+TEST_CASE(
+    "DiskSector: [SEC-F1-3] a read-only open refuses the write and leaves "
+    "the file as it was") {
+  constexpr uint32_t cylinder = 3;
+  const std::vector<uint8_t> pattern = numbered_sectors();
+
+  for (const SectorWriter_t& writer : sector_writers) {
+    INFO("driver := ", std::string(writer.driver->name));
+    auto image = TestFixtures::create_ephemeral(writer.fixture);
+    const std::vector<uint8_t> before = read_file(image.path());
+
+    void* instance = nullptr;
+    REQUIRE(writer.driver->open(image.c_str(), 0, true, &instance) ==
+            disk_err_none);
+    CHECK(writer.driver->is_write_protected(instance));
+    const SynthesisedTrack_t written =
+        synthesise_sectors(cylinder, writer.order, pattern);
+    CHECK(writer.driver->write_track_bits(
+              instance, cylinder * 4, written.track.bits.data(),
+              written.track.bit_count) == disk_err_write_protected);
+    CHECK(decode_track(read_track(*writer.driver, instance, cylinder * 4),
+                       cylinder,
+                       writer.order) == file_track(before, 0, cylinder));
+    writer.driver->close(instance);
+    CHECK(read_file(image.path()) == before);
+
+    REQUIRE(writer.driver->open(image.c_str(), 0, false, &instance) ==
+            disk_err_none);
+    CHECK_FALSE(writer.driver->is_write_protected(instance));
+    writer.driver->close(instance);
+  }
+}
+
+TEST_CASE(
+    "DiskSector: [SEC-F1-4] a created image reopens through the loader as "
+    "the order its name says") {
+  for (const SectorWriter_t& writer : sector_writers) {
+    INFO("driver := ", std::string(writer.driver->name));
+    auto image = TestFixtures::create_ephemeral_blank(
+        std::string("fresh") + writer.extension, 0);
+    REQUIRE(unlink(image.c_str()) == 0);
+    REQUIRE(writer.driver->create(image.c_str()) == disk_err_none);
+
+    const std::vector<uint8_t> bytes = read_file(image.path());
+    REQUIRE(bytes.size() == 143360);
+    CHECK(bytes == std::vector<uint8_t>(143360, 0));
+
+    // A blank carries neither catalog nor directory, so the extension alone
+    // decides which order claims it.
+    const auto size = static_cast<uint32_t>(bytes.size());
+    CHECK(writer.driver->probe(bytes.data(), bytes.size(), size,
+                               writer.extension) == disk_probe_possible);
+    const DiskFormatDriver_t& other =
+        writer.driver == &g_po_driver ? g_do_driver : g_po_driver;
+    CHECK(other.probe(bytes.data(), bytes.size(), size, writer.extension) ==
+          disk_probe_no);
+
+    disk_loader_reset();
+    const DiskFormatDriver_t* driver = nullptr;
+    void* instance = nullptr;
+    REQUIRE(disk_loader_open(image.c_str(), &driver, &instance) ==
+            disk_err_none);
+    REQUIRE(driver == writer.driver);
+    CHECK_FALSE(driver->is_write_protected(instance));
+
+    const TrackBits_t track = read_track(*driver, instance, 0);
+    CHECK(track.bit_count == 50464);
+    CHECK(track.bit_timing == disk_default_bit_timing);
+    CHECK(decode_track(track, 0, writer.order) ==
+          std::vector<uint8_t>(track_size, 0));
+    driver->close(instance);
+  }
 }
