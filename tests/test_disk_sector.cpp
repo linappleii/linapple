@@ -442,3 +442,36 @@ TEST_CASE(
   CHECK(read_track(g_iie_driver, instance, 1 * 4).bit_count > 0);
   g_iie_driver.close(instance);
 }
+
+TEST_CASE("DiskSector: [SEC-E1] a file of the wrong size opens as corrupt") {
+  // Not a whole number of sectors, and whole sectors short of one track.
+  auto unaligned = TestFixtures::create_ephemeral_blank("odd.dsk", 5000);
+  auto short_image = TestFixtures::create_ephemeral_blank("short.po", 3072);
+
+  void* instance = reinterpret_cast<void*>(1);
+  CHECK(g_do_driver.open(unaligned.c_str(), 0, false, &instance) ==
+        disk_err_corrupt);
+  CHECK(instance == nullptr);
+  instance = reinterpret_cast<void*>(1);
+  CHECK(g_po_driver.open(short_image.c_str(), 0, false, &instance) ==
+        disk_err_corrupt);
+  CHECK(instance == nullptr);
+
+  // A prefix the file cannot contain is a header the file falls short of.
+  instance = reinterpret_cast<void*>(1);
+  CHECK(g_do_driver.open(unaligned.c_str(), 6000, false, &instance) ==
+        disk_err_corrupt);
+  CHECK(instance == nullptr);
+}
+
+TEST_CASE("DiskSector: [SEC-E2] a missing file opens as file_not_found") {
+  const char* missing = "/nonexistent_dir_12345/missing.dsk";
+  void* instance = reinterpret_cast<void*>(1);
+  CHECK(g_do_driver.open(missing, 0, false, &instance) ==
+        disk_err_file_not_found);
+  CHECK(instance == nullptr);
+  instance = reinterpret_cast<void*>(1);
+  CHECK(g_po_driver.open(missing, 0, true, &instance) ==
+        disk_err_file_not_found);
+  CHECK(instance == nullptr);
+}

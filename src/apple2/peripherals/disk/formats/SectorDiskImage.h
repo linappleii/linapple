@@ -17,9 +17,15 @@ extern "C" {
 
 typedef struct SectorDiskImage_t SectorDiskImage_t;
 
-SectorDiskImage_t* sector_disk_image_open(const char* path,
-                                          uint32_t file_offset,
-                                          bool is_dos_order, bool read_only);
+/* Opens the image at file_offset within path and hands the instance back
+   through out_instance, which is nulled first. A null argument is
+   disk_err_invalid_argument, a path that does not exist
+   disk_err_file_not_found, any other failure to open or measure the file
+   disk_err_io, and a file that is not a whole number of 256-byte sectors or
+   is shorter than one track disk_err_corrupt. */
+DiskError_e sector_disk_image_open(const char* path, uint32_t file_offset,
+                                   bool is_dos_order, bool read_only,
+                                   void** out_instance);
 
 /* These five carry the DiskFormatDriver_t signatures, instance being the
    pointer open handed out, so a driver descriptor names them directly and the

@@ -46,16 +46,8 @@ auto po_probe(const uint8_t* header_data, size_t header_size,
 
 auto po_open(const char* path, uint32_t file_offset, bool read_only,
              void** out_instance) -> DiskError_e {
-  if (path == nullptr || out_instance == nullptr) {
-    return disk_err_io;
-  }
-
-  auto* image_ptr = sector_disk_image_open(path, file_offset, false, read_only);
-  if (image_ptr == nullptr) {
-    return disk_err_io;
-  }
-  *out_instance = image_ptr;
-  return disk_err_none;
+  return sector_disk_image_open(path, file_offset, false, read_only,
+                                out_instance);
 }
 
 const char* const g_po_supported_exts[] = {"po", nullptr};

@@ -4,6 +4,7 @@
 #include <unistd.h>
 
 #include <array>
+#include <cerrno>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -84,10 +85,14 @@ auto quarter_track_to_cylinder(uint32_t quarter_track) -> uint32_t {
 }  // namespace
 
 auto sector_disk_image_open(const char* path, uint32_t file_offset,
-                            bool is_dos_order, bool read_only)
-    -> SectorDiskImage_t* {
+                            bool is_dos_order, bool read_only,
+                            void** out_instance) -> DiskError_e {
+  if (out_instance == nullptr) {
+    return disk_err_invalid_argument;
+  }
+  *out_instance = nullptr;
   if (path == nullptr) {
-    return nullptr;
+    return disk_err_invalid_argument;
   }
 
   auto image_ptr = std::unique_ptr<SectorDiskImage_t>(new SectorDiskImage_t());
@@ -103,17 +108,20 @@ auto sector_disk_image_open(const char* path, uint32_t file_offset,
   }
 
   if (image_ptr->file == nullptr) {
-    return nullptr;
+    return (errno == ENOENT) ? disk_err_file_not_found : disk_err_io;
   }
 
   const int64_t total_size = Path::file_size(image_ptr->file.get());
-  if (total_size < 0 || static_cast<size_t>(total_size) < file_offset) {
-    return nullptr;
+  if (total_size < 0) {
+    return disk_err_io;
+  }
+  if (static_cast<size_t>(total_size) < file_offset) {
+    return disk_err_corrupt;
   }
   const size_t effective_size = static_cast<size_t>(total_size) - file_offset;
   if (effective_size < static_cast<size_t>(dos::track_size) ||
       (effective_size % dos::page_size != 0)) {
-    return nullptr;
+    return disk_err_corrupt;
   }
 
   image_ptr->data_offset = file_offset;
@@ -122,7 +130,8 @@ auto sector_disk_image_open(const char* path, uint32_t file_offset,
   image_ptr->order =
       is_dos_order ? disk_sector_order_dos : disk_sector_order_prodos;
 
-  return image_ptr.release();
+  *out_instance = image_ptr.release();
+  return disk_err_none;
 }
 
 auto sector_disk_image_close(void* instance) -> void {
