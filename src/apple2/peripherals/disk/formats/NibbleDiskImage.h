@@ -22,17 +22,21 @@ NibbleDiskImage_t* nibble_disk_image_open(const char* path,
                                           uint32_t nibbles_per_track,
                                           bool read_only);
 
-void nibble_disk_image_close(NibbleDiskImage_t* image_ptr);
+/* These four carry the DiskFormatDriver_t signatures, instance being the
+   pointer open handed out, so a driver descriptor names them directly. Open
+   and create stay with the driver because NIB and NB2 differ only in the
+   track size they pass here. */
+void nibble_disk_image_close(void* instance);
 
-bool nibble_disk_image_is_write_protected(NibbleDiskImage_t* image_ptr);
+bool nibble_disk_image_is_write_protected(void* instance);
 
-DiskError_e nibble_disk_image_read_track_bits(NibbleDiskImage_t* image_ptr,
+DiskError_e nibble_disk_image_read_track_bits(void* instance,
                                               uint32_t quarter_track,
                                               uint8_t* bits, uint32_t max_bits,
                                               uint32_t* out_bit_count,
                                               uint8_t* out_bit_timing);
 
-DiskError_e nibble_disk_image_write_track_bits(NibbleDiskImage_t* image_ptr,
+DiskError_e nibble_disk_image_write_track_bits(void* instance,
                                                uint32_t quarter_track,
                                                const uint8_t* bits,
                                                uint32_t bit_count);

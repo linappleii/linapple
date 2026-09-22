@@ -86,22 +86,21 @@ extern "C" auto nibble_disk_image_open(const char* path, uint32_t file_offset,
   return image_ptr.release();
 }
 
-extern "C" auto nibble_disk_image_close(NibbleDiskImage_t* image_ptr) -> void {
-  if (image_ptr == nullptr) {
-    return;
-  }
-  delete image_ptr;
+extern "C" auto nibble_disk_image_close(void* instance) -> void {
+  delete static_cast<NibbleDiskImage_t*>(instance);
 }
 
-extern "C" auto nibble_disk_image_is_write_protected(
-    NibbleDiskImage_t* image_ptr) -> bool {
-  return (image_ptr != nullptr) ? image_ptr->os_readonly : true;
+extern "C" auto nibble_disk_image_is_write_protected(void* instance) -> bool {
+  if (instance == nullptr) {
+    return true;
+  }
+  return static_cast<NibbleDiskImage_t*>(instance)->os_readonly;
 }
 
 extern "C" auto nibble_disk_image_read_track_bits(
-    NibbleDiskImage_t* image_ptr, uint32_t quarter_track, uint8_t* bits,
-    uint32_t max_bits, uint32_t* out_bit_count, uint8_t* out_bit_timing)
-    -> DiskError_e {
+    void* instance, uint32_t quarter_track, uint8_t* bits, uint32_t max_bits,
+    uint32_t* out_bit_count, uint8_t* out_bit_timing) -> DiskError_e {
+  auto* image_ptr = static_cast<NibbleDiskImage_t*>(instance);
   if (image_ptr == nullptr || bits == nullptr || out_bit_count == nullptr ||
       out_bit_timing == nullptr) {
     return disk_err_invalid_argument;
@@ -142,11 +141,12 @@ extern "C" auto nibble_disk_image_read_track_bits(
                                        nullptr, bits, max_bits, out_bit_count);
 }
 
-extern "C" auto nibble_disk_image_write_track_bits(NibbleDiskImage_t* image_ptr,
+extern "C" auto nibble_disk_image_write_track_bits(void* instance,
                                                    uint32_t quarter_track,
                                                    const uint8_t* bits,
                                                    uint32_t bit_count)
     -> DiskError_e {
+  auto* image_ptr = static_cast<NibbleDiskImage_t*>(instance);
   if (image_ptr == nullptr || bits == nullptr) {
     return disk_err_invalid_argument;
   }
