@@ -378,7 +378,7 @@ TEST_CASE("DiskABI: [ABI-18] The card lists the formats it can make") {
   const char* const expected_order[] = {"DOS Order",         "IIE",
                                         "NB2 (6384-nibble)",
                                         "NIB (6656-nibble)", "ProDOS Order",
-                                        "WOZ 2"};
+                                        "WOZ 1",             "WOZ 2"};
   REQUIRE(count == sizeof(expected_order) / sizeof(expected_order[0]));
   for (uint32_t i = 0; i < count; ++i) {
     DiskFormatNameQuery_t name_query{};
