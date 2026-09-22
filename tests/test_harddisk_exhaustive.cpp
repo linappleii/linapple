@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -9,17 +10,30 @@
 #include <vector>
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/harddisk/Harddisk.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
-#include "apple2/peripherals/Peripheral.h"
-#include "apple2/peripherals/Peripheral_Types.h"
 #include "doctest.h"
 #include "test_fixtures.h"
 
 extern "C" const HarddiskFormatDriver_t g_two_img_driver;
 
 namespace {
+
+// CRC-16 of the MacBinary II standard: polynomial 0x1021, initial value 0.
+auto macbinary_crc16(const uint8_t* data, size_t length) -> uint16_t {
+  uint16_t crc = 0;
+  for (size_t i = 0; i < length; ++i) {
+    crc = static_cast<uint16_t>(crc ^ (static_cast<uint16_t>(data[i]) << 8));
+    for (int bit = 0; bit < 8; ++bit) {
+      crc = ((crc & 0x8000) != 0) ? static_cast<uint16_t>((crc << 1) ^ 0x1021)
+                                  : static_cast<uint16_t>(crc << 1);
+    }
+  }
+  return crc;
+}
 
 struct HarddiskHarness {
   std::array<uint8_t, 65536> ram{};
@@ -230,10 +244,14 @@ TEST_CASE("Harddisk Exhaustive: Edge Cases and Safety") {
 TEST_CASE("Harddisk Exhaustive: MacBinary Detection") {
   std::array<uint8_t, 128 + 512> macbin_data{};
   macbin_data[0] = 0;
-  macbin_data[1] = 10;
-  memcpy(&macbin_data[2], "test.hdv  ", 10);
-  macbin_data[122] = 0;
-  macbin_data[123] = 0;
+  macbin_data[1] = 8;
+  memcpy(&macbin_data[2], "test.hdv", 8);
+  macbin_data[86] = 0x02;  // data fork length 512, big-endian at 83..86
+  macbin_data[122] = 0x81;
+  macbin_data[123] = 0x81;
+  const uint16_t crc = macbinary_crc16(macbin_data.data(), 124);
+  macbin_data[124] = static_cast<uint8_t>(crc >> 8);
+  macbin_data[125] = static_cast<uint8_t>(crc & 0xFF);
   macbin_data[128] = 0x55;
 
   auto fixture = TestFixtures::create_ephemeral_blank("test_macbin.hdv",

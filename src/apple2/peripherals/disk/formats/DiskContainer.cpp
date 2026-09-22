@@ -26,12 +26,40 @@
 
 namespace macbinary {
 namespace {
-constexpr uint8_t version_offset = 0;
-constexpr uint8_t secondary_offset = 122;
+// Header layout per the MacBinary II standard (1987) and the MacBinary III
+// standard (1996). The zero-fill bytes are the ones the standard says a reader
+// must check; 122 carries the
+// writer's version (129 = II, 130 = III) and 123 the minimum version a
+// reader needs (129 for both), and 124-125 hold the CRC-16 of bytes 0-123.
+constexpr uint8_t old_version_offset = 0;
 constexpr uint8_t name_len_offset = 1;
-constexpr uint8_t min_version = 0;
-constexpr uint8_t secondary_zero = 0;
+constexpr uint8_t zero_fill_offset_a = 74;
+constexpr uint8_t zero_fill_offset_b = 82;
+constexpr uint8_t writer_version_offset = 122;
+constexpr uint8_t reader_version_offset = 123;
+constexpr uint8_t crc_offset = 124;
+constexpr uint8_t version_ii = 0x81;
+constexpr uint8_t version_iii = 0x82;
 constexpr uint8_t max_name_len = 63;
+
+// CRC-16 as the standard specifies it: polynomial 0x1021, initial value 0, no
+// reflection, no final XOR (the XMODEM variant).
+constexpr uint16_t crc16_polynomial = 0x1021;
+constexpr uint16_t crc16_msb = 0x8000;
+constexpr int bits_per_byte = 8;
+
+auto crc16_xmodem(const uint8_t* data, size_t length) -> uint16_t {
+  uint16_t crc = 0;
+  for (size_t i = 0; i < length; ++i) {
+    crc = static_cast<uint16_t>(crc ^ (static_cast<uint16_t>(data[i]) << 8));
+    for (int bit = 0; bit < bits_per_byte; ++bit) {
+      crc = ((crc & crc16_msb) != 0)
+                ? static_cast<uint16_t>((crc << 1) ^ crc16_polynomial)
+                : static_cast<uint16_t>(crc << 1);
+    }
+  }
+  return crc;
+}
 }  // namespace
 }  // namespace macbinary
 
@@ -41,8 +69,8 @@ constexpr size_t decompression_chunk_size = 16384;
 
 constexpr const char* k_gzip_extension = "gz";
 constexpr const char* k_zip_extension = "zip";
-const char* const k_supported_extensions[] = {k_gzip_extension,
-                                              k_zip_extension, nullptr};
+const char* const k_supported_extensions[] = {k_gzip_extension, k_zip_extension,
+                                              nullptr};
 
 auto has_extension(const char* path, const char* extension) -> bool {
   const size_t name_len = strlen(path);
@@ -156,9 +184,11 @@ auto decompress_zip(const char* compressed_path, FILE* output_file,
 
 }  // namespace
 
-// Why: Implements physical bitstream inspection to detect MacBinary II/III
-// wrappers, a legacy container format used to store Apple II disk images
-// with Macintosh-specific resource forks.
+// Why: Images that travelled through a Macintosh often still wear the 128-byte
+// MacBinary header that carried their resource fork and Finder info. The
+// version bytes alone are a heuristic; the standard's own test is the CRC over
+// the header, so both are required. MacBinary I has no CRC and is not
+// recognised: its only marks (zero at 0, 74 and 82) occur in ordinary images.
 extern "C" auto disk_container_detect_macbinary(const uint8_t* header_data,
                                                 size_t header_size,
                                                 uint32_t file_size)
@@ -168,15 +198,27 @@ extern "C" auto disk_container_detect_macbinary(const uint8_t* header_data,
     return 0;
   }
 
-  if (header_data[macbinary::version_offset] == macbinary::min_version &&
-      header_data[macbinary::secondary_offset] == macbinary::secondary_zero) {
-    const uint8_t name_len = header_data[macbinary::name_len_offset];
-    if (name_len > 0 && name_len <= macbinary::max_name_len) {
-      return static_cast<uint32_t>(macbinary::header_size);
-    }
+  const uint8_t name_len = header_data[macbinary::name_len_offset];
+  const uint8_t writer_version = header_data[macbinary::writer_version_offset];
+  if (header_data[macbinary::old_version_offset] != 0 || name_len == 0 ||
+      name_len > macbinary::max_name_len ||
+      header_data[macbinary::zero_fill_offset_a] != 0 ||
+      header_data[macbinary::zero_fill_offset_b] != 0 ||
+      (writer_version != macbinary::version_ii &&
+       writer_version != macbinary::version_iii) ||
+      header_data[macbinary::reader_version_offset] != macbinary::version_ii) {
+    return 0;
   }
 
-  return 0;
+  const auto stored_crc =
+      static_cast<uint16_t>((header_data[macbinary::crc_offset] << 8) |
+                            header_data[macbinary::crc_offset + 1]);
+  if (macbinary::crc16_xmodem(header_data, macbinary::crc_offset) !=
+      stored_crc) {
+    return 0;
+  }
+
+  return static_cast<uint32_t>(macbinary::header_size);
 }
 
 // Why: A probe that sees only "game.dsk.gz" asks every driver about a ".gz",
@@ -218,8 +260,8 @@ extern "C" auto disk_container_payload_name(const char* image_path,
   // Dropping the archive suffix is all that is left: gzip's own FNAME field is
   // optional and zlib does not expose it.
   const std::string stripped(
-      basename, strlen(basename) - strlen(is_gz ? k_gzip_extension
-                                                : k_zip_extension) - 1);
+      basename, strlen(basename) -
+                    strlen(is_gz ? k_gzip_extension : k_zip_extension) - 1);
   util_safe_strcpy(out_name, stripped.c_str(), max_name_len);
   return true;
 }
@@ -283,7 +325,8 @@ extern "C" auto disk_container_prepare_compressed_path(
   return true;
 }
 
-extern "C" auto disk_container_supported_extensions(void) -> const char* const* {
+extern "C" auto disk_container_supported_extensions(void) -> const
+    char* const* {
   return k_supported_extensions;
 }
 

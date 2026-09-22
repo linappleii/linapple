@@ -24,6 +24,10 @@ constexpr size_t compression_ratio_limit = 100;  // 100:1 ratio
 extern "C" {
 #endif
 
+/* The number of bytes a MacBinary II or III wrapper occupies before the image:
+   128 when the first header_size bytes of the file carry one whose CRC-16
+   checks (the MacBinary II standard's own test), else 0. MacBinary I has no
+   CRC and is not recognised. header_size must be at least 128. */
 uint32_t disk_container_detect_macbinary(const uint8_t* header_data,
                                          size_t header_size,
                                          uint32_t file_size);
