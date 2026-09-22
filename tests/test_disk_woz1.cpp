@@ -14,6 +14,7 @@
 #include "apple2/peripherals/disk/DiskLoader.h"
 #include "apple2/peripherals/disk/formats/Woz1Driver.h"
 #include "apple2/peripherals/disk/formats/Woz2Driver.h"
+#include "core/Util_Crc32.h"
 #include "core/Util_Path.h"
 #include "doctest.h"
 #include "test_fixtures.h"
@@ -402,4 +403,135 @@ TEST_CASE("DiskWOZ1: a 1.0 image's CRC32 is verified over its chunks") {
   CHECK(g_woz1_driver.open(image.c_str(), 0, false, &instance) ==
         disk_err_corrupt);
   CHECK(instance == nullptr);
+}
+
+namespace {
+
+constexpr uint32_t first_quarter_track_past_map = 160;
+constexpr uint8_t third_record_index = 2;
+constexpr size_t chunk_header_size = 8;
+constexpr size_t meta_chunk_data_size = 32;
+constexpr size_t woz_file_header_size = 12;
+
+auto read_file(const std::string& path) -> std::vector<uint8_t> {
+  FilePtr_t f(fopen(path.c_str(), "rb"), fclose);
+  REQUIRE(f != nullptr);
+  std::vector<uint8_t> data(static_cast<size_t>(Path::file_size(f.get())), 0);
+  REQUIRE(fread(data.data(), 1, data.size(), f.get()) == data.size());
+  return data;
+}
+
+// A META chunk after the records, as Applesauce writes one, with the CRC32
+// the specification defines over every chunk, so open has to walk past META
+// to accept the file at all.
+auto append_meta_with_crc(const std::string& path) -> void {
+  std::vector<uint8_t> out = read_file(path);
+  REQUIRE(out.size() == v1_fixture_bytes);
+
+  const uint8_t meta_header[] = {'M', 'E', 'T', 'A', meta_chunk_data_size,
+                                 0,   0,   0};
+  out.insert(out.end(), meta_header, meta_header + sizeof(meta_header));
+  const char meta_text[] = "title\tminimal v1\n";
+  std::vector<uint8_t> meta(meta_chunk_data_size, ' ');
+  std::memcpy(meta.data(), meta_text, sizeof(meta_text) - 1);
+  out.insert(out.end(), meta.begin(), meta.end());
+
+  const uint32_t crc = crc32_compute(out.data() + woz_file_header_size,
+                                     out.size() - woz_file_header_size);
+  out[crc32_field_offset] = static_cast<uint8_t>(crc & 0xFF);
+  out[crc32_field_offset + 1] = static_cast<uint8_t>((crc >> 8) & 0xFF);
+  out[crc32_field_offset + 2] = static_cast<uint8_t>((crc >> 16) & 0xFF);
+  out[crc32_field_offset + 3] = static_cast<uint8_t>(crc >> 24);
+
+  FilePtr_t f(fopen(path.c_str(), "wb"), fclose);
+  REQUIRE(f != nullptr);
+  REQUIRE(fwrite(out.data(), 1, out.size(), f.get()) == out.size());
+}
+
+}  // namespace
+
+TEST_CASE(
+    "DiskWOZ1: a TMAP entry pointing at a record with no cells is corrupt") {
+  auto image = TestFixtures::create_ephemeral("minimal-v1.woz");
+  const uint8_t no_cells[] = {0, 0};
+  patch(image.path(), track0_bit_count_offset, no_cells, sizeof(no_cells));
+
+  void* instance = nullptr;
+  REQUIRE(g_woz1_driver.open(image.c_str(), 0, false, &instance) ==
+          disk_err_none);
+
+  std::vector<uint8_t> bits;
+  uint32_t bit_count = 0;
+  uint8_t bit_timing = 0;
+  CHECK(read_quarter_track(g_woz1_driver, instance, 0, &bits, &bit_count,
+                           &bit_timing) == disk_err_corrupt);
+  CHECK(bit_count == 0);
+  CHECK(bit_timing == 32);
+  CHECK(bits[0] == 0xEE);
+
+  CHECK(read_quarter_track(g_woz1_driver, instance, 4, &bits, &bit_count,
+                           &bit_timing) == disk_err_none);
+  CHECK(bit_count == track1_bit_count);
+
+  g_woz1_driver.close(instance);
+}
+
+TEST_CASE("DiskWOZ1: a quarter track past the map is a bad argument") {
+  auto image = TestFixtures::create_ephemeral("minimal-v1.woz");
+  void* instance = nullptr;
+  REQUIRE(g_woz1_driver.open(image.c_str(), 0, false, &instance) ==
+          disk_err_none);
+
+  std::vector<uint8_t> bits;
+  uint32_t bit_count = 0;
+  uint8_t bit_timing = 0;
+  CHECK(read_quarter_track(g_woz1_driver, instance,
+                           first_quarter_track_past_map, &bits, &bit_count,
+                           &bit_timing) == disk_err_invalid_argument);
+  CHECK(bit_count == 0);
+  CHECK(bit_timing == 32);
+  CHECK(bits[0] == 0xEE);
+
+  CHECK(read_quarter_track(g_woz1_driver, instance, UINT32_MAX, &bits,
+                           &bit_count,
+                           &bit_timing) == disk_err_invalid_argument);
+  CHECK(bit_count == 0);
+  CHECK(bits[0] == 0xEE);
+
+  g_woz1_driver.close(instance);
+}
+
+TEST_CASE("DiskWOZ1: a META chunk after TRKS leaves the record count alone") {
+  auto image = TestFixtures::create_ephemeral("minimal-v1.woz");
+  patch(image.path(), tmap_entry_8_offset, &third_record_index, 1);
+  append_meta_with_crc(image.path());
+  REQUIRE(file_size_of(image.path()) ==
+          v1_fixture_bytes + chunk_header_size + meta_chunk_data_size);
+
+  void* instance = nullptr;
+  REQUIRE(g_woz1_driver.open(image.c_str(), 0, false, &instance) ==
+          disk_err_none);
+  REQUIRE(instance != nullptr);
+
+  std::vector<uint8_t> bits;
+  uint32_t bit_count = 0;
+  uint8_t bit_timing = 0;
+  CHECK(read_quarter_track(g_woz1_driver, instance, 0, &bits, &bit_count,
+                           &bit_timing) == disk_err_none);
+  CHECK(bit_count == track0_bit_count);
+  CHECK(std::memcmp(bits.data(), track0_pattern, sizeof(track0_pattern)) == 0);
+
+  CHECK(read_quarter_track(g_woz1_driver, instance, 4, &bits, &bit_count,
+                           &bit_timing) == disk_err_none);
+  CHECK(bit_count == track1_bit_count);
+  CHECK(std::memcmp(bits.data(), track1_pattern, sizeof(track1_pattern)) == 0);
+
+  // The META bytes sit where a third record would start; TRKS still declares
+  // two, so the entry naming a third is corrupt rather than a read of META.
+  CHECK(read_quarter_track(g_woz1_driver, instance, 8, &bits, &bit_count,
+                           &bit_timing) == disk_err_corrupt);
+  CHECK(bit_count == 0);
+  CHECK(bits[0] == 0xEE);
+
+  g_woz1_driver.close(instance);
 }

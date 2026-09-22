@@ -512,3 +512,270 @@ TEST_CASE(
         1);
   CHECK(open_v2(image.path(), macbinary_header_size) == disk_err_corrupt);
 }
+
+namespace {
+
+constexpr long trks_entry_0_bit_count_offset = trks_entry_0_offset + 4;
+constexpr long info_bit_timing_offset = 20 + 39;
+constexpr long tmap_entry_0_offset = 88;
+constexpr long tmap_entry_1_offset = tmap_entry_0_offset + 1;
+constexpr long tmap_entry_159_offset = tmap_entry_0_offset + 159;
+constexpr uint32_t first_quarter_track_past_map = 160;
+constexpr size_t cells_kept_after_cut = 256;
+
+auto read_qt0_of_patched_track_image(long offset, const uint8_t* bytes,
+                                     size_t len, std::vector<uint8_t>* bits,
+                                     uint32_t* bit_count, uint8_t* bit_timing)
+    -> DiskError_e {
+  auto image = TestFixtures::create_ephemeral("minimal-track.woz");
+  patch(image.path(), offset, bytes, len);
+
+  void* instance = nullptr;
+  REQUIRE(g_woz2_driver.open(image.c_str(), 0, false, &instance) ==
+          disk_err_none);
+  const DiskError_e err = read_quarter_track(g_woz2_driver, instance, 0, bits,
+                                             bit_count, bit_timing);
+  g_woz2_driver.close(instance);
+  return err;
+}
+
+}  // namespace
+
+TEST_CASE(
+    "DiskWOZ: a TMAP entry pointing at a record with no cells is corrupt") {
+  const uint8_t no_cells[] = {0, 0, 0, 0};
+  std::vector<uint8_t> bits;
+  uint32_t bit_count = 0;
+  uint8_t bit_timing = 0;
+  CHECK(read_qt0_of_patched_track_image(trks_entry_0_bit_count_offset, no_cells,
+                                        sizeof(no_cells), &bits, &bit_count,
+                                        &bit_timing) == disk_err_corrupt);
+  CHECK(bit_count == 0);
+  CHECK(bit_timing == 32);
+  CHECK(bits[0] == 0xEE);
+}
+
+TEST_CASE(
+    "DiskWOZ: a record whose starting block lies past the file is corrupt") {
+  std::vector<uint8_t> bits;
+  uint32_t bit_count = 0;
+  uint8_t bit_timing = 0;
+
+  SUBCASE("the block just past the last one in the file") {
+    const uint8_t block_4[] = {4, 0};
+    CHECK(read_qt0_of_patched_track_image(trks_entry_0_offset, block_4,
+                                          sizeof(block_4), &bits, &bit_count,
+                                          &bit_timing) == disk_err_corrupt);
+  }
+
+  SUBCASE("the largest block number the entry can name") {
+    const uint8_t block_65535[] = {0xFF, 0xFF};
+    CHECK(read_qt0_of_patched_track_image(
+              trks_entry_0_offset, block_65535, sizeof(block_65535), &bits,
+              &bit_count, &bit_timing) == disk_err_corrupt);
+  }
+
+  CHECK(bit_count == 0);
+  CHECK(bits[0] == 0xEE);
+}
+
+TEST_CASE("DiskWOZ: INFO cell times of 1 and 255 reach the card unclamped") {
+  std::vector<uint8_t> bits;
+  uint32_t bit_count = 0;
+  uint8_t bit_timing = 0;
+
+  const uint8_t fastest = 1;
+  CHECK(read_qt0_of_patched_track_image(info_bit_timing_offset, &fastest, 1,
+                                        &bits, &bit_count,
+                                        &bit_timing) == disk_err_none);
+  CHECK(bit_timing == 1);
+  CHECK(bit_count == track_fixture_bit_count);
+
+  const uint8_t slowest = 255;
+  CHECK(read_qt0_of_patched_track_image(info_bit_timing_offset, &slowest, 1,
+                                        &bits, &bit_count,
+                                        &bit_timing) == disk_err_none);
+  CHECK(bit_timing == 255);
+  CHECK(bit_count == track_fixture_bit_count);
+}
+
+TEST_CASE(
+    "DiskWOZ: an image cut inside its cells is corrupt and writes nothing") {
+  auto image = TestFixtures::create_ephemeral("minimal-track.woz");
+  REQUIRE(truncate(
+              image.c_str(),
+              static_cast<off_t>(woz_header_size + cells_kept_after_cut)) == 0);
+
+  void* instance = nullptr;
+  REQUIRE(g_woz2_driver.open(image.c_str(), 0, false, &instance) ==
+          disk_err_none);
+
+  std::vector<uint8_t> bits;
+  uint32_t bit_count = 0;
+  uint8_t bit_timing = 0;
+  CHECK(read_quarter_track(g_woz2_driver, instance, 0, &bits, &bit_count,
+                           &bit_timing) == disk_err_corrupt);
+  CHECK(bit_count == 0);
+  CHECK(bit_timing == 32);
+  // The cells still in the file are not delivered either: a track is whole or
+  // it is nothing.
+  CHECK(bits[0] == 0xEE);
+  CHECK(bits[cells_kept_after_cut - 1] == 0xEE);
+
+  g_woz2_driver.close(instance);
+}
+
+TEST_CASE("DiskWOZ: a quarter track past the map is a bad argument") {
+  auto image = TestFixtures::create_ephemeral("minimal-track.woz");
+  void* instance = nullptr;
+  REQUIRE(g_woz2_driver.open(image.c_str(), 0, false, &instance) ==
+          disk_err_none);
+
+  std::vector<uint8_t> bits;
+  uint32_t bit_count = 0;
+  uint8_t bit_timing = 0;
+  CHECK(read_quarter_track(g_woz2_driver, instance,
+                           first_quarter_track_past_map, &bits, &bit_count,
+                           &bit_timing) == disk_err_invalid_argument);
+  CHECK(bit_count == 0);
+  CHECK(bit_timing == 32);
+  CHECK(bits[0] == 0xEE);
+
+  CHECK(read_quarter_track(g_woz2_driver, instance, UINT32_MAX, &bits,
+                           &bit_count,
+                           &bit_timing) == disk_err_invalid_argument);
+  CHECK(bit_count == 0);
+  CHECK(bits[0] == 0xEE);
+
+  g_woz2_driver.close(instance);
+}
+
+TEST_CASE("DiskWOZ: the last TMAP entry reaches a record like the first") {
+  auto image = TestFixtures::create_ephemeral("minimal-track.woz");
+  const uint8_t unmapped = 0xFF;
+  const uint8_t record_0 = 0;
+  patch(image.path(), tmap_entry_0_offset, &unmapped, 1);
+  patch(image.path(), tmap_entry_1_offset, &record_0, 1);
+  patch(image.path(), tmap_entry_159_offset, &record_0, 1);
+
+  void* instance = nullptr;
+  REQUIRE(g_woz2_driver.open(image.c_str(), 0, false, &instance) ==
+          disk_err_none);
+
+  std::vector<uint8_t> bits;
+  uint32_t bit_count = 0;
+  uint8_t bit_timing = 0;
+  CHECK(read_quarter_track(g_woz2_driver, instance, 0, &bits, &bit_count,
+                           &bit_timing) == disk_err_none);
+  CHECK(bit_count == 0);
+
+  CHECK(read_quarter_track(g_woz2_driver, instance, 1, &bits, &bit_count,
+                           &bit_timing) == disk_err_none);
+  CHECK(bit_count == track_fixture_bit_count);
+  CHECK(std::memcmp(bits.data(), track_fixture_pattern,
+                    sizeof(track_fixture_pattern)) == 0);
+
+  CHECK(read_quarter_track(g_woz2_driver, instance, last_quarter_track, &bits,
+                           &bit_count, &bit_timing) == disk_err_none);
+  CHECK(bit_count == track_fixture_bit_count);
+  CHECK(bit_timing == 32);
+  CHECK(std::memcmp(bits.data(), track_fixture_pattern,
+                    sizeof(track_fixture_pattern)) == 0);
+
+  g_woz2_driver.close(instance);
+}
+
+namespace {
+
+constexpr size_t chunk_id_size = 4;
+constexpr size_t chunk_header_size = 8;
+constexpr size_t chunks_before_trks = 248;
+constexpr size_t meta_chunk_data_size = 32;
+constexpr size_t writ_chunk_data_size = 16;
+constexpr size_t relocated_trks_header_offset =
+    chunks_before_trks + chunk_header_size + meta_chunk_data_size;
+constexpr size_t relocated_trks_entry_0_offset =
+    relocated_trks_header_offset + chunk_header_size;
+
+auto append_chunk_header(std::vector<uint8_t>* out, const char* id,
+                         uint32_t size) -> void {
+  out->insert(out->end(), id, id + chunk_id_size);
+  const uint8_t size_le[] = {static_cast<uint8_t>(size & 0xFF),
+                             static_cast<uint8_t>((size >> 8) & 0xFF),
+                             static_cast<uint8_t>((size >> 16) & 0xFF),
+                             static_cast<uint8_t>(size >> 24)};
+  out->insert(out->end(), size_le, size_le + sizeof(size_le));
+}
+
+// The fixture's chunks with a META chunk squeezed in ahead of TRKS and a WRIT
+// chunk after the track data, then the CRC32 the specification defines over
+// all of it, so open has to walk both chunks to accept the file.
+auto build_track_image_with_meta_and_writ(const std::string& path) -> void {
+  const std::vector<uint8_t> bare =
+      read_file(TestFixtures::get_fixture_path("minimal-track.woz"));
+  REQUIRE(bare.size() == track_fixture_bytes);
+
+  std::vector<uint8_t> out(bare.begin(), bare.begin() + chunks_before_trks);
+
+  append_chunk_header(&out, "META", meta_chunk_data_size);
+  const char meta_text[] = "title\tminimal track\n";
+  std::vector<uint8_t> meta(meta_chunk_data_size, ' ');
+  std::memcpy(meta.data(), meta_text, sizeof(meta_text) - 1);
+  out.insert(out.end(), meta.begin(), meta.end());
+
+  REQUIRE(out.size() == relocated_trks_header_offset);
+  append_chunk_header(&out, "TRKS",
+                      static_cast<uint32_t>(track_fixture_bytes -
+                                            relocated_trks_entry_0_offset));
+  out.insert(out.end(), bare.begin() + trks_entry_0_offset,
+             bare.begin() + trks_entry_0_offset + 8);
+  out.resize(woz_header_size, 0);
+  out.insert(out.end(), bare.begin() + woz_header_size, bare.end());
+  REQUIRE(out.size() == track_fixture_bytes);
+
+  append_chunk_header(&out, "WRIT", writ_chunk_data_size);
+  out.insert(out.end(), writ_chunk_data_size, 0xA5);
+
+  const uint32_t crc = crc32_compute(out.data() + woz_file_header_size,
+                                     out.size() - woz_file_header_size);
+  out[crc32_field_offset] = static_cast<uint8_t>(crc & 0xFF);
+  out[crc32_field_offset + 1] = static_cast<uint8_t>((crc >> 8) & 0xFF);
+  out[crc32_field_offset + 2] = static_cast<uint8_t>((crc >> 16) & 0xFF);
+  out[crc32_field_offset + 3] = static_cast<uint8_t>(crc >> 24);
+
+  FilePtr_t f(fopen(path.c_str(), "wb"), fclose);
+  REQUIRE(f != nullptr);
+  REQUIRE(fwrite(out.data(), 1, out.size(), f.get()) == out.size());
+}
+
+}  // namespace
+
+TEST_CASE("DiskWOZ: META and WRIT chunks are walked past, not read") {
+  TestFixtures::ScopedTempFile_t image(".woz");
+  build_track_image_with_meta_and_writ(image.path());
+  REQUIRE(read_file(image.path()).size() ==
+          track_fixture_bytes + chunk_header_size + writ_chunk_data_size);
+
+  void* instance = nullptr;
+  REQUIRE(g_woz2_driver.open(image.c_str(), 0, false, &instance) ==
+          disk_err_none);
+  REQUIRE(instance != nullptr);
+
+  std::vector<uint8_t> bits;
+  uint32_t bit_count = 0;
+  uint8_t bit_timing = 0;
+  CHECK(read_quarter_track(g_woz2_driver, instance, 0, &bits, &bit_count,
+                           &bit_timing) == disk_err_none);
+  CHECK(bit_count == track_fixture_bit_count);
+  CHECK(bit_timing == 32);
+  CHECK(std::memcmp(bits.data(), track_fixture_pattern,
+                    sizeof(track_fixture_pattern)) == 0);
+  CHECK(bits[0] == 0x01);
+  CHECK(bits[1] == 0x08);
+
+  CHECK(read_quarter_track(g_woz2_driver, instance, unmapped_quarter_track,
+                           &bits, &bit_count, &bit_timing) == disk_err_none);
+  CHECK(bit_count == 0);
+
+  g_woz2_driver.close(instance);
+}
