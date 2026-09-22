@@ -199,6 +199,7 @@ TEST_CASE("DiskDrivers: [DRV-06] NB2 Driver Probing") {
 
 TEST_CASE("DiskDrivers: [DRV-07] NIB Track Round-trip") {
   ScopedTempFile_t tmp_file(".nib");
+  tmp_file.unlink_file();
   REQUIRE(g_nib_driver.create(tmp_file.c_str()) == disk_err_none);
 
   void* instance = nullptr;
@@ -250,6 +251,7 @@ TEST_CASE("DiskDrivers: [DRV-07] NIB Track Round-trip") {
 
 TEST_CASE("DiskDrivers: [DRV-08] NB2 Track Round-trip") {
   ScopedTempFile_t tmp_file(".nb2");
+  tmp_file.unlink_file();
   REQUIRE(g_nb2_driver.create(tmp_file.c_str()) == disk_err_none);
 
   void* instance = nullptr;
@@ -426,6 +428,7 @@ TEST_CASE("DiskDrivers: [DRV-14] WOZ reports the cell time INFO measured") {
 
 TEST_CASE("DiskDrivers: [DRV-13] DO Track Round-trip") {
   ScopedTempFile_t tmp_do(".do");
+  tmp_do.unlink_file();
   REQUIRE(g_do_driver.create(tmp_do.c_str()) == disk_err_none);
 
   void* inst = nullptr;
@@ -526,6 +529,7 @@ TEST_CASE("DiskDrivers: [SEC-02] WOZ rejects a bit_count past block_count") {
 
 TEST_CASE("DiskDrivers: [SEC-03] DO track past the image is blank surface") {
   ScopedTempFile_t tmp_do(".do");
+  tmp_do.unlink_file();
   REQUIRE(g_do_driver.create(tmp_do.c_str()) == disk_err_none);
 
   void* inst = nullptr;
@@ -713,6 +717,7 @@ TEST_CASE("DiskDrivers: [IIE-14] IIE Driver invalid variant rejection") {
 
 TEST_CASE("DiskDrivers: [DRV-15] A track written back lands in the image") {
   ScopedTempFile_t tmp_do(".do");
+  tmp_do.unlink_file();
   REQUIRE(g_do_driver.create(tmp_do.c_str()) == disk_err_none);
 
   constexpr size_t dos_track_bytes = 4096;
@@ -750,6 +755,7 @@ TEST_CASE("DiskDrivers: [DRV-15] A track written back lands in the image") {
 TEST_CASE(
     "DiskDrivers: [DRV-16] A track short a sector never reaches the image") {
   ScopedTempFile_t tmp_do(".do");
+  tmp_do.unlink_file();
   REQUIRE(g_do_driver.create(tmp_do.c_str()) == disk_err_none);
 
   constexpr size_t dos_track_bytes = 4096;
@@ -897,4 +903,62 @@ TEST_CASE("DiskDrivers: [DRV-19] Every driver answers a null argument as one") {
     // The loader never hands a probe a null window, but a direct caller may.
     CHECK(driver->probe(nullptr, 80 * 1024, 143360, "") == disk_probe_no);
   }
+}
+
+TEST_CASE(
+    "DiskDrivers: [RET-3] Creating over an existing file leaves it as it "
+    "was") {
+  ScopedTempFile_t occupied(".dsk");
+  const std::vector<uint8_t> contents = {'n', 'o', 't', ' ', 'a',
+                                         ' ', 'd', 'i', 's', 'k'};
+  {
+    FILE* f = fopen(occupied.c_str(), "wb");
+    REQUIRE(f != nullptr);
+    REQUIRE(fwrite(contents.data(), 1, contents.size(), f) == contents.size());
+    fclose(f);
+  }
+
+  CHECK(g_do_driver.create(occupied.c_str()) == disk_err_io);
+  CHECK(g_po_driver.create(occupied.c_str()) == disk_err_io);
+  CHECK(g_nib_driver.create(occupied.c_str()) == disk_err_io);
+  CHECK(g_nb2_driver.create(occupied.c_str()) == disk_err_io);
+
+  FILE* f = fopen(occupied.c_str(), "rb");
+  REQUIRE(f != nullptr);
+  fseek(f, 0, SEEK_END);
+  CHECK(ftell(f) == static_cast<long>(contents.size()));
+  fclose(f);
+  CHECK(read_image_track(occupied.path(), 0, contents.size()) == contents);
+}
+
+TEST_CASE("DiskDrivers: [RET-4] The loader's create names each refusal") {
+  disk_loader_reset();
+
+  ScopedTempFile_t gzipped(".dsk.gz");
+  gzipped.unlink_file();
+  CHECK(disk_loader_create(gzipped.c_str(), "DOS Order") ==
+        disk_err_invalid_argument);
+  CHECK(access(gzipped.c_str(), F_OK) != 0);
+  ScopedTempFile_t zipped(".ZIP");
+  zipped.unlink_file();
+  CHECK(disk_loader_create(zipped.c_str(), "DOS Order") ==
+        disk_err_invalid_argument);
+  CHECK(access(zipped.c_str(), F_OK) != 0);
+
+  ScopedTempFile_t woz(".woz");
+  woz.unlink_file();
+  CHECK(disk_loader_create(woz.c_str(), "WOZ 2") == disk_err_unsupported);
+  CHECK(access(woz.c_str(), F_OK) != 0);
+
+  ScopedTempFile_t tape(".dsk");
+  tape.unlink_file();
+  CHECK(disk_loader_create(tape.c_str(), "Tape") ==
+        disk_err_unsupported_format);
+  CHECK(access(tape.c_str(), F_OK) != 0);
+
+  ScopedTempFile_t fresh(".po");
+  fresh.unlink_file();
+  REQUIRE(disk_loader_create(fresh.c_str(), "ProDOS Order") == disk_err_none);
+  CHECK(disk_loader_create(fresh.c_str(), "ProDOS Order") == disk_err_io);
+  CHECK(access(fresh.c_str(), F_OK) == 0);
 }

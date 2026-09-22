@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "apple2/peripherals/disk/formats/SectorDiskImage.h"
 
+#include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <array>
@@ -246,8 +248,19 @@ auto sector_disk_image_create(const char* path) -> DiskError_e {
     return disk_err_invalid_argument;
   }
 
-  FilePtr_t file{fopen(path, "wb"), fclose};
+  // Creating exclusively makes the existence check and the create one call,
+  // so a name that is already an image cannot be truncated in the gap
+  // between them.
+  const int fd = open(path, O_WRONLY | O_CREAT | O_EXCL,
+                      S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+  if (fd < 0) {
+    return disk_err_io;
+  }
+  // NOLINTNEXTLINE(misc-include-cleaner)
+  FilePtr_t file{fdopen(fd, "wb"), fclose};
   if (file == nullptr) {
+    close(fd);
+    unlink(path);
     return disk_err_io;
   }
 

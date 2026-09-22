@@ -2,6 +2,7 @@
 // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory)
 #include "apple2/peripherals/disk/DiskLoader.h"
 
+#include <strings.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -157,6 +158,22 @@ auto find_best_driver(const uint8_t* header_ptr, size_t header_size,
   return possible_driver;
 }
 
+auto has_container_extension(const char* path) -> bool {
+  const char* base = strrchr(path, '/');
+  base = (base != nullptr) ? base + 1 : path;
+  const char* dot = strrchr(base, '.');
+  if (dot == nullptr) {
+    return false;
+  }
+  for (const char* const* ext = disk_container_supported_extensions();
+       ext != nullptr && *ext != nullptr; ++ext) {
+    if (strcasecmp(dot + 1, *ext) == 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
 }  // namespace
 
 auto disk_loader_register(const DiskFormatDriver_t* driver) -> void {
@@ -276,8 +293,16 @@ auto disk_loader_create(const char* path, const char* driver_name)
     return disk_err_invalid_argument;
   }
 
-  // Refusing a path that exists is the whole safety of this call: a driver
-  // truncates whatever it opens, and a mistyped name must not cost a disk.
+  // A name ending in an archive extension would be created raw and then
+  // unwrapped as an archive on its way back in, so the request is malformed
+  // before any driver is asked.
+  if (has_container_extension(path)) {
+    return disk_err_invalid_argument;
+  }
+
+  // A driver creates exclusively, so an existing image is safe from
+  // truncation either way; answering here keeps the clean-up below from
+  // touching a file this call did not make.
   if (access(path, F_OK) == 0) {
     return disk_err_io;
   }
@@ -291,8 +316,11 @@ auto disk_loader_create(const char* path, const char* driver_name)
     }
   }
 
-  if (driver == nullptr || driver->create == nullptr) {
+  if (driver == nullptr) {
     return disk_err_unsupported_format;
+  }
+  if (driver->create == nullptr) {
+    return disk_err_unsupported;
   }
 
   const DiskError_e error = driver->create(path);
