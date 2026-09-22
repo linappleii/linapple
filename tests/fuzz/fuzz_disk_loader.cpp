@@ -4,23 +4,50 @@
 // cppcoreguidelines-avoid-non-const-global-variables,
 // cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
 // modernize-avoid-c-arrays,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic)
 #include <unistd.h>
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
+#include <string>
 #include <vector>
 
+#include "apple2/media/image_container/ImageContainer.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "apple2/peripherals/disk/DiskLoader.h"
-#include "apple2/peripherals/disk/formats/DiskContainer.h"
 
 extern "C" const char* __asan_default_options() { return "detect_leaks=1"; }
 
 namespace {
+
+constexpr size_t path_len = 512;
+
+// The loader picks its container and its driver by suffix, and the archive
+// bytes cannot choose one (gzip's first byte is fixed), so the first input
+// byte does. Without it no well-formed archive would ever reach extraction.
+auto suffix_for(uint8_t selector) -> const char* {
+  switch (selector & 3) {
+    case 0:
+      return ".dsk";
+    case 1:
+      return ".gz";
+    case 2:
+      return ".zip";
+    default:
+      return ".woz";
+  }
+}
+
+auto temp_dir() -> std::string {
+  const char* env = getenv("TMPDIR");
+  return (env != nullptr && env[0] != '\0') ? env : "/tmp";
+}
 
 // Walking the registry rather than a list of names here is what keeps a
 // format added tomorrow under the fuzzer without anyone remembering to add it.
@@ -35,18 +62,22 @@ auto probe_every_driver(const uint8_t* data, size_t size) -> void {
   }
 }
 
-// A probe only reads a header. Laying the first quarter track out as cells is
-// what makes the driver walk the whole file the fuzzer wrote.
-auto read_first_track(const DiskFormatDriver_t* driver, void* instance)
-    -> void {
+// A probe only reads a header. Laying tracks out as cells is what makes the
+// driver walk the file the fuzzer wrote. The first four quarter tracks cover
+// every phase of the head; from there one read per whole track reaches the
+// end of the image at a fraction of the cost of all 160.
+auto read_tracks(const DiskFormatDriver_t* driver, void* instance) -> void {
   if (driver->read_track_bits == nullptr) {
     return;
   }
   static std::vector<uint8_t> bits(max_track_bits / 8);
-  uint32_t bit_count = 0;
-  uint8_t bit_timing = 0;
-  driver->read_track_bits(instance, 0, bits.data(), max_track_bits, &bit_count,
-                          &bit_timing);
+  for (uint32_t quarter_track = 0; quarter_track < 160;
+       quarter_track += (quarter_track < 4) ? 1 : 4) {
+    uint32_t bit_count = 0;
+    uint8_t bit_timing = 0;
+    driver->read_track_bits(instance, quarter_track, bits.data(),
+                            max_track_bits, &bit_count, &bit_timing);
+  }
 }
 
 auto open_every_driver(const char* path) -> void {
@@ -68,7 +99,7 @@ auto open_every_driver(const char* path) -> void {
       if (driver->is_write_protected != nullptr) {
         driver->is_write_protected(instance);
       }
-      read_first_track(driver, instance);
+      read_tracks(driver, instance);
       driver->close(instance);
     }
   }
@@ -77,37 +108,50 @@ auto open_every_driver(const char* path) -> void {
 }  // namespace
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
-  if (size == 0) {
+  if (size < 1) {
+    return 0;
+  }
+  const char* suffix = suffix_for(data[0]);
+  const uint8_t* payload = data + 1;
+  const size_t payload_size = size - 1;
+
+  image_container_detect_macbinary(payload, payload_size,
+                                   static_cast<uint32_t>(payload_size));
+  probe_every_driver(payload, payload_size);
+
+  const std::string path_template =
+      temp_dir() + "/linapple_fuzz_disk_XXXXXX" + suffix;
+  std::array<char, path_len> path{};
+  if (path_template.size() >= path.size()) {
+    return 0;
+  }
+  memcpy(path.data(), path_template.c_str(), path_template.size() + 1);
+
+  const int fd = mkstemps(path.data(), static_cast<int>(strlen(suffix)));
+  if (fd < 0) {
+    return 0;
+  }
+  const ssize_t written = write(fd, payload, payload_size);
+  close(fd);
+  if (written != static_cast<ssize_t>(payload_size)) {
+    unlink(path.data());
     return 0;
   }
 
-  disk_container_detect_macbinary(data, size, static_cast<uint32_t>(size));
-  probe_every_driver(data, size);
-
-  char tmp_template[] = "/tmp/linapple_fuzz_disk_XXXXXX";
-  int fd = mkstemp(tmp_template);
-  if (fd >= 0) {
-    ssize_t written = write(fd, data, size);
-    (void)written;
-    close(fd);
-
-    const DiskFormatDriver_t* out_driver = nullptr;
-    void* out_instance = nullptr;
-
-    if (disk_loader_open(tmp_template, &out_driver, &out_instance) ==
-            disk_err_none &&
-        out_driver != nullptr && out_instance != nullptr) {
-      read_first_track(out_driver, out_instance);
-      if (out_driver->close != nullptr) {
-        out_driver->close(out_instance);
-      }
+  const DiskFormatDriver_t* out_driver = nullptr;
+  void* out_instance = nullptr;
+  if (disk_loader_open(path.data(), &out_driver, &out_instance) ==
+          disk_err_none &&
+      out_driver != nullptr && out_instance != nullptr) {
+    read_tracks(out_driver, out_instance);
+    if (out_driver->close != nullptr) {
+      out_driver->close(out_instance);
     }
-
-    open_every_driver(tmp_template);
-
-    unlink(tmp_template);
   }
 
+  open_every_driver(path.data());
+
+  unlink(path.data());
   return 0;
 }
 // NOLINTEND(bugprone-easily-swappable-parameters,
@@ -115,4 +159,5 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 // cppcoreguidelines-avoid-non-const-global-variables,
 // cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
 // modernize-avoid-c-arrays,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+// cppcoreguidelines-pro-bounds-pointer-arithmetic)

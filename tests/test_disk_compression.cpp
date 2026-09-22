@@ -10,14 +10,18 @@
 #include <vector>
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include "apple2/media/image_container/ImageContainer.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "apple2/peripherals/disk/DiskLoader.h"
-#include "apple2/peripherals/disk/formats/DiskContainer.h"
 #include "doctest.h"
 #include "test_fixtures.h"
 
 namespace {
+
+// The gates the disk and harddisk cards hand the container.
+constexpr size_t floppy_threshold = 4 * 1024 * 1024;
+constexpr size_t harddisk_threshold = 32 * 1024 * 1024;
 
 struct ScopedExtractedFile_t {
   char path[512]{};
@@ -85,11 +89,11 @@ TEST_CASE("DiskCompression: [ZIP-1] Normal Floppy ZIP within 4MB is allowed") {
                           floppy_data.size()));
 
   ScopedExtractedFile_t out_file;
-  const bool ok = disk_container_prepare_compressed_path(
-      test_zip.c_str(), out_file.path, sizeof(out_file.path),
-      disk_container::floppy_decompression_threshold, &out_file.is_temporary);
+  const ImageContainerError_e result = image_container_prepare_compressed_path(
+      test_zip.c_str(), out_file.path, sizeof(out_file.path), floppy_threshold,
+      &out_file.is_temporary);
 
-  CHECK(ok == true);
+  CHECK(result == image_container_ok);
   CHECK(out_file.is_temporary == true);
 }
 
@@ -104,11 +108,11 @@ TEST_CASE(
                           zeros.size()));
 
   ScopedExtractedFile_t out_file;
-  const bool ok = disk_container_prepare_compressed_path(
-      test_zip.c_str(), out_file.path, sizeof(out_file.path),
-      disk_container::floppy_decompression_threshold, &out_file.is_temporary);
+  const ImageContainerError_e result = image_container_prepare_compressed_path(
+      test_zip.c_str(), out_file.path, sizeof(out_file.path), floppy_threshold,
+      &out_file.is_temporary);
 
-  CHECK(ok == true);
+  CHECK(result == image_container_ok);
   CHECK(out_file.is_temporary == true);
 }
 
@@ -122,11 +126,11 @@ TEST_CASE(
                           zeros.size()));
 
   ScopedExtractedFile_t out_file;
-  const bool ok = disk_container_prepare_compressed_path(
+  const ImageContainerError_e result = image_container_prepare_compressed_path(
       test_zip.c_str(), out_file.path, sizeof(out_file.path),
-      disk_container::harddisk_decompression_threshold, &out_file.is_temporary);
+      harddisk_threshold, &out_file.is_temporary);
 
-  CHECK(ok == true);
+  CHECK(result == image_container_ok);
   CHECK(out_file.is_temporary == true);
 }
 
@@ -141,11 +145,11 @@ TEST_CASE(
                           zeros.size()));
 
   ScopedExtractedFile_t out_file;
-  const bool ok = disk_container_prepare_compressed_path(
-      test_zip.c_str(), out_file.path, sizeof(out_file.path),
-      disk_container::floppy_decompression_threshold, &out_file.is_temporary);
+  const ImageContainerError_e result = image_container_prepare_compressed_path(
+      test_zip.c_str(), out_file.path, sizeof(out_file.path), floppy_threshold,
+      &out_file.is_temporary);
 
-  CHECK(ok == false);
+  CHECK(result == image_container_too_large);
 }
 
 TEST_CASE(
@@ -158,11 +162,11 @@ TEST_CASE(
                           zeros.size()));
 
   ScopedExtractedFile_t out_file;
-  const bool ok = disk_container_prepare_compressed_path(
+  const ImageContainerError_e result = image_container_prepare_compressed_path(
       test_zip.c_str(), out_file.path, sizeof(out_file.path),
-      disk_container::harddisk_decompression_threshold, &out_file.is_temporary);
+      harddisk_threshold, &out_file.is_temporary);
 
-  CHECK(ok == false);
+  CHECK(result == image_container_too_large);
 }
 
 TEST_CASE(
@@ -177,20 +181,21 @@ TEST_CASE(
   // Floppy gate: 4MB -> blocked
   {
     ScopedExtractedFile_t floppy_out;
-    const bool floppy_ok = disk_container_prepare_compressed_path(
-        test_gz.c_str(), floppy_out.path, sizeof(floppy_out.path),
-        disk_container::floppy_decompression_threshold,
-        &floppy_out.is_temporary);
-    CHECK(floppy_ok == false);
+    const ImageContainerError_e floppy_result =
+        image_container_prepare_compressed_path(
+            test_gz.c_str(), floppy_out.path, sizeof(floppy_out.path),
+            floppy_threshold, &floppy_out.is_temporary);
+    CHECK(floppy_result == image_container_too_large);
   }
 
   // Harddisk gate: 32MB -> allowed
   {
     ScopedExtractedFile_t hd_out;
-    const bool hd_ok = disk_container_prepare_compressed_path(
-        test_gz.c_str(), hd_out.path, sizeof(hd_out.path),
-        disk_container::harddisk_decompression_threshold, &hd_out.is_temporary);
-    CHECK(hd_ok == true);
+    const ImageContainerError_e hd_result =
+        image_container_prepare_compressed_path(
+            test_gz.c_str(), hd_out.path, sizeof(hd_out.path),
+            harddisk_threshold, &hd_out.is_temporary);
+    CHECK(hd_result == image_container_ok);
     CHECK(hd_out.is_temporary == true);
   }
 }
@@ -198,20 +203,24 @@ TEST_CASE(
 TEST_CASE("DiskCompression: [PAY-1] The payload name carries the extension") {
   char name[512] = {0};
 
-  CHECK(disk_container_payload_name("/images/game.dsk", name, sizeof(name)));
+  CHECK(image_container_payload_name("/images/game.dsk", name, sizeof(name)) ==
+        image_container_ok);
   CHECK(std::string(name) == "game.dsk");
 
-  CHECK(disk_container_payload_name("/images/game.dsk.gz", name, sizeof(name)));
+  CHECK(image_container_payload_name("/images/game.dsk.gz", name,
+                                     sizeof(name)) == image_container_ok);
   CHECK(std::string(name) == "game.dsk");
 
   TestFixtures::ScopedTempFile_t test_zip(".zip");
   const std::vector<uint8_t> floppy_data(143360, 0xA5);
   REQUIRE(create_test_zip(test_zip.c_str(), "inner.po", floppy_data.data(),
                           floppy_data.size()));
-  CHECK(disk_container_payload_name(test_zip.c_str(), name, sizeof(name)));
+  CHECK(image_container_payload_name(test_zip.c_str(), name, sizeof(name)) ==
+        image_container_ok);
   CHECK(std::string(name) == "inner.po");
 
-  CHECK(disk_container_payload_name(nullptr, name, sizeof(name)) == false);
+  CHECK(image_container_payload_name(nullptr, name, sizeof(name)) ==
+        image_container_invalid_argument);
 }
 
 TEST_CASE(

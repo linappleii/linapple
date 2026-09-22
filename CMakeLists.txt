@@ -553,32 +553,47 @@ endfunction()
 # that carries card code. Hidden visibility keeps the library's symbols out of
 # the executable's dynamic table (it has ENABLE_EXPORTS for the plugins) and
 # out of any plugin's, so two copies can never interpose on each other.
+function(add_media_target target lib)
+    add_library(${target} STATIC ${PERIPHERAL_LIBRARY_${lib}_SOURCES})
+    target_include_directories(${target} PUBLIC ${LINAPPLE_INCLUDES})
+    set_target_properties(${target} PROPERTIES
+        CXX_VISIBILITY_PRESET hidden
+        VISIBILITY_INLINES_HIDDEN ON
+        POSITION_INDEPENDENT_CODE ON)
+    foreach(external IN LISTS PERIPHERAL_LIBRARY_${lib}_EXTERNAL)
+        if(external STREQUAL "ZLIB")
+            target_link_libraries(${target} PUBLIC ZLIB::ZLIB)
+        elseif(external STREQUAL "LIBZIP")
+            target_link_libraries(${target} PUBLIC PkgConfig::LIBZIP)
+        else()
+            message(FATAL_ERROR "Media library ${lib} names an unknown external dependency ${external}")
+        endif()
+    endforeach()
+endfunction()
+
 function(finalize_peripheral_libraries)
     set(media_targets "")
+    set(media_fuzz_targets "")
     set(wanted "${PERIPHERAL_LIBRARIES_WANTED}")
     list(REMOVE_DUPLICATES wanted)
     foreach(lib IN LISTS wanted)
         if(NOT lib)
             continue()
         endif()
-        add_library(media-${lib} STATIC ${PERIPHERAL_LIBRARY_${lib}_SOURCES})
-        target_include_directories(media-${lib} PUBLIC ${LINAPPLE_INCLUDES})
-        set_target_properties(media-${lib} PROPERTIES
-            CXX_VISIBILITY_PRESET hidden
-            VISIBILITY_INLINES_HIDDEN ON
-            POSITION_INDEPENDENT_CODE ON)
-        foreach(external IN LISTS PERIPHERAL_LIBRARY_${lib}_EXTERNAL)
-            if(external STREQUAL "ZLIB")
-                target_link_libraries(media-${lib} PUBLIC ZLIB::ZLIB)
-            elseif(external STREQUAL "LIBZIP")
-                target_link_libraries(media-${lib} PUBLIC PkgConfig::LIBZIP)
-            else()
-                message(FATAL_ERROR "Media library ${lib} names an unknown external dependency ${external}")
-            endif()
-        endforeach()
+        add_media_target(media-${lib} ${lib})
         list(APPEND media_targets media-${lib})
+        # A fuzzer's compile options never reach a library it links, so the
+        # parser the fuzzer exists to exercise would run uninstrumented: no
+        # coverage feedback and no sanitizer inside it. The fuzzers link a
+        # twin built with the instrumentation instead.
+        if(ENABLE_FUZZING)
+            add_media_target(media-${lib}-fuzz ${lib})
+            target_compile_options(media-${lib}-fuzz PRIVATE -fsanitize=fuzzer-no-link,address,undefined)
+            list(APPEND media_fuzz_targets media-${lib}-fuzz)
+        endif()
     endforeach()
     set(MEDIA_TARGETS "${media_targets}" PARENT_SCOPE)
+    set(MEDIA_FUZZ_TARGETS "${media_fuzz_targets}" PARENT_SCOPE)
 endfunction()
 
 # Define all peripherals
@@ -1061,7 +1076,7 @@ if(ENABLE_FUZZING)
         target_compile_definitions(${name} PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF)
         target_compile_options(${name} PRIVATE ${FUZZ_FLAGS})
         target_link_options(${name} PRIVATE ${FUZZ_FLAGS})
-        target_link_libraries(${name} PRIVATE ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads ${MEDIA_TARGETS})
+        target_link_libraries(${name} PRIVATE ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads ${MEDIA_FUZZ_TARGETS})
     endmacro()
 
     add_linapple_fuzzer(fuzz-disk-loader tests/fuzz/fuzz_disk_loader.cpp)
@@ -1082,9 +1097,12 @@ if(ENABLE_FUZZING)
         # clock that calls one hung is three times the budget it was given.
         set(FUZZ_CASE_TIMEOUT 30)
 
+        # libFuzzer writes new inputs only to the first corpus directory, so
+        # the fixtures serve as read-only seeds without a copy of each one.
         add_test(NAME fuzz-disk-loader
                  COMMAND fuzz-disk-loader
                          ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/disk-loader
+                         ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures
                          -dict=${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/dictionaries/disk_formats.dict
                          -max_len=65536
                          -rss_limit_mb=512
@@ -1099,6 +1117,7 @@ if(ENABLE_FUZZING)
         add_test(NAME fuzz-image-container
                  COMMAND fuzz-image-container
                          ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/image-container
+                         ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures
                          -max_len=65536
                          -rss_limit_mb=512
                          -malloc_limit_mb=256

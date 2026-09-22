@@ -11,6 +11,7 @@
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 
+#include "apple2/media/image_container/ImageContainer.h"
 #include "apple2/peripherals/disk/DiskEncoding.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
@@ -145,8 +146,8 @@ TEST_CASE(
   REQUIRE(image[0] == 0x00);
   REQUIRE(image[1] == 0x05);
   REQUIRE(image[122] == 0x00);
-  CHECK(disk_container_detect_macbinary(image.data(), macbinary_header_len,
-                                        static_cast<uint32_t>(image.size())) ==
+  CHECK(image_container_detect_macbinary(image.data(), macbinary_header_len,
+                                         static_cast<uint32_t>(image.size())) ==
         0);
 
   const OpenedImage_t opened(path);
