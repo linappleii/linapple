@@ -998,6 +998,28 @@ done
         set_tests_properties(${DISK_TEST_CASES} PROPERTIES TIMEOUT ${DISK_TEST_TIMEOUT})
     endif()
 
+    # The peripheral dependency rule in AGENTS.md is enforced by these two
+    # greps, which print nothing on a conforming tree. The case is built into
+    # every configuration, cards on or off, because a stray include is a
+    # source fact rather than a run-time one.
+    add_test(NAME test-peripheral-dependency-rule COMMAND sh -c
+    [=[
+violations=$(
+  for d in src/apple2/peripherals/*/; do n=$(basename "$d")
+    grep -rnE '#include\s*"apple2/peripherals/[a-z_]+/' "$d" \
+      | grep -vE "\"apple2/peripherals/$n/"; done
+  grep -rnE '#include\s*"(apple2/peripherals/[a-z_]+/|core/LinAppleCore|frontends/)' \
+    src/apple2/chips src/apple2/media
+)
+if [ -n "$violations" ]; then
+  echo "$violations"
+  exit 1
+fi
+]=]
+            sh
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+    set_tests_properties(test-peripheral-dependency-rule PROPERTIES TIMEOUT 5)
+
     if(FRONTEND_LOWER STREQUAL "all")
         set(CPU_TEST_TARGET linapple-sdl3)
     else()
