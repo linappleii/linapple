@@ -39,22 +39,11 @@ auto nib_probe(const uint8_t* header_data, size_t header_size,
 
 auto nib_open(const char* path, uint32_t file_offset, bool read_only,
               void** out_instance) -> DiskError_e {
-  if (path == nullptr || out_instance == nullptr) {
-    return disk_err_io;
-  }
-  auto* image_ptr =
-      nibble_disk_image_open(path, file_offset, nibbles_per_track, read_only);
-  if (image_ptr == nullptr) {
-    return disk_err_io;
-  }
-  *out_instance = image_ptr;
-  return disk_err_none;
+  return nibble_disk_image_open(path, file_offset, nibbles_per_track, read_only,
+                                out_instance);
 }
 
 auto nib_create(const char* path) -> DiskError_e {
-  if (path == nullptr) {
-    return disk_err_io;
-  }
   return nibble_disk_image_create(path,
                                   static_cast<uint32_t>(physical::disk_size));
 }

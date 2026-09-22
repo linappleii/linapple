@@ -17,10 +17,15 @@ extern "C" {
 
 typedef struct NibbleDiskImage_t NibbleDiskImage_t;
 
-NibbleDiskImage_t* nibble_disk_image_open(const char* path,
-                                          uint32_t file_offset,
-                                          uint32_t nibbles_per_track,
-                                          bool read_only);
+/* Opens the image at file_offset within path, its tracks nibbles_per_track
+   bytes each, and hands the instance back through out_instance, which is
+   nulled first. A null argument is disk_err_invalid_argument, a path that
+   does not exist disk_err_file_not_found, any other failure to open or
+   measure the file disk_err_io, and a file shorter than file_offset
+   disk_err_corrupt. */
+DiskError_e nibble_disk_image_open(const char* path, uint32_t file_offset,
+                                   uint32_t nibbles_per_track, bool read_only,
+                                   void** out_instance);
 
 /* These four carry the DiskFormatDriver_t signatures, instance being the
    pointer open handed out, so a driver descriptor names them directly. Open

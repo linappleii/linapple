@@ -243,7 +243,7 @@ auto sector_disk_image_write_track_bits(void* instance, uint32_t quarter_track,
 
 auto sector_disk_image_create(const char* path) -> DiskError_e {
   if (path == nullptr) {
-    return disk_err_io;
+    return disk_err_invalid_argument;
   }
 
   FilePtr_t file{fopen(path, "wb"), fclose};

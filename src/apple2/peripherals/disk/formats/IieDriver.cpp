@@ -2,6 +2,7 @@
 #include "apple2/peripherals/disk/formats/IieDriver.h"
 
 #include <array>
+#include <cerrno>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -130,8 +131,12 @@ auto iie_probe(const uint8_t* header_data, size_t header_size,
 // offset caching is required for constant-time track seeking.
 auto iie_open(const char* path, uint32_t file_offset, bool read_only,
               void** out_instance) -> DiskError_e {
-  if (path == nullptr || out_instance == nullptr) {
-    return disk_err_io;
+  if (out_instance == nullptr) {
+    return disk_err_invalid_argument;
+  }
+  *out_instance = nullptr;
+  if (path == nullptr) {
+    return disk_err_invalid_argument;
   }
 
   auto instance_ptr = std::unique_ptr<IieInstance_t>(new IieInstance_t());
@@ -147,7 +152,7 @@ auto iie_open(const char* path, uint32_t file_offset, bool read_only,
   }
 
   if (instance_ptr->file == nullptr) {
-    return disk_err_io;
+    return (errno == ENOENT) ? disk_err_file_not_found : disk_err_io;
   }
 
   const int64_t total_file_size = Path::file_size(instance_ptr->file.get());

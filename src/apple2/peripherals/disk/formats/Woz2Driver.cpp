@@ -2,6 +2,7 @@
 #include "apple2/peripherals/disk/formats/Woz2Driver.h"
 
 #include <array>
+#include <cerrno>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -65,7 +66,8 @@ static auto woz2_probe(const uint8_t* header_data, size_t header_size,
     -> DiskProbe_e {
   (void)ext_hint;
 
-  if (header_size < woz::signature_len || file_size < woz2::header_size) {
+  if (header_data == nullptr || header_size < woz::signature_len ||
+      file_size < woz2::header_size) {
     return disk_probe_no;
   }
 
@@ -78,8 +80,12 @@ static auto woz2_probe(const uint8_t* header_data, size_t header_size,
 
 static auto woz2_open(const char* path, uint32_t file_offset, bool read_only,
                       void** out_instance) -> DiskError_e {
-  if (path == nullptr || out_instance == nullptr) {
-    return disk_err_io;
+  if (out_instance == nullptr) {
+    return disk_err_invalid_argument;
+  }
+  *out_instance = nullptr;
+  if (path == nullptr) {
+    return disk_err_invalid_argument;
   }
   auto wi_ptr = std::unique_ptr<WozInstance_t>(new WozInstance_t());
 
@@ -93,7 +99,7 @@ static auto woz2_open(const char* path, uint32_t file_offset, bool read_only,
     wi_ptr->os_readonly = true;
   }
   if (wi_ptr->file == nullptr) {
-    return disk_err_io;
+    return (errno == ENOENT) ? disk_err_file_not_found : disk_err_io;
   }
 
   if (fseek(wi_ptr->file.get(), static_cast<long>(file_offset), SEEK_SET) !=

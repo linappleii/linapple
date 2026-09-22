@@ -16,6 +16,7 @@
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskEncoding.h"
 #include "apple2/peripherals/disk/DiskError.h"
+#include "apple2/peripherals/disk/DiskLoader.h"
 #include "apple2/peripherals/disk/formats/DoDriver.h"
 #include "apple2/peripherals/disk/formats/IieDriver.h"
 #include "apple2/peripherals/disk/formats/Nb2Driver.h"
@@ -866,4 +867,34 @@ TEST_CASE("DiskDrivers: [DRV-18] A track wider than the buffer is refused") {
   CHECK(bits[0] == 0xC3);
 
   g_woz2_driver.close(instance);
+}
+
+TEST_CASE("DiskDrivers: [DRV-19] Every driver answers a null argument as one") {
+  disk_loader_reset();
+  const uint32_t count = disk_loader_driver_count();
+  CHECK(count == 7);
+
+  for (uint32_t i = 0; i < count; ++i) {
+    const DiskFormatDriver_t* driver = disk_loader_driver_at(i);
+    REQUIRE(driver != nullptr);
+    INFO(driver->name);
+
+    void* instance = reinterpret_cast<void*>(1);
+    CHECK(driver->open(nullptr, 0, false, &instance) ==
+          disk_err_invalid_argument);
+    CHECK(instance == nullptr);
+    CHECK(driver->open("/tmp", 0, false, nullptr) == disk_err_invalid_argument);
+
+    instance = reinterpret_cast<void*>(1);
+    CHECK(driver->open("/nonexistent_dir_12345/missing.img", 0, false,
+                       &instance) == disk_err_file_not_found);
+    CHECK(instance == nullptr);
+
+    if (driver->create != nullptr) {
+      CHECK(driver->create(nullptr) == disk_err_invalid_argument);
+    }
+
+    // The loader never hands a probe a null window, but a direct caller may.
+    CHECK(driver->probe(nullptr, 80 * 1024, 143360, "") == disk_probe_no);
+  }
 }

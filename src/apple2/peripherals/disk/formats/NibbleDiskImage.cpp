@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cerrno>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -49,9 +50,14 @@ struct NibbleDiskImage_t {
 
 extern "C" auto nibble_disk_image_open(const char* path, uint32_t file_offset,
                                        uint32_t nibbles_per_track,
-                                       bool read_only) -> NibbleDiskImage_t* {
+                                       bool read_only, void** out_instance)
+    -> DiskError_e {
+  if (out_instance == nullptr) {
+    return disk_err_invalid_argument;
+  }
+  *out_instance = nullptr;
   if (path == nullptr) {
-    return nullptr;
+    return disk_err_invalid_argument;
   }
 
   auto image_ptr = std::unique_ptr<NibbleDiskImage_t>(new NibbleDiskImage_t());
@@ -67,12 +73,15 @@ extern "C" auto nibble_disk_image_open(const char* path, uint32_t file_offset,
   }
 
   if (image_ptr->file == nullptr) {
-    return nullptr;
+    return (errno == ENOENT) ? disk_err_file_not_found : disk_err_io;
   }
 
   const int64_t total_size = Path::file_size(image_ptr->file.get());
-  if (total_size < 0 || static_cast<uint64_t>(total_size) < file_offset) {
-    return nullptr;
+  if (total_size < 0) {
+    return disk_err_io;
+  }
+  if (static_cast<uint64_t>(total_size) < file_offset) {
+    return disk_err_corrupt;
   }
 
   image_ptr->data_offset = file_offset;
@@ -83,7 +92,8 @@ extern "C" auto nibble_disk_image_open(const char* path, uint32_t file_offset,
   image_ptr->track_count = static_cast<uint32_t>(
       (recorded + nibbles_per_track - 1) / nibbles_per_track);
 
-  return image_ptr.release();
+  *out_instance = image_ptr.release();
+  return disk_err_none;
 }
 
 extern "C" auto nibble_disk_image_close(void* instance) -> void {
@@ -199,7 +209,7 @@ extern "C" auto nibble_disk_image_write_track_bits(void* instance,
 extern "C" auto nibble_disk_image_create(const char* path, uint32_t total_size)
     -> DiskError_e {
   if (path == nullptr) {
-    return disk_err_io;
+    return disk_err_invalid_argument;
   }
 
   FilePtr_t file{fopen(path, "wb"), fclose};
