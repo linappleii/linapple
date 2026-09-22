@@ -28,6 +28,7 @@ constexpr char signature[] = "WOZ2\xFF\n\r\n";
 constexpr int header_size = 1536;
 constexpr int data_block_size = 512;
 constexpr int trks_entry_size = 8;
+// Optimal Bit Timing, in 125 ns units, sits at byte 39 of INFO (WOZ 2.0).
 constexpr int info_optimal_bit_timing_offset = 39;
 constexpr uint8_t info_version_2_0 = 2;
 constexpr uint8_t info_version_2_1 = 3;

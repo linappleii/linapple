@@ -44,7 +44,8 @@ enum {
   /* The wrapper a MacBinary II or III file puts before the data fork. */
   image_container_macbinary_header_len = 128,
   /* Extraction is refused once the output passes the caller's threshold AND
-     exceeds this many times the archive's size. The threshold lets a
+     exceeds this many times the archive's size. When the archive's size
+     cannot be read, the threshold alone is the bound. The threshold lets a
      zero-filled blank of any plausible image size through; past it the ratio
      bounds the output at 100 x the archive. That product is the deliberate
      ceiling on what one archive can put in $TMPDIR; there is no further cap.

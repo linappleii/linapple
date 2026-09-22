@@ -492,7 +492,7 @@ TEST_CASE("DiskABI: [ABI-12] Query Sizing Probe and Status Query") {
   CHECK(size == sizeof(DiskStatus_t));
 
   // Sizing probe for disk_query_supported_extensions answers the list's own
-  // length with its NUL, not a fixed ceiling
+  // length with its NUL, not a fixed ceiling.
   size = 0;
   status = descriptor->query(instance, disk_query_supported_extensions, nullptr,
                              &size);

@@ -631,7 +631,6 @@ TEST_CASE(
   CHECK(decode_track(read_track(g_po_driver, instance, 33 * 4), 33,
                      disk_sector_order_prodos) == file_track(before, 0, 33));
 
-  // Writing the last track back completes the image.
   const SynthesisedTrack_t written =
       synthesise_track(last, disk_sector_order_prodos);
   REQUIRE(g_po_driver.write_track_bits(

@@ -28,7 +28,8 @@
 namespace macbinary {
 namespace {
 // Header layout per the MacBinary II standard (1987) and the MacBinary III
-// standard (1996). The zero-fill bytes are the ones the standard says a reader
+// standard (1996). Byte 1 is the filename length, which the standard bounds
+// at 1 to 63. The zero-fill bytes are the ones the standard says a reader
 // must check; 122 carries the writer's version (129 = II, 130 = III) and 123
 // the minimum version a reader needs (129 for both), and 124-125 hold the
 // CRC-16 of bytes 0-123.
@@ -102,7 +103,6 @@ auto get_file_size(const char* path) -> size_t {
   return 0;
 }
 
-// Whether the bytes written so far have passed the bound the header states.
 auto output_exceeds_bound(size_t total_written, size_t compressed_size,
                           size_t uncompressed_threshold) -> bool {
   return total_written > uncompressed_threshold &&
@@ -263,7 +263,8 @@ auto decompress_zip(const char* compressed_path, FILE* output_file,
 // MacBinary header that carried their resource fork and Finder info. The
 // version bytes alone are a heuristic; the standard's own test is the CRC over
 // the header, so both are required. MacBinary I has no CRC and is not
-// recognised: its only marks (zero at 0, 74 and 82) occur in ordinary images.
+// recognised: its only marks (zero at 0, 74 and 82, the test the MacBinary II
+// standard gives for reading a MacBinary I file) occur in ordinary images.
 extern "C" auto image_container_detect_macbinary(const uint8_t* header_data,
                                                  size_t header_len,
                                                  uint32_t file_size)

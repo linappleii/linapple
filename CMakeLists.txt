@@ -1210,7 +1210,7 @@ if(ENABLE_FUZZING)
             set_tests_properties(fuzz-disk-controller PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
 
             # One control byte and then one nibble per byte, so this covers a
-            # track two thirds the length of a real one.
+            # track three fifths the length of a real one.
             add_test(NAME fuzz-disk-adapter
                      COMMAND fuzz-disk-adapter
                              ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/disk-adapter

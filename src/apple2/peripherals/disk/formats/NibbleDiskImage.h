@@ -3,7 +3,7 @@
 
 // NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using)
 // Justification: a C99-compatible ABI for the nibble-image backends (NIB,
-// NB2), so they share I/O and container handling.
+// NB2), so they share the track I/O and differ only in their slot size.
 
 #include <stdbool.h>
 #include <stddef.h>

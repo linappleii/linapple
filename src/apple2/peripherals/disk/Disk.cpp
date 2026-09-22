@@ -152,7 +152,7 @@ auto get_active_drive(DiskPeripheral_t* dp) -> Disk_t& {
   return dp->drives[index];
 }
 
-// Why: The 9334 latches the phase bits, but the coil drivers in the drive
+// The 9334 latches the phase bits, but the coil drivers in the drive
 // are powered from the enable line the 556 holds up, so a latched bit only
 // pulls on the cog while that line is asserted.
 auto energised_magnets(DiskPeripheral_t* dp) -> uint16_t {
@@ -186,7 +186,7 @@ auto read_floating_bus(void* instance, uint32_t executed_cycles) -> uint8_t {
   return dp->host->ReadFloatingBus(executed_cycles);
 }
 
-// Why: Three layers decide whether the head may write: the user's notch on
+// Three layers decide whether the head may write: the user's notch on
 // the drive, what the format can express, and what the driver knows about the
 // medium and the file under it.
 auto is_disk_write_protected(const DiskPeripheral_t* disk_peripheral,
@@ -306,7 +306,7 @@ auto write_track_to_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
   }
 }
 
-// Why: The spindle does not stop for the head, so a track change lands the
+// The spindle does not stop for the head, so a track change lands the
 // head at the same angle rather than at the index hole. Tracks recorded at
 // different lengths hold the angle as a fraction of a revolution, and the
 // arm needs a few cells to stop ringing before the amplifier can lock -
@@ -421,7 +421,7 @@ auto sync_drive_motor_state(DiskPeripheral_t* disk_peripheral) -> void {
   }
   const bool now_spinning = (drive.motor_enable_cycles > 0);
 
-  // Why: The enable coming up powers the coil drivers, so whatever phase bits
+  // The enable coming up powers the coil drivers, so whatever phase bits
   // the 9334 held while the drive was dark energise at once and pull the cog.
   if (!was_spinning && now_spinning) {
     settle_head(disk_peripheral);
@@ -476,7 +476,7 @@ auto disk_io_control_motor(void* instance, uint16_t, uint16_t memory_address,
 
   disk_peripheral->is_motor_on = (memory_address & 0x01) != 0;
 
-  // Why: DRIVES OFF leaves the 9334's phase bits latched; only RESET' clears
+  // DRIVES OFF leaves the 9334's phase bits latched; only RESET' clears
   // them. The coil drivers run off the 556's enable, so the magnets hold for
   // the motor-off delay and then drop together when it lapses.
   sync_drive_motor_state(disk_peripheral);
@@ -484,7 +484,7 @@ auto disk_io_control_motor(void* instance, uint16_t, uint16_t memory_address,
   return read_floating_bus(instance, executed_cycles);
 }
 
-// Why: A track change is where the image gets the chance to take what the
+// A track change is where the image gets the chance to take what the
 // head wrote, because the buffer only holds one track at a time.
 auto move_head_to(DiskPeripheral_t* disk_peripheral, uint32_t quarter_track)
     -> void {
@@ -499,7 +499,7 @@ auto move_head_to(DiskPeripheral_t* disk_peripheral, uint32_t quarter_track)
   drive.is_data_loaded = false;
 }
 
-// Why: The cog the head rides on is pulled by whichever magnets are live.
+// The cog the head rides on is pulled by whichever magnets are live.
 // Each one draws it onto its own half track; the magnet directly across from
 // the cog pulls it in no direction at all. Two live magnets share the cog
 // between them, which is how the head comes to rest on an odd quarter track.
@@ -555,7 +555,7 @@ auto disk_io_control_stepper(void* instance, uint16_t, uint16_t memory_address,
     disk_peripheral->stepper_phase_mask &= static_cast<uint16_t>(~strobe_bit);
   }
 
-  // Why: The magnets hang off the drive enable line, so a phase strobe with
+  // The magnets hang off the drive enable line, so a phase strobe with
   // the motor timer expired energises nothing and the head stays put.
   if (drive.motor_enable_cycles == 0) {
     return read_floating_bus(instance, executed_cycles);
@@ -564,7 +564,7 @@ auto disk_io_control_stepper(void* instance, uint16_t, uint16_t memory_address,
   const uint32_t before_settling = drive.quarter_track;
   settle_head(disk_peripheral);
 
-  // Why: A coil needs current for longer than this to shift the cog, so a
+  // A coil needs current for longer than this to shift the cog, so a
   // pair of magnets dropped in the same breath leaves the head between them
   // rather than letting it chase the one that outlived the other.
   if (magnet_is_on) {
@@ -623,7 +623,7 @@ auto p6_opcode(uint8_t address) -> uint8_t { return g_rom_disk2_p6[address]; }
 auto p6_opcode(uint8_t) -> uint8_t { return 0x08; }
 #endif
 
-// Why: With no flux under it the MC3470 amplifies head noise, so it hands
+// With no flux under it the MC3470 amplifies head noise, so it hands
 // the sequencer a pulse on about thirty per cent of its steps, 77 in 256,
 // dense enough that RWTS sees bytes instead of silence. The generator
 // belongs to the card instance rather than to the process, so two cards
@@ -684,7 +684,7 @@ auto advance_medium_one_step(DiskPeripheral_t* disk_peripheral, Disk_t* drive,
   return pulse;
 }
 
-// Why: The P6 is a truth table addressed by the state it is in, the read
+// The P6 is a truth table addressed by the state it is in, the read
 // pulse, the two 9334 mode bits and the data register's top bit. The byte it
 // answers with carries the next state scattered over four address lines and,
 // in its low nibble, what the 74LS323 must do with the byte it holds.
@@ -750,7 +750,7 @@ auto run_sequencer_cycles(DiskPeripheral_t* disk_peripheral, uint32_t cycles)
 
   auto& drive = get_active_drive(disk_peripheral);
 
-  // Why: With the motor-enable line down the sequencer has no clock, so the
+  // With the motor-enable line down the sequencer has no clock, so the
   // data register keeps whatever it was holding when the drive stopped.
   if (drive.motor_enable_cycles == 0) {
     return;
@@ -770,7 +770,7 @@ auto run_sequencer_cycles(DiskPeripheral_t* disk_peripheral, uint32_t cycles)
   }
 }
 
-// Why: A read answers with what the hardware holds at that instruction, so
+// A read answers with what the hardware holds at that instruction, so
 // the medium and the sequencer are brought up to the cycle the 6502 is on
 // before the access is served; the mark never moves backwards within a
 // slice, and think finishes it.
@@ -828,7 +828,7 @@ auto update_drive_physics(DiskPeripheral_t* disk_peripheral, Disk_t* disk_ptr,
   if (disk_ptr->motor_enable_cycles > 0 && !disk_peripheral->is_motor_on) {
     if (elapsed_cycles >= disk_ptr->motor_enable_cycles) {
       disk_ptr->motor_enable_cycles = 0;
-      // Why: The enable lapsing cuts every coil at once, so no magnet
+      // The enable lapsing cuts every coil at once, so no magnet
       // outlives another for the head to chase and there is no half-made
       // move left to take back.
       if (is_active_drive) {

@@ -32,7 +32,8 @@ static int g_loader_ref_count = 0;
 
 constexpr size_t load_path_len = 512;
 
-// A ProDOS volume tops out at 65,535 blocks, just under 32 MiB, so an all-zero
+// A ProDOS volume tops out at 65,535 blocks, just under 32 MiB, because its
+// block count is a 16-bit field (ProDOS 8 Technical Reference), so an all-zero
 // blank of the largest volume passes on size alone and only an archive that
 // claims more has to satisfy the library's ratio as well.
 constexpr size_t harddisk_decompression_threshold = 32 * 1024 * 1024;

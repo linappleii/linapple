@@ -50,9 +50,6 @@ constexpr uint8_t variant_max_legacy = 2;
 constexpr uint8_t variant_max_total = 3;
 constexpr uint8_t sector_not_found = 0xFF;
 
-// Compile-time guarantee: The SimSystem //e header map offsets for all tracks
-// must strictly reside within the fixed header size, independent of runtime
-// disk geometry or stepper phase constants.
 static_assert(nibble_map_offset + ((tracks - 1) * header_map_stride) +
                       sizeof(uint16_t) <=
                   static_cast<size_t>(header_size),

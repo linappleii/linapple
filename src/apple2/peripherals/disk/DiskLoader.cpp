@@ -134,9 +134,9 @@ auto insert_by_name(std::vector<const DiskFormatDriver_t*>& drivers,
 
 constexpr size_t path_max_len = disk_path_max;
 
-// Why: 80 KB covers the DOS 3.3 Track 17 VTOC/catalog chain (73.5 KB) +
-// optional MacBinary header (128 bytes) so sector image probing can inspect
-// filesystem signatures definitively.
+// 80 KiB holds track 17, where the DOS 3.3 catalog ends at 73,728 bytes, even
+// behind a 128-byte MacBinary wrapper. A ProDOS directory that chains past
+// the window is not seen; the probe then answers possible, never wrong.
 constexpr size_t probe_header_size = 80 * 1024;
 constexpr size_t extension_hint_size = 16;
 
@@ -166,9 +166,6 @@ auto container_error_to_disk_error(ImageContainerError_e error) -> DiskError_e {
   }
 }
 
-/**
- * @brief Ensures a temporary file is unlinked when it goes out of scope.
- */
 struct TemporaryFileGuard {
   char path[path_max_len];
   explicit TemporaryFileGuard(const char* p) {
@@ -183,13 +180,10 @@ struct TemporaryFileGuard {
       unlink(path);
     }
   }
-  // Not copyable or movable
   TemporaryFileGuard(const TemporaryFileGuard&) = delete;
   auto operator=(const TemporaryFileGuard&) -> TemporaryFileGuard& = delete;
 };
 
-// Why: Scans registered drivers to find the one that definitively or possibly
-// claims the disk image based on header content and extension.
 auto find_best_driver(const uint8_t* header_ptr, size_t header_size,
                       uint32_t file_size, const char* payload_name)
     -> const DiskFormatDriver_t* {

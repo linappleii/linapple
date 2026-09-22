@@ -256,7 +256,6 @@ TEST_CASE("DiskNibble: [NIB-W2] a shorter track rewrites the whole slot") {
   CHECK(std::vector<uint8_t>(slot.begin() + 6208, slot.end()) ==
         std::vector<uint8_t>(448, 0xFF));
 
-  // Over-long: one nibble past the slot, and well past it.
   const std::vector<uint8_t> one_over(6657, 0xAA);
   CHECK(write_nibbles(g_nib_driver, instance, 3 * 4, one_over) ==
         disk_err_unsupported);

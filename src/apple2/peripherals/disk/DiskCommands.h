@@ -14,10 +14,9 @@ extern "C" {
 
 struct DiskFormatDriver_t;
 
-// Default expansion slot for the Disk II controller card.
 enum { disk_default_slot = 6 };
 
-// Binary save-state format version. Increment when DiskSavedState_t changes.
+// Bump when DiskSavedState_t changes.
 enum { disk_state_version = 1 };
 
 typedef enum { disk_drive_0 = 0, disk_drive_1 = 1 } DiskDrive_t;
@@ -49,8 +48,6 @@ enum {
   disk_status_path_max = disk_path_max
 };
 
-// Bitmask flags — values may be combined with | to represent concurrent states
-// (e.g. disk_status_read | disk_status_prot for a protected spinning drive).
 typedef enum {
   disk_status_off = 0x00,
   disk_status_read = 0x01,
@@ -108,8 +105,7 @@ typedef struct {
 } DiskSetProtectCmd_t;
 
 // Uses natural alignment to ensure a deterministic binary layout without
-// reliance on non-standard packing directives. Large types are placed at the
-// start of the structure.
+// reliance on non-standard packing directives.
 typedef struct {
   int32_t drive0_last_error;
   int32_t drive1_last_error;

@@ -322,8 +322,9 @@ auto sector_disk_image_create(const char* path) -> DiskError_e {
 namespace {
 // DOS logical sector s of a track shares its physical slot with ProDOS
 // logical sector 15 - s for s = 1..14, and with itself for 0 and 15, so a
-// ProDOS-order file keeps DOS's sectors at those indices (Beneath Apple DOS
-// ch. 3, the two skewing tables).
+// ProDOS-order file keeps DOS's sectors at those indices (the DOS 3.3 skew
+// from Beneath Apple DOS ch. 3; the ProDOS skew, which is Pascal's, from the
+// ProDOS 8 Technical Reference).
 auto dos_sector_offset(bool is_dos_order, int track, int sector) -> size_t {
   const int last_sector = sectors_per_track - 1;
   const bool shares_index =

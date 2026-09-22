@@ -37,6 +37,8 @@ constexpr int slot_6 = 6;
 constexpr size_t woz_header_size = 1536;
 constexpr size_t woz_data_block_size = 512;
 
+// Chunk offsets are the WOZ 2.0 fixed layout: INFO at 12, TMAP at 80, TRKS at
+// 248, first data block 3.
 auto write_zero_track_woz2(const char* path, uint16_t block_count,
                            uint32_t bit_count) -> void {
   FilePtr_t f(fopen(path, "wb"), fclose);
@@ -45,24 +47,20 @@ auto write_zero_track_woz2(const char* path, uint16_t block_count,
   std::vector<uint8_t> hdr(woz_header_size, 0);
   std::memcpy(hdr.data(), "WOZ2\xFF\n\r\n", 8);
 
-  // INFO chunk: size 60, version 2, disk_type 1 (5.25")
   std::memcpy(hdr.data() + 12, "INFO", 4);
   hdr[16] = 60;
   hdr[20] = 2;
   hdr[21] = 1;
 
-  // TMAP chunk: size 160, entry 0 -> track 0 uses trks_index 0
   std::memcpy(hdr.data() + 80, "TMAP", 4);
   hdr[84] = 160;
   std::memset(hdr.data() + 88, 0xFF, 160);
   hdr[88] = 0;
 
-  // TRKS chunk: size 1280 (0x0500)
   std::memcpy(hdr.data() + 248, "TRKS", 4);
   hdr[252] = 0x00;
   hdr[253] = 0x05;
 
-  // TRKS entry 0: starting_block 3, then the caller's block and bit counts
   hdr[256] = 3;
   hdr[257] = 0;
   hdr[258] = static_cast<uint8_t>(block_count & 0xFF);
@@ -420,6 +418,10 @@ TEST_CASE("DiskWOZ: a track spanning one block too many is unsupported") {
 }
 
 namespace {
+// 0xCBF43926 is the CRC-32 check value, the CRC of the ASCII digits 123456789
+// (CRC-32/ISO-HDLC, the one zlib computes). 0x710E9D2A is zlib's crc32 of
+// minimal-track.woz from byte 12 on, as build_fixtures.pl's woz_with_crc
+// stores it in the header.
 constexpr uint32_t crc32_check_value = 0xCBF43926;
 constexpr uint32_t track_fixture_crc32 = 0x710E9D2A;
 constexpr size_t woz_file_header_size = 12;

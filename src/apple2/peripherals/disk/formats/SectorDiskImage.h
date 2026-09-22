@@ -20,8 +20,11 @@ typedef struct SectorDiskImage_t SectorDiskImage_t;
 
 /* The largest file the sector family opens: a 35-track image of 143,360 bytes
    behind a 128-byte wrapper. Every size the probe admits is that image with
-   up to 255 bytes missing from its last sector or up to 128 following it, and
-   a file above this is disk_err_unsupported before anything is allocated. */
+   up to 255 bytes missing from its last sector, up to four bytes after it, or
+   exactly 43 or 128 after it: the sizes AppleWin's DoDetect and PoDetect
+   admit, 128 for a MacBinary wrapper the image then reads shifted by, 43 for
+   a reason the 2007 import never recorded. A file above this is
+   disk_err_unsupported before anything is allocated. */
 enum { sector_image_max_bytes = 143488 };
 
 /* A track as the sector family stores it: sixteen 256-byte sectors. */

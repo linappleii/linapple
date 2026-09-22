@@ -16,9 +16,10 @@ extern "C" {
 
 enum { disk_format_abi_version = 0 };
 
-/* The longest medium a driver may hand over. A synthesised track is at worst
-   6656 nibbles at ten cells each; a WOZ 5.25" track is at most 53,248
-   (WOZ 2.0, TRKS). */
+/* The longest medium a driver may hand over: seventeen 512-byte WOZ TRKS
+   blocks, 17 x 512 x 8. A synthesised track is at worst 6656 nibbles at ten
+   cells each, 66,560; the longest 5.25" track the WOZ 2.0 reference cites
+   (TRKS) is 6,680 bytes, fourteen blocks, so seventeen leaves headroom. */
 enum { max_track_bits = 69632 };
 
 /* Cell time in the WOZ INFO unit of 125 ns: 32 is the nominal four
@@ -42,17 +43,10 @@ typedef enum {
   disk_probe_definite = 2
 } DiskProbe_e;
 
-/**
- * @brief Domain: Disk Format Driver ABI
- *
- * Defines the contract for pluggable disk image handlers. Drivers provide
- * probing, lifecycle management, and track-level I/O.
- *
- * The unit of exchange is the medium as the head sees it: cells packed eight
- * to a byte, the first cell in the most significant bit of byte zero. How
- * those cells group into bytes is the controller's reading of them, not the
- * driver's.
- */
+/* The unit of exchange is the medium as the head sees it: cells packed eight
+   to a byte, the first cell in the most significant bit of byte zero. How
+   those cells group into bytes is the controller's reading of them, not the
+   driver's. */
 typedef struct DiskFormatDriver_t {
   int abi_version;
   uint32_t capabilities;
