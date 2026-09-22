@@ -3,3 +3,8 @@
 /.github        export-ignore
 .gitignore      export-ignore
 .gitattributes  export-ignore
+
+# Disk fixtures: git sniffs minimal.nib and minimal.nb2 as text
+tests/fixtures/*            binary
+tests/fixtures/*.pl         !diff !merge !text
+tests/fixtures/*SHA1SUMS    !diff !merge !text
