@@ -131,11 +131,16 @@ TEST_CASE("DiskDrivers: [DRV-01] DO Driver Probing") {
 TEST_CASE("DiskDrivers: [DRV-02] PO Driver Probing") {
   std::vector<uint8_t> buffer(143360, 0);
   // The volume directory key block is block 2, at 2 * 512, and opens with
-  // its previous (0) and next (3) block links.
+  // its previous (0) and next (3) block links; block 3 links back to 2 and
+  // ends the chain.
   buffer[1024] = 0;
   buffer[1025] = 0;
   buffer[1026] = 3;
   buffer[1027] = 0;
+  buffer[1536] = 2;
+  buffer[1537] = 0;
+  buffer[1538] = 0;
+  buffer[1539] = 0;
 
   CHECK(g_po_driver.probe(buffer.data(), buffer.size(), 143360, ".po") ==
         disk_probe_definite);

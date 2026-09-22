@@ -206,3 +206,106 @@ TEST_CASE("DiskSector: [PO-2] a DOS 3.3 volume still probes definite as DOS") {
   CHECK(std::string(driver->name) == "DOS Order");
   driver->close(instance);
 }
+
+namespace {
+
+// A ProDOS volume imaged in DOS order, shaped like the repository's ProDOS
+// 2.4.2 disk: a two-block directory with block 2 at DOS sector $B (prev 0,
+// next 3) and block 3 at DOS sector $9 (prev 2, next 0).
+auto dos_order_prodos_image() -> std::vector<uint8_t> {
+  std::vector<uint8_t> image(143360, 0);
+  image[0xB00] = 0;
+  image[0xB01] = 0;
+  image[0xB02] = 3;
+  image[0xB03] = 0;
+  image[0x900] = 2;
+  image[0x901] = 0;
+  image[0x902] = 0;
+  image[0x903] = 0;
+  return image;
+}
+
+}  // namespace
+
+TEST_CASE("DiskSector: [DO-2] a ProDOS volume in DOS order probes definite") {
+  std::vector<uint8_t> image = dos_order_prodos_image();
+  const auto size = static_cast<uint32_t>(image.size());
+
+  CHECK(g_do_driver.probe(image.data(), image.size(), size, ".dsk") ==
+        disk_probe_definite);
+  CHECK(g_po_driver.probe(image.data(), image.size(), size, "") ==
+        disk_probe_possible);
+
+  // A second block whose back link names the wrong predecessor breaks the
+  // chain, and the order falls back to a guess.
+  image[0x900] = 5;
+  CHECK(g_do_driver.probe(image.data(), image.size(), size, ".dsk") ==
+        disk_probe_possible);
+  image[0x900] = 2;
+
+  // A key block with no successor is not a directory either.
+  image[0xB02] = 0;
+  CHECK(g_do_driver.probe(image.data(), image.size(), size, ".dsk") ==
+        disk_probe_possible);
+  image[0xB02] = 3;
+
+  auto file = TestFixtures::create_ephemeral_blank("prodos.dsk", 0);
+  write_file(file.path(), image);
+  disk_loader_reset();
+  const DiskFormatDriver_t* driver = nullptr;
+  void* instance = nullptr;
+  REQUIRE(disk_loader_open(file.c_str(), &driver, &instance) == disk_err_none);
+  REQUIRE(driver != nullptr);
+  CHECK(std::string(driver->name) == "DOS Order");
+  driver->close(instance);
+}
+
+TEST_CASE(
+    "DiskSector: [PO-3] a ProDOS-order volume named .dsk still probes "
+    "ProDOS") {
+  auto source = TestFixtures::create_ephemeral("minimal.po");
+  const std::vector<uint8_t> bytes = read_file(source.path());
+  const auto size = static_cast<uint32_t>(bytes.size());
+  auto renamed = TestFixtures::create_ephemeral_blank("renamed.dsk", 0);
+  write_file(renamed.path(), bytes);
+
+  CHECK(g_po_driver.probe(bytes.data(), bytes.size(), size, ".dsk") ==
+        disk_probe_definite);
+  CHECK(g_do_driver.probe(bytes.data(), bytes.size(), size, ".dsk") ==
+        disk_probe_possible);
+
+  disk_loader_reset();
+  const DiskFormatDriver_t* driver = nullptr;
+  void* instance = nullptr;
+  REQUIRE(disk_loader_open(renamed.c_str(), &driver, &instance) ==
+          disk_err_none);
+  REQUIRE(driver != nullptr);
+  CHECK(std::string(driver->name) == "ProDOS Order");
+
+  // Track 1 physical sector 1 carries file sector 8 in ProDOS order, so the
+  // pattern byte 0x18 says the interleave came from the ProDOS table.
+  const TrackBits_t track = read_track(*driver, instance, 1 * 4);
+  const std::vector<uint8_t> sectors =
+      decode_track(track, 1, disk_sector_order_prodos);
+  CHECK(sectors[8 * sector_size] == 0x18);
+  driver->close(instance);
+}
+
+TEST_CASE(
+    "DiskSector: [PO-4] a DOS 3.3 catalog in ProDOS order probes "
+    "definite") {
+  std::vector<uint8_t> image(143360, 0);
+  // Catalog sector s links to s - 1; in a ProDOS-order file DOS sector s
+  // sits at file sector 15 - s for s = 1..14 and at 15 for s = 15.
+  for (int sector = 1; sector <= 14; ++sector) {
+    image[0x11000 + ((15 - sector) * 0x100) + 2] =
+        static_cast<uint8_t>(sector - 1);
+  }
+  image[0x11000 + (15 * 0x100) + 2] = 14;
+  const auto size = static_cast<uint32_t>(image.size());
+
+  CHECK(g_po_driver.probe(image.data(), image.size(), size, ".po") ==
+        disk_probe_definite);
+  CHECK(g_do_driver.probe(image.data(), image.size(), size, "") ==
+        disk_probe_possible);
+}

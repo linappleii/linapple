@@ -57,7 +57,7 @@ constexpr uint8_t sync_byte = 0xFF;
 
 namespace dos {
 constexpr int track_size = 4096;
-constexpr int vtoc_offset = 0x11000;
+constexpr int catalog_track = 17;
 constexpr int page_size = 0x0100;
 constexpr int catalog_start_sector = 1;
 constexpr int catalog_end_sector = 15;
@@ -68,6 +68,7 @@ namespace prodos {
 constexpr int block_size = 512;
 constexpr int dir_start_block = 2;
 constexpr int link_words_size = 4;
+constexpr int blocks_per_track = 8;
 constexpr uint16_t max_blocks_140k = 280;
 }  // namespace prodos
 
@@ -253,9 +254,84 @@ auto sector_disk_image_create(const char* path) -> DiskError_e {
   return disk_err_none;
 }
 
-// Why: Probes the image for DOS or ProDOS file system signatures
-// (VTOC/Directory blocks). Used by the high-level loader to automatically
-// determine disk order.
+namespace {
+// DOS logical sector s of a track shares its physical slot with ProDOS
+// logical sector 15 - s for s = 1..14, and with itself for 0 and 15, so a
+// ProDOS-order file keeps DOS's sectors at those indices (Beneath Apple DOS
+// ch. 3, the two skewing tables).
+auto dos_sector_offset(bool is_dos_order, int track, int sector) -> size_t {
+  const int last_sector = sectors_per_track - 1;
+  const bool shares_index =
+      is_dos_order || sector == 0 || sector == last_sector;
+  const int file_sector = shares_index ? sector : last_sector - sector;
+  return (static_cast<size_t>(track) * static_cast<size_t>(dos::track_size)) +
+         (static_cast<size_t>(file_sector) *
+          static_cast<size_t>(dos::page_size));
+}
+
+// Block k of a track is ProDOS sectors 2k and 2k + 1, and the physical slot
+// of sector 2k holds DOS sector 15 - 2k for k = 1..7 (sector 0 for k = 0), so
+// a DOS-order file keeps the block's first half there.
+auto prodos_block_offset(bool is_dos_order, uint16_t block) -> size_t {
+  if (!is_dos_order) {
+    return static_cast<size_t>(block) * static_cast<size_t>(prodos::block_size);
+  }
+  const int track = block / prodos::blocks_per_track;
+  const int block_in_track = block % prodos::blocks_per_track;
+  const int sector = (block_in_track == 0)
+                         ? 0
+                         : (sectors_per_track - 1) - (2 * block_in_track);
+  return (static_cast<size_t>(track) * static_cast<size_t>(dos::track_size)) +
+         (static_cast<size_t>(sector) * static_cast<size_t>(dos::page_size));
+}
+
+// The catalog on track 17 is a chain from sector 15 down to sector 1, each
+// sector's link naming the one below it (Beneath Apple DOS ch. 4).
+auto has_dos_catalog(const uint8_t* header_data, size_t header_size,
+                     bool is_dos_order) -> bool {
+  for (int sector = dos::catalog_start_sector;
+       sector <= dos::catalog_end_sector; ++sector) {
+    const size_t offset =
+        dos_sector_offset(is_dos_order, dos::catalog_track, sector) +
+        static_cast<size_t>(dos::next_sector_offset);
+    if (offset >= header_size ||
+        header_data[offset] != static_cast<uint8_t>(sector - 1)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// The volume directory starts at block 2 and every block opens with its
+// previous and next links, the key block's previous being 0 and the last
+// block's next being 0 (ProDOS 8 Technical Reference, B.2.2).
+auto has_prodos_directory(const uint8_t* header_data, size_t header_size,
+                          bool is_dos_order) -> bool {
+  uint16_t previous = 0;
+  uint16_t block = prodos::dir_start_block;
+  for (int visited = 0; visited < prodos::max_blocks_140k; ++visited) {
+    const size_t offset = prodos_block_offset(is_dos_order, block);
+    if (offset + prodos::link_words_size > header_size) {
+      return false;
+    }
+    const uint16_t prev = read_u16_le(&header_data[offset]);
+    const uint16_t next = read_u16_le(&header_data[offset + 2]);
+    if (prev != previous) {
+      return false;
+    }
+    if (next == 0) {
+      return block != prodos::dir_start_block;
+    }
+    if (next >= prodos::max_blocks_140k) {
+      return false;
+    }
+    previous = block;
+    block = next;
+  }
+  return false;
+}
+}  // namespace
+
 auto sector_disk_image_probe_signature(const uint8_t* header_data,
                                        size_t header_size, uint32_t file_size,
                                        bool is_dos_order) -> DiskProbe_e {
@@ -265,44 +341,11 @@ auto sector_disk_image_probe_signature(const uint8_t* header_data,
     }
   }
 
-  if (is_dos_order) {
-    const size_t dos_vtoc_min = static_cast<size_t>(dos::vtoc_offset) +
-                                static_cast<size_t>(dos::next_sector_offset) +
-                                (static_cast<size_t>(dos::catalog_end_sector) *
-                                 static_cast<size_t>(dos::page_size));
-    if (header_size >= dos_vtoc_min) {
-      bool mismatch = false;
-      for (int loop = dos::catalog_start_sector;
-           loop <= dos::catalog_end_sector; ++loop) {
-        const size_t offset =
-            static_cast<size_t>(dos::vtoc_offset) +
-            static_cast<size_t>(dos::next_sector_offset) +
-            (static_cast<size_t>(loop) * static_cast<size_t>(dos::page_size));
-        if (header_data[offset] != static_cast<uint8_t>(loop - 1)) {
-          mismatch = true;
-          break;
-        }
-      }
-      if (!mismatch) {
-        return disk_probe_definite;
-      }
-    }
-  } else {
-    // The volume directory key block is block 2 and opens with its two link
-    // words, previous (0) then next (ProDOS 8 Technical Reference, B.2.2).
-    const size_t offset_prev = static_cast<size_t>(prodos::dir_start_block) *
-                               static_cast<size_t>(prodos::block_size);
-    if (header_size >= offset_prev + prodos::link_words_size) {
-      const size_t offset_next = offset_prev + 2;
-
-      const uint16_t prev = read_u16_le(&header_data[offset_prev]);
-      const uint16_t next = read_u16_le(&header_data[offset_next]);
-
-      if (prev == 0 && next > static_cast<uint16_t>(prodos::dir_start_block) &&
-          next < prodos::max_blocks_140k) {
-        return disk_probe_definite;
-      }
-    }
+  // Either file system may have been imaged in either order, so the order
+  // is definite once one of them reads coherently in it.
+  if (has_dos_catalog(header_data, header_size, is_dos_order) ||
+      has_prodos_directory(header_data, header_size, is_dos_order)) {
+    return disk_probe_definite;
   }
 
   return disk_probe_possible;
