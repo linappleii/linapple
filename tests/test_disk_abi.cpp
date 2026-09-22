@@ -415,6 +415,14 @@ TEST_CASE("DiskABI: [REG-15] DiskLoader registration validation") {
     return disk_err_none;
   };
   usable.close = [](void*) {};
+  usable.is_write_protected = [](void*) { return true; };
+  usable.read_track_bits = [](void*, uint32_t, uint8_t*, uint32_t,
+                              uint32_t* out_bit_count,
+                              uint8_t* out_bit_timing) {
+    *out_bit_count = 0;
+    *out_bit_timing = static_cast<uint8_t>(disk_default_bit_timing);
+    return disk_err_none;
+  };
 
   DiskFormatDriver_t write_cap_mismatch = usable;
   write_cap_mismatch.capabilities = disk_driver_cap_write;

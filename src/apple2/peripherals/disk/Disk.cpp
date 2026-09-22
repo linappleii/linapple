@@ -212,11 +212,7 @@ auto is_disk_write_protected(const DiskPeripheral_t* disk_peripheral,
     return true;
   }
 
-  if (disk.driver->is_write_protected != nullptr) {
-    return disk.driver->is_write_protected(disk.driver_instance);
-  }
-
-  return false;
+  return disk.driver->is_write_protected(disk.driver_instance);
 }
 
 auto medium_cell(const Disk_t& drive, uint32_t index) -> uint32_t {
@@ -361,8 +357,7 @@ auto read_track_from_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
     disk_ptr->track_bits.resize(physical::track_bit_bytes, 0);
   }
 
-  if (disk_ptr->driver != nullptr &&
-      disk_ptr->driver->read_track_bits != nullptr) {
+  if (disk_ptr->driver != nullptr) {
     uint32_t loaded_bits = 0;
     uint8_t loaded_timing = disk_default_bit_timing;
     const DiskError_e error = disk_ptr->driver->read_track_bits(

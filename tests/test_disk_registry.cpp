@@ -34,6 +34,16 @@ auto fake_open(const char*, uint32_t, bool, void** out_instance)
 
 auto fake_close(void*) -> void {}
 
+auto fake_is_write_protected(void*) -> bool { return true; }
+
+auto fake_read_track_bits(void*, uint32_t, uint8_t*, uint32_t,
+                          uint32_t* out_bit_count, uint8_t* out_bit_timing)
+    -> DiskError_e {
+  *out_bit_count = 0;
+  *out_bit_timing = disk_default_bit_timing;
+  return disk_err_none;
+}
+
 auto make_fake(const char* name,
                DiskProbe_e (*probe)(const uint8_t*, size_t, uint32_t,
                                     const char*)) -> DiskFormatDriver_t {
@@ -43,6 +53,8 @@ auto make_fake(const char* name,
   driver.probe = probe;
   driver.open = fake_open;
   driver.close = fake_close;
+  driver.is_write_protected = fake_is_write_protected;
+  driver.read_track_bits = fake_read_track_bits;
   return driver;
 }
 
@@ -130,6 +142,29 @@ TEST_CASE("DiskRegistry: an ambiguous image always resolves the same way") {
     CHECK(disk_loader_open(image.path, &chosen, &instance) == disk_err_none);
     CHECK(chosen == &first);
   }
+
+  disk_loader_reset();
+}
+
+TEST_CASE("DiskRegistry: a driver missing read or protect is refused by name") {
+  disk_loader_reset();
+  const uint32_t baseline = disk_loader_driver_count();
+
+  DiskFormatDriver_t unreadable = make_fake("Fake Unreadable", probe_no);
+  unreadable.read_track_bits = nullptr;
+  disk_loader_register(&unreadable);
+
+  DiskFormatDriver_t unprotected = make_fake("Fake Unprotected", probe_no);
+  unprotected.is_write_protected = nullptr;
+  disk_loader_register(&unprotected);
+
+  CHECK(disk_loader_driver_count() == baseline);
+
+  std::vector<std::string> refused;
+  count_rejections(&refused);
+  REQUIRE(refused.size() == 2);
+  CHECK(refused[0] == "Fake Unreadable");
+  CHECK(refused[1] == "Fake Unprotected");
 
   disk_loader_reset();
 }

@@ -72,6 +72,10 @@ auto driver_is_usable(const DiskFormatDriver_t* driver) -> bool {
       driver->close == nullptr) {
     return refuse(driver, "probe, open or close missing");
   }
+  if (driver->read_track_bits == nullptr ||
+      driver->is_write_protected == nullptr) {
+    return refuse(driver, "read_track_bits or is_write_protected missing");
+  }
   const bool has_write_cap =
       (driver->capabilities & disk_driver_cap_write) != 0;
   const bool has_write_fn = driver->write_track_bits != nullptr;
