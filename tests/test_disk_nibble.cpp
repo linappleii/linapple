@@ -3,6 +3,7 @@
 #include <unistd.h>
 
 #include <csignal>
+#include <cstddef>
 #include <cstdint>
 #include <fstream>
 #include <iterator>
@@ -207,15 +208,16 @@ TEST_CASE(
 
 namespace {
 
-auto write_nibbles(void* instance, uint32_t quarter_track,
-                   const std::vector<uint8_t>& nibbles) -> DiskError_e {
+auto write_nibbles(const DiskFormatDriver_t& driver, void* instance,
+                   uint32_t quarter_track, const std::vector<uint8_t>& nibbles)
+    -> DiskError_e {
   std::vector<uint8_t> bits(max_track_bits / 8, 0);
   uint32_t bit_count = 0;
   REQUIRE(disk_encoding_nibbles_to_bits(
               nibbles.data(), static_cast<uint32_t>(nibbles.size()), nullptr,
               bits.data(), max_track_bits, &bit_count) == disk_err_none);
-  return g_nib_driver.write_track_bits(instance, quarter_track, bits.data(),
-                                       bit_count);
+  return driver.write_track_bits(instance, quarter_track, bits.data(),
+                                 bit_count);
 }
 
 }  // namespace
@@ -232,7 +234,7 @@ TEST_CASE("DiskNibble: [NIB-W2] a shorter track rewrites the whole slot") {
   for (size_t i = 0; i < ramp.size(); ++i) {
     ramp[i] = static_cast<uint8_t>(0x80 | (i % 127));
   }
-  REQUIRE(write_nibbles(instance, 3 * 4, ramp) == disk_err_none);
+  REQUIRE(write_nibbles(g_nib_driver, instance, 3 * 4, ramp) == disk_err_none);
   {
     const std::vector<uint8_t> file = read_file(image.path());
     CHECK(std::vector<uint8_t>(file.begin() + (3 * 6656),
@@ -256,9 +258,11 @@ TEST_CASE("DiskNibble: [NIB-W2] a shorter track rewrites the whole slot") {
 
   // Over-long: one nibble past the slot, and well past it.
   const std::vector<uint8_t> one_over(6657, 0xAA);
-  CHECK(write_nibbles(instance, 3 * 4, one_over) == disk_err_unsupported);
+  CHECK(write_nibbles(g_nib_driver, instance, 3 * 4, one_over) ==
+        disk_err_unsupported);
   const std::vector<uint8_t> far_over(7000, 0xAA);
-  CHECK(write_nibbles(instance, 3 * 4, far_over) == disk_err_unsupported);
+  CHECK(write_nibbles(g_nib_driver, instance, 3 * 4, far_over) ==
+        disk_err_unsupported);
   CHECK(read_file(image.path()) == file);
 
   g_nib_driver.close(instance);
@@ -534,4 +538,281 @@ TEST_CASE("DiskNibble: [NIB-C2] create refuses a slot the track will not fit") {
   REQUIRE(nibble_disk_image_create(path.c_str(), 6208) == disk_err_none);
   CHECK(read_file(path).size() == 35 * 6208);
   CHECK(nibble_disk_image_create(path.c_str(), 6208) == disk_err_io);
+}
+
+namespace {
+
+struct NibbleCase_t {
+  const DiskFormatDriver_t* driver;
+  const char* fixture;
+  uint32_t track_nibbles;
+};
+
+constexpr NibbleCase_t nibble_cases[] = {{&g_nib_driver, "minimal.nib", 6656},
+                                         {&g_nb2_driver, "minimal.nb2", 6384}};
+
+// Every byte carries bit 7 and none is 0xFF, so the stream has no run the
+// sync inference could stretch and the slot's bytes are the stream's.
+auto ramp_of(size_t count) -> std::vector<uint8_t> {
+  std::vector<uint8_t> ramp(count, 0);
+  for (size_t i = 0; i < count; ++i) {
+    ramp[i] = static_cast<uint8_t>(0x80 | (i % 127));
+  }
+  return ramp;
+}
+
+auto slot_of(const std::vector<uint8_t>& file, uint32_t track,
+             uint32_t track_nibbles) -> std::vector<uint8_t> {
+  const size_t at = static_cast<size_t>(track) * track_nibbles;
+  REQUIRE(file.size() >= at + track_nibbles);
+  return std::vector<uint8_t>(
+      file.begin() + static_cast<std::ptrdiff_t>(at),
+      file.begin() + static_cast<std::ptrdiff_t>(at + track_nibbles));
+}
+
+}  // namespace
+
+TEST_CASE(
+    "DiskNibble: [NIB-R1] a read-only open is write protected and refuses a "
+    "write") {
+  for (const NibbleCase_t& c : nibble_cases) {
+    CAPTURE(c.fixture);
+    auto image = TestFixtures::create_ephemeral(c.fixture);
+    const std::vector<uint8_t> before = read_file(image.path());
+
+    void* instance = nullptr;
+    REQUIRE(c.driver->open(image.c_str(), 0, true, &instance) == disk_err_none);
+    CHECK(c.driver->is_write_protected(instance));
+
+    const TrackBits_t track = read_track(*c.driver, instance, 0);
+    REQUIRE(track.bit_count > 0);
+    CHECK(c.driver->write_track_bits(instance, 0, track.bits.data(),
+                                     track.bit_count) ==
+          disk_err_write_protected);
+    c.driver->close(instance);
+    CHECK(read_file(image.path()) == before);
+
+    // The flag is the caller's, not the file's: the same file opened for
+    // writing is not protected.
+    REQUIRE(c.driver->open(image.c_str(), 0, false, &instance) ==
+            disk_err_none);
+    CHECK_FALSE(c.driver->is_write_protected(instance));
+    c.driver->close(instance);
+  }
+}
+
+TEST_CASE(
+    "DiskNibble: [NIB-N1] a null argument to a track call is refused through "
+    "both drivers") {
+  for (const NibbleCase_t& c : nibble_cases) {
+    CAPTURE(c.fixture);
+    auto image = TestFixtures::create_ephemeral(c.fixture);
+    const std::vector<uint8_t> before = read_file(image.path());
+
+    void* instance = nullptr;
+    REQUIRE(c.driver->open(image.c_str(), 0, false, &instance) ==
+            disk_err_none);
+
+    std::vector<uint8_t> bits(max_track_bits / 8, 0xC3);
+    uint32_t bit_count = 123;
+    uint8_t bit_timing = 7;
+    CHECK(c.driver->read_track_bits(nullptr, 0, bits.data(), max_track_bits,
+                                    &bit_count,
+                                    &bit_timing) == disk_err_invalid_argument);
+    CHECK(c.driver->read_track_bits(instance, 0, nullptr, max_track_bits,
+                                    &bit_count,
+                                    &bit_timing) == disk_err_invalid_argument);
+    CHECK(c.driver->read_track_bits(instance, 0, bits.data(), max_track_bits,
+                                    nullptr,
+                                    &bit_timing) == disk_err_invalid_argument);
+    CHECK(c.driver->read_track_bits(instance, 0, bits.data(), max_track_bits,
+                                    &bit_count,
+                                    nullptr) == disk_err_invalid_argument);
+    CHECK(bit_count == 123);
+    CHECK(bit_timing == 7);
+    CHECK(bits == std::vector<uint8_t>(max_track_bits / 8, 0xC3));
+
+    CHECK(c.driver->write_track_bits(nullptr, 0, bits.data(), 8) ==
+          disk_err_invalid_argument);
+    CHECK(c.driver->write_track_bits(instance, 0, nullptr, 8) ==
+          disk_err_invalid_argument);
+    CHECK(read_file(image.path()) == before);
+
+    CHECK(c.driver->is_write_protected(nullptr));
+    c.driver->close(nullptr);
+    c.driver->close(instance);
+  }
+}
+
+TEST_CASE("DiskNibble: [NIB-E1] a stream short of one nibble erases the slot") {
+  auto image = TestFixtures::create_ephemeral("minimal.nib");
+  void* instance = nullptr;
+  REQUIRE(g_nib_driver.open(image.c_str(), 0, false, &instance) ==
+          disk_err_none);
+
+  const std::vector<uint8_t> ramp = ramp_of(6656);
+  const std::vector<uint8_t> erased(6656, 0xFF);
+  const uint8_t cells[] = {0xFF};
+  const uint32_t stream_lengths[] = {0, 7};
+  for (const uint32_t bit_count : stream_lengths) {
+    CAPTURE(bit_count);
+    REQUIRE(write_nibbles(g_nib_driver, instance, 2 * 4, ramp) ==
+            disk_err_none);
+    const std::vector<uint8_t> before = read_file(image.path());
+    REQUIRE(slot_of(before, 2, 6656) == ramp);
+
+    // Nothing decodes, so the whole-slot rewrite is all pad: the surface a
+    // bulk eraser leaves, not the dead zeros of an unformatted image.
+    CHECK(g_nib_driver.write_track_bits(instance, 2 * 4, cells, bit_count) ==
+          disk_err_none);
+    const std::vector<uint8_t> after = read_file(image.path());
+    REQUIRE(after.size() == 232960);
+    CHECK(slot_of(after, 2, 6656) == erased);
+    CHECK(std::vector<uint8_t>(after.begin(), after.begin() + (2 * 6656)) ==
+          std::vector<uint8_t>(before.begin(), before.begin() + (2 * 6656)));
+    CHECK(std::vector<uint8_t>(after.begin() + (3 * 6656), after.end()) ==
+          std::vector<uint8_t>(before.begin() + (3 * 6656), before.end()));
+
+    // A run of 0xFF with no prologue behind it is data to the inference, so
+    // the erased slot reads as 6,656 eight-cell nibbles.
+    const TrackBits_t read_back = read_track(g_nib_driver, instance, 2 * 4);
+    CHECK(read_back.bit_count == 53248);
+    CHECK(to_nibbles(read_back) == erased);
+  }
+  g_nib_driver.close(instance);
+}
+
+TEST_CASE(
+    "DiskNibble: [NIB-X1] the NB2 slot takes exactly 6,384 nibbles and not "
+    "one more") {
+  auto image = TestFixtures::create_ephemeral("minimal.nb2");
+  void* instance = nullptr;
+  REQUIRE(g_nb2_driver.open(image.c_str(), 0, false, &instance) ==
+          disk_err_none);
+
+  const std::vector<uint8_t> full = ramp_of(6384);
+  REQUIRE(write_nibbles(g_nb2_driver, instance, 5 * 4, full) == disk_err_none);
+  const std::vector<uint8_t> file = read_file(image.path());
+  REQUIRE(file.size() == 223440);
+  CHECK(slot_of(file, 5, 6384) == full);
+  CHECK(to_nibbles(read_track(g_nb2_driver, instance, 5 * 4)) == full);
+
+  CHECK(write_nibbles(g_nb2_driver, instance, 5 * 4, ramp_of(6385)) ==
+        disk_err_unsupported);
+  CHECK(write_nibbles(g_nb2_driver, instance, 5 * 4, ramp_of(6656)) ==
+        disk_err_unsupported);
+  CHECK(read_file(image.path()) == file);
+  g_nb2_driver.close(instance);
+}
+
+TEST_CASE(
+    "DiskNibble: [NIB-M1] a buffer narrower than the track refuses it whole") {
+  auto image = TestFixtures::create_ephemeral("minimal.nib");
+  void* instance = nullptr;
+  REQUIRE(g_nib_driver.open(image.c_str(), 0, false, &instance) ==
+          disk_err_none);
+
+  const std::vector<uint8_t> untouched(max_track_bits / 8, 0xC3);
+  std::vector<uint8_t> bits = untouched;
+  uint32_t bit_count = 123;
+  uint8_t bit_timing = 0;
+
+  // The formatted blank's track 0: 6,656 nibbles at eight cells, plus two
+  // more for each of the 384 gap bytes the inference reads as self-sync.
+  constexpr uint32_t track_cells = 54016;
+  const uint32_t too_narrow[] = {53247, track_cells - 1};
+  for (const uint32_t max_bits : too_narrow) {
+    CAPTURE(max_bits);
+    bit_count = 123;
+    CHECK(g_nib_driver.read_track_bits(instance, 0, bits.data(), max_bits,
+                                       &bit_count,
+                                       &bit_timing) == disk_err_unsupported);
+    CHECK(bit_count == 0);
+    CHECK(bits == untouched);
+  }
+
+  CHECK(g_nib_driver.read_track_bits(instance, 0, bits.data(), track_cells,
+                                     &bit_count, &bit_timing) == disk_err_none);
+  CHECK(bit_count == track_cells);
+  CHECK(bit_timing == disk_default_bit_timing);
+  g_nib_driver.close(instance);
+}
+
+TEST_CASE(
+    "DiskNibble: [NIB-Q1] every quarter track of a cylinder is its one whole "
+    "track") {
+  for (const NibbleCase_t& c : nibble_cases) {
+    CAPTURE(c.fixture);
+    auto image = TestFixtures::create_ephemeral(c.fixture);
+    void* instance = nullptr;
+    REQUIRE(c.driver->open(image.c_str(), 0, false, &instance) ==
+            disk_err_none);
+
+    const TrackBits_t cylinder_0 = read_track(*c.driver, instance, 0);
+    REQUIRE(cylinder_0.bit_count > 0);
+    for (uint32_t quarter = 1; quarter < quarter_tracks_per_cylinder;
+         ++quarter) {
+      CAPTURE(quarter);
+      const TrackBits_t same = read_track(*c.driver, instance, quarter);
+      CHECK(same.bit_count == cylinder_0.bit_count);
+      CHECK(same.bits == cylinder_0.bits);
+    }
+    // The next cylinder's address fields carry its own track number, so the
+    // mapping is by cylinder and not one track for the whole disk.
+    const TrackBits_t cylinder_1 =
+        read_track(*c.driver, instance, quarter_tracks_per_cylinder);
+    CHECK(cylinder_1.bits != cylinder_0.bits);
+
+    const std::vector<uint8_t> before = read_file(image.path());
+    const std::vector<uint8_t> ramp = ramp_of(c.track_nibbles);
+    REQUIRE(write_nibbles(*c.driver, instance,
+                          (7 * quarter_tracks_per_cylinder) + 3,
+                          ramp) == disk_err_none);
+    const std::vector<uint8_t> after = read_file(image.path());
+    REQUIRE(after.size() == before.size());
+    CHECK(slot_of(after, 7, c.track_nibbles) == ramp);
+    CHECK(slot_of(after, 6, c.track_nibbles) ==
+          slot_of(before, 6, c.track_nibbles));
+    CHECK(slot_of(after, 8, c.track_nibbles) ==
+          slot_of(before, 8, c.track_nibbles));
+    CHECK(to_nibbles(read_track(*c.driver, instance,
+                                7 * quarter_tracks_per_cylinder)) == ramp);
+    c.driver->close(instance);
+  }
+}
+
+TEST_CASE(
+    "DiskNibble: [NIB-B2] every track past the last slot is blank surface") {
+  for (const NibbleCase_t& c : nibble_cases) {
+    CAPTURE(c.fixture);
+    auto image = TestFixtures::create_ephemeral(c.fixture);
+    const std::vector<uint8_t> before = read_file(image.path());
+    void* instance = nullptr;
+    REQUIRE(c.driver->open(image.c_str(), 0, false, &instance) ==
+            disk_err_none);
+
+    const SynthesisedTrack_t beyond = synthesise_track(36);
+    // Tracks 36..39 are within the drive's reach and 40 onward only a
+    // caller's; neither may grow the file.
+    const uint32_t quarter_tracks[] = {36 * 4, 39 * 4, (39 * 4) + 3, 40 * 4,
+                                       UINT32_MAX};
+    for (const uint32_t quarter_track : quarter_tracks) {
+      CAPTURE(quarter_track);
+      std::vector<uint8_t> bits(max_track_bits / 8, 0xEE);
+      uint32_t bit_count = 123;
+      uint8_t bit_timing = 0;
+      CHECK(c.driver->read_track_bits(instance, quarter_track, bits.data(),
+                                      max_track_bits, &bit_count,
+                                      &bit_timing) == disk_err_none);
+      CHECK(bit_count == 0);
+      CHECK(bit_timing == disk_default_bit_timing);
+      CHECK(bits == std::vector<uint8_t>(max_track_bits / 8, 0xEE));
+
+      CHECK(c.driver->write_track_bits(
+                instance, quarter_track, beyond.track.bits.data(),
+                beyond.track.bit_count) == disk_err_none);
+    }
+    c.driver->close(instance);
+    CHECK(read_file(image.path()) == before);
+  }
 }
