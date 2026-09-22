@@ -416,3 +416,29 @@ TEST_CASE("DiskSector: [SEC-B2] reads past the last track are blank surface") {
   check_blank_read(g_iie_driver, instance, 35 * 4);
   g_iie_driver.close(instance);
 }
+
+TEST_CASE(
+    "DiskSector: [IIE-3] a nibble count the track cannot hold is "
+    "refused") {
+  auto image = TestFixtures::create_ephemeral("minimal-nibble.iie");
+  std::vector<uint8_t> bytes = read_file(image.path());
+
+  // Track 1's count sits at 14 + 2 * 1 and is 6,656; one more is 0x1A01.
+  // Padding the file keeps the size check out of the verdict.
+  bytes[16] = 0x01;
+  bytes[17] = 0x1A;
+  bytes.insert(bytes.end(), 1024, 0xFF);
+  write_file(image.path(), bytes);
+
+  void* instance = nullptr;
+  CHECK(g_iie_driver.open(image.c_str(), 0, false, &instance) ==
+        disk_err_corrupt);
+  CHECK(instance == nullptr);
+
+  bytes[16] = 0x00;
+  write_file(image.path(), bytes);
+  REQUIRE(g_iie_driver.open(image.c_str(), 0, false, &instance) ==
+          disk_err_none);
+  CHECK(read_track(g_iie_driver, instance, 1 * 4).bit_count > 0);
+  g_iie_driver.close(instance);
+}

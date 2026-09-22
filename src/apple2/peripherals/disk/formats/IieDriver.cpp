@@ -197,9 +197,11 @@ auto iie_open(const char* path, uint32_t file_offset, bool read_only,
           static_cast<size_t>(iie::header_size)) {
         return disk_err_corrupt;
       }
-      uint16_t nib_count = read_u16_le(&instance_ptr->header[map_offset]);
+      // A count the slot buffer cannot hold would put every later track at
+      // the wrong offset if it were clamped, so the image is refused.
+      const uint16_t nib_count = read_u16_le(&instance_ptr->header[map_offset]);
       if (nib_count > nibbles_per_track) {
-        nib_count = static_cast<uint16_t>(nibbles_per_track);
+        return disk_err_corrupt;
       }
       if (static_cast<int64_t>(running_offset) + nib_count > total_file_size) {
         return disk_err_corrupt;
