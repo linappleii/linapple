@@ -824,7 +824,7 @@ done
 
     add_linapple_test(disk-e2e tests/test_disk_e2e.cpp)
 
-    foreach(T disk_motor;disk_prot;disk_woz;disk_woz1;disk_savestate;disk_errors;disk_stepper;disk_io;disk_compression;disk_modes;disk_lss;disk_bits)
+    foreach(T disk_motor;disk_prot;disk_woz;disk_woz1;disk_savestate;disk_errors;disk_stepper;disk_io;disk_compression;disk_modes;disk_lss;disk_bits;disk_sector;disk_nibble;disk_container)
         string(REPLACE "_" "-" TEST_NAME ${T})
         add_linapple_test(${TEST_NAME} tests/test_${T}.cpp)
     endforeach()
@@ -846,6 +846,7 @@ done
         test-disk-config-runtime-eject
         test-disk-config-runtime-insert
         test-disk-config-startup
+        test-disk-container
         test-disk-drivers
         test-disk-e2e
         test-disk-errors
@@ -855,10 +856,12 @@ done
         test-disk-lss
         test-disk-modes
         test-disk-motor
+        test-disk-nibble
         test-disk-p6-rom
         test-disk-prot
         test-disk-registry
         test-disk-savestate
+        test-disk-sector
         test-disk-smoke
         test-disk-stepper
         test-disk-ui
