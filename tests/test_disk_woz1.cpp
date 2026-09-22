@@ -331,10 +331,7 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "DiskWOZ1: the loader strips MacBinary and reads the records past it" *
-    doctest::skip(true) *
-    doctest::description(
-        "loader MacBinary II detection lands in a parallel lane")) {
+    "DiskWOZ1: the loader strips MacBinary and reads the records past it") {
   auto image = TestFixtures::create_ephemeral("minimal-macbinary-v1.woz");
   disk_loader_reset();
 

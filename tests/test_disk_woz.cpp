@@ -260,10 +260,7 @@ TEST_CASE(
   g_woz2_driver.close(instance);
 }
 
-TEST_CASE("DiskWOZ: the loader strips MacBinary and reads the tracks past it" *
-          doctest::skip(true) *
-          doctest::description(
-              "loader MacBinary II detection lands in a parallel lane")) {
+TEST_CASE("DiskWOZ: the loader strips MacBinary and reads the tracks past it") {
   auto image = TestFixtures::create_ephemeral("minimal-macbinary.woz");
   disk_loader_reset();
 
