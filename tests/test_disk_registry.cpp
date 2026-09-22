@@ -185,3 +185,26 @@ TEST_CASE("DiskRegistry: a second driver with a registered name is refused") {
 
   disk_loader_reset();
 }
+
+TEST_CASE("DiskRegistry: the extension list reports the length it needs") {
+  disk_loader_reset();
+  const char* const expected = "do;dsk;iie;nb2;nib;po;woz;gz;zip";
+  const size_t needed = strlen(expected);
+  REQUIRE(needed == 32);
+
+  CHECK(disk_loader_get_supported_extensions(nullptr, 0) == needed);
+
+  char full[64] = {};
+  CHECK(disk_loader_get_supported_extensions(full, sizeof(full)) == needed);
+  CHECK(std::string(full) == expected);
+
+  // Truncation keeps the terminator and still reports the whole length, so a
+  // caller can size a second buffer from the first answer.
+  char tiny[5] = {};
+  CHECK(disk_loader_get_supported_extensions(tiny, sizeof(tiny)) == needed);
+  CHECK(std::string(tiny) == "do;d");
+
+  char untouched[8] = "keep";
+  CHECK(disk_loader_get_supported_extensions(untouched, 0) == needed);
+  CHECK(std::string(untouched) == "keep");
+}

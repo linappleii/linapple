@@ -195,20 +195,25 @@ TEST_CASE("DiskABI: [ABI-10] Get Supported Extensions Query") {
   peripheral_manager_init();
   linapple_register_peripherals();
 
+  const char* const expected = "do;dsk;iie;nb2;nib;po;woz;gz;zip";
+  const size_t needed = strlen(expected) + 1;
+
   char exts[256] = {};
   size_t size = sizeof(exts);
   PeripheralStatus_t status =
       peripheral_query(SL6, disk_query_supported_extensions, exts, &size);
   CHECK(status == peripheral_ok);
-  CHECK(strstr(exts, "do") != nullptr);
-  CHECK(strstr(exts, "dsk") != nullptr);
-  CHECK(strstr(exts, "po") != nullptr);
-  CHECK(strstr(exts, "nib") != nullptr);
-  CHECK(strstr(exts, "nb2") != nullptr);
-  CHECK(strstr(exts, "woz") != nullptr);
-  CHECK(strstr(exts, "iie") != nullptr);
-  CHECK(strstr(exts, "zip") != nullptr);
-  CHECK(strstr(exts, "gz") != nullptr);
+  CHECK(size == needed);
+  CHECK(std::string(exts) == expected);
+
+  // A buffer too short for the list is told the size it needs, not handed a
+  // truncated list it would take for the whole one.
+  char tiny[5] = {};
+  size = sizeof(tiny);
+  status = peripheral_query(SL6, disk_query_supported_extensions, tiny, &size);
+  CHECK(status == peripheral_error);
+  CHECK(size == needed);
+  CHECK(tiny[0] == '\0');
 
   linapple_shutdown();
 }
@@ -477,12 +482,13 @@ TEST_CASE("DiskABI: [ABI-12] Query Sizing Probe and Status Query") {
   CHECK(status == peripheral_ok);
   CHECK(size == sizeof(DiskStatus_t));
 
-  // Sizing probe for disk_query_supported_extensions
+  // Sizing probe for disk_query_supported_extensions answers the list's own
+  // length with its NUL, not a fixed ceiling
   size = 0;
   status = descriptor->query(instance, disk_query_supported_extensions, nullptr,
                              &size);
   CHECK(status == peripheral_ok);
-  CHECK(size == 256);
+  CHECK(size == strlen("do;dsk;iie;nb2;nib;po;woz;gz;zip") + 1);
 
   // Query with disk_query_supported_extensions
   char exts[256] = {};

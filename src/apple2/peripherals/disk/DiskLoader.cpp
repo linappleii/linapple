@@ -357,12 +357,7 @@ auto disk_loader_create(const char* path, const char* driver_name)
 }
 
 auto disk_loader_get_supported_extensions(char* out_buffer, size_t buffer_size)
-    -> void {
-  if (out_buffer == nullptr || buffer_size == 0) {
-    return;
-  }
-  out_buffer[0] = '\0';
-
+    -> size_t {
   std::vector<std::string> exts;
   for (const auto* driver : registry()) {
     if (driver != nullptr && driver->supported_exts != nullptr) {
@@ -391,7 +386,10 @@ auto disk_loader_get_supported_extensions(char* out_buffer, size_t buffer_size)
     result += exts[i];
   }
 
-  util_safe_strcpy(out_buffer, result.c_str(), buffer_size);
+  if (out_buffer != nullptr && buffer_size > 0) {
+    util_safe_strcpy(out_buffer, result.c_str(), buffer_size);
+  }
+  return result.size();
 }
 
 // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory)

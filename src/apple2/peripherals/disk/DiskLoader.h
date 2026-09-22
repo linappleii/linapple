@@ -43,7 +43,13 @@ DiskError_e disk_loader_open(const char* image_path,
                              const DiskFormatDriver_t** out_driver,
                              void** out_instance);
 
-void disk_loader_get_supported_extensions(char* out_buffer, size_t buffer_size);
+/* Lists the extensions the registered drivers accept and then the container
+   layer's, each once, joined by ';' and without dots (do;dsk;...;gz;zip).
+   Whatever fits is copied and NUL-terminated when buffer_size is nonzero; the
+   return is the length the whole list needs without its NUL, as snprintf
+   reports it, so (NULL, 0) measures and a second call copies. */
+size_t disk_loader_get_supported_extensions(char* out_buffer,
+                                            size_t buffer_size);
 
 /* How many drivers are registered, and the one at an index. The order is by
    driver name and an index is only valid until the next registration. */

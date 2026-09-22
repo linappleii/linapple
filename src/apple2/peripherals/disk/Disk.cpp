@@ -1204,13 +1204,18 @@ auto disk_abi_query(void* instance, uint32_t cmd, void* data, size_t* size)
       return peripheral_ok;
     }
     case disk_query_supported_extensions: {
-      constexpr size_t supported_extensions_cap = 256;
-      if (data == nullptr || *size == 0) {
-        *size = supported_extensions_cap;
+      const size_t required_size =
+          disk_loader_get_supported_extensions(nullptr, 0) + 1;
+      if (data == nullptr) {
+        *size = required_size;
         return peripheral_ok;
       }
+      if (*size < required_size) {
+        *size = required_size;
+        return peripheral_error;
+      }
       disk_loader_get_supported_extensions(static_cast<char*>(data), *size);
-      *size = strlen(static_cast<const char*>(data)) + 1;
+      *size = required_size;
       return peripheral_ok;
     }
     case disk_query_format_count: {
