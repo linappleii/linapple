@@ -72,7 +72,8 @@ jobs:
             image: fedora:latest
             setup: |
               dnf install -y gcc-c++ cmake ninja-build ImageMagick libzip-devel \
-                SDL3-devel SDL3_image-devel libcurl-devel zlib-devel git z3-devel curl ccache nodejs
+                SDL3-devel SDL3_image-devel libcurl-devel zlib-devel git z3-devel curl ccache nodejs \
+                perl-IO-Compress
             frontend: sdl3
 
           - name: Arch Linux Rolling (SDL3)
@@ -291,7 +292,7 @@ jobs:
       - name: Minimize Corpus
         if: always()
         run: |
-          for target in memory snapshot disk-loader disk-controller disk-adapter speaker audio-mixer mockingboard ay8910 via6522; do
+          for target in memory snapshot disk-loader image-container disk-controller disk-adapter speaker audio-mixer mockingboard ay8910 via6522; do
             if [ -d "tests/fuzz/corpus/${target}" ]; then
               mkdir -p "tests/fuzz/corpus/${target}-min"
               ./build-fuzz/fuzz-${target} -merge=1 "tests/fuzz/corpus/${target}-min" "tests/fuzz/corpus/${target}" || true
@@ -336,3 +337,44 @@ jobs:
             echo "Expected 10 peripherals, but got $count"
             exit 1
           fi
+      - name: Assert No Plugin Carries Compression
+        run: |
+          for plugin in build-shared/*.so; do
+            echo "== $plugin"
+            ! ldd "$plugin" | grep -E 'libz\.so|libzip\.so'
+          done
+
+  # 8. No Disk Peripherals (Headless, both image-opening cards off)
+  no-disk-peripherals:
+    name: No Disk Peripherals (Headless, No Compression)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ cmake ninja-build imagemagick libzip-dev \
+            libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev libz3-dev ccache
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ runner.os }}-no-disk-peripherals
+      - name: Configure
+        run: |
+          cmake -B build-nodisk -G Ninja \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DFRONTEND=headless \
+            -DENABLE_PERIPHERAL_DISK=OFF \
+            -DENABLE_PERIPHERAL_HARDDISK=OFF \
+            -DBUILD_TESTING=ON \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+      - name: Build
+        run: cmake --build build-nodisk -j$(nproc)
+      - name: Test
+        run: ctest --test-dir build-nodisk -j$(nproc) --output-on-failure
+      - name: Assert No Compression Is Configured or Linked
+        run: |
+          ! grep -E '^(ZLIB_|LIBZIP_|pkgcfg_lib_LIBZIP)' build-nodisk/CMakeCache.txt
+          ldd build-nodisk/linapple
+          ! ldd build-nodisk/linapple | grep -E 'libz\.so|libzip\.so'
