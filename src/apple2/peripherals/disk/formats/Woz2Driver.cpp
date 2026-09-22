@@ -50,7 +50,7 @@ struct Woz2Instance_t {
   uint32_t base_offset = 0;
   uint8_t optimal_bit_timing = disk_default_bit_timing;
   bool format_write_protected = false;
-  bool os_readonly = false;
+  bool host_read_only = false;
 
   Woz2Instance_t() = default;
   ~Woz2Instance_t() = default;
@@ -99,13 +99,13 @@ static auto woz2_open(const char* path, uint32_t file_offset, bool read_only,
   auto wi_ptr = std::unique_ptr<Woz2Instance_t>(new Woz2Instance_t());
 
   wi_ptr->base_offset = file_offset;
-  wi_ptr->os_readonly = read_only;
+  wi_ptr->host_read_only = read_only;
   if (!read_only) {
     wi_ptr->file.reset(fopen(path, "r+b"));
   }
   if (wi_ptr->file == nullptr) {
     wi_ptr->file.reset(fopen(path, "rb"));
-    wi_ptr->os_readonly = true;
+    wi_ptr->host_read_only = true;
   }
   if (wi_ptr->file == nullptr) {
     return (errno == ENOENT) ? disk_err_file_not_found : disk_err_io;
@@ -182,7 +182,7 @@ static auto woz2_is_write_protected(void* instance) -> bool {
     return true;
   }
   auto* wi_ptr = reinterpret_cast<Woz2Instance_t*>(instance);
-  return wi_ptr->os_readonly || wi_ptr->format_write_protected;
+  return wi_ptr->host_read_only || wi_ptr->format_write_protected;
 }
 
 static auto woz2_read_track_bits(void* instance_handle, uint32_t quarter_track,

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// Justification: This header defines a C99-compatible ABI for sector-based disk
-// image backends, allowing them to be shared across multiple drivers.
 // NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type)
+// Justification: a C99-compatible ABI for the sector-image backend that the
+// DOS-order and ProDOS-order drivers share.
 
 #include <stdbool.h>
 #include <stddef.h>

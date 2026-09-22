@@ -18,10 +18,10 @@
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 
-// Justification: Domain-specific container detection requires parameters
-// mandated by the shared format probing signatures. Pointer arithmetic and
-// array decay are required for physical bitstream inspection and decompression
-// library ABIs.
+// Justification: the detect signature is the shared probe shape, so its size
+// parameters sit side by side. Pointer arithmetic and array decay come from
+// indexing the 128-byte MacBinary header, walking path suffixes and the zlib
+// and libzip C ABIs.
 // NOLINTBEGIN(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
 
 namespace macbinary {
@@ -74,7 +74,7 @@ const char* const supported_extensions[] = {gzip_extension, zip_extension,
 constexpr const char* macosx_sidecar_dir = "__MACOSX/";
 constexpr const char* appledouble_prefix = "._";
 
-// Why: a truncated path names a different file and a truncated payload name
+// A truncated path names a different file and a truncated payload name
 // can lose the extension that picks the driver, so a string that does not fit
 // is refused rather than shortened.
 auto copy_whole(char* dest, const char* src, size_t size) -> bool {
@@ -135,7 +135,7 @@ auto decompress_gzip(const char* compressed_path, FILE* output_file,
   return bytes_read == 0;
 }
 
-// Why: the image is rarely entry 0. Many archivers store a directory entry
+// The image is rarely entry 0. Many archivers store a directory entry
 // before the files it holds, and macOS adds a __MACOSX/._name AppleDouble
 // sidecar per file, often first. The payload is the first entry that is
 // neither. Returns -1 when the archive holds no file at all.
@@ -219,7 +219,7 @@ auto decompress_zip(const char* compressed_path, FILE* output_file,
 
 }  // namespace
 
-// Why: Images that travelled through a Macintosh often still wear the 128-byte
+// Images that travelled through a Macintosh often still wear the 128-byte
 // MacBinary header that carried their resource fork and Finder info. The
 // version bytes alone are a heuristic; the standard's own test is the CRC over
 // the header, so both are required. MacBinary I has no CRC and is not
@@ -256,7 +256,7 @@ extern "C" auto disk_container_detect_macbinary(const uint8_t* header_data,
   return static_cast<uint32_t>(macbinary::header_size);
 }
 
-// Why: A probe that sees only "game.dsk.gz" asks every driver about a ".gz",
+// A probe that sees only "game.dsk.gz" asks every driver about a ".gz",
 // which none of them handle. The extension that decides the format is the
 // payload's, so the container is the only layer that can supply it.
 extern "C" auto disk_container_payload_name(const char* image_path,
@@ -291,16 +291,16 @@ extern "C" auto disk_container_payload_name(const char* image_path,
     }
   }
 
-  // Dropping the archive suffix is all that is left: gzip's own FNAME field is
-  // optional and zlib does not expose it.
+  // Dropping the archive suffix is all that is left. gzip's FNAME field is
+  // optional, and the gzFile API used here never surfaces it; only a raw
+  // inflate with inflateGetHeader would, a second pass over the stream for a
+  // field the writer may have left out.
   const std::string stripped(
       basename,
       strlen(basename) - strlen(is_gz ? gzip_extension : zip_extension) - 1);
   return copy_whole(out_name, stripped.c_str(), max_name_len);
 }
 
-// Why: Extracts compressed images (.gz and .zip) to a secure temporary path
-// with threshold-based ratio checks to prevent decompression exhaustion bombs.
 extern "C" auto disk_container_prepare_compressed_path(
     const char* image_path, char* out_load_path, size_t max_path_len,
     size_t uncompressed_threshold, bool* out_is_temporary) -> bool {
@@ -332,6 +332,8 @@ extern "C" auto disk_container_prepare_compressed_path(
   }
   util_safe_strcpy(out_load_path, temp_template.c_str(), max_path_len);
 
+  // mkstemp is POSIX, declared by the <stdlib.h> behind <cstdlib>, which
+  // include-cleaner does not credit.
   // NOLINTNEXTLINE(misc-include-cleaner)
   int fd = mkstemp(out_load_path);
   if (fd == -1) {
@@ -339,6 +341,8 @@ extern "C" auto disk_container_prepare_compressed_path(
     return false;
   }
 
+  // fdopen is POSIX, declared by the <stdio.h> behind <cstdio>, which
+  // include-cleaner does not credit.
   // NOLINTNEXTLINE(misc-include-cleaner)
   FilePtr_t temp_stream(fdopen(fd, "wb"), fclose);
   if (temp_stream == nullptr) {
@@ -353,7 +357,7 @@ extern "C" auto disk_container_prepare_compressed_path(
                              : decompress_zip(image_path, temp_stream.get(),
                                               uncompressed_threshold);
 
-  // Why: the last chunk may still sit in the stdio buffer, so a full disk or a
+  // The last chunk may still sit in the stdio buffer, so a full disk or a
   // failing device surfaces only when the stream is closed. A temporary that
   // did not close cleanly is short and must not reach a driver.
   const bool closed = success && fclose(temp_stream.release()) == 0;

@@ -203,7 +203,8 @@ TEST_CASE(
   bad_floppy2.write_track_bits = g_do_driver.write_track_bits;
   disk_loader_register(&bad_floppy2);
 
-  // Valid floppy drivers register cleanly
+  // Well-formed copies of two built-in descriptors: they pass the shape check
+  // and are then refused by name, since the originals outlive the reset.
   DiskFormatDriver_t valid_floppy_ro = g_woz2_driver;
   valid_floppy_ro.capabilities = 0;
   valid_floppy_ro.write_track_bits = nullptr;

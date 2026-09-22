@@ -33,7 +33,7 @@ struct SectorDiskImage_t {
   FilePtr_t file{nullptr, fclose};
   uint32_t data_offset = 0;
   uint32_t track_count = 0;
-  bool os_readonly = false;
+  bool host_read_only = false;
   DiskSectorOrder_e order = disk_sector_order_prodos;
   std::array<uint8_t, disk_encoding_scratch_size> scratch{};
   std::array<uint8_t, nibbles_per_track> nibbles{};
@@ -118,15 +118,17 @@ auto sector_disk_image_open(const char* path, uint32_t file_offset,
     return disk_err_invalid_argument;
   }
 
-  bool os_readonly = read_only;
+  bool host_read_only = read_only;
   FilePtr_t file{nullptr, fclose};
   if (!read_only) {
     file.reset(fopen(path, "r+b"));
   }
 
+  // A file the host will not let us write is still a disk we can read, so the
+  // fallback answers write protected rather than refusing to open it.
   if (file == nullptr) {
     file.reset(fopen(path, "rb"));
-    os_readonly = true;
+    host_read_only = true;
   }
 
   if (file == nullptr) {
@@ -151,7 +153,7 @@ auto sector_disk_image_open(const char* path, uint32_t file_offset,
 
   auto image_ptr = std::unique_ptr<SectorDiskImage_t>(new SectorDiskImage_t());
   image_ptr->file = std::move(file);
-  image_ptr->os_readonly = os_readonly;
+  image_ptr->host_read_only = host_read_only;
   image_ptr->data_offset = file_offset;
   image_ptr->track_count = disk::tracks_140k;
   image_ptr->order =
@@ -169,7 +171,7 @@ auto sector_disk_image_is_write_protected(void* instance) -> bool {
   if (instance == nullptr) {
     return true;
   }
-  return static_cast<SectorDiskImage_t*>(instance)->os_readonly;
+  return static_cast<SectorDiskImage_t*>(instance)->host_read_only;
 }
 
 auto sector_disk_image_read_track_bits(void* instance, uint32_t quarter_track,
@@ -233,7 +235,7 @@ auto sector_disk_image_write_track_bits(void* instance, uint32_t quarter_track,
   if (image_ptr == nullptr || bits == nullptr) {
     return disk_err_invalid_argument;
   }
-  if (image_ptr->os_readonly) {
+  if (image_ptr->host_read_only) {
     return disk_err_write_protected;
   }
 
@@ -291,6 +293,8 @@ auto sector_disk_image_create(const char* path) -> DiskError_e {
   if (fd < 0) {
     return disk_err_io;
   }
+  // fdopen is POSIX, declared by the <stdio.h> behind <cstdio>, which
+  // include-cleaner does not credit.
   // NOLINTNEXTLINE(misc-include-cleaner)
   FilePtr_t file{fdopen(fd, "wb"), fclose};
   if (file == nullptr) {

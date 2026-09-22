@@ -46,7 +46,7 @@ struct NibbleDiskImage_t {
   uint32_t data_offset = 0;
   uint32_t track_size = 0;
   uint32_t track_count = 0;
-  bool os_readonly = false;
+  bool host_read_only = false;
   // One byte over the slot, so a stream one nibble too long is caught by the
   // count rather than silently cut to fit.
   std::array<uint8_t, nibbles_per_track + 1> nibbles{};
@@ -95,14 +95,16 @@ extern "C" auto nibble_disk_image_open(const char* path, uint32_t file_offset,
   }
 
   FilePtr_t file{nullptr, fclose};
-  bool os_readonly = read_only;
+  bool host_read_only = read_only;
   if (!read_only) {
     file.reset(fopen(path, "r+b"));
   }
 
+  // A file the host will not let us write is still a disk we can read, so the
+  // fallback answers write protected rather than refusing to open it.
   if (file == nullptr) {
     file.reset(fopen(path, "rb"));
-    os_readonly = true;
+    host_read_only = true;
   }
 
   if (file == nullptr) {
@@ -130,7 +132,7 @@ extern "C" auto nibble_disk_image_open(const char* path, uint32_t file_offset,
 
   auto image_ptr = std::unique_ptr<NibbleDiskImage_t>(new NibbleDiskImage_t());
   image_ptr->file = std::move(file);
-  image_ptr->os_readonly = os_readonly;
+  image_ptr->host_read_only = host_read_only;
   image_ptr->data_offset = file_offset;
   image_ptr->track_size = track_nibbles;
   // A slot the file ends inside still counts: a truncated track reads as far
@@ -150,7 +152,7 @@ extern "C" auto nibble_disk_image_is_write_protected(void* instance) -> bool {
   if (instance == nullptr) {
     return true;
   }
-  return static_cast<NibbleDiskImage_t*>(instance)->os_readonly;
+  return static_cast<NibbleDiskImage_t*>(instance)->host_read_only;
 }
 
 extern "C" auto nibble_disk_image_read_track_bits(
@@ -205,7 +207,7 @@ extern "C" auto nibble_disk_image_write_track_bits(void* instance,
   if (image_ptr == nullptr || bits == nullptr) {
     return disk_err_invalid_argument;
   }
-  if (image_ptr->os_readonly) {
+  if (image_ptr->host_read_only) {
     return disk_err_write_protected;
   }
 
@@ -269,6 +271,8 @@ extern "C" auto nibble_disk_image_create(const char* path,
   if (fd < 0) {
     return disk_err_io;
   }
+  // fdopen is POSIX, declared by the <stdio.h> behind <cstdio>, which
+  // include-cleaner does not credit.
   // NOLINTNEXTLINE(misc-include-cleaner)
   FilePtr_t file{fdopen(fd, "wb"), fclose};
   if (file == nullptr) {

@@ -45,7 +45,7 @@ struct Woz1Instance_t {
   uint32_t trks_record_count = 0;
   uint32_t base_offset = 0;
   bool format_write_protected = false;
-  bool os_readonly = false;
+  bool host_read_only = false;
 
   Woz1Instance_t() = default;
   ~Woz1Instance_t() = default;
@@ -94,7 +94,7 @@ static auto woz1_open(const char* path, uint32_t file_offset, bool read_only,
   auto wi_ptr = std::unique_ptr<Woz1Instance_t>(new Woz1Instance_t());
 
   wi_ptr->base_offset = file_offset;
-  wi_ptr->os_readonly = read_only;
+  wi_ptr->host_read_only = read_only;
   // The 1.0 format is legacy and this driver never writes it, so there is no
   // reason to hold a writable handle on the user's file.
   wi_ptr->file.reset(fopen(path, "rb"));
@@ -160,7 +160,7 @@ static auto woz1_is_write_protected(void* instance) -> bool {
     return true;
   }
   auto* wi_ptr = reinterpret_cast<Woz1Instance_t*>(instance);
-  return wi_ptr->os_readonly || wi_ptr->format_write_protected;
+  return wi_ptr->host_read_only || wi_ptr->format_write_protected;
 }
 
 static auto woz1_read_track_bits(void* instance_handle, uint32_t quarter_track,

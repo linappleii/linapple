@@ -72,7 +72,7 @@ struct IieInstance_t {
   std::array<uint8_t, sector_image_track_bytes> sectors{};
   std::array<uint32_t, iie::tracks> track_offsets{};
   std::array<uint16_t, iie::tracks> track_nibble_counts{};
-  bool os_readonly = false;
+  bool host_read_only = false;
 
   IieInstance_t() = default;
   ~IieInstance_t() = default;
@@ -83,9 +83,8 @@ struct IieInstance_t {
   auto operator=(IieInstance_t&&) -> IieInstance_t& = default;
 };
 
-// Why: Reverses a sector mapping. SimSystem //e images store custom sector
-// ordering that must be inverted into a standard lookup table for the
-// nibblizer.
+// The header map runs from file sector to physical slot; the nibblizer's
+// table runs the other way, so the map is inverted once here.
 auto iie_convert_sector_order(const uint8_t* source_order,
                               uint8_t* sector_order) -> void {
   if (source_order == nullptr || sector_order == nullptr) {
@@ -127,9 +126,9 @@ auto iie_probe(const uint8_t* header_data, size_t header_size,
   return disk_probe_no;
 }
 
-// Why: Opens a SimSystem //e disk image and pre-calculates track offsets.
-// These images store either raw sectors (legacy) or raw nibbles (modern), so
-// offset caching is required for constant-time track seeking.
+// Every track offset is resolved at open: in the nibble layout each track
+// starts where the one before ends, so a bad count anywhere shifts every later
+// track, and such an image is refused here rather than misread on a seek.
 auto iie_open(const char* path, uint32_t file_offset, bool read_only,
               void** out_instance) -> DiskError_e {
   if (out_instance == nullptr) {
@@ -142,14 +141,14 @@ auto iie_open(const char* path, uint32_t file_offset, bool read_only,
 
   auto instance_ptr = std::unique_ptr<IieInstance_t>(new IieInstance_t());
 
-  instance_ptr->os_readonly = read_only;
+  instance_ptr->host_read_only = read_only;
   if (!read_only) {
     instance_ptr->file.reset(fopen(path, "r+b"));
   }
 
   if (instance_ptr->file == nullptr) {
     instance_ptr->file.reset(fopen(path, "rb"));
-    instance_ptr->os_readonly = true;
+    instance_ptr->host_read_only = true;
   }
 
   if (instance_ptr->file == nullptr) {
@@ -224,7 +223,7 @@ auto iie_is_write_protected(void* instance_handle) -> bool {
   if (instance_handle == nullptr) {
     return true;
   }
-  return reinterpret_cast<IieInstance_t*>(instance_handle)->os_readonly;
+  return reinterpret_cast<IieInstance_t*>(instance_handle)->host_read_only;
 }
 
 auto iie_read_track_bits(void* instance_handle, uint32_t quarter_track,
