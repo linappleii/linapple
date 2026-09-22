@@ -19,9 +19,12 @@ constexpr int chunk_size_offset = 4;
 constexpr int tmap_entries = 160;
 constexpr uint8_t unrecorded_track = 0xFF;
 
+// INFO version 1 is a WOZ1 file, 2 a WOZ2 file and 3 a WOZ 2.1 file; the
+// specification names 5.25" as disk type 1 and 3.5" as 2, nothing else.
+constexpr int info_version_offset = 0;
 constexpr int info_disk_type_offset = 1;
 constexpr int info_write_protect_offset = 2;
-constexpr int disk_type_3_5 = 2;
+constexpr int disk_type_5_25 = 1;
 
 constexpr int bits_per_byte = 8;
 }  // namespace woz

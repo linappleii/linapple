@@ -345,3 +345,38 @@ TEST_CASE(
 
   driver->close(instance);
 }
+
+namespace {
+
+constexpr long info_version_offset = 20;
+
+auto open_patched_v1_image(long offset, uint8_t value) -> DiskError_e {
+  auto image = TestFixtures::create_ephemeral("minimal-v1.woz");
+  patch(image.path(), offset, &value, 1);
+
+  void* instance = nullptr;
+  const DiskError_e err =
+      g_woz1_driver.open(image.c_str(), 0, false, &instance);
+  if (instance != nullptr) {
+    g_woz1_driver.close(instance);
+  }
+  return err;
+}
+
+}  // namespace
+
+TEST_CASE("DiskWOZ1: an INFO disk type other than 5.25\" is unsupported") {
+  CHECK(open_patched_v1_image(info_disk_type_offset, 0) ==
+        disk_err_unsupported_format);
+  CHECK(open_patched_v1_image(info_disk_type_offset, 3) ==
+        disk_err_unsupported_format);
+  CHECK(open_patched_v1_image(info_disk_type_offset, 1) == disk_err_none);
+}
+
+TEST_CASE("DiskWOZ1: a WOZ1 file accepts INFO version 1 only") {
+  CHECK(open_patched_v1_image(info_version_offset, 0) ==
+        disk_err_unsupported_format);
+  CHECK(open_patched_v1_image(info_version_offset, 2) ==
+        disk_err_unsupported_format);
+  CHECK(open_patched_v1_image(info_version_offset, 1) == disk_err_none);
+}

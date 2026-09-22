@@ -304,6 +304,7 @@ TEST_CASE("DiskDrivers: [DRV-10] WOZ 3.5\" Rejection") {
   header[84] = 160;
   memcpy(header + 248, "TRKS", 4);
   header[252] = 1;
+  header[20] = 2;
   header[21] = 2;  // 3.5" disk type
   fwrite(header, 1, 1536, f);
   fclose(f);
@@ -326,6 +327,7 @@ TEST_CASE("DiskDrivers: [DRV-11] WOZ Write Protect") {
     h[84] = 160;
     memcpy(h + 248, "TRKS", 4);
     h[252] = 1;
+    h[20] = 2;
     h[21] = 1;        // 5.25"
     h[22] = wp_byte;  // write protect
     fwrite(h, 1, 1536, f);
@@ -355,6 +357,7 @@ TEST_CASE("DiskDrivers: [DRV-12] WOZ Unrecorded Track") {
   memcpy(h, "WOZ2\xFF\n\r\n", 8);
   memcpy(h + 12, "INFO", 4);
   h[16] = 60;
+  h[20] = 2;
   h[21] = 1;
   memcpy(h + 80, "TMAP", 4);
   h[84] = 160;
@@ -390,6 +393,7 @@ TEST_CASE("DiskDrivers: [DRV-14] WOZ reports the cell time INFO measured") {
     memcpy(h, "WOZ2\xFF\n\r\n", 8);
     memcpy(h + 12, "INFO", 4);
     h[16] = 60;
+    h[20] = 2;
     h[21] = 1;
     memcpy(h + 80, "TMAP", 4);
     h[84] = 160;
@@ -456,6 +460,7 @@ TEST_CASE("DiskDrivers: [SEC-01] WOZ rejects an out-of-bounds trks_index") {
   memcpy(h, "WOZ2\xFF\n\r\n", 8);
   memcpy(h + 12, "INFO", 4);
   h[16] = 60;
+  h[20] = 2;
   h[21] = 1;
   memcpy(h + 80, "TMAP", 4);
   h[84] = 160;
@@ -489,6 +494,7 @@ TEST_CASE("DiskDrivers: [SEC-02] WOZ rejects a bit_count past block_count") {
   memcpy(h, "WOZ2\xFF\n\r\n", 8);
   memcpy(h + 12, "INFO", 4);
   h[16] = 60;
+  h[20] = 2;
   h[21] = 1;
   memcpy(h + 80, "TMAP", 4);
   h[84] = 160;
@@ -802,6 +808,7 @@ auto write_woz_with_track(const std::string& path,
   memcpy(file.data(), "WOZ2\xFF\n\r\n", 8);
   memcpy(file.data() + 12, "INFO", 4);
   file[16] = 60;
+  file[20] = 2;
   file[21] = 1;
   file[20 + 39] = timing;
   memcpy(file.data() + 80, "TMAP", 4);

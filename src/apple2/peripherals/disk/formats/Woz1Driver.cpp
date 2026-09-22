@@ -34,6 +34,7 @@ constexpr int trks_record_size = 6656;
 constexpr int trks_bits_size = 6646;
 constexpr int trks_bit_count_offset = trks_bits_size + 2;
 constexpr int trks_trailer_size = 4;
+constexpr uint8_t info_version_1_0 = 1;
 }  // namespace woz1
 
 struct Woz1Instance_t {
@@ -94,13 +95,9 @@ static auto woz1_open(const char* path, uint32_t file_offset, bool read_only,
 
   wi_ptr->base_offset = file_offset;
   wi_ptr->os_readonly = read_only;
-  if (!read_only) {
-    wi_ptr->file.reset(fopen(path, "r+b"));
-  }
-  if (wi_ptr->file == nullptr) {
-    wi_ptr->file.reset(fopen(path, "rb"));
-    wi_ptr->os_readonly = true;
-  }
+  // The 1.0 format is legacy and this driver never writes it, so there is no
+  // reason to hold a writable handle on the user's file.
+  wi_ptr->file.reset(fopen(path, "rb"));
   if (wi_ptr->file == nullptr) {
     return (errno == ENOENT) ? disk_err_file_not_found : disk_err_io;
   }
@@ -131,7 +128,8 @@ static auto woz1_open(const char* path, uint32_t file_offset, bool read_only,
     return disk_err_corrupt;
   }
 
-  if (info_data[woz::info_disk_type_offset] == woz::disk_type_3_5) {
+  if (info_data[woz::info_version_offset] != woz1::info_version_1_0 ||
+      info_data[woz::info_disk_type_offset] != woz::disk_type_5_25) {
     return disk_err_unsupported_format;
   }
 

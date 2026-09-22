@@ -35,16 +35,18 @@ constexpr int slot_6 = 6;
 constexpr size_t woz_header_size = 1536;
 constexpr size_t woz_data_block_size = 512;
 
-auto write_all_zero_woz2(const char* path) -> void {
+auto write_zero_track_woz2(const char* path, uint16_t block_count,
+                           uint32_t bit_count) -> void {
   FilePtr_t f(fopen(path, "wb"), fclose);
   REQUIRE(f != nullptr);
 
   std::vector<uint8_t> hdr(woz_header_size, 0);
   std::memcpy(hdr.data(), "WOZ2\xFF\n\r\n", 8);
 
-  // INFO chunk: size 60, disk_type 1 (5.25")
+  // INFO chunk: size 60, version 2, disk_type 1 (5.25")
   std::memcpy(hdr.data() + 12, "INFO", 4);
   hdr[16] = 60;
+  hdr[20] = 2;
   hdr[21] = 1;
 
   // TMAP chunk: size 160, entry 0 -> track 0 uses trks_index 0
@@ -58,20 +60,26 @@ auto write_all_zero_woz2(const char* path) -> void {
   hdr[252] = 0x00;
   hdr[253] = 0x05;
 
-  // TRKS entry 0: starting_block 3, block_count 1, bit_count 4096
+  // TRKS entry 0: starting_block 3, then the caller's block and bit counts
   hdr[256] = 3;
   hdr[257] = 0;
-  hdr[258] = 1;
-  hdr[259] = 0;
-  const uint32_t bit_count = static_cast<uint32_t>(woz_data_block_size * 8);
-  std::memcpy(hdr.data() + 260, &bit_count, sizeof(bit_count));
+  hdr[258] = static_cast<uint8_t>(block_count & 0xFF);
+  hdr[259] = static_cast<uint8_t>(block_count >> 8);
+  hdr[260] = static_cast<uint8_t>(bit_count & 0xFF);
+  hdr[261] = static_cast<uint8_t>((bit_count >> 8) & 0xFF);
+  hdr[262] = static_cast<uint8_t>((bit_count >> 16) & 0xFF);
+  hdr[263] = static_cast<uint8_t>(bit_count >> 24);
 
   REQUIRE(fwrite(hdr.data(), 1, hdr.size(), f.get()) == hdr.size());
 
-  // Block 3: 512 bytes of zeros
-  const std::vector<uint8_t> zero_block(woz_data_block_size, 0);
-  REQUIRE(fwrite(zero_block.data(), 1, zero_block.size(), f.get()) ==
-          zero_block.size());
+  const std::vector<uint8_t> zero_blocks(woz_data_block_size * block_count, 0);
+  REQUIRE(fwrite(zero_blocks.data(), 1, zero_blocks.size(), f.get()) ==
+          zero_blocks.size());
+}
+
+auto write_all_zero_woz2(const char* path) -> void {
+  write_zero_track_woz2(path, 1,
+                        static_cast<uint32_t>(woz_data_block_size * 8));
 }
 
 }  // namespace
@@ -273,4 +281,138 @@ TEST_CASE("DiskWOZ: the loader strips MacBinary and reads the tracks past it") {
   check_wrapped_track_reads(*driver, instance);
 
   driver->close(instance);
+}
+
+namespace {
+
+constexpr long info_version_offset = 20;
+constexpr long info_disk_type_offset = 21;
+constexpr long trks_entry_0_offset = 256;
+constexpr uint16_t widest_block_span = max_track_bits / (512 * 8);
+
+auto patch(const std::string& path, long offset, const uint8_t* bytes,
+           size_t len) -> void {
+  FilePtr_t f(fopen(path.c_str(), "r+b"), fclose);
+  REQUIRE(f != nullptr);
+  REQUIRE(fseek(f.get(), offset, SEEK_SET) == 0);
+  REQUIRE(fwrite(bytes, 1, len, f.get()) == len);
+}
+
+auto open_patched_track_image(long offset, uint8_t value) -> DiskError_e {
+  auto image = TestFixtures::create_ephemeral("minimal-track.woz");
+  patch(image.path(), offset, &value, 1);
+
+  void* instance = nullptr;
+  const DiskError_e err =
+      g_woz2_driver.open(image.c_str(), 0, false, &instance);
+  if (err != disk_err_none) {
+    CHECK(instance == nullptr);
+  }
+  if (instance != nullptr) {
+    g_woz2_driver.close(instance);
+  }
+  return err;
+}
+
+}  // namespace
+
+TEST_CASE("DiskWOZ: an INFO disk type other than 5.25\" is unsupported") {
+  CHECK(open_patched_track_image(info_disk_type_offset, 0) ==
+        disk_err_unsupported_format);
+  CHECK(open_patched_track_image(info_disk_type_offset, 2) ==
+        disk_err_unsupported_format);
+  CHECK(open_patched_track_image(info_disk_type_offset, 3) ==
+        disk_err_unsupported_format);
+  CHECK(open_patched_track_image(info_disk_type_offset, 1) == disk_err_none);
+}
+
+TEST_CASE("DiskWOZ: a WOZ2 file accepts INFO versions 2 and 3 only") {
+  CHECK(open_patched_track_image(info_version_offset, 1) ==
+        disk_err_unsupported_format);
+  CHECK(open_patched_track_image(info_version_offset, 0) ==
+        disk_err_unsupported_format);
+  CHECK(open_patched_track_image(info_version_offset, 4) ==
+        disk_err_unsupported_format);
+  CHECK(open_patched_track_image(info_version_offset, 2) == disk_err_none);
+  CHECK(open_patched_track_image(info_version_offset, 3) == disk_err_none);
+}
+
+TEST_CASE("DiskWOZ: a 2.1 image's flux-only quarter track reads as no cells") {
+  auto image = TestFixtures::create_ephemeral("woz21-flux.woz");
+
+  void* instance = nullptr;
+  REQUIRE(g_woz2_driver.open(image.c_str(), 0, false, &instance) ==
+          disk_err_none);
+  REQUIRE(instance != nullptr);
+
+  std::vector<uint8_t> bits;
+  uint32_t bit_count = 0;
+  uint8_t bit_timing = 0;
+  CHECK(read_quarter_track(g_woz2_driver, instance, 0, &bits, &bit_count,
+                           &bit_timing) == disk_err_none);
+  CHECK(bit_count == 0);
+  CHECK(bit_timing == 32);
+  CHECK(bits[0] == 0xEE);
+
+  g_woz2_driver.close(instance);
+}
+
+TEST_CASE("DiskWOZ: a track that starts inside the header is corrupt") {
+  auto image = TestFixtures::create_ephemeral("minimal-track.woz");
+  const uint8_t header_block = 2;
+  patch(image.path(), trks_entry_0_offset, &header_block, 1);
+
+  void* instance = nullptr;
+  REQUIRE(g_woz2_driver.open(image.c_str(), 0, false, &instance) ==
+          disk_err_none);
+
+  std::vector<uint8_t> bits;
+  uint32_t bit_count = 0;
+  uint8_t bit_timing = 0;
+  CHECK(read_quarter_track(g_woz2_driver, instance, 0, &bits, &bit_count,
+                           &bit_timing) == disk_err_corrupt);
+  CHECK(bit_count == 0);
+  CHECK(bits[0] == 0xEE);
+
+  g_woz2_driver.close(instance);
+}
+
+TEST_CASE("DiskWOZ: a track may span as many blocks as the buffer holds") {
+  TestFixtures::ScopedTempFile_t widest(".woz");
+  write_zero_track_woz2(widest.c_str(), widest_block_span, max_track_bits);
+
+  void* instance = nullptr;
+  REQUIRE(g_woz2_driver.open(widest.c_str(), 0, false, &instance) ==
+          disk_err_none);
+
+  std::vector<uint8_t> bits;
+  uint32_t bit_count = 0;
+  uint8_t bit_timing = 0;
+  CHECK(read_quarter_track(g_woz2_driver, instance, 0, &bits, &bit_count,
+                           &bit_timing) == disk_err_none);
+  CHECK(bit_count == max_track_bits);
+  CHECK(bits[0] == 0);
+  CHECK(bits[max_track_bits / 8 - 1] == 0);
+
+  g_woz2_driver.close(instance);
+}
+
+TEST_CASE("DiskWOZ: a track spanning one block too many is unsupported") {
+  TestFixtures::ScopedTempFile_t too_wide(".woz");
+  write_zero_track_woz2(too_wide.c_str(), widest_block_span + 1,
+                        max_track_bits + 1);
+
+  void* instance = nullptr;
+  REQUIRE(g_woz2_driver.open(too_wide.c_str(), 0, false, &instance) ==
+          disk_err_none);
+
+  std::vector<uint8_t> bits;
+  uint32_t bit_count = 0;
+  uint8_t bit_timing = 0;
+  CHECK(read_quarter_track(g_woz2_driver, instance, 0, &bits, &bit_count,
+                           &bit_timing) == disk_err_unsupported);
+  CHECK(bit_count == 0);
+  CHECK(bits[0] == 0xEE);
+
+  g_woz2_driver.close(instance);
 }

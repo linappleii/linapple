@@ -29,8 +29,18 @@ constexpr char signature[] = "WOZ2\xFF\n\r\n";
 constexpr int header_size = 1536;
 constexpr int data_block_size = 512;
 constexpr int trks_entry_size = 8;
-constexpr uint16_t max_track_blocks = 64;
 constexpr int info_optimal_bit_timing_offset = 39;
+constexpr uint8_t info_version_2_0 = 2;
+constexpr uint8_t info_version_2_1 = 3;
+
+// The specification places the first TRKS data block right after the
+// 1,536-byte header, so blocks 0 to 2 can only be a corrupt entry.
+constexpr uint16_t first_data_block = 3;
+
+// A record spanning more blocks than the ABI track buffer holds can never be
+// read whole; the specification's own largest tracks stay under 14 blocks.
+constexpr uint32_t bits_per_block = data_block_size * woz::bits_per_byte;
+constexpr uint32_t max_track_blocks = max_track_bits / bits_per_block;
 }  // namespace woz2
 
 struct WozInstance_t {
@@ -129,7 +139,13 @@ static auto woz2_open(const char* path, uint32_t file_offset, bool read_only,
     return disk_err_corrupt;
   }
 
-  if (info_data[woz::info_disk_type_offset] == woz::disk_type_3_5) {
+  const uint8_t info_version = info_data[woz::info_version_offset];
+  if (info_version != woz2::info_version_2_0 &&
+      info_version != woz2::info_version_2_1) {
+    return disk_err_unsupported_format;
+  }
+
+  if (info_data[woz::info_disk_type_offset] != woz::disk_type_5_25) {
     return disk_err_unsupported_format;
   }
 
@@ -209,8 +225,12 @@ static auto woz2_read_track_bits(void* instance_handle, uint32_t quarter_track,
   const uint16_t block_count = read_u16_le(&trk[2]);
   const uint32_t bit_count = read_u32_le(&trk[4]);
 
-  if (block_count == 0 || block_count > woz2::max_track_blocks) {
+  if (block_count == 0 || starting_block < woz2::first_data_block) {
     return disk_err_corrupt;
+  }
+
+  if (block_count > woz2::max_track_blocks) {
+    return disk_err_unsupported;
   }
 
   const uint32_t byte_count =
@@ -218,6 +238,10 @@ static auto woz2_read_track_bits(void* instance_handle, uint32_t quarter_track,
 
   if (bit_count == 0 || bit_count > byte_count * woz::bits_per_byte) {
     return disk_err_corrupt;
+  }
+
+  if (bit_count > max_bits) {
+    return disk_err_unsupported;
   }
 
   const int64_t total_file_size = Path::file_size(wi_ptr->file.get());
@@ -228,10 +252,6 @@ static auto woz2_read_track_bits(void* instance_handle, uint32_t quarter_track,
       (static_cast<uint64_t>(starting_block) * woz2::data_block_size);
   if (file_offset + byte_count > static_cast<uint64_t>(total_file_size)) {
     return disk_err_corrupt;
-  }
-
-  if (bit_count > max_bits) {
-    return disk_err_unsupported;
   }
 
   if (fseek(wi_ptr->file.get(), static_cast<long>(file_offset), SEEK_SET) !=
