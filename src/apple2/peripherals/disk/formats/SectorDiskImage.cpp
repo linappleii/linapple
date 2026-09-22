@@ -67,8 +67,7 @@ constexpr int next_sector_offset = 2;
 namespace prodos {
 constexpr int block_size = 512;
 constexpr int dir_start_block = 2;
-constexpr int dir_end_block = 5;
-constexpr int dir_link_offset = 0x0100;
+constexpr int link_words_size = 4;
 constexpr uint16_t max_blocks_140k = 280;
 }  // namespace prodos
 
@@ -289,13 +288,11 @@ auto sector_disk_image_probe_signature(const uint8_t* header_data,
       }
     }
   } else {
-    const size_t prodos_min = (static_cast<size_t>(prodos::dir_end_block) *
-                               static_cast<size_t>(prodos::block_size)) +
-                              static_cast<size_t>(prodos::dir_link_offset) + 2;
-    if (header_size >= prodos_min) {
-      const size_t offset_prev = (static_cast<size_t>(prodos::dir_start_block) *
-                                  static_cast<size_t>(prodos::block_size)) +
-                                 static_cast<size_t>(prodos::dir_link_offset);
+    // The volume directory key block is block 2 and opens with its two link
+    // words, previous (0) then next (ProDOS 8 Technical Reference, B.2.2).
+    const size_t offset_prev = static_cast<size_t>(prodos::dir_start_block) *
+                               static_cast<size_t>(prodos::block_size);
+    if (header_size >= offset_prev + prodos::link_words_size) {
       const size_t offset_next = offset_prev + 2;
 
       const uint16_t prev = read_u16_le(&header_data[offset_prev]);

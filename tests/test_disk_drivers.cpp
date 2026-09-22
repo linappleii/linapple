@@ -130,14 +130,12 @@ TEST_CASE("DiskDrivers: [DRV-01] DO Driver Probing") {
 
 TEST_CASE("DiskDrivers: [DRV-02] PO Driver Probing") {
   std::vector<uint8_t> buffer(143360, 0);
-  // ProDOS directory block 2 check (Track 0, Block 2 = Sectors 4,5)
-  // block 2 starts at 1024. PAGE_SIZE = 256.
-  // header + (2 * 512) + 256 = 1024 + 256 = 1280.
-  // prev = 1280, next = 1282.
-  buffer[1280] = 0;
-  buffer[1281] = 0;  // prev = 0
-  buffer[1282] = 3;
-  buffer[1283] = 0;  // next = 3
+  // The volume directory key block is block 2, at 2 * 512, and opens with
+  // its previous (0) and next (3) block links.
+  buffer[1024] = 0;
+  buffer[1025] = 0;
+  buffer[1026] = 3;
+  buffer[1027] = 0;
 
   CHECK(g_po_driver.probe(buffer.data(), buffer.size(), 143360, ".po") ==
         disk_probe_definite);

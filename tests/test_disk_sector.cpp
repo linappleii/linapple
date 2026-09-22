@@ -174,3 +174,35 @@ TEST_CASE("DiskSector: [IIE-2] a nibble image reads the same behind a prefix") {
   g_iie_driver.close(bare_instance);
   g_iie_driver.close(wrapped_instance);
 }
+
+TEST_CASE("DiskSector: [PO-1] a ProDOS-order volume probes definite") {
+  auto image = TestFixtures::create_ephemeral("minimal.po");
+  const std::vector<uint8_t> bytes = read_file(image.path());
+  const auto size = static_cast<uint32_t>(bytes.size());
+
+  CHECK(g_po_driver.probe(bytes.data(), bytes.size(), size, ".po") ==
+        disk_probe_definite);
+  CHECK(g_po_driver.probe(bytes.data(), bytes.size(), size, "") ==
+        disk_probe_definite);
+  CHECK(g_do_driver.probe(bytes.data(), bytes.size(), size, ".po") ==
+        disk_probe_no);
+}
+
+TEST_CASE("DiskSector: [PO-2] a DOS 3.3 volume still probes definite as DOS") {
+  auto image = TestFixtures::create_ephemeral("Master.dsk");
+  const std::vector<uint8_t> bytes = read_file(image.path());
+  const auto size = static_cast<uint32_t>(bytes.size());
+
+  CHECK(g_do_driver.probe(bytes.data(), bytes.size(), size, ".dsk") ==
+        disk_probe_definite);
+  CHECK(g_po_driver.probe(bytes.data(), bytes.size(), size, ".dsk") ==
+        disk_probe_no);
+
+  disk_loader_reset();
+  const DiskFormatDriver_t* driver = nullptr;
+  void* instance = nullptr;
+  REQUIRE(disk_loader_open(image.c_str(), &driver, &instance) == disk_err_none);
+  REQUIRE(driver != nullptr);
+  CHECK(std::string(driver->name) == "DOS Order");
+  driver->close(instance);
+}
