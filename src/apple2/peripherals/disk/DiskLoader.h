@@ -19,6 +19,10 @@ extern "C" {
    entry point runs on the emulation thread and nowhere else.
    The registry is a plain list with no lock around it. */
 
+/* Registering the same descriptor twice is a silent no-op. A different driver
+   whose name is already registered is refused and the refusal recorded: the
+   name is how a user and disk_loader_create pick a format, so it must pick
+   exactly one. */
 void disk_loader_register(const DiskFormatDriver_t* driver);
 
 /* Restores the drivers that registered themselves and forgets everything else,

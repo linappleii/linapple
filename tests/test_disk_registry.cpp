@@ -168,3 +168,20 @@ TEST_CASE("DiskRegistry: a driver missing read or protect is refused by name") {
 
   disk_loader_reset();
 }
+
+TEST_CASE("DiskRegistry: a second driver with a registered name is refused") {
+  disk_loader_reset();
+  const uint32_t baseline = disk_loader_driver_count();
+
+  DiskFormatDriver_t impostor = make_fake("DOS Order", probe_no);
+  disk_loader_register(&impostor);
+
+  CHECK(disk_loader_driver_count() == baseline);
+
+  std::vector<std::string> refused;
+  count_rejections(&refused);
+  REQUIRE(refused.size() == 1);
+  CHECK(refused[0] == "DOS Order");
+
+  disk_loader_reset();
+}

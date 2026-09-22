@@ -90,10 +90,32 @@ auto already_registered(const DiskFormatDriver_t* driver) -> bool {
          registry().end();
 }
 
+// The name is what a user picks a format by and what disk_loader_create looks
+// a driver up by, so two drivers answering to one name would leave one of
+// them unreachable.
+auto name_is_taken(const DiskFormatDriver_t* driver) -> bool {
+  for (const auto* registered : registry()) {
+    if (strcmp(driver_label(registered), driver_label(driver)) == 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+auto admit(const DiskFormatDriver_t* driver) -> bool {
+  if (!driver_is_usable(driver) || already_registered(driver)) {
+    return false;
+  }
+  if (name_is_taken(driver)) {
+    return refuse(driver, "a driver with this name is already registered");
+  }
+  return true;
+}
+
 // A probe that finds no definite claim settles for the first driver that says
 // "possible", so the order drivers sit in decides which one opens an ambiguous
 // image. Link order is not an answer a user can reason about; alphabetical by
-// name is, and two drivers sharing a name keep the order they arrived in.
+// name is.
 auto insert_by_name(std::vector<const DiskFormatDriver_t*>& drivers,
                     const DiskFormatDriver_t* driver) -> void {
   const auto at = std::upper_bound(
@@ -181,14 +203,14 @@ auto has_container_extension(const char* path) -> bool {
 }  // namespace
 
 auto disk_loader_register(const DiskFormatDriver_t* driver) -> void {
-  if (!driver_is_usable(driver) || already_registered(driver)) {
+  if (!admit(driver)) {
     return;
   }
   insert_by_name(registry(), driver);
 }
 
 auto disk_loader_register_permanent(const DiskFormatDriver_t* driver) -> void {
-  if (!driver_is_usable(driver) || already_registered(driver)) {
+  if (!admit(driver)) {
     return;
   }
   insert_by_name(permanent_registry(), driver);
