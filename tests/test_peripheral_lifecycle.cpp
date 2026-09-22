@@ -336,7 +336,9 @@ TEST_CASE("Peripheral Manager: A declared machine reaches the slots") {
   // only truth.
   TestFixtures::ScopedTestConfig_t::Description_t description;
   description.slots[3] = "Mockingboard";
+#ifdef ENABLE_PERIPHERAL_DISK
   description.slots[5] = "Disk II";
+#endif
   TestFixtures::ScopedTestConfig_t config(description);
   TestFixtures::ScopedCore_t core(config);
 
@@ -344,7 +346,11 @@ TEST_CASE("Peripheral Manager: A declared machine reaches the slots") {
   peripheral_get_manifest(&manifest);
 
   CHECK(std::string(manifest.peripherals[4].name) == "Mockingboard");
+#ifdef ENABLE_PERIPHERAL_DISK
   CHECK(std::string(manifest.peripherals[6].name) == "Disk II");
+#else
+  CHECK(manifest.peripherals[6].name[0] == '\0');
+#endif
   CHECK(manifest.peripherals[1].name[0] == '\0');
   CHECK(manifest.peripherals[2].name[0] == '\0');
   CHECK(manifest.peripherals[3].name[0] == '\0');

@@ -106,6 +106,7 @@ TEST_CASE("AppController: Video Mode Reset") {
   CHECK(g_videotype == VT_COLOR_STANDARD);
 }
 
+#ifdef ENABLE_PERIPHERAL_DISK
 TEST_CASE("AppController: Media Loading") {
   ScopedAppController_t controller_guard;
   TestConfig_t machine(TestConfig_t::disk_ii_only());
@@ -135,6 +136,7 @@ TEST_CASE("AppController: Media Loading") {
   CHECK(res == peripheral_ok);
   CHECK(status.drive0_loaded == 1);
 }
+#endif
 
 TEST_CASE("AppController: Diagnostic Commands") {
   AppConfig_t config = {};
@@ -183,6 +185,7 @@ TEST_CASE("AppController: Initialize Failure on Nonexistent ROM") {
   CHECK(result != 0);
 }
 
+#ifdef ENABLE_PERIPHERAL_DISK
 TEST_CASE("AppController: Slot 6 Autoload Fallback to Master.dsk") {
   ScopedAppController_t controller_guard;
   TestConfig_t machine(TestConfig_t::disk_ii_only());
@@ -240,6 +243,7 @@ TEST_CASE("AppController: Slot 6 Autoload Enabled with Configured Image") {
   CHECK(res == peripheral_ok);
   CHECK(status.drive0_loaded == 1);
 }
+#endif
 
 TEST_CASE("AppController: FTP Configuration Defaults and Preferences") {
   ScopedAppController_t controller_guard;

@@ -186,7 +186,6 @@ endif()
 
 # --- Dependencies ---
 find_package(Threads REQUIRED)
-find_package(ZLIB REQUIRED)
 if(ENABLE_FTP)
     find_package(CURL REQUIRED)
     add_compile_definitions(ENABLE_FTP=1)
@@ -198,7 +197,6 @@ else()
     set(FTP_INCLUDE_DIRS "")
 endif()
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(LIBZIP REQUIRED IMPORTED_TARGET libzip)
 
 if(FRONTEND_LOWER STREQUAL "all")
     find_package(SDL3 REQUIRED)
@@ -515,6 +513,22 @@ function(add_peripheral name desc sources extra_libs libs force_builtin)
     string(REPLACE "-" "_" upper_name ${upper_name})
     set(opt_name "ENABLE_PERIPHERAL_${upper_name}")
 
+    # A card owns its directory and may compile shared silicon or media, and
+    # nothing else: a source reached from another card's directory is a
+    # dependency between cards, which the include rule forbids as well.
+    set(source_dir ${name})
+    if(name STREQUAL "super_serial")
+        set(source_dir "super_serial_card")
+    endif()
+    foreach(source IN LISTS sources)
+        if(IS_ABSOLUTE "${source}")
+            file(RELATIVE_PATH source "${CMAKE_CURRENT_SOURCE_DIR}" "${source}")
+        endif()
+        if(NOT source MATCHES "^src/apple2/(peripherals/${source_dir}|chips|media)/")
+            message(FATAL_ERROR "Peripheral ${name} lists ${source}, which is outside src/apple2/peripherals/${source_dir}/, src/apple2/chips/ and src/apple2/media/")
+        endif()
+    endforeach()
+
     option(${opt_name} "Enable ${desc}" ON)
 
     if(${opt_name})
@@ -560,10 +574,18 @@ function(add_media_target target lib)
         CXX_VISIBILITY_PRESET hidden
         VISIBILITY_INLINES_HIDDEN ON
         POSITION_INDEPENDENT_CODE ON)
+    # An external is looked up here and nowhere else, so a build with no card
+    # that wants it never sees the package or links it.
     foreach(external IN LISTS PERIPHERAL_LIBRARY_${lib}_EXTERNAL)
         if(external STREQUAL "ZLIB")
+            if(NOT TARGET ZLIB::ZLIB)
+                find_package(ZLIB REQUIRED)
+            endif()
             target_link_libraries(${target} PUBLIC ZLIB::ZLIB)
         elseif(external STREQUAL "LIBZIP")
+            if(NOT TARGET PkgConfig::LIBZIP)
+                pkg_check_modules(LIBZIP REQUIRED IMPORTED_TARGET libzip)
+            endif()
             target_link_libraries(${target} PUBLIC PkgConfig::LIBZIP)
         else()
             message(FATAL_ERROR "Media library ${lib} names an unknown external dependency ${external}")
@@ -635,7 +657,7 @@ file(GLOB CHIP_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/apple2
 set_source_files_properties(${CHIP_SOURCES} PROPERTIES COMPILE_OPTIONS "-fvisibility=hidden;-fvisibility-inlines-hidden")
 
 # --- Executable Targets ---
-set(COMMON_LIBS ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
+set(COMMON_LIBS ${CMAKE_DL_LIBS} Threads::Threads)
 
 function(add_linapple_executable TARGET_NAME FE_NAME FE_SOURCES DBG_SOURCES EXTRA_LIBS EXTRA_INCLUDES EXTRA_DEFS)
     add_executable(${TARGET_NAME} ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${DBG_SOURCES} ${FE_SOURCES} ${SOURCES_A2_OPTIONAL})
@@ -740,7 +762,7 @@ if(BUILD_TESTING)
         set_target_properties(test-${name} PROPERTIES ENABLE_EXPORTS TRUE)
         target_include_directories(test-${name} PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} tests)
         target_compile_definitions(test-${name} PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
-        target_link_libraries(test-${name} PRIVATE ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads ${MEDIA_TARGETS})
+        target_link_libraries(test-${name} PRIVATE ${COMMON_LIBS} ${MEDIA_TARGETS})
         add_test(NAME test-${name} COMMAND test-${name})
         linapple_test_home(test-${name} ${name})
     endmacro()
@@ -802,34 +824,38 @@ if(BUILD_TESTING)
     add_linapple_test(joystick-peripheral "tests/test_main.cpp;tests/test_joystick_peripheral.cpp")
     add_linapple_test(mouse-exhaustive "tests/test_main.cpp;tests/test_mouse_exhaustive.cpp")
     add_linapple_test(peripheral-slot0 "tests/test_main.cpp;tests/test_peripheral_slot0.cpp")
-    # The smoke test proves the ABI headers are C99, not merely C the compiler
-    # happens to accept.
-    set_source_files_properties(tests/test_disk_abi_c.c PROPERTIES COMPILE_OPTIONS "-std=c99;-pedantic")
-    add_linapple_test(disk-abi "tests/test_disk_abi.cpp;tests/test_disk_abi_c.c")
-    
-    add_executable(test-disk-gcr tests/test_disk_gcr.cpp src/apple2/peripherals/disk/DiskEncoding.cpp)
-    target_include_directories(test-disk-gcr PRIVATE src ${DOCTEST_INCLUDE_DIR})
-    add_test(NAME test-disk-gcr COMMAND test-disk-gcr)
+    # Every test that mounts a disk or harddisk card at run time is built only
+    # with that card, so a build without one still has a green test suite and
+    # proves nothing of the card's leaked into it.
+    if(ENABLE_PERIPHERAL_DISK)
+        # The smoke test proves the ABI headers are C99, not merely C the compiler
+        # happens to accept.
+        set_source_files_properties(tests/test_disk_abi_c.c PROPERTIES COMPILE_OPTIONS "-std=c99;-pedantic")
+        add_linapple_test(disk-abi "tests/test_disk_abi.cpp;tests/test_disk_abi_c.c")
 
-    add_executable(test-disk-adapter tests/test_disk_adapter.cpp src/apple2/peripherals/disk/DiskEncoding.cpp)
-    target_include_directories(test-disk-adapter PRIVATE src ${DOCTEST_INCLUDE_DIR})
-    add_test(NAME test-disk-adapter COMMAND test-disk-adapter)
+        add_executable(test-disk-gcr tests/test_disk_gcr.cpp src/apple2/peripherals/disk/DiskEncoding.cpp)
+        target_include_directories(test-disk-gcr PRIVATE src ${DOCTEST_INCLUDE_DIR})
+        add_test(NAME test-disk-gcr COMMAND test-disk-gcr)
 
-    add_executable(test-disk-drivers tests/test_disk_drivers.cpp src/core/Log.cpp src/frontends/headless/Headless_Path.cpp src/apple2/peripherals/disk/DiskLoader.cpp ${DISK_BACKEND_SOURCES} ${DISK_FORMAT_SOURCES})
-    target_include_directories(test-disk-drivers PRIVATE src ${DOCTEST_INCLUDE_DIR})
-    target_link_libraries(test-disk-drivers PRIVATE ${COMMON_LIBS} ${MEDIA_TARGETS})
-    add_test(NAME test-disk-drivers COMMAND test-disk-drivers)
+        add_executable(test-disk-adapter tests/test_disk_adapter.cpp src/apple2/peripherals/disk/DiskEncoding.cpp)
+        target_include_directories(test-disk-adapter PRIVATE src ${DOCTEST_INCLUDE_DIR})
+        add_test(NAME test-disk-adapter COMMAND test-disk-adapter)
 
-    add_executable(test-disk-registry tests/test_disk_registry.cpp src/frontends/headless/Headless_Path.cpp src/apple2/peripherals/disk/DiskLoader.cpp ${DISK_BACKEND_SOURCES} ${DISK_FORMAT_SOURCES})
-    target_include_directories(test-disk-registry PRIVATE src ${DOCTEST_INCLUDE_DIR})
-    target_compile_definitions(test-disk-registry PRIVATE DISK_FORMAT_DRIVER_COUNT=${DISK_FORMAT_DRIVER_COUNT})
-    target_link_libraries(test-disk-registry PRIVATE ${COMMON_LIBS} ${MEDIA_TARGETS})
-    add_test(NAME test-disk-registry COMMAND test-disk-registry)
+        add_executable(test-disk-drivers tests/test_disk_drivers.cpp src/core/Log.cpp src/frontends/headless/Headless_Path.cpp src/apple2/peripherals/disk/DiskLoader.cpp ${DISK_BACKEND_SOURCES} ${DISK_FORMAT_SOURCES})
+        target_include_directories(test-disk-drivers PRIVATE src ${DOCTEST_INCLUDE_DIR})
+        target_link_libraries(test-disk-drivers PRIVATE ${COMMON_LIBS} ${MEDIA_TARGETS})
+        add_test(NAME test-disk-drivers COMMAND test-disk-drivers)
 
-    # The P6 sequencer PROM is a verbatim Apple part; a wrong or truncated
-    # image would mis-clock every read instead of failing loudly.
-    add_test(NAME test-disk-p6-rom COMMAND sh -c
-[=[
+        add_executable(test-disk-registry tests/test_disk_registry.cpp src/frontends/headless/Headless_Path.cpp src/apple2/peripherals/disk/DiskLoader.cpp ${DISK_BACKEND_SOURCES} ${DISK_FORMAT_SOURCES})
+        target_include_directories(test-disk-registry PRIVATE src ${DOCTEST_INCLUDE_DIR})
+        target_compile_definitions(test-disk-registry PRIVATE DISK_FORMAT_DRIVER_COUNT=${DISK_FORMAT_DRIVER_COUNT})
+        target_link_libraries(test-disk-registry PRIVATE ${COMMON_LIBS} ${MEDIA_TARGETS})
+        add_test(NAME test-disk-registry COMMAND test-disk-registry)
+
+        # The P6 sequencer PROM is a verbatim Apple part; a wrong or truncated
+        # image would mis-clock every read instead of failing loudly.
+        add_test(NAME test-disk-p6-rom COMMAND sh -c
+    [=[
 digest=$(sha1sum "$1" | cut -d " " -f 1)
 size=$(wc -c < "$1")
 if [ "$digest" != "bc39fbd5b9a8d2287ac5d0a42e639fc4d3c2f9d4" ]; then
@@ -841,16 +867,16 @@ if [ "$size" -ne 256 ]; then
   exit 1
 fi
 ]=]
-        sh "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/DISK2-P6.rom")
+            sh "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/DISK2-P6.rom")
 
-    # The disk fixtures are generated, so a hand edit to one, or a generator
-    # that stopped being deterministic, would quietly move every golden built
-    # on it. The committed copies and a fresh regeneration are both held to
-    # the same pins. Raw images and stored archives are pinned byte for byte;
-    # the gzip member's deflate bytes depend on which zlib perl links, so it
-    # is pinned by its extracted payload instead.
-    add_test(NAME test-disk-fixtures COMMAND sh -c
-[=[
+        # The disk fixtures are generated, so a hand edit to one, or a generator
+        # that stopped being deterministic, would quietly move every golden built
+        # on it. The committed copies and a fresh regeneration are both held to
+        # the same pins. Raw images and stored archives are pinned byte for byte;
+        # the gzip member's deflate bytes depend on which zlib perl links, so it
+        # is pinned by its extracted payload instead.
+        add_test(NAME test-disk-fixtures COMMAND sh -c
+    [=[
 set -e
 scratch=$(mktemp -d "${TMPDIR:-/tmp}/linapple_fixtures_XXXXXX")
 trap 'rm -rf "$scratch"' EXIT
@@ -866,16 +892,18 @@ for dir in "$1" "$scratch"; do
   done < "$1/PAYLOAD_SHA1SUMS"
 done
 ]=]
-        sh "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures")
+            sh "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures")
+
+        add_linapple_test(disk-smoke "tests/HeadlessHarness.cpp;tests/test_disk_smoke.cpp")
+        add_linapple_test(disk-config-startup tests/test_disk_config_startup.cpp)
+        add_linapple_test(disk-config-runtime-insert tests/test_disk_config_runtime_insert.cpp)
+        add_linapple_test(disk-config-runtime-eject tests/test_disk_config_runtime_eject.cpp)
+        add_linapple_test(headless-boot "tests/HeadlessHarness.cpp;tests/test_headless_boot.cpp")
+    endif()
 
     add_linapple_test(program-loader tests/test_program_loader.cpp)
     add_linapple_test(system-roms "tests/test_main.cpp;tests/test_system_roms.cpp")
     add_linapple_test(basic-live-sync "tests/test_main.cpp;tests/test_basic_live_sync.cpp")
-    add_linapple_test(disk-smoke "tests/HeadlessHarness.cpp;tests/test_disk_smoke.cpp")
-    add_linapple_test(disk-config-startup tests/test_disk_config_startup.cpp)
-    add_linapple_test(disk-config-runtime-insert tests/test_disk_config_runtime_insert.cpp)
-    add_linapple_test(disk-config-runtime-eject tests/test_disk_config_runtime_eject.cpp)
-    add_linapple_test(headless-boot "tests/HeadlessHarness.cpp;tests/test_headless_boot.cpp")
 
     add_linapple_test(file-browser tests/test_file_browser.cpp)
 
@@ -896,9 +924,11 @@ done
         target_link_libraries(test-ftp-client PRIVATE ${FTP_LIBRARIES})
     endif()
 
-    add_executable(test-disk-ui tests/test_disk_ui.cpp src/frontends/common/sdl/DiskUI.cpp)
-    target_include_directories(test-disk-ui PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR})
-    add_test(NAME test-disk-ui COMMAND test-disk-ui)
+    if(ENABLE_PERIPHERAL_DISK)
+        add_executable(test-disk-ui tests/test_disk_ui.cpp src/frontends/common/sdl/DiskUI.cpp)
+        target_include_directories(test-disk-ui PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR})
+        add_test(NAME test-disk-ui COMMAND test-disk-ui)
+    endif()
 
     add_executable(test-audio-dumper tests/test_audio_dumper.cpp src/frontends/common/AudioDumper.cpp)
     target_include_directories(test-audio-dumper PRIVATE src src/core src/frontends/common ${DOCTEST_INCLUDE_DIR})
@@ -911,12 +941,49 @@ done
 
     add_linapple_test(tui-disk-select "tests/test_main.cpp;tests/test_tui_disk_select.cpp;src/frontends/tui/TuiDiskSelect.cpp;src/frontends/tui/TuiVideo.cpp;src/frontends/tui/TuiShapeDetector.cpp")
 
-    add_linapple_test(disk-e2e tests/test_disk_e2e.cpp)
+    set(DISK_TEST_CASES "")
+    if(ENABLE_PERIPHERAL_DISK)
+        add_linapple_test(disk-e2e tests/test_disk_e2e.cpp)
 
-    foreach(T disk_motor;disk_prot;disk_woz;disk_woz1;disk_savestate;disk_errors;disk_stepper;disk_io;disk_compression;disk_modes;disk_lss;disk_bits;disk_sector;disk_nibble;disk_container;image_container)
-        string(REPLACE "_" "-" TEST_NAME ${T})
-        add_linapple_test(${TEST_NAME} tests/test_${T}.cpp)
-    endforeach()
+        foreach(T disk_motor;disk_prot;disk_woz;disk_woz1;disk_savestate;disk_errors;disk_stepper;disk_io;disk_compression;disk_modes;disk_lss;disk_bits;disk_sector;disk_nibble;disk_container)
+            string(REPLACE "_" "-" TEST_NAME ${T})
+            add_linapple_test(${TEST_NAME} tests/test_${T}.cpp)
+        endforeach()
+        list(APPEND DISK_TEST_CASES
+            test-disk-abi
+            test-disk-adapter
+            test-disk-bits
+            test-disk-compression
+            test-disk-config-runtime-eject
+            test-disk-config-runtime-insert
+            test-disk-config-startup
+            test-disk-container
+            test-disk-drivers
+            test-disk-e2e
+            test-disk-errors
+            test-disk-fixtures
+            test-disk-gcr
+            test-disk-io
+            test-disk-lss
+            test-disk-modes
+            test-disk-motor
+            test-disk-nibble
+            test-disk-p6-rom
+            test-disk-prot
+            test-disk-registry
+            test-disk-savestate
+            test-disk-sector
+            test-disk-smoke
+            test-disk-stepper
+            test-disk-ui
+            test-disk-woz
+            test-disk-woz1)
+    endif()
+    # The container library exists only when a card that opens images does.
+    if(ENABLE_PERIPHERAL_DISK OR ENABLE_PERIPHERAL_HARDDISK)
+        add_linapple_test(image-container tests/test_image_container.cpp)
+        list(APPEND DISK_TEST_CASES test-image-container)
+    endif()
     # A Disk II case is one unit of hardware behaviour, never a soak: one
     # that stops finishing inside a second has found a regression rather
     # than a slow machine, and the budget says so instead of printing it.
@@ -927,37 +994,9 @@ done
     else()
         set(DISK_TEST_TIMEOUT 1)
     endif()
-    set(DISK_TEST_CASES
-        test-disk-abi
-        test-disk-adapter
-        test-disk-bits
-        test-disk-compression
-        test-disk-config-runtime-eject
-        test-disk-config-runtime-insert
-        test-disk-config-startup
-        test-disk-container
-        test-disk-drivers
-        test-disk-e2e
-        test-disk-errors
-        test-disk-fixtures
-        test-disk-gcr
-        test-disk-io
-        test-disk-lss
-        test-disk-modes
-        test-disk-motor
-        test-disk-nibble
-        test-disk-p6-rom
-        test-disk-prot
-        test-disk-registry
-        test-disk-savestate
-        test-disk-sector
-        test-disk-smoke
-        test-disk-stepper
-        test-disk-ui
-        test-disk-woz
-        test-disk-woz1
-        test-image-container)
-    set_tests_properties(${DISK_TEST_CASES} PROPERTIES TIMEOUT ${DISK_TEST_TIMEOUT})
+    if(DISK_TEST_CASES)
+        set_tests_properties(${DISK_TEST_CASES} PROPERTIES TIMEOUT ${DISK_TEST_TIMEOUT})
+    endif()
 
     if(FRONTEND_LOWER STREQUAL "all")
         set(CPU_TEST_TARGET linapple-sdl3)
@@ -981,8 +1020,10 @@ done
         target_link_libraries(test-speaker-e2e PRIVATE peripheral-speaker)
         target_link_libraries(test-frontend-init-order PRIVATE peripheral-speaker)
     endif()
-    add_linapple_test(e2e-applesoft "tests/HeadlessHarness.cpp;tests/test_e2e_applesoft.cpp")
-    set_tests_properties(test-e2e-applesoft PROPERTIES LABELS "e2e")
+    if(ENABLE_PERIPHERAL_DISK)
+        add_linapple_test(e2e-applesoft "tests/HeadlessHarness.cpp;tests/test_e2e_applesoft.cpp")
+        set_tests_properties(test-e2e-applesoft PROPERTIES LABELS "e2e")
+    endif()
     # Its own directory, which no plugin search path names, so an ordinary
     # run never loads it.
     set(TEST_PLUGIN_DIR "${CMAKE_BINARY_DIR}/test-plugins")
@@ -996,8 +1037,10 @@ done
     add_linapple_test(peripheral-lifecycle tests/test_peripheral_lifecycle.cpp)
     add_dependencies(test-peripheral-lifecycle test-plugin-slot0)
     target_compile_definitions(test-peripheral-lifecycle PRIVATE TEST_PLUGIN_DIR="${TEST_PLUGIN_DIR}")
-    add_linapple_test(harddisk-peripheral tests/test_harddisk_peripheral.cpp)
-    add_linapple_test(harddisk-exhaustive tests/test_harddisk_exhaustive.cpp)
+    if(ENABLE_PERIPHERAL_HARDDISK)
+        add_linapple_test(harddisk-peripheral tests/test_harddisk_peripheral.cpp)
+        add_linapple_test(harddisk-exhaustive tests/test_harddisk_exhaustive.cpp)
+    endif()
     add_linapple_test(snapshot tests/test_snapshot.cpp)
     add_linapple_test(memory-exhaustive "tests/test_main.cpp;tests/test_memory_exhaustive.cpp")
     add_linapple_test(cpu-exhaustive "tests/test_main.cpp;tests/test_cpu_exhaustive.cpp")
@@ -1033,7 +1076,7 @@ done
         add_dependencies(test-frontend-sdl1 generate_xpms generate_embedded_roms)
         target_include_directories(test-frontend-sdl1 PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} ${SDL_INCLUDE_DIR} tests src)
         target_compile_definitions(test-frontend-sdl1 PRIVATE LINAPPLE_SDL_VERSION=1 ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
-        target_link_libraries(test-frontend-sdl1 PRIVATE ${SDL_LIBRARY} ${SDL_IMAGE_LIBRARIES} ${FTP_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads ${MEDIA_TARGETS})
+        target_link_libraries(test-frontend-sdl1 PRIVATE ${SDL_LIBRARY} ${SDL_IMAGE_LIBRARIES} ${FTP_LIBRARIES} ${COMMON_LIBS} ${MEDIA_TARGETS})
         add_test(NAME test-frontend-sdl1 COMMAND test-frontend-sdl1)
         linapple_test_home(test-frontend-sdl1 frontend-sdl1)
     endif()
@@ -1045,7 +1088,7 @@ done
         add_dependencies(test-frontend-sdl2 generate_xpms generate_embedded_roms)
         target_include_directories(test-frontend-sdl2 PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} tests src)
         target_compile_definitions(test-frontend-sdl2 PRIVATE LINAPPLE_SDL_VERSION=2 ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
-        target_link_libraries(test-frontend-sdl2 PRIVATE SDL2::SDL2 ${FTP_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads ${MEDIA_TARGETS})
+        target_link_libraries(test-frontend-sdl2 PRIVATE SDL2::SDL2 ${FTP_LIBRARIES} ${COMMON_LIBS} ${MEDIA_TARGETS})
         add_test(NAME test-frontend-sdl2 COMMAND test-frontend-sdl2)
         linapple_test_home(test-frontend-sdl2 frontend-sdl2)
     endif()
@@ -1057,7 +1100,7 @@ done
         add_dependencies(test-frontend-sdl3 generate_xpms generate_embedded_roms)
         target_include_directories(test-frontend-sdl3 PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} tests src)
         target_compile_definitions(test-frontend-sdl3 PRIVATE LINAPPLE_SDL_VERSION=3 ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
-        target_link_libraries(test-frontend-sdl3 PRIVATE SDL3::SDL3 SDL3_image::SDL3_image ${FTP_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads ${MEDIA_TARGETS})
+        target_link_libraries(test-frontend-sdl3 PRIVATE SDL3::SDL3 SDL3_image::SDL3_image ${FTP_LIBRARIES} ${COMMON_LIBS} ${MEDIA_TARGETS})
         add_test(NAME test-frontend-sdl3 COMMAND test-frontend-sdl3)
         linapple_test_home(test-frontend-sdl3 frontend-sdl3)
     endif()
@@ -1076,13 +1119,17 @@ if(ENABLE_FUZZING)
         target_compile_definitions(${name} PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF)
         target_compile_options(${name} PRIVATE ${FUZZ_FLAGS})
         target_link_options(${name} PRIVATE ${FUZZ_FLAGS})
-        target_link_libraries(${name} PRIVATE ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads ${MEDIA_FUZZ_TARGETS})
+        target_link_libraries(${name} PRIVATE ${COMMON_LIBS} ${MEDIA_FUZZ_TARGETS})
     endmacro()
 
-    add_linapple_fuzzer(fuzz-disk-loader tests/fuzz/fuzz_disk_loader.cpp)
-    add_linapple_fuzzer(fuzz-image-container tests/fuzz/fuzz_image_container.cpp)
-    add_linapple_fuzzer(fuzz-disk-controller tests/fuzz/fuzz_disk_controller.cpp)
-    add_linapple_fuzzer(fuzz-disk-adapter tests/fuzz/fuzz_disk_adapter.cpp)
+    if(ENABLE_PERIPHERAL_DISK)
+        add_linapple_fuzzer(fuzz-disk-loader tests/fuzz/fuzz_disk_loader.cpp)
+        add_linapple_fuzzer(fuzz-disk-controller tests/fuzz/fuzz_disk_controller.cpp)
+        add_linapple_fuzzer(fuzz-disk-adapter tests/fuzz/fuzz_disk_adapter.cpp)
+    endif()
+    if(ENABLE_PERIPHERAL_DISK OR ENABLE_PERIPHERAL_HARDDISK)
+        add_linapple_fuzzer(fuzz-image-container tests/fuzz/fuzz_image_container.cpp)
+    endif()
     add_linapple_fuzzer(fuzz-snapshot tests/fuzz/fuzz_snapshot.cpp)
     add_linapple_fuzzer(fuzz-memory tests/fuzz/fuzz_memory.cpp)
     add_linapple_fuzzer(fuzz-speaker tests/fuzz/fuzz_speaker.cpp)
@@ -1097,54 +1144,60 @@ if(ENABLE_FUZZING)
         # clock that calls one hung is three times the budget it was given.
         set(FUZZ_CASE_TIMEOUT 30)
 
-        # libFuzzer writes new inputs only to the first corpus directory, so
-        # the fixtures serve as read-only seeds without a copy of each one.
-        add_test(NAME fuzz-disk-loader
-                 COMMAND fuzz-disk-loader
-                         ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/disk-loader
-                         ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures
-                         -dict=${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/dictionaries/disk_formats.dict
-                         -max_len=65536
-                         -rss_limit_mb=512
-                         -malloc_limit_mb=256
-                         -max_total_time=10)
-        set_tests_properties(fuzz-disk-loader PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
+        if(ENABLE_PERIPHERAL_DISK)
+            # libFuzzer writes new inputs only to the first corpus directory, so
+            # the fixtures serve as read-only seeds without a copy of each one.
+            add_test(NAME fuzz-disk-loader
+                     COMMAND fuzz-disk-loader
+                             ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/disk-loader
+                             ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures
+                             -dict=${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/dictionaries/disk_formats.dict
+                             -max_len=65536
+                             -rss_limit_mb=512
+                             -malloc_limit_mb=256
+                             -max_total_time=10)
+            set_tests_properties(fuzz-disk-loader PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
+        endif()
 
-        # One selector byte picks the container the rest of the input is
-        # written as, so a well-formed archive reaches its own extractor. The
-        # harness passes a 64 KiB threshold, which with this length bounds one
-        # extraction at 100 x 64 KiB of temporary file.
-        add_test(NAME fuzz-image-container
-                 COMMAND fuzz-image-container
-                         ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/image-container
-                         ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures
-                         -max_len=65536
-                         -rss_limit_mb=512
-                         -malloc_limit_mb=256
-                         -max_total_time=10)
-        set_tests_properties(fuzz-image-container PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
+        if(ENABLE_PERIPHERAL_DISK OR ENABLE_PERIPHERAL_HARDDISK)
+            # One selector byte picks the container the rest of the input is
+            # written as, so a well-formed archive reaches its own extractor. The
+            # harness passes a 64 KiB threshold, which with this length bounds one
+            # extraction at 100 x 64 KiB of temporary file.
+            add_test(NAME fuzz-image-container
+                     COMMAND fuzz-image-container
+                             ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/image-container
+                             ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures
+                             -max_len=65536
+                             -rss_limit_mb=512
+                             -malloc_limit_mb=256
+                             -max_total_time=10)
+            set_tests_properties(fuzz-image-container PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
+        endif()
 
-        # Six bytes a record and a sequence long enough to spin the medium
-        # past a whole sector.
-        add_test(NAME fuzz-disk-controller
-                 COMMAND fuzz-disk-controller
-                         ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/disk-controller
-                         -max_len=1024
-                         -rss_limit_mb=512
-                         -malloc_limit_mb=256
-                         -max_total_time=10)
-        set_tests_properties(fuzz-disk-controller PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
+        if(ENABLE_PERIPHERAL_DISK)
+            # Six bytes a record and a sequence long enough to spin the medium
+            # past a whole sector.
+            add_test(NAME fuzz-disk-controller
+                     COMMAND fuzz-disk-controller
+                             ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/disk-controller
+                             -max_len=1024
+                             -rss_limit_mb=512
+                             -malloc_limit_mb=256
+                             -max_total_time=10)
+            set_tests_properties(fuzz-disk-controller PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
 
-        # One control byte and then one nibble per byte, so this covers a
-        # track two thirds the length of a real one.
-        add_test(NAME fuzz-disk-adapter
-                 COMMAND fuzz-disk-adapter
-                         ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/disk-adapter
-                         -max_len=4096
-                         -rss_limit_mb=512
-                         -malloc_limit_mb=256
-                         -max_total_time=10)
-        set_tests_properties(fuzz-disk-adapter PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
+            # One control byte and then one nibble per byte, so this covers a
+            # track two thirds the length of a real one.
+            add_test(NAME fuzz-disk-adapter
+                     COMMAND fuzz-disk-adapter
+                             ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/disk-adapter
+                             -max_len=4096
+                             -rss_limit_mb=512
+                             -malloc_limit_mb=256
+                             -max_total_time=10)
+            set_tests_properties(fuzz-disk-adapter PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
+        endif()
 
         add_test(NAME fuzz-snapshot
                  COMMAND fuzz-snapshot
