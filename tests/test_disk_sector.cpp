@@ -20,6 +20,7 @@
 #include "apple2/peripherals/disk/formats/DoDriver.h"
 #include "apple2/peripherals/disk/formats/IieDriver.h"
 #include "apple2/peripherals/disk/formats/PoDriver.h"
+#include "core/Util_Endian.h"
 #include "doctest.h"
 #include "test_fixtures.h"
 
@@ -71,8 +72,8 @@ auto read_track(const DiskFormatDriver_t& driver, void* instance,
 
 // The sixteen sectors of a synthesised track, in the logical order the
 // given table assigns to the address fields.
-auto decode_track(const TrackBits_t& track, uint32_t cylinder,
-                  DiskSectorOrder_e order) -> std::vector<uint8_t> {
+auto decode_track_with(const TrackBits_t& track, uint32_t cylinder,
+                       const uint8_t* sector_order) -> std::vector<uint8_t> {
   std::vector<uint8_t> nibbles(nibbles_per_track, 0);
   uint32_t nibble_count = 0;
   REQUIRE(disk_encoding_bits_to_nibbles(track.bits.data(), track.bit_count,
@@ -80,10 +81,15 @@ auto decode_track(const TrackBits_t& track, uint32_t cylinder,
                                         &nibble_count) == disk_err_none);
   std::vector<uint8_t> sectors(track_size, 0);
   std::array<uint8_t, disk_encoding_scratch_size> scratch{};
-  REQUIRE(disk_encoding_denibblize_track(
-              disk_encoding_sector_order(order), cylinder, nibbles.data(),
-              nibble_count, sectors.data(), scratch.data()) == disk_err_none);
+  REQUIRE(disk_encoding_denibblize_track(sector_order, cylinder, nibbles.data(),
+                                         nibble_count, sectors.data(),
+                                         scratch.data()) == disk_err_none);
   return sectors;
+}
+
+auto decode_track(const TrackBits_t& track, uint32_t cylinder,
+                  DiskSectorOrder_e order) -> std::vector<uint8_t> {
+  return decode_track_with(track, cylinder, disk_encoding_sector_order(order));
 }
 
 }  // namespace
@@ -625,4 +631,154 @@ TEST_CASE(
   const std::vector<uint8_t> after = read_file(image.path());
   CHECK(after.size() == 143360);
   CHECK(file_track(after, 0, last) == written.sectors);
+}
+
+namespace {
+
+// Sixteen sectors decoded as they lie on the surface: slot p is whatever the
+// image put in physical sector p.
+auto decode_physical(const TrackBits_t& track, uint32_t cylinder)
+    -> std::vector<uint8_t> {
+  std::array<uint8_t, sectors_per_track> identity{};
+  for (size_t i = 0; i < identity.size(); ++i) {
+    identity[i] = static_cast<uint8_t>(i);
+  }
+  return decode_track_with(track, cylinder, identity.data());
+}
+
+auto to_nibbles(const TrackBits_t& track) -> std::vector<uint8_t> {
+  std::vector<uint8_t> nibbles(nibbles_per_track, 0);
+  uint32_t nibble_count = 0;
+  REQUIRE(disk_encoding_bits_to_nibbles(track.bits.data(), track.bit_count,
+                                        nibbles.data(), nibbles_per_track,
+                                        &nibble_count) == disk_err_none);
+  nibbles.resize(nibble_count);
+  return nibbles;
+}
+
+auto open_iie(const char* path) -> void* {
+  disk_loader_reset();
+  const DiskFormatDriver_t* driver = nullptr;
+  void* instance = nullptr;
+  REQUIRE(disk_loader_open(path, &driver, &instance) == disk_err_none);
+  REQUIRE(driver == &g_iie_driver);
+  REQUIRE(instance != nullptr);
+  return instance;
+}
+
+}  // namespace
+
+TEST_CASE(
+    "DiskSector: [IIE-4] the legacy layout puts each file sector where the "
+    "header map says") {
+  constexpr size_t legacy_data_at = 30;
+  auto image = TestFixtures::create_ephemeral("minimal-legacy.iie");
+  const std::vector<uint8_t> bytes = read_file(image.path());
+  REQUIRE(bytes.size() == legacy_data_at + (35 * track_size));
+  REQUIRE(bytes[13] == 0);
+
+  // The map at 14 names the physical slot of each file sector; the fixture's
+  // is the DOS 3.3 logical-to-physical table, so slot 1 holds file sector 7
+  // and slot 13 file sector 1 (Beneath Apple DOS ch. 3).
+  const std::array<uint8_t, sectors_per_track> map = {
+      0x00, 0x0D, 0x0B, 0x09, 0x07, 0x05, 0x03, 0x01,
+      0x0E, 0x0C, 0x0A, 0x08, 0x06, 0x04, 0x02, 0x0F};
+  CHECK(std::vector<uint8_t>(bytes.begin() + 14, bytes.begin() + 30) ==
+        std::vector<uint8_t>(map.begin(), map.end()));
+
+  void* instance = open_iie(image.c_str());
+
+  // Track 2's file sector s is 0x20 + s throughout, so the slots that an
+  // identity map would fill with 0x21, 0x22 and 0x2D carry the sectors the
+  // header map sends there instead.
+  const TrackBits_t track = read_track(g_iie_driver, instance, 2 * 4);
+  const std::vector<uint8_t> physical = decode_physical(track, 2);
+  CHECK(physical[1 * sector_size] == 0x27);
+  CHECK(physical[2 * sector_size] == 0x2E);
+  CHECK(physical[13 * sector_size] == 0x21);
+  CHECK(physical[(13 * sector_size) + 255] == 0x21);
+  for (size_t file_sector = 0; file_sector < sectors_per_track; ++file_sector) {
+    CAPTURE(file_sector);
+    CHECK(physical[map[file_sector] * sector_size] ==
+          static_cast<uint8_t>(0x20 + file_sector));
+  }
+
+  // Read back through the DOS table the sectors return in file order, so the
+  // whole track equals the file's bytes at 30 + 4096t.
+  CHECK(decode_track(track, 2, disk_sector_order_dos) ==
+        file_track(bytes, legacy_data_at, 2));
+  CHECK(decode_track(read_track(g_iie_driver, instance, 34 * 4), 34,
+                     disk_sector_order_dos) ==
+        file_track(bytes, legacy_data_at, 34));
+
+  g_iie_driver.close(instance);
+}
+
+TEST_CASE(
+    "DiskSector: [IIE-5] the nibble layout reads each track at the sum of "
+    "the counts before it") {
+  constexpr size_t header_size = 88;
+  constexpr size_t count_of_track_0 = 6208;
+  constexpr size_t count_of_track_1 = 6656;
+  constexpr size_t count_of_track_2 = 100;
+  auto image = TestFixtures::create_ephemeral("minimal-nibble.iie");
+  const std::vector<uint8_t> bytes = read_file(image.path());
+  REQUIRE(bytes.size() == 155556);
+  REQUIRE(bytes[13] == 3);
+
+  // The little-endian count of track t sits at 14 + 2t.
+  CHECK(read_u16_le(&bytes[14]) == count_of_track_0);
+  CHECK(read_u16_le(&bytes[16]) == count_of_track_1);
+  CHECK(read_u16_le(&bytes[18]) == count_of_track_2);
+  CHECK(read_u16_le(&bytes[14 + (2 * 34)]) == count_of_track_1);
+
+  void* instance = open_iie(image.c_str());
+
+  // Track 0 is a formatted track of zero sectors: a 48-nibble gap, the first
+  // address prologue, and sixteen sectors that decode to nothing.
+  const std::vector<uint8_t> track_0 =
+      to_nibbles(read_track(g_iie_driver, instance, 0));
+  REQUIRE(track_0.size() == count_of_track_0);
+  CHECK(std::vector<uint8_t>(track_0.begin(), track_0.begin() + 48) ==
+        std::vector<uint8_t>(48, 0xFF));
+  CHECK(track_0[48] == 0xD5);
+  CHECK(track_0[49] == 0xAA);
+  CHECK(track_0[50] == 0x96);
+  CHECK(track_0 ==
+        std::vector<uint8_t>(bytes.begin() + header_size,
+                             bytes.begin() + header_size + count_of_track_0));
+  CHECK(decode_track(read_track(g_iie_driver, instance, 0), 0,
+                     disk_sector_order_dos) ==
+        std::vector<uint8_t>(track_size, 0));
+
+  // Track 1 fills its whole slot; track 2, read after it, is the 100 nibbles
+  // that begin where track 1's count ends.
+  const size_t track_1_at = header_size + count_of_track_0;
+  const size_t track_2_at = track_1_at + count_of_track_1;
+  const std::vector<uint8_t> track_1 =
+      to_nibbles(read_track(g_iie_driver, instance, 1 * 4));
+  REQUIRE(track_1.size() == count_of_track_1);
+  CHECK(track_1 ==
+        std::vector<uint8_t>(bytes.begin() + track_1_at,
+                             bytes.begin() + track_1_at + count_of_track_1));
+
+  const TrackBits_t short_track = read_track(g_iie_driver, instance, 2 * 4);
+  CHECK(short_track.bit_count == (54 * 10) + (46 * 8));
+  const std::vector<uint8_t> track_2 = to_nibbles(short_track);
+  REQUIRE(track_2.size() == count_of_track_2);
+  CHECK(track_2 ==
+        std::vector<uint8_t>(bytes.begin() + track_2_at,
+                             bytes.begin() + track_2_at + count_of_track_2));
+  CHECK(track_2[71] == 0x96);
+
+  // Track 3 starts the cycle again, so its offset carries all three counts.
+  const size_t track_3_at = track_2_at + count_of_track_2;
+  const std::vector<uint8_t> track_3 =
+      to_nibbles(read_track(g_iie_driver, instance, 3 * 4));
+  REQUIRE(track_3.size() == count_of_track_0);
+  CHECK(track_3 ==
+        std::vector<uint8_t>(bytes.begin() + track_3_at,
+                             bytes.begin() + track_3_at + count_of_track_0));
+
+  g_iie_driver.close(instance);
 }

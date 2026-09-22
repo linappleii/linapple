@@ -24,6 +24,14 @@
 // for C++11 compatibility and handle-based resource management.
 // easily-swappable-parameters is mandated by the Disk Driver ABI signatures.
 
+// A SimSystem //e image, read the way AppleWin's CIIeImage reads one, which
+// is the behaviour reference for this driver. The header is 88 bytes: the
+// signature, a variant byte at 13 and a per-track map from 14. A variant of
+// 0..2 is the legacy layout, where track t is sixteen 256-byte sectors at
+// 30 + 4096t and the sixteen bytes at 14 name the physical slot of each file
+// sector, so track 0 begins inside the header. A variant of 3 is the nibble
+// layout, where the nibbles run from 88 with track t's little-endian count at
+// 14 + 2t and each track beginning where the one before it ends.
 namespace {
 namespace iie {
 static constexpr std::array<uint8_t, 13> signature = {
