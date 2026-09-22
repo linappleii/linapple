@@ -17,12 +17,21 @@ extern "C" {
 
 typedef struct SectorDiskImage_t SectorDiskImage_t;
 
+/* The largest file the sector family opens: a 35-track image of 143,360 bytes
+   behind a 128-byte wrapper. Every size the probe admits is that image with
+   up to 255 bytes missing from its last sector or up to 128 following it, and
+   a file above this is disk_err_unsupported before anything is allocated. */
+enum { sector_image_max_bytes = 143488 };
+
 /* Opens the image at file_offset within path and hands the instance back
    through out_instance, which is nulled first. A null argument is
    disk_err_invalid_argument, a path that does not exist
    disk_err_file_not_found, any other failure to open or measure the file
-   disk_err_io, and a file that is not a whole number of 256-byte sectors or
-   is shorter than one track disk_err_corrupt. */
+   disk_err_io, a file above sector_image_max_bytes disk_err_unsupported and a
+   file of any other size the probe would not admit disk_err_corrupt. The
+   first 143,360 bytes are the image: bytes after them are never read or
+   written, and bytes the last track lacks read as zero until that track is
+   written back, which completes it. */
 DiskError_e sector_disk_image_open(const char* path, uint32_t file_offset,
                                    bool is_dos_order, bool read_only,
                                    void** out_instance);

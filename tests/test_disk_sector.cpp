@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#include <algorithm>
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <fstream>
+#include <initializer_list>
 #include <iterator>
 #include <string>
 #include <vector>
@@ -473,4 +476,153 @@ TEST_CASE("DiskSector: [SEC-E2] a missing file opens as file_not_found") {
   CHECK(g_po_driver.open(missing, 0, true, &instance) ==
         disk_err_file_not_found);
   CHECK(instance == nullptr);
+}
+
+namespace {
+
+// The patterned ProDOS image cut or padded to a given size; the padding is a
+// byte no sector of the fixture carries, so a read that strays past the
+// image's 143,360 bytes shows up in the decoded track.
+auto resized_po(size_t size) -> TestFixtures::EphemeralDiskFixture_t {
+  auto image = TestFixtures::create_ephemeral("minimal.po");
+  std::vector<uint8_t> bytes = read_file(image.path());
+  REQUIRE(bytes.size() == 143360);
+  bytes.resize(size, 0xC3);
+  write_file(image.path(), bytes);
+  return image;
+}
+
+auto file_track(const std::vector<uint8_t>& file, size_t data_offset,
+                uint32_t cylinder) -> std::vector<uint8_t> {
+  const size_t begin = data_offset + (cylinder * track_size);
+  std::vector<uint8_t> track(track_size, 0);
+  const size_t available = file.size() > begin ? file.size() - begin : 0;
+  const size_t count = available < track_size ? available : track_size;
+  std::copy(file.begin() + static_cast<ptrdiff_t>(begin),
+            file.begin() + static_cast<ptrdiff_t>(begin + count),
+            track.begin());
+  return track;
+}
+
+}  // namespace
+
+TEST_CASE(
+    "DiskSector: [SEC-C4-1] open admits every size the probe does and no "
+    "other") {
+  const std::vector<uint8_t> sample =
+      read_file(TestFixtures::get_fixture_path("minimal.po"));
+
+  for (const size_t size :
+       {143105U, 143200U, 143360U, 143364U, 143403U, 143488U}) {
+    CAPTURE(size);
+    auto image = resized_po(size);
+    CHECK(g_po_driver.probe(sample.data(), sample.size(),
+                            static_cast<uint32_t>(size),
+                            ".po") != disk_probe_no);
+    void* instance = nullptr;
+    REQUIRE(g_po_driver.open(image.c_str(), 0, false, &instance) ==
+            disk_err_none);
+    REQUIRE(instance != nullptr);
+    g_po_driver.close(instance);
+  }
+
+  // Past the family's ceiling the size alone decides, before any allocation.
+  for (const size_t size : {143489U, 163840U}) {
+    CAPTURE(size);
+    auto image = resized_po(size);
+    CHECK(g_po_driver.probe(sample.data(), sample.size(),
+                            static_cast<uint32_t>(size),
+                            ".po") == disk_probe_no);
+    void* instance = reinterpret_cast<void*>(1);
+    CHECK(g_po_driver.open(image.c_str(), 0, false, &instance) ==
+          disk_err_unsupported);
+    CHECK(instance == nullptr);
+  }
+
+  // Below it, a size the probe would not admit is a damaged image: a whole
+  // sector or more short, and a length in the gap between the window and
+  // the lone values.
+  for (const size_t size : {143000U, 143104U, 143365U, 143402U, 143487U}) {
+    CAPTURE(size);
+    auto image = resized_po(size);
+    CHECK(g_po_driver.probe(sample.data(), sample.size(),
+                            static_cast<uint32_t>(size),
+                            ".po") == disk_probe_no);
+    void* instance = reinterpret_cast<void*>(1);
+    CHECK(g_po_driver.open(image.c_str(), 0, false, &instance) ==
+          disk_err_corrupt);
+    CHECK(instance == nullptr);
+  }
+}
+
+TEST_CASE(
+    "DiskSector: [SEC-C4-2] trailing bytes are neither read nor written "
+    "back") {
+  constexpr size_t trailing = 4;
+  constexpr uint32_t last = 34;
+  auto image = resized_po(143360 + trailing);
+  const std::vector<uint8_t> before = read_file(image.path());
+
+  disk_loader_reset();
+  const DiskFormatDriver_t* driver = nullptr;
+  void* instance = nullptr;
+  REQUIRE(disk_loader_open(image.c_str(), &driver, &instance) == disk_err_none);
+  REQUIRE(driver != nullptr);
+  CHECK(std::string(driver->name) == "ProDOS Order");
+
+  const TrackBits_t read_back = read_track(*driver, instance, last * 4);
+  CHECK(decode_track(read_back, last, disk_sector_order_prodos) ==
+        file_track(before, 0, last));
+  check_blank_read(*driver, instance, 35 * 4);
+
+  const SynthesisedTrack_t written =
+      synthesise_track(last, disk_sector_order_prodos);
+  REQUIRE(driver->write_track_bits(instance, last * 4,
+                                   written.track.bits.data(),
+                                   written.track.bit_count) == disk_err_none);
+  driver->close(instance);
+
+  const std::vector<uint8_t> after = read_file(image.path());
+  REQUIRE(after.size() == before.size());
+  CHECK(file_track(after, 0, last) == written.sectors);
+  CHECK(std::vector<uint8_t>(after.end() - trailing, after.end()) ==
+        std::vector<uint8_t>(trailing, 0xC3));
+  CHECK(std::vector<uint8_t>(after.begin(),
+                             after.begin() + (last * track_size)) ==
+        std::vector<uint8_t>(before.begin(),
+                             before.begin() + (last * track_size)));
+}
+
+TEST_CASE(
+    "DiskSector: [SEC-C4-3] a file short of its last sector reads what it "
+    "has and zero beyond") {
+  constexpr size_t short_size = 143105;
+  constexpr uint32_t last = 34;
+  auto image = resized_po(short_size);
+  const std::vector<uint8_t> before = read_file(image.path());
+
+  void* instance = nullptr;
+  REQUIRE(g_po_driver.open(image.c_str(), 0, false, &instance) ==
+          disk_err_none);
+
+  // 3,841 bytes of track 34 exist: fifteen whole sectors and one byte of the
+  // sixteenth, whose marker is 0x2F.
+  const std::vector<uint8_t> expected = file_track(before, 0, last);
+  REQUIRE(expected[15 * sector_size] == 0x2F);
+  REQUIRE(expected[(15 * sector_size) + 1] == 0);
+  const TrackBits_t read_back = read_track(g_po_driver, instance, last * 4);
+  CHECK(decode_track(read_back, last, disk_sector_order_prodos) == expected);
+  CHECK(decode_track(read_track(g_po_driver, instance, 33 * 4), 33,
+                     disk_sector_order_prodos) == file_track(before, 0, 33));
+
+  // Writing the last track back completes the image.
+  const SynthesisedTrack_t written =
+      synthesise_track(last, disk_sector_order_prodos);
+  REQUIRE(g_po_driver.write_track_bits(
+              instance, last * 4, written.track.bits.data(),
+              written.track.bit_count) == disk_err_none);
+  g_po_driver.close(instance);
+  const std::vector<uint8_t> after = read_file(image.path());
+  CHECK(after.size() == 143360);
+  CHECK(file_track(after, 0, last) == written.sectors);
 }

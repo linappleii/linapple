@@ -5,12 +5,15 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <array>
 #include <cerrno>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <memory>
+#include <utility>
 
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskEncoding.h"
@@ -51,12 +54,36 @@ struct SectorDiskImage_t {
 
 namespace {
 namespace disk {
+// The sizes are AppleWin's, from the DoDetect and PoDetect this probe descends
+// from: 255 bytes short of the last sector through four bytes past it, then
+// two lone values. 143,488 is the image plus 128: AppleWin strips a MacBinary
+// header it recognises before detecting, so this admits a 128-byte wrapper
+// that check missed, and such a file reads shifted by its header there as it
+// does here. 143,403 is the image plus 43; AppleWin never documented it and
+// its origin is unknown. Open admits exactly the same set, so no file the
+// probe hands over fails on size, and it treats the first 143,360 bytes as
+// the image whatever follows them.
 constexpr int size_140k = 143360;
+constexpr uint32_t tracks_140k = 35;
 constexpr uint32_t min_140k_size = 143105;
 constexpr uint32_t max_140k_size = 143364;
 constexpr uint32_t alt_size_1 = 143403;
-constexpr uint32_t alt_size_2 = 143488;
+constexpr uint32_t alt_size_2 = sector_image_max_bytes;
 constexpr uint8_t sync_byte = 0xFF;
+
+static_assert(static_cast<uint32_t>(size_140k) ==
+                  tracks_140k * static_cast<uint32_t>(dos_track_size),
+              "the 140 K image is 35 DOS tracks");
+static_assert(min_140k_size == static_cast<uint32_t>(size_140k) - 255 &&
+                  max_140k_size == static_cast<uint32_t>(size_140k) + 4,
+              "the size window is one sector short to four bytes over");
+static_assert(alt_size_2 == static_cast<uint32_t>(size_140k) + 128,
+              "the ceiling is the image behind a 128-byte wrapper");
+
+auto is_140k_image_size(uint32_t size) -> bool {
+  return (size >= min_140k_size && size <= max_140k_size) ||
+         size == alt_size_1 || size == alt_size_2;
+}
 }  // namespace disk
 
 namespace dos {
@@ -96,38 +123,42 @@ auto sector_disk_image_open(const char* path, uint32_t file_offset,
     return disk_err_invalid_argument;
   }
 
-  auto image_ptr = std::unique_ptr<SectorDiskImage_t>(new SectorDiskImage_t());
-
-  image_ptr->os_readonly = read_only;
+  bool os_readonly = read_only;
+  FilePtr_t file{nullptr, fclose};
   if (!read_only) {
-    image_ptr->file.reset(fopen(path, "r+b"));
+    file.reset(fopen(path, "r+b"));
   }
 
-  if (image_ptr->file == nullptr) {
-    image_ptr->file.reset(fopen(path, "rb"));
-    image_ptr->os_readonly = true;
+  if (file == nullptr) {
+    file.reset(fopen(path, "rb"));
+    os_readonly = true;
   }
 
-  if (image_ptr->file == nullptr) {
+  if (file == nullptr) {
     return (errno == ENOENT) ? disk_err_file_not_found : disk_err_io;
   }
 
-  const int64_t total_size = Path::file_size(image_ptr->file.get());
+  const int64_t total_size = Path::file_size(file.get());
   if (total_size < 0) {
     return disk_err_io;
   }
-  if (static_cast<size_t>(total_size) < file_offset) {
+  if (static_cast<uint64_t>(total_size) < file_offset) {
     return disk_err_corrupt;
   }
-  const size_t effective_size = static_cast<size_t>(total_size) - file_offset;
-  if (effective_size < static_cast<size_t>(dos::track_size) ||
-      (effective_size % dos::page_size != 0)) {
+  const uint64_t effective_size =
+      static_cast<uint64_t>(total_size) - file_offset;
+  if (effective_size > disk::alt_size_2) {
+    return disk_err_unsupported;
+  }
+  if (!disk::is_140k_image_size(static_cast<uint32_t>(effective_size))) {
     return disk_err_corrupt;
   }
 
+  auto image_ptr = std::unique_ptr<SectorDiskImage_t>(new SectorDiskImage_t());
+  image_ptr->file = std::move(file);
+  image_ptr->os_readonly = os_readonly;
   image_ptr->data_offset = file_offset;
-  image_ptr->track_count = static_cast<uint32_t>(
-      effective_size / static_cast<size_t>(dos::track_size));
+  image_ptr->track_count = disk::tracks_140k;
   image_ptr->order =
       is_dos_order ? disk_sector_order_dos : disk_sector_order_prodos;
 
@@ -172,9 +203,17 @@ auto sector_disk_image_read_track_bits(void* instance, uint32_t quarter_track,
     return disk_err_io;
   }
 
-  if (fread(image_ptr->sectors.data(), 1, dos::track_size,
-            image_ptr->file.get()) != dos::track_size) {
-    return disk_err_io;
+  // A file cut short inside its last sector is still admitted as a 35-track
+  // image, so the bytes it lacks read as an unwritten zero tail rather than
+  // an error.
+  const size_t bytes_read = fread(image_ptr->sectors.data(), 1, dos::track_size,
+                                  image_ptr->file.get());
+  if (bytes_read != static_cast<size_t>(dos::track_size)) {
+    if (ferror(image_ptr->file.get()) != 0) {
+      return disk_err_io;
+    }
+    std::fill(image_ptr->sectors.begin() + static_cast<ptrdiff_t>(bytes_read),
+              image_ptr->sectors.end(), 0);
   }
 
   uint32_t nibble_count = 0;
@@ -361,10 +400,8 @@ auto has_prodos_directory(const uint8_t* header_data, size_t header_size,
 auto sector_disk_image_probe_signature(const uint8_t* header_data,
                                        size_t header_size, uint32_t file_size,
                                        bool is_dos_order) -> DiskProbe_e {
-  if (file_size < disk::min_140k_size || file_size > disk::max_140k_size) {
-    if (file_size != disk::alt_size_1 && file_size != disk::alt_size_2) {
-      return disk_probe_no;
-    }
+  if (!disk::is_140k_image_size(file_size)) {
+    return disk_probe_no;
   }
 
   // Either file system may have been imaged in either order, so the order
