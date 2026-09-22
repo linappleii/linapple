@@ -198,7 +198,7 @@ else()
     set(FTP_INCLUDE_DIRS "")
 endif()
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(LIBZIP REQUIRED libzip)
+pkg_check_modules(LIBZIP REQUIRED IMPORTED_TARGET libzip)
 
 if(FRONTEND_LOWER STREQUAL "all")
     find_package(SDL3 REQUIRED)
@@ -337,8 +337,6 @@ set(LINAPPLE_INCLUDES
     "${GEN_ROMS_DIR}"
     "${RES_DIR}"
     ${FTP_INCLUDE_DIRS}
-    ${ZLIB_INCLUDE_DIRS}
-    ${LIBZIP_INCLUDE_DIRS}
 )
 
 if(ENABLE_DEBUGGER)
@@ -493,15 +491,39 @@ set(PERIPHERAL_DEFINITIONS "")
 set(PERIPHERAL_MODULES "")
 set(SOURCES_A2_OPTIONAL "")
 
+# A media library is code two or more cards share, such as a parser of
+# untrusted input. Declaring one only records it; the target is created by
+# finalize_peripheral_libraries once every card has said which libraries it
+# wants, so a library no enabled card names is never built and its external
+# dependencies never linked. The lists live in the cache so the functions
+# below can read them without threading PARENT_SCOPE through each call.
+set(PERIPHERAL_LIBRARIES "" CACHE INTERNAL "Media libraries declared" FORCE)
+set(PERIPHERAL_LIBRARIES_WANTED "" CACHE INTERNAL "Media libraries an enabled peripheral needs" FORCE)
+function(add_peripheral_library name)
+    cmake_parse_arguments(LIB "" "" "SOURCES;EXTERNAL" ${ARGN})
+    if(NOT LIB_SOURCES)
+        message(FATAL_ERROR "add_peripheral_library(${name}) needs SOURCES")
+    endif()
+    set(PERIPHERAL_LIBRARY_${name}_SOURCES "${LIB_SOURCES}" CACHE INTERNAL "Sources of media library ${name}" FORCE)
+    set(PERIPHERAL_LIBRARY_${name}_EXTERNAL "${LIB_EXTERNAL}" CACHE INTERNAL "External dependencies of media library ${name}" FORCE)
+    set(PERIPHERAL_LIBRARIES "${PERIPHERAL_LIBRARIES};${name}" CACHE INTERNAL "Media libraries declared" FORCE)
+endfunction()
+
 # Function to add a peripheral with optional compilation and shared lib support
-function(add_peripheral name desc sources extra_libs force_builtin)
+function(add_peripheral name desc sources extra_libs libs force_builtin)
     string(TOUPPER ${name} upper_name)
     string(REPLACE "-" "_" upper_name ${upper_name})
     set(opt_name "ENABLE_PERIPHERAL_${upper_name}")
-    
+
     option(${opt_name} "Enable ${desc}" ON)
-    
+
     if(${opt_name})
+        foreach(lib IN LISTS libs)
+            if(NOT lib IN_LIST PERIPHERAL_LIBRARIES)
+                message(FATAL_ERROR "Peripheral ${name} wants media library ${lib}, which add_peripheral_library never declared")
+            endif()
+            set(PERIPHERAL_LIBRARIES_WANTED "${PERIPHERAL_LIBRARIES_WANTED};${lib}" CACHE INTERNAL "Media libraries an enabled peripheral needs" FORCE)
+        endforeach()
         if(BUILD_SHARED_PERIPHERALS AND NOT force_builtin)
             add_library(peripheral-${name} SHARED ${sources})
             target_compile_definitions(peripheral-${name} PRIVATE BUILD_SHARED_PERIPHERAL)
@@ -509,6 +531,11 @@ function(add_peripheral name desc sources extra_libs force_builtin)
             if(extra_libs)
                 target_link_libraries(peripheral-${name} PRIVATE ${extra_libs})
             endif()
+            # The media-<lib> targets are created by finalize_peripheral_libraries,
+            # after every card is declared; a link by name resolves at generate time.
+            foreach(lib IN LISTS libs)
+                target_link_libraries(peripheral-${name} PRIVATE media-${lib})
+            endforeach()
             set_target_properties(peripheral-${name} PROPERTIES PREFIX "" OUTPUT_NAME "${name}")
             list(APPEND PERIPHERAL_MODULES peripheral-${name})
             set(PERIPHERAL_MODULES "${PERIPHERAL_MODULES}" PARENT_SCOPE)
@@ -521,9 +548,45 @@ function(add_peripheral name desc sources extra_libs force_builtin)
     endif()
 endfunction()
 
+# Creates media-<lib> for every library an enabled card asked for and lists
+# the targets in MEDIA_TARGETS for the executable and every test or fuzzer
+# that carries card code. Hidden visibility keeps the library's symbols out of
+# the executable's dynamic table (it has ENABLE_EXPORTS for the plugins) and
+# out of any plugin's, so two copies can never interpose on each other.
+function(finalize_peripheral_libraries)
+    set(media_targets "")
+    set(wanted "${PERIPHERAL_LIBRARIES_WANTED}")
+    list(REMOVE_DUPLICATES wanted)
+    foreach(lib IN LISTS wanted)
+        if(NOT lib)
+            continue()
+        endif()
+        add_library(media-${lib} STATIC ${PERIPHERAL_LIBRARY_${lib}_SOURCES})
+        target_include_directories(media-${lib} PUBLIC ${LINAPPLE_INCLUDES})
+        set_target_properties(media-${lib} PROPERTIES
+            CXX_VISIBILITY_PRESET hidden
+            VISIBILITY_INLINES_HIDDEN ON
+            POSITION_INDEPENDENT_CODE ON)
+        foreach(external IN LISTS PERIPHERAL_LIBRARY_${lib}_EXTERNAL)
+            if(external STREQUAL "ZLIB")
+                target_link_libraries(media-${lib} PUBLIC ZLIB::ZLIB)
+            elseif(external STREQUAL "LIBZIP")
+                target_link_libraries(media-${lib} PUBLIC PkgConfig::LIBZIP)
+            else()
+                message(FATAL_ERROR "Media library ${lib} names an unknown external dependency ${external}")
+            endif()
+        endforeach()
+        list(APPEND media_targets media-${lib})
+    endforeach()
+    set(MEDIA_TARGETS "${media_targets}" PARENT_SCOPE)
+endfunction()
+
 # Define all peripherals
-add_peripheral(speaker "built-in speaker" "src/apple2/peripherals/speaker/Speaker.cpp" "" FALSE)
-add_peripheral(keyboard "keyboard" "src/apple2/peripherals/keyboard/Keyboard.cpp;src/apple2/peripherals/keyboard/Keyboard_Maps.c" "" TRUE)
+add_peripheral(speaker "built-in speaker" "src/apple2/peripherals/speaker/Speaker.cpp" "" "" FALSE)
+add_peripheral(keyboard "keyboard" "src/apple2/peripherals/keyboard/Keyboard.cpp;src/apple2/peripherals/keyboard/Keyboard_Maps.c" "" "" TRUE)
+add_peripheral_library(image-container
+    SOURCES src/apple2/media/image_container/ImageContainer.cpp
+    EXTERNAL ZLIB LIBZIP)
 # A disk format driver registers itself from its own translation unit, so
 # adding a format is one new file here and nothing else to edit. These sources
 # compile straight into the executable via SOURCES_A2_OPTIONAL and never into a
@@ -536,17 +599,25 @@ list(LENGTH DISK_FORMAT_SOURCES DISK_FORMAT_DRIVER_COUNT)
 set(DISK_BACKEND_SOURCES
     src/apple2/peripherals/disk/DiskEncoding.cpp
     src/apple2/peripherals/disk/formats/SectorDiskImage.cpp
-    src/apple2/peripherals/disk/formats/NibbleDiskImage.cpp
-    src/apple2/media/image_container/ImageContainer.cpp)
+    src/apple2/peripherals/disk/formats/NibbleDiskImage.cpp)
 
-add_peripheral(disk "Disk II" "src/apple2/peripherals/disk/Disk.cpp;src/apple2/peripherals/disk/DiskLoader.cpp;${DISK_BACKEND_SOURCES};${DISK_FORMAT_SOURCES}" "${ZLIB_LIBRARIES};${LIBZIP_LIBRARIES}" TRUE)
-add_peripheral(harddisk "Harddisk (SmartPort)" "src/apple2/peripherals/harddisk/Harddisk.cpp;src/apple2/peripherals/harddisk/HarddiskLoader.cpp;src/apple2/peripherals/harddisk/formats/RawHdDriver.cpp;src/apple2/peripherals/harddisk/formats/TwoImgDriver.cpp;src/apple2/peripherals/harddisk/formats/BlockDiskImage.cpp;src/apple2/media/image_container/ImageContainer.cpp" "${ZLIB_LIBRARIES};${LIBZIP_LIBRARIES}" TRUE)
-add_peripheral(mouse "Mouse Interface" "src/apple2/peripherals/mouse/Mouse.cpp" "" TRUE)
-add_peripheral(mockingboard "Mockingboard" "src/apple2/peripherals/mockingboard/Mockingboard.cpp;src/apple2/chips/AY8910.cpp;src/apple2/chips/6522.cpp" "" FALSE)
-add_peripheral(super_serial "Super Serial Card" "src/apple2/peripherals/super_serial_card/SuperSerial.cpp" "" TRUE)
-add_peripheral(joystick "Joystick" "src/apple2/peripherals/joystick/Joystick.cpp" "" TRUE)
-add_peripheral(printer "Parallel Printer" "src/apple2/peripherals/printer/Printer.cpp" "" FALSE)
-add_peripheral(clock "No-Slot Clock" "src/apple2/peripherals/clock/Clock.cpp" "" FALSE)
+add_peripheral(disk "Disk II" "src/apple2/peripherals/disk/Disk.cpp;src/apple2/peripherals/disk/DiskLoader.cpp;${DISK_BACKEND_SOURCES};${DISK_FORMAT_SOURCES}" "" "image-container" TRUE)
+add_peripheral(harddisk "Harddisk (SmartPort)" "src/apple2/peripherals/harddisk/Harddisk.cpp;src/apple2/peripherals/harddisk/HarddiskLoader.cpp;src/apple2/peripherals/harddisk/formats/RawHdDriver.cpp;src/apple2/peripherals/harddisk/formats/TwoImgDriver.cpp;src/apple2/peripherals/harddisk/formats/BlockDiskImage.cpp" "" "image-container" TRUE)
+add_peripheral(mouse "Mouse Interface" "src/apple2/peripherals/mouse/Mouse.cpp" "" "" TRUE)
+add_peripheral(mockingboard "Mockingboard" "src/apple2/peripherals/mockingboard/Mockingboard.cpp;src/apple2/chips/AY8910.cpp;src/apple2/chips/6522.cpp" "" "" FALSE)
+add_peripheral(super_serial "Super Serial Card" "src/apple2/peripherals/super_serial_card/SuperSerial.cpp" "" "" TRUE)
+add_peripheral(joystick "Joystick" "src/apple2/peripherals/joystick/Joystick.cpp" "" "" TRUE)
+add_peripheral(printer "Parallel Printer" "src/apple2/peripherals/printer/Printer.cpp" "" "" FALSE)
+add_peripheral(clock "No-Slot Clock" "src/apple2/peripherals/clock/Clock.cpp" "" "" FALSE)
+finalize_peripheral_libraries()
+
+# The chips have no target of their own: the core list and the Mockingboard
+# compile them straight into whichever executable or plugin needs them, so
+# the visibility the media targets get as a property is set on the sources.
+# Without it the executable's export table and a shared mockingboard both
+# carry the chip symbols, and two copies would interpose on each other.
+file(GLOB CHIP_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/apple2/chips/*.cpp")
+set_source_files_properties(${CHIP_SOURCES} PROPERTIES COMPILE_OPTIONS "-fvisibility=hidden;-fvisibility-inlines-hidden")
 
 # --- Executable Targets ---
 set(COMMON_LIBS ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
@@ -559,7 +630,7 @@ function(add_linapple_executable TARGET_NAME FE_NAME FE_SOURCES DBG_SOURCES EXTR
     endif()
     set_target_properties(${TARGET_NAME} PROPERTIES ENABLE_EXPORTS TRUE)
     target_include_directories(${TARGET_NAME} PRIVATE ${LINAPPLE_INCLUDES} ${EXTRA_INCLUDES})
-    target_link_libraries(${TARGET_NAME} PRIVATE ${COMMON_LIBS} ${EXTRA_LIBS})
+    target_link_libraries(${TARGET_NAME} PRIVATE ${COMMON_LIBS} ${EXTRA_LIBS} ${MEDIA_TARGETS})
     if(FE_NAME STREQUAL "sdl1")
         list(APPEND EXTRA_DEFS LINAPPLE_SDL_VERSION=1)
     elseif(FE_NAME STREQUAL "sdl2")
@@ -654,7 +725,7 @@ if(BUILD_TESTING)
         set_target_properties(test-${name} PROPERTIES ENABLE_EXPORTS TRUE)
         target_include_directories(test-${name} PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} tests)
         target_compile_definitions(test-${name} PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
-        target_link_libraries(test-${name} PRIVATE ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
+        target_link_libraries(test-${name} PRIVATE ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads ${MEDIA_TARGETS})
         add_test(NAME test-${name} COMMAND test-${name})
         linapple_test_home(test-${name} ${name})
     endmacro()
@@ -731,13 +802,13 @@ if(BUILD_TESTING)
 
     add_executable(test-disk-drivers tests/test_disk_drivers.cpp src/core/Log.cpp src/frontends/headless/Headless_Path.cpp src/apple2/peripherals/disk/DiskLoader.cpp ${DISK_BACKEND_SOURCES} ${DISK_FORMAT_SOURCES})
     target_include_directories(test-disk-drivers PRIVATE src ${DOCTEST_INCLUDE_DIR})
-    target_link_libraries(test-disk-drivers PRIVATE ${COMMON_LIBS})
+    target_link_libraries(test-disk-drivers PRIVATE ${COMMON_LIBS} ${MEDIA_TARGETS})
     add_test(NAME test-disk-drivers COMMAND test-disk-drivers)
 
     add_executable(test-disk-registry tests/test_disk_registry.cpp src/frontends/headless/Headless_Path.cpp src/apple2/peripherals/disk/DiskLoader.cpp ${DISK_BACKEND_SOURCES} ${DISK_FORMAT_SOURCES})
     target_include_directories(test-disk-registry PRIVATE src ${DOCTEST_INCLUDE_DIR})
     target_compile_definitions(test-disk-registry PRIVATE DISK_FORMAT_DRIVER_COUNT=${DISK_FORMAT_DRIVER_COUNT})
-    target_link_libraries(test-disk-registry PRIVATE ${COMMON_LIBS})
+    target_link_libraries(test-disk-registry PRIVATE ${COMMON_LIBS} ${MEDIA_TARGETS})
     add_test(NAME test-disk-registry COMMAND test-disk-registry)
 
     # The P6 sequencer PROM is a verbatim Apple part; a wrong or truncated
@@ -947,7 +1018,7 @@ done
         add_dependencies(test-frontend-sdl1 generate_xpms generate_embedded_roms)
         target_include_directories(test-frontend-sdl1 PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} ${SDL_INCLUDE_DIR} tests src)
         target_compile_definitions(test-frontend-sdl1 PRIVATE LINAPPLE_SDL_VERSION=1 ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
-        target_link_libraries(test-frontend-sdl1 PRIVATE ${SDL_LIBRARY} ${SDL_IMAGE_LIBRARIES} ${FTP_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
+        target_link_libraries(test-frontend-sdl1 PRIVATE ${SDL_LIBRARY} ${SDL_IMAGE_LIBRARIES} ${FTP_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads ${MEDIA_TARGETS})
         add_test(NAME test-frontend-sdl1 COMMAND test-frontend-sdl1)
         linapple_test_home(test-frontend-sdl1 frontend-sdl1)
     endif()
@@ -959,7 +1030,7 @@ done
         add_dependencies(test-frontend-sdl2 generate_xpms generate_embedded_roms)
         target_include_directories(test-frontend-sdl2 PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} tests src)
         target_compile_definitions(test-frontend-sdl2 PRIVATE LINAPPLE_SDL_VERSION=2 ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
-        target_link_libraries(test-frontend-sdl2 PRIVATE SDL2::SDL2 ${FTP_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
+        target_link_libraries(test-frontend-sdl2 PRIVATE SDL2::SDL2 ${FTP_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads ${MEDIA_TARGETS})
         add_test(NAME test-frontend-sdl2 COMMAND test-frontend-sdl2)
         linapple_test_home(test-frontend-sdl2 frontend-sdl2)
     endif()
@@ -971,7 +1042,7 @@ done
         add_dependencies(test-frontend-sdl3 generate_xpms generate_embedded_roms)
         target_include_directories(test-frontend-sdl3 PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} tests src)
         target_compile_definitions(test-frontend-sdl3 PRIVATE LINAPPLE_SDL_VERSION=3 ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
-        target_link_libraries(test-frontend-sdl3 PRIVATE SDL3::SDL3 SDL3_image::SDL3_image ${FTP_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
+        target_link_libraries(test-frontend-sdl3 PRIVATE SDL3::SDL3 SDL3_image::SDL3_image ${FTP_LIBRARIES} ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads ${MEDIA_TARGETS})
         add_test(NAME test-frontend-sdl3 COMMAND test-frontend-sdl3)
         linapple_test_home(test-frontend-sdl3 frontend-sdl3)
     endif()
@@ -990,7 +1061,7 @@ if(ENABLE_FUZZING)
         target_compile_definitions(${name} PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF)
         target_compile_options(${name} PRIVATE ${FUZZ_FLAGS})
         target_link_options(${name} PRIVATE ${FUZZ_FLAGS})
-        target_link_libraries(${name} PRIVATE ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads)
+        target_link_libraries(${name} PRIVATE ${ZLIB_LIBRARIES} ${LIBZIP_LIBRARIES} ${CMAKE_DL_LIBS} Threads::Threads ${MEDIA_TARGETS})
     endmacro()
 
     add_linapple_fuzzer(fuzz-disk-loader tests/fuzz/fuzz_disk_loader.cpp)
