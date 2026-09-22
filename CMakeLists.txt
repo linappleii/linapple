@@ -716,6 +716,9 @@ if(BUILD_TESTING)
     add_linapple_test(joystick-peripheral "tests/test_main.cpp;tests/test_joystick_peripheral.cpp")
     add_linapple_test(mouse-exhaustive "tests/test_main.cpp;tests/test_mouse_exhaustive.cpp")
     add_linapple_test(peripheral-slot0 "tests/test_main.cpp;tests/test_peripheral_slot0.cpp")
+    # The smoke test proves the ABI headers are C99, not merely C the compiler
+    # happens to accept.
+    set_source_files_properties(tests/test_disk_abi_c.c PROPERTIES COMPILE_OPTIONS "-std=c99;-pedantic")
     add_linapple_test(disk-abi "tests/test_disk_abi.cpp;tests/test_disk_abi_c.c")
     
     add_executable(test-disk-gcr tests/test_disk_gcr.cpp src/apple2/peripherals/disk/DiskEncoding.cpp)
