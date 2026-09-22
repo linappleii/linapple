@@ -125,25 +125,22 @@ auto sector_disk_image_open(const char* path, uint32_t file_offset,
   return image_ptr.release();
 }
 
-// Why: Destroys the sector image instance. The RAII FilePtr_t member ensures
-// the physical file is closed during destruction.
-auto sector_disk_image_close(SectorDiskImage_t* image_ptr) -> void {
-  delete image_ptr;
+auto sector_disk_image_close(void* instance) -> void {
+  delete static_cast<SectorDiskImage_t*>(instance);
 }
 
-auto sector_disk_image_is_write_protected(SectorDiskImage_t* image_ptr)
-    -> bool {
-  if (image_ptr == nullptr) {
+auto sector_disk_image_is_write_protected(void* instance) -> bool {
+  if (instance == nullptr) {
     return true;
   }
-  return image_ptr->os_readonly;
+  return static_cast<SectorDiskImage_t*>(instance)->os_readonly;
 }
 
-auto sector_disk_image_read_track_bits(SectorDiskImage_t* image_ptr,
-                                       uint32_t quarter_track, uint8_t* bits,
-                                       uint32_t max_bits,
+auto sector_disk_image_read_track_bits(void* instance, uint32_t quarter_track,
+                                       uint8_t* bits, uint32_t max_bits,
                                        uint32_t* out_bit_count,
                                        uint8_t* out_bit_timing) -> DiskError_e {
+  auto* image_ptr = static_cast<SectorDiskImage_t*>(instance);
   if (image_ptr == nullptr || bits == nullptr || out_bit_count == nullptr ||
       out_bit_timing == nullptr) {
     return disk_err_invalid_argument;
@@ -184,10 +181,10 @@ auto sector_disk_image_read_track_bits(SectorDiskImage_t* image_ptr,
                                        max_bits, out_bit_count);
 }
 
-auto sector_disk_image_write_track_bits(SectorDiskImage_t* image_ptr,
-                                        uint32_t quarter_track,
+auto sector_disk_image_write_track_bits(void* instance, uint32_t quarter_track,
                                         const uint8_t* bits, uint32_t bit_count)
     -> DiskError_e {
+  auto* image_ptr = static_cast<SectorDiskImage_t*>(instance);
   if (image_ptr == nullptr || bits == nullptr) {
     return disk_err_invalid_argument;
   }

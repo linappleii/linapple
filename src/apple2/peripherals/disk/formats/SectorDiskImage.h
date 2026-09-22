@@ -21,17 +21,20 @@ SectorDiskImage_t* sector_disk_image_open(const char* path,
                                           uint32_t file_offset,
                                           bool is_dos_order, bool read_only);
 
-void sector_disk_image_close(SectorDiskImage_t* image_ptr);
+/* These five carry the DiskFormatDriver_t signatures, instance being the
+   pointer open handed out, so a driver descriptor names them directly and the
+   order-specific code in a driver is its probe and its open. */
+void sector_disk_image_close(void* instance);
 
-bool sector_disk_image_is_write_protected(SectorDiskImage_t* image_ptr);
+bool sector_disk_image_is_write_protected(void* instance);
 
-DiskError_e sector_disk_image_read_track_bits(SectorDiskImage_t* image_ptr,
+DiskError_e sector_disk_image_read_track_bits(void* instance,
                                               uint32_t quarter_track,
                                               uint8_t* bits, uint32_t max_bits,
                                               uint32_t* out_bit_count,
                                               uint8_t* out_bit_timing);
 
-DiskError_e sector_disk_image_write_track_bits(SectorDiskImage_t* image_ptr,
+DiskError_e sector_disk_image_write_track_bits(void* instance,
                                                uint32_t quarter_track,
                                                const uint8_t* bits,
                                                uint32_t bit_count);
