@@ -17,6 +17,7 @@
 #include "apple2/peripherals/disk/DiskLoader.h"
 #include "apple2/peripherals/disk/formats/Woz2Driver.h"
 #include "core/LinAppleCore.h"
+#include "core/Util_Crc32.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 #include "doctest.h"
@@ -415,4 +416,33 @@ TEST_CASE("DiskWOZ: a track spanning one block too many is unsupported") {
   CHECK(bits[0] == 0xEE);
 
   g_woz2_driver.close(instance);
+}
+
+namespace {
+constexpr uint32_t crc32_check_value = 0xCBF43926;
+constexpr uint32_t track_fixture_crc32 = 0x710E9D2A;
+constexpr size_t woz_file_header_size = 12;
+}  // namespace
+
+TEST_CASE("Crc32: the check value and a split stream agree with zlib's CRC") {
+  const char check_input[] = "123456789";
+  const size_t check_len = sizeof(check_input) - 1;
+  CHECK(crc32_compute(check_input, check_len) == crc32_check_value);
+
+  uint32_t state = crc32_init();
+  state = crc32_update(state, check_input, 4);
+  state = crc32_update(state, check_input + 4, check_len - 4);
+  CHECK(crc32_final(state) == crc32_check_value);
+
+  CHECK(crc32_compute(nullptr, 0) == 0);
+  CHECK(crc32_compute(check_input, 0) == 0);
+}
+
+TEST_CASE("Crc32: a WOZ fixture's body hashes to the CRC its twin carries") {
+  const std::vector<uint8_t> bare =
+      read_file(TestFixtures::get_fixture_path("minimal-track.woz"));
+  REQUIRE(bare.size() > woz_file_header_size);
+  CHECK(crc32_compute(bare.data() + woz_file_header_size,
+                      bare.size() - woz_file_header_size) ==
+        track_fixture_crc32);
 }
