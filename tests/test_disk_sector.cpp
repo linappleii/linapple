@@ -24,7 +24,6 @@ namespace {
 
 constexpr size_t sector_size = 256;
 constexpr size_t track_size = sector_size * sectors_per_track;
-constexpr uint32_t quarter_tracks_per_cylinder = 4;
 
 auto read_file(const std::string& path) -> std::vector<uint8_t> {
   std::ifstream in(path, std::ios::binary);

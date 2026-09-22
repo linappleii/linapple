@@ -28,7 +28,13 @@ enum { max_track_bits = 69632 };
    accepted. */
 enum { disk_default_bit_timing = 32 };
 
-typedef enum { disk_driver_cap_write = 0x01 } DiskDriverCap_e;
+/* Each bit and its entry point agree or the loader refuses the descriptor:
+   cap_write with write_track_bits, cap_create with create. A caller can then
+   trust the bits alone, which is all a query hands the frontend. */
+typedef enum {
+  disk_driver_cap_write = 0x01,
+  disk_driver_cap_create = 0x02
+} DiskDriverCap_e;
 
 typedef enum {
   disk_probe_no = 0,
@@ -51,8 +57,15 @@ typedef struct DiskFormatDriver_t {
   int abi_version;
   uint32_t capabilities;
   const char* name;
+
+  /* Dot-less and NULL-terminated ("do", "dsk"); ext_hint below is the same
+     extension as the loader saw it, lowercased and with its leading dot. */
   const char* const* supported_exts;
 
+  /* header_data is never NULL: the loader always reads ahead before asking,
+     and header_size says how much of the image it holds. ext_hint is the
+     lowercase extension with its leading dot (".dsk"), or "" when the name
+     has none, so a driver compares it with strcmp. */
   DiskProbe_e (*probe)(const uint8_t* header_data, size_t header_size,
                        uint32_t file_size, const char* ext_hint);
 
@@ -65,9 +78,12 @@ typedef struct DiskFormatDriver_t {
 
   void (*close)(void* instance);
 
+  /* A NULL instance is write protected: nothing is safer to answer about a
+     medium that is not there. */
   bool (*is_write_protected)(void* instance);
 
-  /* A quarter track the image does not map is not an error: it answers
+  /* bits holds at least (max_bits + 7) / 8 bytes, the caller's promise. A
+     quarter track the image does not map is not an error: it answers
      disk_err_none with a zero cell count, because an unrecorded surface is
      noise to the read amplifier rather than a refusal. A track longer than
      max_bits is refused with disk_err_unsupported and never truncated. */
@@ -76,6 +92,12 @@ typedef struct DiskFormatDriver_t {
                                  uint32_t* out_bit_count,
                                  uint8_t* out_bit_timing);
 
+  /* The write-back guarantee: the cells are decoded into the track's image
+     form before any byte reaches the file, the track's fixed-length slot is
+     then rewritten whole in one write, and the fflush is checked. A track
+     that will not decode leaves the file untouched; a track that reaches the
+     file is complete. There is no temp-and-rename, so a crash between the
+     write and the flush can leave one slot torn and never more. */
   DiskError_e (*write_track_bits)(void* instance, uint32_t quarter_track,
                                   const uint8_t* bits, uint32_t bit_count);
 

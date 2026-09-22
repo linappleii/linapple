@@ -36,6 +36,9 @@ constexpr uint32_t BAD_VERSION = 0xdeadbeef;
 TEST_CASE("DiskABI: [DISK-01] Command payloads fit the command queue") {
   CHECK(sizeof(DiskInsertCmd_t) == DISK_ABI_CMD_SIZE);
   CHECK(sizeof(DiskCreateImageCmd_t) == DISK_ABI_CMD_SIZE);
+  CHECK(sizeof(DiskFormatNameQuery_t) == 72);
+  CHECK(offsetof(DiskFormatNameQuery_t, capabilities) == 4);
+  CHECK(offsetof(DiskFormatNameQuery_t, name) == 8);
 }
 
 TEST_CASE("DiskABI: [DISK-02] DiskInsertCmd_t field offsets are stable") {
@@ -384,6 +387,10 @@ TEST_CASE("DiskABI: [ABI-18] The card lists the formats it can make") {
                                         "NB2 (6384-nibble)",
                                         "NIB (6656-nibble)", "ProDOS Order",
                                         "WOZ 1",             "WOZ 2"};
+  // Only the sector and nibble formats can make a blank; the WOZ and IIE
+  // drivers read what they are given.
+  const bool expected_creatable[] = {true, false, true, true,
+                                     true, false, false};
   REQUIRE(count == sizeof(expected_order) / sizeof(expected_order[0]));
   for (uint32_t i = 0; i < count; ++i) {
     DiskFormatNameQuery_t name_query{};
@@ -392,6 +399,8 @@ TEST_CASE("DiskABI: [ABI-18] The card lists the formats it can make") {
     REQUIRE(peripheral_query(SL6, disk_query_format_name, &name_query,
                              &size) == peripheral_ok);
     CHECK(std::string(name_query.name) == expected_order[i]);
+    CHECK(((name_query.capabilities & disk_driver_cap_create) != 0) ==
+          expected_creatable[i]);
   }
 
   DiskFormatNameQuery_t past_the_end{};

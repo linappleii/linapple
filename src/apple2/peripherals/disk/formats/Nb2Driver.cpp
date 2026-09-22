@@ -55,7 +55,7 @@ const char* const g_nb2_supported_exts[] = {"nb2", nullptr};
 
 extern "C" const DiskFormatDriver_t g_nb2_driver = {
     .abi_version = disk_format_abi_version,
-    .capabilities = disk_driver_cap_write,
+    .capabilities = disk_driver_cap_write | disk_driver_cap_create,
     .name = "NB2 (6384-nibble)",
     .supported_exts = g_nb2_supported_exts,
     .probe = nb2_probe,

@@ -77,7 +77,6 @@ constexpr uint16_t max_blocks_140k = 280;
 }  // namespace prodos
 
 constexpr int create_buffer_size = 1024;
-constexpr uint32_t quarter_tracks_per_cylinder = 4;
 
 // A sector image records nothing between cylinders, so all four quarter
 // tracks of a cylinder synthesise the same surface.

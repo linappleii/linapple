@@ -21,7 +21,6 @@
 #include "core/Util_Path.h"
 
 namespace {
-constexpr uint32_t quarter_tracks_per_cylinder = 4;
 constexpr uint8_t sync_byte = 0xFF;
 }  // namespace
 

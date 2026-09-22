@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "apple2/peripherals/disk/formats/DoDriver.h"
 
-#include <strings.h>
-
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
@@ -33,10 +32,10 @@ auto do_probe(const uint8_t* header_data, size_t header_size,
   }
 
   if (ext_hint != nullptr) {
-    if (strcasecmp(ext_hint, ".do") == 0 || strcasecmp(ext_hint, ".dsk") == 0) {
+    if (strcmp(ext_hint, ".do") == 0 || strcmp(ext_hint, ".dsk") == 0) {
       return (sig_probe != disk_probe_no) ? disk_probe_possible : disk_probe_no;
     }
-    if (strcasecmp(ext_hint, ".po") == 0) {
+    if (strcmp(ext_hint, ".po") == 0) {
       return disk_probe_no;
     }
   }
@@ -56,7 +55,7 @@ const char* const g_do_supported_exts[] = {"do", "dsk", nullptr};
 
 extern "C" const DiskFormatDriver_t g_do_driver = {
     .abi_version = disk_format_abi_version,
-    .capabilities = disk_driver_cap_write,
+    .capabilities = disk_driver_cap_write | disk_driver_cap_create,
     .name = "DOS Order",
     .supported_exts = g_do_supported_exts,
     .probe = do_probe,

@@ -23,8 +23,6 @@
 
 namespace {
 
-constexpr uint32_t quarter_tracks_per_cylinder = 4;
-
 auto read_file(const std::string& path) -> std::vector<uint8_t> {
   std::ifstream in(path, std::ios::binary);
   REQUIRE(in.is_open());

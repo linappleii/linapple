@@ -208,3 +208,27 @@ TEST_CASE("DiskRegistry: the extension list reports the length it needs") {
   CHECK(disk_loader_get_supported_extensions(untouched, 0) == needed);
   CHECK(std::string(untouched) == "keep");
 }
+
+TEST_CASE("DiskRegistry: the create bit and the create entry must agree") {
+  disk_loader_reset();
+  const uint32_t baseline = disk_loader_driver_count();
+
+  DiskFormatDriver_t claims_without = make_fake("Fake Claims Create", probe_no);
+  claims_without.capabilities = disk_driver_cap_create;
+  disk_loader_register(&claims_without);
+
+  DiskFormatDriver_t creates_unclaimed =
+      make_fake("Fake Hidden Create", probe_no);
+  creates_unclaimed.create = [](const char*) { return disk_err_none; };
+  disk_loader_register(&creates_unclaimed);
+
+  CHECK(disk_loader_driver_count() == baseline);
+
+  std::vector<std::string> refused;
+  count_rejections(&refused);
+  REQUIRE(refused.size() == 2);
+  CHECK(refused[0] == "Fake Claims Create");
+  CHECK(refused[1] == "Fake Hidden Create");
+
+  disk_loader_reset();
+}

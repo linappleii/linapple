@@ -82,6 +82,12 @@ auto driver_is_usable(const DiskFormatDriver_t* driver) -> bool {
   if (has_write_cap != has_write_fn) {
     return refuse(driver, "write capability disagrees with write_track_bits");
   }
+  const bool has_create_cap =
+      (driver->capabilities & disk_driver_cap_create) != 0;
+  const bool has_create_fn = driver->create != nullptr;
+  if (has_create_cap != has_create_fn) {
+    return refuse(driver, "create capability disagrees with create");
+  }
   return true;
 }
 

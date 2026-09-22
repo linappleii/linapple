@@ -53,7 +53,7 @@ const char* const g_nib_supported_exts[] = {"nib", nullptr};
 
 extern "C" const DiskFormatDriver_t g_nib_driver = {
     .abi_version = disk_format_abi_version,
-    .capabilities = disk_driver_cap_write,
+    .capabilities = disk_driver_cap_write | disk_driver_cap_create,
     .name = "NIB (6656-nibble)",
     .supported_exts = g_nib_supported_exts,
     .probe = nib_probe,

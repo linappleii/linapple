@@ -29,6 +29,9 @@ enum {
 
   tracks_per_disk = 40,
   phases_per_track = 2,
+  // Two stepper phases a track and two half steps a phase: a whole-track
+  // format serves the same surface for all four quarter tracks of a cylinder.
+  quarter_tracks_per_cylinder = 4,
   max_disk_phases = 80,
   nibbles_per_track = 6656,
   sectors_per_track = 16,
@@ -86,9 +89,12 @@ typedef struct {
 } DiskCreateImageCmd_t;
 
 // The query ABI has no input buffer, so the index the caller wants travels in
-// the same struct the name comes back in.
+// the same struct the name comes back in. capabilities carries the driver's
+// DiskDriverCap_e bits, so a "new image" menu can offer only the formats
+// whose create the loader has verified is really there.
 typedef struct {
   uint32_t index;
+  uint32_t capabilities;
   char name[disk_format_name_max];
 } DiskFormatNameQuery_t;
 

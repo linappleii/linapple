@@ -58,7 +58,6 @@ namespace dos {
 constexpr int track_size = 4096;
 }
 
-constexpr uint32_t quarter_tracks_per_cylinder = 4;
 constexpr uint8_t sync_byte = 0xFF;
 
 struct IieInstance_t {

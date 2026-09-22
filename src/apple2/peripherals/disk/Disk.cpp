@@ -1248,6 +1248,7 @@ auto disk_abi_query(void* instance, uint32_t cmd, void* data, size_t* size)
         return peripheral_error;
       }
       copy_string_to_buffer(driver->name, query->name, sizeof(query->name));
+      query->capabilities = driver->capabilities;
       *size = required_size;
       return peripheral_ok;
     }
