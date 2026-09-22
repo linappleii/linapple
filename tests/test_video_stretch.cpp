@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <zlib.h>
-
 #include <cstdint>
 #include <memory>
 
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
 #include "core/LinAppleCore.h"
+#include "core/Util_Crc32.h"
 #include "doctest.h"
 #include "frontends/common/VideoStretch.h"
 #include "frontends/common/VideoSurface.h"
@@ -193,23 +192,19 @@ TEST_CASE("Video - Mode Switch Preserves Drawn Screen") {
   const uint32_t* buf = video_get_output_buffer();
   REQUIRE(buf != nullptr);
 
-  unsigned long crc_before = crc32(0L, nullptr, 0);
-  crc_before = crc32(crc_before, reinterpret_cast<const unsigned char*>(buf),
-                     static_cast<unsigned int>(SCREEN_WIDTH * SCREEN_HEIGHT *
-                                               sizeof(uint32_t)));
+  const uint32_t crc_before =
+      crc32_compute(buf, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(uint32_t));
 
   constexpr uint32_t expected_crc = 0x16D61EDC;
-  CHECK(static_cast<uint32_t>(crc_before) == expected_crc);
+  CHECK(crc_before == expected_crc);
 
   // Switch video mode (F9 behavior)
   g_videotype = VT_COLOR_TEXT_OPTIMIZED;
   video_reinitialize();
   video_refresh_screen();
 
-  unsigned long crc_after = crc32(0L, nullptr, 0);
-  crc_after = crc32(crc_after, reinterpret_cast<const unsigned char*>(buf),
-                    static_cast<unsigned int>(SCREEN_WIDTH * SCREEN_HEIGHT *
-                                              sizeof(uint32_t)));
+  const uint32_t crc_after =
+      crc32_compute(buf, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(uint32_t));
 
-  CHECK(static_cast<uint32_t>(crc_after) == expected_crc);
+  CHECK(crc_after == expected_crc);
 }

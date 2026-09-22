@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "HeadlessHarness.h"
 
-#include <zlib.h>
-
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -14,6 +12,7 @@
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
+#include "core/Util_Crc32.h"
 #include "core/Util_Text.h"
 #include "doctest.h"
 #include "frontends/common/AppConfig.h"
@@ -119,10 +118,7 @@ auto HeadlessHarness_t::get_frame_crc32() const -> uint32_t {
     return 0;
   }
   const size_t pixel_count = 560 * 384;
-  unsigned long crc = crc32(0L, nullptr, 0);
-  crc = crc32(crc, reinterpret_cast<const unsigned char*>(pixels),
-              static_cast<unsigned int>(pixel_count * sizeof(uint32_t)));
-  return static_cast<uint32_t>(crc);
+  return crc32_compute(pixels, pixel_count * sizeof(uint32_t));
 }
 
 auto HeadlessHarness_t::get_text_row(int row, bool trim_trailing) const
