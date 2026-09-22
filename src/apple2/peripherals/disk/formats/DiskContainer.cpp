@@ -67,10 +67,10 @@ namespace {
 
 constexpr size_t decompression_chunk_size = 16384;
 
-constexpr const char* k_gzip_extension = "gz";
-constexpr const char* k_zip_extension = "zip";
-const char* const k_supported_extensions[] = {k_gzip_extension, k_zip_extension,
-                                              nullptr};
+constexpr const char* gzip_extension = "gz";
+constexpr const char* zip_extension = "zip";
+const char* const supported_extensions[] = {gzip_extension, zip_extension,
+                                            nullptr};
 constexpr const char* macosx_sidecar_dir = "__MACOSX/";
 constexpr const char* appledouble_prefix = "._";
 
@@ -103,24 +103,18 @@ auto get_file_size(const char* path) -> size_t {
 
 auto decompress_gzip(const char* compressed_path, FILE* output_file,
                      size_t uncompressed_threshold) -> bool {
-  gzFile compressed_file = gzopen(compressed_path, "rb");
+  const std::unique_ptr<gzFile_s, decltype(&gzclose)> compressed_file(
+      gzopen(compressed_path, "rb"), gzclose);
   if (compressed_file == nullptr) {
     return false;
   }
-
-  auto closer = [](void* f) {
-    if (f != nullptr) {
-      gzclose(static_cast<gzFile>(f));
-    }
-  };
-  std::unique_ptr<void, void (*)(void*)> guard(compressed_file, closer);
 
   const size_t compressed_size = get_file_size(compressed_path);
   std::array<uint8_t, decompression_chunk_size> buffer{};
   size_t total_written = 0;
   int bytes_read = 0;
 
-  while ((bytes_read = gzread(compressed_file, buffer.data(),
+  while ((bytes_read = gzread(compressed_file.get(), buffer.data(),
                               static_cast<unsigned int>(buffer.size()))) > 0) {
     total_written += static_cast<size_t>(bytes_read);
 
@@ -169,8 +163,7 @@ auto first_payload_entry(zip* archive) -> int64_t {
 
 auto decompress_zip(const char* compressed_path, FILE* output_file,
                     size_t uncompressed_threshold) -> bool {
-  int err = 0;
-  zip* zip_archive = zip_open(compressed_path, ZIP_RDONLY, &err);
+  zip* zip_archive = zip_open(compressed_path, ZIP_RDONLY, nullptr);
   if (zip_archive == nullptr) {
     return false;
   }
@@ -232,10 +225,10 @@ auto decompress_zip(const char* compressed_path, FILE* output_file,
 // the header, so both are required. MacBinary I has no CRC and is not
 // recognised: its only marks (zero at 0, 74 and 82) occur in ordinary images.
 extern "C" auto disk_container_detect_macbinary(const uint8_t* header_data,
-                                                size_t header_size,
+                                                size_t header_len,
                                                 uint32_t file_size)
     -> uint32_t {
-  if (header_data == nullptr || header_size < macbinary::header_size ||
+  if (header_data == nullptr || header_len < macbinary::header_size ||
       file_size <= macbinary::header_size) {
     return 0;
   }
@@ -276,8 +269,8 @@ extern "C" auto disk_container_payload_name(const char* image_path,
   const char* slash = strrchr(image_path, '/');
   const char* basename = (slash != nullptr) ? (slash + 1) : image_path;
 
-  const bool is_gz = has_extension(image_path, k_gzip_extension);
-  const bool is_zip = has_extension(image_path, k_zip_extension);
+  const bool is_gz = has_extension(image_path, gzip_extension);
+  const bool is_zip = has_extension(image_path, zip_extension);
   if (!is_gz && !is_zip) {
     return copy_whole(out_name, basename, max_name_len);
   }
@@ -301,8 +294,8 @@ extern "C" auto disk_container_payload_name(const char* image_path,
   // Dropping the archive suffix is all that is left: gzip's own FNAME field is
   // optional and zlib does not expose it.
   const std::string stripped(
-      basename, strlen(basename) -
-                    strlen(is_gz ? k_gzip_extension : k_zip_extension) - 1);
+      basename,
+      strlen(basename) - strlen(is_gz ? gzip_extension : zip_extension) - 1);
   return copy_whole(out_name, stripped.c_str(), max_name_len);
 }
 
@@ -321,8 +314,8 @@ extern "C" auto disk_container_prepare_compressed_path(
   }
   out_load_path[0] = '\0';
 
-  const bool is_gz = has_extension(image_path, k_gzip_extension);
-  const bool is_zip = has_extension(image_path, k_zip_extension);
+  const bool is_gz = has_extension(image_path, gzip_extension);
+  const bool is_zip = has_extension(image_path, zip_extension);
 
   if (!is_gz && !is_zip) {
     return copy_whole(out_load_path, image_path, max_path_len);
@@ -376,7 +369,7 @@ extern "C" auto disk_container_prepare_compressed_path(
 
 extern "C" auto disk_container_supported_extensions(void) -> const
     char* const* {
-  return k_supported_extensions;
+  return supported_extensions;
 }
 
 // NOLINTEND(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-array-to-pointer-decay)

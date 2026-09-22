@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// Justification: This header defines a C99-compatible ABI for sector-based disk image backends, allowing them to be shared across multiple drivers.
+// Justification: This header defines a C99-compatible ABI for sector-based disk
+// image backends, allowing them to be shared across multiple drivers.
 // NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type)
 
 #include <stdbool.h>
@@ -22,6 +23,9 @@ typedef struct SectorDiskImage_t SectorDiskImage_t;
    up to 255 bytes missing from its last sector or up to 128 following it, and
    a file above this is disk_err_unsupported before anything is allocated. */
 enum { sector_image_max_bytes = 143488 };
+
+/* A track as the sector family stores it: sixteen 256-byte sectors. */
+enum { sector_image_track_bytes = 4096 };
 
 /* Opens the image at file_offset within path and hands the instance back
    through out_instance, which is nulled first. A null argument is

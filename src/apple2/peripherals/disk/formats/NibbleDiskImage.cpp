@@ -180,7 +180,6 @@ extern "C" auto nibble_disk_image_read_track_bits(
     return disk_err_io;
   }
 
-  image_ptr->nibbles.fill(sync_byte);
   const size_t read_count = fread(image_ptr->nibbles.data(), 1,
                                   image_ptr->track_size, image_ptr->file.get());
   // A track cut short by the end of the file is the image's own shape; one

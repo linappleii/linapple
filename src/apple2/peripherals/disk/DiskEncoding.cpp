@@ -314,14 +314,13 @@ auto disk_encoding_denibblize_track(const uint8_t* sector_order, uint32_t track,
         }
         const bool data_holds = epilogue_follows();
         if (current_sector >= 0) {
-          const uint8_t physical_sector =
+          const uint8_t file_sector =
               sector_order[static_cast<size_t>(current_sector)];
-          if (!data_holds || physical_sector >= sectors_per_track ||
-              !decode_sector_62(scratch,
-                                &staging[physical_sector * sector_size])) {
+          if (!data_holds || file_sector >= sectors_per_track ||
+              !decode_sector_62(scratch, &staging[file_sector * sector_size])) {
             field_refused = true;
           } else {
-            decoded_sectors_mask |= static_cast<uint16_t>(1 << physical_sector);
+            decoded_sectors_mask |= static_cast<uint16_t>(1 << file_sector);
           }
         }
         current_sector = -1;

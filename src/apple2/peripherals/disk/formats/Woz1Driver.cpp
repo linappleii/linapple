@@ -33,7 +33,7 @@ constexpr int header_size = 256;
 constexpr int trks_record_size = 6656;
 constexpr int trks_bits_size = 6646;
 constexpr int trks_bit_count_offset = trks_bits_size + 2;
-constexpr int trks_trailer_size = 4;
+constexpr int trks_bit_count_size = 2;
 constexpr uint8_t info_version_1_0 = 1;
 }  // namespace woz1
 
@@ -214,15 +214,15 @@ static auto woz1_read_track_bits(void* instance_handle, uint32_t quarter_track,
 
   // The record's bit count sits after its cells rather than in an index, so
   // it takes a second seek to learn how much of the record is medium.
-  std::array<uint8_t, woz1::trks_trailer_size> trailer{};
+  std::array<uint8_t, woz1::trks_bit_count_size> bit_count_bytes{};
   if (fseek(wi_ptr->file.get(),
             static_cast<long>(record_offset + woz1::trks_bit_count_offset),
             SEEK_SET) != 0 ||
-      fread(trailer.data(), 1, trailer.size(), wi_ptr->file.get()) !=
-          trailer.size()) {
+      fread(bit_count_bytes.data(), 1, bit_count_bytes.size(),
+            wi_ptr->file.get()) != bit_count_bytes.size()) {
     return disk_err_io;
   }
-  const uint32_t bit_count = read_u16_le(trailer.data());
+  const uint32_t bit_count = read_u16_le(bit_count_bytes.data());
 
   if (bit_count == 0 ||
       bit_count >
@@ -250,13 +250,13 @@ static auto woz1_read_track_bits(void* instance_handle, uint32_t quarter_track,
   return disk_err_none;
 }
 
-const char* const g_woz1_supported_exts[] = {"woz", nullptr};
+const char* const woz1_supported_exts[] = {"woz", nullptr};
 
 extern "C" const DiskFormatDriver_t g_woz1_driver = {
     .abi_version = disk_format_abi_version,
     .capabilities = 0,
     .name = "WOZ 1",
-    .supported_exts = g_woz1_supported_exts,
+    .supported_exts = woz1_supported_exts,
     .probe = woz1_probe,
     .open = woz1_open,
     .close = woz1_close,
@@ -265,6 +265,6 @@ extern "C" const DiskFormatDriver_t g_woz1_driver = {
     .write_track_bits = nullptr,
     .create = nullptr};
 
-static const DiskFormatRegistration_t k_reg{&g_woz1_driver};
+static const DiskFormatRegistration_t registration{&g_woz1_driver};
 
 // NOLINTEND(google-runtime-int, cppcoreguidelines-owning-memory, bugprone-easily-swappable-parameters, modernize-make-unique)

@@ -39,8 +39,7 @@ constexpr int bits_per_byte = 8;
 
 inline auto woz_header_at(const uint8_t* header, size_t header_len,
                           uint64_t offset, size_t len) -> const uint8_t* {
-  if (header == nullptr || offset > header_len || len > header_len ||
-      (offset + len) > header_len || (offset + len) < offset) {
+  if (header == nullptr || offset + len < offset || offset + len > header_len) {
     return nullptr;
   }
   return header + offset;

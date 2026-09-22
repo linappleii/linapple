@@ -17,16 +17,10 @@
 // NOLINTBEGIN(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
 
 namespace {
-namespace physical {
-constexpr int tracks = 35;
-constexpr int disk_size = tracks * static_cast<int>(nibbles_per_track);
-}  // namespace physical
-
 auto nib_probe(const uint8_t* header_data, size_t header_size,
                uint32_t file_size, const char* ext_hint) -> DiskProbe_e {
   return nibble_disk_image_probe(header_data, header_size, file_size, ext_hint,
-                                 static_cast<uint32_t>(physical::disk_size),
-                                 ".nib");
+                                 nibble_image_max_bytes, ".nib");
 }
 
 auto nib_open(const char* path, uint32_t file_offset, bool read_only,
@@ -39,14 +33,14 @@ auto nib_create(const char* path) -> DiskError_e {
   return nibble_disk_image_create(path, nibbles_per_track);
 }
 
-const char* const g_nib_supported_exts[] = {"nib", nullptr};
+const char* const nib_supported_exts[] = {"nib", nullptr};
 }  // namespace
 
 extern "C" const DiskFormatDriver_t g_nib_driver = {
     .abi_version = disk_format_abi_version,
     .capabilities = disk_driver_cap_write | disk_driver_cap_create,
     .name = "NIB (6656-nibble)",
-    .supported_exts = g_nib_supported_exts,
+    .supported_exts = nib_supported_exts,
     .probe = nib_probe,
     .open = nib_open,
     .close = nibble_disk_image_close,
@@ -55,6 +49,6 @@ extern "C" const DiskFormatDriver_t g_nib_driver = {
     .write_track_bits = nibble_disk_image_write_track_bits,
     .create = nib_create};
 
-static const DiskFormatRegistration_t k_reg{&g_nib_driver};
+static const DiskFormatRegistration_t registration{&g_nib_driver};
 
 // NOLINTEND(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)

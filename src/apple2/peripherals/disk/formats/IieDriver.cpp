@@ -5,7 +5,6 @@
 #include <cerrno>
 #include <cstdint>
 #include <cstdio>
-#include <cstdlib>
 #include <cstring>
 #include <memory>
 
@@ -14,6 +13,7 @@
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "apple2/peripherals/disk/formats/DiskFormatRegistration.h"
+#include "apple2/peripherals/disk/formats/SectorDiskImage.h"
 #include "core/Util_Endian.h"
 #include "core/Util_Path.h"
 
@@ -62,12 +62,6 @@ static_assert(sector_map_offset + sectors_per_track <=
               "IIE header sector map exceeds allocated header size");
 }  // namespace iie
 
-namespace dos {
-constexpr int track_size = 4096;
-}
-
-constexpr uint8_t sync_byte = 0xFF;
-
 struct IieInstance_t {
   FilePtr_t file{nullptr, fclose};
   std::array<uint8_t, iie::header_size> header{};
@@ -75,7 +69,7 @@ struct IieInstance_t {
   std::array<uint8_t, disk_encoding_scratch_size> scratch{};
   std::array<uint8_t, nibbles_per_track> nibbles{};
   std::array<uint8_t, nibbles_per_track> sync_mask{};
-  std::array<uint8_t, dos::track_size> sectors{};
+  std::array<uint8_t, sector_image_track_bytes> sectors{};
   std::array<uint32_t, iie::tracks> track_offsets{};
   std::array<uint16_t, iie::tracks> track_nibble_counts{};
   bool os_readonly = false;
@@ -183,16 +177,14 @@ auto iie_open(const char* path, uint32_t file_offset, bool read_only,
   }
 
   if (instance_ptr->header[iie::variant_offset] <= iie::variant_max_legacy) {
-    if (iie::sector_map_offset + sectors_per_track > iie::header_size) {
-      return disk_err_corrupt;
-    }
     iie_convert_sector_order(&instance_ptr->header[iie::sector_map_offset],
                              instance_ptr->sector_order.data());
     for (int t = 0; t < iie::tracks; ++t) {
       const uint32_t offset =
-          file_offset +
-          static_cast<uint32_t>(t * dos::track_size + iie::track_data_offset);
-      if (static_cast<int64_t>(offset) + dos::track_size > total_file_size) {
+          file_offset + static_cast<uint32_t>(t * sector_image_track_bytes +
+                                              iie::track_data_offset);
+      if (static_cast<int64_t>(offset) + sector_image_track_bytes >
+          total_file_size) {
         return disk_err_corrupt;
       }
       instance_ptr->track_offsets[static_cast<size_t>(t)] = offset;
@@ -205,10 +197,6 @@ auto iie_open(const char* path, uint32_t file_offset, bool read_only,
       const size_t map_offset =
           (static_cast<size_t>(t) * iie::header_map_stride) +
           static_cast<size_t>(iie::nibble_map_offset);
-      if (map_offset + sizeof(uint16_t) >
-          static_cast<size_t>(iie::header_size)) {
-        return disk_err_corrupt;
-      }
       // A count the slot buffer cannot hold would put every later track at
       // the wrong offset if it were clamped, so the image is refused.
       const uint16_t nib_count = read_u16_le(&instance_ptr->header[map_offset]);
@@ -229,9 +217,6 @@ auto iie_open(const char* path, uint32_t file_offset, bool read_only,
 }
 
 auto iie_close(void* instance_handle) -> void {
-  if (instance_handle == nullptr) {
-    return;
-  }
   delete reinterpret_cast<IieInstance_t*>(instance_handle);
 }
 
@@ -270,9 +255,8 @@ auto iie_read_track_bits(void* instance_handle, uint32_t quarter_track,
   }
 
   if (ii_ptr->header[iie::variant_offset] <= iie::variant_max_legacy) {
-    ii_ptr->sectors.fill(0);
-    if (fread(ii_ptr->sectors.data(), 1, dos::track_size, ii_ptr->file.get()) !=
-        dos::track_size) {
+    if (fread(ii_ptr->sectors.data(), 1, sector_image_track_bytes,
+              ii_ptr->file.get()) != sector_image_track_bytes) {
       return disk_err_io;
     }
     uint32_t nibbles_read = 0;
@@ -290,14 +274,13 @@ auto iie_read_track_bits(void* instance_handle, uint32_t quarter_track,
 
   // The modern variant stores raw nibbles with no record of which were
   // written as sync, so the adapter reads the track's own shape.
-  ii_ptr->nibbles.fill(sync_byte);
   const uint32_t nibbles_read = static_cast<uint32_t>(
       fread(ii_ptr->nibbles.data(), 1, nib_count, ii_ptr->file.get()));
   return disk_encoding_nibbles_to_bits(ii_ptr->nibbles.data(), nibbles_read,
                                        nullptr, bits, max_bits, out_bit_count);
 }
 
-const char* const g_iie_supported_exts[] = {"iie", nullptr};
+const char* const iie_supported_exts[] = {"iie", nullptr};
 
 }  // namespace
 
@@ -305,7 +288,7 @@ extern "C" const DiskFormatDriver_t g_iie_driver = {
     .abi_version = disk_format_abi_version,
     .capabilities = 0,
     .name = "IIE",
-    .supported_exts = g_iie_supported_exts,
+    .supported_exts = iie_supported_exts,
     .probe = iie_probe,
     .open = iie_open,
     .close = iie_close,
@@ -314,6 +297,6 @@ extern "C" const DiskFormatDriver_t g_iie_driver = {
     .write_track_bits = nullptr,
     .create = nullptr};
 
-static const DiskFormatRegistration_t k_reg{&g_iie_driver};
+static const DiskFormatRegistration_t registration{&g_iie_driver};
 
 // NOLINTEND(google-runtime-int, cppcoreguidelines-owning-memory, bugprone-easily-swappable-parameters, modernize-make-unique)

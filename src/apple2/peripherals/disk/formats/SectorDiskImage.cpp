@@ -11,7 +11,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
-#include <cstring>
 #include <memory>
 #include <utility>
 
@@ -30,8 +29,6 @@
 // easily-swappable-parameters is mandated by the shared sector image ABI
 // signatures.
 
-enum { dos_track_size = 4096 };
-
 struct SectorDiskImage_t {
   FilePtr_t file{nullptr, fclose};
   uint32_t data_offset = 0;
@@ -41,7 +38,7 @@ struct SectorDiskImage_t {
   std::array<uint8_t, disk_encoding_scratch_size> scratch{};
   std::array<uint8_t, nibbles_per_track> nibbles{};
   std::array<uint8_t, nibbles_per_track> sync_mask{};
-  std::array<uint8_t, dos_track_size> sectors{};
+  std::array<uint8_t, sector_image_track_bytes> sectors{};
 
   SectorDiskImage_t() = default;
   ~SectorDiskImage_t() = default;
@@ -69,10 +66,9 @@ constexpr uint32_t min_140k_size = 143105;
 constexpr uint32_t max_140k_size = 143364;
 constexpr uint32_t alt_size_1 = 143403;
 constexpr uint32_t alt_size_2 = sector_image_max_bytes;
-constexpr uint8_t sync_byte = 0xFF;
 
 static_assert(static_cast<uint32_t>(size_140k) ==
-                  tracks_140k * static_cast<uint32_t>(dos_track_size),
+                  tracks_140k * static_cast<uint32_t>(sector_image_track_bytes),
               "the 140 K image is 35 DOS tracks");
 static_assert(min_140k_size == static_cast<uint32_t>(size_140k) - 255 &&
                   max_140k_size == static_cast<uint32_t>(size_140k) + 4,
@@ -87,7 +83,6 @@ auto is_140k_image_size(uint32_t size) -> bool {
 }  // namespace disk
 
 namespace dos {
-constexpr int track_size = 4096;
 constexpr int catalog_track = 17;
 constexpr int page_size = 0x0100;
 constexpr int catalog_start_sector = 1;
@@ -197,7 +192,7 @@ auto sector_disk_image_read_track_bits(void* instance, uint32_t quarter_track,
   }
 
   const auto offset = static_cast<int64_t>(image_ptr->data_offset) +
-                      (static_cast<int64_t>(track) * dos::track_size);
+                      (static_cast<int64_t>(track) * sector_image_track_bytes);
 
   if (fseek(image_ptr->file.get(), static_cast<long>(offset), SEEK_SET) != 0) {
     return disk_err_io;
@@ -206,9 +201,10 @@ auto sector_disk_image_read_track_bits(void* instance, uint32_t quarter_track,
   // A file cut short inside its last sector is still admitted as a 35-track
   // image, so the bytes it lacks read as an unwritten zero tail rather than
   // an error.
-  const size_t bytes_read = fread(image_ptr->sectors.data(), 1, dos::track_size,
-                                  image_ptr->file.get());
-  if (bytes_read != static_cast<size_t>(dos::track_size)) {
+  const size_t bytes_read =
+      fread(image_ptr->sectors.data(), 1, sector_image_track_bytes,
+            image_ptr->file.get());
+  if (bytes_read != static_cast<size_t>(sector_image_track_bytes)) {
     if (ferror(image_ptr->file.get()) != 0) {
       return disk_err_io;
     }
@@ -267,12 +263,13 @@ auto sector_disk_image_write_track_bits(void* instance, uint32_t quarter_track,
   }
 
   const auto offset = static_cast<int64_t>(image_ptr->data_offset) +
-                      (static_cast<int64_t>(track) * dos::track_size);
+                      (static_cast<int64_t>(track) * sector_image_track_bytes);
   if (fseek(image_ptr->file.get(), static_cast<long>(offset), SEEK_SET) != 0) {
     return disk_err_io;
   }
-  if (fwrite(image_ptr->sectors.data(), 1, dos::track_size,
-             image_ptr->file.get()) != static_cast<size_t>(dos::track_size)) {
+  if (fwrite(image_ptr->sectors.data(), 1, sector_image_track_bytes,
+             image_ptr->file.get()) !=
+      static_cast<size_t>(sector_image_track_bytes)) {
     return disk_err_io;
   }
   if (fflush(image_ptr->file.get()) != 0) {
@@ -302,8 +299,7 @@ auto sector_disk_image_create(const char* path) -> DiskError_e {
     return disk_err_io;
   }
 
-  std::array<uint8_t, create_buffer_size> zero{};
-  zero.fill(0);
+  const std::array<uint8_t, create_buffer_size> zero{};
   for (int i = 0; i < disk::size_140k / create_buffer_size; ++i) {
     if (fwrite(zero.data(), 1, zero.size(), file.get()) != zero.size()) {
       file.reset();
@@ -329,7 +325,8 @@ auto dos_sector_offset(bool is_dos_order, int track, int sector) -> size_t {
   const bool shares_index =
       is_dos_order || sector == 0 || sector == last_sector;
   const int file_sector = shares_index ? sector : last_sector - sector;
-  return (static_cast<size_t>(track) * static_cast<size_t>(dos::track_size)) +
+  return (static_cast<size_t>(track) *
+          static_cast<size_t>(sector_image_track_bytes)) +
          (static_cast<size_t>(file_sector) *
           static_cast<size_t>(dos::page_size));
 }
@@ -346,7 +343,8 @@ auto prodos_block_offset(bool is_dos_order, uint16_t block) -> size_t {
   const int sector = (block_in_track == 0)
                          ? 0
                          : (sectors_per_track - 1) - (2 * block_in_track);
-  return (static_cast<size_t>(track) * static_cast<size_t>(dos::track_size)) +
+  return (static_cast<size_t>(track) *
+          static_cast<size_t>(sector_image_track_bytes)) +
          (static_cast<size_t>(sector) * static_cast<size_t>(dos::page_size));
 }
 
@@ -400,6 +398,9 @@ auto has_prodos_directory(const uint8_t* header_data, size_t header_size,
 auto sector_disk_image_probe_signature(const uint8_t* header_data,
                                        size_t header_size, uint32_t file_size,
                                        bool is_dos_order) -> DiskProbe_e {
+  if (header_data == nullptr) {
+    return disk_probe_no;
+  }
   if (!disk::is_140k_image_size(file_size)) {
     return disk_probe_no;
   }
