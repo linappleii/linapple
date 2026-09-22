@@ -5,10 +5,14 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <string>
 #include <vector>
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include "apple2/peripherals/disk/DiskError.h"
+#include "apple2/peripherals/disk/DiskFormatDriver.h"
+#include "apple2/peripherals/disk/DiskLoader.h"
 #include "apple2/peripherals/disk/formats/DiskContainer.h"
 #include "doctest.h"
 #include "test_fixtures.h"
@@ -208,4 +212,45 @@ TEST_CASE("DiskCompression: [PAY-1] The payload name carries the extension") {
   CHECK(std::string(name) == "inner.po");
 
   CHECK(disk_container_payload_name(nullptr, name, sizeof(name)) == false);
+}
+
+TEST_CASE(
+    "DiskCompression: [LD-1] the loader refuses an over-ratio floppy archive "
+    "as unsupported") {
+  TestFixtures::ScopedTempFile_t test_zip(".dsk.zip");
+  const std::vector<uint8_t> zeros(5 * 1024 * 1024, 0x00);
+  REQUIRE(create_test_zip(test_zip.c_str(), "bomb.dsk", zeros.data(),
+                          zeros.size()));
+
+  const DiskFormatDriver_t* driver = nullptr;
+  void* instance = nullptr;
+  CHECK(disk_loader_open(test_zip.c_str(), &driver, &instance) ==
+        disk_err_unsupported);
+  CHECK(driver == nullptr);
+  CHECK(instance == nullptr);
+}
+
+TEST_CASE(
+    "DiskCompression: [LD-2] the loader names a missing archive and a broken "
+    "one apart") {
+  const TestFixtures::ScopedTempDir_t dir("linapple_compression_case_");
+  const std::string missing = dir.path() + "/absent.dsk.gz";
+
+  const DiskFormatDriver_t* driver = nullptr;
+  void* instance = nullptr;
+  CHECK(disk_loader_open(missing.c_str(), &driver, &instance) ==
+        disk_err_file_not_found);
+
+  TestFixtures::ScopedTempFile_t not_a_zip(".dsk.zip");
+  const std::vector<uint8_t> noise(1024, 0xA5);
+  {
+    FILE* f = fopen(not_a_zip.c_str(), "wb");
+    REQUIRE(f != nullptr);
+    REQUIRE(fwrite(noise.data(), 1, noise.size(), f) == noise.size());
+    REQUIRE(fclose(f) == 0);
+  }
+  CHECK(disk_loader_open(not_a_zip.c_str(), &driver, &instance) ==
+        disk_err_corrupt);
+  CHECK(driver == nullptr);
+  CHECK(instance == nullptr);
 }

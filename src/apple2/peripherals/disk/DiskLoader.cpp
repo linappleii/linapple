@@ -14,10 +14,10 @@
 #include <string>
 #include <vector>
 
+#include "apple2/media/image_container/ImageContainer.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
-#include "apple2/peripherals/disk/formats/DiskContainer.h"
 #include "apple2/peripherals/disk/formats/DiskFormatRegistration.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
@@ -140,6 +140,32 @@ constexpr size_t path_max_len = disk_path_max;
 constexpr size_t probe_header_size = 80 * 1024;
 constexpr size_t extension_hint_size = 16;
 
+// The largest floppy image this card can mount is a 40-track WOZ of a few
+// hundred KB, so any honest archive is far under this and a zero-filled
+// blank passes on size alone; anything that has to be this big and still
+// compress past the library's ratio is not a floppy.
+constexpr size_t floppy_decompression_threshold = 4 * 1024 * 1024;
+
+auto container_error_to_disk_error(ImageContainerError_e error) -> DiskError_e {
+  switch (error) {
+    case image_container_ok:
+      return disk_err_none;
+    case image_container_invalid_argument:
+      return disk_err_invalid_argument;
+    case image_container_not_found:
+      return disk_err_file_not_found;
+    case image_container_corrupt:
+      return disk_err_corrupt;
+    // An archive the bound refuses is not damaged; it is one this card
+    // declines to mount, like a track larger than max_bits.
+    case image_container_too_large:
+      return disk_err_unsupported;
+    case image_container_io:
+    default:
+      return disk_err_io;
+  }
+}
+
 /**
  * @brief Ensures a temporary file is unlinked when it goes out of scope.
  */
@@ -197,7 +223,7 @@ auto has_container_extension(const char* path) -> bool {
   if (dot == nullptr) {
     return false;
   }
-  for (const char* const* ext = disk_container_supported_extensions();
+  for (const char* const* ext = image_container_supported_extensions();
        ext != nullptr && *ext != nullptr; ++ext) {
     if (strcasecmp(dot + 1, *ext) == 0) {
       return true;
@@ -254,10 +280,12 @@ auto disk_loader_open(const char* image_path,
 
   char load_path[path_max_len] = {0};
   bool is_temporary = false;
-  if (!disk_container_prepare_compressed_path(
+  const ImageContainerError_e prepared =
+      image_container_prepare_compressed_path(
           image_path, load_path, sizeof(load_path),
-          disk_container::floppy_decompression_threshold, &is_temporary)) {
-    return disk_err_io;
+          floppy_decompression_threshold, &is_temporary);
+  if (prepared != image_container_ok) {
+    return container_error_to_disk_error(prepared);
   }
 
   TemporaryFileGuard temp_guard(is_temporary ? load_path : nullptr);
@@ -284,7 +312,7 @@ auto disk_loader_open(const char* image_path,
   image_file.reset();
 
   const uint32_t file_offset =
-      disk_container_detect_macbinary(header.data(), header_read, file_size);
+      image_container_detect_macbinary(header.data(), header_read, file_size);
   if (file_offset > file_size) {
     return disk_err_corrupt;
   }
@@ -292,8 +320,15 @@ auto disk_loader_open(const char* image_path,
   const size_t probe_size =
       (header_read > file_offset) ? (header_read - file_offset) : 0;
 
+  // The name only supplies the extension hint; a name the library cannot give
+  // (one that does not fit) leaves the hint empty and the probes deciding by
+  // content alone.
   char payload_name[path_max_len] = {0};
-  disk_container_payload_name(image_path, payload_name, sizeof(payload_name));
+  if (image_container_payload_name(image_path, payload_name,
+                                   sizeof(payload_name)) !=
+      image_container_ok) {
+    payload_name[0] = '\0';
+  }
 
   *out_driver = find_best_driver(probe_ptr, probe_size, file_size - file_offset,
                                  payload_name);
@@ -376,7 +411,7 @@ auto disk_loader_get_supported_extensions(char* out_buffer, size_t buffer_size)
     }
   }
 
-  const char* const* container_exts = disk_container_supported_extensions();
+  const char* const* container_exts = image_container_supported_extensions();
   for (; container_exts != nullptr && *container_exts != nullptr;
        ++container_exts) {
     if (std::find(exts.begin(), exts.end(), *container_exts) == exts.end()) {
