@@ -9,6 +9,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
 
 #ifdef __cplusplus
@@ -17,14 +18,24 @@ extern "C" {
 
 typedef struct NibbleDiskImage_t NibbleDiskImage_t;
 
-/* Opens the image at file_offset within path, its tracks nibbles_per_track
-   bytes each, and hands the instance back through out_instance, which is
-   nulled first. A null argument is disk_err_invalid_argument, a path that
-   does not exist disk_err_file_not_found, any other failure to open or
-   measure the file disk_err_io, and a file shorter than file_offset
-   disk_err_corrupt. */
+/* The largest image the family describes: thirty-five whole tracks of the
+   longest slot. A file with more behind its offset is refused before anything
+   is allocated for it. */
+enum {
+  nibble_image_tracks = 35,
+  nibble_image_max_bytes = nibble_image_tracks * nibbles_per_track
+};
+
+/* Opens the image at file_offset within path, its tracks track_nibbles bytes
+   each, and hands the instance back through out_instance, which is nulled
+   first. A null argument, or a track_nibbles of zero or above
+   nibbles_per_track, is disk_err_invalid_argument; a path that does not exist
+   disk_err_file_not_found; any other failure to open or measure the file
+   disk_err_io; a file shorter than file_offset, or with nothing recorded past
+   it, disk_err_corrupt; one with more than nibble_image_max_bytes past it
+   disk_err_unsupported. */
 DiskError_e nibble_disk_image_open(const char* path, uint32_t file_offset,
-                                   uint32_t nibbles_per_track, bool read_only,
+                                   uint32_t track_nibbles, bool read_only,
                                    void** out_instance);
 
 /* These four carry the DiskFormatDriver_t signatures, instance being the

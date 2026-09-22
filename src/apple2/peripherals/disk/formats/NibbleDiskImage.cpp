@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <cstring>
 #include <memory>
+#include <utility>
 
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskEncoding.h"
@@ -49,34 +50,33 @@ struct NibbleDiskImage_t {
 };
 
 extern "C" auto nibble_disk_image_open(const char* path, uint32_t file_offset,
-                                       uint32_t nibbles_per_track,
-                                       bool read_only, void** out_instance)
-    -> DiskError_e {
+                                       uint32_t track_nibbles, bool read_only,
+                                       void** out_instance) -> DiskError_e {
   if (out_instance == nullptr) {
     return disk_err_invalid_argument;
   }
   *out_instance = nullptr;
-  if (path == nullptr) {
+  if (path == nullptr || track_nibbles == 0 ||
+      track_nibbles > nibbles_per_track) {
     return disk_err_invalid_argument;
   }
 
-  auto image_ptr = std::unique_ptr<NibbleDiskImage_t>(new NibbleDiskImage_t());
-
-  image_ptr->os_readonly = read_only;
+  FilePtr_t file{nullptr, fclose};
+  bool os_readonly = read_only;
   if (!read_only) {
-    image_ptr->file.reset(fopen(path, "r+b"));
+    file.reset(fopen(path, "r+b"));
   }
 
-  if (image_ptr->file == nullptr) {
-    image_ptr->file.reset(fopen(path, "rb"));
-    image_ptr->os_readonly = true;
+  if (file == nullptr) {
+    file.reset(fopen(path, "rb"));
+    os_readonly = true;
   }
 
-  if (image_ptr->file == nullptr) {
+  if (file == nullptr) {
     return (errno == ENOENT) ? disk_err_file_not_found : disk_err_io;
   }
 
-  const int64_t total_size = Path::file_size(image_ptr->file.get());
+  const int64_t total_size = Path::file_size(file.get());
   if (total_size < 0) {
     return disk_err_io;
   }
@@ -84,13 +84,26 @@ extern "C" auto nibble_disk_image_open(const char* path, uint32_t file_offset,
     return disk_err_corrupt;
   }
 
+  // The file's length is the one thing a hostile image controls before a
+  // byte of it is read, so the ceiling is applied before the instance and its
+  // track buffer exist.
+  const uint64_t recorded = static_cast<uint64_t>(total_size) - file_offset;
+  if (recorded > nibble_image_max_bytes) {
+    return disk_err_unsupported;
+  }
+  if (recorded == 0) {
+    return disk_err_corrupt;
+  }
+
+  auto image_ptr = std::unique_ptr<NibbleDiskImage_t>(new NibbleDiskImage_t());
+  image_ptr->file = std::move(file);
+  image_ptr->os_readonly = os_readonly;
   image_ptr->data_offset = file_offset;
-  image_ptr->track_size = nibbles_per_track;
+  image_ptr->track_size = track_nibbles;
   // A slot the file ends inside still counts: a truncated track reads as far
   // as it goes, and the tracks after it as blank surface.
-  const uint64_t recorded = static_cast<uint64_t>(total_size) - file_offset;
-  image_ptr->track_count = static_cast<uint32_t>(
-      (recorded + nibbles_per_track - 1) / nibbles_per_track);
+  image_ptr->track_count =
+      static_cast<uint32_t>((recorded + track_nibbles - 1) / track_nibbles);
 
   *out_instance = image_ptr.release();
   return disk_err_none;

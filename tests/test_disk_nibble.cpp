@@ -15,7 +15,9 @@
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "apple2/peripherals/disk/DiskLoader.h"
+#include "apple2/peripherals/disk/formats/Nb2Driver.h"
 #include "apple2/peripherals/disk/formats/NibDriver.h"
+#include "apple2/peripherals/disk/formats/NibbleDiskImage.h"
 #include "doctest.h"
 #include "test_fixtures.h"
 
@@ -261,4 +263,63 @@ TEST_CASE("DiskNibble: [NIB-W2] a shorter track rewrites the whole slot") {
   CHECK(read_file(image.path()) == file);
 
   g_nib_driver.close(instance);
+}
+
+TEST_CASE("DiskNibble: [NIB-O1] a track size the slot cannot hold is refused") {
+  auto image = TestFixtures::create_ephemeral("minimal.nib");
+
+  void* instance = reinterpret_cast<void*>(1);
+  CHECK(nibble_disk_image_open(image.c_str(), 0, 0, false, &instance) ==
+        disk_err_invalid_argument);
+  CHECK(instance == nullptr);
+  instance = reinterpret_cast<void*>(1);
+  CHECK(nibble_disk_image_open(image.c_str(), 0, nibbles_per_track + 1, false,
+                               &instance) == disk_err_invalid_argument);
+  CHECK(instance == nullptr);
+
+  REQUIRE(nibble_disk_image_open(image.c_str(), 0, nibbles_per_track, false,
+                                 &instance) == disk_err_none);
+  REQUIRE(instance != nullptr);
+  nibble_disk_image_close(instance);
+}
+
+TEST_CASE("DiskNibble: [NIB-O2] a file with nothing recorded is corrupt") {
+  auto empty = TestFixtures::create_ephemeral_blank("empty.nib", 0);
+  void* instance = reinterpret_cast<void*>(1);
+  CHECK(g_nib_driver.open(empty.c_str(), 0, false, &instance) ==
+        disk_err_corrupt);
+  CHECK(instance == nullptr);
+  instance = reinterpret_cast<void*>(1);
+  CHECK(g_nb2_driver.open(empty.c_str(), 0, false, &instance) ==
+        disk_err_corrupt);
+  CHECK(instance == nullptr);
+
+  // A prefix that is the whole file leaves no track behind it either.
+  auto prefix_only = TestFixtures::create_ephemeral_blank("prefix.nib", 128);
+  CHECK(g_nib_driver.open(prefix_only.c_str(), 128, false, &instance) ==
+        disk_err_corrupt);
+  CHECK(instance == nullptr);
+}
+
+TEST_CASE("DiskNibble: [NIB-O3] a file past the family ceiling is refused") {
+  auto oversize = TestFixtures::create_ephemeral_blank(
+      "big.nib", static_cast<size_t>(nibble_image_max_bytes) + 1);
+  void* instance = reinterpret_cast<void*>(1);
+  CHECK(g_nib_driver.open(oversize.c_str(), 0, false, &instance) ==
+        disk_err_unsupported);
+  CHECK(instance == nullptr);
+  instance = reinterpret_cast<void*>(1);
+  CHECK(g_nb2_driver.open(oversize.c_str(), 0, false, &instance) ==
+        disk_err_unsupported);
+  CHECK(instance == nullptr);
+
+  // The ceiling itself is the largest NIB there is, and behind a prefix the
+  // prefix is not counted against it.
+  auto at_ceiling = TestFixtures::create_ephemeral_blank(
+      "full.nib", static_cast<size_t>(nibble_image_max_bytes) + 128);
+  REQUIRE(g_nib_driver.open(at_ceiling.c_str(), 128, false, &instance) ==
+          disk_err_none);
+  g_nib_driver.close(instance);
+  CHECK(g_nib_driver.open(at_ceiling.c_str(), 0, false, &instance) ==
+        disk_err_unsupported);
 }
