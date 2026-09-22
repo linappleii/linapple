@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-#include "apple2/peripherals/disk/formats/DiskContainer.h"
+#include "apple2/media/image_container/ImageContainer.h"
 #include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
 #include "core/Log.h"
 #include "core/Util_Path.h"
@@ -29,6 +29,32 @@
 namespace {
 static std::vector<HarddiskFormatDriver_t*> g_harddisk_drivers;
 static int g_loader_ref_count = 0;
+
+constexpr size_t load_path_len = 512;
+
+// A ProDOS volume tops out at 65,535 blocks, just under 32 MiB, so an all-zero
+// blank of the largest volume passes on size alone and only an archive that
+// claims more has to satisfy the library's ratio as well.
+constexpr size_t harddisk_decompression_threshold = 32 * 1024 * 1024;
+
+auto container_error_to_harddisk_error(ImageContainerError_e error)
+    -> HarddiskError_e {
+  switch (error) {
+    case image_container_ok:
+      return harddisk_err_none;
+    case image_container_not_found:
+      return harddisk_err_not_found;
+    case image_container_corrupt:
+      return harddisk_err_invalid_format;
+    // This card has no code for a refused size or a bad argument; both are
+    // "could not open", which is what io means to its callers.
+    case image_container_too_large:
+    case image_container_invalid_argument:
+    case image_container_io:
+    default:
+      return harddisk_err_io;
+  }
+}
 }  // namespace
 
 extern "C" const HarddiskFormatDriver_t g_two_img_driver;
@@ -101,12 +127,14 @@ auto harddisk_loader_open(const char* path, bool* out_os_readonly,
     return harddisk_err_io;
   }
 
-  char load_path[512] = {0};
+  char load_path[load_path_len] = {0};
   bool is_temporary = false;
-  if (!disk_container_prepare_compressed_path(
-          path, load_path, sizeof(load_path),
-          disk_container::harddisk_decompression_threshold, &is_temporary)) {
-    return harddisk_err_io;
+  const ImageContainerError_e prepared =
+      image_container_prepare_compressed_path(
+          path, load_path, sizeof(load_path), harddisk_decompression_threshold,
+          &is_temporary);
+  if (prepared != image_container_ok) {
+    return container_error_to_harddisk_error(prepared);
   }
 
   std::unique_ptr<TemporaryFileGuard> temp_guard;
@@ -131,9 +159,17 @@ auto harddisk_loader_open(const char* path, bool* out_os_readonly,
   file.reset();
 
   const uint32_t file_offset =
-      disk_container_detect_macbinary(header.data(), header_read, file_size);
+      image_container_detect_macbinary(header.data(), header_read, file_size);
 
-  const char* ext = strrchr(load_path, '.');
+  // The extension that names the format is the payload's, not the archive's
+  // and never the extracted temporary's; a name the library cannot give leaves
+  // the hint empty and the probes deciding by content alone.
+  std::array<char, load_path_len> payload_name{};
+  if (image_container_payload_name(path, payload_name.data(),
+                                   payload_name.size()) != image_container_ok) {
+    payload_name[0] = '\0';
+  }
+  const char* ext = strrchr(payload_name.data(), '.');
   constexpr size_t ext_hint_size = 16;
   std::array<char, ext_hint_size> ext_hint{};
   ext_hint.fill(0);
@@ -206,11 +242,11 @@ void harddisk_loader_get_supported_extensions(char* out_buffer,
     }
   }
 
-  if (std::find(exts.begin(), exts.end(), "zip") == exts.end()) {
-    exts.emplace_back("zip");
-  }
-  if (std::find(exts.begin(), exts.end(), "gz") == exts.end()) {
-    exts.emplace_back("gz");
+  for (const char* const* ext = image_container_supported_extensions();
+       ext != nullptr && *ext != nullptr; ++ext) {
+    if (std::find(exts.begin(), exts.end(), *ext) == exts.end()) {
+      exts.emplace_back(*ext);
+    }
   }
 
   std::string result;

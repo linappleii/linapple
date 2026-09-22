@@ -358,6 +358,13 @@ TEST_CASE("HD-12: Query Supported Extensions") {
   CHECK(st == peripheral_ok);
   CHECK(strstr(exts, "hdv") != nullptr);
   CHECK(strstr(exts, "2mg") != nullptr);
+
+  // The archive extensions come last, in the container library's own order,
+  // so both cards offer the same list to a file browser.
+  const char* const archive_tail = "gz;zip";
+  const size_t len = strlen(exts);
+  REQUIRE(len > strlen(archive_tail));
+  CHECK(strcmp(exts + len - strlen(archive_tail), archive_tail) == 0);
 }
 
 TEST_CASE("HD-13: Unknown Command and Query Rejection") {
