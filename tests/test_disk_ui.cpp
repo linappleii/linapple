@@ -21,8 +21,37 @@ TEST_CASE("DiskUI: error Message Mapping") {
                "System ran out of memory while loading the disk.") == 0);
   CHECK(strcmp(disk_ui_get_error_message(disk_err_write_protected),
                "The disk or file is write protected.") == 0);
+  CHECK(strcmp(disk_ui_get_error_message(disk_err_invalid_argument),
+               "The disk request was not valid.") == 0);
+  CHECK(strcmp(disk_ui_get_error_message(disk_err_unsupported),
+               "The disk image is larger or more complex than this emulator "
+               "supports.") == 0);
   CHECK(strcmp(disk_ui_get_error_message(999),
                "An unknown error occurred while loading the disk.") == 0);
+}
+
+TEST_CASE("DiskUI: every disk error has a message of its own") {
+  constexpr DiskError_e every_error[] = {
+      disk_err_none,    disk_err_file_not_found,   disk_err_unsupported_format,
+      disk_err_corrupt, disk_err_write_protected,  disk_err_out_of_memory,
+      disk_err_io,      disk_err_invalid_argument, disk_err_unsupported};
+  constexpr size_t error_count = sizeof(every_error) / sizeof(every_error[0]);
+  // The enum has no count sentinel, so the list is pinned to it from the
+  // other end: its last entry is the enum's last value and the values before
+  // it are consecutive, which the loop below checks.
+  static_assert(every_error[error_count - 1] == disk_err_unsupported,
+                "the list must end at the enum's last value");
+  static_assert(disk_err_unsupported == error_count - 1,
+                "the list must be as long as the enum");
+
+  const char* const fallback = disk_ui_get_error_message(999);
+  for (size_t i = 0; i < error_count; ++i) {
+    CHECK(static_cast<size_t>(every_error[i]) == i);
+    const char* const message = disk_ui_get_error_message(every_error[i]);
+    REQUIRE(message != nullptr);
+    CHECK(message[0] != '\0');
+    CHECK(strcmp(message, fallback) != 0);
+  }
 }
 
 TEST_CASE("DiskUI: display names lose the extension and the shouting") {

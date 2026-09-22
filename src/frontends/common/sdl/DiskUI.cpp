@@ -25,6 +25,11 @@ extern "C" auto disk_ui_get_error_message(int error_code) -> const char* {
       return "System ran out of memory while loading the disk.";
     case disk_err_write_protected:
       return "The disk or file is write protected.";
+    case disk_err_invalid_argument:
+      return "The disk request was not valid.";
+    case disk_err_unsupported:
+      return "The disk image is larger or more complex than this emulator "
+             "supports.";
     default:
       return "An unknown error occurred while loading the disk.";
   }
