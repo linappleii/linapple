@@ -36,8 +36,7 @@ auto nib_open(const char* path, uint32_t file_offset, bool read_only,
 }
 
 auto nib_create(const char* path) -> DiskError_e {
-  return nibble_disk_image_create(path,
-                                  static_cast<uint32_t>(physical::disk_size));
+  return nibble_disk_image_create(path, nibbles_per_track);
 }
 
 const char* const g_nib_supported_exts[] = {"nib", nullptr};

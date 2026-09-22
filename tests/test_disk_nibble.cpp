@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <sys/resource.h>
+#include <unistd.h>
 
 #include <csignal>
 #include <cstdint>
@@ -459,4 +460,78 @@ TEST_CASE("DiskNibble: [NIB-P3] each nibble length is claimed by one driver") {
         disk_probe_no);
   CHECK(g_nib_driver.probe(nib.data(), probe_window, nb2_bytes, ".nib") ==
         disk_probe_no);
+}
+
+namespace {
+
+// Sixteen zero sectors read back from one slot of a created image.
+auto slot_denibblizes_to_zero(const std::vector<uint8_t>& image, uint32_t track,
+                              uint32_t track_nibbles) -> bool {
+  std::vector<uint8_t> sectors(16 * 256, 0xEE);
+  std::vector<uint8_t> scratch(disk_encoding_scratch_size, 0);
+  const size_t at = static_cast<size_t>(track) * track_nibbles;
+  REQUIRE(disk_encoding_denibblize_track(
+              disk_encoding_sector_order(disk_sector_order_dos), track,
+              image.data() + at, track_nibbles, sectors.data(),
+              scratch.data()) == disk_err_none);
+  return sectors == std::vector<uint8_t>(16 * 256, 0);
+}
+
+}  // namespace
+
+TEST_CASE("DiskNibble: [NIB-C1] a created image is a formatted blank") {
+  struct Case_t {
+    const DiskFormatDriver_t* driver;
+    const char* fixture;
+    const char* file;
+    uint32_t track_nibbles;
+  };
+  const Case_t cases[] = {{&g_nib_driver, "minimal.nib", "blank.nib", 6656},
+                          {&g_nb2_driver, "minimal.nb2", "blank.nb2", 6384}};
+  for (const Case_t& c : cases) {
+    CAPTURE(c.fixture);
+    const std::vector<uint8_t> golden =
+        read_file(TestFixtures::get_fixture_path(c.fixture));
+    REQUIRE(golden.size() == 35 * static_cast<size_t>(c.track_nibbles));
+
+    TestFixtures::ScopedTempDir_t dir("linapple_nibble_create_");
+    const std::string by_loader = dir.path() + "/" + c.file;
+    disk_loader_reset();
+    REQUIRE(disk_loader_create(by_loader.c_str(), c.driver->name) ==
+            disk_err_none);
+    CHECK(read_file(by_loader) == golden);
+
+    const std::string direct = dir.path() + "/direct-" + c.file;
+    REQUIRE(c.driver->create(direct.c_str()) == disk_err_none);
+    const std::vector<uint8_t> created = read_file(direct);
+    CHECK(created == golden);
+
+    for (uint32_t track = 0; track < 35; ++track) {
+      CHECK(slot_denibblizes_to_zero(created, track, c.track_nibbles));
+    }
+    CHECK(std::vector<uint8_t>(created.begin() + 6208,
+                               created.begin() + c.track_nibbles) ==
+          std::vector<uint8_t>(c.track_nibbles - 6208, 0xFF));
+
+    const LoaderChoice_t choice = loader_choice(direct);
+    CHECK(choice.driver_name == c.driver->name);
+    CHECK(choice.error == disk_err_none);
+  }
+}
+
+TEST_CASE("DiskNibble: [NIB-C2] create refuses a slot the track will not fit") {
+  TestFixtures::ScopedTempDir_t dir("linapple_nibble_create_");
+  const std::string path = dir.path() + "/short.nib";
+  CHECK(nibble_disk_image_create(path.c_str(), 6207) == disk_err_unsupported);
+  CHECK(access(path.c_str(), F_OK) != 0);
+  CHECK(nibble_disk_image_create(path.c_str(), 0) == disk_err_invalid_argument);
+  CHECK(nibble_disk_image_create(path.c_str(), nibbles_per_track + 1) ==
+        disk_err_invalid_argument);
+  CHECK(nibble_disk_image_create(nullptr, nibbles_per_track) ==
+        disk_err_invalid_argument);
+  CHECK(access(path.c_str(), F_OK) != 0);
+
+  REQUIRE(nibble_disk_image_create(path.c_str(), 6208) == disk_err_none);
+  CHECK(read_file(path).size() == 35 * 6208);
+  CHECK(nibble_disk_image_create(path.c_str(), 6208) == disk_err_io);
 }

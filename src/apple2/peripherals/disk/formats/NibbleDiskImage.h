@@ -70,7 +70,13 @@ DiskError_e nibble_disk_image_write_track_bits(void* instance,
                                                const uint8_t* bits,
                                                uint32_t bit_count);
 
-DiskError_e nibble_disk_image_create(const char* path, uint32_t total_size);
+/* Writes a formatted blank at path: nibble_image_tracks tracks of sixteen
+   zero sectors, each track padded with 0xFF to track_nibbles bytes. The path
+   must not exist yet (disk_err_io if it does); a track_nibbles of zero or
+   above nibbles_per_track is disk_err_invalid_argument, and one too short for
+   the sixteen sectors disk_err_unsupported. A file the call could not finish
+   is removed. */
+DiskError_e nibble_disk_image_create(const char* path, uint32_t track_nibbles);
 
 #ifdef __cplusplus
 }

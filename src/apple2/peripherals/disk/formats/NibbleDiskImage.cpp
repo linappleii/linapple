@@ -23,6 +23,7 @@
 namespace {
 constexpr uint8_t sync_byte = 0xFF;
 constexpr size_t woz_magic_len = 4;
+constexpr size_t sector_bytes = 256;
 
 auto has_woz_magic(const uint8_t* header_data, size_t header_size) -> bool {
   if (header_size < woz_magic_len) {
@@ -251,9 +252,13 @@ extern "C" auto nibble_disk_image_write_track_bits(void* instance,
   return disk_err_none;
 }
 
-extern "C" auto nibble_disk_image_create(const char* path, uint32_t total_size)
+extern "C" auto nibble_disk_image_create(const char* path,
+                                         uint32_t track_nibbles)
     -> DiskError_e {
   if (path == nullptr) {
+    return disk_err_invalid_argument;
+  }
+  if (track_nibbles == 0 || track_nibbles > nibbles_per_track) {
     return disk_err_invalid_argument;
   }
 
@@ -273,23 +278,28 @@ extern "C" auto nibble_disk_image_create(const char* path, uint32_t total_size)
     return disk_err_io;
   }
 
-  constexpr size_t chunk_size = 1024;
-  std::array<uint8_t, chunk_size> zero{};
-  zero.fill(0);
-
-  const uint32_t full_chunks = total_size / static_cast<uint32_t>(chunk_size);
-  for (uint32_t i = 0; i < full_chunks; ++i) {
-    if (fwrite(zero.data(), 1, zero.size(), file.get()) != zero.size()) {
+  // A blank is a formatted disk of zero sectors, as the sector images read,
+  // not a surface of zero nibbles DOS would call unformatted. Zero sectors
+  // read the same in either order, so the table that lays them out is moot.
+  const std::array<uint8_t, sectors_per_track * sector_bytes> sectors{};
+  std::array<uint8_t, disk_encoding_scratch_size> scratch{};
+  std::array<uint8_t, nibbles_per_track> slot{};
+  for (uint32_t track = 0; track < nibble_image_tracks; ++track) {
+    uint32_t nibble_count = 0;
+    DiskError_e err = disk_encoding_nibblize_track(
+        disk_encoding_sector_order(disk_sector_order_dos), track,
+        sectors.data(), slot.data(), nullptr, &nibble_count, scratch.data());
+    if (err == disk_err_none && nibble_count > track_nibbles) {
+      err = disk_err_unsupported;
+    }
+    if (err != disk_err_none) {
       file.reset();
       unlink(path);
-      return disk_err_io;
+      return err;
     }
-  }
-
-  const size_t remaining_bytes = total_size % chunk_size;
-  if (remaining_bytes != 0) {
-    if (fwrite(zero.data(), 1, remaining_bytes, file.get()) !=
-        remaining_bytes) {
+    std::fill(slot.begin() + nibble_count, slot.begin() + track_nibbles,
+              sync_byte);
+    if (fwrite(slot.data(), 1, track_nibbles, file.get()) != track_nibbles) {
       file.reset();
       unlink(path);
       return disk_err_io;
