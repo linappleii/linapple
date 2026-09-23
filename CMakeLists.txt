@@ -823,6 +823,35 @@ if(BUILD_TESTING)
             "echo 'b04c4dcef167bb1e9094e7fc452e0bac61e6669c  tests/fixtures/clock-frame-v1.bin' | sha1sum -c --quiet"
             WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
         set_tests_properties(test-clock-frame-v1-pinned PROPERTIES TIMEOUT 5)
+        add_linapple_test(clock-snapshot tests/test_clock_snapshot.cpp)
+        set_tests_properties(test-clock-snapshot PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
+        if(BUILD_SHARED_PERIPHERALS)
+            # dlsym sees only what a plugin exports. What it imports from the
+            # executable shows in its dynamic symbol table alone, so the check
+            # that it imports nothing is made on the file, not through a
+            # handle. Toolchain symbols carry a glibc, libstdc++, libgcc or
+            # C++ ABI version; the unversioned ones are the runtime's hooks.
+            add_test(NAME test-clock-plugin-exports COMMAND sh -c
+            [=[
+plugin="$1"
+exported=$(nm -D --defined-only "$plugin" | awk '{print $NF}')
+if [ "$exported" != "linapple_peripheral_descriptor" ]; then
+  echo "$plugin exports these where linapple_peripheral_descriptor alone was expected:"
+  echo "$exported"
+  exit 1
+fi
+imported=$(nm -D --undefined-only "$plugin" | awk '{print $NF}' \
+  | grep -vE '@(GLIBC|GLIBCXX|CXXABI|GCC)_' \
+  | grep -vE '^(__gmon_start__|_ITM_[A-Za-z]+|__cxa_finalize)$')
+if [ -n "$imported" ]; then
+  echo "$plugin imports these from outside the toolchain:"
+  echo "$imported"
+  exit 1
+fi
+]=]
+                sh $<TARGET_FILE:peripheral-clock>)
+            set_tests_properties(test-clock-plugin-exports PROPERTIES TIMEOUT 5)
+        endif()
     endif()
     add_linapple_test(printer-peripheral "tests/test_main.cpp;tests/test_printer_peripheral.cpp")
     add_executable(test-via6522 tests/test_via6522.cpp src/apple2/chips/6522.cpp)

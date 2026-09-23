@@ -10,6 +10,7 @@
 #include "apple2/SnapshotTypes.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Internal.h"
+#include "apple2/peripherals/clock/ClockCardCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
 #include "doctest.h"
@@ -290,6 +291,18 @@ TEST_CASE(
   REQUIRE(clock_path != nullptr);
   CHECK(std::string(clock_path).find("clock.so") != std::string::npos);
 
+  // The loader found the descriptor by this one name, so a second dlopen of
+  // the same file sees it too, and nothing else: the getter the built-in
+  // card exposes has C linkage and is hidden in the plugin.
+  void* clock_handle = dlopen(clock_path, RTLD_NOW | RTLD_LOCAL);
+  REQUIRE(clock_handle != nullptr);
+  auto* exported = static_cast<Peripheral_t*>(
+      dlsym(clock_handle, "linapple_peripheral_descriptor"));
+  REQUIRE(exported != nullptr);
+  CHECK(std::string(exported->id) == "linapple.clock");
+  CHECK(dlsym(clock_handle, "clockcard_get_descriptor") == nullptr);
+  dlclose(clock_handle);
+
   // 2. Verify printer plugin resolution and ABI
   Peripheral_t* printer_desc = peripheral_find_internal("linapple.printer");
   REQUIRE(printer_desc != nullptr);
@@ -310,15 +323,35 @@ TEST_CASE(
   peripheral_manager_reset();
   peripheral_manager_think(200);
 
-  if (clock_desc->save_state != nullptr && clock_desc->load_state != nullptr) {
-    size_t state_sz = 0;
-    peripheral_save_state(4, nullptr, &state_sz);
-    if (state_sz > 0) {
-      std::vector<uint8_t> state_buf(state_sz, 0);
-      peripheral_save_state(4, state_buf.data(), &state_sz);
-      peripheral_load_state(4, state_buf.data(), state_sz);
-    }
-  }
+  REQUIRE(clock_desc->save_state != nullptr);
+  REQUIRE(clock_desc->load_state != nullptr);
+  size_t state_sz = 0;
+  peripheral_save_state(4, nullptr, &state_sz);
+  REQUIRE(state_sz == sizeof(ClockCardSaveState_t));
+  std::vector<uint8_t> state_buf(state_sz, 0);
+  peripheral_save_state(4, state_buf.data(), &state_sz);
+  CHECK(state_sz == sizeof(ClockCardSaveState_t));
+  peripheral_load_state(4, state_buf.data(), state_sz);
+
+  // The manager's wrappers return nothing, so the status a save and a load
+  // answer is read off the plugin's own entry points, on an instance the
+  // plugin builds against a host offering only the members the card requires.
+  HostInterface_t bare_host{};
+  bare_host.RegisterIO = [](int, PeripheralIOHandler, PeripheralIOHandler,
+                            PeripheralIOHandler, PeripheralIOHandler) {};
+  bare_host.RegisterCxROM = [](int, const uint8_t*) {};
+  bare_host.GetLocalTime = [](HostLocalTime_t*) -> bool { return false; };
+  bare_host.ReadFloatingBus = [](uint32_t) -> uint8_t { return 0; };
+  void* bare_card = clock_desc->init(4, &bare_host);
+  REQUIRE(bare_card != nullptr);
+  size_t probe = 0;
+  CHECK(clock_desc->save_state(bare_card, nullptr, &probe) == peripheral_ok);
+  CHECK(probe == sizeof(ClockCardSaveState_t));
+  CHECK(clock_desc->save_state(bare_card, state_buf.data(), &state_sz) ==
+        peripheral_ok);
+  CHECK(clock_desc->load_state(bare_card, state_buf.data(), state_sz) ==
+        peripheral_ok);
+  clock_desc->shutdown(bare_card);
 
   CHECK(peripheral_unregister(4) == 0);
   CHECK(peripheral_unregister(1) == 0);
