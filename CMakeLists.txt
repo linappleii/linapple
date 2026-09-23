@@ -1061,6 +1061,13 @@ fi
         add_linapple_test(harddisk-exhaustive tests/test_harddisk_exhaustive.cpp)
     endif()
     add_linapple_test(snapshot tests/test_snapshot.cpp)
+    # The fixture is the one legacy fixed-body file the reader is proven
+    # against. Regenerating it would quietly test the current layout instead,
+    # so its bytes are pinned.
+    add_test(NAME test-snapshot-fixture-pinned COMMAND sh -c
+        "echo '508d85b3144ab7a576cb7a01be705c21d59d68c2  tests/fixtures/minimal.aws' | sha1sum -c --quiet"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+    set_tests_properties(test-snapshot-fixture-pinned PROPERTIES TIMEOUT 5)
     add_linapple_test(memory-exhaustive "tests/test_main.cpp;tests/test_memory_exhaustive.cpp")
     add_linapple_test(cpu-exhaustive "tests/test_main.cpp;tests/test_cpu_exhaustive.cpp")
     add_linapple_test(miniasm "tests/test_main.cpp;tests/test_miniasm.cpp")

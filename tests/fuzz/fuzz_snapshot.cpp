@@ -5,6 +5,7 @@
 // cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
 // modernize-avoid-c-arrays,
 // cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -14,8 +15,8 @@
 #include "apple2/Memory.h"
 #include "apple2/Snapshot.h"
 #include "apple2/SnapshotTypes.h"
-#include "core/LinAppleCore.h"
 #include "apple2/peripherals/Peripheral.h"
+#include "core/LinAppleCore.h"
 
 // Disable LeakSanitizer leak detection: snapshot deserialization fuzzing
 // exercises the entire emulator core via linapple_init(). Full static
@@ -28,7 +29,10 @@
 extern "C" const char* __asan_default_options() { return "detect_leaks=0"; }
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
-  if (size < sizeof(ApplewinSnapshot_t)) {
+  // A fixed-body input reaches the deserializer with a zeroed trailer, as a
+  // legacy file does through the reader; a longer input fills the trailer
+  // too, so both slot paths see corrupted bytes.
+  if (size < snapshot_size_fixed_body) {
     return 0;
   }
 
@@ -39,7 +43,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   }
 
   auto snapshot = std::unique_ptr<ApplewinSnapshot_t>(new ApplewinSnapshot_t());
-  std::memcpy(snapshot.get(), data, sizeof(ApplewinSnapshot_t));
+  std::memcpy(snapshot.get(), data, std::min(size, sizeof(ApplewinSnapshot_t)));
 
   // Verify deserializing arbitrary/corrupted memory snapshots does not crash or
   // corrupt host state

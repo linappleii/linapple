@@ -931,9 +931,18 @@ auto peripheral_verify_manifest(const void* manifest_ptr) -> bool {
       if (!slot_peripherals.empty()) return false;
       continue;
     }
-    if (slot_peripherals.empty() || slot_peripherals.front().api == nullptr ||
-        strcmp(slot_peripherals.front().api->name, pi.name) != 0)
-      return false;
+    // Slot 0 holds every motherboard device, and which of them registered
+    // first depends on whether the speaker is built in or loaded as a plugin.
+    // The manifest names one of them, so any resident device of that name
+    // means the same machine.
+    bool named_device_present = false;
+    for (const auto& ap : slot_peripherals) {
+      if (ap.api != nullptr && strcmp(ap.api->name, pi.name) == 0) {
+        named_device_present = true;
+        break;
+      }
+    }
+    if (!named_device_present) return false;
   }
   return true;
 }

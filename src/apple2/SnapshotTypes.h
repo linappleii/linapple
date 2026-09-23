@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 
 #include "apple2/Apple2Types.h"
@@ -218,6 +219,35 @@ struct SsCardMockingboard_t {
 };
 using SS_CARD_MOCKINGBOARD = SsCardMockingboard_t;
 
+// The fixed body above offers each slot the region AppleWin's format had for
+// it: 16 bytes for slots 1, 3 and 7, 32 for slot 2, 104 for 4 and 5. No card
+// frame this emulator writes fits any of them (the smallest, the clock's, is
+// 32 bytes in a 16-byte slot; the Mockingboard's is 232 in 104), so a card's
+// state travels in this trailer instead: one length-prefixed blob per slot,
+// filled by the card's own save_state and handed back whole to load_state.
+// The capacity holds every card frame written today except the SmartPort
+// harddisk's (2160 bytes), which is not carried, as before. Slot 6 has no
+// entry on purpose: the Disk II has a real save_state (13897 bytes), and a
+// generic probe of every slot would start persisting disk state that the
+// snapshot layer deliberately leaves to the mounted image.
+constexpr uint32_t snapshot_slot_state_capacity = 256;
+
+struct SsSlotState_t {
+  uint32_t length;
+  // Brings the entry to an 8-byte multiple so the trailer, and with it the
+  // file, ends where the last entry does rather than in alignment padding.
+  uint32_t reserved;
+  uint8_t data[snapshot_slot_state_capacity];
+};
+
+// Slots 1 through 5 and 7 at index slot - 1. Slot 6's entry stays empty.
+constexpr uint32_t snapshot_trailer_slots = 7;
+
+struct SsSlotTrailer_t {
+  SsUnitHdr_t unit_hdr;
+  SsSlotState_t slots[snapshot_trailer_slots];
+};
+
 struct ApplewinSnapshot_t {
   SsFileHdr_t hdr;
   SsApple2Unit_t apple2_unit;
@@ -229,5 +259,24 @@ struct ApplewinSnapshot_t {
   SsCardMockingboard_t mockingboard2;
   SsCardEmpty_t empty6;
   SsCardEmpty_t empty7;
+  SsSlotTrailer_t slot_trailer;
 };
 using APPLEWIN_SNAPSHOT = ApplewinSnapshot_t;
+
+// A file is the fixed body alone or the fixed body followed by the slot
+// trailer, under one header version: the reader tells the two layouts apart
+// by the file's length. Readers from before the trailer read their fixed
+// body's bytes and stop, so they still load a file that carries one.
+constexpr uint32_t snapshot_version = make_version(1, 0, 0, 1);
+constexpr size_t snapshot_size_fixed_body =
+    offsetof(ApplewinSnapshot_t, slot_trailer);
+
+// Both sizes are what files on disk already are; a change to either is a
+// format change, not a silent shift.
+static_assert(snapshot_size_fixed_body == 132344,
+              "the fixed-body snapshot layout is a wire format frozen on disk");
+static_assert(sizeof(ApplewinSnapshot_t) ==
+                  snapshot_size_fixed_body + sizeof(SsSlotTrailer_t),
+              "the trailer must follow the fixed body with no padding");
+static_assert(snapshot_slot_state_capacity >= sizeof(SsCardMockingboard_t),
+              "a slot must hold at least the largest fixed-body card region");

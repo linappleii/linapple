@@ -32,7 +32,21 @@ auto save_state_set_filename(const char* filename) -> void {
   }
 }
 
-auto save_state_load() -> void {
+// The two layouts share one header version so that readers from before the
+// slot trailer, which read their fixed body's bytes and stop, still load a
+// file that carries one. Only the file's length says which layout it is, and
+// a file of any other length is rejected whole rather than loaded in part.
+static auto snapshot_layout_size(size_t file_size) -> size_t {
+  if (file_size == snapshot_size_fixed_body ||
+      file_size == sizeof(ApplewinSnapshot_t)) {
+    return file_size;
+  }
+  return 0;
+}
+
+auto save_state_load() -> bool {
+  // Value-initialized so a fixed-body file leaves the trailer all zeros,
+  // which the deserializer reads as "no slot carried".
   auto snapshot = std::unique_ptr<ApplewinSnapshot_t>(new ApplewinSnapshot_t());
 
   const char* filename = g_save_state_filename;
@@ -43,39 +57,50 @@ auto save_state_load() -> void {
   FilePtr_t file{fopen(filename, "rb"), fclose};
   if (!file) {
     Logger::error("Failed to open save state file for reading: %s\n", filename);
-    return;
+    return false;
   }
 
-  size_t bytes_read =
-      fread(snapshot.get(), 1, sizeof(ApplewinSnapshot_t), file.get());
-  file.reset();
-
-  if (bytes_read != sizeof(ApplewinSnapshot_t)) {
-    Logger::error(
-        "Failed to read complete save state data from %s (read %zu of %zu "
-        "bytes)\n",
-        g_save_state_filename, bytes_read, sizeof(ApplewinSnapshot_t));
-    return;
+  const size_t header_read =
+      fread(&snapshot->hdr, 1, sizeof(snapshot->hdr), file.get());
+  if (header_read != sizeof(snapshot->hdr)) {
+    Logger::error("Save state file %s is shorter than its header\n", filename);
+    return false;
   }
 
   if (snapshot->hdr.tag != static_cast<uint32_t>(aw_ss_tag)) {
     Logger::error("Invalid save state file format or tag mismatch in %s\n",
-                  g_save_state_filename);
-    return;
+                  filename);
+    return false;
   }
 
-  if (snapshot->hdr.version != make_version(1, 0, 0, 1)) {
-    Logger::error("Version mismatch in save state file %s\n",
-                  g_save_state_filename);
-    return;
+  if (snapshot->hdr.version != snapshot_version) {
+    Logger::error("Version mismatch in save state file %s\n", filename);
+    return false;
+  }
+
+  auto* body = reinterpret_cast<uint8_t*>(snapshot.get()) + header_read;
+  const size_t body_read =
+      fread(body, 1, sizeof(ApplewinSnapshot_t) - header_read, file.get());
+  const bool at_end = (fgetc(file.get()) == EOF);
+  file.reset();
+
+  const size_t file_size = header_read + body_read;
+  if (!at_end || snapshot_layout_size(file_size) == 0) {
+    Logger::error(
+        "Save state file %s is %s%zu bytes; a save state is %zu bytes, or %zu "
+        "with the slot trailer\n",
+        filename, at_end ? "" : "more than ", file_size,
+        snapshot_size_fixed_body, sizeof(ApplewinSnapshot_t));
+    return false;
   }
 
   if (!snapshot_deserialize(snapshot.get())) {
-    Logger::error("Failed to deserialize machine state from %s\n",
-                  g_save_state_filename);
-  } else {
-    Logger::info("Loaded save state from: %s\n", g_save_state_filename);
+    Logger::error("Failed to deserialize machine state from %s\n", filename);
+    return false;
   }
+
+  Logger::info("Loaded save state from: %s\n", filename);
+  return true;
 }
 
 auto save_state_save() -> void {
