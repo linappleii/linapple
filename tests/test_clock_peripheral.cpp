@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -727,3 +728,10 @@ TEST_CASE("Clock Peripheral: Multi-Card Concurrency and Lifecycle Robustness") {
 }
 
 }  // namespace
+
+extern "C" auto clock_abi_c_state_size() -> size_t;
+
+TEST_CASE("Clock Peripheral: The C99 view of the state frame matches C++") {
+  CHECK(clock_abi_c_state_size() == sizeof(ClockSaveState_t));
+  CHECK(sizeof(ClockSaveState_t) == 32);
+}

@@ -794,6 +794,18 @@ if(BUILD_TESTING)
         set_tests_properties(test-fixtures PROPERTIES ENVIRONMENT "ASAN_OPTIONS=detect_leaks=1:symbolize=1;UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1")
     endif()
 
+    # A card case is one unit of hardware behaviour, never a soak: one that
+    # stops finishing inside a second has found a regression rather than a
+    # slow machine, and the budget says so instead of printing it.
+    # Sanitizers multiply the run time and ctest -j adds contention, so
+    # only the native budget is the regression gate. Defined before any card
+    # test is registered so each can take the budget where it is declared.
+    if(ENABLE_ASAN OR ENABLE_UBSAN OR DEFINED ENV{CI})
+        set(PERIPHERAL_TEST_TIMEOUT 10)
+    else()
+        set(PERIPHERAL_TEST_TIMEOUT 1)
+    endif()
+
     add_linapple_test(app-env tests/test_app_env.cpp)
     add_linapple_test(app-controller tests/test_app_controller.cpp)
     add_linapple_test(integration tests/test_main.cpp)
@@ -809,7 +821,11 @@ if(BUILD_TESTING)
     add_linapple_test(peripheral-abi "tests/test_main.cpp;tests/test_peripheral_abi.cpp;tests/test_peripheral_abi_c.c")
 
     add_linapple_test(keyboard-peripheral "tests/test_main.cpp;tests/test_keyboard_peripheral.cpp")
-    add_linapple_test(clock-peripheral "tests/test_main.cpp;tests/test_clock_peripheral.cpp")
+    if(ENABLE_PERIPHERAL_CLOCK)
+        set_source_files_properties(tests/test_clock_abi_c.c PROPERTIES COMPILE_OPTIONS "-std=c99;-pedantic")
+        add_linapple_test(clock-peripheral "tests/test_main.cpp;tests/test_clock_peripheral.cpp;tests/test_clock_abi_c.c")
+        set_tests_properties(test-clock-peripheral PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
+    endif()
     add_linapple_test(printer-peripheral "tests/test_main.cpp;tests/test_printer_peripheral.cpp")
     add_executable(test-via6522 tests/test_via6522.cpp src/apple2/chips/6522.cpp)
     target_include_directories(test-via6522 PRIVATE src ${DOCTEST_INCLUDE_DIR})
@@ -987,18 +1003,8 @@ done
         add_linapple_test(image-container tests/test_image_container.cpp)
         list(APPEND DISK_TEST_CASES test-image-container)
     endif()
-    # A Disk II case is one unit of hardware behaviour, never a soak: one
-    # that stops finishing inside a second has found a regression rather
-    # than a slow machine, and the budget says so instead of printing it.
-    # Sanitizers multiply the run time and ctest -j adds contention, so
-    # only the native budget is the regression gate.
-    if(ENABLE_ASAN OR ENABLE_UBSAN OR DEFINED ENV{CI})
-        set(DISK_TEST_TIMEOUT 10)
-    else()
-        set(DISK_TEST_TIMEOUT 1)
-    endif()
     if(DISK_TEST_CASES)
-        set_tests_properties(${DISK_TEST_CASES} PROPERTIES TIMEOUT ${DISK_TEST_TIMEOUT})
+        set_tests_properties(${DISK_TEST_CASES} PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
     endif()
 
     # The peripheral dependency rule in AGENTS.md is enforced by these two
