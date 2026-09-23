@@ -50,7 +50,7 @@ auto peripheral_find_internal(const char* name) -> Peripheral_t* {
     }
   }
 
-  if (strcmp(name, "No-Slot Clock") == 0 || strcmp(name, "Clock") == 0) {
+  if (strcmp(name, "Clock") == 0) {
     return peripheral_find_internal("Clock Card");
   }
 

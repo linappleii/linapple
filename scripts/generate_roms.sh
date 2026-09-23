@@ -115,8 +115,6 @@ generate_rom "g_rom_disk2_p6" "$ROMS_DIR/DISK2-P6.rom" "ENABLE_ROM_DISK2"
 generate_rom "g_rom_ssc" "$ROMS_DIR/SSC.rom" "ENABLE_ROM_SSC"
 generate_rom "g_rom_mouse_interface" "$ROMS_DIR/MouseInterface.rom" "ENABLE_ROM_MOUSE"
 generate_rom "g_rom_parallel" "$ROMS_DIR/Parallel.rom" "ENABLE_ROM_PRINTER"
-generate_rom "g_rom_thunderclock_plus" "$ROMS_DIR/ThunderClockPlus.rom" "ENABLE_ROM_CLOCK"
-generate_rom "g_rom_tkclock" "$ROMS_DIR/TKClock.rom" "ENABLE_ROM_CLOCK"
 
 cat <<'EOF' >> "$TMP_HEADER"
 #ifdef __cplusplus

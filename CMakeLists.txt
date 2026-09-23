@@ -131,18 +131,11 @@ else()
 endif()
 
 option(ENABLE_ROM_PRINTER "Include Parallel Printer Interface Card ROM" ON)
-option(ENABLE_ROM_CLOCK "Include Real-Time Clock Card ROMs" ON)
 
 if(ENABLE_ROM_PRINTER)
     add_compile_definitions(ENABLE_ROM_PRINTER=1)
 else()
     add_compile_definitions(ENABLE_ROM_PRINTER=0)
-endif()
-
-if(ENABLE_ROM_CLOCK)
-    add_compile_definitions(ENABLE_ROM_CLOCK=1)
-else()
-    add_compile_definitions(ENABLE_ROM_CLOCK=0)
 endif()
 
 # --- Compiler Flags ---
@@ -312,8 +305,6 @@ add_custom_command(
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/SSC.rom"
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/MouseInterface.rom"
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/Parallel.rom"
-            "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/ThunderClockPlus.rom"
-            "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/TKClock.rom"
     COMMENT "Generating EmbeddedRoms source from res/roms"
     VERBATIM
 )
@@ -653,7 +644,7 @@ add_peripheral(mockingboard "Mockingboard" "src/apple2/peripherals/mockingboard/
 add_peripheral(super_serial "Super Serial Card" "src/apple2/peripherals/super_serial_card/SuperSerial.cpp" "" "" TRUE)
 add_peripheral(joystick "Joystick" "src/apple2/peripherals/joystick/Joystick.cpp" "" "" TRUE)
 add_peripheral(printer "Parallel Printer" "src/apple2/peripherals/printer/Printer.cpp" "" "" FALSE)
-add_peripheral(clock "No-Slot Clock" "src/apple2/peripherals/clock/Clock.cpp" "" "" FALSE)
+add_peripheral(clock "Clock Card" "src/apple2/peripherals/clock/ClockCard.cpp" "" "" FALSE)
 finalize_peripheral_libraries()
 
 # The chips have no target of their own: the core list and the Mockingboard

@@ -7,7 +7,7 @@ struct Peripheral_t;
 extern "C" {
 #endif
 
-struct Peripheral_t* clock_get_descriptor(void);
+struct Peripheral_t* clockcard_get_descriptor(void);
 
 #ifdef __cplusplus
 }

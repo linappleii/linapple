@@ -6,19 +6,19 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "apple2/peripherals/clock/Clock.h"
-#include "apple2/peripherals/clock/ClockCommands.h"
+#include "apple2/peripherals/clock/ClockCard.h"
+#include "apple2/peripherals/clock/ClockCardCommands.h"
 
-size_t clock_abi_c_state_size(void) {
-  ClockSaveState_t state;
-  ClockSetEpochPayload_t set_epoch;
-  ClockEpochQuery_t epoch_query;
-  ClockTimeQuery_t time_query;
-  ClockCmd_e cmd = clock_cmd_set_epoch;
-  ClockQuery_e query = clock_query_get_time;
+size_t clockcard_abi_c_state_size(void) {
+  ClockCardSaveState_t state;
+  ClockCardSetEpochPayload_t set_epoch;
+  ClockCardEpochQuery_t epoch_query;
+  ClockCardTimeQuery_t time_query;
+  ClockCardCmd_e cmd = clockcard_cmd_set_epoch;
+  ClockCardQuery_e query = clockcard_query_time;
 
-  state.version = CLOCK_STATE_VERSION;
-  state.struct_size = (uint32_t)sizeof(ClockSaveState_t);
+  state.version = CLOCKCARD_STATE_VERSION;
+  state.struct_size = (uint32_t)sizeof(ClockCardSaveState_t);
   set_epoch.epoch = 0;
   epoch_query.is_fixed = 0;
   time_query.month = 1;

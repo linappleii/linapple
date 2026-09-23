@@ -92,7 +92,6 @@ auto Configuration_t::load_defaults() -> void {
   set_int("Configuration", "Printer idle limit", 10);
   set_int("Configuration", "Append to printer file", 1);
   set_int("Configuration", "Harddisk Enable", 0);
-  set_int("Configuration", "Clock Enable", 4);
   set_int("Configuration", "Save State On Exit", 0);
   set_int("Configuration", "Fullscreen", 0);
   set_int("Configuration", "Boot at Startup", 0);

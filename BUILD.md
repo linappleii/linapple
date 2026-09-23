@@ -149,7 +149,7 @@ You can selectively enable or disable individual expansion cards:
 | **Apple Mouse Card**    | `ENABLE_PERIPHERAL_MOUSE`        |   ON    | 6821 PIA-based Apple II mouse interface card                                             |
 | **Super Serial Card**   | `ENABLE_PERIPHERAL_SUPER_SERIAL` |   ON    | 6551 ACIA communications interface card (SSC)                                            |
 | **Joystick Port**       | `ENABLE_PERIPHERAL_JOYSTICK`     |   ON    | Analog gameport timers, paddles, and button inputs                                       |
-| **No-Slot Clock**       | `ENABLE_PERIPHERAL_CLOCK`        |   ON    | Dallas DS1216 / DS1315 real-time clock under ROM                                         |
+| **Clock Card**          | `ENABLE_PERIPHERAL_CLOCK`        |   ON    | ThunderClock-compatible ProDOS clock card driven by LinApple's own firmware               |
 | **Parallel Printer**    | `ENABLE_PERIPHERAL_PRINTER`      |   ON    | Parallel printer card dumping text output to file/stdout                                 |
 
 #### Modular Shared Plugins (`-DBUILD_SHARED_PERIPHERALS=ON`)

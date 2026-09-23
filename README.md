@@ -115,7 +115,7 @@ cmake --build build -j$(nproc)
   * MOS 6502 and 65C02 CPUs with cycle-accurate timing.
   * 128K memory, 80-column text card, and auxiliary RAM bank-switching.
   * Apple Mouse Card, Mockingboard / Phasor multi-channel sound, Super Serial
-    Card (SSC), and No-Slot Clock.
+    Card (SSC), and a ThunderClock-compatible ProDOS clock card.
   * Native analog & USB joystick support with paddle calibration.
 
 * **Modern Multi-Frontend Architecture:**
