@@ -25,16 +25,19 @@ namespace {
 //   - the READ entry at $Cn08 leaves "mo,da,dt,hr,mn" in the GETLN input
 //     buffer at $0200 as high-ASCII digits and commas (month, weekday with
 //     Sunday = 0, day, hour, minute; the year comes from a table inside the
-//     kernel). The driver parses digits and commas, so this firmware ends
-//     the five fields with $80 where a real ThunderClock sends six (with
-//     seconds) ending in a carriage return;
+//     kernel). The driver parses digits and commas and stops at the first
+//     byte that is neither, so this firmware ends the five fields with $80;
 //   - the WRITE entry at $Cn0B, which the driver calls with A = $A3 ("#") to
 //     select the numeric format on a real card, is a bare RTS here.
-// The read routine learns its own slot with JSR $FF58 (a known RTS in the
-// monitor) and the return address it leaves on the stack, then reads $C0nF,
-// the strobe that latches the host's time into the ten BCD digits at
-// $C0n0..$C0n9: month, an always-zero pair, weekday, day, hour, minute.
-// The $B0 $CC at $Cn5D is the carry leg of the branch at $Cn03 and stays.
+// The read routine learns its own slot n with JSR $FF58 (a known RTS in the
+// monitor) and the return address it leaves on the stack, then reads
+// $C08F + 16n, the strobe that latches the host's time into the ten BCD
+// digits at $C080 + 16n through +9: month, weekday (its tens digit always
+// zero), day, hour and minute, two digits each. $Cn04 must read $58 for the
+// ID check, so the BCS at $Cn03 makes it an operand instead of a stray
+// opcode; its target $Cn5D therefore holds B0 CC, a BCS back to the PLP/RTS
+// at $Cn2B, so a call to $Cn00 returns whatever the carry. Those two bytes
+// stay.
 const std::array<uint8_t, 256> clock_rom = {{
     0x08, 0x90, 0x28, 0xb0, 0x58, 0x00, 0x70, 0x00, 0xea, 0xea, 0xa9, 0x60,
     0x08, 0x78, 0x20, 0x58, 0xff, 0xba, 0xbd, 0x00, 0x01, 0x28, 0x0a, 0x0a,
@@ -333,7 +336,7 @@ static const Peripheral_t g_clockcard_peripheral = {
     .command = clockcard_abi_command,
     .query = clockcard_abi_query};
 
-// peripheral_register and ActivePeripheral_t::api still take a mutable
+// peripheral_register and ActivePeripheral_t::api take a mutable
 // Peripheral_t*, so the immutable descriptor is cast the same way
 // PERIPHERAL_REGISTER casts it.
 auto clockcard_get_descriptor() -> Peripheral_t* {

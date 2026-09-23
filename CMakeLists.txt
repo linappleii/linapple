@@ -802,7 +802,7 @@ if(BUILD_TESTING)
     add_linapple_test(integration tests/test_main.cpp)
     add_linapple_test(cpu-context tests/test_cpu_context.cpp)
     add_linapple_test(memory-context tests/test_memory_context.cpp)
-    
+
     add_linapple_test(superserial-peripheral "tests/test_main.cpp;tests/test_superserial_peripheral.cpp")
 
     add_linapple_test(abi tests/test_abi.cpp)

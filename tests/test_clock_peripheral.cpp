@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <cstring>
 #include <fstream>
+#include <ios>
 #include <map>
 #include <string>
 #include <utility>
@@ -118,14 +119,9 @@ constexpr Frame_t frozen_frame = {
     0x01, 0x04, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 // tests/fixtures/clock-frame-v1.bin is the frame an earlier card wrote for
-// the same latches with its epoch pin engaged (fixed_epoch 0x69B2CDE8 =
-// 1773325800 little-endian at byte 8, use_fixed_epoch = 1 at byte 26),
-// written as two printf calls, the first redirected with > and the second
-// with >>:
-//   printf '\x01\x00\x00\x00\x20\x00\x00\x00\xE8\xCD\xB2\x69\x00\x00\x00\x00'
-//   printf '\x00\x03\x00\x04\x01\x02\x01\x04\x03\x00\x01\x00\x00\x00\x00\x00'
-// and pinned by test-clock-frame-v1-pinned (SHA-1
-// b04c4dcef167bb1e9094e7fc452e0bac61e6669c).
+// the same latches with its epoch pin engaged: fixed_epoch 0x69B2CDE8
+// (1773325800) little-endian at byte 8, use_fixed_epoch = 1 at byte 26. Its
+// bytes are pinned by a ctest SHA-1 check.
 constexpr std::array<uint8_t, 12> frame_v1_prefix = {
     0x01, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0xE8, 0xCD, 0xB2, 0x69};
 
@@ -429,7 +425,8 @@ struct CalendarRow_t {
 // Fields exactly as `date -u -d @N` reports them, so the rows prove the
 // field-to-latch mapping at the calendar's edges, not any epoch arithmetic:
 // the card copies what the host hands it. unix_seconds is filled so the two
-// rows past 2^31 show the int64 field carries them intact.
+// 2038 rows, at and just past the 32-bit limit, show the int64 field carries
+// them intact.
 //   date -u -d @0          -> Thu Jan  1 00:00:00 UTC 1970
 //   date -u -d @946684740  -> Fri Dec 31 23:59:00 UTC 1999
 //   date -u -d @946684800  -> Sat Jan  1 00:00:00 UTC 2000
@@ -671,8 +668,7 @@ TEST_CASE("Clock Peripheral: Saving the frozen latches gives the literal") {
 
   CHECK(harness.save_frame(slot) == frozen_frame);
 
-  // A slot buffer sized for a bigger card takes the same 32 bytes and
-  // reports 32, leaving the rest of the buffer alone.
+  // The snapshot layer hands every card the biggest slot's buffer.
   std::vector<uint8_t> slot_buffer(mockingboard_frame_size, 0xA5);
   size_t written = slot_buffer.size();
   CHECK(clock_descriptor()->save_state(harness.get_instance(slot),
@@ -819,7 +815,6 @@ TEST_CASE("Clock Peripheral: The retired epoch commands answer incompatible") {
   CHECK(descriptor->query(instance, retired_query_time, out.data(), nullptr) ==
         peripheral_error);
 
-  // Nothing above touched the card.
   CHECK(harness.latches(slot) == Latches_t{});
 }
 
@@ -855,10 +850,8 @@ TEST_CASE("Clock Peripheral: The frozen host time drives the strobe") {
 
   harness.freeze_clock(frozen_leap_day);
   harness.strobe(slot);
-  CHECK(harness.latches(slot) == leap_day_latches);
-  CHECK(harness.time_calls() == 3);
-
   // Reading the latches never asks the host again; only the strobe does.
+  CHECK(harness.latches(slot) == leap_day_latches);
   CHECK(harness.time_calls() == 3);
 }
 

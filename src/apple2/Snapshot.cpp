@@ -27,6 +27,7 @@ struct FixedSlotRegion_t {
 auto fixed_slot_region(ApplewinSnapshot_t* snapshot, int slot)
     -> FixedSlotRegion_t {
   // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers)
+  // Justification: the case labels are the Apple II's own slot numbers.
   switch (slot) {
     case 0:
       return {&snapshot->apple2_unit.speaker,

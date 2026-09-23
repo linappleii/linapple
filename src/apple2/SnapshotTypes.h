@@ -226,7 +226,7 @@ using SS_CARD_MOCKINGBOARD = SsCardMockingboard_t;
 // state travels in this trailer instead: one length-prefixed blob per slot,
 // filled by the card's own save_state and handed back whole to load_state.
 // The capacity holds every card frame written today except the SmartPort
-// harddisk's (2160 bytes), which is not carried, as before. Slot 6 has no
+// harddisk's (2160 bytes), which is not carried. Slot 6 has no
 // entry on purpose: the Disk II has a real save_state (13897 bytes), and a
 // generic probe of every slot would start persisting disk state that the
 // snapshot layer deliberately leaves to the mounted image.

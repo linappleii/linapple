@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <cstdint>
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <sys/stat.h>
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <fstream>
 #include <ios>

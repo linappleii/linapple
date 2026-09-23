@@ -545,7 +545,8 @@ static auto host_get_local_time(HostLocalTime_t* out) -> bool {
   // tm_gmtoff is a glibc and BSD extension, so the offset is derived from the
   // two standard conversions instead: mktime reads the UTC fields as if they
   // were local time, in the same DST regime as the real local time, and so
-  // lands exactly the zone's offset before the instant.
+  // lands exactly the zone's offset away from the instant, so now minus that
+  // result is the offset.
   utc.tm_isdst = local.tm_isdst;
   const time_t utc_as_local = mktime(&utc);
   if (utc_as_local == static_cast<time_t>(-1)) {

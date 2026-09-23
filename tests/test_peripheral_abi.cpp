@@ -109,14 +109,14 @@ extern "C" int test_c_peripheral_read_clock(HostInterface_t* host,
 
 namespace {
 
+static_assert(sizeof(HostLocalTime_t) == 24,
+              "HostLocalTime_t is part of the plugin ABI");
+
 // 2026-03-12 14:30:00 in Eastern Daylight Time (UTC-4), a Thursday:
 //   date -u -d @1773340200                 -> 2026-03-12 18:30:00
 //   TZ=America/New_York date -d @1773340200 -> 2026-03-12 14:30:00 -0400 Thu
 // The UTC instant beside local fields is what tells a pass-through from a
 // card that re-applied the zone.
-static_assert(sizeof(HostLocalTime_t) == 24,
-              "HostLocalTime_t is part of the plugin ABI");
-
 constexpr HostLocalTime_t frozen_thursday = {1773340200, -14400, 2026, 3, 12,
                                              4,          14,     30,   0};
 
