@@ -1,22 +1,27 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <algorithm>
 #include <array>
+#include <cstdarg>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
 #include <fstream>
 #include <map>
+#include <string>
 #include <utility>
 #include <vector>
 
+#include "apple2/Memory.h"
+#include "apple2/Video.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Internal.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/clock/ClockCardCommands.h"
+#include "core/LinAppleCore.h"
 #include "doctest.h"
 #include "test_fixtures.h"
-
-auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
+#include "test_fixtures_core.h"
 
 namespace {
 
@@ -72,6 +77,38 @@ using Frame_t = std::array<uint8_t, frame_size>;
 // hour 14, minute 30, one BCD digit per register.
 constexpr Latches_t frozen_latches = {0, 3, 0, 4, 1, 2, 1, 4, 3, 0};
 
+// The same instant as the host hands it over: already local, so the card
+// copies the fields and applies no offset. unix_seconds and the offset are
+// carried for completeness; the card never reads them.
+constexpr HostLocalTime_t frozen_thursday = {1773325800, 0,  2026, 3, 12,
+                                             4,          14, 30,   0};
+
+// date -u -d @1795910340 -> Sat Nov 28 23:59:00 UTC 2026
+constexpr HostLocalTime_t frozen_saturday = {1795910340, 0,  2026, 11, 28,
+                                             6,          23, 59,   0};
+constexpr Latches_t saturday_latches = {1, 1, 0, 6, 2, 8, 2, 3, 5, 9};
+
+// date -u -d @1709164800 -> Thu Feb 29 00:00:00 UTC 2024, a leap day
+constexpr HostLocalTime_t frozen_leap_day = {1709164800, 0, 2024, 2, 29,
+                                             4,          0, 0,    0};
+constexpr Latches_t leap_day_latches = {0, 2, 0, 4, 2, 9, 0, 0, 0, 0};
+
+// What the mock host says the undriven bus holds on a given cycle: a value
+// that no latch register can produce, so a pass-through is unmistakable.
+auto floating_bus_marker(uint32_t executed_cycles) -> uint8_t {
+  return static_cast<uint8_t>(0xA0 | (executed_cycles & 0x1F));
+}
+
+// Slot 4 on a real machine: its sixteen I/O registers start at $C0C0.
+constexpr int oracle_slot = 4;
+constexpr uint16_t oracle_strobe = 0xC0CF;
+constexpr uint16_t oracle_hole = 0xC0CC;
+constexpr uint16_t oracle_first_latch = 0xC0C0;
+constexpr uint32_t oracle_strobe_cycle = 42;
+constexpr uint32_t oracle_hole_cycle = 100;
+constexpr uint8_t oracle_strobe_marker = 0x5A;
+constexpr uint8_t oracle_hole_marker = 0x3C;
+
 // Version 1: version, struct_size, the eight-byte epoch pin (always zero now),
 // the ten latches, the pin flag (always zero now), five reserved bytes.
 constexpr Frame_t frozen_frame = {
@@ -121,6 +158,9 @@ class ClockHarness_t {
     host_.RegisterCxROM = mock_register_cx_rom;
     host_.RegisterExpansionROM = mock_register_expansion_rom;
     host_.RegisterDirectIO = mock_register_direct_io;
+    host_.ReadFloatingBus = mock_read_floating_bus;
+    host_.GetLocalTime = mock_host_clock;
+    time_ = frozen_thursday;
   }
 
   ~ClockHarness_t() {
@@ -139,6 +179,16 @@ class ClockHarness_t {
   auto operator=(ClockHarness_t&&) -> ClockHarness_t& = delete;
 
   auto host() -> HostInterface_t* { return &host_; }
+
+  auto freeze_clock(const HostLocalTime_t& frozen) -> void {
+    time_ = frozen;
+    has_time_ = true;
+  }
+  auto stop_clock() -> void { has_time_ = false; }
+  auto time_calls() const -> unsigned { return time_calls_; }
+  auto log_messages() const -> const std::vector<std::string>& {
+    return log_messages_;
+  }
 
   auto create_clock(int slot) -> void* {
     void* instance = clock_descriptor()->init(slot, &host_);
@@ -219,17 +269,48 @@ class ClockHarness_t {
 
  private:
   HostInterface_t host_{};
+  HostLocalTime_t time_{};
+  bool has_time_ = true;
+  unsigned time_calls_ = 0;
+  std::vector<std::string> log_messages_;
   std::map<uint16_t, MockHandler_t> handlers_;
   std::map<int, std::vector<uint8_t>> roms_;
   std::map<int, void*> instances_;
 
   static ClockHarness_t* s_active_harness;
 
+  // NOLINTBEGIN(cert-dcl50-cpp, cppcoreguidelines-pro-type-vararg)
+  // Justification: Log is variadic in the HostInterface_t ABI.
   static auto mock_log(void* instance, PeripheralLogLevel_t level,
                        const char* fmt, ...) -> void {
     (void)instance;
     (void)level;
-    (void)fmt;
+    if (s_active_harness == nullptr) {
+      return;
+    }
+    std::array<char, 256> text{};
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(text.data(), text.size(), fmt, args);
+    va_end(args);
+    s_active_harness->log_messages_.emplace_back(text.data());
+  }
+  // NOLINTEND(cert-dcl50-cpp, cppcoreguidelines-pro-type-vararg)
+
+  static auto mock_read_floating_bus(uint32_t executed_cycles) -> uint8_t {
+    return floating_bus_marker(executed_cycles);
+  }
+
+  static auto mock_host_clock(HostLocalTime_t* out) -> bool {
+    if (s_active_harness == nullptr || out == nullptr) {
+      return false;
+    }
+    ++s_active_harness->time_calls_;
+    if (!s_active_harness->has_time_) {
+      return false;
+    }
+    *out = s_active_harness->time_;
+    return true;
   }
 
   static auto mock_assert_irq(int slot, bool assert_irq) -> void {
@@ -351,24 +432,21 @@ TEST_CASE("Clock Peripheral: Bus Fidelity and Floating Bus Pass-Through") {
   void* instance = harness.create_clock(slot);
   REQUIRE(instance != nullptr);
 
-  constexpr uint32_t strobe_cycles = 42;
-  CHECK(harness.strobe(slot, strobe_cycles) ==
-        mem_read_floating_bus(strobe_cycles));
+  // The strobe latches the time but drives nothing onto the bus.
+  CHECK(harness.strobe(slot, oracle_strobe_cycle) ==
+        floating_bus_marker(oracle_strobe_cycle));
+  CHECK(harness.latches(slot) == frozen_latches);
 
-  // Whatever time the strobe latched, it arrives as one BCD digit per
-  // register with the weekday's tens digit always zero.
-  const Latches_t latched = harness.latches(slot);
-  for (uint8_t digit : latched) {
-    CHECK(digit <= bcd_digit_max);
-  }
-  CHECK(latched.at(latch_weekday) == 0);
-
-  constexpr uint32_t hole_cycles = 100;
   for (uint8_t offset = first_unmapped_offset; offset <= last_unmapped_offset;
        ++offset) {
-    CHECK(harness.read_reg(slot, offset, hole_cycles) ==
-          mem_read_floating_bus(hole_cycles));
+    CHECK(harness.read_reg(slot, offset, oracle_hole_cycle) ==
+          floating_bus_marker(oracle_hole_cycle));
   }
+
+  // The bus byte follows the cycle, not the register.
+  CHECK(harness.read_reg(slot, first_unmapped_offset, 7) ==
+        floating_bus_marker(7));
+  CHECK(floating_bus_marker(7) != floating_bus_marker(oracle_hole_cycle));
 }
 
 TEST_CASE("Clock Peripheral: The state frame is 32 bytes with latches at 16") {
@@ -562,17 +640,141 @@ TEST_CASE("Clock Peripheral: The retired epoch commands answer incompatible") {
   CHECK(harness.latches(slot) == Latches_t{});
 }
 
-TEST_CASE("Clock Peripheral: Reset Behavior") {
+// A real clock keeps time through RESET; the firmware strobes before every
+// read, so a zeroed latch bank would never be seen by ProDOS anyway.
+TEST_CASE("Clock Peripheral: Reset keeps the latched time") {
   ClockHarness_t harness;
   const int slot = test_slot_1;
   void* instance = harness.create_clock(slot);
   REQUIRE(instance != nullptr);
-  REQUIRE(harness.load_frame(slot, frozen_frame.data(), frozen_frame.size()) ==
-          peripheral_ok);
-  CHECK(harness.latches(slot) == frozen_latches);
+  harness.strobe(slot);
+  REQUIRE(harness.latches(slot) == frozen_latches);
 
   clock_descriptor()->reset(instance);
+  CHECK(harness.latches(slot) == frozen_latches);
+  CHECK(harness.time_calls() == 1);
+}
+
+TEST_CASE("Clock Peripheral: The frozen host time drives the strobe") {
+  ClockHarness_t harness;
+  const int slot = test_slot_1;
+  REQUIRE(harness.create_clock(slot) != nullptr);
   CHECK(harness.latches(slot) == Latches_t{});
+  CHECK(harness.time_calls() == 0);
+
+  harness.strobe(slot);
+  CHECK(harness.time_calls() == 1);
+  CHECK(harness.latches(slot) == frozen_latches);
+
+  harness.freeze_clock(frozen_saturday);
+  harness.strobe(slot);
+  CHECK(harness.latches(slot) == saturday_latches);
+
+  harness.freeze_clock(frozen_leap_day);
+  harness.strobe(slot);
+  CHECK(harness.latches(slot) == leap_day_latches);
+  CHECK(harness.time_calls() == 3);
+
+  // Reading the latches never asks the host again; only the strobe does.
+  CHECK(harness.time_calls() == 3);
+}
+
+TEST_CASE("Clock Peripheral: A host without a time leaves the latches alone") {
+  ClockHarness_t harness;
+  const int slot = test_slot_1;
+  REQUIRE(harness.create_clock(slot) != nullptr);
+  harness.strobe(slot);
+  REQUIRE(harness.latches(slot) == frozen_latches);
+  REQUIRE(harness.log_messages().empty());
+
+  harness.stop_clock();
+  CHECK(harness.strobe(slot, oracle_strobe_cycle) ==
+        floating_bus_marker(oracle_strobe_cycle));
+  CHECK(harness.latches(slot) == frozen_latches);
+  harness.strobe(slot);
+  CHECK(harness.latches(slot) == frozen_latches);
+  CHECK(harness.time_calls() == 3);
+
+  // Said once, not on every strobe.
+  REQUIRE(harness.log_messages().size() == 1);
+  CHECK(harness.log_messages().front().find("slot 4") != std::string::npos);
+  CHECK(harness.log_messages().front().find("local time") != std::string::npos);
+
+  harness.freeze_clock(frozen_saturday);
+  harness.strobe(slot);
+  CHECK(harness.latches(slot) == saturday_latches);
+}
+
+TEST_CASE(
+    "Clock Peripheral: A host missing a member gets no card, and hears why") {
+  ClockHarness_t harness;
+  struct Missing_t {
+    const char* name;
+    void (*strip)(HostInterface_t*);
+  };
+  const std::array<Missing_t, 4> members = {{
+      {"RegisterIO", [](HostInterface_t* h) { h->RegisterIO = nullptr; }},
+      {"RegisterCxROM", [](HostInterface_t* h) { h->RegisterCxROM = nullptr; }},
+      {"GetLocalTime", [](HostInterface_t* h) { h->GetLocalTime = nullptr; }},
+      {"ReadFloatingBus",
+       [](HostInterface_t* h) { h->ReadFloatingBus = nullptr; }},
+  }};
+
+  for (const Missing_t& member : members) {
+    CAPTURE(member.name);
+    HostInterface_t partial = *harness.host();
+    member.strip(&partial);
+    const size_t logged_before = harness.log_messages().size();
+    CHECK(clock_descriptor()->init(test_slot_1, &partial) == nullptr);
+    REQUIRE(harness.log_messages().size() == logged_before + 1);
+    CHECK(harness.log_messages().back().find(member.name) != std::string::npos);
+    CHECK(harness.log_messages().back().find("slot 4") != std::string::npos);
+  }
+
+  // A host that cannot even log is still refused, silently.
+  HostInterface_t mute = *harness.host();
+  mute.Log = nullptr;
+  mute.GetLocalTime = nullptr;
+  CHECK(clock_descriptor()->init(test_slot_1, &mute) == nullptr);
+
+  // The complete host still gets its card.
+  CHECK(harness.create_clock(test_slot_2) != nullptr);
+}
+
+// The other cases hand the card a mock host. This one puts the card in slot
+// 4 of a real Enhanced //e and reads it the way the 6502 does, through the
+// I/O dispatcher, so the bytes on the undriven bus and the frozen clock both
+// arrive by the host interface the core actually builds.
+TEST_CASE("Clock Peripheral: The real bus and the frozen clock reach slot 4") {
+  TestFixtures::ScopedTestConfig_t::Description_t description;
+  description.slots.at(oracle_slot - 1) = "Clock Card";
+  TestFixtures::ScopedTestConfig_t config(description);
+  TestFixtures::ScopedCore_t core(config);
+  peripheral_manager_init();
+  linapple_register_peripherals();
+  TestFixtures::ScopedLocalTimeProvider_t clock(frozen_thursday);
+
+  const uint16_t strobe_fetch =
+      video_get_scanner_address(nullptr, oracle_strobe_cycle);
+  const uint16_t hole_fetch =
+      video_get_scanner_address(nullptr, oracle_hole_cycle);
+  REQUIRE(strobe_fetch != hole_fetch);
+  TestFixtures::ScopedCore_t::poke(strobe_fetch, &oracle_strobe_marker, 1);
+  TestFixtures::ScopedCore_t::poke(hole_fetch, &oracle_hole_marker, 1);
+
+  CHECK(io_map_dispatch(0, oracle_strobe, 0, 0, oracle_strobe_cycle) ==
+        oracle_strobe_marker);
+  CHECK(io_map_dispatch(0, oracle_hole, 0, 0, oracle_hole_cycle) ==
+        oracle_hole_marker);
+  CHECK(clock.calls() == 1);
+
+  Latches_t latched{};
+  for (size_t i = 0; i < latch_count; ++i) {
+    latched.at(i) = io_map_dispatch(
+        0, static_cast<uint16_t>(oracle_first_latch + i), 0, 0, 0);
+  }
+  CHECK(latched == frozen_latches);
+  CHECK(clock.calls() == 1);
 }
 
 TEST_CASE("Clock Peripheral: Multi-Card Concurrency and Lifecycle Robustness") {

@@ -7,14 +7,12 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include <ctime>
 #include <memory>
+#include <new>
 
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/clock/ClockCardCommands.h"
-
-auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
 
 namespace {
 
@@ -70,6 +68,7 @@ struct ClockCard_t {
   std::array<uint8_t, latch_count> latches{};
   HostInterface_t* host = nullptr;
   int slot = 0;
+  bool reported_missing_time = false;
 };
 
 auto set_latch_pair(ClockCard_t* card, size_t index, int value) -> void {
@@ -88,37 +87,45 @@ auto set_latch_pair(ClockCard_t* card, size_t index, int value) -> void {
   card->latches.at(base_index + 1) = static_cast<uint8_t>(digits.rem);
 }
 
+// The host hands over broken-down local time, so the card applies no zone or
+// offset of its own. A host with no clock leaves the latches as the last
+// strobe left them, the way a real card keeps ticking whether or not it is
+// read, and says so once rather than on every strobe.
 auto update_latches(ClockCard_t* card) -> void {
-  time_t now = 0;
-  if (time(&now) == static_cast<time_t>(-1)) {
+  HostLocalTime_t now{};
+  if (!card->host->GetLocalTime(&now)) {
+    if (!card->reported_missing_time && card->host->Log != nullptr) {
+      card->host->Log(card, log_warn,
+                      "Clock card in slot %d: the host has no local time\n",
+                      card->slot);
+      card->reported_missing_time = true;
+    }
     return;
   }
 
-  struct tm local_time{};
-  if (localtime_r(&now, &local_time) == nullptr) {
-    return;
-  }
-
-  set_latch_pair(card, latch_month, local_time.tm_mon + 1);
-  set_latch_pair(card, latch_weekday, local_time.tm_wday);
-  set_latch_pair(card, latch_day, local_time.tm_mday);
-  set_latch_pair(card, latch_hour, local_time.tm_hour);
-  set_latch_pair(card, latch_minute, local_time.tm_min);
+  set_latch_pair(card, latch_month, now.month);
+  set_latch_pair(card, latch_weekday, now.weekday);
+  set_latch_pair(card, latch_day, now.day_of_month);
+  set_latch_pair(card, latch_hour, now.hour);
+  set_latch_pair(card, latch_minute, now.minute);
 }
 
 auto pair_value(const uint8_t* latches, size_t index) -> int {
   return (latches[index] * radix) + latches[index + 1];
 }
 
+// Only the ten latch registers drive the bus. The strobe and the unmapped
+// offsets leave it floating, so the read returns whatever the video scanner
+// is fetching on that cycle, which only the host knows.
 auto clockcard_io_read(void* instance, uint16_t program_counter,
                        uint16_t memory_address, uint8_t is_write,
-                       uint8_t data_value, uint32_t remaining_cycles)
+                       uint8_t data_value, uint32_t executed_cycles)
     -> uint8_t {
   (void)program_counter;
   (void)is_write;
   (void)data_value;
   if (instance == nullptr) {
-    return mem_read_floating_bus(remaining_cycles);
+    return 0;
   }
   auto* card = static_cast<ClockCard_t*>(instance);
 
@@ -128,38 +135,59 @@ auto clockcard_io_read(void* instance, uint16_t program_counter,
   }
   if (register_offset == strobe_register) {
     update_latches(card);
-    return mem_read_floating_bus(remaining_cycles);
   }
+  return card->host->ReadFloatingBus(executed_cycles);
+}
 
-  return mem_read_floating_bus(remaining_cycles);
+// Without a ROM the kernel never finds the card, without I/O it never reads
+// one, and without a clock or a bus it answers nothing true: better no card
+// than a phantom one, and the log says which member was missing.
+auto missing_host_member(const HostInterface_t* host) -> const char* {
+  if (host->RegisterIO == nullptr) {
+    return "RegisterIO";
+  }
+  if (host->RegisterCxROM == nullptr) {
+    return "RegisterCxROM";
+  }
+  if (host->GetLocalTime == nullptr) {
+    return "GetLocalTime";
+  }
+  if (host->ReadFloatingBus == nullptr) {
+    return "ReadFloatingBus";
+  }
+  return nullptr;
 }
 
 auto clockcard_abi_init(int slot, HostInterface_t* host) -> void* {
   if (host == nullptr) {
     return nullptr;
   }
+  const char* missing = missing_host_member(host);
+  if (missing != nullptr) {
+    if (host->Log != nullptr) {
+      host->Log(nullptr, log_error,
+                "Clock card in slot %d: the host offers no %s\n", slot,
+                missing);
+    }
+    return nullptr;
+  }
 
-  auto card = std::unique_ptr<ClockCard_t>(new ClockCard_t());
+  auto card = std::unique_ptr<ClockCard_t>(new (std::nothrow) ClockCard_t());
+  if (!card) {
+    return nullptr;
+  }
   card->slot = slot;
   card->host = host;
 
-  if (host->RegisterCxROM != nullptr) {
-    host->RegisterCxROM(slot, clock_rom.data());
-  }
-  if (host->RegisterIO != nullptr) {
-    host->RegisterIO(slot, clockcard_io_read, nullptr, nullptr, nullptr);
-  }
+  host->RegisterCxROM(slot, clock_rom.data());
+  host->RegisterIO(slot, clockcard_io_read, nullptr, nullptr, nullptr);
 
   return card.release();
 }
 
-auto clockcard_abi_reset(void* instance) -> void {
-  if (instance == nullptr) {
-    return;
-  }
-  auto* card = static_cast<ClockCard_t*>(instance);
-  card->latches.fill(0);
-}
+// A real clock card keeps time across RESET, and the firmware strobes before
+// every read anyway, so the latches are left as the last strobe left them.
+auto clockcard_abi_reset(void* instance) -> void { (void)instance; }
 
 auto clockcard_abi_shutdown(void* instance) -> void {
   if (instance == nullptr) {
@@ -239,7 +267,7 @@ auto clockcard_abi_save_state(void* instance, void* state_buffer,
   return peripheral_ok;
 }
 
-auto latches_are_a_calendar_time(const uint8_t* latches) -> bool {
+auto latches_form_a_calendar(const uint8_t* latches) -> bool {
   for (size_t i = 0; i < latch_count; ++i) {
     if (latches[i] > bcd_digit_max) {
       return false;
@@ -275,7 +303,7 @@ auto clockcard_abi_load_state(void* instance, const void* state_buffer,
   }
 
   std::memcpy(&state, state_buffer, state.struct_size);
-  if (!latches_are_a_calendar_time(state.latches)) {
+  if (!latches_form_a_calendar(state.latches)) {
     return peripheral_error;
   }
 
