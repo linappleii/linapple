@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/Peripheral.h"
@@ -127,6 +128,58 @@ constexpr Frame_t frozen_frame = {
 // b04c4dcef167bb1e9094e7fc452e0bac61e6669c).
 constexpr std::array<uint8_t, 12> frame_v1_prefix = {
     0x01, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0xE8, 0xCD, 0xB2, 0x69};
+
+// The firmware, transcribed by hand from its disassembly rather than copied
+// from the card, so a byte that changes on either side is caught. $Cn00..07
+// hold the ProDOS ID bytes at the even offsets; the READ entry is $Cn08, the
+// WRITE entry $Cn0B lands on the $60 operand of LDA #$60 and so is a bare
+// RTS; the branch legs at $Cn01/$Cn03 and the carry leg at $Cn5D all reach
+// the PLP RTS at $Cn2B.
+constexpr std::array<uint8_t, slot_rom_size> firmware_rom = {
+    0x08, 0x90, 0x28, 0xB0, 0x58, 0x00, 0x70, 0x00, 0xEA, 0xEA, 0xA9, 0x60,
+    0x08, 0x78, 0x20, 0x58, 0xFF, 0xBA, 0xBD, 0x00, 0x01, 0x28, 0x0A, 0x0A,
+    0x0A, 0x0A, 0xA8, 0xB9, 0x8F, 0xC0, 0xA2, 0x00, 0xF0, 0x0B, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x28, 0x60, 0xB9, 0x80, 0xC0,
+    0xC8, 0x09, 0xB0, 0x9D, 0x00, 0x02, 0xE8, 0xB9, 0x80, 0xC0, 0xC8, 0x09,
+    0xB0, 0x9D, 0x00, 0x02, 0xE8, 0xA9, 0xAC, 0x9D, 0x00, 0x02, 0xE8, 0x98,
+    0x29, 0x0F, 0xC9, 0x0A, 0x90, 0xDF, 0xA9, 0x80, 0x9D, 0xFF, 0x01, 0x60,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xB0, 0xCC};
+
+constexpr size_t rom_write_entry = 0x0B;
+constexpr size_t rom_carry_leg = 0x5D;
+constexpr size_t rom_first_unused = 0x5F;
+
+// Slot 4's firmware entries and the monitor RTS its slot detection relies on.
+constexpr uint16_t slot4_read_entry = 0xC408;
+constexpr uint16_t slot4_write_entry = 0xC40B;
+constexpr uint16_t monitor_iorts = 0xFF58;
+constexpr uint8_t opcode_rts = 0x60;
+constexpr uint32_t rts_cycles = 6;
+
+// What ProDOS 8's ThunderClock driver passes in A when it calls the WRITE
+// entry: "#" with the high bit set, asking a real card for numeric output.
+constexpr uint8_t prodos_write_format = 0xA3;
+
+// The GETLN input buffer the READ entry fills, and a byte the firmware can
+// never emit (its output is $B0..$B9, $AC and $80), so an untouched cell is
+// unmistakable.
+constexpr uint16_t input_buffer = 0x0200;
+constexpr uint8_t untouched_marker = 0xEE;
+using InputPage_t = std::array<uint8_t, 256>;
+
+// "03,04,12,14,30" as high-ASCII digits and commas, the fifth comma replaced
+// by $80, for the frozen Thursday.
+constexpr std::array<uint8_t, 15> frozen_input_line = {
+    0xB0, 0xB3, 0xAC, 0xB0, 0xB4, 0xAC, 0xB1, 0xB2,
+    0xAC, 0xB1, 0xB4, 0xAC, 0xB3, 0xB0, 0x80};
+
+// Where the routine under test returns to, and a cap on how long it may run:
+// the READ entry takes a few hundred cycles, so a runaway is caught well
+// inside the case's budget.
+constexpr uint16_t return_sentinel = 0x0300;
+constexpr uint16_t stack_top = 0x01FF;
+constexpr uint32_t subroutine_cycle_cap = 20000;
+constexpr uint8_t status_interrupts_masked = 0x24;
 
 // A command or query id the card never defined, plus the two commands and
 // two queries an earlier card did define.
@@ -267,6 +320,11 @@ class ClockHarness_t {
     return roms_.at(slot);
   }
 
+  auto rom_pointer(int slot) const -> const uint8_t* {
+    auto it = rom_pointers_.find(slot);
+    return (it != rom_pointers_.end()) ? it->second : nullptr;
+  }
+
  private:
   HostInterface_t host_{};
   HostLocalTime_t time_{};
@@ -275,6 +333,7 @@ class ClockHarness_t {
   std::vector<std::string> log_messages_;
   std::map<uint16_t, MockHandler_t> handlers_;
   std::map<int, std::vector<uint8_t>> roms_;
+  std::map<int, const uint8_t*> rom_pointers_;
   std::map<int, void*> instances_;
 
   static ClockHarness_t* s_active_harness;
@@ -341,6 +400,7 @@ class ClockHarness_t {
       std::vector<uint8_t> rom_data(slot_rom_size);
       std::copy_n(rom_ptr, slot_rom_size, rom_data.begin());
       s_active_harness->roms_[slot] = std::move(rom_data);
+      s_active_harness->rom_pointers_[slot] = rom_ptr;
     }
   }
 
@@ -359,6 +419,129 @@ class ClockHarness_t {
 };
 
 ClockHarness_t* ClockHarness_t::s_active_harness = nullptr;
+
+struct CalendarRow_t {
+  const char* name;
+  HostLocalTime_t local;
+  Latches_t latches;
+};
+
+// Fields exactly as `date -u -d @N` reports them, so the rows prove the
+// field-to-latch mapping at the calendar's edges, not any epoch arithmetic:
+// the card copies what the host hands it. unix_seconds is filled so the two
+// rows past 2^31 show the int64 field carries them intact.
+//   date -u -d @0          -> Thu Jan  1 00:00:00 UTC 1970
+//   date -u -d @946684740  -> Fri Dec 31 23:59:00 UTC 1999
+//   date -u -d @946684800  -> Sat Jan  1 00:00:00 UTC 2000
+//   date -u -d @951782400  -> Tue Feb 29 00:00:00 UTC 2000
+//   date -u -d @2147483647 -> Tue Jan 19 03:14:07 UTC 2038
+//   date -u -d @2147483700 -> Tue Jan 19 03:15:00 UTC 2038
+//   date -u -d @1773576000 -> Sun Mar 15 12:00:00 UTC 2026
+constexpr std::array<CalendarRow_t, 7> calendar_edges = {{
+    {"the epoch",
+     {0, 0, 1970, 1, 1, 4, 0, 0, 0},
+     {0, 1, 0, 4, 0, 1, 0, 0, 0, 0}},
+    {"the last minute of 1999",
+     {946684740, 0, 1999, 12, 31, 5, 23, 59, 0},
+     {1, 2, 0, 5, 3, 1, 2, 3, 5, 9}},
+    {"the first minute of 2000",
+     {946684800, 0, 2000, 1, 1, 6, 0, 0, 0},
+     {0, 1, 0, 6, 0, 1, 0, 0, 0, 0}},
+    {"the leap day of 2000",
+     {951782400, 0, 2000, 2, 29, 2, 0, 0, 0},
+     {0, 2, 0, 2, 2, 9, 0, 0, 0, 0}},
+    {"the last second of 32-bit time",
+     {2147483647, 0, 2038, 1, 19, 2, 3, 14, 7},
+     {0, 1, 0, 2, 1, 9, 0, 3, 1, 4}},
+    {"the minute after 32-bit time",
+     {2147483700, 0, 2038, 1, 19, 2, 3, 15, 0},
+     {0, 1, 0, 2, 1, 9, 0, 3, 1, 5}},
+    {"a Sunday at noon",
+     {1773576000, 0, 2026, 3, 15, 0, 12, 0, 0},
+     {0, 3, 0, 0, 1, 5, 1, 2, 0, 0}},
+}};
+
+// Two zones, already applied by the host, so the card sees only the local
+// fields and the offset it never reads. GNU date under the zone JST-9 gives
+// 1795910340 as Sun Nov 29 08:59:00 JST 2026 (UTC+9), and under
+// EST5EDT,M3.2.0,M11.1.0 gives 1773325800 as Thu Mar 12 10:30:00 EDT 2026
+// (UTC-4, daylight time already in force).
+constexpr int32_t jst_offset = 32400;
+constexpr int32_t edt_offset = -14400;
+constexpr HostLocalTime_t tokyo_sunday = {1795910340, jst_offset, 2026, 11, 29,
+                                          0,          8,          59,   0};
+constexpr Latches_t tokyo_sunday_latches = {1, 1, 0, 0, 2, 9, 0, 8, 5, 9};
+constexpr HostLocalTime_t new_york_thursday = {
+    1773325800, edt_offset, 2026, 3, 12, 4, 10, 30, 0};
+constexpr Latches_t new_york_thursday_latches = {0, 3, 0, 4, 1, 2, 1, 0, 3, 0};
+
+// The card in slot 4 of an Enhanced //e, booted the way a frontend boots it:
+// the hard reset is what copies every slot's ROM into the 6502's address
+// space, so the firmware can be fetched from $C4xx.
+struct ClockInSlot4_t {
+  static auto describe() -> TestFixtures::ScopedTestConfig_t::Description_t {
+    TestFixtures::ScopedTestConfig_t::Description_t description;
+    description.slots.at(oracle_slot - 1) = "Clock Card";
+    return description;
+  }
+
+  TestFixtures::ScopedTestConfig_t config;
+  TestFixtures::ScopedCore_t core;
+
+  ClockInSlot4_t() : config(describe()), core(config) {
+    peripheral_manager_init();
+    linapple_register_peripherals();
+    linapple_reset_hard();
+  }
+};
+
+auto fill_input_page(uint8_t marker) -> void {
+  InputPage_t page{};
+  page.fill(marker);
+  TestFixtures::ScopedCore_t::poke(input_buffer, page);
+}
+
+auto read_input_page() -> InputPage_t {
+  InputPage_t page{};
+  for (size_t i = 0; i < page.size(); ++i) {
+    page.at(i) = mem[input_buffer + i];
+  }
+  return page;
+}
+
+// Runs the 6502 into a routine the way a JSR would: the sentinel's return
+// address sits on the stack, so the routine's own RTS lands there and the loop
+// stops. Returns the cycles spent; the caller checks the PC reached the
+// sentinel, since the cap is what ends a runaway.
+auto call_subroutine(uint16_t entry, uint8_t accumulator) -> uint32_t {
+  const uint16_t pushed = return_sentinel - 1;
+  const std::array<uint8_t, 2> return_address = {
+      static_cast<uint8_t>(pushed & 0xFF), static_cast<uint8_t>(pushed >> 8)};
+  TestFixtures::ScopedCore_t::poke(stack_top - 1, return_address);
+
+  CpuRegisters_t* regs = cpu_get_registers();
+  regs->pc = entry;
+  regs->sp = stack_top - 2;
+  regs->a = accumulator;
+  regs->x = 0;
+  regs->y = 0;
+  regs->ps = status_interrupts_masked;
+
+  uint32_t cycles = 0;
+  while (regs->pc != return_sentinel && cycles < subroutine_cycle_cap) {
+    cycles += cpu_execute(0);
+  }
+  return cycles;
+}
+
+auto dispatch_latches() -> Latches_t {
+  Latches_t latched{};
+  for (size_t i = 0; i < latch_count; ++i) {
+    latched.at(i) = io_map_dispatch(
+        0, static_cast<uint16_t>(oracle_first_latch + i), 0, 0, 0);
+  }
+  return latched;
+}
 
 auto read_fixture_frame(const char* name) -> Frame_t {
   Frame_t frame{};
@@ -775,6 +958,175 @@ TEST_CASE("Clock Peripheral: The real bus and the frozen clock reach slot 4") {
   }
   CHECK(latched == frozen_latches);
   CHECK(clock.calls() == 1);
+}
+
+TEST_CASE("Clock Peripheral: The slot ROM is the firmware, byte for byte") {
+  ClockHarness_t harness;
+  const int slot = test_slot_1;
+  REQUIRE(harness.create_clock(slot) != nullptr);
+
+  const uint8_t* rom = harness.rom_pointer(slot);
+  REQUIRE(rom != nullptr);
+
+  const auto* rom_end = rom + slot_rom_size;
+  const auto first_difference =
+      std::mismatch(rom, rom_end, firmware_rom.begin());
+  const auto differing_offset =
+      static_cast<size_t>(first_difference.first - rom);
+  CAPTURE(differing_offset);
+  CHECK(first_difference.first == rom_end);
+
+  CHECK(rom[rom_write_entry] == opcode_rts);
+  CHECK(rom[rom_carry_leg] == 0xB0);
+  CHECK(rom[rom_carry_leg + 1] == 0xCC);
+  CHECK(std::all_of(rom + rom_first_unused, rom_end,
+                    [](uint8_t byte) { return byte == 0; }));
+}
+
+// ProDOS 8 finds the card by its ID bytes and then calls $Cn08, which must
+// leave "mo,da,dt,hr,mn" at $0200. This is that call, made by the 65C02 of an
+// Enhanced //e with the firmware fetched from $C4xx and the latches read on
+// the bus, for a frozen host time.
+TEST_CASE("Clock Peripheral: The READ entry writes the frozen time to $0200") {
+  ClockInSlot4_t machine;
+  TestFixtures::ScopedLocalTimeProvider_t clock(frozen_thursday);
+
+  // The firmware learns its slot from the return address JSR $FF58 leaves on
+  // the stack, which only works because that monitor byte is an RTS.
+  REQUIRE(mem[monitor_iorts] == opcode_rts);
+
+  fill_input_page(untouched_marker);
+  const uint32_t cycles = call_subroutine(slot4_read_entry, 0);
+  CHECK(cpu_get_registers()->pc == return_sentinel);
+  CHECK(cycles < subroutine_cycle_cap);
+  CHECK(clock.calls() == 1);
+
+  const InputPage_t page = read_input_page();
+  CHECK(std::equal(frozen_input_line.begin(), frozen_input_line.end(),
+                   page.begin()));
+  CHECK(std::all_of(page.begin() + frozen_input_line.size(), page.end(),
+                    [](uint8_t byte) { return byte == untouched_marker; }));
+
+  // Five fields of two digits and a comma each leave X at the fifteenth byte,
+  // the one the firmware overwrote with $80.
+  CHECK(cpu_get_registers()->x == frozen_input_line.size());
+}
+
+TEST_CASE("Clock Peripheral: The WRITE entry is a bare RTS that keeps A") {
+  ClockInSlot4_t machine;
+  TestFixtures::ScopedLocalTimeProvider_t clock(frozen_thursday);
+
+  fill_input_page(untouched_marker);
+  const uint32_t cycles =
+      call_subroutine(slot4_write_entry, prodos_write_format);
+  CHECK(cpu_get_registers()->pc == return_sentinel);
+  CHECK(cycles == rts_cycles);
+  CHECK(cpu_get_registers()->a == prodos_write_format);
+  CHECK(clock.calls() == 0);
+
+  const InputPage_t page = read_input_page();
+  CHECK(std::all_of(page.begin(), page.end(),
+                    [](uint8_t byte) { return byte == untouched_marker; }));
+}
+
+TEST_CASE("Clock Peripheral: The calendar's edges reach the latches") {
+  ClockHarness_t harness;
+  const int slot = test_slot_1;
+  REQUIRE(harness.create_clock(slot) != nullptr);
+
+  for (const CalendarRow_t& row : calendar_edges) {
+    CAPTURE(row.name);
+    harness.freeze_clock(row.local);
+    harness.strobe(slot);
+    CHECK(harness.latches(slot) == row.latches);
+  }
+  CHECK(harness.time_calls() == calendar_edges.size());
+}
+
+TEST_CASE("Clock Peripheral: A zone arrives as local fields, not an offset") {
+  ClockHarness_t harness;
+  const int slot = test_slot_1;
+  REQUIRE(harness.create_clock(slot) != nullptr);
+
+  harness.freeze_clock(tokyo_sunday);
+  harness.strobe(slot);
+  CHECK(harness.latches(slot) == tokyo_sunday_latches);
+
+  harness.freeze_clock(new_york_thursday);
+  harness.strobe(slot);
+  CHECK(harness.latches(slot) == new_york_thursday_latches);
+
+  // The same instant twice, once as UTC and once as New York: only the fields
+  // differ, and the latches follow them, so the card reads fields, not the
+  // epoch.
+  REQUIRE(new_york_thursday.unix_seconds == frozen_thursday.unix_seconds);
+  harness.freeze_clock(frozen_thursday);
+  harness.strobe(slot);
+  CHECK(harness.latches(slot).at(latch_hour) == 1);
+  CHECK(harness.latches(slot).at(latch_hour + 1) == 4);
+  CHECK(harness.latches(slot).at(latch_minute) == 3);
+  CHECK(harness.latches(slot).at(latch_minute + 1) == 0);
+  harness.freeze_clock(new_york_thursday);
+  harness.strobe(slot);
+  CHECK(harness.latches(slot).at(latch_hour) == 1);
+  CHECK(harness.latches(slot).at(latch_hour + 1) == 0);
+  CHECK(harness.latches(slot).at(latch_minute) == 3);
+  CHECK(harness.latches(slot).at(latch_minute + 1) == 0);
+}
+
+// With no frozen provider the core answers with the machine's own clock, so
+// the digits cannot be literals; what can be checked is that they form a
+// calendar and that the always-zero weekday tens digit is zero.
+TEST_CASE("Clock Peripheral: The host's wall clock latches a calendar") {
+  ClockInSlot4_t machine;
+
+  io_map_dispatch(0, oracle_strobe, 0, 0, 0);
+  const Latches_t latched = dispatch_latches();
+
+  for (size_t i = 0; i < latch_count; ++i) {
+    CAPTURE(i);
+    CHECK(latched.at(i) <= bcd_digit_max);
+  }
+  auto pair = [&](size_t index) {
+    return (latched.at(index) * 10) + latched.at(index + 1);
+  };
+  CHECK(pair(latch_month) >= 1);
+  CHECK(pair(latch_month) <= 12);
+  CHECK(latched.at(latch_weekday) == 0);
+  CHECK(latched.at(latch_weekday + 1) <= 6);
+  CHECK(pair(latch_day) >= 1);
+  CHECK(pair(latch_day) <= 31);
+  CHECK(pair(latch_hour) <= 23);
+  CHECK(pair(latch_minute) <= 59);
+}
+
+TEST_CASE("Clock Peripheral: There is no write path") {
+  SUBCASE("the card registers no write handler") {
+    ClockHarness_t harness;
+    const int slot = test_slot_1;
+    REQUIRE(harness.create_clock(slot) != nullptr);
+    const uint16_t base = io_base_address + (slot << io_slot_shift);
+    for (uint16_t addr = base; addr < base + registers_per_slot; ++addr) {
+      REQUIRE(harness.has_handler(addr));
+      CHECK(harness.get_handler(addr).write == nullptr);
+    }
+  }
+
+  // The provider moves on between the strobe and the write, so a write that
+  // strobed would show Saturday's digits and a second provider call.
+  SUBCASE("a write to the strobe or a latch changes nothing") {
+    ClockInSlot4_t machine;
+    TestFixtures::ScopedLocalTimeProvider_t clock(frozen_thursday);
+
+    io_map_dispatch(0, oracle_strobe, 0, 0, 0);
+    REQUIRE(dispatch_latches() == frozen_latches);
+    clock.set(frozen_saturday);
+
+    io_map_dispatch(0, oracle_strobe, 1, 0x55, 0);
+    io_map_dispatch(0, oracle_first_latch, 1, 0x55, 0);
+    CHECK(dispatch_latches() == frozen_latches);
+    CHECK(clock.calls() == 1);
+  }
 }
 
 TEST_CASE("Clock Peripheral: Multi-Card Concurrency and Lifecycle Robustness") {
