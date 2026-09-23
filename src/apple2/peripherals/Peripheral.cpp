@@ -8,6 +8,7 @@
 #include <array>
 #include <cstdarg>
 #include <cstring>
+#include <ctime>
 #include <exception>
 #include <mutex>
 #include <queue>
@@ -18,6 +19,7 @@
 #include "apple2/Memory.h"
 #include "apple2/SnapshotTypes.h"
 #include "apple2/peripherals/Peripheral_Audio.h"
+#include "apple2/peripherals/Peripheral_Internal.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
 #include "core/Registry.h"
@@ -289,7 +291,7 @@ static constexpr int min_slot_with_rom = 1;
 static constexpr int max_slot_with_rom = 7;
 static constexpr size_t cxrom_slot_size = 256;
 
-static auto host_register_cx_rom(int slot, uint8_t* rom_ptr) -> void {
+static auto host_register_cx_rom(int slot, const uint8_t* rom_ptr) -> void {
   if (slot < min_slot_with_rom || slot > max_slot_with_rom ||
       rom_ptr == nullptr)
     return;
@@ -510,6 +512,64 @@ static auto host_read_floating_bus(uint32_t executed_cycles) -> uint8_t {
   return mem_read_floating_bus(executed_cycles);
 }
 
+static LocalTimeProvider_t g_local_time_provider = nullptr;
+static void* g_local_time_provider_ctx = nullptr;
+
+auto linapple_set_local_time_provider(LocalTimeProvider_t provider, void* ctx)
+    -> void {
+  g_local_time_provider = provider;
+  g_local_time_provider_ctx = ctx;
+}
+
+static constexpr int tm_year_base = 1900;
+static constexpr int last_second_of_minute = 59;
+
+static auto host_get_local_time(HostLocalTime_t* out) -> bool {
+  if (out == nullptr) {
+    return false;
+  }
+  if (g_local_time_provider != nullptr) {
+    return g_local_time_provider(g_local_time_provider_ctx, out);
+  }
+
+  const time_t now = time(nullptr);
+  if (now == static_cast<time_t>(-1)) {
+    return false;
+  }
+  struct tm local{};
+  struct tm utc{};
+  if (localtime_r(&now, &local) == nullptr || gmtime_r(&now, &utc) == nullptr) {
+    return false;
+  }
+
+  // tm_gmtoff is a glibc and BSD extension, so the offset is derived from the
+  // two standard conversions instead: mktime reads the UTC fields as if they
+  // were local time, in the same DST regime as the real local time, and so
+  // lands exactly the zone's offset before the instant.
+  utc.tm_isdst = local.tm_isdst;
+  const time_t utc_as_local = mktime(&utc);
+  if (utc_as_local == static_cast<time_t>(-1)) {
+    return false;
+  }
+
+  // The struct has padding after its last byte; a plugin comparing whole
+  // frames must never see stack garbage in it.
+  memset(out, 0, sizeof(*out));
+  out->unix_seconds = static_cast<int64_t>(now);
+  out->utc_offset_seconds = static_cast<int32_t>(now - utc_as_local);
+  out->year = static_cast<uint16_t>(local.tm_year + tm_year_base);
+  out->month = static_cast<uint8_t>(local.tm_mon + 1);
+  out->day_of_month = static_cast<uint8_t>(local.tm_mday);
+  out->weekday = static_cast<uint8_t>(local.tm_wday);
+  out->hour = static_cast<uint8_t>(local.tm_hour);
+  out->minute = static_cast<uint8_t>(local.tm_min);
+  // A leap second arrives as tm_sec == 60, which no real-time clock chip can
+  // display; it is shown as :59 held for one more second.
+  out->second =
+      static_cast<uint8_t>(std::min(local.tm_sec, last_second_of_minute));
+  return true;
+}
+
 static const HostInterface_t g_host_interface = {host_log,
                                                  host_assert_irq,
                                                  host_register_io,
@@ -530,7 +590,8 @@ static const HostInterface_t g_host_interface = {host_log,
                                                  host_printer_get_status,
                                                  host_serial_transmit_byte,
                                                  host_serial_update_state,
-                                                 host_read_floating_bus};
+                                                 host_read_floating_bus,
+                                                 host_get_local_time};
 
 // --- Command Queue ---
 

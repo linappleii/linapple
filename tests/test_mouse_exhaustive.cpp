@@ -286,7 +286,7 @@ class MouseHarness {
     }
   }
 
-  static auto Mock_RegisterCxROM(int slot, uint8_t* rom_page) -> void {
+  static auto Mock_RegisterCxROM(int slot, const uint8_t* rom_page) -> void {
     (void)slot;
     if (s_active_harness != nullptr) {
       s_active_harness->last_rom_bank_page_ = rom_page;

@@ -42,7 +42,7 @@ struct HarddiskHarness {
     }
   }
 
-  static auto mock_register_cx_rom(int slot, uint8_t* rom) -> void {
+  static auto mock_register_cx_rom(int slot, const uint8_t* rom) -> void {
     (void)slot;
     if (s_active_harness() != nullptr && rom != nullptr) {
       std::copy_n(rom, 256, s_active_harness()->cx_rom.begin());
@@ -127,7 +127,7 @@ TEST_CASE("HD-02: Null Host and Missing Callback Defensive Guards") {
 
   // Missing RegisterDirectIO
   HostInterface_t h{};
-  h.RegisterCxROM = [](int, uint8_t*) {};
+  h.RegisterCxROM = [](int, const uint8_t*) {};
   h.get_mem_ptr = [](uint16_t) -> uint8_t* { return nullptr; };
   CHECK(desc->init(7, &h) == nullptr);
 
@@ -138,7 +138,7 @@ TEST_CASE("HD-02: Null Host and Missing Callback Defensive Guards") {
   CHECK(desc->init(7, &h) == nullptr);
 
   // Missing get_mem_ptr
-  h.RegisterCxROM = [](int, uint8_t*) {};
+  h.RegisterCxROM = [](int, const uint8_t*) {};
   h.get_mem_ptr = nullptr;
   CHECK(desc->init(7, &h) == nullptr);
 }

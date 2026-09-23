@@ -108,7 +108,7 @@ static auto printer_abi_init(int slot, HostInterface_t* host) -> void* {
   printer_peripheral->slot = slot;
 
 #if ENABLE_ROM_PRINTER
-  host->RegisterCxROM(slot, const_cast<uint8_t*>(g_rom_parallel));
+  host->RegisterCxROM(slot, g_rom_parallel);
 #endif
   host->RegisterIO(slot, print_status, print_transmit, nullptr, nullptr);
 

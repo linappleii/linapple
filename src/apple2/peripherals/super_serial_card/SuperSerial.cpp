@@ -249,7 +249,7 @@ auto super_serial_abi_init(int slot, HostInterface_t* host) -> void* {
 
 #if ENABLE_ROM_SSC
   if (host->RegisterCxROM != nullptr) {
-    host->RegisterCxROM(slot, const_cast<uint8_t*>(g_rom_ssc));
+    host->RegisterCxROM(slot, g_rom_ssc);
   }
 #endif
   host->RegisterIO(slot, super_serial_io_read, super_serial_io_write, nullptr,

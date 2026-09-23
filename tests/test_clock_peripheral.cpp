@@ -268,7 +268,7 @@ class ClockHarness {
   }
   // NOLINTEND(bugprone-easily-swappable-parameters)
 
-  static auto Mock_RegisterCxROM(int slot, uint8_t* rom_ptr) -> void {
+  static auto Mock_RegisterCxROM(int slot, const uint8_t* rom_ptr) -> void {
     if (s_active_harness != nullptr && rom_ptr != nullptr) {
       std::vector<uint8_t> rom_data(SLOT_ROM_SIZE);
       std::copy_n(rom_ptr, SLOT_ROM_SIZE, rom_data.begin());

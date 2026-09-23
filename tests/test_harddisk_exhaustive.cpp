@@ -62,7 +62,7 @@ struct HarddiskHarness {
     }
   }
 
-  static auto mock_register_cx_rom(int slot, uint8_t* rom) -> void {
+  static auto mock_register_cx_rom(int slot, const uint8_t* rom) -> void {
     (void)slot;
     if (s_active_harness() != nullptr && rom != nullptr) {
       std::copy_n(rom, 256, s_active_harness()->cx_rom.begin());

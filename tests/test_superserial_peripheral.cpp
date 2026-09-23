@@ -239,7 +239,7 @@ class SuperSerialHarness_t {
     }
   }
 
-  static auto Mock_RegisterCxROM(int slot, uint8_t* rom_ptr) -> void {
+  static auto Mock_RegisterCxROM(int slot, const uint8_t* rom_ptr) -> void {
     (void)slot;
     (void)rom_ptr;
   }

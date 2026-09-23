@@ -1124,7 +1124,7 @@ auto disk_abi_init(int slot, HostInterface_t* host) -> void* {
   }
 
 #if ENABLE_ROM_DISK2
-  host->RegisterCxROM(slot, const_cast<uint8_t*>(g_rom_disk2));
+  host->RegisterCxROM(slot, g_rom_disk2);
 #endif
   host->RegisterIO(slot, disk_io_read, disk_io_write, nullptr, nullptr);
 

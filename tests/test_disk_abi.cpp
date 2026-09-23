@@ -82,7 +82,7 @@ static auto capturing_disk_host() -> HostInterface_t {
                     PeripheralIOHandler, PeripheralIOHandler) {
     g_captured_disk_read = read_c0;
   };
-  h.RegisterCxROM = [](int, uint8_t*) {};
+  h.RegisterCxROM = [](int, const uint8_t*) {};
   h.GetConfig = [](const char*, const char*, char*, size_t) { return false; };
   h.SetConfig = [](const char*, const char*, const char*) {};
   h.NotifyStatusChanged = [](int) {};
@@ -93,7 +93,7 @@ static HostInterface_t g_test_disk_host = [] {
   HostInterface_t h{};
   h.RegisterIO = [](int, PeripheralIOHandler, PeripheralIOHandler,
                     PeripheralIOHandler, PeripheralIOHandler) {};
-  h.RegisterCxROM = [](int, uint8_t*) {};
+  h.RegisterCxROM = [](int, const uint8_t*) {};
   h.GetConfig = [](const char*, const char*, char*, size_t) { return false; };
   h.SetConfig = [](const char*, const char*, const char*) {};
   h.NotifyStatusChanged = [](int) {};
@@ -252,7 +252,7 @@ TEST_CASE("DiskABI: [ABI-15] Mechanical events never write the config") {
   HostInterface_t host{};
   host.RegisterIO = [](int, PeripheralIOHandler, PeripheralIOHandler,
                        PeripheralIOHandler, PeripheralIOHandler) {};
-  host.RegisterCxROM = [](int, uint8_t*) {};
+  host.RegisterCxROM = [](int, const uint8_t*) {};
   host.GetConfig = [](const char*, const char*, char*, size_t) {
     return false;
   };
@@ -538,7 +538,7 @@ TEST_CASE("DiskABI: [ABI-13] Host Interface Null Callbacks Defensive Guards") {
   // Missing RegisterCxROM
   CHECK(descriptor->init(SL6, &h) == nullptr);
 
-  h.RegisterCxROM = [](int, uint8_t*) {};
+  h.RegisterCxROM = [](int, const uint8_t*) {};
 #endif
   // Valid host with minimal callbacks
   void* inst = descriptor->init(SL6, &h);

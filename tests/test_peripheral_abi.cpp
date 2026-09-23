@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#include <algorithm>
 #include <cstdint>
 #include <string>
 
@@ -93,6 +94,136 @@ TEST_CASE(
   Logger::set_callback(nullptr);
 
   CHECK(g_last_logged_message == "42 cells");
+
+  peripheral_manager_shutdown();
+}
+
+#include <ctime>
+
+#include "apple2/peripherals/Peripheral_Internal.h"
+#include "test_fixtures_core.h"
+
+extern "C" int test_c_peripheral_read_clock(HostInterface_t* host,
+                                            int64_t* unix_seconds,
+                                            uint8_t* weekday);
+
+namespace {
+
+// 2026-03-12 14:30:00 in Eastern Daylight Time (UTC-4), a Thursday:
+//   date -u -d @1773340200                 -> 2026-03-12 18:30:00
+//   TZ=America/New_York date -d @1773340200 -> 2026-03-12 14:30:00 -0400 Thu
+// The UTC instant beside local fields is what tells a pass-through from a
+// card that re-applied the zone.
+static_assert(sizeof(HostLocalTime_t) == 24,
+              "HostLocalTime_t is part of the plugin ABI");
+
+constexpr HostLocalTime_t frozen_thursday = {1773340200, -14400, 2026, 3, 12,
+                                             4,          14,     30,   0};
+
+}  // namespace
+
+TEST_CASE("Peripheral ABI: A frozen host clock reaches a card the core built") {
+  TestFixtures::ScopedTestConfig_t config(
+      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedLocalTimeProvider_t clock(frozen_thursday);
+
+  g_captured_host = nullptr;
+  REQUIRE(peripheral_register(&g_log_probe_peripheral, 2) == 0);
+  REQUIRE(g_captured_host != nullptr);
+  REQUIRE(g_captured_host->GetLocalTime != nullptr);
+
+  HostLocalTime_t seen{};
+  REQUIRE(g_captured_host->GetLocalTime(&seen));
+  CHECK(seen.unix_seconds == 1773340200);
+  CHECK(seen.utc_offset_seconds == -14400);
+  CHECK(seen.year == 2026);
+  CHECK(seen.month == 3);
+  CHECK(seen.day_of_month == 12);
+  CHECK(seen.weekday == 4);
+  CHECK(seen.hour == 14);
+  CHECK(seen.minute == 30);
+  CHECK(seen.second == 0);
+  CHECK(clock.calls() == 1);
+
+  int64_t c_seconds = 0;
+  uint8_t c_weekday = 0;
+  CHECK(test_c_peripheral_read_clock(g_captured_host, &c_seconds, &c_weekday) ==
+        1);
+  CHECK(c_seconds == 1773340200);
+  CHECK(c_weekday == 4);
+  CHECK(clock.calls() == 2);
+
+  peripheral_unregister(2);
+}
+
+TEST_CASE("Peripheral ABI: The frozen clock ends with its scope") {
+  peripheral_manager_init();
+  g_captured_host = nullptr;
+  REQUIRE(peripheral_register(&g_log_probe_peripheral, 2) == 0);
+  REQUIRE(g_captured_host != nullptr);
+
+  {
+    TestFixtures::ScopedLocalTimeProvider_t clock(frozen_thursday);
+    HostLocalTime_t seen{};
+    REQUIRE(g_captured_host->GetLocalTime(&seen));
+    CHECK(seen.unix_seconds == 1773340200);
+  }
+
+  HostLocalTime_t after{};
+  REQUIRE(g_captured_host->GetLocalTime(&after));
+  CHECK(after.unix_seconds != 1773340200);
+  CHECK(after.year >= 2026);
+
+  peripheral_manager_shutdown();
+}
+
+TEST_CASE(
+    "Peripheral ABI: Without a provider the host clock is the wall clock") {
+  peripheral_manager_init();
+  g_captured_host = nullptr;
+  REQUIRE(peripheral_register(&g_log_probe_peripheral, 2) == 0);
+  REQUIRE(g_captured_host != nullptr);
+
+  const time_t before = time(nullptr);
+  HostLocalTime_t seen{};
+  REQUIRE(g_captured_host->GetLocalTime(&seen));
+  const time_t after = time(nullptr);
+  CHECK(seen.unix_seconds >= static_cast<int64_t>(before));
+  CHECK(seen.unix_seconds <= static_cast<int64_t>(after));
+
+  // The broken-down fields must describe the very instant reported, in the
+  // host's zone, or a card would show a time that never existed.
+  time_t instant = static_cast<time_t>(seen.unix_seconds);
+  struct tm local{};
+  REQUIRE(localtime_r(&instant, &local) != nullptr);
+  CHECK(seen.utc_offset_seconds == static_cast<int32_t>(local.tm_gmtoff));
+  CHECK(seen.year == local.tm_year + 1900);
+  CHECK(seen.month == local.tm_mon + 1);
+  CHECK(seen.day_of_month == local.tm_mday);
+  CHECK(seen.weekday == local.tm_wday);
+  CHECK(seen.hour == local.tm_hour);
+  CHECK(seen.minute == local.tm_min);
+  CHECK(seen.second == std::min(local.tm_sec, 59));
+
+  CHECK(g_captured_host->GetLocalTime(nullptr) == false);
+
+  peripheral_manager_shutdown();
+}
+
+TEST_CASE("Peripheral ABI: A host without a clock says so and writes nothing") {
+  peripheral_manager_init();
+  g_captured_host = nullptr;
+  REQUIRE(peripheral_register(&g_log_probe_peripheral, 2) == 0);
+  REQUIRE(g_captured_host != nullptr);
+
+  linapple_set_local_time_provider(
+      [](void*, HostLocalTime_t*) -> bool { return false; }, nullptr);
+  HostLocalTime_t untouched{};
+  untouched.year = 1234;
+  CHECK(g_captured_host->GetLocalTime(&untouched) == false);
+  CHECK(untouched.year == 1234);
+  linapple_set_local_time_provider(nullptr, nullptr);
 
   peripheral_manager_shutdown();
 }

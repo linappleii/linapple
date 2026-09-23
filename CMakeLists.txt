@@ -795,6 +795,9 @@ if(BUILD_TESTING)
     add_linapple_test(superserial-peripheral "tests/test_main.cpp;tests/test_superserial_peripheral.cpp")
 
     add_linapple_test(abi tests/test_abi.cpp)
+    # The ABI headers promise a C99 plugin can include them; only a C99
+    # compile of a translation unit that uses every host type proves it.
+    set_source_files_properties(tests/test_peripheral_abi_c.c PROPERTIES COMPILE_OPTIONS "-std=c99;-pedantic")
     add_linapple_test(peripheral-abi "tests/test_main.cpp;tests/test_peripheral_abi.cpp;tests/test_peripheral_abi_c.c")
 
     add_linapple_test(keyboard-peripheral "tests/test_main.cpp;tests/test_keyboard_peripheral.cpp")

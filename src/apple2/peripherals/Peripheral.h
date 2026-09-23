@@ -34,13 +34,33 @@ typedef PeripheralIOHandler PeripheralIoHandler_t;
 // whatever the video scanner is fetching on that very cycle.
 typedef void (*PeripheralStrobeHandler_t)(void* instance);
 
+// The host's clock as a card sees it. Every broken-down field is already
+// local time: the host applied its zone before filling them, so a card copies
+// them into its registers and applies no offset of its own. unix_seconds is
+// the same instant as seconds since 1970-01-01 00:00:00 UTC, and
+// utc_offset_seconds is local minus UTC for that instant, so a card that
+// needs UTC can recover it. weekday counts from Sunday = 0 like tm_wday.
+typedef struct {
+  int64_t unix_seconds;
+  int32_t utc_offset_seconds;
+  uint16_t year;
+  uint8_t month;        /* 1..12 */
+  uint8_t day_of_month; /* 1..31 */
+  uint8_t weekday;      /* 0 = Sunday .. 6 = Saturday */
+  uint8_t hour;         /* 0..23 */
+  uint8_t minute;       /* 0..59 */
+  uint8_t second;       /* 0..59 */
+} HostLocalTime_t;
+
 typedef struct {
   void (*Log)(void* instance, PeripheralLogLevel_t level, const char* fmt, ...);
   void (*AssertIrq)(int slot, bool assert);
   void (*RegisterIO)(int slot, PeripheralIOHandler readC0,
                      PeripheralIOHandler writeC0, PeripheralIOHandler readCx,
                      PeripheralIOHandler writeCx);
-  void (*RegisterCxROM)(int slot, uint8_t* rom_ptr);
+  // The host copies the page out, so a card hands over its ROM image as the
+  // constant it is.
+  void (*RegisterCxROM)(int slot, const uint8_t* rom_ptr);
   void (*RegisterExpansionROM)(int slot, uint8_t* rom_ptr);
   void (*RegisterDirectIO)(void* instance, uint16_t addr,
                            PeripheralIOHandler read, PeripheralIOHandler write);
@@ -68,6 +88,11 @@ typedef struct {
   // plugin compiled against an older header still finds every member it knows
   // at the offset it expects.
   uint8_t (*ReadFloatingBus)(uint32_t executed_cycles);
+  // A clock card cannot know the host's time; it can only be told. Routing it
+  // through the host is what lets a test freeze the clock the card reads.
+  // Returns false, leaving *out untouched, when the host has no clock to
+  // offer. Appended last for the same reason as ReadFloatingBus.
+  bool (*GetLocalTime)(HostLocalTime_t* out);
 } HostInterface_t;
 
 // Forward declaration

@@ -173,7 +173,7 @@ static auto clock_abi_init(int slot, HostInterface_t* host) -> void* {
   clock_peripheral->host = host;
 
   if (host->RegisterCxROM != nullptr) {
-    host->RegisterCxROM(slot, const_cast<uint8_t*>(Clock_ROM.data()));
+    host->RegisterCxROM(slot, Clock_ROM.data());
   }
   if (host->RegisterIO != nullptr) {
     host->RegisterIO(slot, clock_io_read, nullptr, nullptr, nullptr);

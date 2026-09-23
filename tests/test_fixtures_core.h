@@ -8,10 +8,56 @@
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Internal.h"
 #include "core/LinAppleCore.h"
 #include "test_fixtures.h"
 
 namespace TestFixtures {
+
+/**
+ * @brief RAII frozen host clock.
+ *
+ * Installs a local-time provider that answers every GetLocalTime with one
+ * fixed value, and puts the wall clock back on destruction so a frozen
+ * instant never leaks into the next case. The provider is a process global,
+ * so the guard is neither copyable nor movable.
+ */
+class ScopedLocalTimeProvider_t {
+ public:
+  explicit ScopedLocalTimeProvider_t(const HostLocalTime_t& frozen)
+      : frozen_(frozen) {
+    linapple_set_local_time_provider(answer, this);
+  }
+
+  ~ScopedLocalTimeProvider_t() {
+    linapple_set_local_time_provider(nullptr, nullptr);
+  }
+
+  ScopedLocalTimeProvider_t(const ScopedLocalTimeProvider_t&) = delete;
+  auto operator=(const ScopedLocalTimeProvider_t&)
+      -> ScopedLocalTimeProvider_t& = delete;
+  ScopedLocalTimeProvider_t(ScopedLocalTimeProvider_t&&) = delete;
+  auto operator=(ScopedLocalTimeProvider_t&&)
+      -> ScopedLocalTimeProvider_t& = delete;
+
+  auto set(const HostLocalTime_t& frozen) -> void { frozen_ = frozen; }
+  auto value() const -> const HostLocalTime_t& { return frozen_; }
+  auto calls() const -> unsigned { return calls_; }
+
+ private:
+  static auto answer(void* ctx, HostLocalTime_t* out) -> bool {
+    auto* self = static_cast<ScopedLocalTimeProvider_t*>(ctx);
+    if (self == nullptr || out == nullptr) {
+      return false;
+    }
+    ++self->calls_;
+    *out = self->frozen_;
+    return true;
+  }
+
+  HostLocalTime_t frozen_;
+  unsigned calls_ = 0;
+};
 
 /**
  * @brief RAII swap of the active CPU context.

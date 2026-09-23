@@ -136,7 +136,7 @@ auto mock_register_io(int, PeripheralIOHandler read_c0,
   g_write_c0 = write_c0;
 }
 
-auto mock_register_cx_rom(int, uint8_t* rom_ptr) -> void {
+auto mock_register_cx_rom(int, const uint8_t* rom_ptr) -> void {
   g_host_saw_null = g_host_saw_null || (rom_ptr == nullptr);
 }
 
