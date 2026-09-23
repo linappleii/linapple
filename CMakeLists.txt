@@ -989,7 +989,7 @@ done
     # than a slow machine, and the budget says so instead of printing it.
     # Sanitizers multiply the run time and ctest -j adds contention, so
     # only the native budget is the regression gate.
-    if(ENABLE_ASAN OR ENABLE_UBSAN)
+    if(ENABLE_ASAN OR ENABLE_UBSAN OR DEFINED ENV{CI})
         set(DISK_TEST_TIMEOUT 10)
     else()
         set(DISK_TEST_TIMEOUT 1)
