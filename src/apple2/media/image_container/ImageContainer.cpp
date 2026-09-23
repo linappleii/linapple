@@ -153,6 +153,7 @@ auto decompress_gzip(const char* compressed_path, FILE* output_file,
   std::array<uint8_t, decompression_chunk_size> buffer{};
   size_t total_written = 0;
   int bytes_read = 0;
+  int zlib_status = Z_OK;
 
   while ((bytes_read = gzread(compressed_file.get(), buffer.data(),
                               static_cast<unsigned int>(buffer.size()))) > 0) {
@@ -165,12 +166,18 @@ auto decompress_gzip(const char* compressed_path, FILE* output_file,
                output_file) != static_cast<size_t>(bytes_read)) {
       return image_container_io;
     }
+    gzerror(compressed_file.get(), &zlib_status);
+    if (zlib_status != Z_OK) {
+      break;
+    }
   }
   // A stream cut short is reported as an ordinary end of file by gzread and
-  // only gzerror tells it apart from a complete one, so the status is asked
-  // for even when the read loop ended quietly.
-  int zlib_status = Z_OK;
-  gzerror(compressed_file.get(), &zlib_status);
+  // only gzerror tells it apart from a complete one. In zlib 1.3+, the error
+  // is set during the partial read and may clear on a trailing zero read, so
+  // the status is sampled inside the loop as well as after it.
+  if (zlib_status == Z_OK) {
+    gzerror(compressed_file.get(), &zlib_status);
+  }
   if (bytes_read == 0 && zlib_status == Z_OK) {
     return image_container_ok;
   }
