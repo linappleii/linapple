@@ -11,7 +11,6 @@
 #include <memory>
 
 #include "apple2/peripherals/Peripheral.h"
-#include "apple2/peripherals/Peripheral_Subsystems.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/clock/ClockCardCommands.h"
 
@@ -49,7 +48,7 @@ const std::array<uint8_t, 256> clock_rom = {{
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xb0, 0xcc,
 }};
 
-constexpr size_t latch_count = 10;
+constexpr size_t latch_count = CLOCKCARD_LATCH_COUNT;
 constexpr size_t latch_month = 0;
 constexpr size_t latch_weekday = 2;
 constexpr size_t latch_day = 4;
@@ -71,8 +70,6 @@ struct ClockCard_t {
   std::array<uint8_t, latch_count> latches{};
   HostInterface_t* host = nullptr;
   int slot = 0;
-  bool use_fixed_epoch = false;
-  uint64_t fixed_epoch = 0;
 };
 
 auto set_latch_pair(ClockCard_t* card, size_t index, int value) -> void {
@@ -93,9 +90,7 @@ auto set_latch_pair(ClockCard_t* card, size_t index, int value) -> void {
 
 auto update_latches(ClockCard_t* card) -> void {
   time_t now = 0;
-  if (card->use_fixed_epoch) {
-    now = static_cast<time_t>(card->fixed_epoch);
-  } else if (time(&now) == static_cast<time_t>(-1)) {
+  if (time(&now) == static_cast<time_t>(-1)) {
     return;
   }
 
@@ -174,103 +169,45 @@ auto clockcard_abi_shutdown(void* instance) -> void {
   std::unique_ptr<ClockCard_t> card(static_cast<ClockCard_t*>(instance));
 }
 
+// The card has no commands and no queries: its time comes from the host and
+// its registers are read on the bus. Both entry points stay so a caller from
+// an older frontend is answered rather than dereferencing a null callback.
 auto clockcard_abi_command(void* instance, uint32_t cmd_id, const void* data,
                            size_t size) -> PeripheralStatus_t {
+  (void)cmd_id;
+  (void)data;
+  (void)size;
   if (instance == nullptr) {
     return peripheral_error;
   }
-
-  auto* card = static_cast<ClockCard_t*>(instance);
-
-  if (!peripheral_cmd_is_mine(cmd_id, PERIPHERAL_SUBSYSTEM_CLOCK)) {
-    return peripheral_incompatible;  // another peripheral in the slot owns it
-  }
-
-  switch (cmd_id) {
-    case clockcard_cmd_set_epoch: {
-      if (data == nullptr) {
-        return peripheral_error;
-      }
-      if (size == sizeof(ClockCardSetEpochPayload_t)) {
-        const auto* payload =
-            static_cast<const ClockCardSetEpochPayload_t*>(data);
-        card->fixed_epoch = payload->epoch;
-        card->use_fixed_epoch = true;
-        return peripheral_ok;
-      }
-      if (size == sizeof(uint64_t)) {
-        card->fixed_epoch = *static_cast<const uint64_t*>(data);
-        card->use_fixed_epoch = true;
-        return peripheral_ok;
-      }
-      if (size == sizeof(uint32_t)) {
-        card->fixed_epoch = *static_cast<const uint32_t*>(data);
-        card->use_fixed_epoch = true;
-        return peripheral_ok;
-      }
-      return peripheral_error;
-    }
-    case clockcard_cmd_clear_epoch: {
-      card->use_fixed_epoch = false;
-      card->fixed_epoch = 0;
-      return peripheral_ok;
-    }
-    default:
-      return peripheral_incompatible;
-  }
+  return peripheral_incompatible;
 }
 
 auto clockcard_abi_query(void* instance, uint32_t query_id, void* out,
                          size_t* size) -> PeripheralStatus_t {
+  (void)instance;
+  (void)query_id;
+  (void)out;
   if (size == nullptr) {
     return peripheral_error;
   }
-
-  if (!peripheral_cmd_is_mine(query_id, PERIPHERAL_SUBSYSTEM_CLOCK)) {
-    return peripheral_incompatible;  // another peripheral in the slot owns it
-  }
-
-  switch (query_id) {
-    case clockcard_query_epoch: {
-      constexpr size_t required_size = sizeof(ClockCardEpochQuery_t);
-      if (out == nullptr) {
-        *size = required_size;
-        return peripheral_ok;
-      }
-      if (instance == nullptr || *size < required_size) {
-        return peripheral_error;
-      }
-      const auto* card = static_cast<const ClockCard_t*>(instance);
-      auto* query = static_cast<ClockCardEpochQuery_t*>(out);
-      query->epoch = card->fixed_epoch;
-      query->is_fixed = card->use_fixed_epoch ? 1 : 0;
-      *size = required_size;
-      return peripheral_ok;
-    }
-    case clockcard_query_time: {
-      constexpr size_t required_size = sizeof(ClockCardTimeQuery_t);
-      if (out == nullptr) {
-        *size = required_size;
-        return peripheral_ok;
-      }
-      if (instance == nullptr || *size < required_size) {
-        return peripheral_error;
-      }
-      const auto* card = static_cast<const ClockCard_t*>(instance);
-      const uint8_t* latches = card->latches.data();
-      auto* query = static_cast<ClockCardTimeQuery_t*>(out);
-      query->month = static_cast<uint8_t>(pair_value(latches, latch_month));
-      query->day_of_week = latches[latch_weekday + 1];
-      query->day = static_cast<uint8_t>(pair_value(latches, latch_day));
-      query->hour = static_cast<uint8_t>(pair_value(latches, latch_hour));
-      query->minute = static_cast<uint8_t>(pair_value(latches, latch_minute));
-      *size = required_size;
-      return peripheral_ok;
-    }
-    default:
-      return peripheral_incompatible;
-  }
+  return peripheral_incompatible;
 }
+
+static_assert(sizeof(ClockCardSaveState_t) == 32,
+              "the clock card's state frame is part of the plugin ABI");
+static_assert(offsetof(ClockCardSaveState_t, version) == 0,
+              "the frame header is version then size");
+static_assert(offsetof(ClockCardSaveState_t, struct_size) == 4,
+              "the frame header is version then size");
+static_assert(offsetof(ClockCardSaveState_t, fixed_epoch) == 8,
+              "the pin fields keep their place so every frame written loads");
+static_assert(offsetof(ClockCardSaveState_t, latches) == 16,
+              "the latches sit where every frame written has them");
+static_assert(offsetof(ClockCardSaveState_t, use_fixed_epoch) == 26,
+              "the latches fill bytes 16 through 25");
+static_assert(offsetof(ClockCardSaveState_t, reserved) == 27,
+              "the pin flag is the byte after the latches");
 
 auto clockcard_abi_save_state(void* instance, void* state_buffer,
                               size_t* buffer_size) -> PeripheralStatus_t {
@@ -288,14 +225,15 @@ auto clockcard_abi_save_state(void* instance, void* state_buffer,
     return peripheral_error;
   }
 
+  // Value-initialized, so the pin fields go out as zeros: the pin was host
+  // configuration, not card state, and the card neither honours nor records
+  // it.
   const auto* card = static_cast<const ClockCard_t*>(instance);
-  auto* state = static_cast<ClockCardSaveState_t*>(state_buffer);
-  std::memset(state, 0, sizeof(ClockCardSaveState_t));
-  state->version = CLOCKCARD_STATE_VERSION;
-  state->struct_size = static_cast<uint32_t>(required_size);
-  state->fixed_epoch = card->fixed_epoch;
-  std::copy(card->latches.begin(), card->latches.end(), state->latches);
-  state->use_fixed_epoch = card->use_fixed_epoch ? 1 : 0;
+  ClockCardSaveState_t state{};
+  state.version = CLOCKCARD_STATE_VERSION;
+  state.struct_size = static_cast<uint32_t>(required_size);
+  std::copy(card->latches.begin(), card->latches.end(), state.latches);
+  std::memcpy(state_buffer, &state, required_size);
 
   *buffer_size = required_size;
   return peripheral_ok;
@@ -315,27 +253,34 @@ auto latches_are_a_calendar_time(const uint8_t* latches) -> bool {
          pair_value(latches, latch_minute) <= minute_max;
 }
 
+// A slot's snapshot buffer may be larger than the frame (the layer sizes it
+// for the biggest card), so the frame's own struct_size says how much to
+// read; everything past it is left alone. The frame's pin fields are read
+// past, not honoured: the pin was host configuration, not card state.
 auto clockcard_abi_load_state(void* instance, const void* state_buffer,
                               size_t buffer_size) -> PeripheralStatus_t {
+  constexpr size_t header_size = offsetof(ClockCardSaveState_t, fixed_epoch);
   if (instance == nullptr || state_buffer == nullptr ||
-      buffer_size != sizeof(ClockCardSaveState_t)) {
+      buffer_size < header_size) {
     return peripheral_error;
   }
 
-  const auto* state = static_cast<const ClockCardSaveState_t*>(state_buffer);
-  if (state->version != CLOCKCARD_STATE_VERSION ||
-      state->struct_size != sizeof(ClockCardSaveState_t)) {
+  ClockCardSaveState_t state{};
+  std::memcpy(&state, state_buffer, header_size);
+  if (state.struct_size != sizeof(state) || buffer_size < state.struct_size) {
     return peripheral_error;
   }
-  if (!latches_are_a_calendar_time(state->latches)) {
+  if (state.version != CLOCKCARD_STATE_VERSION) {
+    return peripheral_error;
+  }
+
+  std::memcpy(&state, state_buffer, state.struct_size);
+  if (!latches_are_a_calendar_time(state.latches)) {
     return peripheral_error;
   }
 
   auto* card = static_cast<ClockCard_t*>(instance);
-  std::copy_n(state->latches, latch_count, card->latches.begin());
-  card->use_fixed_epoch = (state->use_fixed_epoch != 0);
-  card->fixed_epoch = state->fixed_epoch;
-
+  std::copy_n(state.latches, latch_count, card->latches.begin());
   return peripheral_ok;
 }
 

@@ -7,46 +7,22 @@
 
 #include <stdint.h>
 
-#include "apple2/peripherals/Peripheral_Subsystems.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-enum { CLOCKCARD_STATE_VERSION = 1 };
+enum { CLOCKCARD_STATE_VERSION = 1, CLOCKCARD_LATCH_COUNT = 10 };
 
-typedef enum {
-  clockcard_cmd_set_epoch = PERIPHERAL_SUBSYSTEM_CLOCK | 0x0001,
-  clockcard_cmd_clear_epoch = PERIPHERAL_SUBSYSTEM_CLOCK | 0x0002
-} ClockCardCmd_e;
-
-typedef enum {
-  clockcard_query_epoch = PERIPHERAL_SUBSYSTEM_CLOCK | 0x0100,
-  clockcard_query_time = PERIPHERAL_SUBSYSTEM_CLOCK | 0x0101
-} ClockCardQuery_e;
-
-typedef struct {
-  uint64_t epoch;
-} ClockCardSetEpochPayload_t;
-
-typedef struct {
-  uint64_t epoch;
-  uint8_t is_fixed;
-} ClockCardEpochQuery_t;
-
-typedef struct {
-  uint8_t month;
-  uint8_t day_of_week;
-  uint8_t day;
-  uint8_t hour;
-  uint8_t minute;
-} ClockCardTimeQuery_t;
-
+// The ten BCD digits the strobe latched are the card's only architectural
+// state. fixed_epoch and use_fixed_epoch once pinned the host's clock; the
+// pin was host configuration, not card state, so the card writes them as
+// zeros and reads past them. The layout stays as it is so every frame ever
+// written loads.
 typedef struct {
   uint32_t version;
   uint32_t struct_size;
   uint64_t fixed_epoch;
-  uint8_t latches[10];
+  uint8_t latches[CLOCKCARD_LATCH_COUNT];
   uint8_t use_fixed_epoch;
   uint8_t reserved[5];
 } ClockCardSaveState_t;

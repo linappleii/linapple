@@ -816,6 +816,13 @@ if(BUILD_TESTING)
         set_source_files_properties(tests/test_clock_abi_c.c PROPERTIES COMPILE_OPTIONS "-std=c99;-pedantic")
         add_linapple_test(clock-peripheral "tests/test_main.cpp;tests/test_clock_peripheral.cpp;tests/test_clock_abi_c.c")
         set_tests_properties(test-clock-peripheral PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
+        # The fixture is the one frame with its pin engaged the loader is
+        # proven against; regenerating it from today's card would drop the
+        # pin, so its bytes are pinned.
+        add_test(NAME test-clock-frame-v1-pinned COMMAND sh -c
+            "echo 'b04c4dcef167bb1e9094e7fc452e0bac61e6669c  tests/fixtures/clock-frame-v1.bin' | sha1sum -c --quiet"
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+        set_tests_properties(test-clock-frame-v1-pinned PROPERTIES TIMEOUT 5)
     endif()
     add_linapple_test(printer-peripheral "tests/test_main.cpp;tests/test_printer_peripheral.cpp")
     add_executable(test-via6522 tests/test_via6522.cpp src/apple2/chips/6522.cpp)
