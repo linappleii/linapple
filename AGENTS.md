@@ -151,6 +151,13 @@ More on building in <!-- Imported from: INSTALL.md -->
     a source outside the card's own directory, `chips/` or `media/`.
   - Library and chip objects are compiled with hidden visibility, so the
     executable and the plugins never export them.
+  - `Peripheral_Types.h` re-exports the command headers of five cards:
+    `DiskCommands.h`, `HarddiskCommands.h`, `KeyboardCommands.h`,
+    `MockingboardCommands.h` and `MouseCommands.h`. A card whose commands
+    no frontend uses keeps its command header out of the type header (the
+    clock card: `ClockCardCommands.h` is included only by the card and its
+    tests), and the list is expected to shrink once the frontends stop
+    including peripheral headers directly.
   - The two greps below print nothing on a conforming tree; any line they
     print is a violation:
 
