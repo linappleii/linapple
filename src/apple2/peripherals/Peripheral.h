@@ -121,11 +121,26 @@ typedef struct Peripheral_t {
                               size_t* out_size);
 } Peripheral_t;
 
+// A plugin is built with every symbol hidden, so the one the loader looks up
+// by name has to be marked visible where it is defined.
+#if defined(__GNUC__) || defined(__clang__)
+#define PERIPHERAL_EXPORT __attribute__((visibility("default")))
+#else
+#define PERIPHERAL_EXPORT
+#endif
+
 #ifdef BUILD_SHARED_PERIPHERAL
-#define PERIPHERAL_REGISTER(peripheral_struct)                     \
-  extern "C" {                                                     \
-  Peripheral_t linapple_peripheral_descriptor = peripheral_struct; \
+#ifdef __cplusplus
+#define PERIPHERAL_REGISTER(peripheral_struct)                    \
+  extern "C" {                                                    \
+  PERIPHERAL_EXPORT Peripheral_t linapple_peripheral_descriptor = \
+      peripheral_struct;                                          \
   }
+#else
+#define PERIPHERAL_REGISTER(peripheral_struct)                    \
+  PERIPHERAL_EXPORT Peripheral_t linapple_peripheral_descriptor = \
+      peripheral_struct;
+#endif
 #else
 #ifdef __cplusplus
 #define PERIPHERAL_REGISTER(peripheral_struct)               \

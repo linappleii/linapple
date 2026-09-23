@@ -12,11 +12,18 @@
 
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Audio.h"
+#include "apple2/peripherals/Peripheral_Internal.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/speaker/Speaker.h"
 #include "doctest.h"
 
 namespace {
+
+// The card is reached the way the emulator reaches it, through the registry,
+// so one test binary covers the built-in card and the loaded plugin alike.
+auto speaker_descriptor() -> Peripheral_t* {
+  return peripheral_find_internal("linapple.speaker");
+}
 
 constexpr uint16_t ADDR_SPEAKER = 0xC030;
 constexpr int TEST_SLOT = 0;
@@ -68,6 +75,7 @@ struct SpeakerHarness_t {
   SpeakerHarness_t() {
     assert(s_active_harness == nullptr);
     s_active_harness = this;
+    REQUIRE(speaker_descriptor() != nullptr);
     host_.Log = mock_log;
     host_.AssertIrq = mock_assert_irq;
     host_.RegisterIO = nullptr;
@@ -82,7 +90,7 @@ struct SpeakerHarness_t {
   ~SpeakerHarness_t() {
     for (void* inst : instances_) {
       if (inst != nullptr) {
-        speaker_get_descriptor()->shutdown(inst);
+        speaker_descriptor()->shutdown(inst);
       }
     }
     instances_.clear();
@@ -102,7 +110,7 @@ struct SpeakerHarness_t {
   auto host() -> HostInterface_t* { return &host_; }
 
   auto create_speaker(int slot = TEST_SLOT) -> void* {
-    void* instance = speaker_get_descriptor()->init(slot, &host_);
+    void* instance = speaker_descriptor()->init(slot, &host_);
     if (instance != nullptr) {
       instances_.push_back(instance);
       if (primary_instance_ == nullptr) {
@@ -123,7 +131,7 @@ struct SpeakerHarness_t {
     if (primary_instance_ == inst) {
       primary_instance_ = instances_.empty() ? nullptr : instances_.front();
     }
-    speaker_get_descriptor()->shutdown(inst);
+    speaker_descriptor()->shutdown(inst);
   }
 
   auto primary_instance() const -> void* { return primary_instance_; }
@@ -179,7 +187,7 @@ struct SpeakerHarness_t {
   auto think(void* inst, uint32_t elapsed_cycles) -> void {
     void* target = (inst != nullptr) ? inst : primary_instance_;
     if (target != nullptr) {
-      speaker_get_descriptor()->think(target, elapsed_cycles);
+      speaker_descriptor()->think(target, elapsed_cycles);
     }
   }
 
@@ -270,7 +278,7 @@ SpeakerHarness_t* SpeakerHarness_t::s_active_harness = nullptr;
 
 TEST_CASE("Speaker Peripheral: Identity Descriptor Validation") {
   // TC-01: Identity Descriptor Validation
-  auto* descriptor = speaker_get_descriptor();
+  auto* descriptor = speaker_descriptor();
   REQUIRE(descriptor != nullptr);
 
   CHECK(descriptor->abi_version == LINAPPLE_ABI_VERSION);
@@ -672,9 +680,9 @@ TEST_CASE("Speaker Peripheral: Host Seam Null Callback Fault Tolerance") {
 
   HostInterface_t null_direct_host{};
   void* no_direct_inst =
-      speaker_get_descriptor()->init(TEST_SLOT, &null_direct_host);
+      speaker_descriptor()->init(TEST_SLOT, &null_direct_host);
   REQUIRE(no_direct_inst != nullptr);
-  speaker_get_descriptor()->shutdown(no_direct_inst);
+  speaker_descriptor()->shutdown(no_direct_inst);
 
   harness.set_null_strobe_registration(true);
   void* legacy_host_inst = harness.create_speaker(TEST_SLOT);
@@ -727,13 +735,13 @@ TEST_CASE("Speaker Peripheral: Snapshot Persistence & Sizing Contract") {
 
   size_t state_size = 0;
   PeripheralStatus_t status =
-      speaker_get_descriptor()->save_state(instance1, nullptr, &state_size);
+      speaker_descriptor()->save_state(instance1, nullptr, &state_size);
   CHECK(status == peripheral_ok);
   CHECK(state_size == sizeof(SsIoSpeaker_t));
 
   std::vector<uint8_t> buffer(state_size);
-  status = speaker_get_descriptor()->save_state(instance1, buffer.data(),
-                                                &state_size);
+  status =
+      speaker_descriptor()->save_state(instance1, buffer.data(), &state_size);
   CHECK(status == peripheral_ok);
 
   // TC-16: Bit-for-Bit State Preservation & Cross-Instance Restoration
@@ -743,16 +751,16 @@ TEST_CASE("Speaker Peripheral: Snapshot Persistence & Sizing Contract") {
   harness.think(instance2, 100);
   CHECK(harness.audio_push_count() == 0);
 
-  status = speaker_get_descriptor()->load_state(instance2, buffer.data(),
-                                                state_size);
+  status =
+      speaker_descriptor()->load_state(instance2, buffer.data(), state_size);
   CHECK(status == peripheral_ok);
 
   // Verify save-state round-trip data equality
   size_t state_size2 = 0;
-  speaker_get_descriptor()->save_state(instance2, nullptr, &state_size2);
+  speaker_descriptor()->save_state(instance2, nullptr, &state_size2);
   CHECK(state_size2 == sizeof(SsIoSpeaker_t));
   std::vector<uint8_t> buffer2(state_size2);
-  speaker_get_descriptor()->save_state(instance2, buffer2.data(), &state_size2);
+  speaker_descriptor()->save_state(instance2, buffer2.data(), &state_size2);
   CHECK(buffer == buffer2);
 
   // The differential proof of restore: from here, identical strobe and think
@@ -791,8 +799,8 @@ TEST_CASE("Speaker Peripheral: Anti-DC Pop Observable Output Verification") {
   pop_state.state = 1;
   pop_state.last_sample_state = 1;
   pop_state.filter_state = 0.0f;
-  const PeripheralStatus_t status = speaker_get_descriptor()->load_state(
-      instance, &pop_state, sizeof(pop_state));
+  const PeripheralStatus_t status =
+      speaker_descriptor()->load_state(instance, &pop_state, sizeof(pop_state));
   CHECK(status == peripheral_ok);
 
   harness.advance_cycles(1000);
@@ -822,7 +830,7 @@ TEST_CASE("Speaker Peripheral: Pre-Restore Event Queue Purge") {
 
   // Restore quiet snapshot
   SsIoSpeaker_t quiet_state{};
-  const PeripheralStatus_t status = speaker_get_descriptor()->load_state(
+  const PeripheralStatus_t status = speaker_descriptor()->load_state(
       instance, &quiet_state, sizeof(quiet_state));
   CHECK(status == peripheral_ok);
 
@@ -897,7 +905,7 @@ TEST_CASE("Speaker Peripheral: Backwards Clock & Cycle Underflow Clamping") {
 
 TEST_CASE("Speaker Peripheral: Poisoned Save-State Recovery") {
   // TC-21: Poisoned Save-State Recovery (NaN / Inf / Negative Clock)
-  auto* descriptor = speaker_get_descriptor();
+  auto* descriptor = speaker_descriptor();
   SpeakerHarness_t harness;
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
@@ -938,7 +946,7 @@ TEST_CASE("Speaker Peripheral: A Refused Load Leaves The Instance Untouched") {
   // load_state is all-or-nothing: a wrong size is rejected before any field
   // is written, so the refused instance stays bit-identical in behavior to
   // one that never saw the call.
-  auto* descriptor = speaker_get_descriptor();
+  auto* descriptor = speaker_descriptor();
   SpeakerHarness_t harness;
   harness.set_cycles(1000);
   void* refused = harness.create_speaker(TEST_SLOT);
@@ -982,7 +990,7 @@ TEST_CASE("Speaker Peripheral: Save-State Byte Format Pin") {
   // The two fields the inactivity watchdog used to back are written as
   // constants and ignored on load; this fixture pins both the constants and
   // the offsets. Little-endian, as every platform this project builds on is.
-  auto* descriptor = speaker_get_descriptor();
+  auto* descriptor = speaker_descriptor();
   SpeakerHarness_t harness;
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
@@ -1028,7 +1036,7 @@ TEST_CASE(
     "Speaker Peripheral: Robustness Across Null Pointers and Undersized "
     "Buffers") {
   // TC-22: Robustness Across Null Pointers and Undersized Buffers
-  auto* descriptor = speaker_get_descriptor();
+  auto* descriptor = speaker_descriptor();
   SpeakerHarness_t harness;
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
@@ -1115,8 +1123,8 @@ TEST_CASE("Speaker Peripheral: Immediate Silence on Active Reset") {
   harness.clear_captured_samples();
 
   // Reset is idempotent, and it returns the cone to rest mid-decay
-  speaker_get_descriptor()->reset(instance);
-  speaker_get_descriptor()->reset(instance);
+  speaker_descriptor()->reset(instance);
+  speaker_descriptor()->reset(instance);
 
   harness.advance_cycles(1000);
   harness.think(instance, 1000);
@@ -1131,28 +1139,28 @@ TEST_CASE("Speaker Peripheral: Audio Information Query ABI Contract") {
 
   // Query with null buffer returns required size
   size_t size = 0;
-  PeripheralStatus_t status = speaker_get_descriptor()->query(
+  PeripheralStatus_t status = speaker_descriptor()->query(
       instance, PERIPHERAL_QUERY_AUDIO_INFO, nullptr, &size);
   CHECK(status == peripheral_ok);
   CHECK(size == sizeof(PeripheralAudioInfo_t));
 
   PeripheralAudioInfo_t info{};
   size = 1;
-  status = speaker_get_descriptor()->query(
-      instance, PERIPHERAL_QUERY_AUDIO_INFO, &info, &size);
+  status = speaker_descriptor()->query(instance, PERIPHERAL_QUERY_AUDIO_INFO,
+                                       &info, &size);
   CHECK(status == peripheral_error);
   CHECK(size == sizeof(PeripheralAudioInfo_t));
 
   size = sizeof(PeripheralAudioInfo_t) - 1;
-  status = speaker_get_descriptor()->query(
-      instance, PERIPHERAL_QUERY_AUDIO_INFO, &info, &size);
+  status = speaker_descriptor()->query(instance, PERIPHERAL_QUERY_AUDIO_INFO,
+                                       &info, &size);
   CHECK(status == peripheral_error);
   CHECK(size == sizeof(PeripheralAudioInfo_t));
 
   // Query with valid buffer populates self-describing mono speaker info
   size = sizeof(PeripheralAudioInfo_t);
-  status = speaker_get_descriptor()->query(
-      instance, PERIPHERAL_QUERY_AUDIO_INFO, &info, &size);
+  status = speaker_descriptor()->query(instance, PERIPHERAL_QUERY_AUDIO_INFO,
+                                       &info, &size);
   CHECK(status == peripheral_ok);
   // The speaker is CPU-clocked at one sample per cycle and knows no rate in Hz
   CHECK(info.time_base == peripheral_audio_cpu_clocked);
@@ -1186,7 +1194,7 @@ TEST_CASE("Speaker Peripheral: Every Slice Length At The Boundaries") {
     // A cone at rest is silent, so the slice has to be driven for its length
     // to be observable at all.
     harness.set_cycles(1ULL << 33);
-    speaker_get_descriptor()->reset(instance);
+    speaker_descriptor()->reset(instance);
     harness.clear_captured_samples();
     harness.strobe(instance);
 
@@ -1227,7 +1235,7 @@ TEST_CASE("Speaker Peripheral: A Hostile Clock Resynchronizes") {
   // One ordinary slice later the cone is drivable again, and the next edge
   // from rest is a full step.
   harness.set_cycles(1000000);
-  speaker_get_descriptor()->reset(instance);
+  speaker_descriptor()->reset(instance);
   harness.clear_captured_samples();
   harness.strobe(instance);
   harness.advance_cycles(100);
@@ -1240,7 +1248,7 @@ TEST_CASE("Speaker Peripheral: Every Save-State Field Poisoned In Turn") {
   // The .aws file is attacker-controlled input. Each field gets every value
   // its type can carry that the synthesizer would choke on, one at a time,
   // and after each load the next edge is still a clean full step.
-  auto* descriptor = speaker_get_descriptor();
+  auto* descriptor = speaker_descriptor();
   SpeakerHarness_t harness;
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
@@ -1285,7 +1293,7 @@ TEST_CASE("Speaker Peripheral: Every Save-State Field Poisoned In Turn") {
 }
 
 TEST_CASE("Speaker Peripheral: Query Sizes At The Extremes") {
-  auto* descriptor = speaker_get_descriptor();
+  auto* descriptor = speaker_descriptor();
   SpeakerHarness_t harness;
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
@@ -1311,7 +1319,7 @@ TEST_CASE("Speaker Peripheral: A Host That Offers Nothing At All") {
   // Every callback null at once. The seam is mandatory only in that a null
   // host is refused outright; a host that answers nothing still yields a
   // working instance that simply cannot be heard.
-  auto* descriptor = speaker_get_descriptor();
+  auto* descriptor = speaker_descriptor();
   HostInterface_t empty_host{};
 
   void* instance = descriptor->init(TEST_SLOT, &empty_host);

@@ -8,15 +8,21 @@
 #include <utility>
 #include <vector>
 
-#include "apple2/peripherals/printer/Printer.h"
-#include "apple2/peripherals/printer/PrinterCommands.h"
 #include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Internal.h"
 #include "apple2/peripherals/Peripheral_Types.h"
+#include "apple2/peripherals/printer/PrinterCommands.h"
 #include "doctest.h"
 
 auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
 
 namespace {
+
+// The card is reached the way the emulator reaches it, through the registry,
+// so one test binary covers the built-in card and the loaded plugin alike.
+auto printer_descriptor() -> Peripheral_t* {
+  return peripheral_find_internal("linapple.printer");
+}
 
 constexpr int TEST_SLOT_1 = 1;
 constexpr int TEST_SLOT_2 = 2;
@@ -51,6 +57,7 @@ class PrinterHarness {
  public:
   PrinterHarness() {
     s_active_harness = this;
+    REQUIRE(printer_descriptor() != nullptr);
     host_.Log = Mock_Log;
     host_.AssertIrq = Mock_AssertIrq;
     host_.RegisterIO = Mock_RegisterIO;
@@ -65,7 +72,7 @@ class PrinterHarness {
   ~PrinterHarness() {
     for (const auto& entry : instances_) {
       if (entry.second != nullptr) {
-        printer_get_descriptor()->shutdown(entry.second);
+        printer_descriptor()->shutdown(entry.second);
       }
     }
     instances_.clear();
@@ -81,7 +88,7 @@ class PrinterHarness {
   auto host() -> HostInterface_t* { return &host_; }
 
   auto create_printer(int slot) -> void* {
-    void* instance = printer_get_descriptor()->init(slot, &host_);
+    void* instance = printer_descriptor()->init(slot, &host_);
     if (instance != nullptr) {
       instances_[slot] = instance;
       slot_by_instance_[instance] = slot;
@@ -101,7 +108,7 @@ class PrinterHarness {
     if (it != instances_.end()) {
       if (it->second != nullptr) {
         slot_by_instance_.erase(it->second);
-        printer_get_descriptor()->shutdown(it->second);
+        printer_descriptor()->shutdown(it->second);
       }
       instances_.erase(it);
       const uint16_t base = IO_BASE_ADDRESS + (slot << IO_SLOT_OFFSET);
@@ -300,7 +307,7 @@ class PrinterHarness {
 PrinterHarness* PrinterHarness::s_active_harness = nullptr;
 
 TEST_CASE("Printer Peripheral: Descriptor Metadata and Compatibility") {
-  const auto* descriptor = printer_get_descriptor();
+  const auto* descriptor = printer_descriptor();
   REQUIRE(descriptor != nullptr);
 
   CHECK(descriptor->abi_version == LINAPPLE_ABI_VERSION);
@@ -465,7 +472,7 @@ TEST_CASE("Printer Peripheral: Multi-Slot Independence") {
 }
 
 TEST_CASE("Printer Peripheral: Robustness and Seam Error Handling") {
-  auto* descriptor = printer_get_descriptor();
+  auto* descriptor = printer_descriptor();
   REQUIRE(descriptor != nullptr);
 
   // Init with nullptr host must return nullptr
@@ -526,7 +533,7 @@ TEST_CASE("Printer Peripheral: Robustness and Seam Error Handling") {
 }
 
 TEST_CASE("Printer Peripheral: Save and Load State Lifecycle") {
-  auto* descriptor = printer_get_descriptor();
+  auto* descriptor = printer_descriptor();
   REQUIRE(descriptor != nullptr);
   REQUIRE(descriptor->save_state != nullptr);
   REQUIRE(descriptor->load_state != nullptr);
@@ -595,7 +602,7 @@ TEST_CASE("Printer Peripheral: Save and Load State Lifecycle") {
 }
 
 TEST_CASE("Printer Peripheral: Command and Query ABI Protocol") {
-  auto* descriptor = printer_get_descriptor();
+  auto* descriptor = printer_descriptor();
   REQUIRE(descriptor != nullptr);
   REQUIRE(descriptor->command != nullptr);
   REQUIRE(descriptor->query != nullptr);
@@ -675,7 +682,7 @@ TEST_CASE("Printer Peripheral: Command and Query ABI Protocol") {
 }
 
 TEST_CASE("Printer Peripheral: Activity Notification and Pulse Decay") {
-  auto* descriptor = printer_get_descriptor();
+  auto* descriptor = printer_descriptor();
   REQUIRE(descriptor != nullptr);
 
   PrinterHarness harness;
@@ -702,7 +709,7 @@ TEST_CASE("Printer Peripheral: Activity Notification and Pulse Decay") {
 }
 
 TEST_CASE("Printer Peripheral: Hardware Busy Delay and Cycle Stepping") {
-  auto* descriptor = printer_get_descriptor();
+  auto* descriptor = printer_descriptor();
   REQUIRE(descriptor != nullptr);
 
   PrinterHarness harness;
@@ -732,7 +739,7 @@ TEST_CASE("Printer Peripheral: Hardware Busy Delay and Cycle Stepping") {
 }
 
 TEST_CASE("Printer Peripheral: Reset Lifecycle and Latch Clearing") {
-  auto* descriptor = printer_get_descriptor();
+  auto* descriptor = printer_descriptor();
   REQUIRE(descriptor != nullptr);
 
   PrinterHarness harness;
@@ -766,7 +773,7 @@ TEST_CASE("Printer Peripheral: Reset Lifecycle and Latch Clearing") {
 }
 
 TEST_CASE("Printer Peripheral: Offline State Hardware Suppression") {
-  auto* descriptor = printer_get_descriptor();
+  auto* descriptor = printer_descriptor();
   REQUIRE(descriptor != nullptr);
 
   PrinterHarness harness;
@@ -811,7 +818,7 @@ TEST_CASE("Printer Peripheral: Full Binary Transparency Sweep") {
 }
 
 TEST_CASE("Printer Peripheral: State Round-Trip with Non-Default Values") {
-  auto* descriptor = printer_get_descriptor();
+  auto* descriptor = printer_descriptor();
   REQUIRE(descriptor != nullptr);
 
   PrinterHarness harness;
@@ -853,7 +860,7 @@ TEST_CASE("Printer Peripheral: State Round-Trip with Non-Default Values") {
 }
 
 TEST_CASE("Printer Peripheral: Robustness with Null Host Callbacks") {
-  auto* descriptor = printer_get_descriptor();
+  auto* descriptor = printer_descriptor();
   REQUIRE(descriptor != nullptr);
 
   PrinterHarness harness;

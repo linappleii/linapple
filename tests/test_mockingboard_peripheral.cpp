@@ -10,12 +10,18 @@
 
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Audio.h"
+#include "apple2/peripherals/Peripheral_Internal.h"
 #include "apple2/peripherals/Peripheral_Types.h"
-#include "apple2/peripherals/mockingboard/Mockingboard.h"
 #include "apple2/peripherals/mockingboard/MockingboardCommands.h"
 #include "doctest.h"
 
 namespace {
+
+// The card is reached the way the emulator reaches it, through the registry,
+// so one test binary covers the built-in card and the loaded plugin alike.
+auto mockingboard_descriptor() -> Peripheral_t* {
+  return peripheral_find_internal("linapple.mockingboard");
+}
 
 constexpr int DEFAULT_MOCKINGBOARD_SLOT = 4;
 constexpr int AY_MAX_VOLUME = 15;
@@ -59,6 +65,7 @@ class MockingboardHarness {
  public:
   MockingboardHarness() {
     s_active_harness = this;
+    REQUIRE(mockingboard_descriptor() != nullptr);
     host_.AssertIrq = Mock_AssertIrq;
     host_.RegisterIO = Mock_RegisterIO;
     host_.AudioPushChannels = Mock_AudioPushChannels;
@@ -67,7 +74,7 @@ class MockingboardHarness {
   ~MockingboardHarness() {
     for (void* inst : instances_) {
       if (inst != nullptr) {
-        mockingboard_get_descriptor()->shutdown(inst);
+        mockingboard_descriptor()->shutdown(inst);
       }
     }
     instances_.clear();
@@ -82,7 +89,7 @@ class MockingboardHarness {
 
   auto host() -> HostInterface_t* { return &host_; }
   static auto descriptor() -> Peripheral_t* {
-    return mockingboard_get_descriptor();
+    return mockingboard_descriptor();
   }
 
   auto create_card(int slot = DEFAULT_MOCKINGBOARD_SLOT) -> void* {
@@ -326,7 +333,7 @@ auto arm_timer1(MockingboardHarness& harness, uint16_t via, uint16_t latch,
 }  // namespace
 
 TEST_CASE("Mockingboard Peripheral: MB-01 Descriptor Identity & Registration") {
-  const Peripheral_t* desc = mockingboard_get_descriptor();
+  const Peripheral_t* desc = mockingboard_descriptor();
   REQUIRE(desc != nullptr);
   CHECK(desc->abi_version == LINAPPLE_ABI_VERSION);
   CHECK(std::string(desc->id) == "linapple.mockingboard");
@@ -348,7 +355,7 @@ TEST_CASE("Mockingboard Peripheral: MB-01 Descriptor Identity & Registration") {
 }
 
 TEST_CASE("Mockingboard Peripheral: MB-02 Lifecycle & Defensive Null Guards") {
-  const Peripheral_t* desc = mockingboard_get_descriptor();
+  const Peripheral_t* desc = mockingboard_descriptor();
   REQUIRE(desc != nullptr);
 
   CHECK(desc->init(DEFAULT_MOCKINGBOARD_SLOT, nullptr) == nullptr);
@@ -1042,7 +1049,7 @@ TEST_CASE("Mockingboard Peripheral: MB-31 The Cx Page Aliases Onto Two VIAs") {
 }
 
 TEST_CASE("Mockingboard Peripheral: MB-32 Missing Host Calls Do Not Fault") {
-  const Peripheral_t* desc = mockingboard_get_descriptor();
+  const Peripheral_t* desc = mockingboard_descriptor();
 
   SUBCASE("A null host is refused") {
     CHECK(desc->init(DEFAULT_MOCKINGBOARD_SLOT, nullptr) == nullptr);

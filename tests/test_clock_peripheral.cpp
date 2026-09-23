@@ -14,14 +14,20 @@
 #include <vector>
 
 #include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Internal.h"
 #include "apple2/peripherals/Peripheral_Types.h"
-#include "apple2/peripherals/clock/Clock.h"
 #include "apple2/peripherals/clock/ClockCommands.h"
 #include "doctest.h"
 
 auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
 
 namespace {
+
+// The card is reached the way the emulator reaches it, through the registry,
+// so one test binary covers the built-in card and the loaded plugin alike.
+auto clock_descriptor() -> Peripheral_t* {
+  return peripheral_find_internal("linapple.clock");
+}
 
 constexpr uint16_t IO_BASE_ADDRESS = 0xC080;
 constexpr int IO_SLOT_OFFSET = 4;
@@ -121,6 +127,7 @@ class ClockHarness {
  public:
   ClockHarness() {
     s_active_harness = this;
+    REQUIRE(clock_descriptor() != nullptr);
     host_.Log = Mock_Log;
     host_.AssertIrq = Mock_AssertIrq;
     host_.RegisterIO = Mock_RegisterIO;
@@ -132,7 +139,7 @@ class ClockHarness {
   ~ClockHarness() {
     for (auto& slot_inst : instances_) {
       if (slot_inst.second != nullptr) {
-        clock_get_descriptor()->shutdown(slot_inst.second);
+        clock_descriptor()->shutdown(slot_inst.second);
       }
     }
     instances_.clear();
@@ -147,7 +154,7 @@ class ClockHarness {
   auto host() -> HostInterface_t* { return &host_; }
 
   auto create_clock(int slot) -> void* {
-    void* instance = clock_get_descriptor()->init(slot, &host_);
+    void* instance = clock_descriptor()->init(slot, &host_);
     if (instance != nullptr) {
       instances_[slot] = instance;
       const uint16_t base = IO_BASE_ADDRESS + (slot << IO_SLOT_OFFSET);
@@ -168,21 +175,20 @@ class ClockHarness {
 
   auto set_epoch(int slot, uint64_t epoch) -> PeripheralStatus_t {
     void* inst = get_instance(slot);
-    if (inst == nullptr || clock_get_descriptor()->command == nullptr) {
+    if (inst == nullptr || clock_descriptor()->command == nullptr) {
       return peripheral_error;
     }
     ClockSetEpochPayload_t payload{epoch};
-    return clock_get_descriptor()->command(inst, clock_cmd_set_epoch, &payload,
-                                           sizeof(payload));
+    return clock_descriptor()->command(inst, clock_cmd_set_epoch, &payload,
+                                       sizeof(payload));
   }
 
   auto clear_epoch(int slot) -> PeripheralStatus_t {
     void* inst = get_instance(slot);
-    if (inst == nullptr || clock_get_descriptor()->command == nullptr) {
+    if (inst == nullptr || clock_descriptor()->command == nullptr) {
       return peripheral_error;
     }
-    return clock_get_descriptor()->command(inst, clock_cmd_clear_epoch, nullptr,
-                                           0);
+    return clock_descriptor()->command(inst, clock_cmd_clear_epoch, nullptr, 0);
   }
 
   auto trigger_latch(int slot, uint32_t remaining_cycles = 0) -> uint8_t {
@@ -293,7 +299,7 @@ class ClockHarness {
 ClockHarness* ClockHarness::s_active_harness = nullptr;
 
 TEST_CASE("Clock Peripheral: Registration and Identity Metadata") {
-  auto* descriptor = clock_get_descriptor();
+  auto* descriptor = clock_descriptor();
   REQUIRE(descriptor != nullptr);
 
   CHECK(descriptor->abi_version == LINAPPLE_ABI_VERSION);
@@ -429,7 +435,7 @@ TEST_CASE("Clock Peripheral: Command ABI Protocol") {
   void* instance = harness.create_clock(slot);
   REQUIRE(instance != nullptr);
 
-  auto* descriptor = clock_get_descriptor();
+  auto* descriptor = clock_descriptor();
   REQUIRE(descriptor->command != nullptr);
 
   // Struct payload
@@ -480,7 +486,7 @@ TEST_CASE("Clock Peripheral: Query ABI Protocol") {
   void* instance = harness.create_clock(slot);
   REQUIRE(instance != nullptr);
 
-  auto* descriptor = clock_get_descriptor();
+  auto* descriptor = clock_descriptor();
   REQUIRE(descriptor->query != nullptr);
 
   REQUIRE(harness.set_epoch(slot, GOLDEN_EPOCH_1) == peripheral_ok);
@@ -542,7 +548,7 @@ TEST_CASE("Clock Peripheral: Reset Behavior") {
 
   CHECK(harness.read_pair(slot, LATCH_DAY) == GOLDEN_DAY_1);
 
-  clock_get_descriptor()->reset(instance);
+  clock_descriptor()->reset(instance);
 
   for (uint8_t i = 0; i < CLOCK_LATCHES_COUNT; ++i) {
     CHECK(harness.read_reg(slot, i) == 0);
@@ -560,7 +566,7 @@ TEST_CASE("Clock Peripheral: Deterministic Save State Persistence") {
 
   // Sizing probe
   size_t state_size = 0;
-  CHECK(clock_get_descriptor()->save_state(instance1, nullptr, &state_size) ==
+  CHECK(clock_descriptor()->save_state(instance1, nullptr, &state_size) ==
         peripheral_ok);
   REQUIRE(state_size == sizeof(ClockSaveState_t));
   CHECK(state_size == 32);
@@ -568,13 +574,13 @@ TEST_CASE("Clock Peripheral: Deterministic Save State Persistence") {
   // Undersized buffer guard
   size_t too_small = sizeof(ClockSaveState_t) - 1;
   std::vector<uint8_t> small_buffer(too_small);
-  CHECK(clock_get_descriptor()->save_state(instance1, small_buffer.data(),
-                                           &too_small) == peripheral_error);
+  CHECK(clock_descriptor()->save_state(instance1, small_buffer.data(),
+                                       &too_small) == peripheral_error);
 
   // Successful serialization
   std::vector<uint8_t> buffer(state_size);
-  CHECK(clock_get_descriptor()->save_state(instance1, buffer.data(),
-                                           &state_size) == peripheral_ok);
+  CHECK(clock_descriptor()->save_state(instance1, buffer.data(), &state_size) ==
+        peripheral_ok);
 
   const auto* state_view =
       reinterpret_cast<const ClockSaveState_t*>(buffer.data());
@@ -588,8 +594,8 @@ TEST_CASE("Clock Peripheral: Deterministic Save State Persistence") {
   void* instance2 = harness.create_clock(slot2);
   REQUIRE(instance2 != nullptr);
 
-  CHECK(clock_get_descriptor()->load_state(instance2, buffer.data(),
-                                           state_size) == peripheral_ok);
+  CHECK(clock_descriptor()->load_state(instance2, buffer.data(), state_size) ==
+        peripheral_ok);
 
   // Verify latches are restored bit-for-bit
   for (uint8_t i = 0; i < CLOCK_LATCHES_COUNT; ++i) {
@@ -599,9 +605,9 @@ TEST_CASE("Clock Peripheral: Deterministic Save State Persistence") {
   // Verify fixed epoch was restored via query
   ClockEpochQuery_t restored_epoch{};
   size_t query_size = sizeof(restored_epoch);
-  CHECK(clock_get_descriptor()->query(instance2, clock_query_get_epoch,
-                                      &restored_epoch,
-                                      &query_size) == peripheral_ok);
+  CHECK(clock_descriptor()->query(instance2, clock_query_get_epoch,
+                                  &restored_epoch,
+                                  &query_size) == peripheral_ok);
   CHECK(restored_epoch.epoch == GOLDEN_EPOCH_1);
   CHECK(restored_epoch.is_fixed == 1);
 }
@@ -616,79 +622,79 @@ TEST_CASE("Clock Peripheral: Defensive Deserialization Validation") {
   harness.trigger_latch(slot);
 
   size_t state_size = 0;
-  clock_get_descriptor()->save_state(instance, nullptr, &state_size);
+  clock_descriptor()->save_state(instance, nullptr, &state_size);
   std::vector<uint8_t> valid_state(state_size);
-  clock_get_descriptor()->save_state(instance, valid_state.data(), &state_size);
+  clock_descriptor()->save_state(instance, valid_state.data(), &state_size);
 
   // Mismatched buffer size
-  CHECK(clock_get_descriptor()->load_state(instance, valid_state.data(),
-                                           state_size - 1) == peripheral_error);
+  CHECK(clock_descriptor()->load_state(instance, valid_state.data(),
+                                       state_size - 1) == peripheral_error);
 
   // Corrupt version
   auto bad_version = valid_state;
   reinterpret_cast<ClockSaveState_t*>(bad_version.data())->version = 999;
-  CHECK(clock_get_descriptor()->load_state(instance, bad_version.data(),
-                                           state_size) == peripheral_error);
+  CHECK(clock_descriptor()->load_state(instance, bad_version.data(),
+                                       state_size) == peripheral_error);
 
   // Corrupt struct_size
   auto bad_struct_size = valid_state;
   reinterpret_cast<ClockSaveState_t*>(bad_struct_size.data())->struct_size =
       12345;
-  CHECK(clock_get_descriptor()->load_state(instance, bad_struct_size.data(),
-                                           state_size) == peripheral_error);
+  CHECK(clock_descriptor()->load_state(instance, bad_struct_size.data(),
+                                       state_size) == peripheral_error);
 
   // Corrupt BCD digit (> 9)
   auto bad_digit = valid_state;
   reinterpret_cast<ClockSaveState_t*>(bad_digit.data())->latches[0] = 15;
-  CHECK(clock_get_descriptor()->load_state(instance, bad_digit.data(),
-                                           state_size) == peripheral_error);
+  CHECK(clock_descriptor()->load_state(instance, bad_digit.data(),
+                                       state_size) == peripheral_error);
 
   // Corrupt non-zero latch[2]
   auto bad_latch_2 = valid_state;
   reinterpret_cast<ClockSaveState_t*>(bad_latch_2.data())->latches[2] = 1;
-  CHECK(clock_get_descriptor()->load_state(instance, bad_latch_2.data(),
-                                           state_size) == peripheral_error);
+  CHECK(clock_descriptor()->load_state(instance, bad_latch_2.data(),
+                                       state_size) == peripheral_error);
 
   // Corrupt month (> 12)
   auto bad_month = valid_state;
   reinterpret_cast<ClockSaveState_t*>(bad_month.data())->latches[0] = 1;
   reinterpret_cast<ClockSaveState_t*>(bad_month.data())->latches[1] = 5;  // 15
-  CHECK(clock_get_descriptor()->load_state(instance, bad_month.data(),
-                                           state_size) == peripheral_error);
+  CHECK(clock_descriptor()->load_state(instance, bad_month.data(),
+                                       state_size) == peripheral_error);
 
   // Corrupt weekday (> 6)
   auto bad_weekday = valid_state;
   reinterpret_cast<ClockSaveState_t*>(bad_weekday.data())->latches[3] = 7;
-  CHECK(clock_get_descriptor()->load_state(instance, bad_weekday.data(),
-                                           state_size) == peripheral_error);
+  CHECK(clock_descriptor()->load_state(instance, bad_weekday.data(),
+                                       state_size) == peripheral_error);
 
   // Corrupt day (> 31)
   auto bad_day = valid_state;
   reinterpret_cast<ClockSaveState_t*>(bad_day.data())->latches[4] = 3;
   reinterpret_cast<ClockSaveState_t*>(bad_day.data())->latches[5] = 5;  // 35
-  CHECK(clock_get_descriptor()->load_state(instance, bad_day.data(),
-                                           state_size) == peripheral_error);
+  CHECK(clock_descriptor()->load_state(instance, bad_day.data(), state_size) ==
+        peripheral_error);
 
   // Corrupt hour (> 23)
   auto bad_hour = valid_state;
   reinterpret_cast<ClockSaveState_t*>(bad_hour.data())->latches[6] = 2;
   reinterpret_cast<ClockSaveState_t*>(bad_hour.data())->latches[7] = 5;  // 25
-  CHECK(clock_get_descriptor()->load_state(instance, bad_hour.data(),
-                                           state_size) == peripheral_error);
+  CHECK(clock_descriptor()->load_state(instance, bad_hour.data(), state_size) ==
+        peripheral_error);
 
   // Corrupt minute (> 59)
   auto bad_minute = valid_state;
   reinterpret_cast<ClockSaveState_t*>(bad_minute.data())->latches[8] = 6;
   reinterpret_cast<ClockSaveState_t*>(bad_minute.data())->latches[9] = 0;  // 60
-  CHECK(clock_get_descriptor()->load_state(instance, bad_minute.data(),
-                                           state_size) == peripheral_error);
+  CHECK(clock_descriptor()->load_state(instance, bad_minute.data(),
+                                       state_size) == peripheral_error);
 }
 
 TEST_CASE("Clock Peripheral: Multi-Card Concurrency and Lifecycle Robustness") {
   ClockHarness harness;
 
   // Null host check on init
-  CHECK(clock_get_descriptor()->init(TEST_SLOT_1, nullptr) == nullptr);
+  CHECK(clock_descriptor()->init(TEST_SLOT_1, nullptr) == nullptr);
 
   // Multi-card isolation: slot 1 is latched to Epoch 1, slot 2 is unlatched
   const int slot1 = TEST_SLOT_1;
@@ -712,12 +718,12 @@ TEST_CASE("Clock Peripheral: Multi-Card Concurrency and Lifecycle Robustness") {
   // Null instance safety
   size_t dummy_size = 32;
   std::array<uint8_t, 32> dummy_buf{};
-  CHECK(clock_get_descriptor()->save_state(nullptr, dummy_buf.data(),
-                                           &dummy_size) == peripheral_error);
-  CHECK(clock_get_descriptor()->load_state(nullptr, dummy_buf.data(),
-                                           dummy_size) == peripheral_error);
-  clock_get_descriptor()->reset(nullptr);
-  clock_get_descriptor()->shutdown(nullptr);
+  CHECK(clock_descriptor()->save_state(nullptr, dummy_buf.data(),
+                                       &dummy_size) == peripheral_error);
+  CHECK(clock_descriptor()->load_state(nullptr, dummy_buf.data(), dummy_size) ==
+        peripheral_error);
+  clock_descriptor()->reset(nullptr);
+  clock_descriptor()->shutdown(nullptr);
 }
 
 }  // namespace
