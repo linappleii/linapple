@@ -16,9 +16,9 @@
 #include <thread>
 
 #include "apple2/Apple2Types.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 #include "core/Asset.h"
 #include "core/LinAppleCore.h"
-#include "apple2/peripherals/Peripheral_Types.h"
 #include "frontends/common/VideoSurface.h"
 
 // Unavoidable hardware architectural constraints for Apple II CRT rendering,
@@ -33,13 +33,13 @@ static auto get_tick_count_ms() -> uint32_t {
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/SnapshotTypes.h"
+#include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "charset40.xpm"
 #include "charset40_IIplus.xpm"
 #include "charset40_british.xpm"
 #include "charset40_french.xpm"
 #include "charset40_german.xpm"
-#include "apple2/peripherals/Peripheral.h"
 #include "frontends/common/VideoStretch.h"
 
 static uint32_t g_video_output[video_width * video_height] = {};
@@ -1705,8 +1705,8 @@ auto video_perform_refresh() -> void {
 
   uint8_t rocker = 0;
   size_t rocker_sz = sizeof(rocker);
-  if (peripheral_query(0, keyboard_query_rocker, &rocker, &rocker_sz) ==
-      peripheral_ok) {
+  if (peripheral_query_by_id(0, "linapple.keyboard", keyboard_query_rocker,
+                             &rocker, &rocker_sz) == peripheral_ok) {
     s_language_rocker_switch = (rocker != 0);
   }
 

@@ -15,6 +15,7 @@
 
 #include "EmbeddedRoms.h"
 #include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Subsystems.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
@@ -1020,7 +1021,7 @@ auto disk_io_write(void* instance, uint16_t program_counter,
 
 auto cmd_handle_insert(DiskPeripheral_t* dp, const void* data, size_t size)
     -> PeripheralStatus_t {
-  if (dp == nullptr || data == nullptr || size < sizeof(DiskInsertCmd_t)) {
+  if (dp == nullptr || data == nullptr || size != sizeof(DiskInsertCmd_t)) {
     return peripheral_error;
   }
   const auto* c = static_cast<const DiskInsertCmd_t*>(data);
@@ -1035,7 +1036,7 @@ auto cmd_handle_insert(DiskPeripheral_t* dp, const void* data, size_t size)
 
 auto cmd_handle_eject(DiskPeripheral_t* dp, const void* data, size_t size)
     -> PeripheralStatus_t {
-  if (dp == nullptr || data == nullptr || size < sizeof(DiskEjectCmd_t)) {
+  if (dp == nullptr || data == nullptr || size != sizeof(DiskEjectCmd_t)) {
     return peripheral_error;
   }
   const auto* c = static_cast<const DiskEjectCmd_t*>(data);
@@ -1048,7 +1049,7 @@ auto cmd_handle_eject(DiskPeripheral_t* dp, const void* data, size_t size)
 
 auto cmd_handle_set_protect(DiskPeripheral_t* dp, const void* data, size_t size)
     -> PeripheralStatus_t {
-  if (dp == nullptr || data == nullptr || size < sizeof(DiskSetProtectCmd_t)) {
+  if (dp == nullptr || data == nullptr || size != sizeof(DiskSetProtectCmd_t)) {
     return peripheral_error;
   }
   const auto* c = static_cast<const DiskSetProtectCmd_t*>(data);
@@ -1068,7 +1069,7 @@ static_assert(sizeof(DiskCreateImageCmd_t) <= PERIPHERAL_CMD_MAX_DATA,
 
 auto cmd_handle_create_image(const void* data, size_t size)
     -> PeripheralStatus_t {
-  if (data == nullptr || size < sizeof(DiskCreateImageCmd_t)) {
+  if (data == nullptr || size != sizeof(DiskCreateImageCmd_t)) {
     return peripheral_error;
   }
   const auto* c = static_cast<const DiskCreateImageCmd_t*>(data);
@@ -1164,6 +1165,10 @@ auto disk_abi_command(void* instance, uint32_t cmd, const void* data,
     return peripheral_error;
   }
   auto* dp = static_cast<DiskPeripheral_t*>(instance);
+  if (!peripheral_cmd_is_mine(cmd, PERIPHERAL_SUBSYSTEM_DISK)) {
+    return peripheral_incompatible;  // another peripheral in the slot owns it
+  }
+
   switch (static_cast<DiskCmd_t>(cmd)) {
     case disk_cmd_insert:
       return cmd_handle_insert(dp, data, size);
@@ -1187,6 +1192,10 @@ auto disk_abi_query(void* instance, uint32_t cmd, void* data, size_t* size)
     return peripheral_error;
   }
   auto* dp = static_cast<DiskPeripheral_t*>(instance);
+
+  if (!peripheral_cmd_is_mine(cmd, PERIPHERAL_SUBSYSTEM_DISK)) {
+    return peripheral_incompatible;  // another peripheral in the slot owns it
+  }
 
   switch (cmd) {
     case disk_query_status: {

@@ -534,10 +534,15 @@ static const HostInterface_t g_host_interface = {host_log,
 
 // --- Command Queue ---
 
+// A slot may hold several peripherals - slot 0 always does - so a queued
+// command can name the one it is for. Empty means the slot, as before.
+constexpr size_t peripheral_target_id_size = 32;
+
 struct QueuedCommand_t {
   int slot;
   uint32_t cmd_id;
   size_t data_size;
+  char target_id[peripheral_target_id_size] = {};
   uint8_t data[PERIPHERAL_CMD_MAX_DATA] = {};
 };
 
@@ -557,9 +562,14 @@ static auto peripheral_drain_command_queue() -> void {
     const QueuedCommand_t& cmd = local.front();
     if (cmd.slot >= 0 && cmd.slot < static_cast<int>(NUM_SLOTS)) {
       for (auto& ap : g_active_peripherals.at(static_cast<size_t>(cmd.slot))) {
-        if (ap.api != nullptr && ap.api->command != nullptr) {
-          ap.api->command(ap.instance, cmd.cmd_id, cmd.data, cmd.data_size);
+        if (ap.api == nullptr || ap.api->command == nullptr) {
+          continue;
         }
+        if (cmd.target_id[0] != '\0' &&
+            (ap.api->id == nullptr || strcmp(ap.api->id, cmd.target_id) != 0)) {
+          continue;
+        }
+        ap.api->command(ap.instance, cmd.cmd_id, cmd.data, cmd.data_size);
       }
     }
     local.pop();
@@ -732,16 +742,87 @@ auto peripheral_unregister(int slot) -> int {
 auto peripheral_command(int slot, uint32_t cmd_id, const void* data,
                         size_t size) -> PeripheralStatus_t {
   if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS) ||
-      size > PERIPHERAL_CMD_MAX_DATA)
+      size > PERIPHERAL_CMD_MAX_DATA || (size > 0 && data == nullptr)) {
     return peripheral_error;
+  }
   QueuedCommand_t cmd{};
   cmd.slot = slot;
   cmd.cmd_id = cmd_id;
   cmd.data_size = size;
-  if (size > 0 && data != nullptr) memcpy(cmd.data, data, size);
+  if (size > 0) {
+    memcpy(cmd.data, data, size);
+  }
   std::lock_guard<std::mutex> lock(g_command_queue_mutex);
   g_command_queue.push(cmd);
   return peripheral_ok;
+}
+
+// Finds a peripheral in a slot by the id in its descriptor, which is what
+// peripheral_command_by_id() and peripheral_query_by_id() take.
+// peripheral_save_state_by_name() matches on the human name instead; the two
+// are kept apart so that neither has to guess which kind of string it was
+// handed.
+static auto peripheral_by_id(int slot, const char* peripheral_id)
+    -> ActivePeripheral_t* {
+  if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS) ||
+      peripheral_id == nullptr) {
+    return nullptr;
+  }
+  for (auto& ap : g_active_peripherals.at(static_cast<size_t>(slot))) {
+    if (ap.api != nullptr && ap.api->id != nullptr &&
+        strcmp(ap.api->id, peripheral_id) == 0) {
+      return &ap;
+    }
+  }
+  return nullptr;
+}
+
+auto peripheral_command_by_id(int slot, const char* peripheral_id,
+                              uint32_t cmd_id, const void* data, size_t size)
+    -> PeripheralStatus_t {
+  if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS) ||
+      size > PERIPHERAL_CMD_MAX_DATA || peripheral_id == nullptr ||
+      (size > 0 && data == nullptr)) {
+    return peripheral_error;
+  }
+  // Truncating here would deliver the command to the wrong peripheral.
+  if (strlen(peripheral_id) >= peripheral_target_id_size) {
+    return peripheral_error;
+  }
+  // Whether the slot holds it is answered now, so that a caller naming a
+  // peripheral that is not there hears about it. What the peripheral makes of
+  // the command is not: like peripheral_command(), this returns once the
+  // command is queued, and the queue is drained on the emulation thread.
+  if (peripheral_by_id(slot, peripheral_id) == nullptr) {
+    return peripheral_error;
+  }
+
+  QueuedCommand_t cmd{};
+  cmd.slot = slot;
+  cmd.cmd_id = cmd_id;
+  cmd.data_size = size;
+  util_safe_strcpy(cmd.target_id, peripheral_id, peripheral_target_id_size);
+  if (size > 0) {
+    memcpy(cmd.data, data, size);
+  }
+  std::lock_guard<std::mutex> lock(g_command_queue_mutex);
+  g_command_queue.push(cmd);
+  return peripheral_ok;
+}
+
+// Queries are answered on the spot, so unlike the command side this reports
+// what the peripheral itself said.
+auto peripheral_query_by_id(int slot, const char* peripheral_id,
+                            uint32_t cmd_id, void* out, size_t* out_size)
+    -> PeripheralStatus_t {
+  if (out == nullptr || out_size == nullptr) {
+    return peripheral_error;
+  }
+  ActivePeripheral_t* ap = peripheral_by_id(slot, peripheral_id);
+  if (ap == nullptr || ap->api->query == nullptr) {
+    return peripheral_error;
+  }
+  return ap->api->query(ap->instance, cmd_id, out, out_size);
 }
 
 auto peripheral_query(int slot, uint32_t cmd_id, void* out, size_t* out_size)

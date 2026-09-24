@@ -8,6 +8,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "apple2/peripherals/Peripheral_Subsystems.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -15,13 +17,13 @@ extern "C" {
 enum { CLOCK_STATE_VERSION = 1 };
 
 typedef enum {
-  clock_cmd_set_epoch = 0x0001,
-  clock_cmd_clear_epoch = 0x0002
+  clock_cmd_set_epoch = PERIPHERAL_SUBSYSTEM_CLOCK | 0x0001,
+  clock_cmd_clear_epoch = PERIPHERAL_SUBSYSTEM_CLOCK | 0x0002
 } ClockCmd_e;
 
 typedef enum {
-  clock_query_get_epoch = 0x0100,
-  clock_query_get_time = 0x0101
+  clock_query_get_epoch = PERIPHERAL_SUBSYSTEM_CLOCK | 0x0100,
+  clock_query_get_time = PERIPHERAL_SUBSYSTEM_CLOCK | 0x0101
 } ClockQuery_e;
 
 typedef struct {

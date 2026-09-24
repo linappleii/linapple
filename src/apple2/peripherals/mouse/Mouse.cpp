@@ -8,9 +8,10 @@
 
 #include "EmbeddedRoms.h"
 #include "apple2/chips/6821.h"
-#include "apple2/peripherals/mouse/MouseCommands.h"
 #include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Subsystems.h"
 #include "apple2/peripherals/Peripheral_Types.h"
+#include "apple2/peripherals/mouse/MouseCommands.h"
 
 auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
 
@@ -756,15 +757,19 @@ static auto mouse_abi_command(void* instance, uint32_t cmd_id, const void* data,
     return peripheral_error;
   }
 
+  auto* mp = static_cast<MousePeripheral_t*>(instance);
+
+  if (!peripheral_cmd_is_mine(cmd_id, PERIPHERAL_SUBSYSTEM_MOUSE)) {
+    return peripheral_incompatible;  // another peripheral in the slot owns it
+  }
+
   if (data == nullptr) {
     return peripheral_error;
   }
 
-  auto* mp = static_cast<MousePeripheral_t*>(instance);
-
   switch (static_cast<MouseCmd_t>(cmd_id)) {
     case mouse_cmd_set_pos: {
-      if (size < sizeof(MousePosPayload_t)) {
+      if (size != sizeof(MousePosPayload_t)) {
         return peripheral_error;
       }
       const auto* p = static_cast<const MousePosPayload_t*>(data);
@@ -775,7 +780,7 @@ static auto mouse_abi_command(void* instance, uint32_t cmd_id, const void* data,
       return peripheral_ok;
     }
     case mouse_cmd_set_button: {
-      if (size < sizeof(MouseButtonPayload_t)) {
+      if (size != sizeof(MouseButtonPayload_t)) {
         return peripheral_error;
       }
       const auto* p = static_cast<const MouseButtonPayload_t*>(data);
@@ -797,6 +802,10 @@ static auto mouse_abi_query(void* instance, uint32_t query_id, void* out,
   }
 
   auto* mp = static_cast<MousePeripheral_t*>(instance);
+
+  if (!peripheral_cmd_is_mine(query_id, PERIPHERAL_SUBSYSTEM_MOUSE)) {
+    return peripheral_incompatible;  // another peripheral in the slot owns it
+  }
 
   switch (static_cast<MouseQuery_t>(query_id)) {
     case mouse_query_is_active: {

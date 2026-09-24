@@ -10,6 +10,7 @@
 #include <string>
 
 #include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Subsystems.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
@@ -522,9 +523,13 @@ auto harddisk_abi_command(void* instance_handle, uint32_t cmd_id,
   }
   auto* peripheral_ptr = static_cast<HarddiskPeripheral_t*>(instance_handle);
 
+  if (!peripheral_cmd_is_mine(cmd_id, PERIPHERAL_SUBSYSTEM_HARDDISK)) {
+    return peripheral_incompatible;  // another peripheral in the slot owns it
+  }
+
   switch (static_cast<HarddiskCmd_t>(cmd_id)) {
     case harddisk_cmd_insert: {
-      if (payload == nullptr || payload_size < sizeof(HarddiskInsertCmd_t)) {
+      if (payload == nullptr || payload_size != sizeof(HarddiskInsertCmd_t)) {
         return peripheral_error;
       }
       const auto* cmd_ptr = static_cast<const HarddiskInsertCmd_t*>(payload);
@@ -537,7 +542,7 @@ auto harddisk_abi_command(void* instance_handle, uint32_t cmd_id,
       return peripheral_ok;
     }
     case harddisk_cmd_eject: {
-      if (payload == nullptr || payload_size < sizeof(HarddiskEjectCmd_t)) {
+      if (payload == nullptr || payload_size != sizeof(HarddiskEjectCmd_t)) {
         return peripheral_error;
       }
       const auto* cmd_ptr = static_cast<const HarddiskEjectCmd_t*>(payload);
@@ -559,7 +564,7 @@ auto harddisk_abi_command(void* instance_handle, uint32_t cmd_id,
     }
     case harddisk_cmd_set_protect: {
       if (payload == nullptr ||
-          payload_size < sizeof(HarddiskSetProtectCmd_t)) {
+          payload_size != sizeof(HarddiskSetProtectCmd_t)) {
         return peripheral_error;
       }
       const auto* cmd_ptr =
@@ -589,6 +594,10 @@ auto harddisk_abi_query(void* instance_handle, uint32_t cmd_id, void* data,
                         size_t* size) -> PeripheralStatus_t {
   if (size == nullptr) {
     return peripheral_error;
+  }
+
+  if (!peripheral_cmd_is_mine(cmd_id, PERIPHERAL_SUBSYSTEM_HARDDISK)) {
+    return peripheral_incompatible;  // another peripheral in the slot owns it
   }
 
   if (cmd_id == harddisk_query_supported_extensions ||

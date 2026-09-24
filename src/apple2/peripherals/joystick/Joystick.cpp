@@ -6,9 +6,10 @@
 #include <cstring>
 #include <memory>
 
-#include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Subsystems.h"
 #include "apple2/peripherals/Peripheral_Types.h"
+#include "apple2/peripherals/joystick/JoystickCommands.h"
 
 auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
 
@@ -226,9 +227,13 @@ static auto joystick_abi_command(void* instance, uint32_t cmd, const void* data,
   }
   auto* joystick_peripheral = static_cast<JoystickPeripheral_t*>(instance);
 
+  if (!peripheral_cmd_is_mine(cmd, PERIPHERAL_SUBSYSTEM_JOYSTICK)) {
+    return peripheral_incompatible;  // another peripheral in the slot owns it
+  }
+
   switch (cmd) {
     case JOY_CMD_SET_AXIS: {
-      if (data == nullptr || size < sizeof(JoystickAxisPayload_t)) {
+      if (data == nullptr || size != sizeof(JoystickAxisPayload_t)) {
         return peripheral_error;
       }
       const auto* payload = static_cast<const JoystickAxisPayload_t*>(data);
@@ -243,7 +248,7 @@ static auto joystick_abi_command(void* instance, uint32_t cmd, const void* data,
       return peripheral_ok;
     }
     case JOY_CMD_SET_BUTTON: {
-      if (data == nullptr || size < sizeof(JoystickButtonPayload_t)) {
+      if (data == nullptr || size != sizeof(JoystickButtonPayload_t)) {
         return peripheral_error;
       }
       const auto* payload = static_cast<const JoystickButtonPayload_t*>(data);
@@ -258,7 +263,7 @@ static auto joystick_abi_command(void* instance, uint32_t cmd, const void* data,
       return peripheral_ok;
     }
     case JOY_CMD_SET_TRIM: {
-      if (data == nullptr || size < sizeof(JoystickTrimPayload_t)) {
+      if (data == nullptr || size != sizeof(JoystickTrimPayload_t)) {
         return peripheral_error;
       }
       const auto* payload = static_cast<const JoystickTrimPayload_t*>(data);
@@ -270,11 +275,14 @@ static auto joystick_abi_command(void* instance, uint32_t cmd, const void* data,
       return peripheral_ok;
     }
     case JOY_CMD_RESET: {
+      if (size != 0) {
+        return peripheral_error;  // this command carries no payload
+      }
       joystick_abi_reset(instance);
       return peripheral_ok;
     }
     case JOY_CMD_SET_CONFIG: {
-      if (data == nullptr || size < sizeof(JoystickConfig_t)) {
+      if (data == nullptr || size != sizeof(JoystickConfig_t)) {
         return peripheral_error;
       }
       std::memcpy(&joystick_peripheral->config, data, sizeof(JoystickConfig_t));
@@ -291,6 +299,10 @@ static auto joystick_abi_query(void* instance, uint32_t cmd, void* out,
                                size_t* size) -> PeripheralStatus_t {
   if (size == nullptr) {
     return peripheral_error;
+  }
+
+  if (!peripheral_cmd_is_mine(cmd, PERIPHERAL_SUBSYSTEM_JOYSTICK)) {
+    return peripheral_incompatible;  // another peripheral in the slot owns it
   }
 
   switch (cmd) {

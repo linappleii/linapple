@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include "apple2/peripherals/Peripheral_Subsystems.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

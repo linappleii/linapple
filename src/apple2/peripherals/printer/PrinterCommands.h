@@ -5,6 +5,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "apple2/peripherals/Peripheral_Subsystems.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -12,11 +14,13 @@ extern "C" {
 enum { PRINTER_STATE_VERSION = 1 };
 
 typedef enum {
-  PRINTER_CMD_SET_ONLINE = 0x0101,
-  PRINTER_CMD_RESET_STATS = 0x0102
+  PRINTER_CMD_SET_ONLINE = PERIPHERAL_SUBSYSTEM_PRINTER | 0x0101,
+  PRINTER_CMD_RESET_STATS = PERIPHERAL_SUBSYSTEM_PRINTER | 0x0102
 } PrinterCmd_e;
 
-typedef enum { PRINTER_QUERY_STATUS = 0x0100 } PrinterQuery_e;
+typedef enum {
+  PRINTER_QUERY_STATUS = PERIPHERAL_SUBSYSTEM_PRINTER | 0x0100
+} PrinterQuery_e;
 
 typedef struct {
   uint8_t online;

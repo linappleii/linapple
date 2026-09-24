@@ -740,9 +740,11 @@ void process_button_click(int button, int mod) {
              (g_apple2_type == A2TYPE_APPLE2EENHANCED))) {
           uint8_t cur_rocker = 0;
           size_t rocker_sz = sizeof(cur_rocker);
-          peripheral_query(0, keyboard_query_rocker, &cur_rocker, &rocker_sz);
+          peripheral_query_by_id(0, "linapple.keyboard", keyboard_query_rocker,
+                                 &cur_rocker, &rocker_sz);
           uint8_t new_rocker = cur_rocker ? 0 : 1;
-          peripheral_command(0, keyboard_cmd_set_rocker, &new_rocker, 1);
+          peripheral_command_by_id(0, "linapple.keyboard",
+                                   keyboard_cmd_set_rocker, &new_rocker, 1);
           printf(
               "Toggling keyboard rocker switch. Selected character set: "
               "%s...\n",

@@ -824,6 +824,7 @@ if(BUILD_TESTING)
     add_linapple_test(joystick-peripheral "tests/test_main.cpp;tests/test_joystick_peripheral.cpp")
     add_linapple_test(mouse-exhaustive "tests/test_main.cpp;tests/test_mouse_exhaustive.cpp")
     add_linapple_test(peripheral-slot0 "tests/test_main.cpp;tests/test_peripheral_slot0.cpp")
+    add_linapple_test(slot0-dispatch "tests/test_main.cpp;tests/test_slot0_dispatch.cpp")
     # Every test that mounts a disk or harddisk card at run time is built only
     # with that card, so a build without one still has a green test suite and
     # proves nothing of the card's leaked into it.

@@ -10,6 +10,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "apple2/peripherals/Peripheral_Subsystems.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -25,20 +27,20 @@ typedef enum {
 typedef HarddiskDrive_t HarddiskDrive_e;
 
 typedef enum {
-  harddisk_cmd_insert = 0x0001,
-  harddisk_cmd_eject = 0x0002,
-  harddisk_cmd_set_protect = 0x0004,
-  harddisk_cmd_reset_status = 0x0006,
+  harddisk_cmd_insert = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0001,
+  harddisk_cmd_eject = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0002,
+  harddisk_cmd_set_protect = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0004,
+  harddisk_cmd_reset_status = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0006,
   // Backward-compatibility aliases
-  harddisk_cmd_get_status = 0x0005,
-  harddisk_cmd_get_supported_extensions = 0x0007
+  harddisk_cmd_get_status = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0005,
+  harddisk_cmd_get_supported_extensions = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0007
 } HarddiskCmd_t;
 
 typedef HarddiskCmd_t HarddiskCmd_e;
 
 typedef enum {
-  harddisk_query_status = 0x0001,
-  harddisk_query_supported_extensions = 0x0002
+  harddisk_query_status = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0001,
+  harddisk_query_supported_extensions = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0002
 } HarddiskQuery_t;
 
 enum { harddisk_insert_path_max = 504, harddisk_default_slot = 7 };
