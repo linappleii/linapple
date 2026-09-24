@@ -227,6 +227,7 @@ auto mem_check_slotcxrom() -> bool;
 auto mem_get_aux_ptr(uint16_t addr) -> uint8_t*;
 auto mem_get_main_ptr(uint16_t addr) -> uint8_t*;
 auto mem_get_cx_rom_peripheral() -> uint8_t*;
+auto mem_refresh_cx_page(int slot) -> void;
 auto get_mem_ptr(uint16_t addr) -> uint8_t*;
 inline auto mem_get_ptr(uint16_t addr) -> uint8_t* { return get_mem_ptr(addr); }
 auto mem_get_bank_ptr(uint32_t bank) -> uint8_t*;

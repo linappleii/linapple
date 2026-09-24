@@ -54,6 +54,10 @@ typedef struct {
   void (*RegisterIO)(int slot, PeripheralIOHandler readC0,
                      PeripheralIOHandler writeC0, PeripheralIOHandler readCx,
                      PeripheralIOHandler writeCx);
+  // The host copies the page out, so a card hands over its ROM image as the
+  // constant it is. It may be called again at any time: a card whose PROM
+  // presents different bytes while it waits registers the other image, and
+  // the 6502 sees it on its next fetch from the page.
   void (*RegisterCxROM)(int slot, const uint8_t* rom_ptr);
   void (*RegisterExpansionROM)(int slot, uint8_t* rom_ptr);
   void (*RegisterDirectIO)(void* instance, uint16_t addr,

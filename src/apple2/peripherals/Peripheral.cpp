@@ -299,6 +299,9 @@ static auto host_register_cx_rom(int slot, const uint8_t* rom_ptr) -> void {
   if (cxrom != nullptr) {
     memcpy(cxrom + (static_cast<uint16_t>(slot) << addr_slot_rom_shift),
            rom_ptr, cxrom_slot_size);
+    // A card may re-register while the machine runs, and the 6502 fetches
+    // from a live copy of the page, so that copy follows the store.
+    mem_refresh_cx_page(slot);
   }
 }
 

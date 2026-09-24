@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <string>
 
@@ -651,5 +652,191 @@ TEST_CASE("Peripheral ABI: A sink without a tick is left alone") {
   host->SinkClose(g_sink_probe.token);
 
   linapple_set_byte_sink(previous.vtable, previous.ctx);
+  peripheral_manager_shutdown();
+}
+
+namespace {
+
+// Two images a card might present from its PROM. Both open with SEC and a
+// BCS, so two single steps from the top of the page land where the
+// displacement says, and the displacement is an operand byte: the 6502 reads
+// it from the live page, never through the I/O dispatch. The last byte tells
+// a data read which image is in view. Everything else is RTS.
+constexpr uint8_t opcode_sec = 0x38;
+constexpr uint8_t opcode_bcs = 0xB0;
+constexpr uint8_t opcode_rts = 0x60;
+constexpr uint8_t opcode_lda_abs = 0xAD;
+constexpr uint8_t image_a_displacement = 0x10;
+constexpr uint8_t image_b_displacement = 0x20;
+constexpr uint8_t image_a_tail = 0xAA;
+constexpr uint8_t image_b_tail = 0x55;
+
+auto cx_image(uint8_t displacement, uint8_t tail) -> std::array<uint8_t, 256> {
+  std::array<uint8_t, 256> image{};
+  image.fill(opcode_rts);
+  image[0x00] = opcode_sec;
+  image[0x01] = opcode_bcs;
+  image[0x02] = displacement;
+  image[0xFF] = tail;
+  return image;
+}
+
+const std::array<uint8_t, 256> g_cx_image_a =
+    cx_image(image_a_displacement, image_a_tail);
+const std::array<uint8_t, 256> g_cx_image_b =
+    cx_image(image_b_displacement, image_b_tail);
+
+struct CxProbe_t {
+  HostInterface_t* host = nullptr;
+  int slot = 0;
+};
+
+CxProbe_t g_cx_probe;
+
+auto cx_probe_init(int slot, HostInterface_t* host) -> void* {
+  g_cx_probe = CxProbe_t();
+  g_cx_probe.host = host;
+  g_cx_probe.slot = slot;
+  // Registering I/O with no handlers of its own puts the slot's page on the
+  // stock read path, which serves data reads from the live page like ROM.
+  host->RegisterIO(slot, nullptr, nullptr, nullptr, nullptr);
+  host->RegisterCxROM(slot, g_cx_image_a.data());
+  return &g_cx_probe;
+}
+
+Peripheral_t g_cx_probe_peripheral = {LINAPPLE_ABI_VERSION,
+                                      "test.cx_probe",
+                                      "CxProbe",
+                                      "Swaps its Cx ROM page at run time",
+                                      "LinApple Contributors",
+                                      "1.0.0",
+                                      PERIPHERAL_MASK_EXPANSION,
+                                      -1,
+                                      cx_probe_init,
+                                      nullptr,
+                                      nullptr,
+                                      nullptr,
+                                      nullptr,
+                                      nullptr,
+                                      nullptr,
+                                      nullptr,
+                                      nullptr};
+
+auto cx_page_base(int slot) -> uint16_t {
+  return static_cast<uint16_t>(0xC000 + (slot << 8));
+}
+
+// Two single steps from the top of the slot's page: SEC, then the BCS whose
+// displacement is the byte under test. Returns where the 6502 landed.
+auto branch_from_page(int slot) -> uint16_t {
+  CpuRegisters_t* regs = cpu_get_registers();
+  regs->pc = cx_page_base(slot);
+  regs->ps = 0;
+  cpu_execute(0);
+  cpu_execute(0);
+  return regs->pc;
+}
+
+// LDA $CnFF executed from RAM, so the byte comes back through the 6502's own
+// data read of the page rather than from the test poking at the store.
+constexpr uint16_t scratch_program = 0x0300;
+
+auto read_page_tail(int slot) -> uint8_t {
+  const std::array<uint8_t, 3> lda = {opcode_lda_abs, 0xFF,
+                                      static_cast<uint8_t>(0xC0 + slot)};
+  TestFixtures::ScopedCore_t::poke(scratch_program, lda);
+  CpuRegisters_t* regs = cpu_get_registers();
+  regs->pc = scratch_program;
+  regs->a = 0;
+  cpu_execute(0);
+  return regs->a;
+}
+
+constexpr uint16_t sw_intcxrom_on = 0xC007;
+constexpr uint16_t sw_intcxrom_off = 0xC006;
+constexpr uint16_t sw_slotc3rom_on = 0xC00B;
+
+}  // namespace
+
+TEST_CASE(
+    "Peripheral ABI: A card's Cx ROM page can change while the machine runs") {
+  TestFixtures::ScopedTestConfig_t config(
+      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  TestFixtures::ScopedCore_t core(config);
+  constexpr int slot = 1;
+  REQUIRE(peripheral_register(&g_cx_probe_peripheral, slot) == 0);
+  REQUIRE(g_cx_probe.host != nullptr);
+  linapple_reset_hard();
+
+  CHECK(branch_from_page(slot) == 0xC113);
+  CHECK(read_page_tail(slot) == image_a_tail);
+
+  g_cx_probe.host->RegisterCxROM(slot, g_cx_image_b.data());
+  CHECK(branch_from_page(slot) == 0xC123);
+  CHECK(read_page_tail(slot) == image_b_tail);
+
+  g_cx_probe.host->RegisterCxROM(slot, g_cx_image_a.data());
+  CHECK(branch_from_page(slot) == 0xC113);
+  CHECK(read_page_tail(slot) == image_a_tail);
+
+  SUBCASE(
+      "under INTCXROM the internal ROM stays in view until it is released") {
+    io_map_dispatch(0, sw_intcxrom_on, 1, 0, 0);
+    const uint8_t internal_first = mem[cx_page_base(slot)];
+    const uint8_t internal_tail = mem[cx_page_base(slot) + 0xFF];
+    CHECK(internal_first != opcode_sec);
+
+    g_cx_probe.host->RegisterCxROM(slot, g_cx_image_b.data());
+    CHECK(mem[cx_page_base(slot)] == internal_first);
+    CHECK(mem[cx_page_base(slot) + 0xFF] == internal_tail);
+    CHECK(read_page_tail(slot) == internal_tail);
+
+    io_map_dispatch(0, sw_intcxrom_off, 1, 0, 0);
+    CHECK(branch_from_page(slot) == 0xC123);
+    CHECK(read_page_tail(slot) == image_b_tail);
+  }
+
+  peripheral_unregister(slot);
+}
+
+TEST_CASE(
+    "Peripheral ABI: Slot 3's Cx ROM page changes at run time once SLOTC3ROM "
+    "shows it") {
+  TestFixtures::ScopedTestConfig_t config(
+      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  TestFixtures::ScopedCore_t core(config);
+  constexpr int slot = 3;
+  REQUIRE(peripheral_register(&g_cx_probe_peripheral, slot) == 0);
+  linapple_reset_hard();
+
+  // Reset leaves the internal 80-column firmware at $C300, so the card's
+  // image is registered but not in view.
+  const uint8_t internal_tail = mem[cx_page_base(slot) + 0xFF];
+  CHECK(mem[cx_page_base(slot)] != opcode_sec);
+  g_cx_probe.host->RegisterCxROM(slot, g_cx_image_b.data());
+  CHECK(mem[cx_page_base(slot) + 0xFF] == internal_tail);
+
+  io_map_dispatch(0, sw_slotc3rom_on, 1, 0, 0);
+  CHECK(branch_from_page(slot) == 0xC323);
+  CHECK(read_page_tail(slot) == image_b_tail);
+
+  g_cx_probe.host->RegisterCxROM(slot, g_cx_image_a.data());
+  CHECK(branch_from_page(slot) == 0xC313);
+  CHECK(read_page_tail(slot) == image_a_tail);
+
+  peripheral_unregister(slot);
+}
+
+TEST_CASE(
+    "Peripheral ABI: Registering a Cx ROM page with no core is harmless") {
+  peripheral_manager_init();
+  REQUIRE(peripheral_register(&g_cx_probe_peripheral, 1) == 0);
+  g_cx_probe.host->RegisterCxROM(1, g_cx_image_b.data());
+  g_cx_probe.host->RegisterCxROM(0, g_cx_image_b.data());
+  g_cx_probe.host->RegisterCxROM(8, g_cx_image_b.data());
+  g_cx_probe.host->RegisterCxROM(1, nullptr);
+  mem_refresh_cx_page(1);
+  mem_refresh_cx_page(0);
+  mem_refresh_cx_page(8);
   peripheral_manager_shutdown();
 }

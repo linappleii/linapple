@@ -914,6 +914,31 @@ auto mem_get_cx_rom_peripheral() -> uint8_t* {
   return g_active_memory->cx_rom_peripheral;
 }
 
+// A card whose PROM presents different bytes while it waits swaps its page
+// image at run time, and the 6502 takes operand bytes straight from mem[], so
+// the swap has to reach the live page and not only the store that
+// mem_update_paging copies from. The two must never diverge while the page is
+// shadowed from the store: on the next paging change mem_update_paging copies
+// a dirty live page back over the store it came from, so a store refreshed
+// without its live page, or the reverse, would be undone. The caller has
+// already refreshed the store; this brings the live page up to it only while
+// that page is shadowed from it, by the very comparison mem_update_paging
+// makes, which is what covers the II+ and slot 3 under SLOTC3ROM without a
+// case of their own.
+auto mem_refresh_cx_page(int slot) -> void {
+  if (slot < 1 || slot > 7 || mem == nullptr ||
+      g_active_memory->cx_rom_peripheral == nullptr) {
+    return;
+  }
+  const auto page = static_cast<uint32_t>(PAGE_C0 + slot);
+  const uint8_t* store = g_active_memory->cx_rom_peripheral +
+                         (static_cast<size_t>(slot) * PAGE_SIZE);
+  if (g_active_memory->memshadow[page] != store) {
+    return;
+  }
+  memcpy(mem + (page << 8), store, PAGE_SIZE);
+}
+
 auto get_mem_ptr(uint16_t addr) -> uint8_t* { return mem + addr; }
 
 //===========================================================================
