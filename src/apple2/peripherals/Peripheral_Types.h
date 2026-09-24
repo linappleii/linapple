@@ -25,6 +25,13 @@ typedef enum {
   log_error
 } PeripheralLogLevel_t;
 
+// What a byte stream leaving a card is for. The host names its destination by
+// slot and kind, so two printer cards get two destinations.
+typedef enum {
+  peripheral_sink_printer = 1,
+  peripheral_sink_serial = 2
+} PeripheralSinkKind_t;
+
 enum IrqSrc_t {
   is_6522 = 0,
   is_speech,

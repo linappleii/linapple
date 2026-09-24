@@ -84,6 +84,24 @@ typedef struct {
   uint8_t (*ReadFloatingBus)(uint32_t executed_cycles);
   // Optional host clock provider for RTC peripherals.
   bool (*GetLocalTime)(HostLocalTime_t* out);
+  // A card that emits a byte stream has nowhere of its own to put it: files
+  // and their paths belong to the frontend. The host hands out one token per
+  // slot and kind and takes the bytes back through it. The token is minted at
+  // init, before the frontend has attached anything, and stays valid while the
+  // frontend attaches, replaces or removes its sink; NULL comes back only for
+  // a slot outside 1..7, an unknown kind, or a slot already open under another
+  // kind. SinkReady is a state query and never a system call, so a card may
+  // poll it on every fetch: the sink is ready until a write fails to open or
+  // write its destination, whereupon that byte is dropped, the failure is
+  // logged once, and the sink stays not ready until the host's own retry
+  // recovers it, logged once too. With nothing attached on the host side a
+  // write is dropped and the sink is not ready, like a printer switched off; a
+  // NULL token is answered the same way. Appended last for the same reason as
+  // ReadFloatingBus.
+  void* (*SinkOpen)(void* instance, int slot, PeripheralSinkKind_t kind);
+  void (*SinkWrite)(void* sink, uint8_t byte);
+  bool (*SinkReady)(void* sink);
+  void (*SinkClose)(void* sink);
 } HostInterface_t;
 
 // Forward declaration

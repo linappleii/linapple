@@ -226,3 +226,430 @@ TEST_CASE("Peripheral ABI: A host without a clock says so and writes nothing") {
 
   peripheral_manager_shutdown();
 }
+
+#include <cstddef>
+
+extern "C" int test_c_peripheral_sink_write(HostInterface_t* host, int slot,
+                                            uint8_t byte);
+
+namespace {
+
+// Every host member is a function pointer, so the offsets are pinned as
+// member counts: the same header must lay out the same on a 32-bit host.
+constexpr size_t host_member_size = sizeof(void (*)(void));
+
+static_assert(offsetof(HostInterface_t, PrinterPutChar) ==
+                  16 * host_member_size,
+              "PrinterPutChar moved");
+static_assert(offsetof(HostInterface_t, PrinterGetStatus) ==
+                  17 * host_member_size,
+              "PrinterGetStatus moved");
+static_assert(offsetof(HostInterface_t, GetLocalTime) == 21 * host_member_size,
+              "GetLocalTime moved");
+static_assert(offsetof(HostInterface_t, SinkOpen) == 22 * host_member_size,
+              "SinkOpen is not the first member after GetLocalTime");
+static_assert(offsetof(HostInterface_t, SinkWrite) == 23 * host_member_size,
+              "SinkWrite moved");
+static_assert(offsetof(HostInterface_t, SinkReady) == 24 * host_member_size,
+              "SinkReady moved");
+static_assert(offsetof(HostInterface_t, SinkClose) == 25 * host_member_size,
+              "SinkClose moved");
+static_assert(sizeof(HostInterface_t) == 26 * host_member_size,
+              "HostInterface_t grew past the sink members");
+static_assert(peripheral_sink_printer == 1 && peripheral_sink_serial == 2,
+              "PeripheralSinkKind_t values are part of the plugin ABI");
+
+// A card that opens its sink at init and, when asked, records what the
+// manager had done for the sink by the time its own hooks ran.
+struct SinkProbe_t {
+  HostInterface_t* host = nullptr;
+  void* token = nullptr;
+  int slot = 0;
+  unsigned ticks_seen_at_think = 0;
+  unsigned ticks_seen_at_command = 0;
+  bool command_seen = false;
+};
+
+SinkProbe_t g_sink_probe;
+const TestFixtures::ScopedByteSink_t* g_sink_watched_by_probe = nullptr;
+
+auto sink_probe_init(int slot, HostInterface_t* host) -> void* {
+  g_sink_probe = SinkProbe_t();
+  g_sink_probe.host = host;
+  g_sink_probe.slot = slot;
+  g_sink_probe.token =
+      host->SinkOpen(&g_sink_probe, slot, peripheral_sink_printer);
+  return &g_sink_probe;
+}
+
+auto sink_probe_shutdown(void* instance) -> void {
+  auto* probe = static_cast<SinkProbe_t*>(instance);
+  probe->host->SinkClose(probe->token);
+}
+
+auto sink_probe_think(void* instance, uint32_t cycles) -> void {
+  (void)cycles;
+  auto* probe = static_cast<SinkProbe_t*>(instance);
+  if (g_sink_watched_by_probe != nullptr) {
+    probe->ticks_seen_at_think = g_sink_watched_by_probe->ticks();
+  }
+}
+
+auto sink_probe_command(void* instance, uint32_t cmd_id, const void* data,
+                        size_t size) -> PeripheralStatus_t {
+  (void)cmd_id;
+  (void)data;
+  (void)size;
+  auto* probe = static_cast<SinkProbe_t*>(instance);
+  probe->command_seen = true;
+  if (g_sink_watched_by_probe != nullptr) {
+    probe->ticks_seen_at_command = g_sink_watched_by_probe->ticks();
+  }
+  return peripheral_ok;
+}
+
+Peripheral_t g_sink_probe_peripheral = {LINAPPLE_ABI_VERSION,
+                                        "test.sink_probe",
+                                        "SinkProbe",
+                                        "Opens a byte sink at init",
+                                        "LinApple Contributors",
+                                        "1.0.0",
+                                        PERIPHERAL_MASK_EXPANSION,
+                                        -1,
+                                        sink_probe_init,
+                                        nullptr,
+                                        sink_probe_shutdown,
+                                        sink_probe_think,
+                                        nullptr,
+                                        nullptr,
+                                        nullptr,
+                                        sink_probe_command,
+                                        nullptr};
+
+constexpr int probe_slot = 2;
+
+// Puts the bridge in the state a fresh process has: nothing installed. The
+// previous binding is restored so that a session-wide sink, if one is ever
+// installed by the harness, survives the case.
+class ScopedNoByteSink_t {
+ public:
+  ScopedNoByteSink_t() : previous_(linapple_set_byte_sink(nullptr, nullptr)) {}
+  ~ScopedNoByteSink_t() {
+    linapple_set_byte_sink(previous_.vtable, previous_.ctx);
+  }
+  ScopedNoByteSink_t(const ScopedNoByteSink_t&) = delete;
+  auto operator=(const ScopedNoByteSink_t&) -> ScopedNoByteSink_t& = delete;
+  ScopedNoByteSink_t(ScopedNoByteSink_t&&) = delete;
+  auto operator=(ScopedNoByteSink_t&&) -> ScopedNoByteSink_t& = delete;
+
+ private:
+  ByteSinkBinding_t previous_;
+};
+
+}  // namespace
+
+TEST_CASE(
+    "Peripheral ABI: The sink members follow GetLocalTime at pinned offsets") {
+  CHECK(offsetof(HostInterface_t, SinkOpen) ==
+        offsetof(HostInterface_t, GetLocalTime) + host_member_size);
+  CHECK(offsetof(HostInterface_t, SinkClose) + host_member_size ==
+        sizeof(HostInterface_t));
+
+  peripheral_manager_init();
+  g_captured_host = nullptr;
+  REQUIRE(peripheral_register(&g_log_probe_peripheral, probe_slot) == 0);
+  REQUIRE(g_captured_host != nullptr);
+  CHECK(g_captured_host->SinkOpen != nullptr);
+  CHECK(g_captured_host->SinkWrite != nullptr);
+  CHECK(g_captured_host->SinkReady != nullptr);
+  CHECK(g_captured_host->SinkClose != nullptr);
+  // The retired pair still forwards until the card stops using it.
+  CHECK(g_captured_host->PrinterPutChar != nullptr);
+  CHECK(g_captured_host->PrinterGetStatus != nullptr);
+  peripheral_manager_shutdown();
+}
+
+TEST_CASE(
+    "Peripheral ABI: Without a host sink the token exists, is not ready and "
+    "swallows bytes") {
+  ScopedNoByteSink_t nothing_installed;
+  peripheral_manager_init();
+  REQUIRE(peripheral_register(&g_sink_probe_peripheral, probe_slot) == 0);
+  REQUIRE(g_sink_probe.token != nullptr);
+
+  HostInterface_t* host = g_sink_probe.host;
+  CHECK(host->SinkReady(g_sink_probe.token) == false);
+  host->SinkWrite(g_sink_probe.token, 0xC8);
+  CHECK(host->SinkReady(g_sink_probe.token) == false);
+
+  // A NULL token and a token the bridge never minted are refused the same
+  // way, never dereferenced.
+  int not_a_token = 0;
+  CHECK(host->SinkReady(nullptr) == false);
+  CHECK(host->SinkReady(&not_a_token) == false);
+  host->SinkWrite(nullptr, 0xC8);
+  host->SinkWrite(&not_a_token, 0xC8);
+  host->SinkClose(nullptr);
+  host->SinkClose(&not_a_token);
+
+  peripheral_manager_think(0);
+  peripheral_manager_shutdown();
+}
+
+TEST_CASE(
+    "Peripheral ABI: A card's bytes reach the installed sink with its slot") {
+  TestFixtures::ScopedByteSink_t sink;
+  peripheral_manager_init();
+  REQUIRE(peripheral_register(&g_sink_probe_peripheral, probe_slot) == 0);
+  REQUIRE(g_sink_probe.token != nullptr);
+  CHECK(sink.opens() == 0);
+
+  HostInterface_t* host = g_sink_probe.host;
+  CHECK(host->SinkReady(g_sink_probe.token));
+  CHECK(sink.opens() == 1);
+  CHECK(sink.last_open_kind() == peripheral_sink_printer);
+  CHECK(sink.ready_polls() == 1);
+
+  host->SinkWrite(g_sink_probe.token, 0xC8);
+  host->SinkWrite(g_sink_probe.token, 0xC5);
+  CHECK(test_c_peripheral_sink_write(host, probe_slot, 0x8D) == 1);
+  CHECK(sink.opens() == 1);
+
+  REQUIRE(sink.bytes().size() == 3);
+  CHECK(sink.bytes()[0].slot == probe_slot);
+  CHECK(sink.bytes()[0].byte == 0xC8);
+  CHECK(sink.bytes()[1].slot == probe_slot);
+  CHECK(sink.bytes()[1].byte == 0xC5);
+  CHECK(sink.bytes()[2].slot == probe_slot);
+  CHECK(sink.bytes()[2].byte == 0x8D);
+  CHECK(sink.dropped() == 0);
+
+  peripheral_manager_shutdown();
+  CHECK(sink.closes() == 1);
+}
+
+TEST_CASE(
+    "Peripheral ABI: A sink installed after the card opened its token "
+    "receives the bytes") {
+  ScopedNoByteSink_t nothing_installed;
+  peripheral_manager_init();
+  REQUIRE(peripheral_register(&g_sink_probe_peripheral, probe_slot) == 0);
+  HostInterface_t* host = g_sink_probe.host;
+  host->SinkWrite(g_sink_probe.token, 0x01);
+
+  {
+    TestFixtures::ScopedByteSink_t late;
+    CHECK(late.opens() == 0);
+    host->SinkWrite(g_sink_probe.token, 0xC8);
+    CHECK(late.opens() == 1);
+    CHECK(late.last_open_kind() == peripheral_sink_printer);
+    REQUIRE(late.bytes().size() == 1);
+    CHECK(late.bytes()[0].slot == probe_slot);
+    CHECK(late.bytes()[0].byte == 0xC8);
+    CHECK(late.closes() == 0);
+  }
+  // The guard's departure closed what it had opened; with nothing behind the
+  // host again the token is still valid and merely not ready.
+  CHECK(host->SinkReady(g_sink_probe.token) == false);
+  host->SinkWrite(g_sink_probe.token, 0xC5);
+
+  peripheral_manager_shutdown();
+}
+
+TEST_CASE("Peripheral ABI: Nested sinks take over and restore in order") {
+  ScopedNoByteSink_t nothing_installed;
+  TestFixtures::ScopedByteSink_t outer;
+  peripheral_manager_init();
+  REQUIRE(peripheral_register(&g_sink_probe_peripheral, probe_slot) == 0);
+  HostInterface_t* host = g_sink_probe.host;
+
+  host->SinkWrite(g_sink_probe.token, 0x01);
+  CHECK(outer.opens() == 1);
+  REQUIRE(outer.bytes().size() == 1);
+
+  {
+    TestFixtures::ScopedByteSink_t inner;
+    // Installing the inner sink closed the slot under the outer one.
+    CHECK(outer.closes() == 1);
+    host->SinkWrite(g_sink_probe.token, 0x02);
+    CHECK(inner.opens() == 1);
+    REQUIRE(inner.bytes().size() == 1);
+    CHECK(inner.bytes()[0].byte == 0x02);
+    CHECK(outer.bytes().size() == 1);
+    {
+      TestFixtures::ScopedByteSink_t innermost;
+      CHECK(inner.closes() == 1);
+      host->SinkWrite(g_sink_probe.token, 0x03);
+      REQUIRE(innermost.bytes().size() == 1);
+      CHECK(innermost.bytes()[0].byte == 0x03);
+      CHECK(inner.bytes().size() == 1);
+    }
+    host->SinkWrite(g_sink_probe.token, 0x04);
+    CHECK(inner.opens() == 2);
+    REQUIRE(inner.bytes().size() == 2);
+    CHECK(inner.bytes()[1].byte == 0x04);
+    CHECK(outer.bytes().size() == 1);
+  }
+
+  host->SinkWrite(g_sink_probe.token, 0x05);
+  CHECK(outer.opens() == 2);
+  REQUIRE(outer.bytes().size() == 2);
+  CHECK(outer.bytes()[1].slot == probe_slot);
+  CHECK(outer.bytes()[1].byte == 0x05);
+
+  peripheral_manager_shutdown();
+  CHECK(outer.closes() == 2);
+}
+
+TEST_CASE(
+    "Peripheral ABI: SinkOpen refuses a slot outside 1..7, an unknown kind and "
+    "a second kind on an open slot") {
+  TestFixtures::ScopedByteSink_t sink;
+  peripheral_manager_init();
+  REQUIRE(peripheral_register(&g_sink_probe_peripheral, probe_slot) == 0);
+  HostInterface_t* host = g_sink_probe.host;
+  void* instance = &g_sink_probe;
+
+  CHECK(host->SinkOpen(instance, 0, peripheral_sink_printer) == nullptr);
+  CHECK(host->SinkOpen(instance, 8, peripheral_sink_printer) == nullptr);
+  CHECK(host->SinkOpen(instance, -1, peripheral_sink_printer) == nullptr);
+  CHECK(host->SinkOpen(instance, 1, static_cast<PeripheralSinkKind_t>(0)) ==
+        nullptr);
+  CHECK(host->SinkOpen(instance, 1, static_cast<PeripheralSinkKind_t>(3)) ==
+        nullptr);
+  CHECK(host->SinkOpen(instance, 1, peripheral_sink_printer) != nullptr);
+  CHECK(host->SinkOpen(instance, 7, peripheral_sink_serial) != nullptr);
+
+  // Until the first use nothing is open, so the slot may still change kind.
+  CHECK(host->SinkOpen(instance, probe_slot, peripheral_sink_serial) ==
+        g_sink_probe.token);
+  CHECK(host->SinkOpen(instance, probe_slot, peripheral_sink_printer) ==
+        g_sink_probe.token);
+
+  host->SinkWrite(g_sink_probe.token, 0xC8);
+  CHECK(sink.opens() == 1);
+  CHECK(host->SinkOpen(instance, probe_slot, peripheral_sink_serial) ==
+        nullptr);
+  CHECK(host->SinkOpen(instance, probe_slot, peripheral_sink_printer) ==
+        g_sink_probe.token);
+  CHECK(sink.opens() == 1);
+
+  host->SinkClose(g_sink_probe.token);
+  CHECK(sink.closes() == 1);
+  void* serial = host->SinkOpen(instance, probe_slot, peripheral_sink_serial);
+  REQUIRE(serial != nullptr);
+  host->SinkWrite(serial, 0x41);
+  CHECK(sink.opens() == 2);
+  CHECK(sink.last_open_kind() == peripheral_sink_serial);
+  REQUIRE(sink.bytes().size() == 2);
+  CHECK(sink.bytes()[1].byte == 0x41);
+
+  peripheral_manager_shutdown();
+}
+
+TEST_CASE(
+    "Peripheral ABI: A sink that is not ready drops the byte and says so") {
+  TestFixtures::ScopedByteSink_t sink;
+  peripheral_manager_init();
+  REQUIRE(peripheral_register(&g_sink_probe_peripheral, probe_slot) == 0);
+  HostInterface_t* host = g_sink_probe.host;
+
+  sink.set_ready(false);
+  CHECK(host->SinkReady(g_sink_probe.token) == false);
+  host->SinkWrite(g_sink_probe.token, 0xC8);
+  CHECK(sink.dropped() == 1);
+  CHECK(sink.bytes().empty());
+  CHECK(test_c_peripheral_sink_write(host, probe_slot, 0xC5) == 0);
+  CHECK(sink.dropped() == 2);
+
+  sink.set_ready(true);
+  CHECK(host->SinkReady(g_sink_probe.token));
+  host->SinkWrite(g_sink_probe.token, 0xCC);
+  REQUIRE(sink.bytes().size() == 1);
+  CHECK(sink.bytes()[0].byte == 0xCC);
+  CHECK(sink.dropped() == 2);
+  // The C helper polls readiness before it writes, so three polls in all.
+  CHECK(sink.ready_polls() == 3);
+
+  peripheral_manager_shutdown();
+}
+
+TEST_CASE(
+    "Peripheral ABI: SinkClose closes an open slot once and the next use "
+    "reopens it") {
+  TestFixtures::ScopedByteSink_t sink;
+  peripheral_manager_init();
+  REQUIRE(peripheral_register(&g_sink_probe_peripheral, probe_slot) == 0);
+  HostInterface_t* host = g_sink_probe.host;
+
+  // Closing what was never opened opens nothing and closes nothing.
+  host->SinkClose(g_sink_probe.token);
+  CHECK(sink.opens() == 0);
+  CHECK(sink.closes() == 0);
+
+  host->SinkWrite(g_sink_probe.token, 0xC8);
+  CHECK(sink.opens() == 1);
+  host->SinkClose(g_sink_probe.token);
+  CHECK(sink.closes() == 1);
+  host->SinkClose(g_sink_probe.token);
+  CHECK(sink.closes() == 1);
+
+  // A re-init under an unchanged sink mints the same token and reopens on
+  // first use.
+  void* again =
+      host->SinkOpen(&g_sink_probe, probe_slot, peripheral_sink_printer);
+  CHECK(again == g_sink_probe.token);
+  CHECK(host->SinkReady(again));
+  CHECK(sink.opens() == 2);
+
+  peripheral_manager_shutdown();
+  CHECK(sink.closes() == 2);
+}
+
+TEST_CASE(
+    "Peripheral ABI: The manager ticks the sink after the command drain and "
+    "before any card thinks") {
+  TestFixtures::ScopedByteSink_t sink;
+  peripheral_manager_init();
+  REQUIRE(peripheral_register(&g_sink_probe_peripheral, probe_slot) == 0);
+  g_sink_watched_by_probe = &sink;
+
+  REQUIRE(peripheral_command(probe_slot, 0x00010001, nullptr, 0) ==
+          peripheral_ok);
+  peripheral_manager_think(0);
+  CHECK(sink.ticks() == 1);
+  CHECK(g_sink_probe.command_seen);
+  CHECK(g_sink_probe.ticks_seen_at_command == 0);
+  CHECK(g_sink_probe.ticks_seen_at_think == 1);
+
+  peripheral_manager_think(1000);
+  CHECK(sink.ticks() == 2);
+  CHECK(g_sink_probe.ticks_seen_at_think == 2);
+
+  g_sink_watched_by_probe = nullptr;
+  peripheral_manager_shutdown();
+}
+
+TEST_CASE("Peripheral ABI: A sink without a tick is left alone") {
+  peripheral_manager_init();
+  REQUIRE(peripheral_register(&g_sink_probe_peripheral, probe_slot) == 0);
+
+  static unsigned writes_seen = 0;
+  writes_seen = 0;
+  static const ByteSink_t tickless = {
+      nullptr, [](void*, int, uint8_t) -> void { ++writes_seen; }, nullptr,
+      nullptr, nullptr};
+  const ByteSinkBinding_t previous = linapple_set_byte_sink(&tickless, nullptr);
+
+  peripheral_manager_think(0);
+  HostInterface_t* host = g_sink_probe.host;
+  host->SinkWrite(g_sink_probe.token, 0xC8);
+  CHECK(writes_seen == 1);
+  // No ready member means the sink has nothing to say, which reads as not
+  // ready; no open or close member is skipped, not dereferenced.
+  CHECK(host->SinkReady(g_sink_probe.token) == false);
+  host->SinkClose(g_sink_probe.token);
+
+  linapple_set_byte_sink(previous.vtable, previous.ctx);
+  peripheral_manager_shutdown();
+}

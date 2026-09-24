@@ -566,28 +566,152 @@ static auto host_get_local_time(HostLocalTime_t* out) -> bool {
   return true;
 }
 
-static const HostInterface_t g_host_interface = {host_log,
-                                                 host_assert_irq,
-                                                 host_register_io,
-                                                 host_register_cx_rom,
-                                                 host_register_expansion_rom,
-                                                 host_register_direct_io,
-                                                 host_register_direct_io_strobe,
-                                                 host_get_mem_ptr,
-                                                 host_get_cycles,
-                                                 host_get_clock_hz,
-                                                 host_get_config,
-                                                 host_set_config,
-                                                 host_notify_status_changed,
-                                                 host_notify_activity_changed,
-                                                 host_audio_push_channels,
-                                                 host_reset_system,
-                                                 host_printer_put_char,
-                                                 host_printer_get_status,
-                                                 host_serial_transmit_byte,
-                                                 host_serial_update_state,
-                                                 host_read_floating_bus,
-                                                 host_get_local_time};
+// --- Byte sink ---
+
+struct SinkRecord_t {
+  int slot;
+  PeripheralSinkKind_t kind;
+  bool opened;
+};
+
+static constexpr size_t sink_slot_count = 7;
+static std::array<SinkRecord_t, sink_slot_count> g_sink_records{};
+static const ByteSink_t* g_byte_sink = nullptr;
+static void* g_byte_sink_ctx = nullptr;
+
+// A token is only ever the address of one of the records, so anything else a
+// card hands back, NULL included, is refused rather than dereferenced.
+static auto sink_record(void* token) -> SinkRecord_t* {
+  if (token == nullptr) {
+    return nullptr;
+  }
+  for (auto& record : g_sink_records) {
+    if (&record == token) {
+      return &record;
+    }
+  }
+  return nullptr;
+}
+
+static auto sink_close_record(SinkRecord_t& record) -> void {
+  if (!record.opened) {
+    return;
+  }
+  if (g_byte_sink != nullptr && g_byte_sink->close != nullptr) {
+    g_byte_sink->close(g_byte_sink_ctx, record.slot);
+  }
+  record.opened = false;
+}
+
+// Cards mint their tokens at init, before any frontend has installed a sink,
+// so a slot is opened on its first use under whatever is installed by then.
+static auto sink_attach(SinkRecord_t& record) -> bool {
+  if (g_byte_sink == nullptr) {
+    return false;
+  }
+  if (!record.opened) {
+    if (g_byte_sink->open != nullptr) {
+      g_byte_sink->open(g_byte_sink_ctx, record.slot, record.kind);
+    }
+    record.opened = true;
+  }
+  return true;
+}
+
+static auto sink_kind_is_known(PeripheralSinkKind_t kind) -> bool {
+  return kind == peripheral_sink_printer || kind == peripheral_sink_serial;
+}
+
+static auto host_sink_open(void* instance, int slot, PeripheralSinkKind_t kind)
+    -> void* {
+  (void)instance;
+  if (slot < min_slot_with_rom || slot > max_slot_with_rom ||
+      !sink_kind_is_known(kind)) {
+    return nullptr;
+  }
+  SinkRecord_t& record = g_sink_records.at(static_cast<size_t>(slot - 1));
+  // The frontend names a destination by slot, so a slot streams one kind at a
+  // time: a second kind would write into the first one's file.
+  if (record.opened && record.kind != kind) {
+    return nullptr;
+  }
+  record.slot = slot;
+  record.kind = kind;
+  return &record;
+}
+
+static auto host_sink_write(void* token, uint8_t byte) -> void {
+  SinkRecord_t* record = sink_record(token);
+  if (record == nullptr || !sink_attach(*record) ||
+      g_byte_sink->write == nullptr) {
+    return;
+  }
+  g_byte_sink->write(g_byte_sink_ctx, record->slot, byte);
+}
+
+static auto host_sink_ready(void* token) -> bool {
+  SinkRecord_t* record = sink_record(token);
+  if (record == nullptr || !sink_attach(*record) ||
+      g_byte_sink->ready == nullptr) {
+    return false;
+  }
+  return g_byte_sink->ready(g_byte_sink_ctx, record->slot);
+}
+
+static auto host_sink_close(void* token) -> void {
+  SinkRecord_t* record = sink_record(token);
+  if (record != nullptr) {
+    sink_close_record(*record);
+  }
+}
+
+// Whatever the outgoing sink opened is its own to close; the records then
+// reopen lazily under the incoming one, so a token minted before the swap
+// keeps working and a guard restoring the previous sink hands it back clean.
+auto linapple_set_byte_sink(const ByteSink_t* vtable, void* ctx)
+    -> ByteSinkBinding_t {
+  const ByteSinkBinding_t previous = {g_byte_sink, g_byte_sink_ctx};
+  for (auto& record : g_sink_records) {
+    sink_close_record(record);
+  }
+  g_byte_sink = vtable;
+  g_byte_sink_ctx = ctx;
+  return previous;
+}
+
+static auto sink_tick() -> void {
+  if (g_byte_sink != nullptr && g_byte_sink->tick != nullptr) {
+    g_byte_sink->tick(g_byte_sink_ctx);
+  }
+}
+
+static const HostInterface_t g_host_interface = {
+    .Log = host_log,
+    .AssertIrq = host_assert_irq,
+    .RegisterIO = host_register_io,
+    .RegisterCxROM = host_register_cx_rom,
+    .RegisterExpansionROM = host_register_expansion_rom,
+    .RegisterDirectIO = host_register_direct_io,
+    .RegisterDirectIOStrobe = host_register_direct_io_strobe,
+    .get_mem_ptr = host_get_mem_ptr,
+    .GetCycles = host_get_cycles,
+    .GetClockHz = host_get_clock_hz,
+    .GetConfig = host_get_config,
+    .SetConfig = host_set_config,
+    .NotifyStatusChanged = host_notify_status_changed,
+    .NotifyActivityChanged = host_notify_activity_changed,
+    .AudioPushChannels = host_audio_push_channels,
+    .ResetSystem = host_reset_system,
+    .PrinterPutChar = host_printer_put_char,
+    .PrinterGetStatus = host_printer_get_status,
+    .SerialTransmitByte = host_serial_transmit_byte,
+    .SerialUpdateState = host_serial_update_state,
+    .ReadFloatingBus = host_read_floating_bus,
+    .GetLocalTime = host_get_local_time,
+    .SinkOpen = host_sink_open,
+    .SinkWrite = host_sink_write,
+    .SinkReady = host_sink_ready,
+    .SinkClose = host_sink_close};
 
 // --- Command Queue ---
 
@@ -652,6 +776,11 @@ static auto clear_all_peripherals() -> void {
     }
     g_active_peripherals.at(i).clear();
   }
+  // A card that left its token open would otherwise hold the frontend's
+  // destination past its own life.
+  for (auto& record : g_sink_records) {
+    sink_close_record(record);
+  }
 }
 
 // --- Public Core API ---
@@ -690,6 +819,9 @@ auto peripheral_manager_shutdown() -> void {
 
 auto peripheral_manager_think(uint32_t cycles) -> void {
   peripheral_drain_command_queue();
+  // A sink that fell over gets its retry in before the cards poll it, so a
+  // card waiting on it is released in the same batch the sink recovers.
+  sink_tick();
   for (size_t i = 0; i < NUM_SLOTS; ++i) {
     for (auto& ap : g_active_peripherals.at(i)) {
       if (ap.api != nullptr && ap.api->think != nullptr) {

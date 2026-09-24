@@ -4,6 +4,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <vector>
 
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
@@ -50,6 +51,102 @@ class ScopedLocalTimeProvider_t {
 
   HostLocalTime_t frozen_;
   unsigned calls_ = 0;
+};
+
+/**
+ * @brief RAII capturing byte sink.
+ *
+ * Installs itself behind the host interface's sink members and puts the
+ * previous sink back, context included, on destruction. It records every byte
+ * with the slot it came from, counts the writes it refused while not ready,
+ * the readiness polls, opens, closes and ticks, and starts ready so a case
+ * that never touches readiness sees every byte. The sink is a process global,
+ * so the guard is neither copyable nor movable.
+ */
+class ScopedByteSink_t {
+ public:
+  struct Byte_t {
+    int slot;
+    uint8_t byte;
+  };
+
+  ScopedByteSink_t() : previous_(linapple_set_byte_sink(&vtable_, this)) {}
+
+  ~ScopedByteSink_t() {
+    linapple_set_byte_sink(previous_.vtable, previous_.ctx);
+  }
+
+  ScopedByteSink_t(const ScopedByteSink_t&) = delete;
+  auto operator=(const ScopedByteSink_t&) -> ScopedByteSink_t& = delete;
+  ScopedByteSink_t(ScopedByteSink_t&&) = delete;
+  auto operator=(ScopedByteSink_t&&) -> ScopedByteSink_t& = delete;
+
+  auto bytes() const -> const std::vector<Byte_t>& { return bytes_; }
+  auto dropped() const -> unsigned { return dropped_; }
+  auto ready_polls() const -> unsigned { return ready_polls_; }
+  auto opens() const -> unsigned { return opens_; }
+  auto closes() const -> unsigned { return closes_; }
+  auto ticks() const -> unsigned { return ticks_; }
+  auto last_open_kind() const -> PeripheralSinkKind_t { return last_kind_; }
+  auto ready() const -> bool { return ready_; }
+  auto set_ready(bool ready) -> void { ready_ = ready; }
+
+ private:
+  static auto self(void* ctx) -> ScopedByteSink_t* {
+    return static_cast<ScopedByteSink_t*>(ctx);
+  }
+
+  static auto open(void* ctx, int slot, PeripheralSinkKind_t kind) -> void {
+    (void)slot;
+    if (self(ctx) != nullptr) {
+      ++self(ctx)->opens_;
+      self(ctx)->last_kind_ = kind;
+    }
+  }
+
+  static auto write(void* ctx, int slot, uint8_t byte) -> void {
+    if (self(ctx) == nullptr) {
+      return;
+    }
+    if (!self(ctx)->ready_) {
+      ++self(ctx)->dropped_;
+      return;
+    }
+    self(ctx)->bytes_.push_back({slot, byte});
+  }
+
+  static auto ready(void* ctx, int slot) -> bool {
+    (void)slot;
+    if (self(ctx) == nullptr) {
+      return false;
+    }
+    ++self(ctx)->ready_polls_;
+    return self(ctx)->ready_;
+  }
+
+  static auto close(void* ctx, int slot) -> void {
+    (void)slot;
+    if (self(ctx) != nullptr) {
+      ++self(ctx)->closes_;
+    }
+  }
+
+  static auto tick(void* ctx) -> void {
+    if (self(ctx) != nullptr) {
+      ++self(ctx)->ticks_;
+    }
+  }
+
+  const ByteSink_t vtable_ = {open, write, ready, close, tick};
+  ByteSinkBinding_t previous_;
+  std::vector<Byte_t> bytes_;
+  unsigned dropped_ = 0;
+  unsigned ready_polls_ = 0;
+  unsigned opens_ = 0;
+  unsigned closes_ = 0;
+  unsigned ticks_ = 0;
+  PeripheralSinkKind_t last_kind_ = peripheral_sink_printer;
+  bool ready_ = true;
 };
 
 /**
