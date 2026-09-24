@@ -1,8 +1,5 @@
-// SPDX-License-Identifier: GPL-2.0-only
-/* C99 compilation smoke test: a plugin written in C must be able to include
- * the clock card's ABI headers and lay out its state frame the way the card
- * does. The descriptor accessor is declared but not called, because in a
- * plugin build it lives inside the shared object. */
+/* C99 smoke test: verify clock ABI headers and state frame layout compile
+ * cleanly. */
 #include <stddef.h>
 #include <stdint.h>
 

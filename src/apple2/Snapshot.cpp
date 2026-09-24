@@ -22,8 +22,7 @@ struct FixedSlotRegion_t {
   const char* name;
 };
 
-// The region AppleWin's layout reserved for a slot in the fixed body. Slot 0
-// is three motherboard devices; the speaker's is the one addressed by name.
+// Motherboard speaker region.
 auto fixed_slot_region(ApplewinSnapshot_t* snapshot, int slot)
     -> FixedSlotRegion_t {
   // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers)
@@ -53,9 +52,7 @@ auto fixed_slot_region(ApplewinSnapshot_t* snapshot, int slot)
   // NOLINTEND(cppcoreguidelines-avoid-magic-numbers)
 }
 
-// The Disk II answers save_state with its whole controller and drive state,
-// which the snapshot layer deliberately does not carry: a disk's state is
-// its mounted image. Probing slot 6 like the others would start saving it.
+// Disk II persists state to mounted image; omitted from snapshot trailer.
 constexpr int skipped_slot = 6;
 
 auto trailer_entry(ApplewinSnapshot_t* snapshot, int slot) -> SsSlotState_t* {
@@ -66,9 +63,7 @@ auto trailer_entry(ApplewinSnapshot_t* snapshot, int slot) -> SsSlotState_t* {
   return &snapshot->slot_trailer.slots[slot - 1];
 }
 
-// Two calls, as the ABI has it: the first, with no buffer, asks the card how
-// much it needs, so the blob is exactly the card's frame and load_state gets
-// back the size it wrote rather than the slot's capacity.
+// Query required buffer size before allocating frame.
 auto save_slot_to_trailer(int slot, SsSlotState_t* entry) -> void {
   entry->length = 0;
   size_t needed = 0;
@@ -121,9 +116,7 @@ auto snapshot_serialize(ApplewinSnapshot_t* snapshot) -> void {
 
   cpu_get_snapshot(&snapshot->apple2_unit.cpu_6502);
   {
-    // Slot 0 holds three peripherals, so the joystick is asked for by name.
-    // Its region is 8 bytes and the card's frame is 56, so the card refuses
-    // the buffer and the region stays zero until the layout grows.
+    // Slot 0 contains multiple devices; query joystick by name.
     size_t size = sizeof(snapshot->apple2_unit.joystick);
     peripheral_save_state_by_name(0, "Joystick",
                                   &snapshot->apple2_unit.joystick, &size);
@@ -164,8 +157,6 @@ auto snapshot_deserialize(ApplewinSnapshot_t* snapshot) -> bool {
     return false;
   }
 
-  // A file without a trailer reaches here with the trailer all zeros, which
-  // every slot reads as "nothing carried".
   if (!trailer_is_sane(snapshot)) {
     return false;
   }
@@ -191,9 +182,7 @@ auto snapshot_deserialize(ApplewinSnapshot_t* snapshot) -> bool {
   mem_set_snapshot(&snapshot->apple2_unit.memory);
 
   for (int i = 0; i < NUM_SLOTS; ++i) {
-    // A slot the trailer carries is loaded from it alone; the fixed body's
-    // region for that slot is the one a fixed-body file has and stays the
-    // fallback for a slot the trailer left empty.
+    // Fall back to fixed body if slot trailer is empty.
     const SsSlotState_t* entry = trailer_entry(snapshot, i);
     if (entry != nullptr && entry->length > 0) {
       peripheral_load_state(i, entry->data, entry->length);

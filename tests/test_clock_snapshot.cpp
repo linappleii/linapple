@@ -66,8 +66,7 @@ auto read_latches(int slot) -> Latches_t {
   return latches;
 }
 
-// Only the bytes on disk say what the frontend wrote; the in-memory snapshot
-// the writer serialized is gone by the time the file exists.
+// Verify raw file contents on disk independently of in-memory state.
 auto read_file(const std::string& path) -> std::unique_ptr<ApplewinSnapshot_t> {
   struct stat on_disk{};
   REQUIRE(stat(path.c_str(), &on_disk) == 0);
@@ -80,9 +79,7 @@ auto read_file(const std::string& path) -> std::unique_ptr<ApplewinSnapshot_t> {
   return snapshot;
 }
 
-// The card is placed by the configuration and reached on the bus, the way a
-// program running on the machine reaches it, and the file goes through the
-// frontend's own writer and reader.
+// End-to-end test: verify clock card save and restore via snapshot API.
 auto latches_survive_the_file(int slot) -> void {
   TestFixtures::ScopedTestConfig_t::Description_t description;
   description.slots.at(static_cast<size_t>(slot - 1)) = "Clock Card";

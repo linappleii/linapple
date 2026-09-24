@@ -541,10 +541,7 @@ function(add_peripheral name desc sources extra_libs libs force_builtin)
             foreach(lib IN LISTS libs)
                 target_link_libraries(peripheral-${name} PRIVATE media-${lib})
             endforeach()
-            # A plugin's one export is its descriptor, which PERIPHERAL_REGISTER
-            # marks visible itself. Everything else stays inside the object so
-            # a card's internals can never interpose on the executable's copy
-            # of the same function, or on another plugin's.
+            # Plugins hide all symbols except the PERIPHERAL_REGISTER descriptor.
             set_target_properties(peripheral-${name} PROPERTIES
                 PREFIX "" OUTPUT_NAME "${name}"
                 C_VISIBILITY_PRESET hidden
@@ -785,12 +782,6 @@ if(BUILD_TESTING)
         set_tests_properties(test-fixtures PROPERTIES ENVIRONMENT "ASAN_OPTIONS=detect_leaks=1:symbolize=1;UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1")
     endif()
 
-    # A card case is one unit of hardware behaviour, never a soak: one that
-    # stops finishing inside a second has found a regression rather than a
-    # slow machine, and the budget says so instead of printing it.
-    # Sanitizers multiply the run time and ctest -j adds contention, so
-    # only the native budget is the regression gate. Defined before any card
-    # test is registered so each can take the budget where it is declared.
     if(ENABLE_ASAN OR ENABLE_UBSAN OR DEFINED ENV{CI})
         set(PERIPHERAL_TEST_TIMEOUT 10)
     else()
@@ -806,8 +797,7 @@ if(BUILD_TESTING)
     add_linapple_test(superserial-peripheral "tests/test_main.cpp;tests/test_superserial_peripheral.cpp")
 
     add_linapple_test(abi tests/test_abi.cpp)
-    # The ABI headers promise a C99 plugin can include them; only a C99
-    # compile of a translation unit that uses every host type proves it.
+    # Verifies ABI headers compile cleanly as pure C99.
     set_source_files_properties(tests/test_peripheral_abi_c.c PROPERTIES COMPILE_OPTIONS "-std=c99;-pedantic")
     add_linapple_test(peripheral-abi "tests/test_main.cpp;tests/test_peripheral_abi.cpp;tests/test_peripheral_abi_c.c")
 
@@ -826,11 +816,7 @@ if(BUILD_TESTING)
         add_linapple_test(clock-snapshot tests/test_clock_snapshot.cpp)
         set_tests_properties(test-clock-snapshot PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
         if(BUILD_SHARED_PERIPHERALS)
-            # dlsym sees only what a plugin exports. What it imports from the
-            # executable shows in its dynamic symbol table alone, so the check
-            # that it imports nothing is made on the file, not through a
-            # handle. Toolchain symbols carry a glibc, libstdc++, libgcc or
-            # C++ ABI version; the unversioned ones are the runtime's hooks.
+            # Verify plugin imports no external symbols from the main executable.
             add_test(NAME test-clock-plugin-exports COMMAND sh -c
             [=[
 plugin="$1"
@@ -1094,9 +1080,7 @@ fi
         add_linapple_test(harddisk-exhaustive tests/test_harddisk_exhaustive.cpp)
     endif()
     add_linapple_test(snapshot tests/test_snapshot.cpp)
-    # The fixture is the one legacy fixed-body file the reader is proven
-    # against. Regenerating it would quietly test the current layout instead,
-    # so its bytes are pinned.
+    # Pinned fixture for regression testing.
     add_test(NAME test-snapshot-fixture-pinned COMMAND sh -c
         "echo '508d85b3144ab7a576cb7a01be705c21d59d68c2  tests/fixtures/minimal.aws' | sha1sum -c --quiet"
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")

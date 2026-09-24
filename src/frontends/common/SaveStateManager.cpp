@@ -32,10 +32,7 @@ auto save_state_set_filename(const char* filename) -> void {
   }
 }
 
-// The two layouts share one header version so that readers from before the
-// slot trailer, which read their fixed body's bytes and stop, still load a
-// file that carries one. Only the file's length says which layout it is, and
-// a file of any other length is rejected whole rather than loaded in part.
+// Differentiate snapshot format with slot trailer by file length.
 static auto snapshot_layout_size(size_t file_size) -> size_t {
   if (file_size == snapshot_size_fixed_body ||
       file_size == sizeof(ApplewinSnapshot_t)) {
@@ -45,8 +42,6 @@ static auto snapshot_layout_size(size_t file_size) -> size_t {
 }
 
 auto save_state_load() -> bool {
-  // Value-initialized so a fixed-body file leaves the trailer all zeros,
-  // which the deserializer reads as "no slot carried".
   auto snapshot = std::unique_ptr<ApplewinSnapshot_t>(new ApplewinSnapshot_t());
 
   const char* filename = g_save_state_filename;

@@ -34,12 +34,8 @@ typedef PeripheralIOHandler PeripheralIoHandler_t;
 // whatever the video scanner is fetching on that very cycle.
 typedef void (*PeripheralStrobeHandler_t)(void* instance);
 
-// The host's clock as a card sees it. Every broken-down field is already
-// local time: the host applied its zone before filling them, so a card copies
-// them into its registers and applies no offset of its own. unix_seconds is
-// the same instant as seconds since 1970-01-01 00:00:00 UTC, and
-// utc_offset_seconds is local minus UTC for that instant, so a card that
-// needs UTC can recover it. weekday counts from Sunday = 0 like tm_wday.
+// Host local time provided to peripheral cards; unix_seconds provides UTC
+// instant.
 typedef struct {
   int64_t unix_seconds;
   int32_t utc_offset_seconds;
@@ -58,8 +54,6 @@ typedef struct {
   void (*RegisterIO)(int slot, PeripheralIOHandler readC0,
                      PeripheralIOHandler writeC0, PeripheralIOHandler readCx,
                      PeripheralIOHandler writeCx);
-  // The host copies the page out, so a card hands over its ROM image as the
-  // constant it is.
   void (*RegisterCxROM)(int slot, const uint8_t* rom_ptr);
   void (*RegisterExpansionROM)(int slot, uint8_t* rom_ptr);
   void (*RegisterDirectIO)(void* instance, uint16_t addr,
@@ -88,10 +82,7 @@ typedef struct {
   // plugin compiled against an older header still finds every member it knows
   // at the offset it expects.
   uint8_t (*ReadFloatingBus)(uint32_t executed_cycles);
-  // A clock card cannot know the host's time; it can only be told. Routing it
-  // through the host is what lets a test freeze the clock the card reads.
-  // Returns false, leaving *out untouched, when the host has no clock to
-  // offer. Appended last for the same reason as ReadFloatingBus.
+  // Optional host clock provider for RTC peripherals.
   bool (*GetLocalTime)(HostLocalTime_t* out);
 } HostInterface_t;
 
@@ -121,8 +112,7 @@ typedef struct Peripheral_t {
                               size_t* out_size);
 } Peripheral_t;
 
-// A plugin is built with every symbol hidden, so the one the loader looks up
-// by name has to be marked visible where it is defined.
+// Export probe symbol for dynamic plugins.
 #if defined(__GNUC__) || defined(__clang__)
 #define PERIPHERAL_EXPORT __attribute__((visibility("default")))
 #else
@@ -170,10 +160,8 @@ PeripheralStatus_t peripheral_command(int slot, uint32_t cmd_id,
                                       const void* data, size_t size);
 PeripheralStatus_t peripheral_query(int slot, uint32_t cmd_id, void* out,
                                     size_t* out_size);
-/* Slot 0 holds several peripherals, so the target is named by descriptor
- * id; the slot stays because two slots can hold the same card. Commands are
- * queued and delivered on the emulation thread. The lookup of the name reads
- * the peripheral table unlocked, so call from the emulation thread. */
+// Send command to specific peripheral by descriptor ID (must call on emu
+// thread).
 PeripheralStatus_t peripheral_command_by_id(int slot, const char* peripheral_id,
                                             uint32_t cmd_id, const void* data,
                                             size_t size);

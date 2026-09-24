@@ -542,19 +542,14 @@ static auto host_get_local_time(HostLocalTime_t* out) -> bool {
     return false;
   }
 
-  // tm_gmtoff is a glibc and BSD extension, so the offset is derived from the
-  // two standard conversions instead: mktime reads the UTC fields as if they
-  // were local time, in the same DST regime as the real local time, and so
-  // lands exactly the zone's offset away from the instant, so now minus that
-  // result is the offset.
+  // Derive UTC offset portably without BSD/glibc tm_gmtoff.
   utc.tm_isdst = local.tm_isdst;
   const time_t utc_as_local = mktime(&utc);
   if (utc_as_local == static_cast<time_t>(-1)) {
     return false;
   }
 
-  // The struct has padding after its last byte; a plugin comparing whole
-  // frames must never see stack garbage in it.
+  // Zero padding bytes for deterministic comparisons.
   memset(out, 0, sizeof(*out));
   out->unix_seconds = static_cast<int64_t>(now);
   out->utc_offset_seconds = static_cast<int32_t>(now - utc_as_local);
@@ -596,8 +591,7 @@ static const HostInterface_t g_host_interface = {host_log,
 
 // --- Command Queue ---
 
-// A slot may hold several peripherals - slot 0 always does - so a queued
-// command can name the one it is for. Empty means the slot, as before.
+// Empty target_id broadcasts to entire slot.
 constexpr size_t peripheral_target_id_size = 32;
 
 struct QueuedCommand_t {
@@ -819,11 +813,7 @@ auto peripheral_command(int slot, uint32_t cmd_id, const void* data,
   return peripheral_ok;
 }
 
-// Finds a peripheral in a slot by the id in its descriptor, which is what
-// peripheral_command_by_id() and peripheral_query_by_id() take.
-// peripheral_save_state_by_name() matches on the human name instead; the two
-// are kept apart so that neither has to guess which kind of string it was
-// handed.
+// Lookup peripheral by descriptor ID.
 static auto peripheral_by_id(int slot, const char* peripheral_id)
     -> ActivePeripheral_t* {
   if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS) ||
@@ -847,14 +837,9 @@ auto peripheral_command_by_id(int slot, const char* peripheral_id,
       (size > 0 && data == nullptr)) {
     return peripheral_error;
   }
-  // Truncating here would deliver the command to the wrong peripheral.
   if (strlen(peripheral_id) >= peripheral_target_id_size) {
     return peripheral_error;
   }
-  // Whether the slot holds it is answered now, so that a caller naming a
-  // peripheral that is not there hears about it. What the peripheral makes of
-  // the command is not: like peripheral_command(), this returns once the
-  // command is queued, and the queue is drained on the emulation thread.
   if (peripheral_by_id(slot, peripheral_id) == nullptr) {
     return peripheral_error;
   }
@@ -872,8 +857,6 @@ auto peripheral_command_by_id(int slot, const char* peripheral_id,
   return peripheral_ok;
 }
 
-// Queries are answered on the spot, so unlike the command side this reports
-// what the peripheral itself said.
 auto peripheral_query_by_id(int slot, const char* peripheral_id,
                             uint32_t cmd_id, void* out, size_t* out_size)
     -> PeripheralStatus_t {
@@ -932,10 +915,7 @@ auto peripheral_verify_manifest(const void* manifest_ptr) -> bool {
       if (!slot_peripherals.empty()) return false;
       continue;
     }
-    // Slot 0 holds every motherboard device, and which of them registered
-    // first depends on whether the speaker is built in or loaded as a plugin.
-    // The manifest names one of them, so any resident device of that name
-    // means the same machine.
+    // Match slot 0 devices by descriptor name regardless of load order.
     bool named_device_present = false;
     for (const auto& ap : slot_peripherals) {
       if (ap.api != nullptr && strcmp(ap.api->name, pi.name) == 0) {

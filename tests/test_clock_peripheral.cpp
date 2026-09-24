@@ -79,9 +79,7 @@ using Frame_t = std::array<uint8_t, frame_size>;
 // hour 14, minute 30, one BCD digit per register.
 constexpr Latches_t frozen_latches = {0, 3, 0, 4, 1, 2, 1, 4, 3, 0};
 
-// The same instant as the host hands it over: already local, so the card
-// copies the fields and applies no offset. unix_seconds and the offset are
-// carried for completeness; the card never reads them.
+// Host provides pre-offset local time; card ignores unix_seconds.
 constexpr HostLocalTime_t frozen_thursday = {1773325800, 0,  2026, 3, 12,
                                              4,          14, 30,   0};
 
@@ -95,8 +93,7 @@ constexpr HostLocalTime_t frozen_leap_day = {1709164800, 0, 2024, 2, 29,
                                              4,          0, 0,    0};
 constexpr Latches_t leap_day_latches = {0, 2, 0, 4, 2, 9, 0, 0, 0, 0};
 
-// What the mock host says the undriven bus holds on a given cycle: a value
-// that no latch register can produce, so a pass-through is unmistakable.
+// Sentinel bus value distinct from any valid latch register byte.
 auto floating_bus_marker(uint32_t executed_cycles) -> uint8_t {
   return static_cast<uint8_t>(0xA0 | (executed_cycles & 0x1F));
 }
@@ -111,26 +108,17 @@ constexpr uint32_t oracle_hole_cycle = 100;
 constexpr uint8_t oracle_strobe_marker = 0x5A;
 constexpr uint8_t oracle_hole_marker = 0x3C;
 
-// Version 1: version, struct_size, the eight-byte epoch pin (always zero now),
-// the ten latches, the pin flag (always zero now), five reserved bytes.
+// Version 1 snapshot frame layout.
 constexpr Frame_t frozen_frame = {
     0x01, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x04, 0x01, 0x02,
     0x01, 0x04, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-// tests/fixtures/clock-frame-v1.bin is the frame an earlier card wrote for
-// the same latches with its epoch pin engaged: fixed_epoch 0x69B2CDE8
-// (1773325800) little-endian at byte 8, use_fixed_epoch = 1 at byte 26. Its
-// bytes are pinned by a ctest SHA-1 check.
+// Pinned fixture clock-frame-v1.bin includes legacy epoch pin fields.
 constexpr std::array<uint8_t, 12> frame_v1_prefix = {
     0x01, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0xE8, 0xCD, 0xB2, 0x69};
 
-// The firmware, transcribed by hand from its disassembly rather than copied
-// from the card, so a byte that changes on either side is caught. $Cn00..07
-// hold the ProDOS ID bytes at the even offsets; the READ entry is $Cn08, the
-// WRITE entry $Cn0B lands on the $60 operand of LDA #$60 and so is a bare
-// RTS; the branch legs at $Cn01/$Cn03 and the carry leg at $Cn5D all reach
-// the PLP RTS at $Cn2B.
+// Golden disassembly test vector for ProDOS 8 ThunderClock firmware.
 constexpr std::array<uint8_t, slot_rom_size> firmware_rom = {
     0x08, 0x90, 0x28, 0xB0, 0x58, 0x00, 0x70, 0x00, 0xEA, 0xEA, 0xA9, 0x60,
     0x08, 0x78, 0x20, 0x58, 0xFF, 0xBA, 0xBD, 0x00, 0x01, 0x28, 0x0A, 0x0A,
@@ -156,29 +144,22 @@ constexpr uint32_t rts_cycles = 6;
 // entry: "#" with the high bit set, asking a real card for numeric output.
 constexpr uint8_t prodos_write_format = 0xA3;
 
-// The GETLN input buffer the READ entry fills, and a byte the firmware can
-// never emit (its output is $B0..$B9, $AC and $80), so an untouched cell is
-// unmistakable.
+// Sentinel byte in GETLN buffer to detect unwritten cells.
 constexpr uint16_t input_buffer = 0x0200;
 constexpr uint8_t untouched_marker = 0xEE;
 using InputPage_t = std::array<uint8_t, 256>;
 
-// "03,04,12,14,30" as high-ASCII digits and commas, the fifth comma replaced
-// by $80, for the frozen Thursday.
+// High-ASCII date format ("03,04,12,14,30") terminated by $80.
 constexpr std::array<uint8_t, 15> frozen_input_line = {
     0xB0, 0xB3, 0xAC, 0xB0, 0xB4, 0xAC, 0xB1, 0xB2,
     0xAC, 0xB1, 0xB4, 0xAC, 0xB3, 0xB0, 0x80};
 
-// Where the routine under test returns to, and a cap on how long it may run:
-// the READ entry takes a few hundred cycles, so a runaway is caught well
-// inside the case's budget.
+// Return sentinel PC and cycle execution limit.
 constexpr uint16_t return_sentinel = 0x0300;
 constexpr uint16_t stack_top = 0x01FF;
 constexpr uint32_t subroutine_cycle_cap = 20000;
 constexpr uint8_t status_interrupts_masked = 0x24;
 
-// A command or query id the card never defined, plus the two commands and
-// two queries an earlier card did define.
 constexpr uint32_t unknown_command = 0xDEAD;
 constexpr uint32_t unknown_query = 0xBEEF;
 constexpr uint32_t retired_cmd_set_epoch = 0x0001;
@@ -458,11 +439,7 @@ constexpr std::array<CalendarRow_t, 7> calendar_edges = {{
      {0, 3, 0, 0, 1, 5, 1, 2, 0, 0}},
 }};
 
-// Two zones, already applied by the host, so the card sees only the local
-// fields and the offset it never reads. GNU date under the zone JST-9 gives
-// 1795910340 as Sun Nov 29 08:59:00 JST 2026 (UTC+9), and under
-// EST5EDT,M3.2.0,M11.1.0 gives 1773325800 as Thu Mar 12 10:30:00 EDT 2026
-// (UTC-4, daylight time already in force).
+// Verify time mapping under UTC+9 (JST) and UTC-4 (EDT).
 constexpr int32_t jst_offset = 32400;
 constexpr int32_t edt_offset = -14400;
 constexpr HostLocalTime_t tokyo_sunday = {1795910340, jst_offset, 2026, 11, 29,
@@ -472,9 +449,7 @@ constexpr HostLocalTime_t new_york_thursday = {
     1773325800, edt_offset, 2026, 3, 12, 4, 10, 30, 0};
 constexpr Latches_t new_york_thursday_latches = {0, 3, 0, 4, 1, 2, 1, 0, 3, 0};
 
-// The card in slot 4 of an Enhanced //e, booted the way a frontend boots it:
-// the hard reset is what copies every slot's ROM into the 6502's address
-// space, so the firmware can be fetched from $C4xx.
+// Hard reset copies slot ROM into address space ($C4xx).
 struct ClockInSlot4_t {
   static auto describe() -> TestFixtures::ScopedTestConfig_t::Description_t {
     TestFixtures::ScopedTestConfig_t::Description_t description;
@@ -506,10 +481,7 @@ auto read_input_page() -> InputPage_t {
   return page;
 }
 
-// Runs the 6502 into a routine the way a JSR would: the sentinel's return
-// address sits on the stack, so the routine's own RTS lands there and the loop
-// stops. Returns the cycles spent; the caller checks the PC reached the
-// sentinel, since the cap is what ends a runaway.
+// Execute 6502 routine until sentinel RTS; return elapsed cycles.
 auto call_subroutine(uint16_t entry, uint8_t accumulator) -> uint32_t {
   const uint16_t pushed = return_sentinel - 1;
   const std::array<uint8_t, 2> return_address = {
@@ -577,8 +549,7 @@ TEST_CASE("Clock Peripheral: A [Slots] line still names the card as before") {
   CHECK(std::strcmp(descriptor->description,
                     "ThunderClock-compatible ProDOS clock") == 0);
 
-  // Every existing configuration and .aws manifest names the card by these
-  // two strings; the descriptor's name and id are part of that contract.
+  // Descriptors must preserve stable names for configuration compatibility.
   CHECK(peripheral_find_internal("Clock Card") == descriptor);
   CHECK(peripheral_find_internal("linapple.clock") == descriptor);
   CHECK(peripheral_find_internal("Clock") == descriptor);
@@ -695,7 +666,6 @@ TEST_CASE(
           peripheral_ok);
   CHECK(harness.latches(slot) == frozen_latches);
 
-  // Re-saved, the pin fields are zero: the card has no pin to report.
   CHECK(harness.save_frame(slot) == frozen_frame);
 }
 
@@ -746,7 +716,6 @@ TEST_CASE("Clock Peripheral: A rejected load leaves the latches as they were") {
     CHECK(harness.latches(slot) == frozen_latches);
   }
   SUBCASE("an unknown version") {
-    // No version 2 was ever written, so none is accepted.
     rejects(corrupted(0, 0), frame_size);
     rejects(corrupted(0, 2), frame_size);
     rejects(corrupted(0, 3), frame_size);
@@ -818,8 +787,7 @@ TEST_CASE("Clock Peripheral: The retired epoch commands answer incompatible") {
   CHECK(harness.latches(slot) == Latches_t{});
 }
 
-// A real clock keeps time through RESET; the firmware strobes before every
-// read, so a zeroed latch bank would never be seen by ProDOS anyway.
+// Hardware retains latched time through RESET.
 TEST_CASE("Clock Peripheral: Reset keeps the latched time") {
   ClockHarness_t harness;
   const int slot = test_slot_1;
@@ -907,20 +875,15 @@ TEST_CASE(
     CHECK(harness.log_messages().back().find("slot 4") != std::string::npos);
   }
 
-  // A host that cannot even log is still refused, silently.
   HostInterface_t mute = *harness.host();
   mute.Log = nullptr;
   mute.GetLocalTime = nullptr;
   CHECK(clock_descriptor()->init(test_slot_1, &mute) == nullptr);
 
-  // The complete host still gets its card.
   CHECK(harness.create_clock(test_slot_2) != nullptr);
 }
 
-// The other cases hand the card a mock host. This one puts the card in slot
-// 4 of a real Enhanced //e and reads it the way the 6502 does, through the
-// I/O dispatcher, so the bytes on the undriven bus and the frozen clock both
-// arrive by the host interface the core actually builds.
+// Integration test: execute clock card in slot 4 through core bus dispatch.
 TEST_CASE("Clock Peripheral: The real bus and the frozen clock reach slot 4") {
   TestFixtures::ScopedTestConfig_t::Description_t description;
   description.slots.at(oracle_slot - 1) = "Clock Card";
@@ -976,10 +939,7 @@ TEST_CASE("Clock Peripheral: The slot ROM is the firmware, byte for byte") {
                     [](uint8_t byte) { return byte == 0; }));
 }
 
-// ProDOS 8 finds the card by its ID bytes and then calls $Cn08, which must
-// leave "mo,da,dt,hr,mn" at $0200. This is that call, made by the 65C02 of an
-// Enhanced //e with the firmware fetched from $C4xx and the latches read on
-// the bus, for a frozen host time.
+// Verify ProDOS 8 ThunderClock READ entry ($C408) populates $0200 buffer.
 TEST_CASE("Clock Peripheral: The READ entry writes the frozen time to $0200") {
   ClockInSlot4_t machine;
   TestFixtures::ScopedLocalTimeProvider_t clock(frozen_thursday);
@@ -1049,9 +1009,7 @@ TEST_CASE("Clock Peripheral: A zone arrives as local fields, not an offset") {
   harness.strobe(slot);
   CHECK(harness.latches(slot) == new_york_thursday_latches);
 
-  // The same instant twice, once as UTC and once as New York: only the fields
-  // differ, and the latches follow them, so the card reads fields, not the
-  // epoch.
+  // Test identical instant across UTC and New York timezones.
   REQUIRE(new_york_thursday.unix_seconds == frozen_thursday.unix_seconds);
   harness.freeze_clock(frozen_thursday);
   harness.strobe(slot);
@@ -1067,9 +1025,7 @@ TEST_CASE("Clock Peripheral: A zone arrives as local fields, not an offset") {
   CHECK(harness.latches(slot).at(latch_minute + 1) == 0);
 }
 
-// With no frozen provider the core answers with the machine's own clock, so
-// the digits cannot be literals; what can be checked is that they form a
-// calendar and that the always-zero weekday tens digit is zero.
+// Fall back to host system clock when no frozen provider is registered.
 TEST_CASE("Clock Peripheral: The host's wall clock latches a calendar") {
   ClockInSlot4_t machine;
 

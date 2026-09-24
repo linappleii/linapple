@@ -29,9 +29,8 @@
 extern "C" const char* __asan_default_options() { return "detect_leaks=0"; }
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
-  // A fixed-body input reaches the deserializer with a zeroed trailer, as a
-  // legacy file does through the reader; a longer input fills the trailer
-  // too, so both slot paths see corrupted bytes.
+  // Fixed-body input receives zeroed trailer; longer input exercises trailer
+  // deserializer.
   if (size < snapshot_size_fixed_body) {
     return 0;
   }

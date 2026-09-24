@@ -291,9 +291,7 @@ TEST_CASE(
   REQUIRE(clock_path != nullptr);
   CHECK(std::string(clock_path).find("clock.so") != std::string::npos);
 
-  // The loader found the descriptor by this one name, so a second dlopen of
-  // the same file sees it too, and nothing else: the getter the built-in
-  // card exposes has C linkage and is hidden in the plugin.
+  // Subsequent dlopen verifies only published descriptor symbol is visible.
   void* clock_handle = dlopen(clock_path, RTLD_NOW | RTLD_LOCAL);
   REQUIRE(clock_handle != nullptr);
   auto* exported = static_cast<Peripheral_t*>(
@@ -333,9 +331,7 @@ TEST_CASE(
   CHECK(state_sz == sizeof(ClockCardSaveState_t));
   peripheral_load_state(4, state_buf.data(), state_sz);
 
-  // The manager's wrappers return nothing, so the status a save and a load
-  // answer is read off the plugin's own entry points, on an instance the
-  // plugin builds against a host offering only the members the card requires.
+  // Test minimal host interface directly against plugin entry points.
   HostInterface_t bare_host{};
   bare_host.RegisterIO = [](int, PeripheralIOHandler, PeripheralIOHandler,
                             PeripheralIOHandler, PeripheralIOHandler) {};

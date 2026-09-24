@@ -14,14 +14,7 @@
 
 namespace TestFixtures {
 
-/**
- * @brief RAII frozen host clock.
- *
- * Installs a local-time provider that answers every GetLocalTime with one
- * fixed value, and puts the wall clock back on destruction so a frozen
- * instant never leaks into the next case. The provider is a process global,
- * so the guard is neither copyable nor movable.
- */
+/** Retrieve snapshot fixture path. */
 class ScopedLocalTimeProvider_t {
  public:
   explicit ScopedLocalTimeProvider_t(const HostLocalTime_t& frozen)

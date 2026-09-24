@@ -246,9 +246,6 @@ TEST_CASE("Snapshot: A 32-byte card state rides the trailer through any slot") {
   CHECK(snapshot->slot_trailer.slots[4].length == 0);
   CHECK(snapshot->slot_trailer.slots[5].length == 0);
   CHECK(snapshot->slot_trailer.slots[6].length == 0);
-  // The fixed body never had room for this card in slot 1, and slot 4's region
-  // is bigger than the card, so an exact 32 on load can only come from the
-  // trailer.
   CHECK(sizeof(snapshot->empty1) < fake_state_size);
   CHECK(sizeof(snapshot->mockingboard1) > fake_state_size);
   CHECK(sizeof(snapshot->apple2_unit.comms) == fake_state_size);
@@ -293,9 +290,7 @@ TEST_CASE("Snapshot: An impossible slot length refuses the file untouched") {
 }
 
 TEST_CASE("Snapshot: A fixed-body file loads with its slots intact") {
-  // The fixture was written by the 1.0.0.1 writer with this machine, these
-  // registers and this byte at $2000; its bytes are pinned by
-  // test-snapshot-fixture-pinned.
+  // Verify snapshot matches golden fixture written by legacy writer.
   TestConfig_t::Description_t description;
   description.slots[0] = "Parallel Printer";
   description.slots[1] = "Super Serial Card";
@@ -334,8 +329,7 @@ TEST_CASE("Snapshot: A fixed-body file loads with its slots intact") {
 
   SS_PERIPHERAL_MANIFEST manifest;
   peripheral_get_manifest(&manifest);
-  // Which motherboard device slot 0 names first depends on whether the speaker
-  // is built in or a plugin; the case below proves either name verifies.
+  // Verify snapshot handles arbitrary slot 0 peripheral registration order.
   const std::string slot0 = manifest.peripherals[0].name;
   CHECK((slot0 == "Speaker" || slot0 == "Keyboard"));
   CHECK(std::string(manifest.peripherals[1].name) == "Parallel Printer");
@@ -359,8 +353,6 @@ TEST_CASE("Snapshot: The file's length says whether a trailer follows") {
   save_state_set_filename(file.c_str());
   save_state_save();
 
-  // Under the one header version an older reader accepts before reading its
-  // fixed body and stopping, so the trailer never reaches it.
   struct stat written{};
   REQUIRE(stat(file.c_str(), &written) == 0);
   CHECK(static_cast<size_t>(written.st_size) == sizeof(ApplewinSnapshot_t));
@@ -387,8 +379,7 @@ TEST_CASE("Snapshot: The file's length says whether a trailer follows") {
     REQUIRE(truncate(file.c_str(),
                      static_cast<off_t>(snapshot_size_fixed_body)) == 0);
     REQUIRE(save_state_load());
-    // With nothing in the trailer, slot 1 falls back to the fixed body's
-    // 16-byte region, which this card refuses, so its state stays put.
+    // Fall back to fixed body when snapshot trailer is missing.
     CHECK(card->last_load_size == sizeof(SsCardEmpty_t));
     CHECK(card->state == untouched);
   }
@@ -427,8 +418,7 @@ TEST_CASE("Snapshot: A file of any other length is refused") {
 }
 
 TEST_CASE("Snapshot: A manifest naming any slot-0 device is the same machine") {
-  // A static build lists the speaker first in slot 0 and a plugin build lists
-  // the keyboard first, so a file saved by one must still verify in the other.
+  // Snapshots must verify independently of static vs plugin registration order.
   TestConfig_t config(TestConfig_t::enhanced_2e_only());
   TestFixtures::ScopedCore_t core(config);
 

@@ -16,28 +16,7 @@
 
 namespace {
 
-// LinApple's own firmware, written for the 2008 SourceForge patch #1 (GPL);
-// it is not an image of any real card's ROM. It follows the clock-card
-// protocol of the ProDOS 8 Technical Reference Manual, section 6.1
-// "Clock/Calendar Routines", which is how the kernel's built-in ThunderClock
-// driver finds and drives it without a driver on the disk:
-//   - the ID bytes $Cn00/$Cn02/$Cn04/$Cn06 must read $08/$28/$58/$70;
-//   - the READ entry at $Cn08 leaves "mo,da,dt,hr,mn" in the GETLN input
-//     buffer at $0200 as high-ASCII digits and commas (month, weekday with
-//     Sunday = 0, day, hour, minute; the year comes from a table inside the
-//     kernel). The driver parses digits and commas and stops at the first
-//     byte that is neither, so this firmware ends the five fields with $80;
-//   - the WRITE entry at $Cn0B, which the driver calls with A = $A3 ("#") to
-//     select the numeric format on a real card, is a bare RTS here.
-// The read routine learns its own slot n with JSR $FF58 (a known RTS in the
-// monitor) and the return address it leaves on the stack, then reads
-// $C08F + 16n, the strobe that latches the host's time into the ten BCD
-// digits at $C080 + 16n through +9: month, weekday (its tens digit always
-// zero), day, hour and minute, two digits each. $Cn04 must read $58 for the
-// ID check, so the BCS at $Cn03 makes it an operand instead of a stray
-// opcode; its target $Cn5D therefore holds B0 CC, a BCS back to the PLP/RTS
-// at $Cn2B, so a call to $Cn00 returns whatever the carry. Those two bytes
-// stay.
+// ProDOS 8 ThunderClock firmware emulation ($Cn00 ID, $Cn08 READ, $Cn0B WRITE).
 const std::array<uint8_t, 256> clock_rom = {{
     0x08, 0x90, 0x28, 0xb0, 0x58, 0x00, 0x70, 0x00, 0xea, 0xea, 0xa9, 0x60,
     0x08, 0x78, 0x20, 0x58, 0xff, 0xba, 0xbd, 0x00, 0x01, 0x28, 0x0a, 0x0a,
@@ -90,10 +69,7 @@ auto set_latch_pair(ClockCard_t* card, size_t index, int value) -> void {
   card->latches.at(base_index + 1) = static_cast<uint8_t>(digits.rem);
 }
 
-// The host hands over broken-down local time, so the card applies no zone or
-// offset of its own. A host with no clock leaves the latches as the last
-// strobe left them, the way a real card keeps ticking whether or not it is
-// read, and says so once rather than on every strobe.
+// Latch local time fields from host platform interface.
 auto update_latches(ClockCard_t* card) -> void {
   HostLocalTime_t now{};
   if (!card->host->GetLocalTime(&now)) {
@@ -142,9 +118,6 @@ auto clockcard_io_read(void* instance, uint16_t program_counter,
   return card->host->ReadFloatingBus(executed_cycles);
 }
 
-// Without a ROM the kernel never finds the card, without I/O it never reads
-// one, and without a clock or a bus it answers nothing true: better no card
-// than a phantom one, and the log says which member was missing.
 auto missing_host_member(const HostInterface_t* host) -> const char* {
   if (host->RegisterIO == nullptr) {
     return "RegisterIO";
@@ -188,8 +161,7 @@ auto clockcard_abi_init(int slot, HostInterface_t* host) -> void* {
   return card.release();
 }
 
-// A real clock card keeps time across RESET, and the firmware strobes before
-// every read anyway, so the latches are left as the last strobe left them.
+// Retain latched time across RESET.
 auto clockcard_abi_reset(void* instance) -> void { (void)instance; }
 
 auto clockcard_abi_shutdown(void* instance) -> void {
@@ -200,9 +172,7 @@ auto clockcard_abi_shutdown(void* instance) -> void {
   std::unique_ptr<ClockCard_t> card(static_cast<ClockCard_t*>(instance));
 }
 
-// The card has no commands and no queries: its time comes from the host and
-// its registers are read on the bus. Both entry points stay so a caller from
-// an older frontend is answered rather than dereferencing a null callback.
+// Clock card has no mutable commands or query endpoints.
 auto clockcard_abi_command(void* instance, uint32_t cmd_id, const void* data,
                            size_t size) -> PeripheralStatus_t {
   (void)cmd_id;
@@ -256,9 +226,6 @@ auto clockcard_abi_save_state(void* instance, void* state_buffer,
     return peripheral_error;
   }
 
-  // Value-initialized, so the pin fields go out as zeros: the pin was host
-  // configuration, not card state, and the card neither honours nor records
-  // it.
   const auto* card = static_cast<const ClockCard_t*>(instance);
   ClockCardSaveState_t state{};
   state.version = CLOCKCARD_STATE_VERSION;
@@ -284,10 +251,7 @@ auto latches_form_a_calendar(const uint8_t* latches) -> bool {
          pair_value(latches, latch_minute) <= minute_max;
 }
 
-// A slot's snapshot buffer may be larger than the frame (the layer sizes it
-// for the biggest card), so the frame's own struct_size says how much to
-// read; everything past it is left alone. The frame's pin fields are read
-// past, not honoured: the pin was host configuration, not card state.
+// Load state bounded by recorded struct_size.
 auto clockcard_abi_load_state(void* instance, const void* state_buffer,
                               size_t buffer_size) -> PeripheralStatus_t {
   constexpr size_t header_size = offsetof(ClockCardSaveState_t, fixed_epoch);
@@ -336,9 +300,7 @@ static const Peripheral_t g_clockcard_peripheral = {
     .command = clockcard_abi_command,
     .query = clockcard_abi_query};
 
-// peripheral_register and ActivePeripheral_t::api take a mutable
-// Peripheral_t*, so the immutable descriptor is cast the same way
-// PERIPHERAL_REGISTER casts it.
+// Peripheral registry requires non-const pointer.
 auto clockcard_get_descriptor() -> Peripheral_t* {
   return const_cast<Peripheral_t*>(&g_clockcard_peripheral);
 }

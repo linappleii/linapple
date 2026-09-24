@@ -192,8 +192,7 @@ TEST_CASE(
   CHECK(seen.unix_seconds >= static_cast<int64_t>(before));
   CHECK(seen.unix_seconds <= static_cast<int64_t>(after));
 
-  // The broken-down fields must describe the very instant reported, in the
-  // host's zone, or a card would show a time that never existed.
+  // Broken-down time fields must match the exact timestamp in the host's zone.
   time_t instant = static_cast<time_t>(seen.unix_seconds);
   struct tm local{};
   REQUIRE(localtime_r(&instant, &local) != nullptr);

@@ -10,21 +10,7 @@ extern "C" {
 
 // NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class)
 
-/* Command and query ids are dispatched inside a slot, and slot 0 holds every
- * built-in peripheral at once - the keyboard, the joystick and the speaker.
- * Small per-peripheral ids therefore collided: keyboard_cmd_set_rocker and
- * JOY_CMD_RESET were both 3, and only the payload size told them apart.
- *
- * The high 16 bits of an id name the subsystem that owns it and the low 16
- * are the index within that subsystem, so the ids cannot collide at all. A
- * dispatcher rejects a foreign subsystem before it looks at anything else.
- *
- * GENERIC is for ids every peripheral may be offered, such as
- * PERIPHERAL_QUERY_AUDIO_INFO, which both the speaker and the Mockingboard
- * answer.
- *
- * This lives apart from Peripheral_Types.h because every command header needs
- * it and Peripheral_Types.h includes five of those headers back. */
+/* Upper 16 bits encode subsystem ID; lower 16 bits encode command index. */
 typedef enum {
   PERIPHERAL_SUBSYSTEM_GENERIC = 0x00000000,
   PERIPHERAL_SUBSYSTEM_KEYBOARD = 0x00010000,
@@ -41,11 +27,7 @@ typedef enum {
   PERIPHERAL_COMMAND_INDEX_MASK = 0x0000FFFF
 } PeripheralSubsystem_t;
 
-/* True when a dispatcher should look at cmd_id at all: it is either one of
- * this peripheral's own ids or a generic one. Anything else belongs to
- * another peripheral in the slot and must be answered with
- * peripheral_incompatible, never peripheral_error - peripheral_query() stops
- * the search at the first status that is not incompatible. */
+/* Verify command ID belongs to this subsystem or generic namespace. */
 static inline bool peripheral_cmd_is_mine(uint32_t cmd_id, uint32_t subsystem) {
   const uint32_t owner = cmd_id & (uint32_t)PERIPHERAL_SUBSYSTEM_MASK;
   return owner == subsystem || owner == (uint32_t)PERIPHERAL_SUBSYSTEM_GENERIC;

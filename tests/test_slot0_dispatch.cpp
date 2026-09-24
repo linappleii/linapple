@@ -1,21 +1,5 @@
-// SPDX-License-Identifier: GPL-2.0-only
-//
-// Slot 0 is the one slot that holds several peripherals at once - the
-// keyboard, the joystick and the speaker - and a command or query offered to
-// the slot is offered to each of them in turn. These cases register the real
-// keyboard and the real joystick together and then watch only what a program
-// on the machine could watch: the soft switches the keyboard owns at $C000
-// and $C010, the published queries, and the serialised save states. Nothing
-// here casts a void* instance to a peripheral's private struct, and nothing
-// stands in for a peripheral.
-//
-// Every case runs with the two registered both ways round. Which of them is
-// first in a real build is static initialisation order, so a result that
-// depends on it is not a result.
-//
-// $C061-$C063 are left out: the keyboard (Apple keys, Shift) and the
-// joystick (buttons) both register them, and direct I/O goes to whichever
-// registered first. That is a routing question, not a dispatch one.
+// Integration tests: slot 0 command and query dispatch across keyboard and
+// joystick.
 
 #include <cstdint>
 #include <cstring>
@@ -52,10 +36,7 @@ auto operator<<(std::ostream& out, Order_t order) -> std::ostream& {
                                                   : "joystick first");
 }
 
-// Both real peripherals in slot 0, through the ordinary manager, in the order
-// asked for - and taken down again whatever the case does. The registrations
-// are only recorded here: a REQUIRE that threw from the constructor would skip
-// the destructor, so each case checks them itself.
+// Slot 0 fixture managing registration and teardown of keyboard and joystick.
 struct Slot0_t {
   eApple2Type saved_type{g_apple2_type};
   int keyboard_registered{-1};
@@ -87,12 +68,7 @@ struct Slot0_t {
   auto operator=(Slot0_t&&) -> Slot0_t& = delete;
 };
 
-// The two cases that read a dispatcher's status need an instance of their
-// own, because peripheral_command() returns as soon as the command is queued
-// and the status the peripheral gives is dropped on the emulation thread.
-// They drive the same production descriptors, with the least host a
-// peripheral needs to start, and shut both instances down however the case
-// ends.
+// Dedicated test fixture for inspecting synchronous dispatcher status.
 void bare_log(void*, PeripheralLogLevel_t, const char*, ...) {}
 void bare_register_direct_io(void*, uint16_t, PeripheralIOHandler,
                              PeripheralIOHandler) {}
@@ -127,8 +103,7 @@ struct BareHost_t {
   auto operator=(BareHost_t&&) -> BareHost_t& = delete;
 };
 
-// Commands are queued and land on an emulation boundary, which is where the
-// machine would see them.
+// Commands are queued and dispatched on emulation frame boundaries.
 auto settle() -> void { peripheral_manager_think(0); }
 
 auto send(uint32_t cmd_id, const void* data, size_t size) -> void {
@@ -201,9 +176,7 @@ auto a_config() -> JoystickConfig_t {
 const std::initializer_list<Order_t> both_orders = {Order_t::keyboard_first,
                                                     Order_t::joystick_first};
 
-// A payload one byte longer than T, in storage that really is that long: the
-// command queue copies every byte of the length it is given, so a longer
-// length on a plain T would read past the end of it.
+// Allocate oversized buffer to test payload bounds handling safely.
 template <typename T>
 struct OneByteLong_t {
   T value;
@@ -211,8 +184,6 @@ struct OneByteLong_t {
 };
 
 }  // namespace
-
-// --- 1. two answers of the same width under what used to be one id ---------
 
 TEST_CASE("Slot 0: the rocker switch and the joystick's exit event") {
   for (Order_t order : both_orders) {
@@ -224,8 +195,6 @@ TEST_CASE("Slot 0: the rocker switch and the joystick's exit event") {
     const uint8_t on = 1;
     send(keyboard_cmd_set_rocker, &on, sizeof(on));
 
-    // Before the subsystem was part of an id these were both id 2 and both
-    // answered one byte, so whichever peripheral came first answered both.
     uint8_t rocker = 0;
     size_t size = sizeof(rocker);
     CHECK(peripheral_query(0, keyboard_query_rocker, &rocker, &size) ==
@@ -250,14 +219,10 @@ TEST_CASE("Slot 0: the modifiers and the joystick config under one id") {
     const JoystickConfig_t wanted = a_config();
     send(JOY_CMD_SET_CONFIG, &wanted, sizeof(wanted));
 
-    // Both were id 1. Only the width of the answer told them apart, so a
-    // caller with room for 56 bytes could be handed five modifier bytes.
     CHECK(joystick_config().joy_index[0] == 5);
     CHECK(keyboard_mods().shift == 0);
   }
 }
-
-// --- 2. neither peripheral moves when the other is commanded ---------------
 
 TEST_CASE("Slot 0: flipping the rocker leaves the sticks where they are") {
   for (Order_t order : both_orders) {
@@ -271,8 +236,6 @@ TEST_CASE("Slot 0: flipping the rocker leaves the sticks where they are") {
     REQUIRE(joystick_state().x_pos[0] == joy_off_centre);
     REQUIRE(joystick_state().buttons[0] == 1);
 
-    // keyboard_cmd_set_rocker and JOY_CMD_RESET were both id 3, and a reset
-    // centres the sticks and drops the buttons.
     const uint8_t on = 1;
     send(keyboard_cmd_set_rocker, &on, sizeof(on));
 
@@ -318,9 +281,6 @@ TEST_CASE("Slot 0: a joystick config does not hold down shift") {
     const JoystickConfig_t wanted = a_config();
     send(JOY_CMD_SET_CONFIG, &wanted, sizeof(wanted));
 
-    // keyboard_cmd_set_mods was id 4 as well, and asked only that the payload
-    // be big enough: 56 bytes of config read as modifiers put shift down and
-    // left it there.
     const KeyboardModifiers_t after = keyboard_mods();
     CHECK(after.shift == 0);
     CHECK(after.ctrl == 0);
@@ -362,8 +322,6 @@ TEST_CASE("Slot 0: a joystick trim does not toggle caps lock") {
     send(keyboard_cmd_set_caps, &caps_off, sizeof(caps_off));
     REQUIRE(keyboard_state().caps_lock == 0);
 
-    // JOY_CMD_SET_TRIM and keyboard_cmd_set_caps were both id 2, and a trim
-    // is four bytes where set-caps wanted one.
     const JoystickTrimPayload_t trim{true, 0, 40};
     send(JOY_CMD_SET_TRIM, &trim, sizeof(trim));
 
@@ -371,8 +329,6 @@ TEST_CASE("Slot 0: a joystick trim does not toggle caps lock") {
     CHECK(joystick_state().trim_x == 40);
   }
 }
-
-// --- 3. a payload that is not the command's own ----------------------------
 
 TEST_CASE("Slot 0: a payload of the wrong size changes nothing") {
   for (Order_t order : both_orders) {
@@ -389,8 +345,7 @@ TEST_CASE("Slot 0: a payload of the wrong size changes nothing") {
     const JoystickSaveState_t joystick_before = joystick_state();
     const JoystickConfig_t config_before = joystick_config();
 
-    // One byte short, one byte long, and a payload on a command that takes
-    // none. A dispatcher that asks only for "at least" accepts two of these.
+    // Verify dispatch rejects invalid payload lengths.
     const OneByteLong_t<JoystickConfig_t> config{a_config(), 0};
     REQUIRE(peripheral_command(0, JOY_CMD_SET_CONFIG, &config,
                                sizeof(JoystickConfig_t) - 1) == peripheral_ok);
@@ -456,8 +411,6 @@ TEST_CASE("Slot 0: a dispatcher says peripheral_error to the wrong size") {
         peripheral_error);
 }
 
-// --- 4. an id belonging to another subsystem -------------------------------
-
 TEST_CASE("Slot 0: an id from another subsystem is refused and changes none") {
   for (Order_t order : both_orders) {
     CAPTURE(order);
@@ -474,8 +427,7 @@ TEST_CASE("Slot 0: an id from another subsystem is refused and changes none") {
     const JoystickSaveState_t joystick_before = joystick_state();
     const JoystickConfig_t config_before = joystick_config();
 
-    // Each of these has the index of a command slot 0 does answer, under a
-    // subsystem that belongs to a card in another slot.
+    // Verify commands belonging to foreign subsystems are rejected.
     const std::initializer_list<uint32_t> foreign = {
         PERIPHERAL_SUBSYSTEM_DISK | 0x0003,
         PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0004,
@@ -488,8 +440,7 @@ TEST_CASE("Slot 0: an id from another subsystem is refused and changes none") {
               peripheral_ok);
       settle();
 
-      // A query nobody in the slot owns comes back an error, because every
-      // peripheral in it stood aside.
+      // Unhandled query returns error when all slot peripherals stand aside.
       uint8_t answer = 0;
       size_t size = sizeof(answer);
       CHECK(peripheral_query(0, cmd_id, &answer, &size) == peripheral_error);
@@ -508,9 +459,7 @@ TEST_CASE("Slot 0: an id from another subsystem is refused and changes none") {
 }
 
 TEST_CASE("Slot 0: a foreign id is incompatible, never an error") {
-  // peripheral_query() stops at the first status that is not incompatible, so
-  // a peripheral answering an unknown id with peripheral_error would hide the
-  // one that owns it.
+  // Peripheral query search halts on first status that is not incompatible.
   BareHost_t bare;
   Peripheral_t* keyboard = bare.keyboard;
   Peripheral_t* joystick = bare.joystick;
@@ -531,8 +480,7 @@ TEST_CASE("Slot 0: a foreign id is incompatible, never an error") {
   CHECK(joystick->command(joy, keyboard_cmd_set_rocker, &answer,
                           sizeof(answer)) == peripheral_incompatible);
 
-  // A generic id is foreign to nobody. Neither of these answers it, but both
-  // have to let it past the subsystem check to say so.
+  // Generic commands bypass subsystem check and query each peripheral.
   size = sizeof(answer);
   CHECK(keyboard->query(kbd, PERIPHERAL_QUERY_AUDIO_INFO, &answer, &size) ==
         peripheral_incompatible);
@@ -540,8 +488,6 @@ TEST_CASE("Slot 0: a foreign id is incompatible, never an error") {
   CHECK(joystick->query(joy, PERIPHERAL_QUERY_AUDIO_INFO, &answer, &size) ==
         peripheral_incompatible);
 }
-
-// --- 5. naming the peripheral a command is for -----------------------------
 
 TEST_CASE("Slot 0: a command can name the peripheral it is for") {
   for (Order_t order : both_orders) {
@@ -557,9 +503,7 @@ TEST_CASE("Slot 0: a command can name the peripheral it is for") {
     settle();
     CHECK(keyboard_state().rocker_switch == 1);
 
-    // An absent name, a name too long for the queue, no name at all, and a
-    // size with no data behind it are refused. None of them reaches the
-    // keyboard.
+    // Verify rejection of invalid target peripheral names.
     const uint8_t off = 0;
     CHECK(peripheral_command_by_id(0, "linapple.disk_II",
                                    keyboard_cmd_set_rocker, &off,
