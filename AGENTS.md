@@ -151,6 +151,12 @@ More on building in <!-- Imported from: INSTALL.md -->
     a source outside the card's own directory, `chips/` or `media/`.
   - Library and chip objects are compiled with hidden visibility, so the
     executable and the plugins never export them.
+  - A card's byte output (a printer's, a serial line's) goes through the
+    host's byte sink members of `HostInterface_t`: `SinkOpen`, `SinkWrite`,
+    `SinkReady` and `SinkClose`. The frontend installs the one `ByteSink_t`
+    through `linapple_set_byte_sink`; the file, its path, its mode (append
+    or overwrite) and its flushing belong to the frontend, never to the
+    card.
   - `Peripheral_Types.h` re-exports the command headers of five cards:
     `DiskCommands.h`, `HarddiskCommands.h`, `KeyboardCommands.h`,
     `MockingboardCommands.h` and `MouseCommands.h`. A card whose commands
