@@ -10,10 +10,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 enum { FILE_BROWSER_PATH_MAX = 260, FILE_BROWSER_CACHE_MAX = 32 };
 
 typedef enum {
@@ -103,9 +99,5 @@ void disk_browser_end(DiskBrowser_t* b, size_t page_size);
 void disk_browser_jump_char(DiskBrowser_t* b, char ch, size_t page_size);
 auto disk_browser_confirm(DiskBrowser_t* b) -> bool;
 auto disk_browser_get_title(int slot) -> const char*;
-
-#ifdef __cplusplus
-}  // extern "C"
-#endif
 
 // NOLINTEND(modernize-deprecated-headers, hicpp-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, cppcoreguidelines-non-private-member-variables-in-classes, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, modernize-use-auto, modernize-use-trailing-return-type)

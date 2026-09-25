@@ -12,6 +12,11 @@
 #include "apple2/Memory.h"
 #include "core/Registry.h"
 #include "doctest.h"
+#include "frontends/common/AppConfig.h"
+#include "frontends/common/FileBrowser.h"
+#include "frontends/tui/TuiDiskSelect.h"
+#include "frontends/tui/TuiVideo.h"
+#include "test_fixtures.h"
 
 namespace {
 

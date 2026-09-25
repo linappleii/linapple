@@ -124,13 +124,3 @@ inline auto load(const char* key, std::string* value) -> bool {
 inline auto save(const char* key, uint32_t value) -> void {
   config_save_int("Configuration", key, value);
 }
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-auto php_trim(char* c, int len) -> char*;
-
-#ifdef __cplusplus
-}
-#endif

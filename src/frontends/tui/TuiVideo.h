@@ -5,10 +5,6 @@
 
 #include "frontends/common/AppConfig.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @brief Initialize the TUI video system.
  */
@@ -75,7 +71,3 @@ auto tui_video_is_fullscreen() -> bool;
  * @brief Save screenshot of current TUI screen to .ans and .txt files.
  */
 auto tui_video_save_screenshot() -> void;
-
-#ifdef __cplusplus
-}
-#endif

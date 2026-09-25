@@ -10,10 +10,6 @@
 
 #include "core/LinAppleCore.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 typedef enum {
   KBD_MODE_SYMBOLIC = 0,
   KBD_MODE_POSITIONAL = 1
@@ -40,9 +36,5 @@ bool keyboard_is_quicksave_combo(uint32_t sym, uint32_t mod, int* out_slot,
                                  bool* out_is_save);
 bool keyboard_get_hotkeys_enabled(void);
 void keyboard_set_hotkeys_enabled(bool enabled);
-
-#ifdef __cplusplus
-}
-#endif
 
 // NOLINTEND(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, bugprone-easily-swappable-parameters)

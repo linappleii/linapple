@@ -200,7 +200,6 @@ static void local_gen_destroy(FileListGenerator_t* self) {
 
 // --- Public C ABI ---
 
-extern "C" {
 
 auto file_entry_is_dir_type(const FileEntry_t* entry) -> bool {
   if (entry == nullptr) {
@@ -645,4 +644,3 @@ auto disk_browser_get_title(int slot) -> const char* {
   return "Choose disk image";
 }
 
-}  // extern "C"

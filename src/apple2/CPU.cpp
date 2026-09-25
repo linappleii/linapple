@@ -775,7 +775,6 @@ struct CpuLoopContext_t {
 
   template <bool cmos>
   inline auto check_nmi() -> void {
-#ifdef ENABLE_NMI_SUPPORT
     if (g_nmi_flank) {
       g_nmi_flank = false;
       push(regs.pc >> 8);
@@ -789,7 +788,6 @@ struct CpuLoopContext_t {
       regs.pc = read_u16_unaligned(mem + NMI_VECTOR_ADDR);
       executed_cycles += 7;
     }
-#endif
   }
 
   template <bool cmos>

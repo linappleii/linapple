@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @brief Initialize the TUI input system.
  */
@@ -19,7 +15,3 @@ auto tui_input_poll() -> void;
  * @brief Shutdown the TUI input system.
  */
 auto tui_input_shutdown() -> void;
-
-#ifdef __cplusplus
-}
-#endif

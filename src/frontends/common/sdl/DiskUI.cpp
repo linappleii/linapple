@@ -9,7 +9,7 @@
 
 #include "apple2/peripherals/disk/DiskError.h"
 
-extern "C" auto disk_ui_get_error_message(int error_code) -> const char* {
+auto disk_ui_get_error_message(int error_code) -> const char* {
   switch (static_cast<DiskError_e>(error_code)) {
     case disk_err_none:
       return "Success";
@@ -35,8 +35,8 @@ extern "C" auto disk_ui_get_error_message(int error_code) -> const char* {
   }
 }
 
-extern "C" auto disk_ui_format_display_name(const char* file_name, char* out,
-                                            size_t out_size) -> void {
+auto disk_ui_format_display_name(const char* file_name, char* out,
+                                 size_t out_size) -> void {
   if (out == nullptr || out_size == 0) {
     return;
   }
@@ -50,9 +50,8 @@ extern "C" auto disk_ui_format_display_name(const char* file_name, char* out,
   // Names that shout are an artefact of the DOS 3.3 era rather than a choice,
   // so they read better with only the first letter left capital.
   const bool shouts =
-      std::none_of(title.begin(), title.end(), [](unsigned char ch) {
-        return std::islower(ch) != 0;
-      });
+      std::none_of(title.begin(), title.end(),
+                   [](unsigned char ch) { return std::islower(ch) != 0; });
   constexpr size_t min_length_to_recase = 3;
   if (shouts && title.length() >= min_length_to_recase) {
     for (size_t i = 1; i < title.length(); ++i) {

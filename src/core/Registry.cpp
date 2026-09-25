@@ -298,22 +298,3 @@ auto config_save_string(const char* section, const char* key, const char* value)
   Configuration_t::instance().set_string(section, key, value);
 }
 // NOLINTEND(bugprone-easily-swappable-parameters)
-
-// NOLINTBEGIN(cppcoreguidelines-no-malloc, cppcoreguidelines-owning-memory) Justification: C ABI compatibility requiring heap allocation
-auto php_trim(char* c, int len) -> char* {
-  if (c == nullptr || len <= 0) {
-    auto* res = static_cast<char*>(malloc(1));
-    if (res != nullptr) {
-      *res = '\0';
-    }
-    return res;
-  }
-  std::string s(c, static_cast<size_t>(len));
-  std::string t = trim(s);
-  auto* res = static_cast<char*>(malloc(t.length() + 1));
-  if (res != nullptr) {
-    memcpy(res, t.c_str(), t.length() + 1);
-  }
-  return res;
-}
-// NOLINTEND(cppcoreguidelines-no-malloc, cppcoreguidelines-owning-memory)

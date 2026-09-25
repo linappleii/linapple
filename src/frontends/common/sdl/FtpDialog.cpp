@@ -125,7 +125,6 @@ auto ftp_gen_destroy(FileListGenerator_t* self) -> void {
 
 }  // namespace
 
-extern "C" {
 
 auto file_browser_create_ftp_generator(const char* directory,
                                        const char* filter_extensions)
@@ -160,7 +159,6 @@ auto file_browser_create_ftp_generator(const char* directory,
   return gen;
 }
 
-}  // extern "C"
 
 auto choose_an_image_ftp(int sx, int sy, const std::string& ftp_dir, int slot,
                          std::string& filename, bool& isdir, size_t& index_file)

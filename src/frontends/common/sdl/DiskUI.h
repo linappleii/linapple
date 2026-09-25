@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-#include <stddef.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <cstddef>
 
 /* Longest title the window bar and the drive labels have room for. */
 enum { disk_ui_display_name_max = 15 };
@@ -16,7 +12,7 @@ enum { disk_ui_display_name_max = 15 };
  * @param error_code The DiskError_e code returned by commands or queries.
  * @return A static string describing the error.
  */
-const char* disk_ui_get_error_message(int error_code);
+auto disk_ui_get_error_message(int error_code) -> const char*;
 
 /**
  * @brief Turn an image file name into the short title shown to the user.
@@ -28,9 +24,5 @@ const char* disk_ui_get_error_message(int error_code);
  * @param out Buffer receiving the NUL-terminated title.
  * @param out_size Capacity of out, in bytes.
  */
-void disk_ui_format_display_name(const char* file_name, char* out,
-                                 size_t out_size);
-
-#ifdef __cplusplus
-}
-#endif
+auto disk_ui_format_display_name(const char* file_name, char* out,
+                                 size_t out_size) -> void;

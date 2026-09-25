@@ -61,7 +61,6 @@ extern VideoScannerDisplayInfo_t g_video_scanner_display_info;
 
 auto DisasmCalcTopBotAddress() -> void;
 auto IsDebugBreakOnInvalid(int iOpcodeType) -> bool;
-auto NTSC_VideoGetScannerAddressForDebugger() -> uint16_t;
 auto video_refresh_screen(int bVideoModeFlags, bool bForceRedraw) -> void;
 auto video_get_sw_page2() -> bool;
 auto video_get_sw_mixed() -> bool;
@@ -465,66 +464,7 @@ auto CmdRegisterSet(int nArgs) -> Update_t {
 }
 
 //===========================================================================
-auto OutputTraceLine() -> void {
-#ifdef TODO  // Not supported for Linux yet
-  DisasmLine_t line;
-  GetDisassemblyLine(cpu_get_registers()->pc, line);
-
-  char
-      sDisassembly[CONSOLE_WIDTH];  // DrawDisassemblyLine(
-                                    // 0,cpu_get_registers()->pc, sDisassembly);
-                                    // // Get Disasm String
-  FormatDisassemblyLine(line, sDisassembly, CONSOLE_WIDTH);
-
-  char sFlags[DBG_6502_NUM_FLAGS + 1];
-  DrawFlags(0, cpu_get_registers()->ps, sFlags);  // Get Flags String
-
-  if (!g_trace_file) return;
-
-  if (g_trace_header) {
-    g_trace_header = false;
-
-    if (g_trace_file_with_video_scanner) {
-      fprintf(g_trace_file.get(),
-              //        "0000 0000 0000 00   00 00 00 0000 --------  0000:90 90
-              //        90  NOP"
-              "Vert Horz Addr Data A: X: Y: SP:  Flags     Addr:Opcode    "
-              "Mnemonic\n");
-    } else {
-      fprintf(g_trace_file.get(),
-              //        "00 00 00 0000 --------  0000:90 90 90  NOP"
-              "A: X: Y: SP:  Flags     Addr:Opcode    Mnemonic\n");
-    }
-  }
-
-  char sTarget[16];
-  if (line.bTargetValue) {
-    snprintf(sTarget, sizeof(sTarget), "%s:%s", line.sTargetPointer,
-             line.sTargetValue);
-  }
-
-  if (g_trace_file_with_video_scanner) {
-    uint16_t addr = NTSC_VideoGetScannerAddressForDebugger();
-    uint8_t data = mem[addr];
-
-    fprintf(g_trace_file.get(),
-            "%04X %04X %04X   %02X %02X %02X %02X %04X %s  %s\n",
-            g_video_clock_vert, g_video_clock_horz, addr, data,
-            (unsigned)cpu_get_registers()->a, (unsigned)cpu_get_registers()->x,
-            (unsigned)cpu_get_registers()->y, (unsigned)cpu_get_registers()->sp,
-            (char*)sFlags, sDisassembly
-            //, sTarget // TODO: Show target?
-    );
-  } else {
-    fprintf(g_trace_file.get(), "%02X %02X %02X %04X %s  %s\n",
-            (unsigned)cpu_get_registers()->a, (unsigned)cpu_get_registers()->x,
-            (unsigned)cpu_get_registers()->y, (unsigned)cpu_get_registers()->sp,
-            (char*)sFlags, sDisassembly
-            //, sTarget // TODO: Show target?
-    );
-  }
-#endif
-}
+auto OutputTraceLine() -> void {}
 
 static auto CheckBreakOpcode(int opcode) -> void {
   if (opcode == 0x00) {  // BRK

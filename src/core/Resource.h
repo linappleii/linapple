@@ -4,10 +4,6 @@
 #include <cstddef>
 #include <cstdint>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 constexpr std::size_t cx_rom_size = 0x1000;       // 4 KB ($C000-$CFFF)
 constexpr std::size_t apple2_rom_size = 0x3000;   // 12 KB ($D000-$FFFF)
 constexpr std::size_t apple2e_rom_size = 0x4000;  // 16 KB ($C000-$FFFF)
@@ -64,8 +60,4 @@ extern const uint8_t* const mouse_interface_rom;
 
 #if ENABLE_ROM_PRINTER
 extern const uint8_t* const parallel_rom;
-#endif
-
-#ifdef __cplusplus
-}
 #endif

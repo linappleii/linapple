@@ -837,13 +837,4 @@ auto DrawVideoScannerValue(int line, int vert, int horz, bool isVisible)
   }
 }
 
-auto DrawVideoScannerInfo(int line) -> void {
-  (void)line;
-#ifdef TODO  // Not supported for Linux yet
-  // NTSC_VideoGetScannerAddressForDebugger();    // update
-  // g_video_clock_horz/g_video_clock_vert
-  int v = 0;
-  int h = 0;
-  DrawVideoScannerValue(line, v, h, true);
-#endif
-}
+auto DrawVideoScannerInfo(int line) -> void { (void)line; }

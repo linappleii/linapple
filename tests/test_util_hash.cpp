@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 
+#include <string>
+
 #include "doctest.h"
+#include "frontends/common/Util_Hash.h"
 
 TEST_CASE("Util_Hash: MD5 correctness") {
   // Expected values generated with 'md5sum' CLI

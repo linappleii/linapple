@@ -1019,13 +1019,6 @@ struct FontConfig_t {
 };
 
 // Instructions / Opcodes
-#ifdef SUPPORT_Z80_EMU
-constexpr auto REG_AF = 0xF0;
-constexpr auto REG_BC = 0xF2;
-constexpr auto REG_DE = 0xF4;
-constexpr auto REG_HL = 0xF6;
-constexpr auto REG_IX = 0xF8;
-#endif
 
 enum MemoryAccess_e {
   MEM_R = (1 << 0),   // Read

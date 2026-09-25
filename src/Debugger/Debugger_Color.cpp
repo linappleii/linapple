@@ -143,45 +143,7 @@ auto DebuggerSetColor(const int iScheme, const int iColor,
 }
 
 //===========================================================================
-auto ConfigColorsReset() -> void {
-  //	int iColor = 1; // black only has one level, skip it, since black levels
-  // same as white levels 	for (int iPrimary = 1; iPrimary < 8; iPrimary++
-  // )
-  //	{
-  //		SetupColorRamp( iPrimary, iColor );
-  //	}
-
-#ifdef TODO  // No color schemes for Linux yet
-  // Setup default colors
-  int iColor;
-  for (iColor = 0; iColor < NUM_DEBUG_COLORS; iColor++) {
-    ColorRef_t nColor = g_color_palette[g_color_index[iColor]];
-
-    int R = (nColor >> 0) & 0xFF;
-    int G = (nColor >> 8) & 0xFF;
-    int B = (nColor >> 16) & 0xFF;
-
-    // There are many, many ways of shifting the color domain to the monochrome
-    // domain NTSC uses 3x3 matrix, could map RGB -> wavelength, etc.
-    int M = (R + G + B) / 3;  // Monochrome component
-
-    int nThreshold = 64;
-
-    int BW;
-    if (M < nThreshold)
-      BW = 0;
-    else
-      BW = 255;
-
-    uint32_t nMono = RGB(M, M, M);
-    uint32_t nBW = RGB(BW, BW, BW);
-
-    DebuggerSetColor(SCHEME_COLOR, iColor, nColor);
-    DebuggerSetColor(SCHEME_MONO, iColor, nMono);
-    DebuggerSetColor(SCHEME_BW, iColor, nBW);
-  }
-#endif
-}
+auto ConfigColorsReset() -> void {}
 
 constexpr uint8_t BYTE_MASK = 0xFF;
 

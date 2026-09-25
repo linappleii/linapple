@@ -5,10 +5,6 @@
 
 #include "frontends/common/FileBrowser.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 auto tui_disk_select_open(int slot, int drive) -> void;
 auto tui_disk_select_close() -> void;
 auto tui_disk_select_is_active() -> bool;
@@ -26,7 +22,3 @@ auto tui_disk_select_home() -> void;
 auto tui_disk_select_end(int page_size) -> void;
 auto tui_disk_select_jump_char(char ch, int page_size) -> void;
 auto tui_disk_select_confirm() -> void;
-
-#ifdef __cplusplus
-}
-#endif

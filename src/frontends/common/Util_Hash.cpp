@@ -193,8 +193,6 @@ static auto md5(const char* input) -> char* {
   return reinterpret_cast<char*>(md5_final());
 }
 
-extern "C" {
-
 auto md5str(const char* input) -> char* {
   static std::array<char, md5_hex_buffer_size> result;
   if (input == nullptr) {
@@ -213,7 +211,6 @@ auto md5str(const char* input) -> char* {
   }
   result.at(md5_hex_buffer_size - 1) = '\0';
   return result.data();
-}
 }
 
 // NOLINTEND(cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-pro-type-reinterpret-cast, cppcoreguidelines-pro-bounds-pointer-arithmetic)

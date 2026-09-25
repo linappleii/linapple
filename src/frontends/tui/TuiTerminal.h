@@ -3,10 +3,6 @@
 
 #include <stdbool.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @brief Initialize the terminal for TUI mode.
  *
@@ -36,7 +32,3 @@ auto tui_terminal_clear_resized() -> void;
  * @brief Check if an interrupt signal (SIGINT/SIGTERM) was received.
  */
 auto tui_terminal_is_interrupted() -> bool;
-
-#ifdef __cplusplus
-}
-#endif
