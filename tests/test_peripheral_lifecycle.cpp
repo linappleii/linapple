@@ -314,6 +314,16 @@ TEST_CASE(
   REQUIRE(printer_path != nullptr);
   CHECK(std::string(printer_path).find("printer.so") != std::string::npos);
 
+  void* printer_handle = dlopen(printer_path, RTLD_NOW | RTLD_LOCAL);
+  REQUIRE(printer_handle != nullptr);
+  auto* printer_exported = static_cast<Peripheral_t*>(
+      dlsym(printer_handle, "linapple_peripheral_descriptor"));
+  REQUIRE(printer_exported != nullptr);
+  CHECK(std::string(printer_exported->id) == "linapple.printer");
+  CHECK(std::string(printer_exported->name) == "Parallel Printer");
+  CHECK(dlsym(printer_handle, "printer_get_descriptor") == nullptr);
+  dlclose(printer_handle);
+
   // 3. Lifecycle execution: Register, Reset, Think, Unregister
   CHECK(peripheral_register(clock_desc, 4) == 0);
   CHECK(peripheral_register(printer_desc, 1) == 0);
