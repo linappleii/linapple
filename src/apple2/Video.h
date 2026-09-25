@@ -6,7 +6,7 @@
 #include <mutex>
 
 struct SsIoVideo_t;
-using SS_IO_Video = struct SsIoVideo_t;
+using SS_IO_Video = SsIoVideo_t;
 #include "frontends/common/VideoSurface.h"
 
 constexpr uint32_t apple2_visible_width = 280;
@@ -212,8 +212,8 @@ auto video_get_sw_page2() -> bool;
 auto video_get_sw_text() -> bool;
 auto video_get_sw_alt_charset() -> bool;
 
-auto video_get_snapshot(SS_IO_Video* ss) -> uint32_t;
-auto video_set_snapshot(SS_IO_Video* ss) -> uint32_t;
+auto video_get_snapshot(SsIoVideo_t* ss) -> uint32_t;
+auto video_set_snapshot(const SsIoVideo_t* ss) -> uint32_t;
 
 auto video_check_mode(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
                       uint32_t executed_cycles) -> uint8_t;

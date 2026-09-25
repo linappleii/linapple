@@ -12,8 +12,6 @@
 #include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
 #include "core/LinAppleCore.h"
 
-constexpr uint32_t NO_REPEAT_KEY = 0xFFFFFFFF;
-
 constexpr uint32_t BYTE3_SHIFT = 24;
 constexpr uint32_t BYTE2_SHIFT = 16;
 constexpr uint32_t BYTE1_SHIFT = 8;
@@ -23,21 +21,21 @@ constexpr auto make_version(uint32_t a, uint32_t b, uint32_t c, uint32_t d)
   return ((a) << BYTE3_SHIFT) | ((b) << BYTE2_SHIFT) | ((c) << BYTE1_SHIFT) |
          (d);
 }
-constexpr uint32_t aw_ss_tag =
+
+constexpr uint32_t snapshot_file_tag =
     (('S' << BYTE3_SHIFT) | ('S' << BYTE2_SHIFT) | ('W' << BYTE1_SHIFT) | 'A');
+constexpr uint32_t aw_ss_tag = snapshot_file_tag;
 
 struct SsFileHdr_t {
   uint32_t tag;
   uint32_t version;
   uint32_t checksum;
 };
-using SS_FILE_HDR = SsFileHdr_t;
 
 struct SsUnitHdr_t {
   uint32_t length;
   uint32_t version;
 };
-using SS_UNIT_HDR = SsUnitHdr_t;
 
 struct SsCpu6502_t {
   uint8_t a;
@@ -48,7 +46,6 @@ struct SsCpu6502_t {
   uint16_t pc;
   uint64_t cumulative_cycles;
 };
-using SS_CPU_6502 = SsCpu6502_t;
 
 struct SsIoComms_t {
   uint32_t baud_rate;
@@ -61,12 +58,10 @@ struct SsIoComms_t {
   uint32_t recv_bytes;
   uint8_t stop_bits;
 };
-using SS_IO_Comms = SsIoComms_t;
 
 struct SsIoJoystick_t {
   uint64_t joy_cntr_reset_cycle;
 };
-using SS_IO_Joystick = SsIoJoystick_t;
 
 struct SsIoVideo_t {
   uint8_t alt_char_set;
@@ -74,11 +69,8 @@ struct SsIoVideo_t {
 };
 using SS_IO_Video = SsIoVideo_t;
 
-constexpr uint32_t MEM_64K = 65536;
-constexpr uint32_t mem_main_size = MEM_64K;
-constexpr uint32_t mem_aux_size = MEM_64K;
-constexpr uint32_t nMemMainSize = mem_main_size;
-constexpr uint32_t nMemAuxSize = mem_aux_size;
+constexpr uint32_t mem_main_size = 65536;
+constexpr uint32_t mem_aux_size = 65536;
 
 struct SsBaseMemory_t {
   uint32_t mem_mode;
@@ -98,36 +90,6 @@ struct SsApple2Unit_t {
   SsIoVideo_t video;
   SsBaseMemory_t memory;
 };
-using SS_APPLE2_Unit = SsApple2Unit_t;
-
-struct SsAwCfg_t {
-  uint32_t computer_emulation;
-  uint8_t custom_speed;
-  uint32_t emulation_speed;
-  uint8_t enhanced_disk_speed;
-  uint32_t joystick_type[2];
-  uint8_t mockingboard_enabled;
-  uint32_t monochrome_color;
-  uint32_t serial_port;
-  uint32_t sound_type;
-  uint32_t video_type;
-};
-using SS_AW_CFG = SsAwCfg_t;
-
-struct SsAwPrefs_t {
-  char starting_dir[path_max_len];
-  uint32_t window_x_pos;
-  uint32_t window_y_pos;
-};
-using SS_AW_PREFS = SsAwPrefs_t;
-
-struct SsApplewinConfig_t {
-  SsUnitHdr_t unit_hdr;
-  uint32_t applewin_version;
-  SsAwPrefs_t prefs;
-  SsAwCfg_t cfg;
-};
-using SS_APPLEWIN_CONFIG = SsApplewinConfig_t;
 
 constexpr uint32_t max_peripheral_name = 32;
 
@@ -173,7 +135,6 @@ constexpr SsCardType_t CT_MouseInterface = ct_mouse_interface;
 struct SsCardEmpty_t {
   SsCardHdr_t hdr;
 };
-using SS_CARD_EMPTY = SsCardEmpty_t;
 
 // The eighteen bytes an AppleWin .aws file spends on one VIA. This is a wire
 // format frozen at the shape it had when it was written, not a view of the
@@ -206,7 +167,6 @@ struct MbUnit_t {
   bool timer2_irq_pending;
   bool speech_irq_pending;
 };
-using MB_Unit = MbUnit_t;
 
 constexpr uint32_t mb_units_per_card = 2;
 
@@ -214,7 +174,6 @@ struct SsCardMockingboard_t {
   SsCardHdr_t hdr;
   MbUnit_t unit[mb_units_per_card];
 };
-using SS_CARD_MOCKINGBOARD = SsCardMockingboard_t;
 
 // Variable-length peripheral states appended after fixed body (slots 1-5, 7).
 constexpr uint32_t snapshot_slot_state_capacity = 256;
@@ -234,7 +193,7 @@ struct SsSlotTrailer_t {
   SsSlotState_t slots[snapshot_trailer_slots];
 };
 
-struct ApplewinSnapshot_t {
+struct Snapshot_t {
   SsFileHdr_t hdr;
   SsApple2Unit_t apple2_unit;
   SsPeripheralManifest_t manifest;
@@ -247,16 +206,16 @@ struct ApplewinSnapshot_t {
   SsCardEmpty_t empty7;
   SsSlotTrailer_t slot_trailer;
 };
-using APPLEWIN_SNAPSHOT = ApplewinSnapshot_t;
+using ApplewinSnapshot_t = Snapshot_t;
+using APPLEWIN_SNAPSHOT = Snapshot_t;
 
 // Differentiate snapshot format with slot trailer by file size.
 constexpr uint32_t snapshot_version = make_version(1, 0, 0, 1);
-constexpr size_t snapshot_size_fixed_body =
-    offsetof(ApplewinSnapshot_t, slot_trailer);
+constexpr size_t snapshot_size_fixed_body = offsetof(Snapshot_t, slot_trailer);
 
 static_assert(snapshot_size_fixed_body == 132344,
               "the fixed-body snapshot layout is a wire format frozen on disk");
-static_assert(sizeof(ApplewinSnapshot_t) ==
+static_assert(sizeof(Snapshot_t) ==
                   snapshot_size_fixed_body + sizeof(SsSlotTrailer_t),
               "the trailer must follow the fixed body with no padding");
 static_assert(snapshot_slot_state_capacity >= sizeof(SsCardMockingboard_t),

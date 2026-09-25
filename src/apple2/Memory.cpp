@@ -1342,7 +1342,7 @@ auto mem_get_snapshot(SsBaseMemory_t* ss) -> uint32_t {
   return 0;
 }
 
-auto mem_set_snapshot(SsBaseMemory_t* ss) -> uint32_t {
+auto mem_set_snapshot(const SsBaseMemory_t* ss) -> uint32_t {
   g_active_memory->mem_mode = ss->mem_mode;
   g_active_memory->last_write_ram = (ss->last_write_ram != 0);
   memcpy(g_active_memory->memmain, ss->mem_main, mem_main_size);

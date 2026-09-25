@@ -3149,7 +3149,7 @@ auto cpu_get_snapshot(SsCpu6502_t* snapshot) -> uint32_t {
   return 0;
 }
 
-auto cpu_set_snapshot(SsCpu6502_t* snapshot) -> uint32_t {
+auto cpu_set_snapshot(const SsCpu6502_t* snapshot) -> uint32_t {
   if (!snapshot) {
     return 1;
   }

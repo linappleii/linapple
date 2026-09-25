@@ -22,9 +22,43 @@ struct FixedSlotRegion_t {
   const char* name;
 };
 
+struct ConstFixedSlotRegion_t {
+  const void* state;
+  size_t size;
+  const char* name;
+};
+
 // Motherboard speaker region.
-auto fixed_slot_region(ApplewinSnapshot_t* snapshot, int slot)
-    -> FixedSlotRegion_t {
+auto fixed_slot_region(Snapshot_t* snapshot, int slot) -> FixedSlotRegion_t {
+  // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers)
+  // Justification: the case labels are the Apple II's own slot numbers.
+  switch (slot) {
+    case 0:
+      return {&snapshot->apple2_unit.speaker,
+              sizeof(snapshot->apple2_unit.speaker), "Speaker"};
+    case 1:
+      return {&snapshot->empty1, sizeof(snapshot->empty1), nullptr};
+    case 2:
+      return {&snapshot->apple2_unit.comms, sizeof(snapshot->apple2_unit.comms),
+              nullptr};
+    case 3:
+      return {&snapshot->empty3, sizeof(snapshot->empty3), nullptr};
+    case 4:
+      return {&snapshot->mockingboard1, sizeof(snapshot->mockingboard1),
+              nullptr};
+    case 5:
+      return {&snapshot->mockingboard2, sizeof(snapshot->mockingboard2),
+              nullptr};
+    case 7:
+      return {&snapshot->empty7, sizeof(snapshot->empty7), nullptr};
+    default:
+      return {nullptr, 0, nullptr};
+  }
+  // NOLINTEND(cppcoreguidelines-avoid-magic-numbers)
+}
+
+auto fixed_slot_region_const(const Snapshot_t* snapshot, int slot)
+    -> ConstFixedSlotRegion_t {
   // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers)
   // Justification: the case labels are the Apple II's own slot numbers.
   switch (slot) {
@@ -55,7 +89,16 @@ auto fixed_slot_region(ApplewinSnapshot_t* snapshot, int slot)
 // Disk II persists state to mounted image; omitted from snapshot trailer.
 constexpr int skipped_slot = 6;
 
-auto trailer_entry(ApplewinSnapshot_t* snapshot, int slot) -> SsSlotState_t* {
+auto trailer_entry(Snapshot_t* snapshot, int slot) -> SsSlotState_t* {
+  if (slot < 1 || slot > static_cast<int>(snapshot_trailer_slots) ||
+      slot == skipped_slot) {
+    return nullptr;
+  }
+  return &snapshot->slot_trailer.slots[slot - 1];
+}
+
+auto trailer_entry(const Snapshot_t* snapshot, int slot)
+    -> const SsSlotState_t* {
   if (slot < 1 || slot > static_cast<int>(snapshot_trailer_slots) ||
       slot == skipped_slot) {
     return nullptr;
@@ -83,7 +126,7 @@ auto save_slot_to_trailer(int slot, SsSlotState_t* entry) -> void {
   entry->length = static_cast<uint32_t>(needed);
 }
 
-auto trailer_is_sane(ApplewinSnapshot_t* snapshot) -> bool {
+auto trailer_is_sane(const Snapshot_t* snapshot) -> bool {
   for (int slot = 1; slot <= static_cast<int>(snapshot_trailer_slots); ++slot) {
     const SsSlotState_t* entry = trailer_entry(snapshot, slot);
     if (entry != nullptr && entry->length > snapshot_slot_state_capacity) {
@@ -98,12 +141,12 @@ auto trailer_is_sane(ApplewinSnapshot_t* snapshot) -> bool {
 
 }  // namespace
 
-auto snapshot_serialize(ApplewinSnapshot_t* snapshot) -> void {
+auto snapshot_serialize(Snapshot_t* snapshot) -> void {
   if (!snapshot) return;
 
-  *snapshot = ApplewinSnapshot_t{};
+  *snapshot = Snapshot_t{};
 
-  snapshot->hdr.tag = aw_ss_tag;
+  snapshot->hdr.tag = snapshot_file_tag;
   snapshot->hdr.version = snapshot_version;
   // Checksum is initialized to 0 here; exact payload checksum is verified by
   // file manager
@@ -150,7 +193,7 @@ auto snapshot_serialize(ApplewinSnapshot_t* snapshot) -> void {
   }
 }
 
-auto snapshot_deserialize(ApplewinSnapshot_t* snapshot) -> bool {
+auto snapshot_deserialize(const Snapshot_t* snapshot) -> bool {
   if (!snapshot) return false;
 
   if (!peripheral_verify_manifest(&snapshot->manifest)) {
@@ -188,7 +231,7 @@ auto snapshot_deserialize(ApplewinSnapshot_t* snapshot) -> bool {
       peripheral_load_state(i, entry->data, entry->length);
       continue;
     }
-    FixedSlotRegion_t region = fixed_slot_region(snapshot, i);
+    ConstFixedSlotRegion_t region = fixed_slot_region_const(snapshot, i);
     if (region.state == nullptr) {
       continue;
     }

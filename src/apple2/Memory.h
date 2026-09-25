@@ -249,7 +249,7 @@ auto mem_set_80store(bool enable) -> void;
 auto mem_trim_images() -> void;
 auto mem_get_slot_parameters(uint32_t slot) -> void*;
 auto mem_get_snapshot(SsBaseMemory_t* snapshot) -> uint32_t;
-auto mem_set_snapshot(SsBaseMemory_t* snapshot) -> uint32_t;
+auto mem_set_snapshot(const SsBaseMemory_t* snapshot) -> uint32_t;
 auto io_null(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
              uint32_t cycles) -> uint8_t;
 auto mem_update_paging(bool initialize, bool updatewriteonly) -> void;

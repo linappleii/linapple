@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <cstdint>
-#include "Apple2Types.h"
-#include "Peripheral_Types.h"
+
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <sys/stat.h>
 #include <unistd.h>
@@ -9,10 +8,21 @@
 #include <array>
 #include <cstdio>
 #include <cstring>
+#include <fstream>
+#include <memory>
+#include <string>
 
+#include "apple2/CPU.h"
+#include "apple2/Memory.h"
+#include "apple2/Snapshot.h"
+#include "apple2/SnapshotTypes.h"
 #include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Internal.h"
+#include "core/LinAppleCore.h"
 #include "doctest.h"
+#include "frontends/common/SaveStateManager.h"
 #include "test_fixtures.h"
+#include "test_fixtures_core.h"
 
 namespace {
 // Declared rather than inherited. Nothing here reaches a card, and the slot
@@ -53,7 +63,7 @@ TEST_CASE("Snapshot: [RoundTrip] Serialize and Deserialize") {
   mem_get_active_context()->last_write_ram = true;
   *mem_2000 = 0x55;
 
-  auto snapshot = std::unique_ptr<ApplewinSnapshot_t>(new ApplewinSnapshot_t());
+  auto snapshot = std::unique_ptr<Snapshot_t>(new Snapshot_t());
   snapshot_serialize(snapshot.get());
 
   cpu_get_registers()->a = 0xFF;
@@ -116,7 +126,7 @@ TEST_CASE("SaveStateManager: Filename management and Load/Save flow") {
   CHECK(access(test_file.c_str(), F_OK) == 0);
   struct stat written{};
   REQUIRE(stat(test_file.c_str(), &written) == 0);
-  CHECK(static_cast<size_t>(written.st_size) == sizeof(ApplewinSnapshot_t));
+  CHECK(static_cast<size_t>(written.st_size) == sizeof(Snapshot_t));
   CHECK(save_state_load());
 
   linapple_shutdown();
@@ -223,7 +233,7 @@ TEST_CASE("Snapshot: A 32-byte card state rides the trailer through any slot") {
     g_fake_cards.at(static_cast<size_t>(slot))->state = pattern_for(slot);
   }
 
-  auto snapshot = std::unique_ptr<ApplewinSnapshot_t>(new ApplewinSnapshot_t());
+  auto snapshot = std::unique_ptr<Snapshot_t>(new Snapshot_t());
   snapshot_serialize(snapshot.get());
 
   CHECK(snapshot->hdr.version == snapshot_version);
@@ -262,7 +272,7 @@ TEST_CASE("Snapshot: An impossible slot length refuses the file untouched") {
   FakeCard_t* card = g_fake_cards.at(1);
   REQUIRE(card != nullptr);
 
-  auto snapshot = std::unique_ptr<ApplewinSnapshot_t>(new ApplewinSnapshot_t());
+  auto snapshot = std::unique_ptr<Snapshot_t>(new Snapshot_t());
   snapshot_serialize(snapshot.get());
   snapshot->slot_trailer.slots[0].length = snapshot_slot_state_capacity + 1;
 
@@ -346,7 +356,7 @@ TEST_CASE("Snapshot: The file's length says whether a trailer follows") {
 
   struct stat written{};
   REQUIRE(stat(file.c_str(), &written) == 0);
-  CHECK(static_cast<size_t>(written.st_size) == sizeof(ApplewinSnapshot_t));
+  CHECK(static_cast<size_t>(written.st_size) == sizeof(Snapshot_t));
   {
     std::ifstream in(file.path(), std::ios::binary);
     SsFileHdr_t hdr{};
@@ -387,7 +397,7 @@ TEST_CASE("Snapshot: A file of any other length is refused") {
 
   SUBCASE("one byte short of the trailer") {
     REQUIRE(truncate(file.c_str(),
-                     static_cast<off_t>(sizeof(ApplewinSnapshot_t) - 1)) == 0);
+                     static_cast<off_t>(sizeof(Snapshot_t) - 1)) == 0);
     CHECK(save_state_load() == false);
   }
   SUBCASE("one byte past the trailer") {

@@ -67,14 +67,14 @@ auto read_latches(int slot) -> Latches_t {
 }
 
 // Verify raw file contents on disk independently of in-memory state.
-auto read_file(const std::string& path) -> std::unique_ptr<ApplewinSnapshot_t> {
+auto read_file(const std::string& path) -> std::unique_ptr<Snapshot_t> {
   struct stat on_disk{};
   REQUIRE(stat(path.c_str(), &on_disk) == 0);
-  REQUIRE(static_cast<size_t>(on_disk.st_size) == sizeof(ApplewinSnapshot_t));
+  REQUIRE(static_cast<size_t>(on_disk.st_size) == sizeof(Snapshot_t));
 
-  auto snapshot = std::unique_ptr<ApplewinSnapshot_t>(new ApplewinSnapshot_t());
+  auto snapshot = std::unique_ptr<Snapshot_t>(new Snapshot_t());
   std::ifstream in(path, std::ios::binary);
-  in.read(reinterpret_cast<char*>(snapshot.get()), sizeof(ApplewinSnapshot_t));
+  in.read(reinterpret_cast<char*>(snapshot.get()), sizeof(Snapshot_t));
   REQUIRE(in.good());
   return snapshot;
 }
@@ -97,7 +97,7 @@ auto latches_survive_the_file(int slot) -> void {
   save_state_save();
 
   {
-    const std::unique_ptr<ApplewinSnapshot_t> written = read_file(file.path());
+    const std::unique_ptr<Snapshot_t> written = read_file(file.path());
     CHECK(written->hdr.tag == aw_ss_tag);
     CHECK(written->hdr.version == snapshot_version);
     CHECK(std::string(written->manifest.peripherals[slot].name) ==
