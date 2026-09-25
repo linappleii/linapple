@@ -8,22 +8,14 @@
 
 struct SsCpu6502_t;
 
-constexpr uint16_t nmi_vector_addr = 0xFFFA;
-constexpr uint16_t reset_vector_addr = 0xFFFC;
-constexpr uint16_t irq_vector_addr = 0xFFFE;
+// 6502 Architecture Vectors
+constexpr uint16_t NMI_VECTOR_ADDR = 0xFFFA;
+constexpr uint16_t RESET_VECTOR_ADDR = 0xFFFC;
+constexpr uint16_t IRQ_VECTOR_ADDR = 0xFFFE;
 
-constexpr uint16_t trap_nmos_default = 0x336D;
-constexpr uint16_t trap_cmos_default = 0x2434;
-
-constexpr uint32_t uint32_max_val = 0xFFFFFFFF;
-
-// Legacy constant aliases for backwards compatibility
-constexpr uint16_t NMI_VECTOR_ADDR = nmi_vector_addr;
-constexpr uint16_t RESET_VECTOR_ADDR = reset_vector_addr;
-constexpr uint16_t IRQ_VECTOR_ADDR = irq_vector_addr;
-constexpr uint16_t TRAP_NMOS_DEFAULT = trap_nmos_default;
-constexpr uint16_t TRAP_CMOS_DEFAULT = trap_cmos_default;
-constexpr uint32_t UINT32_MAX_VAL = uint32_max_val;
+// Default execution trap vectors for test ROMs
+constexpr uint16_t TRAP_NMOS_DEFAULT = 0x336D;
+constexpr uint16_t TRAP_CMOS_DEFAULT = 0x2434;
 
 struct CpuRegisters_t {
   uint8_t a = 0;
@@ -31,12 +23,9 @@ struct CpuRegisters_t {
   uint8_t y = 0;
   uint8_t ps = 0;
   uint16_t pc = 0;
-  uint16_t sp = 0;
-  uint8_t is_jammed = 0;  // CPU has crashed (NMOS 6502 only)
+  uint16_t sp = 0;  // 16-bit to store pre-computed page 1 address (0x0100 | S)
+  bool is_jammed = false;  // CPU has crashed on illegal instruction (NMOS 6502)
 };
-
-using RegsRec_t = CpuRegisters_t;
-using RegsPtr_t = CpuRegisters_t*;
 
 struct CpuInstance_t {
   CpuRegisters_t cpu_regs{};

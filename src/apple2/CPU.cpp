@@ -38,7 +38,7 @@ static uint8_t benchopcode[BENCHOPCODES] = {
 static CpuInstance_t g_cpu_context{};
 CpuInstance_t* g_active_cpu = &g_cpu_context;
 
-RegsRec_t regs;
+CpuRegisters_t regs;
 uint64_t g_cumulative_cycles = 0;
 static uint32_t g_cycles_submitted;
 static uint32_t g_cycles_executed;
@@ -91,7 +91,7 @@ uint16_t g_idx = 0;
 const uint16_t BUFFER_SIZE = 4096;  // 80 secs
 uint16_t g_buffer[BUFFER_SIZE] = {};
 uint32_t g_mean = 0;
-uint32_t g_min = UINT32_MAX_VAL;
+uint32_t g_min = UINT32_MAX;
 uint32_t g_max = 0;
 
 static inline void do_irq_profiling(uint32_t cycles) { (void)cycles; }
@@ -450,10 +450,10 @@ struct CpuLoopContext_t {
     if (cmos) {
       regs.ps &= ~AF_DECIMAL;
     }
-    regs.pc = read_u16_unaligned(mem + 0xFFFE);
+    regs.pc = read_u16_unaligned(mem + IRQ_VECTOR_ADDR);
   }
   inline auto op_hlt() -> void {
-    regs.is_jammed = 1;
+    regs.is_jammed = true;
     --regs.pc;
   }
   inline auto op_pha() -> void { push(regs.a); }
@@ -3167,13 +3167,13 @@ auto cpu_nmi_deassert(IrqSrc_t device) -> void {
 auto cpu_reset() -> void {
   regs.ps = (regs.ps | AF_INTERRUPT) & ~AF_DECIMAL;
   if (mem != nullptr) {
-    regs.pc = *reinterpret_cast<uint16_t*>(mem + 0xFFFC);
+    regs.pc = read_u16_unaligned(mem + RESET_VECTOR_ADDR);
   } else {
     regs.pc = 0;
   }
   regs.sp = 0x0100 | ((regs.sp - 3) & 0xFF);
 
-  regs.is_jammed = 0;
+  regs.is_jammed = false;
 }
 
 auto cpu_get_snapshot(SsCpu6502_t* snapshot) -> uint32_t {
