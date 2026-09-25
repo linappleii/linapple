@@ -55,7 +55,7 @@ AddressingMode_t g_opmodes[NUM_ADDRESSING_MODES] = {
 // Assembler
 // ______________________________________________________________________________________
 
-int g_assembler_opcodes_hashed = false;
+bool g_assembler_opcodes_hashed = false;
 Hash_t g_opcodes_hash[NUM_OPCODES] = {};  // for faster mnemonic lookup, for the
                                           // assembler
 bool g_assembler_input = false;
@@ -481,9 +481,12 @@ AssemblerDirective_t g_assembler_directives[NUM_ASM_DIRECTIVES] = {
 
 int g_assembler_syntax = ASM_CUSTOM;  // Which assembler syntax to use
 int g_assembler_first_directive[NUM_ASSEMBLERS] = {
-    FIRST_A_DIRECTIVE, FIRST_B_DIRECTIVE, FIRST_D_DIRECTIVE, FIRST_L_DIRECTIVE,
-    FIRST_M_DIRECTIVE, FIRST_u_DIRECTIVE, FIRST_O_DIRECTIVE, FIRST_S_DIRECTIVE,
-    FIRST_T_DIRECTIVE, FIRST_W_DIRECTIVE, FIRST_Z_DIRECTIVE};
+    FIRST_ACME_DIRECTIVE,         FIRST_BIG_MAC_DIRECTIVE,
+    FIRST_DOS_TOOL_KIT_DIRECTIVE, FIRST_LISA_DIRECTIVE,
+    FIRST_MERLIN_DIRECTIVE,       FIRST_MICROSPARC_DIRECTIVE,
+    FIRST_ORCA_DIRECTIVE,         FIRST_SC_DIRECTIVE,
+    FIRST_TED_DIRECTIVE,          FIRST_WELLERS_DIRECTIVE,
+    FIRST_CUSTOM_DIRECTIVE};
 
 // Assemblers
 
@@ -1222,8 +1225,8 @@ auto AssemblerHashDirectives() -> void {
   Hash_t nMnemonicHash = 0;
   int opcode = 0;
 
-  for (opcode = 0; opcode < NUM_ASM_M_DIRECTIVES; opcode++) {
-    int iNopcode = FIRST_M_DIRECTIVE + opcode;
+  for (opcode = 0; opcode < NUM_ASM_MERLIN_DIRECTIVES; opcode++) {
+    int iNopcode = FIRST_MERLIN_DIRECTIVE + opcode;
     const char* pMnemonic = g_assembler_directives[iNopcode].mnemonic;
     nMnemonicHash = AssemblerHashMnemonic(pMnemonic);
     g_assembler_directives[iNopcode].hash = nMnemonicHash;

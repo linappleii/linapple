@@ -390,7 +390,7 @@ auto CmdDisasmDataDefString(int nArgs) -> Update_t {
 
   //	tData.iDirective = g_assembler_first_directive[ g_assembler_syntax ] +
   // ASM_DEFINE_APPLE_TEXT;
-  tData.iDirective = FIRST_M_DIRECTIVE + ASM_M_ASCII;  // ASM_MERLIN
+  tData.iDirective = FIRST_MERLIN_DIRECTIVE + ASM_MERLIN_ASCII;
 
   tData.eElementType = static_cast<Nopcode_e>(NOP_STRING_APPLE + iCmd);
   tData.bSymbolLookup = false;
