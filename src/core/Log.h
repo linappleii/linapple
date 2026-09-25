@@ -27,14 +27,11 @@ auto set_verbosity(LogLevel_t level) -> void;
 auto get_verbosity() -> LogLevel_t;
 auto set_callback(LogCallback_t callback) -> void;
 
-#define ATTRIBUTE_FORMAT_PRINTF(fmt, first) \
-  __attribute__((format(printf, fmt, first)))
-
-ATTRIBUTE_FORMAT_PRINTF(1, 2) auto error(const char* format, ...) -> void;
-ATTRIBUTE_FORMAT_PRINTF(1, 2) auto warning(const char* format, ...) -> void;
-ATTRIBUTE_FORMAT_PRINTF(1, 2) auto info(const char* format, ...) -> void;
-ATTRIBUTE_FORMAT_PRINTF(1, 2) auto perf(const char* format, ...) -> void;
-ATTRIBUTE_FORMAT_PRINTF(1, 2) auto debug(const char* format, ...) -> void;
+[[gnu::format(printf, 1, 2)]] auto error(const char* format, ...) -> void;
+[[gnu::format(printf, 1, 2)]] auto warning(const char* format, ...) -> void;
+[[gnu::format(printf, 1, 2)]] auto info(const char* format, ...) -> void;
+[[gnu::format(printf, 1, 2)]] auto perf(const char* format, ...) -> void;
+[[gnu::format(printf, 1, 2)]] auto debug(const char* format, ...) -> void;
 
 auto log_message_v(LogLevel_t level, const char* format, va_list args) -> void;
 

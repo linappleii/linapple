@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
+#include "apple2/CPU.h"
+
 #include <atomic>
 #include <cassert>
 #include <cstdint>
 #include <mutex>
 
 #include "apple2/Apple2Types.h"
-#define CPU_CPP_IMPL
-#include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/SnapshotTypes.h"
-#include "core/LinAppleCore.h"
 #include "apple2/peripherals/Peripheral_Types.h"
+#include "core/LinAppleCore.h"
 #include "core/Util_Endian.h"
 
 // Unavoidable hardware architectural constraints for low-level 6502 CPU core
