@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#include "test_fixtures.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
 
-#include "apple2/CPU.h"
-#include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Audio.h"
 #include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 #include "core/Util_Text.h"
 #include "doctest.h"
 #include "frontends/common/AppConfig.h"

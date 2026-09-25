@@ -3,12 +3,8 @@
 #include <unistd.h>
 
 #include <array>
-#include <cstddef>
-#include <cstdio>
-#include <cstring>
 #include <fstream>
 #include <ios>
-#include <iterator>
 #include <string>
 #include <vector>
 
@@ -16,11 +12,6 @@
 #include "apple2/Memory.h"
 #include "core/Registry.h"
 #include "doctest.h"
-#include "frontends/common/AppConfig.h"
-#include "frontends/common/FileBrowser.h"
-#include "frontends/tui/TuiDiskSelect.h"
-#include "frontends/tui/TuiVideo.h"
-#include "test_fixtures.h"
 
 namespace {
 

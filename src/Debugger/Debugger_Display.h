@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 
 #include "Debugger_Color.h"
 #include "Debugger_Console.h"
-#include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
 
 struct Rect_t;
 

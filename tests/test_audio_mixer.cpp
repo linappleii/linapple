@@ -4,10 +4,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-#include <utility>
 #include <vector>
 
-#include "apple2/Apple2Types.h"
 #include "apple2/peripherals/Peripheral_Audio.h"
 #include "core/LinAppleCore.h"
 #include "doctest.h"

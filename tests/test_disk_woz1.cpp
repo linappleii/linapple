@@ -11,9 +11,7 @@
 
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
-#include "apple2/peripherals/disk/DiskLoader.h"
 #include "apple2/peripherals/disk/formats/Woz1Driver.h"
-#include "apple2/peripherals/disk/formats/Woz2Driver.h"
 #include "core/Util_Crc32.h"
 #include "core/Util_Path.h"
 #include "doctest.h"

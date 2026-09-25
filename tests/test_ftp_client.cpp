@@ -1,14 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <dirent.h>
 
-#include <cstring>
-#include <string>
-#include <vector>
-
-#include "core/services/ftp/FtpClient.h"
-#include "core/services/ftp/FtpTypes.h"
 #include "doctest.h"
-#include "test_fixtures.h"
 
 TEST_CASE("FTPClient: Parameter Validation") {
   FtpClient_t client;

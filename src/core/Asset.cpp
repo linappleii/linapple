@@ -9,13 +9,10 @@
 #include <memory>
 #include <string>
 
-#include "apple2/Apple2Types.h"
-#include "apple2/Video.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
 #include "apple2/peripherals/Peripheral.h"
-#include "apple2/peripherals/Peripheral_Internal.h"
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"

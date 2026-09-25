@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <algorithm>
-#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
-#include <string>
 #include <vector>
 
+#include "Peripheral_Types.h"
 #include "apple2/CPU.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Audio.h"
@@ -14,6 +12,7 @@
 #include "doctest.h"
 #include "frontends/common/AudioDumper.h"
 #include "frontends/common/AudioMixer.h"
+#include "test_fixtures.h"
 #include "test_fixtures_core.h"
 
 auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,

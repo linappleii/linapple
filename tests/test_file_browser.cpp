@@ -14,7 +14,6 @@
 #include "core/Util_Text.h"
 #include "doctest.h"
 #include "frontends/common/FileBrowser.h"
-#include "test_fixtures.h"
 
 namespace {
 

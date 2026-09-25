@@ -5,7 +5,6 @@
 #include <string>
 
 #include "frontends/common/FileBrowser.h"
-#include "frontends/common/FtpDialog.h"
 
 auto draw_frame_window() -> void;
 

@@ -3,8 +3,6 @@
 
 #include <stddef.h>
 
-#include "apple2/peripherals/disk/DiskFormatDriver.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -1,15 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-#include <algorithm>
 #include <cstdint>
-#include <cstdio>
 #include <cstring>
-#include <map>
 #include <string>
 #include <vector>
 
-#include "Debugger_Breakpoints.h"
 #include "Debugger_Types.h"
 #include "Util_MemoryTextFile.h"
 #include "core/LinAppleCore.h"
@@ -74,7 +70,6 @@ extern bool g_trace_file_with_video_scanner;
 extern char g_file_name_trace[];
 
 // Bookmarks
-#include "Debugger_Bookmarks.h"
 
 // Breakpoints
 enum BreakpointHit_t {
@@ -138,7 +133,6 @@ extern int g_font_height;
 extern int g_font_spacing;
 
 // Memory
-#include "Debugger_Memory.h"
 
 // Source Level Debugging
 extern std::string g_source_file_name;

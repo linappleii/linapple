@@ -3,21 +3,12 @@
 
 #include <cstdint>
 
-#include "apple2/peripherals/Peripheral_Types.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include <array>
 #include <cstddef>
 #include <cstdio>
 #include <cstring>
-#include <string>
-#include <vector>
 
 #include "apple2/peripherals/Peripheral.h"
-#include "apple2/peripherals/disk/DiskCommands.h"
-#include "apple2/peripherals/disk/DiskError.h"
-#include "apple2/peripherals/disk/DiskFormatDriver.h"
-#include "apple2/peripherals/disk/DiskLoader.h"
-#include "core/LinAppleCore.h"
 #include "doctest.h"
 #include "test_fixtures.h"
 

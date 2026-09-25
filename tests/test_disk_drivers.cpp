@@ -16,13 +16,6 @@
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskEncoding.h"
 #include "apple2/peripherals/disk/DiskError.h"
-#include "apple2/peripherals/disk/DiskLoader.h"
-#include "apple2/peripherals/disk/formats/DoDriver.h"
-#include "apple2/peripherals/disk/formats/IieDriver.h"
-#include "apple2/peripherals/disk/formats/Nb2Driver.h"
-#include "apple2/peripherals/disk/formats/NibDriver.h"
-#include "apple2/peripherals/disk/formats/PoDriver.h"
-#include "apple2/peripherals/disk/formats/Woz2Driver.h"
 #include "doctest.h"
 
 namespace {

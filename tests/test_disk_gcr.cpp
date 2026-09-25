@@ -9,7 +9,6 @@
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskEncoding.h"
 #include "apple2/peripherals/disk/DiskError.h"
-#include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "doctest.h"
 
 namespace {

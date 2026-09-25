@@ -19,7 +19,6 @@
 #include "apple2/media/image_container/ImageContainer.h"
 #include "core/Util_Path.h"
 #include "doctest.h"
-#include "test_fixtures.h"
 
 namespace {
 

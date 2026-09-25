@@ -6,16 +6,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
-#include <string>
-#include <vector>
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include "apple2/media/image_container/ImageContainer.h"
-#include "apple2/peripherals/disk/DiskError.h"
-#include "apple2/peripherals/disk/DiskFormatDriver.h"
-#include "apple2/peripherals/disk/DiskLoader.h"
 #include "doctest.h"
-#include "test_fixtures.h"
 
 namespace {
 

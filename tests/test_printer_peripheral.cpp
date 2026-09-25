@@ -4,14 +4,12 @@
 #include <cstdint>
 #include <cstring>
 #include <map>
-#include <string>
 #include <utility>
 #include <vector>
 
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Internal.h"
 #include "apple2/peripherals/Peripheral_Types.h"
-#include "apple2/peripherals/printer/PrinterCommands.h"
 #include "doctest.h"
 
 auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;

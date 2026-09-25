@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <cstring>
 #include <map>
-#include <string>
 #include <vector>
 
 #include "apple2/peripherals/super_serial_card/SuperSerial.h"

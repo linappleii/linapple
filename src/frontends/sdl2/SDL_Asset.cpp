@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "frontends/sdl2/SDL_Asset.h"
 
+#include <SDL2/SDL_surface.h>
 #include <SDL_surface.h>
 
 #include <cstdio>
 #include <string>
 
 #include "core/Asset.h"
-#include "core/Util_Path.h"
 #include "frontends/sdl2/SdlPtr.h"
 
 static SdlSurfacePtr_t s_icon_surface;

@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
 #include <string>
-#include <vector>
 
 #include "Debugger_Types.h"
 #include "Util_MemoryTextFile.h"

@@ -9,20 +9,9 @@
 #include <SDL3/SDL_surface.h>
 #include <SDL3/SDL_video.h>
 
-#include <cstddef>
-#include <cstdint>
-#include <string>
-
-#include "apple2/Video.h"
-#include "core/Asset.h"
-#include "core/LinAppleCore.h"
-#include "core/Registry.h"
 #include "doctest.h"
-#include "frontends/common/AppConfig.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/sdl3/DiskChoose.h"
-#include "frontends/sdl3/Frame.h"
-#include "frontends/common/sdl/JoystickFrontend.h"
 
 auto ds_init() -> bool { return true; }
 auto ds_shutdown() -> void {}

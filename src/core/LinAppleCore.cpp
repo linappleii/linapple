@@ -13,7 +13,6 @@
 #include <cstring>
 
 #if ENABLE_DEBUGGER
-#include "Debugger/Debug.h"
 #endif
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
@@ -22,12 +21,8 @@
 #include "apple2/Video.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Internal.h"
-#include "apple2/peripherals/joystick/Joystick.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
-#include "apple2/peripherals/mockingboard/Mockingboard.h"
-#include "apple2/peripherals/printer/Printer.h"
-#include "apple2/peripherals/super_serial_card/SuperSerial.h"
 #include "core/Asset.h"
 #include "core/BasicLiveSync.h"
 #include "core/Log.h"

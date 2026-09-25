@@ -3,21 +3,13 @@
 
 #include <stdlib.h>
 
-#include <algorithm>
 #include <cstdlib>
-#include <fstream>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include "core/Log.h"
 #include "core/Registry.h"
-#include "core/Util_Path.h"
-#include "core/Util_Text.h"
 #include "doctest.h"
-#include "frontends/common/AppConfig.h"
-#include "frontends/common/AppEnvironment.h"
-#include "test_fixtures.h"
 
 namespace {
 

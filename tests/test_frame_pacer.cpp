@@ -5,7 +5,6 @@
 #include "apple2/Apple2Types.h"
 #include "core/LinAppleCore.h"
 #include "doctest.h"
-#include "frontends/common/FramePacer.h"
 
 namespace {
 

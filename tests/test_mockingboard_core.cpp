@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <array>
-#include <cstddef>
 #include <cstdint>
 #include <vector>
 
-#include "apple2/CPU.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "doctest.h"
+#include "test_fixtures.h"
 #include "test_fixtures_core.h"
 
 auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,

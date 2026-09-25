@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 
-#include "apple2/Memory.h"
 #include "doctest.h"
 
 TEST_CASE("Memory Context: Encapsulation and Context-Switching") {

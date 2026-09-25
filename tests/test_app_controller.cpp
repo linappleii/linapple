@@ -3,21 +3,11 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <cstddef>
-#include <string>
 
-#include "apple2/Apple2Types.h"
-#include "apple2/Video.h"
-#include "apple2/peripherals/Peripheral_Types.h"
-#include "apple2/peripherals/disk/DiskCommands.h"
-#include "core/LinAppleCore.h"
-#include "core/Registry.h"
-#include "core/Util_Path.h"
 #include "core/Util_Text.h"
 #include "doctest.h"
 #include "frontends/common/AppConfig.h"
 #include "frontends/common/AppController.h"
-#include "frontends/common/AppEnvironment.h"
 #include "test_fixtures.h"
 
 namespace {

@@ -1,23 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include <cstddef>
-#include <cstdint>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <fstream>
-#include <ios>
 #include <string>
-#include <vector>
 
-#include "HeadlessHarness.h"
-#include "apple2/peripherals/Peripheral.h"
-#include "apple2/peripherals/disk/DiskCommands.h"
-#include "apple2/peripherals/disk/DiskError.h"
-#include "apple2/peripherals/disk/DiskFormatDriver.h"
-#include "apple2/peripherals/disk/DiskLoader.h"
-#include "apple2/peripherals/disk/formats/DoDriver.h"
-#include "apple2/peripherals/disk/formats/Woz2Driver.h"
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
 #include "doctest.h"

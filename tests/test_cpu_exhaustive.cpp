@@ -10,7 +10,6 @@
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "core/LinAppleCore.h"
 #include "doctest.h"
 
 namespace {

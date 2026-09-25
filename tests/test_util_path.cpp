@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include <string>
 
-#include "core/Util_Path.h"
 #include "doctest.h"
 
 // A sanitized name is the download's on-disk name, so anything that survives

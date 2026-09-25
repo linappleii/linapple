@@ -4,25 +4,6 @@
 // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic) Justification: Multi-channel audio sample buffer output indexing
 // NOLINTBEGIN(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access) Justification: Direct indexed access to hardware registers and volume tables
 // NOLINTBEGIN(cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays) Justification: Planar output buffers handed in by the card, one per voice
-/*
-LinApple : Apple ][ emulator for Linux
-
-Copyright (C) 2026, LinApple Team
-
-LinApple is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or
-(at your option) any later version.
-
-LinApple is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with LinApple; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
 
 #include "apple2/chips/AY8910.h"
 

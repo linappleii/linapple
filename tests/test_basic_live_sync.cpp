@@ -2,11 +2,9 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <string>
 
 #include "apple2/Apple2Types.h"
 #include "apple2/Memory.h"
-#include "core/BasicLiveSync.h"
 #include "doctest.h"
 
 extern eApple2Type g_apple2_type;

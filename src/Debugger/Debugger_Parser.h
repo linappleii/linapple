@@ -5,7 +5,6 @@
 #include <vector>
 
 #include "Debugger_Types.h"
-#include "core/Util_Text.h"
 
 auto ParserFindToken(const char* src_ptr, const TokenTable_t* aTokens,
                      const int nTokens, ArgToken_e* pToken_) -> const char*;

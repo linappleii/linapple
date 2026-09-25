@@ -1,14 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <cstdint>
 
-#include "EmbeddedRoms.h"
-#include "apple2/Apple2Types.h"
-#include "apple2/CPU.h"
-#include "core/Util_Text.h"
 #include "doctest.h"
-#include "frontends/common/AppConfig.h"
-#include "frontends/common/AppController.h"
-#include "frontends/common/AppEnvironment.h"
 #include "test_fixtures.h"
 
 namespace {

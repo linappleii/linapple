@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <cstdint>
+#include "Apple2Types.h"
+#include "Peripheral_Types.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <sys/stat.h>
 #include <unistd.h>
@@ -7,21 +9,10 @@
 #include <array>
 #include <cstdio>
 #include <cstring>
-#include <fstream>
-#include <memory>
-#include <string>
 
-#include "apple2/CPU.h"
-#include "apple2/Memory.h"
-#include "apple2/Snapshot.h"
-#include "apple2/SnapshotTypes.h"
 #include "apple2/peripherals/Peripheral.h"
-#include "apple2/peripherals/Peripheral_Internal.h"
-#include "core/LinAppleCore.h"
 #include "doctest.h"
-#include "frontends/common/SaveStateManager.h"
 #include "test_fixtures.h"
-#include "test_fixtures_core.h"
 
 namespace {
 // Declared rather than inherited. Nothing here reaches a card, and the slot
