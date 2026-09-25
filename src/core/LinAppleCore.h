@@ -159,7 +159,6 @@ using SystemState_t = struct SystemState_tag {
   std::array<char, path_max_len> current_dir;
   std::array<char, path_max_len> hdd_dir;
   std::array<char, path_max_len> save_state_dir;
-  std::array<char, path_max_len> parallel_printer_file;
   std::array<char, path_max_len> ftp_local_dir;
   std::array<char, path_max_len> ftp_server;
   std::array<char, path_max_len> ftp_server_hdd;

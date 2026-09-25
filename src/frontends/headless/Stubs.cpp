@@ -33,15 +33,6 @@
   (void)drawflags;
 }
 
-// Printer Stubs
-[[gnu::weak]] auto printer_frontend_reset() -> void {}
-[[gnu::weak]] auto printer_frontend_destroy() -> void {}
-[[gnu::weak]] auto printer_frontend_update(uint32_t cycles) -> void {
-  (void)cycles;
-}
-[[gnu::weak]] auto printer_frontend_check_status() -> uint8_t { return 0; }
-[[gnu::weak]] auto printer_frontend_send_char(uint8_t c) -> void { (void)c; }
-
 // SSC Stubs
 [[gnu::weak]] auto super_serial_frontend_initialize(const char* p) -> bool {
   (void)p;

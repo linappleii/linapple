@@ -50,26 +50,11 @@ uint32_t emul_msec = 0;
 bool g_full_speed = false;
 bool hdd_enabled = false;
 
-SystemState_t g_state = {MODE_LOGO,
-                         false,
-                         false,
-                         SPEED_NORMAL,
-                         SCREEN_WIDTH,
-                         SCREEN_HEIGHT,
-                         false,
-                         {""},
-                         {""},
-                         {""},
-                         {""},
-                         {"Printer.txt"},
-                         {""},
-                         {""},
-                         {""},
-                         {"anonymous:mymail@hotmail.com"},
-                         {""},
-                         true,
-                         17030,
-                         false};
+SystemState_t g_state = {
+    MODE_LOGO,     false, false, SPEED_NORMAL, SCREEN_WIDTH,
+    SCREEN_HEIGHT, false, {""},  {""},         {""},
+    {""},          {""},  {""},  {""},         {"anonymous:mymail@hotmail.com"},
+    {""},          true,  17030, false};
 
 double g_current_clk_6502 = CLOCK_6502;
 int g_cpu_cycles_feedback = 0;

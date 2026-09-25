@@ -39,7 +39,7 @@ constexpr const char* REGVALUE_JOY_EXIT_BUTTON1 = "Joystick Exit Button 1";
 
 constexpr const char* REGVALUE_PPRINTER_FILENAME = "Parallel Printer Filename";
 constexpr const char* REGVALUE_PRINTER_APPEND = "Append to printer file";
-constexpr const char* REGVALUE_PRINTER_IDLE_LIMIT = "Printer idle limit";
+constexpr const char* REGVALUE_PRINTER_EIGHT_BIT = "Printer 8-bit output";
 
 constexpr const char* REGVALUE_PDL_XTRIM = "PDL X-Trim";
 constexpr const char* REGVALUE_PDL_YTRIM = "PDL Y-Trim";

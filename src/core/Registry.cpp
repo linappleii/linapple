@@ -89,8 +89,8 @@ auto Configuration_t::load_defaults() -> void {
   set_int("Configuration", "Video Emulation", 1);
   set_string("Configuration", "Monochrome Color", "#C0C0C0");
   set_int("Configuration", "Mouse in slot 4", 0);
-  set_int("Configuration", "Printer idle limit", 10);
   set_int("Configuration", "Append to printer file", 1);
+  set_int("Configuration", "Printer 8-bit output", 0);
   set_int("Configuration", "Harddisk Enable", 0);
   set_int("Configuration", "Save State On Exit", 0);
   set_int("Configuration", "Fullscreen", 0);

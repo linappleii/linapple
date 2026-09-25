@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -29,12 +30,54 @@
 #include "frontends/common/AppArgs.h"
 #include "frontends/common/AppConfig.h"
 #include "frontends/common/AppEnvironment.h"
+#include "frontends/common/PrinterFrontend.h"
 #include "frontends/common/SaveStateManager.h"
 
 void frontend_update_keyboard_mapping();
 void keyboard_set_caps_mode(int mode);
 
 static bool s_initialized = false;
+
+// Reads [Slots] the way the card registration does: a slot the file leaves
+// out keeps its factory card, and slot 1's factory card is the printer. The
+// file a printer sink writes is named from this, never from which card
+// happened to print first.
+static auto lowest_configured_printer_slot() -> int {
+  for (int slot = 1; slot < NUM_SLOTS; ++slot) {
+    const std::string key = "Slot " + std::to_string(slot);
+    std::string name;
+    if (!config_load_string("Slots", key.c_str(), &name)) {
+      name = slot == 1 ? "linapple.printer" : "";
+    }
+    if (name.empty() || name == "None") {
+      continue;
+    }
+    const Peripheral_t* card = peripheral_find_internal(name.c_str());
+    if (card != nullptr && std::strcmp(card->id, "linapple.printer") == 0) {
+      return slot;
+    }
+  }
+  return 0;
+}
+
+// The sink is installed once the save-state directory is known, because the
+// first byte printed is what opens the file, and a relative filename resolves
+// against that directory.
+static auto install_printer_sink() -> void {
+  PrinterFrontendSettings_t settings{};
+  settings.filename = "Printer.txt";
+  config_load_string("Configuration", REGVALUE_PPRINTER_FILENAME,
+                     &settings.filename);
+  uint32_t append = 1;
+  config_load_int("Configuration", REGVALUE_PRINTER_APPEND, &append);
+  uint32_t eight_bit = 0;
+  config_load_int("Configuration", REGVALUE_PRINTER_EIGHT_BIT, &eight_bit);
+  settings.append = append != 0;
+  settings.eight_bit = eight_bit != 0;
+  settings.base_dir = g_state.save_state_dir.data();
+  settings.primary_slot = lowest_configured_printer_slot();
+  printer_frontend_install(settings);
+}
 
 static void initialize_directory(const char* reg_key, char* target_buffer,
                                  size_t buffer_size) {
@@ -197,6 +240,8 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
                        sizeof(g_state.save_state_dir));
   initialize_directory(REGVALUE_FTP_LOCAL_DIR, &g_state.ftp_local_dir[0],
                        sizeof(g_state.ftp_local_dir));
+
+  install_printer_sink();
 
   std::string ftp_server = Configuration_t::instance().get_string(
       "Preferences", REGVALUE_FTP_DIR,
