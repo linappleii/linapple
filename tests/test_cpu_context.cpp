@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include "apple2/CPU.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 #include "doctest.h"
 
 TEST_CASE("CPU Context: Encapsulation and Context-Switching") {

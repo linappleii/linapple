@@ -17,23 +17,21 @@
 // Unavoidable hardware architectural constraints for low-level 6502 CPU core
 // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-pro-bounds-pointer-arithmetic, bugprone-easily-swappable-parameters, google-readability-function-size)
 
-enum {
-  AF_SIGN = 0x80,
-  AF_OVERFLOW = 0x40,
-  AF_RESERVED = 0x20,
-  AF_BREAK = 0x10,
-  AF_DECIMAL = 0x08,
-  AF_INTERRUPT = 0x04,
-  AF_ZERO = 0x02,
-  AF_CARRY = 0x01
-};
+constexpr uint8_t AF_SIGN = 0x80;
+constexpr uint8_t AF_OVERFLOW = 0x40;
+constexpr uint8_t AF_RESERVED = 0x20;
+constexpr uint8_t AF_BREAK = 0x10;
+constexpr uint8_t AF_DECIMAL = 0x08;
+constexpr uint8_t AF_INTERRUPT = 0x04;
+constexpr uint8_t AF_ZERO = 0x02;
+constexpr uint8_t AF_CARRY = 0x01;
 
-enum { SHORTOPCODES = 22, BENCHOPCODES = 33 };
-
-static uint8_t benchopcode[BENCHOPCODES] = {
+constexpr uint8_t SHORT_OPCODES = 22;
+static constexpr uint8_t bench_opcodes[] = {
     0x06, 0x16, 0x24, 0x45, 0x48, 0x65, 0x68, 0x76, 0x84, 0x85, 0x86,
     0x91, 0x94, 0xA4, 0xA5, 0xA6, 0xB1, 0xB4, 0xC0, 0xC4, 0xC5, 0xE6,
     0x19, 0x6D, 0x8D, 0x99, 0x9D, 0xAD, 0xB9, 0xBD, 0xDD, 0xED, 0xEE};
+constexpr uint8_t BENCH_OPCODES = sizeof(bench_opcodes);
 
 static CpuInstance_t g_cpu_context{};
 CpuInstance_t* g_active_cpu = &g_cpu_context;
@@ -83,20 +81,8 @@ static uint32_t g_internal_executed_cycles;
 extern auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write,
                             uint8_t d, uint32_t cycles) -> uint8_t;
 
-uint64_t g_cycle_irq_start;
-uint64_t g_cycle_irq_end;
-uint16_t g_cycle_irq_time;
-
-uint16_t g_idx = 0;
-const uint16_t BUFFER_SIZE = 4096;  // 80 secs
-uint16_t g_buffer[BUFFER_SIZE] = {};
-uint32_t g_mean = 0;
-uint32_t g_min = UINT32_MAX;
-uint32_t g_max = 0;
-
-static inline void do_irq_profiling(uint32_t cycles) { (void)cycles; }
-
-static inline void fetch_opcode(uint8_t& opcode, uint32_t executed_cycles) {
+static inline auto fetch_opcode(uint8_t& opcode, uint32_t executed_cycles)
+    -> void {
   const uint16_t PC = regs.pc;
   g_internal_executed_cycles = executed_cycles;
 
@@ -792,7 +778,6 @@ struct CpuLoopContext_t {
 #ifdef ENABLE_NMI_SUPPORT
     if (g_nmi_flank) {
       g_nmi_flank = false;
-      g_cycle_irq_start = g_cumulative_cycles + executed_cycles;
       push(regs.pc >> 8);
       push(regs.pc & 0xFF);
       pack_ps();
@@ -810,7 +795,6 @@ struct CpuLoopContext_t {
   template <bool cmos>
   inline auto check_irq() -> void {
     if (g_bm_irq && !(regs.ps & AF_INTERRUPT)) {
-      g_cycle_irq_start = g_cumulative_cycles + executed_cycles;
       push(regs.pc >> 8);
       push(regs.pc & 0xFF);
       pack_ps();
@@ -1116,14 +1100,9 @@ static const OpcodeDesc_t s_opcodes_nmos[256] = {
        c.addr_absx();
        c.op_rla();
      },
-     7},  // rla
-          /* 0x40 */
-    {[](CpuLoopContext_t& c) {
-       c.op_rti();
-       do_irq_profiling(c.executed_cycles);
-     },
-     6},  // RTI
-          /* 0x41 */
+     7},                                                      // rla
+    /* 0x40 */ {[](CpuLoopContext_t& c) { c.op_rti(); }, 6},  // RTI
+                                                              /* 0x41 */
     {[](CpuLoopContext_t& c) {
        c.addr_indx();
        c.op_eor();
@@ -2279,15 +2258,10 @@ static const OpcodeDesc_t s_opcodes_cmos[256] = {
        c.addr_absx();
        c.op_rol();
      },
-     6},                     // ROL
-    /* 0x3F */ {op_nop, 2},  // nop
-                             /* 0x40 */
-    {[](CpuLoopContext_t& c) {
-       c.op_rti();
-       do_irq_profiling(c.executed_cycles);
-     },
-     6},  // RTI
-          /* 0x41 */
+     6},                                                      // ROL
+    /* 0x3F */ {op_nop, 2},                                   // nop
+    /* 0x40 */ {[](CpuLoopContext_t& c) { c.op_rti(); }, 6},  // RTI
+                                                              /* 0x41 */
     {[](CpuLoopContext_t& c) {
        c.addr_indx();
        c.op_eor();
@@ -3035,13 +3009,12 @@ static auto cpu_execute_loop(uint32_t total_cycles) -> uint32_t {
 }
 
 static auto internal_cpu_execute(uint32_t total_cycles) -> uint32_t {
-  if (IS_APPLE2() || (g_apple2_type == A2TYPE_APPLE2E)) {
+  if (is_apple2() || (g_apple2_type == A2TYPE_APPLE2E)) {
     return cpu_execute_loop<false>(
         total_cycles);  // Apple ][, ][+, //e (NMOS 6502)
-  } else {
-    return cpu_execute_loop<true>(
-        total_cycles);  // Enhanced Apple //e (CMOS 65C02)
   }
+  return cpu_execute_loop<true>(
+      total_cycles);  // Enhanced Apple //e (CMOS 65C02)
 }
 
 // Modern API implementation
@@ -3050,36 +3023,20 @@ auto cpu_destroy() -> void {}
 
 auto cpu_calc_cycles(uint32_t executed_cycles) -> void {
   uint32_t cycles = executed_cycles - g_cycles_executed;
-#ifdef UPDATE_ALL_PER_CYCLE
-  assert((int32_t)cycles >= 0);
-#endif
   g_cycles_executed += cycles;
   g_cumulative_cycles += cycles;
 }
 
-#ifdef UPDATE_ALL_PER_CYCLE
-auto cpu_get_cycles_this_frame(uint32_t) -> uint32_t {
-  cpu_calc_cycles(g_internal_executed_cycles);
-  return g_cycles_this_frame + g_cycles_executed;
-}
-#else
 auto cpu_get_cycles_this_frame(uint32_t executed_cycles) -> uint32_t {
   cpu_calc_cycles(executed_cycles);
   return g_cycles_this_frame + g_cycles_executed;
 }
-#endif
 
 auto cpu_execute(uint32_t total_cycles) -> uint32_t {
-  uint32_t executed_cycles = 0;
-
   g_cycles_submitted = total_cycles;
   g_cycles_executed = 0;
 
-  if (total_cycles == 0) {  // Do single step
-    executed_cycles = internal_cpu_execute(0);
-  } else {  // Do multi-opcode emulation
-    executed_cycles = internal_cpu_execute(total_cycles);
-  }
+  uint32_t executed_cycles = internal_cpu_execute(total_cycles);
 
   uint32_t remaining_cycles = executed_cycles - g_cycles_executed;
   g_cumulative_cycles += remaining_cycles;
@@ -3090,7 +3047,7 @@ auto cpu_execute(uint32_t total_cycles) -> uint32_t {
 auto cpu_initialize() -> void {
   cpu_destroy();
   regs.a = regs.x = regs.y = regs.ps = 0xFF;
-  regs.sp = 0x01FF;
+  regs.sp = STACK_END;
   cpu_reset();
 
   cpu_irq_reset();
@@ -3102,21 +3059,21 @@ auto cpu_setup_benchmark() -> void {
   regs.x = 0;
   regs.y = 0;
   regs.pc = 0x300;
-  regs.sp = 0x1FF;
+  regs.sp = STACK_END;
 
   {
     uint16_t addr = 0x300;
     uint8_t opcode = 0;
     do {
-      *(mem + addr++) = benchopcode[opcode];
-      *(mem + addr++) = benchopcode[opcode];
+      *(mem + addr++) = bench_opcodes[opcode];
+      *(mem + addr++) = bench_opcodes[opcode];
 
-      if (opcode >= SHORTOPCODES) {
+      if (opcode >= SHORT_OPCODES) {
         *(mem + addr++) = 0;
       }
 
-      if ((++opcode >= BENCHOPCODES) || ((addr & 0x0F) >= 0x0B)) {
-        uint8_t jump_low = (opcode >= BENCHOPCODES)
+      if ((++opcode >= BENCH_OPCODES) || ((addr & 0x0F) >= 0x0B)) {
+        uint8_t jump_low = (opcode >= BENCH_OPCODES)
                                ? 0x00
                                : static_cast<uint8_t>(((addr >> 4) + 1) << 4);
         *(mem + addr++) = 0x4C;
@@ -3126,7 +3083,7 @@ auto cpu_setup_benchmark() -> void {
           ++addr;
         }
       }
-    } while (opcode < BENCHOPCODES);
+    } while (opcode < BENCH_OPCODES);
   }
 }
 
@@ -3202,7 +3159,7 @@ auto cpu_set_snapshot(SsCpu6502_t* snapshot) -> uint32_t {
   regs.x = snapshot->x;
   regs.y = snapshot->y;
   regs.ps = snapshot->p | AF_RESERVED | AF_BREAK;
-  regs.sp = static_cast<uint16_t>(snapshot->s) | 0x100;
+  regs.sp = static_cast<uint16_t>(snapshot->s) | STACK_BEGIN;
   regs.pc = snapshot->pc;
   cpu_irq_reset();
   cpu_nmi_reset();
