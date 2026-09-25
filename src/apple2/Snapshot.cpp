@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "apple2/Snapshot.h"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
-#include <cstring>
+#include <utility>
 
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
@@ -16,74 +17,37 @@
 
 namespace {
 
-struct FixedSlotRegion_t {
-  void* state;
+struct SlotRegionDesc_t {
+  size_t offset;
   size_t size;
   const char* name;
 };
 
-struct ConstFixedSlotRegion_t {
-  const void* state;
-  size_t size;
-  const char* name;
-};
+// Fixed-body snapshot regions for slots 0 through 7.
+constexpr std::array<SlotRegionDesc_t, NUM_SLOTS> slot_region_descriptors{{
+    {offsetof(Snapshot_t, apple2_unit.speaker),
+     sizeof(decltype(std::declval<Snapshot_t>().apple2_unit.speaker)),
+     "Speaker"},
+    {offsetof(Snapshot_t, empty1), sizeof(SsCardEmpty_t), nullptr},
+    {offsetof(Snapshot_t, apple2_unit.comms), sizeof(SsIoComms_t), nullptr},
+    {offsetof(Snapshot_t, empty3), sizeof(SsCardEmpty_t), nullptr},
+    {offsetof(Snapshot_t, mockingboard1), sizeof(SsCardMockingboard_t),
+     nullptr},
+    {offsetof(Snapshot_t, mockingboard2), sizeof(SsCardMockingboard_t),
+     nullptr},
+    {0, 0, nullptr},
+    {offsetof(Snapshot_t, empty7), sizeof(SsCardEmpty_t), nullptr},
+}};
 
-// Motherboard speaker region.
-auto fixed_slot_region(Snapshot_t* snapshot, int slot) -> FixedSlotRegion_t {
-  // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers)
-  // Justification: the case labels are the Apple II's own slot numbers.
-  switch (slot) {
-    case 0:
-      return {&snapshot->apple2_unit.speaker,
-              sizeof(snapshot->apple2_unit.speaker), "Speaker"};
-    case 1:
-      return {&snapshot->empty1, sizeof(snapshot->empty1), nullptr};
-    case 2:
-      return {&snapshot->apple2_unit.comms, sizeof(snapshot->apple2_unit.comms),
-              nullptr};
-    case 3:
-      return {&snapshot->empty3, sizeof(snapshot->empty3), nullptr};
-    case 4:
-      return {&snapshot->mockingboard1, sizeof(snapshot->mockingboard1),
-              nullptr};
-    case 5:
-      return {&snapshot->mockingboard2, sizeof(snapshot->mockingboard2),
-              nullptr};
-    case 7:
-      return {&snapshot->empty7, sizeof(snapshot->empty7), nullptr};
-    default:
-      return {nullptr, 0, nullptr};
+auto fixed_slot_desc(int slot) -> const SlotRegionDesc_t* {
+  if (slot < 0 || slot >= NUM_SLOTS) {
+    return nullptr;
   }
-  // NOLINTEND(cppcoreguidelines-avoid-magic-numbers)
-}
-
-auto fixed_slot_region_const(const Snapshot_t* snapshot, int slot)
-    -> ConstFixedSlotRegion_t {
-  // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers)
-  // Justification: the case labels are the Apple II's own slot numbers.
-  switch (slot) {
-    case 0:
-      return {&snapshot->apple2_unit.speaker,
-              sizeof(snapshot->apple2_unit.speaker), "Speaker"};
-    case 1:
-      return {&snapshot->empty1, sizeof(snapshot->empty1), nullptr};
-    case 2:
-      return {&snapshot->apple2_unit.comms, sizeof(snapshot->apple2_unit.comms),
-              nullptr};
-    case 3:
-      return {&snapshot->empty3, sizeof(snapshot->empty3), nullptr};
-    case 4:
-      return {&snapshot->mockingboard1, sizeof(snapshot->mockingboard1),
-              nullptr};
-    case 5:
-      return {&snapshot->mockingboard2, sizeof(snapshot->mockingboard2),
-              nullptr};
-    case 7:
-      return {&snapshot->empty7, sizeof(snapshot->empty7), nullptr};
-    default:
-      return {nullptr, 0, nullptr};
+  const auto& desc = slot_region_descriptors[static_cast<size_t>(slot)];
+  if (desc.size == 0) {
+    return nullptr;
   }
-  // NOLINTEND(cppcoreguidelines-avoid-magic-numbers)
+  return &desc;
 }
 
 // Disk II persists state to mounted image; omitted from snapshot trailer.
@@ -158,12 +122,9 @@ auto snapshot_serialize(Snapshot_t* snapshot) -> void {
   peripheral_get_manifest(&snapshot->manifest);
 
   cpu_get_snapshot(&snapshot->apple2_unit.cpu_6502);
-  {
-    // Slot 0 contains multiple devices; query joystick by name.
-    size_t size = sizeof(snapshot->apple2_unit.joystick);
-    peripheral_save_state_by_name(0, "Joystick",
-                                  &snapshot->apple2_unit.joystick, &size);
-  }
+  size_t joystick_size = sizeof(snapshot->apple2_unit.joystick);
+  peripheral_save_state_by_name(0, "Joystick", &snapshot->apple2_unit.joystick,
+                                &joystick_size);
   video_get_snapshot(&snapshot->apple2_unit.video);
   mem_get_snapshot(&snapshot->apple2_unit.memory);
 
@@ -172,14 +133,16 @@ auto snapshot_serialize(Snapshot_t* snapshot) -> void {
                                 &kbd_size);
 
   for (int i = 0; i < NUM_SLOTS; ++i) {
-    FixedSlotRegion_t region = fixed_slot_region(snapshot, i);
-    if (region.state == nullptr) {
+    const SlotRegionDesc_t* desc = fixed_slot_desc(i);
+    if (desc == nullptr) {
       continue;
     }
-    if (region.name != nullptr) {
-      peripheral_save_state_by_name(i, region.name, region.state, &region.size);
+    auto* state = reinterpret_cast<uint8_t*>(snapshot) + desc->offset;
+    size_t size = desc->size;
+    if (desc->name != nullptr) {
+      peripheral_save_state_by_name(i, desc->name, state, &size);
     } else {
-      peripheral_save_state(i, region.state, &region.size);
+      peripheral_save_state(i, state, &size);
     }
   }
 
@@ -214,11 +177,8 @@ auto snapshot_deserialize(const Snapshot_t* snapshot) -> bool {
   video_reset_state();
 
   cpu_set_snapshot(&snapshot->apple2_unit.cpu_6502);
-  {
-    size_t size = sizeof(snapshot->apple2_unit.joystick);
-    peripheral_load_state_by_name(0, "Joystick",
-                                  &snapshot->apple2_unit.joystick, size);
-  }
+  peripheral_load_state_by_name(0, "Joystick", &snapshot->apple2_unit.joystick,
+                                sizeof(snapshot->apple2_unit.joystick));
   peripheral_load_state_by_name(0, "Keyboard", &snapshot->apple2_unit.keyboard,
                                 sizeof(snapshot->apple2_unit.keyboard));
   video_set_snapshot(&snapshot->apple2_unit.video);
@@ -231,14 +191,16 @@ auto snapshot_deserialize(const Snapshot_t* snapshot) -> bool {
       peripheral_load_state(i, entry->data, entry->length);
       continue;
     }
-    ConstFixedSlotRegion_t region = fixed_slot_region_const(snapshot, i);
-    if (region.state == nullptr) {
+    const SlotRegionDesc_t* desc = fixed_slot_desc(i);
+    if (desc == nullptr) {
       continue;
     }
-    if (region.name != nullptr) {
-      peripheral_load_state_by_name(i, region.name, region.state, region.size);
+    const auto* state =
+        reinterpret_cast<const uint8_t*>(snapshot) + desc->offset;
+    if (desc->name != nullptr) {
+      peripheral_load_state_by_name(i, desc->name, state, desc->size);
     } else {
-      peripheral_load_state(i, region.state, region.size);
+      peripheral_load_state(i, state, desc->size);
     }
   }
 
