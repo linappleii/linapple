@@ -4,7 +4,6 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <utility>
 
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
@@ -26,8 +25,7 @@ struct SlotRegionDesc_t {
 // Fixed-body snapshot regions for slots 0 through 7.
 constexpr std::array<SlotRegionDesc_t, NUM_SLOTS> slot_region_descriptors{{
     {offsetof(Snapshot_t, apple2_unit.speaker),
-     sizeof(decltype(std::declval<Snapshot_t>().apple2_unit.speaker)),
-     "Speaker"},
+     sizeof(Snapshot_t::apple2_unit.speaker), "Speaker"},
     {offsetof(Snapshot_t, empty1), sizeof(SsCardEmpty_t), nullptr},
     {offsetof(Snapshot_t, apple2_unit.comms), sizeof(SsIoComms_t), nullptr},
     {offsetof(Snapshot_t, empty3), sizeof(SsCardEmpty_t), nullptr},
@@ -169,7 +167,7 @@ auto snapshot_deserialize(const Snapshot_t* snapshot) -> bool {
 
   mem_reset();
 
-  if (!IS_APPLE2()) {
+  if (!is_apple2()) {
     mem_reset_paging();
   }
 

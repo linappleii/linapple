@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include <cstring>
 
+#include "core/LinAppleCore.h"
 #include "doctest.h"
+#include "frontends/common/AppArgs.h"
+#include "frontends/common/AppConfig.h"
 
 TEST_CASE("AppArgs: Basic Parsing") {
   char* argv[] = {(char*)"linapple", (char*)"--d1", (char*)"disk1.dsk",

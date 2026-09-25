@@ -4,6 +4,13 @@
 
 #include <unistd.h>
 
+#include <fstream>
+#include <ios>
+#include <iterator>
+#include <stdexcept>
+#include <string>
+#include <utility>
+
 #include "doctest.h"
 
 using TestFixtures::EphemeralDiskFixture_t;

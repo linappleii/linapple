@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <cstdint>
 #include <cstring>
+#include <string>
 #include <vector>
 
 #include "apple2/peripherals/mouse/Mouse.h"

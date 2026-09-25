@@ -2,9 +2,12 @@
 #include <cstdint>
 #include <memory>
 
+#include "apple2/Memory.h"
 #include "apple2/Video.h"
 #include "core/LinAppleCore.h"
+#include "core/Util_Crc32.h"
 #include "doctest.h"
+#include "frontends/common/VideoStretch.h"
 #include "frontends/common/VideoSurface.h"
 #include "test_fixtures.h"
 

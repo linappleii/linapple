@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#include <algorithm>
 #include <cstdint>
 #include <string>
 
+#include "apple2/Memory.h"
 #include "apple2/peripherals/Peripheral.h"
+#include "core/LinAppleCore.h"
 #include "core/Log.h"
 #include "doctest.h"
 
@@ -95,7 +98,10 @@ TEST_CASE(
   peripheral_manager_shutdown();
 }
 
+#include <ctime>
 
+#include "apple2/peripherals/Peripheral_Internal.h"
+#include "test_fixtures_core.h"
 
 extern "C" int test_c_peripheral_read_clock(HostInterface_t* host,
                                             int64_t* unix_seconds,

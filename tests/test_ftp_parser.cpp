@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#include <cstring>
 
+#include "core/services/ftp/FtpParser.h"
+#include "core/services/ftp/FtpTypes.h"
 #include "doctest.h"
 
 TEST_CASE("FTPParser: UNIX Standard File") {

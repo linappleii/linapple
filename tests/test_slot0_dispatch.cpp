@@ -1,4 +1,5 @@
-// SPDX-License-Identifier: GPL-2.0-only
+// Integration tests: slot 0 command and query dispatch across keyboard and
+// joystick.
 
 #include <cstdint>
 #include <cstring>
@@ -8,6 +9,8 @@
 #include "apple2/Apple2Types.h"
 #include "apple2/Memory.h"
 #include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Audio.h"
+#include "apple2/peripherals/Peripheral_Subsystems.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/joystick/Joystick.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"

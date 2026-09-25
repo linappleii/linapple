@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_events.h>
-#include <SDL3/SDL_init.h>
 #include <SDL_events.h>
 #include <SDL_hints.h>
 #include <SDL_keycode.h>
@@ -11,9 +9,21 @@
 #include <SDL_video.h>
 #include <stdlib.h>
 
+#include <cstddef>
+#include <cstdint>
+#include <cstdlib>
+#include <string>
+
+#include "Video.h"
+#include "core/Asset.h"
+#include "core/LinAppleCore.h"
+#include "core/Registry.h"
 #include "doctest.h"
+#include "frontends/common/AppConfig.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/sdl2/DiskChoose.h"
+#include "frontends/sdl2/Frame.h"
+#include "frontends/common/sdl/JoystickFrontend.h"
 
 auto ds_init() -> bool { return true; }
 auto ds_shutdown() -> void {}

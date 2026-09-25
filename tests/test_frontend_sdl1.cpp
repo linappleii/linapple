@@ -1,20 +1,25 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <SDL/SDL.h>
-#include <SDL/SDL_events.h>
-#include <SDL/SDL_stdinc.h>
-#include <SDL3/SDL_init.h>
-#include <SDL3/SDL_keycode.h>
-#include <SDL3/SDL_oldnames.h>
 #include <stdlib.h>
 
+#include <cstddef>
+#include <cstdint>
+#include <string>
 
 #include "SDL_events.h"
 #include "SDL_keysym.h"
 #include "SDL_stdinc.h"
 #include "SDL_video.h"
+#include "apple2/Video.h"
+#include "core/Asset.h"
+#include "core/LinAppleCore.h"
+#include "core/Registry.h"
 #include "doctest.h"
+#include "frontends/common/AppConfig.h"
 #include "frontends/common/Frontend.h"
+#include "frontends/common/sdl/JoystickFrontend.h"
 #include "frontends/sdl1/DiskChoose.h"
+#include "frontends/sdl1/Frame.h"
 
 auto ds_init() -> bool { return true; }
 auto ds_shutdown() -> void {}
@@ -31,12 +36,11 @@ TEST_CASE("SDL1 Frontend Initialization") {
 }
 
 TEST_CASE("SDL1 Config Validation") {
-  AppConfig_t config;
-  config.is_fullscreen = true;
-  config.is_benchmark = false;
+  AppConfig_t config{};
+  app_config_default(&config);
 
-  CHECK(config.is_fullscreen == true);
-  CHECK(config.is_benchmark == false);
+  CHECK(!config.is_fullscreen);
+  CHECK(!config.is_benchmark);
 }
 
 TEST_CASE("SDL1 Frontend Initialization and Screen Scaling") {

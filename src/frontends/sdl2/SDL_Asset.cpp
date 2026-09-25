@@ -8,6 +8,7 @@
 #include <string>
 
 #include "core/Asset.h"
+#include "core/Util_Path.h"
 #include "frontends/sdl2/SdlPtr.h"
 
 static SdlSurfacePtr_t s_icon_surface;

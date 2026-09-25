@@ -1,9 +1,22 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#include <cstddef>
 #include <cstdint>
+#include <string>
+#include <vector>
 
+#include "apple2/peripherals/Peripheral_Types.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include "apple2/Memory.h"
+#include "apple2/SnapshotTypes.h"
 #include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Internal.h"
+#include "apple2/peripherals/clock/ClockCardCommands.h"
+#include "core/LinAppleCore.h"
+#include "core/Registry.h"
 #include "doctest.h"
+#include "fixture_plugin_slot0.h"
+#include "test_fixtures.h"
+#include "test_fixtures_core.h"
 
 static bool g_mock_shutdown_called = false;
 
@@ -167,6 +180,7 @@ TEST_CASE("Peripheral Manager: host_get_config lifetime") {
   linapple_shutdown();
 }
 
+#include "core/Util_Path.h"
 
 TEST_CASE("Peripheral Manager: Plugin path construction") {
   // This test verifies that we can construct a valid path even if the directory

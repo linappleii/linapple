@@ -1,9 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
 #include <cstdint>
+#include <cstdio>
+#include <cstring>
+#include <thread>
+#include <utility>
+#include <vector>
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include "core/Util_Path.h"
 #include "doctest.h"
+#include "frontends/common/AudioDumper.h"
+#include "test_fixtures.h"
 
 namespace {
 

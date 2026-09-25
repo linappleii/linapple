@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include <array>
+#include <cstring>
 
+#include "apple2/peripherals/disk/DiskError.h"
 #include "doctest.h"
+#include "frontends/common/sdl/DiskUI.h"
 
 TEST_CASE("DiskUI: error Message Mapping") {
   CHECK(strcmp(disk_ui_get_error_message(disk_err_none), "Success") == 0);

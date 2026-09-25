@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "doctest.h"
+#include "frontends/tui/TuiShapeDetector.h"
 
 namespace {
 

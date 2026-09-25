@@ -1,8 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#include <stdio.h>
 
 #include <cstdint>
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include <array>
+#include <cstdio>
+#include <cstring>
+#include <vector>
 
+#include "apple2/CPU.h"
+#include "apple2/Memory.h"
+#include "core/ProgramLoader.h"
+#include "core/Util_Path.h"
 #include "doctest.h"
 
 namespace {

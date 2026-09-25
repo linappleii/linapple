@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "apple2/peripherals/clock/ClockCard.h"
 #include "apple2/peripherals/clock/ClockCardCommands.h"
 
 size_t clockcard_abi_c_state_size(void) {

@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#include <cstdint>
+#include <cstring>
 
+#include "LinAppleCore.h"
+#include "apple2/Apple2Types.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include "core/Registry.h"
+#include "core/Util_Text.h"
 #include "doctest.h"
+#include "frontends/common/AppConfig.h"
 
 TEST_CASE("AppConfig_t: Initialization") {
   AppConfig_t config = {};

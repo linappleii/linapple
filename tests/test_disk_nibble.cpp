@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <signal.h>
 #include <sys/resource.h>
 #include <unistd.h>
 
@@ -7,7 +6,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <fstream>
-#include <ios>
 #include <iterator>
 #include <string>
 #include <vector>
@@ -21,6 +19,7 @@
 #include "apple2/peripherals/disk/DiskLoader.h"
 #include "apple2/peripherals/disk/formats/Nb2Driver.h"
 #include "apple2/peripherals/disk/formats/NibDriver.h"
+#include "apple2/peripherals/disk/formats/NibbleDiskImage.h"
 #include "doctest.h"
 #include "test_fixtures.h"
 

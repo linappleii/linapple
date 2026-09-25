@@ -3,8 +3,12 @@
 #include <unistd.h>
 
 #include <array>
+#include <cstddef>
+#include <cstdio>
+#include <cstring>
 #include <fstream>
 #include <ios>
+#include <iterator>
 #include <string>
 #include <vector>
 

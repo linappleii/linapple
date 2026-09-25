@@ -5,11 +5,14 @@
 // cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
 // modernize-avoid-c-arrays,
 // cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+#include <array>
 #include <cstdint>
+#include <vector>
 
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
+#include "core/LinAppleCore.h"
 #include "doctest.h"
 
 namespace {

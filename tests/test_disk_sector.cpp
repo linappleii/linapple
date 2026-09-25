@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <fstream>
-#include <ios>
+#include <initializer_list>
 #include <iterator>
 #include <string>
 #include <vector>
@@ -19,7 +19,10 @@
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "apple2/peripherals/disk/DiskLoader.h"
+#include "apple2/peripherals/disk/formats/DoDriver.h"
 #include "apple2/peripherals/disk/formats/IieDriver.h"
+#include "apple2/peripherals/disk/formats/PoDriver.h"
+#include "core/Util_Endian.h"
 #include "doctest.h"
 #include "test_fixtures.h"
 
