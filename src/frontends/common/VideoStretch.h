@@ -9,10 +9,6 @@ constexpr int font_size_x = 6;
 constexpr int font_size_y = 8;
 constexpr int chars_in_row = 45;
 
-#define FONT_SIZE_X font_size_x
-#define FONT_SIZE_Y font_size_y
-#define CHARS_IN_ROW chars_in_row
-
 extern VideoSurface_t* font_sfc;
 
 auto video_soft_stretch(VideoSurface_t* src, VideoRect_t* srcrect,

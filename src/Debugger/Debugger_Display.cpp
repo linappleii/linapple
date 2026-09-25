@@ -64,22 +64,6 @@ auto DrawSubWindow_IO(Update_t) -> void {}
 
 // Implementation ___________________________________________________________
 
-#define SOFTSTRECH(SRC, SRC_X, SRC_Y, SRC_W, SRC_H, DST, DST_X, DST_Y, DST_W, \
-                   DST_H)                                                     \
-  {                                                                           \
-    VideoRect_t srcrect = {SRC_X, SRC_Y, SRC_W, SRC_H};                       \
-    VideoRect_t dstrect = {DST_X, DST_Y, DST_W, DST_H};                       \
-    video_soft_stretch(SRC, &srcrect, DST, &dstrect);                         \
-  }
-
-#define SOFTSTRECH_MONO(SRC, SRC_X, SRC_Y, SRC_W, SRC_H, DST, DST_X, DST_Y,   \
-                        DST_W, DST_H)                                         \
-  {                                                                           \
-    VideoRect_t srcrect = {SRC_X, SRC_Y, SRC_W, SRC_H};                       \
-    VideoRect_t dstrect = {DST_X, DST_Y, DST_W, DST_H};                       \
-    video_soft_stretch_mono8(SRC, &srcrect, DST, &dstrect, hBrush, hBgBrush); \
-  }
-
 //===========================================================================
 
 constexpr float MIN_VIEWPORT_SCALE = 0.01f;
@@ -203,9 +187,10 @@ auto PrintGlyph(const int x, const int y, const char glyph) -> void {
   uint32_t hBrush = g_console_brush_fg;
   uint32_t hBgBrush = g_console_brush_bg;
   if (g_debug_screen && g_debug_charset) {
-    SOFTSTRECH_MONO(g_debug_charset, xSrc, ySrc, CONSOLE_FONT_WIDTH,
-                    CONSOLE_FONT_HEIGHT, g_debug_screen, x, y,
-                    CONSOLE_FONT_WIDTH, CONSOLE_FONT_HEIGHT);
+    VideoRect_t srcrect = {xSrc, ySrc, CONSOLE_FONT_WIDTH, CONSOLE_FONT_HEIGHT};
+    VideoRect_t dstrect = {x, y, CONSOLE_FONT_WIDTH, CONSOLE_FONT_HEIGHT};
+    video_soft_stretch_mono8(g_debug_charset, &srcrect, g_debug_screen,
+                             &dstrect, hBrush, hBgBrush);
   }
 }
 

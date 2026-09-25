@@ -82,7 +82,7 @@ auto GetBreakpointInfo(uint16_t nOffset, bool& bBreakpointActive_,
   return false;
 }
 
-constexpr int DEBUGGER_VERSION = MAKE_VERSION(2, 9, 0, 15);
+constexpr int DEBUGGER_VERSION = make_version(2, 9, 0, 15);
 
 constexpr int WINDOW_DATA_BYTES_PER_LINE = 8;
 

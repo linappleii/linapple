@@ -26,9 +26,6 @@ constexpr auto make_version(uint32_t a, uint32_t b, uint32_t c, uint32_t d)
 constexpr uint32_t aw_ss_tag =
     (('S' << BYTE3_SHIFT) | ('S' << BYTE2_SHIFT) | ('W' << BYTE1_SHIFT) | 'A');
 
-#define MAKE_VERSION(a, b, c, d) make_version(a, b, c, d)
-#define AW_SS_TAG aw_ss_tag
-
 struct SsFileHdr_t {
   uint32_t tag;
   uint32_t version;

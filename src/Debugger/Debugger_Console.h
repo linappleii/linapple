@@ -49,57 +49,32 @@ enum ConsoleColors_e {
 extern int g_console_color[NUM_CONSOLE_COLORS];
 
 // Note: THe ` ~ key should always display ~ to prevent rendering errors
-#define CONSOLE_COLOR_ESCAPE_CHAR '`'
-#define CONSOLE_COLOR_MASK 0x7F
+constexpr char CONSOLE_COLOR_ESCAPE_CHAR = '`';
+constexpr uint8_t CONSOLE_COLOR_MASK = 0x7F;
 constexpr uint8_t CONSOLE_COLOR_SHIFT = 8;
 constexpr size_t CONSOLE_INPUT_EXTRA = 16;
 
-/* Help Colors
- */
-#if 1  // USE_APPLE_FONT
-       // TODO: char *g_color_text_strings[] = ""
-       // TODO: replace with CT_STRINGS[0]
-       // TODO: CT_COMMA
-       // TODO: CT_COLON
-       // TODO: CT_PAREN_L
-       // TODO: CT_PAREN_R
-
 // Console Help Color
-#define CHC_DEFAULT "`0"
-#define CHC_USAGE "`3"
-#define CHC_CATEGORY "`6"
-#define CHC_COMMAND "`2"   // Green
-#define CHC_KEY "`1"       // Red
-#define CHC_ARG_MAND "`7"  // < >
-#define CHC_ARG_OPT "`4"   // [ ]
-#define CHC_ARG_SEP "`9"   //  |  grey
-#define CHC_NUM_DEC \
-  "`6"  // cyan looks better then yellow (SearchMemoryDisplay), S D000:FFFF A9
-        // 00, PROFILE, HELP BP
-#define CHC_NUM_HEX "`3"
-#define CHC_SYMBOL "`2"   // Symbols
-#define CHC_ADDRESS "`8"  // Hex Address
-#define CHC_ERROR "`1"    // Red
-#define CHC_WARNING "`5"  // Purple
-#define CHC_INFO "`3"     // Yellow
-#define CHC_STRING "`6"   //
-#define CHC_EXAMPLE "`:"
-#define CHC_PATH "`:"  // Light Blue
-#else
-#define CHC_DEFAULT ""
-#define CHC_USAGE ""
-#define CHC_COMMAND ""
-#define CHC_KEY ""
-#define CHC_ARG_MAND ""
-#define CHC_ARG_OPT ""
-#define CHC_ARG_SEP ""
-#define CHC_NUMBER ""
-#define CHC_SYMBOL ""
-#define CHC_ADDRESS ""
-#define CHC_ERROR ""
-#define CHC_STRING ""
-#define CHC_EXAMPLE ""
-#endif
+constexpr const char* CHC_DEFAULT = "`0";
+constexpr const char* CHC_USAGE = "`3";
+constexpr const char* CHC_CATEGORY = "`6";
+constexpr const char* CHC_COMMAND = "`2";   // Green
+constexpr const char* CHC_KEY = "`1";       // Red
+constexpr const char* CHC_ARG_MAND = "`7";  // < >
+constexpr const char* CHC_ARG_OPT = "`4";   // [ ]
+constexpr const char* CHC_ARG_SEP = "`9";   //  |  grey
+constexpr const char* CHC_NUM_DEC =
+    "`6";  // cyan looks better then yellow (SearchMemoryDisplay), S D000:FFFF
+           // A9 00, PROFILE, HELP BP
+constexpr const char* CHC_NUM_HEX = "`3";
+constexpr const char* CHC_SYMBOL = "`2";   // Symbols
+constexpr const char* CHC_ADDRESS = "`8";  // Hex Address
+constexpr const char* CHC_ERROR = "`1";    // Red
+constexpr const char* CHC_WARNING = "`5";  // Purple
+constexpr const char* CHC_INFO = "`3";     // Yellow
+constexpr const char* CHC_STRING = "`6";
+constexpr const char* CHC_EXAMPLE = "`:";
+constexpr const char* CHC_PATH = "`:";  // Light Blue
 
 // ascii markup
 inline auto ConsoleColor_IsCharMeta(uint8_t c) -> bool {

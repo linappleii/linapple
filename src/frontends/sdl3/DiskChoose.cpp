@@ -236,11 +236,11 @@ void disk_choose_draw() {
                              static_cast<double>(j) * 15.0 * facy - 1.0);
       if (file_name.size() > max_filename) {
         r.w = static_cast<int>(static_cast<double>(max_filename) *
-                               static_cast<double>(FONT_SIZE_X) * 1.0 *
+                               static_cast<double>(font_size_x) * 1.0 *
                                static_cast<double>(facx_f));
       } else {
         r.w = static_cast<int>(static_cast<double>(file_name.size()) *
-                               static_cast<double>(FONT_SIZE_X) * 1.0 *
+                               static_cast<double>(font_size_x) * 1.0 *
                                static_cast<double>(facx_f));
       }
       r.h = static_cast<int>(9.0 * 1.0 * facy);

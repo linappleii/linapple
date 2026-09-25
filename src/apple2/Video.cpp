@@ -56,8 +56,6 @@ static inline auto get_g_value(uint32_t rgb) -> uint8_t {
 static inline auto get_b_value(uint32_t rgb) -> uint8_t {
   return static_cast<uint8_t>((rgb >> 16) & 0xFF);
 }
-#define FLASH_80_COL 1
-
 const int SRCOFFS_40COL = 0;
 const int SRCOFFS_80COL = (SRCOFFS_40COL + 256);
 const int SRCOFFS_LORES = (SRCOFFS_80COL + 128);
@@ -65,43 +63,14 @@ const int SRCOFFS_HIRES = (SRCOFFS_LORES + 16);
 const int SRCOFFS_DHIRES = (SRCOFFS_HIRES + 512);
 const int SRCOFFS_TOTAL = (SRCOFFS_DHIRES + 2560);
 
-#define SW_80COL (g_video_mode & VF_80COL)
-#define SW_DHIRES (g_video_mode & VF_DHIRES)
-#define SW_HIRES (g_video_mode & VF_HIRES)
-#define SW_MASK2 (g_video_mode & VF_MASK2)
-#define SW_MIXED (g_video_mode & VF_MIXED)
-#define SW_PAGE2 (g_video_mode & VF_PAGE2)
-#define SW_TEXT (g_video_mode & VF_TEXT)
-
-#define SWL_80COL (vidmode_latched & VF_80COL)
-#define SWL_DHIRES (vidmode_latched & VF_DHIRES)
-#define SWL_HIRES (vidmode_latched & VF_HIRES)
-#define SWL_MASK2 (vidmode_latched & VF_MASK2)
-#define SWL_MIXED (vidmode_latched & VF_MIXED)
-#define SWL_PAGE2 (vidmode_latched & VF_PAGE2)
-#define SWL_TEXT (vidmode_latched & VF_TEXT)
-
-#define SOFTSTRECH(SRC, SRC_X, SRC_Y, SRC_W, SRC_H, DST, DST_X, DST_Y, DST_W, \
-                   DST_H)                                                     \
-  {                                                                           \
-    VideoRect_t srcrect = {SRC_X, SRC_Y, SRC_W, SRC_H};                       \
-    VideoRect_t dstrect = {DST_X, DST_Y, DST_W, DST_H};                       \
-    video_soft_stretch(SRC, &srcrect, DST, &dstrect);                         \
-  }
-
-#define soft_stretch_mono(SRC, SRC_X, SRC_Y, SRC_W, SRC_H, DST, DST_X, DST_Y, \
-                          DST_W, DST_H, hBrush)                               \
-  {                                                                           \
-    VideoRect_t srcrect = {SRC_X, SRC_Y, SRC_W, SRC_H};                       \
-    VideoRect_t dstrect = {DST_X, DST_Y, DST_W, DST_H};                       \
-    video_soft_stretch_mono8(SRC, &srcrect, DST, &dstrect, hBrush, 0);        \
-  }
-
-#define set_source_pixel(x, y, c) g_source_start_of_line[(y)][(x)] = (c)
-#define set_frame_color(i, r1, g1, b1) \
-  framebufferinfo[i].r = r1;           \
-  framebufferinfo[i].g = g1;           \
-  framebufferinfo[i].b = b1;
+static inline auto soft_stretch_mono(VideoSurface_t* src, int src_x, int src_y,
+                                     int src_w, int src_h, VideoSurface_t* dst,
+                                     int dst_x, int dst_y, int dst_w, int dst_h,
+                                     uint32_t brush) -> void {
+  VideoRect_t srcrect = {src_x, src_y, src_w, src_h};
+  VideoRect_t dstrect = {dst_x, dst_y, dst_w, dst_h};
+  video_soft_stretch_mono8(src, &srcrect, dst, &dstrect, brush, 0);
+}
 
 // video scanner constants
 int const kHClock0State = 0x18;  // H[543210] = 011000
@@ -146,6 +115,17 @@ static uint8_t* g_source_start_of_line[MAX_SOURCE_Y] = {};
 static uint8_t* g_text_bank1;
 static uint8_t* g_text_bank0;
 
+static inline auto set_source_pixel(int x, int y, uint8_t c) -> void {
+  g_source_start_of_line[y][x] = c;
+}
+
+static inline auto set_frame_color(int i, uint8_t r1, uint8_t g1, uint8_t b1)
+    -> void {
+  framebufferinfo[i].r = r1;
+  framebufferinfo[i].g = g1;
+  framebufferinfo[i].b = b1;
+}
+
 static uint8_t hgrpixelmatrix[apple2_visible_width]
                              [apple2_visible_height + 2 * hgr_matrix_yoffset] =
                                  {};
@@ -170,6 +150,38 @@ static uint32_t vidmode_latched = VF_TEXT;
 uint32_t g_videotype = VT_COLOR_STANDARD;
 uint32_t g_singlethreaded = 1;
 std::atomic<bool> g_frame_ready(false);
+
+static inline auto sw_80col() -> bool { return (g_video_mode & VF_80COL) != 0; }
+static inline auto sw_dhires() -> bool {
+  return (g_video_mode & VF_DHIRES) != 0;
+}
+static inline auto sw_hires() -> bool { return (g_video_mode & VF_HIRES) != 0; }
+static inline auto sw_mask2() -> bool { return (g_video_mode & VF_MASK2) != 0; }
+static inline auto sw_mixed() -> bool { return (g_video_mode & VF_MIXED) != 0; }
+static inline auto sw_page2() -> bool { return (g_video_mode & VF_PAGE2) != 0; }
+static inline auto sw_text() -> bool { return (g_video_mode & VF_TEXT) != 0; }
+
+static inline auto swl_80col() -> bool {
+  return (vidmode_latched & VF_80COL) != 0;
+}
+static inline auto swl_dhires() -> bool {
+  return (vidmode_latched & VF_DHIRES) != 0;
+}
+static inline auto swl_hires() -> bool {
+  return (vidmode_latched & VF_HIRES) != 0;
+}
+static inline auto swl_mask2() -> bool {
+  return (vidmode_latched & VF_MASK2) != 0;
+}
+static inline auto swl_mixed() -> bool {
+  return (vidmode_latched & VF_MIXED) != 0;
+}
+static inline auto swl_page2() -> bool {
+  return (vidmode_latched & VF_PAGE2) != 0;
+}
+static inline auto swl_text() -> bool {
+  return (vidmode_latched & VF_TEXT) != 0;
+}
 
 static bool g_text_flash_state = false;
 static bool g_text_flash_flag = false;
@@ -467,8 +479,6 @@ void draw_dhires_source() {
       }
     }
   }
-#undef SIZE
-#undef OFFSET
 }
 
 enum ColorMapping {
@@ -881,13 +891,13 @@ void set_last_drawn_image() {
     return;
   }
   memcpy(vidlastmem.get() + 0x400, g_text_bank0, 0x400);
-  if (SWL_HIRES) {
+  if (swl_hires()) {
     memcpy(vidlastmem.get() + 0x2000, g_hires_bank0, 0x2000);
   }
-  if (SWL_DHIRES && SWL_HIRES) {
+  if (swl_dhires() && swl_hires()) {
     memcpy(vidlastmem.get(), g_hires_bank1, 0x2000);
-  } else if (SWL_80COL) {  // Don't test for !SWL_HIRES, as some 80-col text
-                           // routines have SWL_HIRES set
+  } else if (swl_80col()) {  // Don't test for !swl_hires(), as some 80-col text
+                             // routines have swl_hires() set
     memcpy(vidlastmem.get(), g_text_bank1, 0x400);
   }
   int loop = 0;
@@ -944,12 +954,8 @@ auto update_80col_cell(int x, int y, int xpixel, int ypixel, int offset)
   if (!vidlastmem) return false;
   (void)x;
   (void)y;
-  (void)xpixel;
-  (void)ypixel;
-  (void)offset;
   bool dirty = false;
 
-#if FLASH_80_COL
   uint8_t c1 = *(g_text_bank1 + offset);
   uint8_t c0 = *(g_text_bank0 + offset);
 
@@ -970,7 +976,6 @@ auto update_80col_cell(int x, int y, int xpixel, int ypixel, int offset)
   if (c0_changed || (c0_flashing && g_text_flash_flag)) {
     dirty |= update_80column_cell(c0, xpixel + 7, ypixel, c0_flashing);
   }
-#endif
 
   return dirty;
 }
@@ -996,32 +1001,18 @@ auto update_dhires_cell(int x, int y, int xpixel, int ypixel, int offset)
         redrawfull || video_worker_active_) {
       uint32_t dwordval = (byteval1 & 0x70) | ((byteval2 & 0x7F) << 7) |
                           ((byteval3 & 0x7F) << 14) | ((byteval4 & 0x07) << 21);
-      {
-        constexpr int PIXEL = 0;
-#define COLOR ((xpixel + PIXEL) & 3)
-#define VALUE (dwordval >> (4 + PIXEL - COLOR))
-        copy_source(xpixel + PIXEL, ypixel + (yoffset >> 9), 7, 2,
+      auto render_dhires_segment = [&](int pixel_offset) {
+        int color = (xpixel + pixel_offset) & 3;
+        uint32_t value = dwordval >> (4 + pixel_offset - color);
+        copy_source(xpixel + pixel_offset, ypixel + (yoffset >> 9), 7, 2,
                     SRCOFFS_DHIRES +
                         10 * (static_cast<uint8_t>(
-                                 (static_cast<uint16_t>(VALUE) >> 8) & 0xFF)) +
-                        COLOR,
-                    (static_cast<uint8_t>(VALUE)) << 1);
-#undef COLOR
-#undef VALUE
-      }
-      {
-        constexpr int PIXEL = 7;
-#define COLOR ((xpixel + PIXEL) & 3)
-#define VALUE (dwordval >> (4 + PIXEL - COLOR))
-        copy_source(xpixel + PIXEL, ypixel + (yoffset >> 9), 7, 2,
-                    SRCOFFS_DHIRES +
-                        10 * (static_cast<uint8_t>(
-                                 (static_cast<uint16_t>(VALUE) >> 8) & 0xFF)) +
-                        COLOR,
-                    (static_cast<uint8_t>(VALUE)) << 1);
-#undef COLOR
-#undef VALUE
-      }
+                                 (static_cast<uint16_t>(value) >> 8) & 0xFF)) +
+                        color,
+                    (static_cast<uint8_t>(value)) << 1);
+      };
+      render_dhires_segment(0);
+      render_dhires_segment(7);
       dirty = true;
     }
     yoffset += 0x400;
@@ -1031,29 +1022,29 @@ auto update_dhires_cell(int x, int y, int xpixel, int ypixel, int offset)
 }
 
 auto mix_colors(uint8_t c1, uint8_t c2) -> uint8_t {
-#define COMBINATION(c1, c2, ref1, ref2) \
-  (((c1) == (ref1) && (c2) == (ref2)) || ((c1) == (ref2) && (c2) == (ref1)))
+  auto combination = [](uint8_t val1, uint8_t val2, uint8_t ref1,
+                        uint8_t ref2) -> bool {
+    return (val1 == ref1 && val2 == ref2) || (val1 == ref2 && val2 == ref1);
+  };
 
   if (c1 == c2) {
     return c1;
   }
-  if (COMBINATION(c1, c2, HGR_BLUE, HGR_RED)) {
+  if (combination(c1, c2, HGR_BLUE, HGR_RED)) {
     return HGR_GREY1;
-  } else if (COMBINATION(c1, c2, HGR_GREEN, HGR_MAGENTA)) {
+  } else if (combination(c1, c2, HGR_GREEN, HGR_MAGENTA)) {
     return HGR_GREY2;
-  } else if (COMBINATION(c1, c2, HGR_RED, HGR_GREEN)) {
+  } else if (combination(c1, c2, HGR_RED, HGR_GREEN)) {
     return HGR_YELLOW;
-  } else if (COMBINATION(c1, c2, HGR_BLUE, HGR_GREEN)) {
+  } else if (combination(c1, c2, HGR_BLUE, HGR_GREEN)) {
     return HGR_AQUA;
-  } else if (COMBINATION(c1, c2, HGR_BLUE, HGR_MAGENTA)) {
+  } else if (combination(c1, c2, HGR_BLUE, HGR_MAGENTA)) {
     return HGR_PURPLE;
-  } else if (COMBINATION(c1, c2, HGR_RED, HGR_MAGENTA)) {
+  } else if (combination(c1, c2, HGR_RED, HGR_MAGENTA)) {
     return HGR_PINK;
   } else {
     return MONOCHROME_CUSTOM;  // visible failure indicator
   }
-
-#undef COMBINATION
 }
 
 auto video_create_color_mix_map() -> void {
@@ -1102,7 +1093,7 @@ void mix_colors_vertical(int matx, int maty) {
   uint16_t twoHalfPixel = 0;
   int bot1idx = 0, bot2idx = 0;
 
-  if (SW_MIXED && maty > 159) {
+  if (sw_mixed() && maty > 159) {
     if (maty < 161) {
       bot1idx = hgrpixelmatrix[matx][maty + 1] & 0x0F;
       bot2idx = 0;
@@ -1142,7 +1133,7 @@ void copy_mixed_source(int x, int y, int sourcex, int sourcey) {
   int count = 0;
   int bufxoffset = 0;
   int hgrlinesabove = (y > 0) ? 1 : 0;
-  int hgrlinesbelow = SW_MIXED ? ((y < 159) ? 1 : 0) : ((y < 191) ? 1 : 0);
+  int hgrlinesbelow = sw_mixed() ? ((y < 159) ? 1 : 0) : ((y < 191) ? 1 : 0);
   int i = 0;
   int istart = 2 - (hgrlinesabove << 1);
   int iend = 3 + (hgrlinesbelow << 1);
@@ -1182,17 +1173,16 @@ auto update_hires_cell(int x, int y, int xpixel, int ypixel, int offset)
          ((byteval3 & 0x03) !=
           (*(vidlastmem.get() + offset + yoffset + 0x2001) & 0x03))) ||
         redrawfull || video_worker_active_) {
-#define COLOFFS (((byteval1 & 0x60) << 2) | ((byteval3 & 0x03) << 5))
+      int coloffs = ((byteval1 & 0x60) << 2) | ((byteval3 & 0x03) << 5);
       if (g_videotype == VT_COLOR_TVEMU) {
         copy_mixed_source(xpixel >> 1, (ypixel + (yoffset >> 9)) >> 1,
-                          SRCOFFS_HIRES + COLOFFS + ((x & 1) << 4),
+                          SRCOFFS_HIRES + coloffs + ((x & 1) << 4),
                           ((static_cast<int>(byteval2)) << 1));
       } else {
         copy_source(xpixel, ypixel + (yoffset >> 9), 14, 2,
-                    SRCOFFS_HIRES + COLOFFS + ((x & 1) << 4),
+                    SRCOFFS_HIRES + coloffs + ((x & 1) << 4),
                     ((static_cast<int>(byteval2)) << 1));
       }
-#undef COLOFFS
       dirty = true;
     }
     yoffset += 0x400;
@@ -1286,12 +1276,12 @@ auto load_charset() -> VideoSurface_t* {
 // All globally accessible functions are below this line
 
 auto video_apparently_dirty() -> bool {
-  if (SW_MIXED || redrawfull || video_worker_active_) {
+  if (sw_mixed() || redrawfull || video_worker_active_) {
     return true;
   }
-  uint32_t address =
-      (SW_HIRES && !SW_TEXT) ? (0x20 << displaypage2) : (0x4 << displaypage2);
-  uint32_t length = (SW_HIRES && !SW_TEXT) ? 0x20 : 0x4;
+  uint32_t address = (sw_hires() && !sw_text()) ? (0x20 << displaypage2)
+                                                : (0x4 << displaypage2);
+  uint32_t length = (sw_hires() && !sw_text()) ? 0x20 : 0x4;
   while (length--) {
     if (*(memdirty + (address++)) & 2) {
       return true;
@@ -1301,7 +1291,7 @@ auto video_apparently_dirty() -> bool {
   bool char_flashing = false;
 
   // Scan visible text page for any flashing chars
-  if ((SW_TEXT || SW_MIXED) && (g_alt_char_set_offset == 0)) {
+  if ((sw_text() || sw_mixed()) && (g_alt_char_set_offset == 0)) {
     uint8_t* pnMemText = mem_get_main_ptr(0x400 << displaypage2);
 
     // Scan 8 long-lines of 120 chars (at 128 char offsets):
@@ -1462,27 +1452,27 @@ auto video_check_mode(uint16_t, uint16_t address, uint8_t, uint8_t,
                       uint32_t executed_cycles) -> uint8_t {
   address &= 0xFF;
   if (address == 0x7F) {
-    return mem_read_floating_bus(SW_DHIRES != 0, executed_cycles);
+    return mem_read_floating_bus(sw_dhires(), executed_cycles);
   } else {
     bool result = false;
     switch (address) {
       case 0x1A:
-        result = SW_TEXT;
+        result = sw_text();
         break;
       case 0x1B:
-        result = SW_MIXED;
+        result = sw_mixed();
         break;
       case 0x1D:
-        result = SW_HIRES;
+        result = sw_hires();
         break;
       case 0x1E:
         result = g_alt_char_set_offset != 0;
         break;
       case 0x1F:
-        result = SW_80COL;
+        result = sw_80col();
         break;
       case 0x7F:
-        result = SW_DHIRES;
+        result = sw_dhires();
         break;
       default:
         break;
@@ -1493,9 +1483,9 @@ auto video_check_mode(uint16_t, uint16_t address, uint8_t, uint8_t,
 }
 
 auto video_check_page(bool force) -> void {
-  if ((displaypage2 != (SW_PAGE2 != 0)) &&
+  if ((displaypage2 != sw_page2()) &&
       (force || (emul_msec - lastpageflip > 500))) {
-    displaypage2 = (SW_PAGE2 != 0);
+    displaypage2 = sw_page2();
     video_refresh_screen();
     lastpageflip = emul_msec;
   }
@@ -1752,11 +1742,11 @@ auto video_perform_refresh() -> void {
   }
   memset(celldirty, 0, static_cast<size_t>(40 * 32));
   UpdateFunc_t update =
-      SWL_TEXT ? SWL_80COL ? update_80col_cell : update_40col_cell
-      : SWL_HIRES
-          ? (SWL_DHIRES && SWL_80COL) ? update_dhires_cell : update_hires_cell
-      : (SWL_DHIRES && SWL_80COL) ? update_dlores_cell
-                                  : update_lores_cell;
+      swl_text()    ? (swl_80col() ? update_80col_cell : update_40col_cell)
+      : swl_hires() ? ((swl_dhires() && swl_80col()) ? update_dhires_cell
+                                                     : update_hires_cell)
+                    : ((swl_dhires() && swl_80col()) ? update_dlores_cell
+                                                     : update_lores_cell);
 
   bool anydirty = redrawfull | g_text_flash_flag;
 
@@ -1775,8 +1765,8 @@ auto video_perform_refresh() -> void {
     ypixel += 16;
   }
 
-  if (SWL_MIXED) {
-    update = SWL_80COL ? update_80col_cell : update_40col_cell;
+  if (swl_mixed()) {
+    update = swl_80col() ? update_80col_cell : update_40col_cell;
   }
 
   while (y < 24) {
@@ -1923,18 +1913,18 @@ auto video_set_mode(uint16_t, uint16_t address, uint8_t write, uint8_t,
     default:
       break;
   }
-  if (SW_MASK2) {
+  if (sw_mask2()) {
     g_video_mode &= ~VF_PAGE2;
   }
   if (oldvalue != g_alt_char_set_offset +
                       static_cast<int>(g_video_mode & ~(VF_MASK2 | VF_PAGE2))) {
-    graphicsmode = !SW_TEXT;
+    graphicsmode = !sw_text();
     redrawfull = true;
     video_refresh_screen();
   }
 
-  if (displaypage2 != (SW_PAGE2 != 0)) {
-    displaypage2 = (SW_PAGE2 != 0);
+  if (displaypage2 != sw_page2()) {
+    displaypage2 = sw_page2();
     redrawfull = true;
     video_refresh_screen();
   }
@@ -1959,25 +1949,25 @@ auto video_update_flash() -> void {
     s_text_flash_cnt = 0;
     g_text_flash_state = !g_text_flash_state;
 
-    if ((SW_TEXT || SW_MIXED)) {
+    if (sw_text() || sw_mixed()) {
       g_text_flash_flag = true;
     }
   }
 }
 
-auto video_get_sw_80col() -> bool { return SW_80COL != 0; }
+auto video_get_sw_80col() -> bool { return sw_80col(); }
 
-auto video_get_sw_dhires() -> bool { return SW_DHIRES != 0; }
+auto video_get_sw_dhires() -> bool { return sw_dhires(); }
 
-auto video_get_sw_hires() -> bool { return SW_HIRES != 0; }
+auto video_get_sw_hires() -> bool { return sw_hires(); }
 
-auto video_get_sw_80store() -> bool { return SW_MASK2 != 0; }
+auto video_get_sw_80store() -> bool { return sw_mask2(); }
 
-auto video_get_sw_mixed() -> bool { return SW_MIXED != 0; }
+auto video_get_sw_mixed() -> bool { return sw_mixed(); }
 
-auto video_get_sw_page2() -> bool { return SW_PAGE2 != 0; }
+auto video_get_sw_page2() -> bool { return sw_page2(); }
 
-auto video_get_sw_text() -> bool { return SW_TEXT != 0; }
+auto video_get_sw_text() -> bool { return sw_text(); }
 
 auto video_get_sw_alt_charset() -> bool { return g_alt_char_set_offset != 0; }
 
@@ -1994,8 +1984,8 @@ auto video_set_snapshot(SS_IO_Video* ss) -> uint32_t {
   g_alt_char_set_offset = (ss->alt_char_set == 0) ? 0 : 256;
   g_video_mode = ss->vid_mode;
 
-  graphicsmode = !SW_TEXT;
-  displaypage2 = (SW_PAGE2 != 0);
+  graphicsmode = !sw_text();
+  displaypage2 = sw_page2();
 
   return 0;
 }
@@ -2008,8 +1998,8 @@ auto video_get_scanner_address(bool* pbVblBar_OUT,
       (g_video_cycles_in_frame + executed_cycles) % g_state.clks_per_frame;
 
   // machine state switches
-  int hires = (SW_HIRES & !SW_TEXT) ? 1 : 0;
-  int page2 = (SW_PAGE2) ? 1 : 0;
+  int hires = (sw_hires() && !sw_text()) ? 1 : 0;
+  int page2 = (sw_page2()) ? 1 : 0;
   int n80Store = (mem_get_80store()) ? 1 : 0;
 
   // calculate video parameters according to display standard
@@ -2045,7 +2035,7 @@ auto video_get_scanner_address(bool* pbVblBar_OUT,
   int v_4 = (v_state >> 7) & 1;
 
   // calculate scanning memory address
-  if (SW_HIRES && SW_MIXED && (v_4 & v_2)) {
+  if (sw_hires() && sw_mixed() && (v_4 & v_2)) {
     // The softswitch for this is $c053 for mixed, $c052 for fill (no text on
     // bottom).
     hires = 0;  // (address is in text memory)
