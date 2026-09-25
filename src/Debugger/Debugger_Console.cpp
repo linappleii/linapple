@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include "Debugger_Types.h"
-#include "apple2/Video.h"
+#include "Debugger_Console.h"
 
 #include <unistd.h>
 
@@ -15,13 +14,13 @@
 #include "Debug.h"
 #include "Debugger_Cmd_CPU.h"
 #include "Debugger_Cmd_Window.h"
-#include "Debugger_Console.h"
 #include "Debugger_Display.h"
 #include "Debugger_Parser.h"
+#include "Debugger_Types.h"
 #include "apple2/Video.h"
-#include "core/LinAppleCore.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Types.h"
+#include "core/LinAppleCore.h"
 #include "core/Util_Text.h"
 
 // Globals originally from Debug.cpp
@@ -324,15 +323,9 @@ auto ConsoleDisplayPush(const conchar_t* text) -> void {
 //===========================================================================
 auto ConsoleDisplayPause() -> void {
   if (g_console_buffer_size) {
-#if CONSOLE_INPUT_CHAR16
-    ConsoleConvertFromText(g_console_input,
-                           "...press SPACE continue, ESC skip...");
-    g_console_prompt_len = ConsoleLineLength(g_console_input);
-#else
     util_safe_strcpy(g_console_input, "...press SPACE continue, ESC skip...",
                      sizeof(g_console_input));
     g_console_prompt_len = static_cast<int>(strlen(g_console_input));
-#endif
     g_console_input_ptr = &g_console_input[g_console_prompt_len];
     g_console_input_chars = 0;
     g_console_buffer_paused = true;
@@ -574,10 +567,7 @@ auto debugger_input_console_char(char ch) -> void {
   }
 
   if (!g_console_input_quoted) {
-#if ALLOW_INPUT_LOWERCASE
-#else
     ch = static_cast<char>(toupper(ch));
-#endif
   }
   ConsoleInputChar(ch);
 

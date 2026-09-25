@@ -764,9 +764,6 @@ auto CmdHelpSpecific(int nArgs) -> Update_t {
   if (nNewArgs > 0) {
     nArgs = nNewArgs;
     for (iArg = 1; iArg <= nArgs; iArg++) {
-#if DEBUG_VAL_2
-      g_args[iArg].nVal2 = iCmdBegin + iArg - 1;
-#endif
       g_args[iArg].nValue = iCmdBegin + iArg - 1;
     }
   }
@@ -776,9 +773,6 @@ auto CmdHelpSpecific(int nArgs) -> Update_t {
     nFound = 0;
 
     if (bCategory) {
-#if DEBUG_VAL_2
-      iCommand = g_args[iArg].nVal2;
-#endif
       iCommand = g_args[iArg].nValue;
       nFound = 1;
     } else if (bAllCommands) {
@@ -881,17 +875,6 @@ auto CmdHelpSpecific(int nArgs) -> Update_t {
         util_safe_strncat(sText, CHC_DEFAULT, sizeof(sText));
         util_safe_strncat(sText, pHelp, sizeof(sText));
         console_print(sText);
-      } else {
-#if _DEBUG
-        ConsoleBufferPushFormat(sText, "%s  <-- Missing", pCommand->name);
-#if DEBUG_COMMAND_HELP
-        if (!bAllCommands)  // Release version doesn't display message
-        {
-          ConsoleBufferPushFormat(sText, "Missing Summary Help: %s",
-                                  g_commands[iCommand].aName);
-        }
-#endif
-#endif
       }
 
       if (bCategory) {
@@ -933,11 +916,6 @@ auto CmdHelpSpecific(int nArgs) -> Update_t {
     if (!bFoundAny && !bAllCommands) {
       if ((!nFound) || (!pCommand)) {
         ConsoleBufferPush(" Invalid command.");
-      } else {
-#if _DEBUG
-        ConsoleBufferPushFormat(sText, "Command help not done yet!: %s",
-                                g_commands[iCommand].name);
-#endif
       }
     }
   }

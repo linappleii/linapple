@@ -99,9 +99,6 @@ static auto ClearArg(Arg_t* pArg) -> void {
   pArg->eToken = NO_TOKEN;      // none
   pArg->bType = TYPE_STRING;
   pArg->nValue = 0;
-#if DEBUG_VAL_2
-  pArg->nVal2 = 0;
-#endif
 }
 
 //===========================================================================
@@ -822,10 +819,6 @@ auto FindParam(const char* pLookupName, Match_e eMatch, int& iParam_,
     return nFound;
   }
 
-#if ALLOW_INPUT_LOWERCASE
-  eMatch = MATCH_FUZZY;
-#endif
-
   if (eMatch == MATCH_EXACT) {
     //    while (iParam < NUM_PARAMS )
     for (iParam = iParamBegin; iParam <= iParamEnd; iParam++) {
@@ -839,22 +832,9 @@ auto FindParam(const char* pLookupName, Match_e eMatch, int& iParam_,
       }
     }
   } else if (eMatch == MATCH_FUZZY) {
-#if ALLOW_INPUT_LOWERCASE
-    char aLookup[256] = "";
-    for (int i = 0; i < nLen; i++) {
-      aLookup[i] = toupper(pLookupName[i]);
-    }
-#endif
     for (iParam = iParamBegin; iParam <= iParamEnd; iParam++) {
       const char* pParamName = g_parameters[iParam].name;
-      // _tcsnccmp
-
-#if ALLOW_INPUT_LOWERCASE
-      if (!strncmp(aLookup, pParamName, nLen))
-#else
-      if (!strncmp(pLookupName, pParamName, nLen))
-#endif
-      {
+      if (!strncmp(pLookupName, pParamName, nLen)) {
         nFound++;
         iParam_ = g_parameters[iParam].command_id;
 

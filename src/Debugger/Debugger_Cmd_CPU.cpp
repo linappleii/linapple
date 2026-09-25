@@ -100,9 +100,6 @@ auto CmdGo(int nArgs, const bool bFullSpeed) -> Update_t {
     int iArg = 2;
     g_debug_skip_start = g_args[iArg].nValue;
 
-#if DEBUG_VAL_2
-    uint16_t address = g_args[iArg].nVal2;
-#endif
     int nLen = 0;
     int nEnd = 0;
 
@@ -132,13 +129,6 @@ auto CmdGo(int nArgs, const bool bFullSpeed) -> Update_t {
     }
     g_debug_skip_len = nLen;
     g_debug_skip_len &= APPLE2_6502_MEM_END;
-
-#if _DEBUG
-    char sText[CONSOLE_WIDTH];
-    ConsoleBufferPushFormat(sText, "Start: %04X,%04X  End: %04X  Len: %04X",
-                            g_debug_skip_start, g_debug_skip_len, nEnd, nLen);
-    ConsoleBufferToDisplay();
-#endif
   }
 
   //  uint16_t nAddressSymbol = 0;

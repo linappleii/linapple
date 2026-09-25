@@ -300,9 +300,6 @@ auto CmdMemoryFill(int nArgs) -> Update_t {
       return Help_Arg_1(CMD_MEMORY_MOVE);
     }
   }
-#if DEBUG_VAL_2
-  nBytes = std::max(1, g_args[1].nVal2);  // TODO: This actually work??
-#endif
 
   if ((nAddressLen > 0) && (nAddressEnd <= APPLE2_6502_MEM_END)) {
     MemMarkDirty(nAddressStart, nAddressEnd);

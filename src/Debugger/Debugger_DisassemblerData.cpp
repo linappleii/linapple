@@ -469,10 +469,6 @@ auto Disassembly_GetData(uint16_t nBaseAddress, const DisasmData_t* data,
   (void)nBaseAddress;
   (void)line_;
   if (!data) {
-#if _DEBUG
-    console_display_error(
-        "Disassembly_GetData() but we don't have a valid DisasmData_t *");
-#endif
     return;
   }
 }

@@ -478,27 +478,6 @@ auto CmdCursorLineDown(int nArgs) -> Update_t {
     g_disasm_bot_address += nOpbytes;
     DisasmCalcTopBotAddress();
   } else {
-#if DEBUG_SCROLL == 6
-    // Works except on one case: G FB53, SPACE, DOWN
-    uint16_t nTop = g_disasm_top_address;
-    uint16_t nCur = g_disasm_cur_address + nOpbytes;
-    if (g_disasm_cur_bad) {
-      g_disasm_cur_address = nCur;
-      g_disasm_cur_bad = false;
-      DisasmCalcTopFromCurAddress();
-      return UPDATE_DISASM;
-    }
-
-    // Adjust Top until nNewCur is at > Cur
-    do {
-      g_disasm_top_address++;
-      DisasmCalcCurFromTopAddress();
-    } while (g_disasm_cur_address < nCur);
-
-    DisasmCalcCurFromTopAddress();
-    DisasmCalcBotFromTopAddress();
-    g_disasm_cur_bad = false;
-#endif
     g_disasm_cur_address += nOpbytes;
 
     GetOpmodeOpbyte(g_disasm_top_address, iOpmode, nOpbytes);

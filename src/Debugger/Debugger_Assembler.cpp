@@ -581,16 +581,6 @@ auto CalcRelativeOffset(int nOpcode, int nBaseAddress, int nTargetAddress,
 //===========================================================================
 auto GetOpmodeOpbyte(const int nBaseAddress, int& iOpmode_, int& nOpbyte_,
                      const DisasmData_t** pData_) -> int {
-#if _DEBUG
-  if (!g_opcodes) {
-    fprintf(stderr, "%s: %s\n", "ERROR", "Debugger not properly initialized");
-
-    g_opcodes = &g_opcodes65_c02[0];  // Enhanced Apple //e
-    g_opmodes[AM_2].bytes = 2;
-    g_opmodes[AM_3].bytes = 3;
-  }
-#endif
-
   if (!g_opcodes) {
     iOpmode_ = 0;
     nOpbyte_ = 1;
@@ -691,10 +681,6 @@ auto GetOpmodeOpbyte(const int nBaseAddress, int& iOpmode_, int& nOpbyte_,
         iOpmode_ = AM_DATA;
         break;
       default:
-#if _DEBUG  // not implemented!
-        int* fatal = 0;
-        *fatal = 0xDEADC0DE;
-#endif
         break;
     }
     /*
@@ -712,12 +698,6 @@ auto GetOpmodeOpbyte(const int nBaseAddress, int& iOpmode_, int& nOpbyte_,
     //  iOpcode_ = (int)( data ); // HACK: pass data back to caller ...
     iOpcode_ = OPCODE_NOP;
   }
-
-#if _DEBUG
-  if (iOpcode_ >= NUM_OPCODES) {
-    bool bStop = true;
-  }
-#endif
 
   return iOpcode_;
 }

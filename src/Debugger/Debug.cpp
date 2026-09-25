@@ -11,8 +11,6 @@
 #include "apple2/Video.h"
 #include "core/LinAppleCore.h"
 
-enum { ALLOW_INPUT_LOWERCASE = 1 };
-
 auto debug_display(bool bInitDisasm) -> void {
   if (bInitDisasm) {
     InitDisasm();

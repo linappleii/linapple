@@ -48,7 +48,6 @@ auto DrawWindowBackground_Main(int iWindow) -> void {
   (void)iWindow;
   DebuggerSetColorBG(DebuggerGetColor(BG_DISASM_1));
 
-#if !DEBUG_FONT_NO_BACKGROUND_FILL_MAIN
   Rect_t rect;
   rect.left = 0;
   rect.top = 0;
@@ -56,14 +55,12 @@ auto DrawWindowBackground_Main(int iWindow) -> void {
   int nTop = GetConsoleTopPixels(g_console_display_lines - 1);
   rect.bottom = nTop;
   FillRect(&rect, g_console_brush_bg);
-#endif
 }
 
 auto DrawWindowBackground_Info(int iWindow) -> void {
   (void)iWindow;
   DebuggerSetColorBG(DebuggerGetColor(BG_INFO));
 
-#if !DEBUG_FONT_NO_BACKGROUND_FILL_INFO
   Rect_t rect;
   rect.top = 0;
   rect.left = DISPLAY_DISASM_RIGHT;
@@ -71,5 +68,4 @@ auto DrawWindowBackground_Info(int iWindow) -> void {
   int nTop = GetConsoleTopPixels(g_console_display_lines - 1);
   rect.bottom = nTop;
   FillRect(&rect, g_console_brush_bg);
-#endif
 }

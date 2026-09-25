@@ -494,64 +494,6 @@ auto CmdConfigFont(int nArgs) -> Update_t {
 //===========================================================================
 auto CmdConfigSetFont(int nArgs) -> Update_t {
   (void)nArgs;
-#if OLD_FONT
-  HFONT hFont = (HFONT)0;
-  char* pFontName = nullptr;
-  int nHeight = g_font_height;
-  int iFontTarget = FONT_DISASM_DEFAULT;
-  int iFontPitch = FIXED_PITCH | FF_MODERN;
-  //  int    iFontMode   =
-  bool bHaveTarget = false;
-  bool bHaveFont = false;
-
-  if (!nArgs) {  // reset to defaut font
-    pFontName = g_font_name_default;
-  } else if (nArgs <= 3) {
-    int iArg = 1;
-    pFontName = g_args[1].sArg;
-
-    // [DISASM|INFO|CONSOLE] "FontName" [#]
-    // "FontName" can be either arg 1 or 2
-
-    int iFound;
-    int nFound = FindParam(g_args[iArg].sArg, MATCH_EXACT, iFound,
-                           PARAM_WINDOW_BEGIN, PARAM_WINDOW_END);
-    if (nFound) {
-      switch (iFound) {
-        case PARAM_DISASM:
-          iFontTarget = FONT_DISASM_DEFAULT;
-          iFontPitch = FIXED_PITCH | FF_MODERN;
-          bHaveTarget = true;
-          break;
-        case PARAM_INFO:
-          iFontTarget = FONT_INFO;
-          iFontPitch = FIXED_PITCH | FF_MODERN;
-          bHaveTarget = true;
-          break;
-        case PARAM_CONSOLE:
-          iFontTarget = FONT_CONSOLE;
-          iFontPitch = DEFAULT_PITCH | FF_DECORATIVE;
-          bHaveTarget = true;
-          break;
-        default:
-          if (g_args[2].bType != TOKEN_QUOTE_DOUBLE)
-            return Help_Arg_1(CMD_CONFIG_FONT);
-          break;
-      }
-      if (bHaveTarget) {
-        pFontName = g_args[2].sArg;
-      }
-    } else if (nArgs == 2) {
-      nHeight = atoi(g_args[2].sArg);
-      if ((nHeight < 6) || (nHeight > 36)) nHeight = g_font_height;
-    }
-  } else {
-    return Help_Arg_1(CMD_CONFIG_FONT);
-  }
-
-  if (!CmdConfigFont(iFontTarget, pFontName, iFontPitch, nHeight)) {
-  }
-#endif
   return UPDATE_ALL;
 }
 

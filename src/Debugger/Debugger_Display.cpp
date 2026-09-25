@@ -252,7 +252,6 @@ auto PrintText(const char* text, Rect_t& rRect) -> int {
   if (!text) return 0;
   int nLen = static_cast<int>(strlen(text));
 
-#if !DEBUG_FONT_NO_BACKGROUND_TEXT
   if (g_debug_screen) {
     Rect_t textRect = rRect;
     textRect.right = textRect.left + (nLen * CONSOLE_FONT_WIDTH);
@@ -260,7 +259,6 @@ auto PrintText(const char* text, Rect_t& rRect) -> int {
               textRect.right - textRect.left, textRect.bottom - textRect.top,
               g_console_brush_bg);
   }
-#endif
 
   DebuggerPrint(rRect.left, rRect.top, text);
   return nLen;
@@ -268,7 +266,6 @@ auto PrintText(const char* text, Rect_t& rRect) -> int {
 
 auto PrintTextColor(const conchar_t* text, Rect_t& rRect) -> void {
   if (!text) return;
-#if !DEBUG_FONT_NO_BACKGROUND_TEXT
   if (g_debug_screen) {
     int nLen = 0;
     const conchar_t* p = text;
@@ -284,7 +281,6 @@ auto PrintTextColor(const conchar_t* text, Rect_t& rRect) -> void {
               textRect.right - textRect.left, textRect.bottom - textRect.top,
               g_console_brush_bg);
   }
-#endif
 
   DebuggerPrintColor(rRect.left, rRect.top, text);
 }

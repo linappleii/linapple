@@ -743,13 +743,6 @@ auto SymbolUpdate(SymbolTable_Index_e eSymbolTable, const char* pSymbolName,
     }
 
     if (bUpdateSymbol) {
-#if _DEBUG
-      const char* pSymbol = FindSymbolFromAddress(address, &iTable);
-      {
-        // Found another symbol for this address.  Harmless.
-        // TODO: Probably should check if same name?
-      }
-#endif
       g_symbols[eSymbolTable][address] = pSymbolName;
 
       // Tell user symbol was added
