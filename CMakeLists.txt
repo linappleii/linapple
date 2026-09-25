@@ -130,14 +130,6 @@ else()
     add_compile_definitions(ENABLE_ROM_MOUSE=0)
 endif()
 
-option(ENABLE_ROM_PRINTER "Include Parallel Printer Interface Card ROM" ON)
-
-if(ENABLE_ROM_PRINTER)
-    add_compile_definitions(ENABLE_ROM_PRINTER=1)
-else()
-    add_compile_definitions(ENABLE_ROM_PRINTER=0)
-endif()
-
 # --- Compiler Flags ---
 add_compile_options(-O3 -Wall -Wextra)
 
@@ -304,7 +296,6 @@ add_custom_command(
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/DISK2-P6.rom"
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/SSC.rom"
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/MouseInterface.rom"
-            "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/Parallel.rom"
     COMMENT "Generating EmbeddedRoms source from res/roms"
     VERBATIM
 )
@@ -815,9 +806,12 @@ if(BUILD_TESTING)
         set_tests_properties(test-clock-frame-v1-pinned PROPERTIES TIMEOUT 5)
         add_linapple_test(clock-snapshot tests/test_clock_snapshot.cpp)
         set_tests_properties(test-clock-snapshot PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
-        if(BUILD_SHARED_PERIPHERALS)
-            # Verify plugin imports no external symbols from the main executable.
-            add_test(NAME test-clock-plugin-exports COMMAND sh -c
+    endif()
+    if(BUILD_SHARED_PERIPHERALS)
+        # Verify plugin imports no external symbols from the main executable.
+        foreach(module IN LISTS PERIPHERAL_MODULES)
+            string(REPLACE "peripheral-" "" plugin_name "${module}")
+            add_test(NAME test-plugin-exports-${plugin_name} COMMAND sh -c
             [=[
 plugin="$1"
 exported=$(nm -D --defined-only "$plugin" | awk '{print $NF}')
@@ -835,9 +829,9 @@ if [ -n "$imported" ]; then
   exit 1
 fi
 ]=]
-                sh $<TARGET_FILE:peripheral-clock>)
-            set_tests_properties(test-clock-plugin-exports PROPERTIES TIMEOUT 5)
-        endif()
+                sh $<TARGET_FILE:${module}>)
+            set_tests_properties(test-plugin-exports-${plugin_name} PROPERTIES TIMEOUT 5)
+        endforeach()
     endif()
     if(ENABLE_PERIPHERAL_PRINTER)
         set_source_files_properties(tests/test_printer_abi_c.c PROPERTIES COMPILE_OPTIONS "-std=c99;-pedantic")
@@ -847,6 +841,13 @@ fi
         set_tests_properties(test-printer-frontend PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
         add_linapple_test(printer-snapshot tests/test_printer_snapshot.cpp)
         set_tests_properties(test-printer-snapshot PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
+        # The card carries the PROM as a transcription of this file, and the
+        # suite compares the two; the file itself is pinned so the reference
+        # cannot drift under the comparison.
+        add_test(NAME test-printer-rom-pinned COMMAND sh -c
+            "echo 'c75c751589cbcc1ad4ab4f63676af7abadd86f5b  res/roms/Parallel.rom' | sha1sum -c --quiet"
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+        set_tests_properties(test-printer-rom-pinned PROPERTIES TIMEOUT 5)
     endif()
     add_executable(test-via6522 tests/test_via6522.cpp src/apple2/chips/6522.cpp)
     target_include_directories(test-via6522 PRIVATE src ${DOCTEST_INCLUDE_DIR})

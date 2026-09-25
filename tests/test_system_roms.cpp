@@ -69,11 +69,6 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
     CHECK(g_rom_mouse_interface[5] == 0x38);
     CHECK(g_rom_mouse_interface[7] == 0x18);
 #endif
-#if ENABLE_ROM_PRINTER
-    CHECK(g_rom_parallel_size == 256);
-    CHECK(g_rom_parallel[0] == 0x18);
-    CHECK(g_rom_parallel[1] == 0xB0);
-#endif
   }
 
   TEST_CASE("Hardware Reset, IRQ, and NMI Vectors") {

@@ -114,7 +114,6 @@ generate_rom "g_rom_disk2_13sector" "$ROMS_DIR/DISK2-13sector.rom" "ENABLE_ROM_D
 generate_rom "g_rom_disk2_p6" "$ROMS_DIR/DISK2-P6.rom" "ENABLE_ROM_DISK2"
 generate_rom "g_rom_ssc" "$ROMS_DIR/SSC.rom" "ENABLE_ROM_SSC"
 generate_rom "g_rom_mouse_interface" "$ROMS_DIR/MouseInterface.rom" "ENABLE_ROM_MOUSE"
-generate_rom "g_rom_parallel" "$ROMS_DIR/Parallel.rom" "ENABLE_ROM_PRINTER"
 
 cat <<'EOF' >> "$TMP_HEADER"
 #ifdef __cplusplus

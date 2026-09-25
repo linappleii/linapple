@@ -1,16 +1,24 @@
 # LinApple ROM Image Provenance & Licensing
 
-This directory contains Apple II firmware and peripheral ROM binary images utilized by the emulator.
+This directory contains Apple II firmware and peripheral ROM binary images
+utilized by the emulator.
 
 ## License & Legal Notice
 
-All original Apple II, Apple ][+, Apple //e, Disk II, Super Serial Card, Mouse Interface, and Parallel interface firmware remain the intellectual property and copyright of **Apple Inc.** (formerly Apple Computer, Inc.).
+All original Apple II, Apple ][+, Apple //e, Disk II, Super Serial Card, Mouse
+Interface, and Parallel interface firmware remain the intellectual property
+and copyright of **Apple Inc.** (formerly Apple Computer, Inc.).
 
 Third-party peripheral firmware (Mockingboard) and international/clone
 computer system ROMs (Base64A, Microdigital TK3000 //e, Pravetz 82/8M/8C) are
 the copyright of their respective original manufacturers.
 
-These binary images are distributed for non-commercial preservation, interoperability, and emulation purposes. If you are building custom distribution packages with strict free-software licensing guidelines (such as Debian Main or Fedora Free), you can configure CMake to exclude embedded ROMs or build LinApple using the `--rom <path>` CLI option to supply external user-provided ROM files.
+These binary images are distributed for non-commercial preservation,
+interoperability, and emulation purposes. If you are building custom
+distribution packages with strict free-software licensing guidelines (such as
+Debian Main or Fedora Free), you can configure CMake to exclude embedded ROMs
+or build LinApple using the `--rom <path>` CLI option to supply external
+user-provided ROM files.
 
 ---
 
@@ -43,7 +51,7 @@ These binary images are distributed for non-commercial preservation, interoperab
 | `DISK2-P6.rom` | 256 B | Disk II Interface | 16-sector P6 logic state sequencer PROM, the controller state machine (Part 341-0028-A, SHA1 `bc39fbd5b9a8d2287ac5d0a42e639fc4d3c2f9d4`) | Apple Inc. (1980) |
 | `SSC.rom` | 2,048 B | Super Serial Card | Apple Super Serial Card 6551 ACIA firmware ROM (Part 341-0065) | Apple Inc. (1981) |
 | `MouseInterface.rom` | 2,048 B | Mouse Card | Apple Mouse Interface Card 6821 firmware ROM (Part 342-0285) | Apple Inc. (1984) |
-| `Parallel.rom` | 256 B | Parallel Interface | Apple Parallel Printer Interface firmware ROM | Apple Inc. |
+| `Parallel.rom` | 256 B | Parallel Printer Interface Card (A2B0002) | PROM 341-0005 "Printer Card I Firmware P1-2", revised 3/17/78; the printer card carries a transcription, and the build checks this file's SHA-1 as its reference | Apple Inc. (1978) |
 
 ### International & Clone System ROMs
 

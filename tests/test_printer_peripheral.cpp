@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <algorithm>
+#include <array>
+#include <cstdarg>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
+#include <iterator>
 #include <map>
 #include <string>
 #include <utility>
@@ -13,8 +17,6 @@
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/printer/PrinterCommands.h"
 #include "doctest.h"
-
-auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
 
 namespace {
 
@@ -43,6 +45,39 @@ constexpr uint8_t ROM_LAST_BYTE = 0x84;
 
 constexpr uint8_t TEST_CHAR_A = 'A';
 
+// Apple's PROM 341-0005 as res/roms/Parallel.rom holds it, transcribed here
+// so the bytes the card hands the host are checked against a second copy
+// rather than against themselves.
+constexpr std::array<uint8_t, SLOT_ROM_PAGE_SIZE> PRINTER_ROM_LISTING = {
+    {0x18, 0xb0, 0x38, 0x48, 0x8a, 0x48, 0x98, 0x48, 0x08, 0x78, 0x20, 0x58,
+     0xff, 0xba, 0x68, 0x68, 0x68, 0x68, 0xa8, 0xca, 0x9a, 0x68, 0x28, 0xaa,
+     0x90, 0x38, 0xbd, 0xb8, 0x05, 0x10, 0x19, 0x98, 0x29, 0x7f, 0x49, 0x30,
+     0xc9, 0x0a, 0x90, 0x3b, 0xc9, 0x78, 0xb0, 0x29, 0x49, 0x3d, 0xf0, 0x21,
+     0x98, 0x29, 0x9f, 0x9d, 0x38, 0x06, 0x90, 0x7e, 0xbd, 0xb8, 0x06, 0x30,
+     0x14, 0xa5, 0x24, 0xdd, 0x38, 0x07, 0xb0, 0x0d, 0xc9, 0x11, 0xb0, 0x09,
+     0x09, 0xf0, 0x3d, 0x38, 0x07, 0x65, 0x24, 0x85, 0x24, 0x4a, 0x38, 0xb0,
+     0x6d, 0x18, 0x6a, 0x3d, 0xb8, 0x06, 0x90, 0x02, 0x49, 0x81, 0x9d, 0xb8,
+     0x06, 0xd0, 0x53, 0xa0, 0x0a, 0x7d, 0x38, 0x05, 0x88, 0xd0, 0xfa, 0x9d,
+     0xb8, 0x04, 0x9d, 0x38, 0x05, 0x38, 0xb0, 0x43, 0xc5, 0x24, 0x90, 0x3a,
+     0x68, 0xa8, 0x68, 0xaa, 0x68, 0x4c, 0xf0, 0xfd, 0x90, 0xfe, 0xb0, 0xfe,
+     0x99, 0x80, 0xc0, 0x90, 0x37, 0x49, 0x07, 0xa8, 0x49, 0x0a, 0x0a, 0xd0,
+     0x06, 0xb8, 0x85, 0x24, 0x9d, 0x38, 0x07, 0xbd, 0xb8, 0x06, 0x4a, 0x70,
+     0x02, 0xb0, 0x23, 0x0a, 0x0a, 0xa9, 0x27, 0xb0, 0xcf, 0xbd, 0x38, 0x07,
+     0xfd, 0xb8, 0x04, 0xc9, 0xf8, 0x90, 0x03, 0x69, 0x27, 0xac, 0xa9, 0x00,
+     0x85, 0x24, 0x18, 0x7e, 0xb8, 0x05, 0x68, 0xa8, 0x68, 0xaa, 0x68, 0x60,
+     0x90, 0x27, 0xb0, 0x00, 0x10, 0x11, 0xa9, 0x89, 0x9d, 0x38, 0x06, 0x9d,
+     0xb8, 0x06, 0xa9, 0x28, 0x9d, 0xb8, 0x04, 0xa9, 0x02, 0x85, 0x36, 0x98,
+     0x5d, 0x38, 0x06, 0x0a, 0xf0, 0x90, 0x5e, 0xb8, 0x05, 0x98, 0x48, 0x8a,
+     0x0a, 0x0a, 0x0a, 0x0a, 0xa8, 0xbd, 0x38, 0x07, 0xc5, 0x24, 0x68, 0xb0,
+     0x05, 0x48, 0x29, 0x80, 0x09, 0x20, 0x2c, 0x58, 0xff, 0xf0, 0x03, 0xfe,
+     0x38, 0x07, 0x70, 0x84}};
+
+// Distinct cycles must give distinct bytes, so a read that asks the host for
+// the bus can be told apart from any constant.
+auto floating_bus_marker(uint32_t executed_cycles) -> uint8_t {
+  return static_cast<uint8_t>((executed_cycles * 0x1D) ^ 0xA5);
+}
+
 struct MockHandler_t {
   void* instance = nullptr;
   PeripheralIOHandler read = nullptr;
@@ -67,6 +102,7 @@ class PrinterHarness {
     host_.PrinterPutChar = Mock_PrinterPutChar;
     host_.PrinterGetStatus = Mock_PrinterGetStatus;
     host_.NotifyActivityChanged = Mock_NotifyActivityChanged;
+    host_.ReadFloatingBus = Mock_ReadFloatingBus;
   }
 
   ~PrinterHarness() {
@@ -163,11 +199,12 @@ class PrinterHarness {
     }
   }
 
-  auto read_io(uint16_t addr, uint8_t is_write = 0, uint8_t val = 0)
-      -> uint8_t {
+  auto read_io(uint16_t addr, uint8_t is_write = 0, uint8_t val = 0,
+               uint32_t cycles = 0) -> uint8_t {
     auto it = handlers_.find(addr);
     if (it != handlers_.end() && it->second.read != nullptr) {
-      return it->second.read(it->second.instance, 0, addr, is_write, val, 0);
+      return it->second.read(it->second.instance, 0, addr, is_write, val,
+                             cycles);
     }
     return STATUS_OFFLINE;
   }
@@ -181,9 +218,9 @@ class PrinterHarness {
   }
 
   auto read_slot_reg(int slot, uint8_t offset, uint8_t is_write = 0,
-                     uint8_t val = 0) -> uint8_t {
+                     uint8_t val = 0, uint32_t cycles = 0) -> uint8_t {
     const uint16_t addr = IO_BASE_ADDRESS + (slot << IO_SLOT_OFFSET) + offset;
-    return read_io(addr, is_write, val);
+    return read_io(addr, is_write, val, cycles);
   }
 
   auto write_slot_reg(int slot, uint8_t offset, uint8_t val,
@@ -208,10 +245,21 @@ class PrinterHarness {
     return roms_.at(slot);
   }
 
+  auto rom_pointer(int slot) const -> const uint8_t* {
+    auto it = rom_pointers_.find(slot);
+    return (it != rom_pointers_.end()) ? it->second : nullptr;
+  }
+
+  auto log_messages() const -> const std::vector<std::string>& {
+    return log_messages_;
+  }
+
  private:
   HostInterface_t host_{};
   std::map<uint16_t, MockHandler_t> handlers_;
   std::map<int, std::vector<uint8_t>> roms_;
+  std::map<int, const uint8_t*> rom_pointers_;
+  std::vector<std::string> log_messages_;
   std::map<int, void*> instances_;
   std::map<void*, int> slot_by_instance_;
   std::map<int, std::vector<uint8_t>> printed_chars_;
@@ -233,7 +281,19 @@ class PrinterHarness {
                        const char* fmt, ...) -> void {
     (void)instance;
     (void)level;
-    (void)fmt;
+    if (s_active_harness == nullptr) {
+      return;
+    }
+    std::array<char, 256> text{};
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(text.data(), text.size(), fmt, args);
+    va_end(args);
+    s_active_harness->log_messages_.emplace_back(text.data());
+  }
+
+  static auto Mock_ReadFloatingBus(uint32_t executed_cycles) -> uint8_t {
+    return floating_bus_marker(executed_cycles);
   }
 
   static auto Mock_AssertIrq(int slot, bool assert_irq) -> void {
@@ -263,6 +323,7 @@ class PrinterHarness {
       std::vector<uint8_t> rom_data(SLOT_ROM_PAGE_SIZE);
       std::copy_n(rom_ptr, SLOT_ROM_PAGE_SIZE, rom_data.begin());
       s_active_harness->roms_[slot] = std::move(rom_data);
+      s_active_harness->rom_pointers_[slot] = rom_ptr;
     }
   }
 
@@ -353,13 +414,11 @@ TEST_CASE("Printer Peripheral: Registration and Firmware") {
     CHECK(harness.get_handler(addr).write != nullptr);
   }
 
-#if ENABLE_ROM_PRINTER
   REQUIRE(harness.has_rom(TEST_SLOT_1));
   const auto& rom = harness.get_rom(TEST_SLOT_1);
   CHECK(rom.size() == SLOT_ROM_PAGE_SIZE);
   CHECK(rom.at(0) == ROM_FIRST_BYTE);
   CHECK(rom.at(SLOT_ROM_PAGE_SIZE - 1) == ROM_LAST_BYTE);
-#endif
 }
 
 TEST_CASE("Printer Peripheral: I/O Mirroring Across Slot Registers") {
@@ -502,11 +561,11 @@ TEST_CASE("Printer Peripheral: Robustness and Seam Error Handling") {
   const uint16_t base = IO_BASE_ADDRESS + (TEST_SLOT_1 << IO_SLOT_OFFSET);
   const auto& handler = harness.get_handler(base);
 
-  // Read handler: when is_write != 0, must return floating bus noise
-  CHECK(handler.read(instance, 0, base, 1, 0, 0) == mem_read_floating_bus(0));
+  // Read handler: when is_write != 0, must return the host's floating bus
+  CHECK(handler.read(instance, 0, base, 1, 0, 7) == floating_bus_marker(7));
 
-  // Read handler: when instance == nullptr, must return floating bus noise
-  CHECK(handler.read(nullptr, 0, base, 0, 0, 0) == mem_read_floating_bus(0));
+  // Read handler: when instance == nullptr, there is no host to ask
+  CHECK(handler.read(nullptr, 0, base, 0, 0, 0) == 0);
 
   // Write handler: when is_write == 0, must return success (0) and not transmit
   harness.clear_printed_chars(TEST_SLOT_1);
@@ -915,4 +974,80 @@ TEST_CASE("Printer Peripheral: The C99 view of the state frame matches C++") {
   CHECK(printer_abi_c_is_busy_offset() == 23);
   CHECK(printer_abi_c_state_version() == 1);
   CHECK(printer_abi_c_state_version() == PRINTER_STATE_VERSION);
+}
+
+TEST_CASE("Printer Peripheral: The slot ROM is the PROM, byte for byte") {
+  PrinterHarness harness;
+  REQUIRE(harness.create_printer(TEST_SLOT_1) != nullptr);
+  const uint8_t* registered = harness.rom_pointer(TEST_SLOT_1);
+  REQUIRE(registered != nullptr);
+
+  const auto first_difference = std::mismatch(
+      PRINTER_ROM_LISTING.begin(), PRINTER_ROM_LISTING.end(), registered);
+  const size_t offset = static_cast<size_t>(
+      std::distance(PRINTER_ROM_LISTING.begin(), first_difference.first));
+  CAPTURE(offset);
+  CHECK(first_difference.first == PRINTER_ROM_LISTING.end());
+
+  // The wait images at $80/$82 (BCC * and BCS *), the one store to the card
+  // at $84 (STA $C080,Y), and the live branches at $C0/$C2 they stand in for.
+  CHECK(registered[0x80] == 0x90);
+  CHECK(registered[0x81] == 0xFE);
+  CHECK(registered[0x82] == 0xB0);
+  CHECK(registered[0x83] == 0xFE);
+  CHECK(registered[0x84] == 0x99);
+  CHECK(registered[0x85] == 0x80);
+  CHECK(registered[0x86] == 0xC0);
+  CHECK(registered[0xC0] == 0x90);
+  CHECK(registered[0xC1] == 0x27);
+  CHECK(registered[0xC2] == 0xB0);
+  CHECK(registered[0xC3] == 0x00);
+}
+
+TEST_CASE("Printer Peripheral: A read answers with the host's floating bus") {
+  PrinterHarness harness;
+  REQUIRE(harness.create_printer(TEST_SLOT_1) != nullptr);
+  REQUIRE(floating_bus_marker(7) != floating_bus_marker(42));
+
+  CHECK(harness.read_slot_reg(TEST_SLOT_1, 0, 1, 0, 7) ==
+        floating_bus_marker(7));
+  CHECK(harness.read_slot_reg(TEST_SLOT_1, 0, 1, 0, 42) ==
+        floating_bus_marker(42));
+}
+
+TEST_CASE(
+    "Printer Peripheral: A host missing a member gets no card, and hears why") {
+  PrinterHarness harness;
+  struct Missing_t {
+    const char* name;
+    void (*strip)(HostInterface_t*);
+  };
+  const std::array<Missing_t, 3> members = {{
+      {"RegisterIO", [](HostInterface_t* h) { h->RegisterIO = nullptr; }},
+      {"RegisterCxROM", [](HostInterface_t* h) { h->RegisterCxROM = nullptr; }},
+      {"ReadFloatingBus",
+       [](HostInterface_t* h) { h->ReadFloatingBus = nullptr; }},
+  }};
+
+  for (const Missing_t& member : members) {
+    CAPTURE(member.name);
+    HostInterface_t partial = *harness.host();
+    member.strip(&partial);
+    const size_t logged_before = harness.log_messages().size();
+    CHECK(printer_descriptor()->init(TEST_SLOT_2, &partial) == nullptr);
+    REQUIRE(harness.log_messages().size() == logged_before + 1);
+    CHECK(harness.log_messages().back().find(member.name) != std::string::npos);
+    CHECK(harness.log_messages().back().find("slot 2") != std::string::npos);
+  }
+
+  // A host that cannot even log is still refused, silently.
+  HostInterface_t mute = *harness.host();
+  mute.Log = nullptr;
+  mute.ReadFloatingBus = nullptr;
+  const size_t logged_before = harness.log_messages().size();
+  CHECK(printer_descriptor()->init(TEST_SLOT_2, &mute) == nullptr);
+  CHECK(harness.log_messages().size() == logged_before);
+
+  // The complete host still gets its card.
+  CHECK(harness.create_printer(TEST_SLOT_1) != nullptr);
 }

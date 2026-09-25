@@ -58,8 +58,4 @@ const uint8_t* const ssc_rom = g_rom_ssc;
 const uint8_t* const mouse_interface_rom = g_rom_mouse_interface;
 #endif
 
-#if ENABLE_ROM_PRINTER
-const uint8_t* const parallel_rom = g_rom_parallel;
-#endif
-
 // NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
