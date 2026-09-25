@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "core/BasicLiveSync.h"
 
+#include <sys/inotify.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include <algorithm>
 #include <array>
@@ -19,11 +21,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-
-#if defined(__linux__)
-#include <sys/inotify.h>
-#include <unistd.h>
-#endif
 
 #include "apple2/Apple2Types.h"
 #include "apple2/Memory.h"
@@ -203,11 +200,9 @@ static time_t g_last_file_mtime = 0;
 static bool g_initial_import_pending = false;
 static int g_frame_counter = 0;
 
-#if defined(__linux__)
 static int g_inotify_fd = -1;
 static int g_inotify_wd = -1;
 static int g_inotify_dir_wd = -1;
-#endif
 
 static auto split_path(const std::string& full_path, std::string* out_dir,
                        std::string* out_filename) -> void {
@@ -409,7 +404,6 @@ auto basic_sync_init(const char* file_path, BasicLineMode_t mode) -> void {
     g_last_file_mtime = 0;
   }
 
-#if defined(__linux__)
   if (g_inotify_fd >= 0) {
     close(g_inotify_fd);
     g_inotify_fd = -1;
@@ -426,14 +420,12 @@ auto basic_sync_init(const char* file_path, BasicLineMode_t mode) -> void {
         inotify_add_watch(g_inotify_fd, g_sync_config.file_path.c_str(),
                           IN_CLOSE_WRITE | IN_MODIFY);
   }
-#endif
 
   Logger::info("BasicLiveSync: initialized for '%s' (mode: %s)\n", file_path,
                mode == basic_line_mode_positional ? "positional" : "explicit");
 }
 
 auto basic_sync_shutdown() -> void {
-#if defined(__linux__)
   if (g_inotify_fd >= 0) {
     if (g_inotify_wd >= 0) {
       inotify_rm_watch(g_inotify_fd, g_inotify_wd);
@@ -446,7 +438,6 @@ auto basic_sync_shutdown() -> void {
     close(g_inotify_fd);
     g_inotify_fd = -1;
   }
-#endif
   g_sync_config = BasicSyncConfig_t{};
 }
 
@@ -792,7 +783,6 @@ auto basic_sync_update() -> void {
   }
 
   bool file_modified = false;
-#if defined(__linux__)
   if (g_inotify_fd >= 0) {
     alignas(struct inotify_event) std::array<char, inotify_event_buf_size>
         buf{};
@@ -814,19 +804,16 @@ auto basic_sync_update() -> void {
         pos += static_cast<ssize_t>(sizeof(struct inotify_event) + event->len);
       }
     }
-  }
-#endif
-
-  // Fallback stat check
-  struct stat st{};
-  if (stat(g_sync_config.file_path.c_str(), &st) == 0) {
-    if (g_last_file_mtime != 0 && st.st_mtime > g_last_file_mtime) {
-      file_modified = true;
+  } else {
+    struct stat st{};
+    if (stat(g_sync_config.file_path.c_str(), &st) == 0) {
+      if (g_last_file_mtime != 0 && st.st_mtime > g_last_file_mtime) {
+        file_modified = true;
+      }
     }
   }
 
   if (file_modified) {
-#if defined(__linux__)
     if (g_inotify_fd >= 0) {
       if (g_inotify_wd >= 0) {
         inotify_rm_watch(g_inotify_fd, g_inotify_wd);
@@ -835,7 +822,6 @@ auto basic_sync_update() -> void {
           inotify_add_watch(g_inotify_fd, g_sync_config.file_path.c_str(),
                             IN_CLOSE_WRITE | IN_MODIFY);
     }
-#endif
     basic_sync_import_file();
     return;
   }
