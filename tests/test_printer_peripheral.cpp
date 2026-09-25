@@ -314,7 +314,7 @@ TEST_CASE("Printer Peripheral: Descriptor Metadata and Compatibility") {
   CHECK(std::string(descriptor->id) == "linapple.printer");
   CHECK(std::string(descriptor->name) == "Parallel Printer");
   CHECK(std::string(descriptor->description) ==
-        "Standard parallel printer interface emulation");
+        "Apple Parallel Printer Interface Card (A2B0002)");
   CHECK(std::string(descriptor->author) == "LinApple Contributors");
   REQUIRE(descriptor->version != nullptr);
   CHECK(std::string(descriptor->version).empty() == false);
@@ -330,6 +330,14 @@ TEST_CASE("Printer Peripheral: Descriptor Metadata and Compatibility") {
   CHECK(descriptor->load_state != nullptr);
   CHECK(descriptor->command != nullptr);
   CHECK(descriptor->query != nullptr);
+}
+
+TEST_CASE("Printer Peripheral: The registry resolves the card by its id") {
+  Peripheral_t* by_id = peripheral_find_internal("linapple.printer");
+  REQUIRE(by_id != nullptr);
+  CHECK(by_id == printer_descriptor());
+  CHECK(std::string(by_id->id) == "linapple.printer");
+  CHECK(std::string(by_id->name) == "Parallel Printer");
 }
 
 TEST_CASE("Printer Peripheral: Registration and Firmware") {
@@ -546,7 +554,7 @@ TEST_CASE("Printer Peripheral: Save and Load State Lifecycle") {
   size_t required_size = 0;
   CHECK(descriptor->save_state(instance, nullptr, &required_size) ==
         peripheral_ok);
-  CHECK(required_size == sizeof(SsCardPrinter_t));
+  CHECK(required_size == sizeof(PrinterSaveState_t));
 
   // Null buffer_size pointer must fail
   CHECK(descriptor->save_state(instance, nullptr, nullptr) == peripheral_error);
@@ -562,24 +570,25 @@ TEST_CASE("Printer Peripheral: Save and Load State Lifecycle") {
   size_t actual_size = save_buf.size();
   CHECK(descriptor->save_state(instance, save_buf.data(), &actual_size) ==
         peripheral_ok);
-  CHECK(actual_size == sizeof(SsCardPrinter_t));
+  CHECK(actual_size == sizeof(PrinterSaveState_t));
 
   const auto* state_header =
-      reinterpret_cast<const SsCardPrinter_t*>(save_buf.data());
+      reinterpret_cast<const PrinterSaveState_t*>(save_buf.data());
   CHECK(state_header->version == PRINTER_STATE_VERSION);
-  CHECK(state_header->struct_size == sizeof(SsCardPrinter_t));
+  CHECK(state_header->struct_size == sizeof(PrinterSaveState_t));
   CHECK(state_header->is_online == 1);
   CHECK(state_header->is_busy == 0);
 
   // Corrupted version or size in load_state must fail
   std::vector<uint8_t> corrupt_buf = save_buf;
-  auto* corrupt_header = reinterpret_cast<SsCardPrinter_t*>(corrupt_buf.data());
+  auto* corrupt_header =
+      reinterpret_cast<PrinterSaveState_t*>(corrupt_buf.data());
   corrupt_header->version = 999;
   CHECK(descriptor->load_state(instance, corrupt_buf.data(),
                                corrupt_buf.size()) == peripheral_error);
 
   corrupt_buf = save_buf;
-  corrupt_header = reinterpret_cast<SsCardPrinter_t*>(corrupt_buf.data());
+  corrupt_header = reinterpret_cast<PrinterSaveState_t*>(corrupt_buf.data());
   corrupt_header->struct_size = 12;
   CHECK(descriptor->load_state(instance, corrupt_buf.data(),
                                corrupt_buf.size()) == peripheral_error);
@@ -717,9 +726,9 @@ TEST_CASE("Printer Peripheral: Hardware Busy Delay and Cycle Stepping") {
   REQUIRE(instance != nullptr);
 
   // Inject initial busy_cycles cleanly via load_state
-  SsCardPrinter_t state{};
+  PrinterSaveState_t state{};
   state.version = PRINTER_STATE_VERSION;
-  state.struct_size = sizeof(SsCardPrinter_t);
+  state.struct_size = sizeof(PrinterSaveState_t);
   state.is_online = 1;
   state.busy_cycles = 5000;
   CHECK(descriptor->load_state(instance, &state, sizeof(state)) ==
@@ -833,7 +842,7 @@ TEST_CASE("Printer Peripheral: State Round-Trip with Non-Default Values") {
   CHECK(descriptor->command(instance, PRINTER_CMD_SET_ONLINE, &online_cmd,
                             sizeof(online_cmd)) == peripheral_ok);
 
-  std::vector<uint8_t> save_buf(sizeof(SsCardPrinter_t));
+  std::vector<uint8_t> save_buf(sizeof(PrinterSaveState_t));
   size_t buf_size = save_buf.size();
   CHECK(descriptor->save_state(instance, save_buf.data(), &buf_size) ==
         peripheral_ok);
@@ -881,3 +890,29 @@ TEST_CASE("Printer Peripheral: Robustness with Null Host Callbacks") {
 }
 
 }  // namespace
+
+extern "C" auto printer_abi_c_state_size() -> size_t;
+extern "C" auto printer_abi_c_version_offset() -> size_t;
+extern "C" auto printer_abi_c_struct_size_offset() -> size_t;
+extern "C" auto printer_abi_c_total_chars_printed_offset() -> size_t;
+extern "C" auto printer_abi_c_busy_cycles_offset() -> size_t;
+extern "C" auto printer_abi_c_data_latch_offset() -> size_t;
+extern "C" auto printer_abi_c_status_latch_offset() -> size_t;
+extern "C" auto printer_abi_c_is_online_offset() -> size_t;
+extern "C" auto printer_abi_c_is_busy_offset() -> size_t;
+extern "C" auto printer_abi_c_state_version() -> uint32_t;
+
+TEST_CASE("Printer Peripheral: The C99 view of the state frame matches C++") {
+  CHECK(printer_abi_c_state_size() == 24);
+  CHECK(printer_abi_c_state_size() == sizeof(PrinterSaveState_t));
+  CHECK(printer_abi_c_version_offset() == 0);
+  CHECK(printer_abi_c_struct_size_offset() == 4);
+  CHECK(printer_abi_c_total_chars_printed_offset() == 8);
+  CHECK(printer_abi_c_busy_cycles_offset() == 16);
+  CHECK(printer_abi_c_data_latch_offset() == 20);
+  CHECK(printer_abi_c_status_latch_offset() == 21);
+  CHECK(printer_abi_c_is_online_offset() == 22);
+  CHECK(printer_abi_c_is_busy_offset() == 23);
+  CHECK(printer_abi_c_state_version() == 1);
+  CHECK(printer_abi_c_state_version() == PRINTER_STATE_VERSION);
+}

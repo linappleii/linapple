@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <new>
 
 #include "EmbeddedRoms.h"
 #include "apple2/peripherals/Peripheral.h"
@@ -16,13 +17,12 @@ auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
 
 namespace {
 
-constexpr size_t slot_rom_size = 0x100;
 constexpr uint8_t status_offline = 0xFF;
 constexpr uint8_t status_busy = 0x80;
 constexpr uint8_t transmit_success = 0;
 constexpr uint32_t printer_activity_duration_ticks = 10;
 
-struct PrinterPeripheral_t {
+struct PrinterCard_t {
   HostInterface_t* host = nullptr;
   int slot = 0;
   uint64_t total_chars_printed = 0;
@@ -34,144 +34,136 @@ struct PrinterPeripheral_t {
   bool is_busy = false;
 };
 
-// NOLINTBEGIN(bugprone-easily-swappable-parameters)
-// Justification: Parameters are part of the PeripheralIOHandler ABI.
-auto print_status(void* instance, uint16_t program_counter,
-                  uint16_t memory_address, uint8_t is_write, uint8_t data_value,
-                  uint32_t remaining_cycles) -> uint8_t {
+auto printer_io_read(void* instance, uint16_t program_counter,
+                     uint16_t memory_address, uint8_t is_write,
+                     uint8_t data_value, uint32_t executed_cycles) -> uint8_t {
   (void)program_counter;
   (void)memory_address;
   (void)data_value;
 
   if (instance == nullptr || is_write != 0) {
-    return mem_read_floating_bus(remaining_cycles);
+    return mem_read_floating_bus(executed_cycles);
   }
-  auto* printer_peripheral = static_cast<PrinterPeripheral_t*>(instance);
-  if (!printer_peripheral->is_online) {
+  auto* card = static_cast<PrinterCard_t*>(instance);
+  if (!card->is_online) {
     return status_offline;
   }
-  if (printer_peripheral->is_busy) {
+  if (card->is_busy) {
     return status_busy;
   }
-  if (printer_peripheral->host != nullptr &&
-      printer_peripheral->host->PrinterGetStatus != nullptr) {
-    const uint8_t st =
-        printer_peripheral->host->PrinterGetStatus(printer_peripheral);
-    printer_peripheral->status_latch = st;
-    return st;
+  if (card->host != nullptr && card->host->PrinterGetStatus != nullptr) {
+    const uint8_t status = card->host->PrinterGetStatus(card);
+    card->status_latch = status;
+    return status;
   }
   return status_offline;
 }
 
-auto print_transmit(void* instance, uint16_t program_counter,
-                    uint16_t memory_address, uint8_t is_write,
-                    uint8_t data_value, uint32_t remaining_cycles) -> uint8_t {
+auto printer_io_write(void* instance, uint16_t program_counter,
+                      uint16_t memory_address, uint8_t is_write,
+                      uint8_t data_value, uint32_t executed_cycles) -> uint8_t {
   (void)program_counter;
   (void)memory_address;
-  (void)remaining_cycles;
+  (void)executed_cycles;
 
   if (instance == nullptr || is_write == 0) {
     return transmit_success;
   }
-  auto* printer_peripheral = static_cast<PrinterPeripheral_t*>(instance);
-  printer_peripheral->data_latch = data_value;
-  printer_peripheral->total_chars_printed++;
+  auto* card = static_cast<PrinterCard_t*>(instance);
+  card->data_latch = data_value;
+  card->total_chars_printed++;
 
-  if (printer_peripheral->busy_cycles > 0) {
-    printer_peripheral->is_busy = true;
+  if (card->busy_cycles > 0) {
+    card->is_busy = true;
   }
-  printer_peripheral->activity_ticks = printer_activity_duration_ticks;
+  card->activity_ticks = printer_activity_duration_ticks;
 
-  if (printer_peripheral->host != nullptr) {
-    if (printer_peripheral->host->NotifyActivityChanged != nullptr) {
-      printer_peripheral->host->NotifyActivityChanged(printer_peripheral->slot,
-                                                      true);
+  if (card->host != nullptr) {
+    if (card->host->NotifyActivityChanged != nullptr) {
+      card->host->NotifyActivityChanged(card->slot, true);
     }
-    if (printer_peripheral->host->PrinterPutChar != nullptr) {
-      printer_peripheral->host->PrinterPutChar(printer_peripheral, data_value);
+    if (card->host->PrinterPutChar != nullptr) {
+      card->host->PrinterPutChar(card, data_value);
     }
   }
   return transmit_success;
 }
-// NOLINTEND(bugprone-easily-swappable-parameters)
 
-// NOLINTBEGIN(cppcoreguidelines-owning-memory)
-// Justification: Raw pointer release is required by Peripheral_t ABI lifecycle.
-static auto printer_abi_init(int slot, HostInterface_t* host) -> void* {
+auto printer_abi_init(int slot, HostInterface_t* host) -> void* {
   if (host == nullptr) {
     return nullptr;
   }
 
-  auto printer_peripheral =
-      std::unique_ptr<PrinterPeripheral_t>(new PrinterPeripheral_t());
-  printer_peripheral->host = host;
-  printer_peripheral->slot = slot;
+  auto card =
+      std::unique_ptr<PrinterCard_t>(new (std::nothrow) PrinterCard_t());
+  if (!card) {
+    return nullptr;
+  }
+  card->host = host;
+  card->slot = slot;
 
 #if ENABLE_ROM_PRINTER
+  // Apple's PROM 341-0005 "Printer Card I Firmware P1-2" (Woz 11/1/77,
+  // revised 3/17/78), the firmware of the A2B0002, listed in Appendix A of
+  // the 1982 Apple II Parallel Interface Card manual.
   host->RegisterCxROM(slot, g_rom_parallel);
 #endif
-  host->RegisterIO(slot, print_status, print_transmit, nullptr, nullptr);
+  host->RegisterIO(slot, printer_io_read, printer_io_write, nullptr, nullptr);
 
-  return printer_peripheral.release();
+  return card.release();
 }
 
-static auto printer_abi_reset(void* instance) -> void {
+auto printer_abi_reset(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
-  auto* printer_peripheral = static_cast<PrinterPeripheral_t*>(instance);
-  printer_peripheral->data_latch = 0;
-  printer_peripheral->status_latch = 0;
-  printer_peripheral->is_online = true;
-  printer_peripheral->is_busy = false;
-  printer_peripheral->busy_cycles = 0;
-  printer_peripheral->activity_ticks = 0;
-  if (printer_peripheral->host != nullptr &&
-      printer_peripheral->host->NotifyActivityChanged != nullptr) {
-    printer_peripheral->host->NotifyActivityChanged(printer_peripheral->slot,
-                                                    false);
+  auto* card = static_cast<PrinterCard_t*>(instance);
+  card->data_latch = 0;
+  card->status_latch = 0;
+  card->is_online = true;
+  card->is_busy = false;
+  card->busy_cycles = 0;
+  card->activity_ticks = 0;
+  if (card->host != nullptr && card->host->NotifyActivityChanged != nullptr) {
+    card->host->NotifyActivityChanged(card->slot, false);
   }
 }
 
-static auto printer_abi_shutdown(void* instance) -> void {
+auto printer_abi_shutdown(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
-  std::unique_ptr<PrinterPeripheral_t> printer_peripheral(
-      static_cast<PrinterPeripheral_t*>(instance));
+  std::unique_ptr<PrinterCard_t> card(static_cast<PrinterCard_t*>(instance));
 }
-// NOLINTEND(cppcoreguidelines-owning-memory)
 
-static auto printer_abi_think(void* instance, uint32_t elapsed_cycles) -> void {
+auto printer_abi_think(void* instance, uint32_t elapsed_cycles) -> void {
   if (instance == nullptr) {
     return;
   }
-  auto* printer_peripheral = static_cast<PrinterPeripheral_t*>(instance);
-  if (printer_peripheral->busy_cycles > 0) {
-    if (elapsed_cycles >= printer_peripheral->busy_cycles) {
-      printer_peripheral->busy_cycles = 0;
-      printer_peripheral->is_busy = false;
+  auto* card = static_cast<PrinterCard_t*>(instance);
+  if (card->busy_cycles > 0) {
+    if (elapsed_cycles >= card->busy_cycles) {
+      card->busy_cycles = 0;
+      card->is_busy = false;
     } else {
-      printer_peripheral->busy_cycles -= elapsed_cycles;
+      card->busy_cycles -= elapsed_cycles;
     }
   }
-  if (printer_peripheral->activity_ticks > 0) {
-    printer_peripheral->activity_ticks--;
-    if (printer_peripheral->activity_ticks == 0 &&
-        printer_peripheral->host != nullptr &&
-        printer_peripheral->host->NotifyActivityChanged != nullptr) {
-      printer_peripheral->host->NotifyActivityChanged(printer_peripheral->slot,
-                                                      false);
+  if (card->activity_ticks > 0) {
+    card->activity_ticks--;
+    if (card->activity_ticks == 0 && card->host != nullptr &&
+        card->host->NotifyActivityChanged != nullptr) {
+      card->host->NotifyActivityChanged(card->slot, false);
     }
   }
 }
 
-static auto printer_abi_save_state(void* instance, void* state_buffer,
-                                   size_t* buffer_size) -> PeripheralStatus_t {
+auto printer_abi_save_state(void* instance, void* state_buffer,
+                            size_t* buffer_size) -> PeripheralStatus_t {
   if (buffer_size == nullptr) {
     return peripheral_error;
   }
-  constexpr size_t required_size = sizeof(SsCardPrinter_t);
+  constexpr size_t required_size = sizeof(PrinterSaveState_t);
   if (state_buffer == nullptr) {
     *buffer_size = required_size;
     return peripheral_ok;
@@ -180,54 +172,54 @@ static auto printer_abi_save_state(void* instance, void* state_buffer,
     return peripheral_error;
   }
 
-  const auto* printer_peripheral =
-      static_cast<const PrinterPeripheral_t*>(instance);
-  auto* state = static_cast<SsCardPrinter_t*>(state_buffer);
-  std::memset(state, 0, sizeof(SsCardPrinter_t));
-  state->version = PRINTER_STATE_VERSION;
-  state->struct_size = static_cast<uint32_t>(required_size);
-  state->total_chars_printed = printer_peripheral->total_chars_printed;
-  state->busy_cycles = printer_peripheral->busy_cycles;
-  state->data_latch = printer_peripheral->data_latch;
-  state->status_latch = printer_peripheral->status_latch;
-  state->is_online = printer_peripheral->is_online ? 1 : 0;
-  state->is_busy = printer_peripheral->is_busy ? 1 : 0;
+  const auto* card = static_cast<const PrinterCard_t*>(instance);
+  PrinterSaveState_t state{};
+  state.version = PRINTER_STATE_VERSION;
+  state.struct_size = static_cast<uint32_t>(required_size);
+  state.total_chars_printed = card->total_chars_printed;
+  state.busy_cycles = card->busy_cycles;
+  state.data_latch = card->data_latch;
+  state.status_latch = card->status_latch;
+  state.is_online = card->is_online ? 1 : 0;
+  state.is_busy = card->is_busy ? 1 : 0;
+  std::memcpy(state_buffer, &state, required_size);
 
   *buffer_size = required_size;
   return peripheral_ok;
 }
 
-static auto printer_abi_load_state(void* instance, const void* state_buffer,
-                                   size_t buffer_size) -> PeripheralStatus_t {
+auto printer_abi_load_state(void* instance, const void* state_buffer,
+                            size_t buffer_size) -> PeripheralStatus_t {
   if (instance == nullptr || state_buffer == nullptr ||
-      buffer_size != sizeof(SsCardPrinter_t)) {
+      buffer_size != sizeof(PrinterSaveState_t)) {
     return peripheral_error;
   }
 
-  const auto* state = static_cast<const SsCardPrinter_t*>(state_buffer);
-  if (state->version != PRINTER_STATE_VERSION ||
-      state->struct_size != sizeof(SsCardPrinter_t)) {
+  PrinterSaveState_t state{};
+  std::memcpy(&state, state_buffer, sizeof(state));
+  if (state.version != PRINTER_STATE_VERSION ||
+      state.struct_size != sizeof(PrinterSaveState_t)) {
     return peripheral_error;
   }
 
-  auto* printer_peripheral = static_cast<PrinterPeripheral_t*>(instance);
-  printer_peripheral->total_chars_printed = state->total_chars_printed;
-  printer_peripheral->busy_cycles = state->busy_cycles;
-  printer_peripheral->data_latch = state->data_latch;
-  printer_peripheral->status_latch = state->status_latch;
-  printer_peripheral->is_online = (state->is_online != 0);
-  printer_peripheral->is_busy = (state->is_busy != 0);
+  auto* card = static_cast<PrinterCard_t*>(instance);
+  card->total_chars_printed = state.total_chars_printed;
+  card->busy_cycles = state.busy_cycles;
+  card->data_latch = state.data_latch;
+  card->status_latch = state.status_latch;
+  card->is_online = (state.is_online != 0);
+  card->is_busy = (state.is_busy != 0);
 
   return peripheral_ok;
 }
 
-static auto printer_abi_command(void* instance, uint32_t command_id,
-                                const void* payload, size_t payload_size)
+auto printer_abi_command(void* instance, uint32_t command_id,
+                         const void* payload, size_t payload_size)
     -> PeripheralStatus_t {
   if (instance == nullptr) {
     return peripheral_error;
   }
-  auto* printer_peripheral = static_cast<PrinterPeripheral_t*>(instance);
+  auto* card = static_cast<PrinterCard_t*>(instance);
 
   if (!peripheral_cmd_is_mine(command_id, PERIPHERAL_SUBSYSTEM_PRINTER)) {
     return peripheral_incompatible;  // another peripheral in the slot owns it
@@ -238,12 +230,13 @@ static auto printer_abi_command(void* instance, uint32_t command_id,
       if (payload == nullptr || payload_size != sizeof(PrinterOnlineCmd_t)) {
         return peripheral_error;
       }
-      const auto* cmd = static_cast<const PrinterOnlineCmd_t*>(payload);
-      printer_peripheral->is_online = (cmd->online != 0);
+      PrinterOnlineCmd_t cmd{};
+      std::memcpy(&cmd, payload, sizeof(cmd));
+      card->is_online = (cmd.online != 0);
       return peripheral_ok;
     }
     case PRINTER_CMD_RESET_STATS: {
-      printer_peripheral->total_chars_printed = 0;
+      card->total_chars_printed = 0;
       return peripheral_ok;
     }
     default:
@@ -251,8 +244,8 @@ static auto printer_abi_command(void* instance, uint32_t command_id,
   }
 }
 
-static auto printer_abi_query(void* instance, uint32_t query_id, void* output,
-                              size_t* output_size) -> PeripheralStatus_t {
+auto printer_abi_query(void* instance, uint32_t query_id, void* output,
+                       size_t* output_size) -> PeripheralStatus_t {
   if (output_size == nullptr) {
     return peripheral_error;
   }
@@ -275,14 +268,13 @@ static auto printer_abi_query(void* instance, uint32_t query_id, void* output,
       if (instance == nullptr) {
         return peripheral_error;
       }
-      const auto* printer_peripheral =
-          static_cast<const PrinterPeripheral_t*>(instance);
-      auto* query_out = static_cast<PrinterStatusQuery_t*>(output);
-      std::memset(query_out, 0, sizeof(PrinterStatusQuery_t));
-      query_out->total_chars_printed = printer_peripheral->total_chars_printed;
-      query_out->is_online = printer_peripheral->is_online ? 1 : 0;
-      query_out->is_busy = printer_peripheral->is_busy ? 1 : 0;
-      query_out->last_char = printer_peripheral->data_latch;
+      const auto* card = static_cast<const PrinterCard_t*>(instance);
+      PrinterStatusQuery_t query_out{};
+      query_out.total_chars_printed = card->total_chars_printed;
+      query_out.is_online = card->is_online ? 1 : 0;
+      query_out.is_busy = card->is_busy ? 1 : 0;
+      query_out.last_char = card->data_latch;
+      std::memcpy(output, &query_out, required_size);
       *output_size = required_size;
       return peripheral_ok;
     }
@@ -297,7 +289,7 @@ static const Peripheral_t g_printer_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.printer",
     .name = "Parallel Printer",
-    .description = "Standard parallel printer interface emulation",
+    .description = "Apple Parallel Printer Interface Card (A2B0002)",
     .author = "LinApple Contributors",
     .version = VERSIONSTRING,
     .compatible_slots = PERIPHERAL_MASK_EXPANSION,
@@ -312,7 +304,7 @@ static const Peripheral_t g_printer_peripheral = {
     .command = printer_abi_command,
     .query = printer_abi_query};
 
-// peripheral_register and ActivePeripheral_t::api still take a mutable
+// peripheral_register and ActivePeripheral_t::api take a mutable
 // Peripheral_t*, so the immutable descriptor is cast the same way
 // PERIPHERAL_REGISTER casts it.
 auto printer_get_descriptor() -> Peripheral_t* {

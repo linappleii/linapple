@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class)
-#include <stddef.h>
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type, cppcoreguidelines-use-enum-class)
+// Justification: This header defines the C99-compatible public ABI for the
+// parallel printer card.
+
 #include <stdint.h>
 
 #include "apple2/peripherals/Peripheral_Subsystems.h"
@@ -45,9 +47,10 @@ typedef struct {
   uint8_t status_latch;
   uint8_t is_online;
   uint8_t is_busy;
-} SsCardPrinter_t;
+} PrinterSaveState_t;
 
 #ifdef __cplusplus
 }
 #endif
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class)
+
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type, cppcoreguidelines-use-enum-class)

@@ -3,4 +3,12 @@
 
 struct Peripheral_t;
 
-auto printer_get_descriptor() -> Peripheral_t*;
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+struct Peripheral_t* printer_get_descriptor(void);
+
+#ifdef __cplusplus
+}
+#endif
