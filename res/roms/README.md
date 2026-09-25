@@ -1,7 +1,9 @@
 # LinApple ROM Image Provenance & Licensing
 
-This directory contains Apple II firmware and peripheral ROM binary images
-utilized by the emulator.
+This directory contains the Apple II firmware and peripheral ROM binary
+images the build embeds in the emulator. `Parallel.rom` is the exception: the
+printer card carries a transcription of it, and the file is kept as the
+reference whose SHA-1 the build pins.
 
 ## License & Legal Notice
 

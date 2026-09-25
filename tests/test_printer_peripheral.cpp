@@ -58,9 +58,9 @@ constexpr Frame_t frame_after_123 = {
     {0x01, 0x00, 0x00, 0x00, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x33, 0x00, 0x00, 0x00}};
 
-// A frame as the card wrote it before it lost its busy model: three
-// characters counted, 5000 busy cycles pending, data_latch $33, a status
-// read of $7F recorded, offline, busy.
+// A frame with every dead field populated: three characters counted, 5000
+// busy cycles pending, data_latch $33, a status read of $7F recorded, offline,
+// busy.
 constexpr Frame_t frame_from_old_card = {
     {0x01, 0x00, 0x00, 0x00, 0x18, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00,
      0x00, 0x00, 0x00, 0x00, 0x88, 0x13, 0x00, 0x00, 0x33, 0x7F, 0x00, 0x01}};
@@ -249,7 +249,7 @@ struct MockHandler_t {
 
 // One sink per slot, as the bridge keeps them; the token the card holds is
 // the record's address. A byte written while the sink is not ready is dropped
-// and counted, which is what the frontend does when its file is gone.
+// and counted, which is what the frontend does when its file cannot be written.
 struct MockSink_t {
   std::vector<uint8_t> bytes;
   size_t dropped = 0;
@@ -875,15 +875,12 @@ TEST_CASE(
   CHECK(host.log_messages().back().find("slot 1") != std::string::npos);
   CHECK(host.log_messages().back().find("not ready") != std::string::npos);
 
-  // Still not ready: think polls once per call and registers nothing more.
   descriptor->think(instance, cycles_per_frame);
   descriptor->think(instance, cycles_per_frame);
   CHECK(host.sink(test_slot_1).ready_polls == 3);
   CHECK(host.rom_registrations(test_slot_1) == 2);
   CHECK(host.log_messages().size() == 1);
 
-  // Two more strobes into the parked printer: dropped, no new page, no new
-  // line in the log.
   host.write_slot_reg(test_slot_1, 0, high_b);
   host.write_slot_reg(test_slot_1, 0, high_h);
   CHECK(host.sink(test_slot_1).dropped == 3);
@@ -897,7 +894,6 @@ TEST_CASE(
   CHECK(host.rom_pointer(test_slot_1) == normal);
   CHECK(host.log_messages().size() == 1);
 
-  // Not waiting: think reads nothing and registers nothing.
   const size_t polls_before = host.sink(test_slot_1).ready_polls;
   descriptor->think(instance, cycles_per_frame);
   CHECK(host.sink(test_slot_1).ready_polls == polls_before);
@@ -1004,7 +1000,7 @@ TEST_CASE(
     CHECK(host.log_messages().back().find("slot 2") != std::string::npos);
   }
 
-  // A host that cannot even log is still refused, silently.
+  // A host that cannot log is refused all the same, silently.
   HostInterface_t mute = *host.host();
   mute.Log = nullptr;
   mute.SinkReady = nullptr;
@@ -1049,8 +1045,8 @@ TEST_CASE(
   void* instance = host.create_printer(test_slot_1);
   REQUIRE(instance != nullptr);
 
-  // The ids the card once answered (set online, reset statistics, status)
-  // and a foreign subsystem's id are all somebody else's now.
+  // The three printer ids and a foreign subsystem's id are refused alike: the
+  // card owns no command or query.
   const std::array<uint32_t, 3> retired_commands = {
       {0x00080101U, 0x00080102U, 0x00010101U}};
   const std::array<uint8_t, 4> payload = {{1, 0, 0, 0}};
@@ -1130,8 +1126,8 @@ TEST_CASE(
   host.write_slot_reg(test_slot_1, 0, '3');
   CHECK(save_frame(instance) == frame_after_123);
 
-  // A frame from the card as it was loads, and comes back with the dead
-  // fields zeroed.
+  // A frame with the dead fields populated loads, and comes back with them
+  // zeroed.
   CHECK(descriptor->load_state(instance, frame_from_old_card.data(),
                                frame_from_old_card.size()) == peripheral_ok);
   CHECK(save_frame(instance) == frame_after_123);
@@ -1611,7 +1607,6 @@ TEST_CASE(
   CHECK(sink.bytes().at(2).slot == test_slot_1);
   CHECK(sink.bytes().at(2).byte == 'A');
 
-  // Pulling slot 1's card closes its sink once; slot 2 keeps printing.
   CHECK(sink.closes() == 0);
   CHECK(peripheral_unregister(test_slot_1) == 0);
   CHECK(sink.closes() == 1);

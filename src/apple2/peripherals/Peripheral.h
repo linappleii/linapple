@@ -75,9 +75,9 @@ typedef struct {
   void (*AudioPushChannels)(void* instance, const float* const* channel_buffers,
                             size_t num_channels, size_t num_samples);
   void (*ResetSystem)(void* instance);
-  // Retired: the printer card streams through SinkWrite, and the host fills
-  // both with NULL. They keep their place so every later member keeps the
-  // offset a prebuilt plugin expects.
+  // The host fills both with NULL; the printer card streams through SinkWrite.
+  // They keep their place so every later member keeps the offset a prebuilt
+  // plugin expects.
   void (*PrinterPutChar)(void* instance, uint8_t c);
   uint8_t (*PrinterGetStatus)(void* instance);
   void (*SerialTransmitByte)(void* instance, uint8_t byte);
@@ -94,11 +94,11 @@ typedef struct {
   // A card that emits a byte stream has nowhere of its own to put it: files
   // and their paths belong to the frontend. The host hands out one token per
   // slot and kind and takes the bytes back through it. The token is minted at
-  // init, before the frontend has attached anything, and stays valid while the
+  // init, whether or not a sink is attached yet, and stays valid while the
   // frontend attaches, replaces or removes its sink; NULL comes back only for
   // a slot outside 1..7, an unknown kind, or a slot already open under another
   // kind. SinkReady is a state query and never a system call, so a card may
-  // poll it on every fetch: the sink is ready until a write fails to open or
+  // poll it on every access: the sink is ready until a write fails to open or
   // write its destination, whereupon that byte is dropped, the failure is
   // logged once, and the sink stays not ready until the host's own retry
   // recovers it, logged once too. With nothing attached on the host side a

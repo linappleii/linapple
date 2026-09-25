@@ -166,7 +166,7 @@ TEST_CASE("Printer Snapshot: An .aws gives back the data latch in any slot") {
 
 // tests/fixtures/minimal.aws was written before the slot trailer existed, by
 // a machine with this card in slot 1; its 16-byte slot 1 region never held a
-// printer frame. Its bytes are pinned by test-snapshot-fixture-pinned.
+// printer frame. The build pins its SHA-1.
 TEST_CASE(
     "Printer Snapshot: A fixed-body .aws from before the trailer carries "
     "nothing for the card and leaves it as it was") {

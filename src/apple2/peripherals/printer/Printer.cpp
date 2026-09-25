@@ -19,12 +19,13 @@ namespace {
 // 3/17/78 by Huston and Sander), the firmware of the Apple Parallel Printer
 // Interface Card A2B0002, as listed in Appendix A of the 1982 Apple II
 // Parallel Interface Card manual (A2L0045), whose SW6-off firmware is this
-// same image. res/roms/Parallel.rom holds the same 256 bytes and is what the
-// build checks this transcription against. The two entry points are $Cn00
-// (initialise the screen holes, then print) and $Cn02 (print); the only card
-// access in the image is the STA $C080,Y at $Cn84, and the bytes at $Cn80
-// (90 FE) and $Cn82 (B0 FE) are the "wait for ready" images that the card
-// presents in place of $CnC0 and $CnC2 while the printer has not acknowledged.
+// same image. res/roms/Parallel.rom holds the same 256 bytes; the build pins
+// that file's SHA-1, and the suite checks the page the card registers against
+// its own transcription of it. The two entry points are $Cn00 (initialise the
+// screen holes, then print) and $Cn02 (print); the only card access in the
+// image is the STA $C080,Y at $Cn84, and the bytes at $Cn80 (90 FE) and $Cn82
+// (B0 FE) are the "wait for ready" images that the card presents in place of
+// $CnC0 and $CnC2 while the printer has not acknowledged.
 constexpr size_t page_size = 0x100;
 const std::array<uint8_t, page_size> printer_rom = {{
     0x18, 0xb0, 0x38, 0x48, 0x8a, 0x48, 0x98, 0x48, 0x08, 0x78, 0x20, 0x58,
@@ -68,7 +69,7 @@ struct PrinterCard_t {
 
 // While the printer has not acknowledged, the card's 74LS00 forces PROM A6
 // high whenever A7 is high, so a fetch from $CnC0-$CnFF returns the byte at
-// the same offset in $Cn80-$CnBF and the lower half of the page is untouched
+// the same offset in $Cn80-$CnBF and $Cn00-$CnBF are untouched
 // (1978 manual A2L0004X, Section VI, Figures 8-10; the listing's "PROM
 // ADDRESSING" table). The firmware's BCC PRNT1 at $CnC0 and BCS *+2 at $CnC2
 // then read 90 FE and B0 FE, branches to themselves, and spin until the
@@ -248,9 +249,7 @@ auto printer_abi_think(void* instance, uint32_t elapsed_cycles) -> void {
 }
 
 // The card has no commands and no queries: its bytes go to the sink and its
-// state is the byte on its data lines. Both entry points stay so a caller
-// from an older frontend is answered rather than dereferencing a null
-// callback.
+// state is the byte on its data lines.
 auto printer_abi_command(void* instance, uint32_t command_id,
                          const void* payload, size_t payload_size)
     -> PeripheralStatus_t {
@@ -293,8 +292,8 @@ static_assert(offsetof(PrinterSaveState_t, is_online) == 22,
 static_assert(offsetof(PrinterSaveState_t, is_busy) == 23,
               "the dead fields keep their place so every frame written loads");
 
-// Value-initialised, so the fields that once carried the host's bookkeeping
-// go out as zeros; the latch is the only hardware state the card has.
+// Value-initialised, so the dead fields go out as zeros; the latch is the only
+// hardware state the card has.
 auto printer_abi_save_state(void* instance, void* state_buffer,
                             size_t* buffer_size) -> PeripheralStatus_t {
   if (buffer_size == nullptr) {

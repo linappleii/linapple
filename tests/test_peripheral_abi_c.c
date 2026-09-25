@@ -82,8 +82,8 @@ Peripheral_t g_test_c_peripheral = {
     NULL   // query
 };
 
-/* The sink members were appended after GetLocalTime, so a plugin built against
- * the older header still finds every member it knows where it left it. */
+/* The sink members follow GetLocalTime, so a plugin built against a header
+ * without them finds every member it knows at the offset it expects. */
 typedef char
     printer_put_char_is_member_16[offsetof(HostInterface_t, PrinterPutChar) ==
                                           16 * sizeof(void (*)(void))

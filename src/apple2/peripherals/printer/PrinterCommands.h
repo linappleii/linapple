@@ -15,10 +15,9 @@ enum { PRINTER_STATE_VERSION = 1 };
 
 // The byte on the card's data lines is its only architectural state: the
 // A2B0002 has one 8-bit register, no status port and no counter.
-// total_chars_printed, busy_cycles, status_latch, is_online and is_busy once
-// carried the host's bookkeeping and a busy model the card never had; the
-// card writes them as zeros and reads past them. The layout stays as it is so
-// every frame ever written loads.
+// total_chars_printed, busy_cycles, status_latch, is_online and is_busy
+// describe nothing the card has; it writes them as zeros and reads past them,
+// and the layout is kept so every frame ever written loads.
 typedef struct {
   uint32_t version;
   uint32_t struct_size;

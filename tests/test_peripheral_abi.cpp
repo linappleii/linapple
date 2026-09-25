@@ -364,7 +364,8 @@ TEST_CASE(
   CHECK(g_captured_host->SinkWrite != nullptr);
   CHECK(g_captured_host->SinkReady != nullptr);
   CHECK(g_captured_host->SinkClose != nullptr);
-  // The retired pair keeps its place in the layout and nothing behind it.
+  // PrinterPutChar and PrinterGetStatus keep their place in the layout with
+  // nothing behind them.
   CHECK(g_captured_host->PrinterPutChar == nullptr);
   CHECK(g_captured_host->PrinterGetStatus == nullptr);
   peripheral_manager_shutdown();

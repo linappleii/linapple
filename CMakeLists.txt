@@ -841,9 +841,9 @@ fi
         set_tests_properties(test-printer-frontend PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
         add_linapple_test(printer-snapshot tests/test_printer_snapshot.cpp)
         set_tests_properties(test-printer-snapshot PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
-        # The card carries the PROM as a transcription of this file, and the
-        # suite compares the two; the file itself is pinned so the reference
-        # cannot drift under the comparison.
+        # The card and the suite each carry a transcription of this file and
+        # are compared with each other; the file they were taken from is pinned
+        # so the reference cannot drift.
         add_test(NAME test-printer-rom-pinned COMMAND sh -c
             "echo 'c75c751589cbcc1ad4ab4f63676af7abadd86f5b  res/roms/Parallel.rom' | sha1sum -c --quiet"
             WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
