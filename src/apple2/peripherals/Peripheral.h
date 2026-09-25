@@ -75,6 +75,9 @@ typedef struct {
   void (*AudioPushChannels)(void* instance, const float* const* channel_buffers,
                             size_t num_channels, size_t num_samples);
   void (*ResetSystem)(void* instance);
+  // Retired: the printer card streams through SinkWrite, and the host fills
+  // both with NULL. They keep their place so every later member keeps the
+  // offset a prebuilt plugin expects.
   void (*PrinterPutChar)(void* instance, uint8_t c);
   uint8_t (*PrinterGetStatus)(void* instance);
   void (*SerialTransmitByte)(void* instance, uint8_t byte);

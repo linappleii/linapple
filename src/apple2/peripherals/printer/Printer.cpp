@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "apple2/peripherals/printer/Printer.h"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -9,7 +10,6 @@
 #include <new>
 
 #include "apple2/peripherals/Peripheral.h"
-#include "apple2/peripherals/Peripheral_Subsystems.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/printer/PrinterCommands.h"
 
@@ -25,7 +25,8 @@ namespace {
 // access in the image is the STA $C080,Y at $Cn84, and the bytes at $Cn80
 // (90 FE) and $Cn82 (B0 FE) are the "wait for ready" images that the card
 // presents in place of $CnC0 and $CnC2 while the printer has not acknowledged.
-const std::array<uint8_t, 256> printer_rom = {{
+constexpr size_t page_size = 0x100;
+const std::array<uint8_t, page_size> printer_rom = {{
     0x18, 0xb0, 0x38, 0x48, 0x8a, 0x48, 0x98, 0x48, 0x08, 0x78, 0x20, 0x58,
     0xff, 0xba, 0x68, 0x68, 0x68, 0x68, 0xa8, 0xca, 0x9a, 0x68, 0x28, 0xaa,
     0x90, 0x38, 0xbd, 0xb8, 0x05, 0x10, 0x19, 0x98, 0x29, 0x7f, 0x49, 0x30,
@@ -50,83 +51,99 @@ const std::array<uint8_t, 256> printer_rom = {{
     0x38, 0x07, 0x70, 0x84,
 }};
 
-constexpr uint8_t status_offline = 0xFF;
-constexpr uint8_t status_busy = 0x80;
-constexpr uint8_t transmit_success = 0;
-constexpr uint32_t printer_activity_duration_ticks = 10;
+constexpr int min_slot = 1;
+constexpr int max_slot = 7;
+constexpr size_t wait_image_source = 0x80;
+constexpr size_t wait_image_target = 0xC0;
+constexpr size_t wait_image_length = 0x40;
 
 struct PrinterCard_t {
+  std::array<uint8_t, page_size> waiting_page{};
   HostInterface_t* host = nullptr;
+  void* sink = nullptr;
   int slot = 0;
-  uint64_t total_chars_printed = 0;
-  uint32_t busy_cycles = 0;
-  uint32_t activity_ticks = 0;
   uint8_t data_latch = 0;
-  uint8_t status_latch = 0;
-  bool is_online = true;
-  bool is_busy = false;
+  bool waiting = false;
 };
 
-auto printer_io_read(void* instance, uint16_t program_counter,
-                     uint16_t memory_address, uint8_t is_write,
-                     uint8_t data_value, uint32_t executed_cycles) -> uint8_t {
+// While the printer has not acknowledged, the card's 74LS00 forces PROM A6
+// high whenever A7 is high, so a fetch from $CnC0-$CnFF returns the byte at
+// the same offset in $Cn80-$CnBF and the lower half of the page is untouched
+// (1978 manual A2L0004X, Section VI, Figures 8-10; the listing's "PROM
+// ADDRESSING" table). The firmware's BCC PRNT1 at $CnC0 and BCS *+2 at $CnC2
+// then read 90 FE and B0 FE, branches to themselves, and spin until the
+// acknowledge arrives. Source, target and length are all inside one 256-byte
+// page by their definitions above, so the copy cannot run off either array.
+auto build_waiting_page(PrinterCard_t* card) -> void {
+  static_assert(wait_image_source + wait_image_length == wait_image_target,
+                "the altered half begins where the images end");
+  static_assert(wait_image_target + wait_image_length == page_size,
+                "the altered half is the top of the page");
+  std::copy(printer_rom.begin(), printer_rom.end(), card->waiting_page.begin());
+  std::copy_n(printer_rom.begin() + wait_image_source, wait_image_length,
+              card->waiting_page.begin() + wait_image_target);
+}
+
+// The card's busy state is the level the sink reports, sampled after each
+// strobe and again while waiting; the page the 6502 sees follows it, and is
+// re-registered only when it changes. On the A2B0002 busy is the flip-flop
+// FF2, set by DEVICE SELECT and cleared by the printer's acknowledge edge or
+// by RESET (1978 manual, Section VI), which differs from this model in three
+// ways: a ready sink releases the wait where the hardware needs an edge; the
+// byte the hardware strobes into a switched-off printer after Ctrl-Reset
+// (RESET clears FF2, but the 74LS174 register's clear pin is tied high, so
+// the next STA goes out before the firmware parks again) does not occur here,
+// since there is no flip-flop for reset to clear; and were the dummy read of
+// STA abs,Y ever emulated, its DEVICE SELECT one cycle before the store would
+// be superseded by the store's, as the card's strobe generator supersedes it
+// ("an indexed store operation from the 6502 will cause a false DEV the cycle
+// prior to the legitimate store operation", same section).
+auto follow_sink_readiness(PrinterCard_t* card) -> void {
+  const bool waiting = !card->host->SinkReady(card->sink);
+  if (waiting == card->waiting) {
+    return;
+  }
+  card->waiting = waiting;
+  card->host->RegisterCxROM(
+      card->slot, waiting ? card->waiting_page.data() : printer_rom.data());
+  if (waiting && card->host->Log != nullptr) {
+    card->host->Log(card, log_warn,
+                    "printer in slot %d is not ready; the machine is waiting "
+                    "as it would with the printer off\n",
+                    card->slot);
+  }
+}
+
+// The A2B0002 decodes DEVICE SELECT alone: R/W is not wired to it, so any
+// access to its sixteen addresses clocks the data bus into the 74LS174 and
+// 74LS298 register, strobes the printer and sets FF2, in that one cycle (1978
+// manual, Section VI and Figure 9). A write latches the byte the 6502 drove;
+// a read finds the bus undriven, latches whatever the video scanner left on
+// it, and returns that same byte, because the card has no bus driver. The
+// byte goes out before anyone asks whether the printer was ready, so a
+// printer that is off swallows one byte and the machine parks on the next.
+auto printer_io_access(void* instance, uint16_t program_counter,
+                       uint16_t memory_address, uint8_t is_write,
+                       uint8_t data_value, uint32_t executed_cycles)
+    -> uint8_t {
   (void)program_counter;
   (void)memory_address;
-  (void)data_value;
-
   if (instance == nullptr) {
     return 0;
   }
   auto* card = static_cast<PrinterCard_t*>(instance);
-  if (is_write != 0) {
-    return card->host->ReadFloatingBus(executed_cycles);
-  }
-  if (!card->is_online) {
-    return status_offline;
-  }
-  if (card->is_busy) {
-    return status_busy;
-  }
-  if (card->host->PrinterGetStatus != nullptr) {
-    const uint8_t status = card->host->PrinterGetStatus(card);
-    card->status_latch = status;
-    return status;
-  }
-  return status_offline;
-}
-
-auto printer_io_write(void* instance, uint16_t program_counter,
-                      uint16_t memory_address, uint8_t is_write,
-                      uint8_t data_value, uint32_t executed_cycles) -> uint8_t {
-  (void)program_counter;
-  (void)memory_address;
-  (void)executed_cycles;
-
-  if (instance == nullptr || is_write == 0) {
-    return transmit_success;
-  }
-  auto* card = static_cast<PrinterCard_t*>(instance);
-  card->data_latch = data_value;
-  card->total_chars_printed++;
-
-  if (card->busy_cycles > 0) {
-    card->is_busy = true;
-  }
-  card->activity_ticks = printer_activity_duration_ticks;
-
-  if (card->host->NotifyActivityChanged != nullptr) {
-    card->host->NotifyActivityChanged(card->slot, true);
-  }
-  if (card->host->PrinterPutChar != nullptr) {
-    card->host->PrinterPutChar(card, data_value);
-  }
-  return transmit_success;
+  const uint8_t byte =
+      is_write != 0 ? data_value : card->host->ReadFloatingBus(executed_cycles);
+  card->data_latch = byte;
+  card->host->SinkWrite(card->sink, byte);
+  follow_sink_readiness(card);
+  return byte;
 }
 
 // Without a ROM PR#n never reaches the firmware, without I/O the firmware's
-// store reaches nothing, and without the bus a read of the card has no byte
-// to answer with: better no card than a phantom one, and the log says which
-// member was missing.
+// store reaches nothing, without the bus a read has no byte to latch, and
+// without the sink the bytes have nowhere to go: better no card than a
+// phantom one, and the log says which member was missing.
 auto missing_host_member(const HostInterface_t* host) -> const char* {
   if (host->RegisterIO == nullptr) {
     return "RegisterIO";
@@ -136,6 +153,18 @@ auto missing_host_member(const HostInterface_t* host) -> const char* {
   }
   if (host->ReadFloatingBus == nullptr) {
     return "ReadFloatingBus";
+  }
+  if (host->SinkOpen == nullptr) {
+    return "SinkOpen";
+  }
+  if (host->SinkWrite == nullptr) {
+    return "SinkWrite";
+  }
+  if (host->SinkReady == nullptr) {
+    return "SinkReady";
+  }
+  if (host->SinkClose == nullptr) {
+    return "SinkClose";
   }
   return nullptr;
 }
@@ -153,6 +182,15 @@ auto printer_abi_init(int slot, HostInterface_t* host) -> void* {
     }
     return nullptr;
   }
+  if (slot < min_slot || slot > max_slot) {
+    if (host->Log != nullptr) {
+      host->Log(nullptr, log_error,
+                "Printer card in slot %d: an expansion card sits in slots 1 "
+                "to 7\n",
+                slot);
+    }
+    return nullptr;
+  }
 
   auto card =
       std::unique_ptr<PrinterCard_t>(new (std::nothrow) PrinterCard_t());
@@ -161,58 +199,102 @@ auto printer_abi_init(int slot, HostInterface_t* host) -> void* {
   }
   card->host = host;
   card->slot = slot;
+  card->sink = host->SinkOpen(card.get(), slot, peripheral_sink_printer);
+  if (card->sink == nullptr) {
+    if (host->Log != nullptr) {
+      host->Log(nullptr, log_error,
+                "Printer card in slot %d: the host has no printer sink for "
+                "the slot\n",
+                slot);
+    }
+    return nullptr;
+  }
+  build_waiting_page(card.get());
 
   host->RegisterCxROM(slot, printer_rom.data());
-  host->RegisterIO(slot, printer_io_read, printer_io_write, nullptr, nullptr);
+  host->RegisterIO(slot, printer_io_access, printer_io_access, nullptr,
+                   nullptr);
 
   return card.release();
 }
 
-auto printer_abi_reset(void* instance) -> void {
-  if (instance == nullptr) {
-    return;
-  }
-  auto* card = static_cast<PrinterCard_t*>(instance);
-  card->data_latch = 0;
-  card->status_latch = 0;
-  card->is_online = true;
-  card->is_busy = false;
-  card->busy_cycles = 0;
-  card->activity_ticks = 0;
-  if (card->host->NotifyActivityChanged != nullptr) {
-    card->host->NotifyActivityChanged(card->slot, false);
-  }
-}
+// RESET on the A2B0002 clears the busy flip-flop and nothing else: the data
+// register's clear pin is tied to +5 V through R3 (1978 manual, Figure 10),
+// so the last byte stays on the printer's data lines. This model keeps the
+// last byte too, and has no flip-flop to clear: a wait in progress stays in
+// place until the sink is ready.
+auto printer_abi_reset(void* instance) -> void { (void)instance; }
 
 auto printer_abi_shutdown(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
   std::unique_ptr<PrinterCard_t> card(static_cast<PrinterCard_t*>(instance));
+  card->host->SinkClose(card->sink);
 }
 
+// A parked machine fetches nothing but the wait image, so the card itself has
+// to notice the printer coming back; one readiness poll per call while
+// waiting, and nothing at all otherwise.
 auto printer_abi_think(void* instance, uint32_t elapsed_cycles) -> void {
+  (void)elapsed_cycles;
   if (instance == nullptr) {
     return;
   }
   auto* card = static_cast<PrinterCard_t*>(instance);
-  if (card->busy_cycles > 0) {
-    if (elapsed_cycles >= card->busy_cycles) {
-      card->busy_cycles = 0;
-      card->is_busy = false;
-    } else {
-      card->busy_cycles -= elapsed_cycles;
-    }
-  }
-  if (card->activity_ticks > 0) {
-    card->activity_ticks--;
-    if (card->activity_ticks == 0 &&
-        card->host->NotifyActivityChanged != nullptr) {
-      card->host->NotifyActivityChanged(card->slot, false);
-    }
+  if (card->waiting) {
+    follow_sink_readiness(card);
   }
 }
 
+// The card has no commands and no queries: its bytes go to the sink and its
+// state is the byte on its data lines. Both entry points stay so a caller
+// from an older frontend is answered rather than dereferencing a null
+// callback.
+auto printer_abi_command(void* instance, uint32_t command_id,
+                         const void* payload, size_t payload_size)
+    -> PeripheralStatus_t {
+  (void)command_id;
+  (void)payload;
+  (void)payload_size;
+  if (instance == nullptr) {
+    return peripheral_error;
+  }
+  return peripheral_incompatible;
+}
+
+auto printer_abi_query(void* instance, uint32_t query_id, void* output,
+                       size_t* output_size) -> PeripheralStatus_t {
+  (void)instance;
+  (void)query_id;
+  (void)output;
+  if (output_size == nullptr) {
+    return peripheral_error;
+  }
+  return peripheral_incompatible;
+}
+
+static_assert(sizeof(PrinterSaveState_t) == 24,
+              "the printer card's state frame is part of the plugin ABI");
+static_assert(offsetof(PrinterSaveState_t, version) == 0,
+              "the frame header is version then size");
+static_assert(offsetof(PrinterSaveState_t, struct_size) == 4,
+              "the frame header is version then size");
+static_assert(offsetof(PrinterSaveState_t, total_chars_printed) == 8,
+              "the dead fields keep their place so every frame written loads");
+static_assert(offsetof(PrinterSaveState_t, busy_cycles) == 16,
+              "the dead fields keep their place so every frame written loads");
+static_assert(offsetof(PrinterSaveState_t, data_latch) == 20,
+              "the data latch sits where every frame written has it");
+static_assert(offsetof(PrinterSaveState_t, status_latch) == 21,
+              "the dead fields keep their place so every frame written loads");
+static_assert(offsetof(PrinterSaveState_t, is_online) == 22,
+              "the dead fields keep their place so every frame written loads");
+static_assert(offsetof(PrinterSaveState_t, is_busy) == 23,
+              "the dead fields keep their place so every frame written loads");
+
+// Value-initialised, so the fields that once carried the host's bookkeeping
+// go out as zeros; the latch is the only hardware state the card has.
 auto printer_abi_save_state(void* instance, void* state_buffer,
                             size_t* buffer_size) -> PeripheralStatus_t {
   if (buffer_size == nullptr) {
@@ -231,111 +313,43 @@ auto printer_abi_save_state(void* instance, void* state_buffer,
   PrinterSaveState_t state{};
   state.version = PRINTER_STATE_VERSION;
   state.struct_size = static_cast<uint32_t>(required_size);
-  state.total_chars_printed = card->total_chars_printed;
-  state.busy_cycles = card->busy_cycles;
   state.data_latch = card->data_latch;
-  state.status_latch = card->status_latch;
-  state.is_online = card->is_online ? 1 : 0;
-  state.is_busy = card->is_busy ? 1 : 0;
   std::memcpy(state_buffer, &state, required_size);
 
   *buffer_size = required_size;
   return peripheral_ok;
 }
 
+// A slot's snapshot buffer may be larger than the frame (the layer sizes it
+// for the biggest card), so the frame's own struct_size says how much to
+// read; everything past it is left alone. The frame carries no wait: the
+// sink's readiness is sampled again at the next strobe, so a machine saved
+// while parked drops one byte and parks again, as the hardware does after a
+// reset.
 auto printer_abi_load_state(void* instance, const void* state_buffer,
                             size_t buffer_size) -> PeripheralStatus_t {
+  constexpr size_t header_size =
+      offsetof(PrinterSaveState_t, total_chars_printed);
   if (instance == nullptr || state_buffer == nullptr ||
-      buffer_size != sizeof(PrinterSaveState_t)) {
+      buffer_size < header_size) {
     return peripheral_error;
   }
 
   PrinterSaveState_t state{};
-  std::memcpy(&state, state_buffer, sizeof(state));
-  if (state.version != PRINTER_STATE_VERSION ||
-      state.struct_size != sizeof(PrinterSaveState_t)) {
+  std::memcpy(&state, state_buffer, header_size);
+  if (state.struct_size != sizeof(state) || buffer_size < state.struct_size) {
+    return peripheral_error;
+  }
+  if (state.version != PRINTER_STATE_VERSION) {
     return peripheral_error;
   }
 
+  std::memcpy(&state, state_buffer, state.struct_size);
   auto* card = static_cast<PrinterCard_t*>(instance);
-  card->total_chars_printed = state.total_chars_printed;
-  card->busy_cycles = state.busy_cycles;
   card->data_latch = state.data_latch;
-  card->status_latch = state.status_latch;
-  card->is_online = (state.is_online != 0);
-  card->is_busy = (state.is_busy != 0);
-
+  card->waiting = false;
+  card->host->RegisterCxROM(card->slot, printer_rom.data());
   return peripheral_ok;
-}
-
-auto printer_abi_command(void* instance, uint32_t command_id,
-                         const void* payload, size_t payload_size)
-    -> PeripheralStatus_t {
-  if (instance == nullptr) {
-    return peripheral_error;
-  }
-  auto* card = static_cast<PrinterCard_t*>(instance);
-
-  if (!peripheral_cmd_is_mine(command_id, PERIPHERAL_SUBSYSTEM_PRINTER)) {
-    return peripheral_incompatible;  // another peripheral in the slot owns it
-  }
-
-  switch (command_id) {
-    case PRINTER_CMD_SET_ONLINE: {
-      if (payload == nullptr || payload_size != sizeof(PrinterOnlineCmd_t)) {
-        return peripheral_error;
-      }
-      PrinterOnlineCmd_t cmd{};
-      std::memcpy(&cmd, payload, sizeof(cmd));
-      card->is_online = (cmd.online != 0);
-      return peripheral_ok;
-    }
-    case PRINTER_CMD_RESET_STATS: {
-      card->total_chars_printed = 0;
-      return peripheral_ok;
-    }
-    default:
-      return peripheral_incompatible;
-  }
-}
-
-auto printer_abi_query(void* instance, uint32_t query_id, void* output,
-                       size_t* output_size) -> PeripheralStatus_t {
-  if (output_size == nullptr) {
-    return peripheral_error;
-  }
-
-  if (!peripheral_cmd_is_mine(query_id, PERIPHERAL_SUBSYSTEM_PRINTER)) {
-    return peripheral_incompatible;  // another peripheral in the slot owns it
-  }
-
-  switch (query_id) {
-    case PRINTER_QUERY_STATUS: {
-      constexpr size_t required_size = sizeof(PrinterStatusQuery_t);
-      if (output == nullptr) {
-        *output_size = required_size;
-        return peripheral_ok;
-      }
-      if (*output_size < required_size) {
-        *output_size = required_size;
-        return peripheral_error;
-      }
-      if (instance == nullptr) {
-        return peripheral_error;
-      }
-      const auto* card = static_cast<const PrinterCard_t*>(instance);
-      PrinterStatusQuery_t query_out{};
-      query_out.total_chars_printed = card->total_chars_printed;
-      query_out.is_online = card->is_online ? 1 : 0;
-      query_out.is_busy = card->is_busy ? 1 : 0;
-      query_out.last_char = card->data_latch;
-      std::memcpy(output, &query_out, required_size);
-      *output_size = required_size;
-      return peripheral_ok;
-    }
-    default:
-      return peripheral_incompatible;
-  }
 }
 
 }  // namespace

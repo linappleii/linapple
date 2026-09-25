@@ -364,9 +364,9 @@ TEST_CASE(
   CHECK(g_captured_host->SinkWrite != nullptr);
   CHECK(g_captured_host->SinkReady != nullptr);
   CHECK(g_captured_host->SinkClose != nullptr);
-  // The retired pair still forwards until the card stops using it.
-  CHECK(g_captured_host->PrinterPutChar != nullptr);
-  CHECK(g_captured_host->PrinterGetStatus != nullptr);
+  // The retired pair keeps its place in the layout and nothing behind it.
+  CHECK(g_captured_host->PrinterPutChar == nullptr);
+  CHECK(g_captured_host->PrinterGetStatus == nullptr);
   peripheral_manager_shutdown();
 }
 

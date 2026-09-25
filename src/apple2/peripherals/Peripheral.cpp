@@ -475,19 +475,6 @@ static auto host_reset_system(void* instance) -> void {
   peripheral_manager_reset();
 }
 
-extern void printer_frontend_send_char(uint8_t c);
-extern auto printer_frontend_check_status() -> uint8_t;
-
-static auto host_printer_put_char(void* instance, uint8_t c) -> void {
-  (void)instance;
-  printer_frontend_send_char(c);
-}
-
-static auto host_printer_get_status(void* instance) -> uint8_t {
-  (void)instance;
-  return printer_frontend_check_status();
-}
-
 extern void super_serial_frontend_send_byte(uint8_t byte);
 extern void super_serial_frontend_update_state(uint32_t baud, uint32_t bits,
                                                int parity, int stop);
@@ -705,8 +692,8 @@ static const HostInterface_t g_host_interface = {
     .NotifyActivityChanged = host_notify_activity_changed,
     .AudioPushChannels = host_audio_push_channels,
     .ResetSystem = host_reset_system,
-    .PrinterPutChar = host_printer_put_char,
-    .PrinterGetStatus = host_printer_get_status,
+    .PrinterPutChar = nullptr,
+    .PrinterGetStatus = nullptr,
     .SerialTransmitByte = host_serial_transmit_byte,
     .SerialUpdateState = host_serial_update_state,
     .ReadFloatingBus = host_read_floating_bus,

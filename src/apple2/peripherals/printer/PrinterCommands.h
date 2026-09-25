@@ -7,37 +7,18 @@
 
 #include <stdint.h>
 
-#include "apple2/peripherals/Peripheral_Subsystems.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 enum { PRINTER_STATE_VERSION = 1 };
 
-typedef enum {
-  PRINTER_CMD_SET_ONLINE = PERIPHERAL_SUBSYSTEM_PRINTER | 0x0101,
-  PRINTER_CMD_RESET_STATS = PERIPHERAL_SUBSYSTEM_PRINTER | 0x0102
-} PrinterCmd_e;
-
-typedef enum {
-  PRINTER_QUERY_STATUS = PERIPHERAL_SUBSYSTEM_PRINTER | 0x0100
-} PrinterQuery_e;
-
-typedef struct {
-  uint8_t online;
-  uint8_t reserved[3];
-} PrinterOnlineCmd_t;
-
-typedef struct {
-  uint64_t total_chars_printed;
-  uint8_t is_online;
-  uint8_t is_busy;
-  uint8_t last_char;
-  uint8_t reserved;
-  uint32_t padding;
-} PrinterStatusQuery_t;
-
+// The byte on the card's data lines is its only architectural state: the
+// A2B0002 has one 8-bit register, no status port and no counter.
+// total_chars_printed, busy_cycles, status_latch, is_online and is_busy once
+// carried the host's bookkeeping and a busy model the card never had; the
+// card writes them as zeros and reads past them. The layout stays as it is so
+// every frame ever written loads.
 typedef struct {
   uint32_t version;
   uint32_t struct_size;
