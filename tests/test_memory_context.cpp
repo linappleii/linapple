@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 
+#include "apple2/Memory.h"
 #include "doctest.h"
 
 TEST_CASE("Memory Context: Encapsulation and Context-Switching") {
@@ -11,13 +12,13 @@ TEST_CASE("Memory Context: Encapsulation and Context-Switching") {
   // Set some distinct values in the original context
   original_context->mem_mode = 0x1234;
   original_context->last_write_ram = true;
-  original_context->active_bank = 5;
+  original_context->peripheral_rom_slot = 5;
 
   // 2. Setup secondary context
   MemoryInstance_t second_context{};
   second_context.mem_mode = 0x5678;
   second_context.last_write_ram = false;
-  second_context.active_bank = 10;
+  second_context.peripheral_rom_slot = 10;
 
   // 3. Switch context
   mem_set_active_context(&second_context);
@@ -26,10 +27,10 @@ TEST_CASE("Memory Context: Encapsulation and Context-Switching") {
   // Verify secondary context values are active
   CHECK(mem_get_active_context()->mem_mode == 0x5678);
   CHECK(mem_get_active_context()->last_write_ram == false);
-  CHECK(mem_get_active_context()->active_bank == 10);
+  CHECK(mem_get_active_context()->peripheral_rom_slot == 10);
 
   // Modify active secondary context
-  mem_get_active_context()->active_bank = 99;
+  mem_get_active_context()->peripheral_rom_slot = 7;
 
   // 4. Switch back to original context
   mem_set_active_context(original_context);
@@ -38,10 +39,10 @@ TEST_CASE("Memory Context: Encapsulation and Context-Switching") {
   // Verify original context values are restored
   CHECK(mem_get_active_context()->mem_mode == 0x1234);
   CHECK(mem_get_active_context()->last_write_ram == true);
-  CHECK(mem_get_active_context()->active_bank == 5);
+  CHECK(mem_get_active_context()->peripheral_rom_slot == 5);
 
   // Verify secondary context values were synced back correctly on switch-away
-  CHECK(second_context.active_bank == 99);
+  CHECK(second_context.peripheral_rom_slot == 7);
 }
 
 TEST_CASE(

@@ -351,26 +351,7 @@ auto DrawSoftSwitchLanguageCardBank(Rect_t& rect, const int iBankDisplay,
     rect.left += dx88;
     rect.right += 4 * w;
 
-    int iActiveBank = -1;
-    char sText[4] = "?";
-
-#ifdef RAMWORKS
-    {
-      sText[0] = 'r';
-      iActiveBank = get_ramworks_active_bank();
-    }
-#endif
-
-    if (iActiveBank >= 0) {
-      DebuggerSetColorFG(DebuggerGetColor(FG_INFO_REG));
-      PrintTextCursorX(sText, rect);
-
-      snprintf(sText, sizeof(sText), "%02X", (iActiveBank & 0x7F));
-      DebuggerSetColorFG(DebuggerGetColor(FG_INFO_ADDRESS));
-      PrintTextCursorX(sText, rect);
-    } else {
-      PrintTextCursorX("   ", rect);
-    }
+    PrintTextCursorX("   ", rect);
   }
 
   rect.top += g_font_height;

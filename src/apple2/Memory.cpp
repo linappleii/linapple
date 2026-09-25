@@ -61,12 +61,14 @@ static inline auto sw_hram_write(const MemoryInstance_t* ctx) -> bool {
 static MemoryInstance_t g_default_memory_context;
 static MemoryInstance_t* g_active_memory = &g_default_memory_context;
 
-iofunction* IORead = g_default_memory_context.io_read;
-iofunction* IOWrite = g_default_memory_context.io_write;
+IoFunction_t* g_io_read = g_default_memory_context.io_read;
+IoFunction_t* g_io_write = g_default_memory_context.io_write;
+IoFunction_t*& IORead = g_io_read;
+IoFunction_t*& IOWrite = g_io_write;
 uint8_t** memwrite = g_default_memory_context.memwrite;
 uint8_t* mem = nullptr;
 uint8_t* memdirty = nullptr;
-MemoryInitPattern_e g_memory_init_pattern = MIP_FF_FF_00_00;
+MemoryInitPattern_t g_memory_init_pattern = MIP_FF_FF_00_00;
 static std::vector<uint8_t> g_custom_rom_data;
 
 auto mem_set_custom_rom_data(const uint8_t* data, size_t size) -> void {
@@ -189,14 +191,6 @@ auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
         pc);
   }
   return io_null(pc, addr, write, d, cycles);
-}
-
-#ifdef RAMWORKS
-uint32_t g_max_ex_pages = 1;
-#endif
-
-auto get_ramworks_active_bank() -> uint32_t {
-  return g_active_memory->active_bank;
 }
 
 auto io_annunciator(uint16_t programcounter, uint16_t address, uint8_t write,
@@ -424,53 +418,10 @@ static auto io_read_c07x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
 
 static auto io_write_c07x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
                           uint32_t executed_cycles) -> uint8_t {
-  switch (addr & 0xf) {
-    case 0x0:
-      return io_null(pc, addr, write, d, executed_cycles);
-#ifdef RAMWORKS
-    case 0x1:
-      return mem_set_paging(pc, addr, write, d, executed_cycles);
-    case 0x2:
-      return io_null(pc, addr, write, d, executed_cycles);
-    case 0x3:
-      return mem_set_paging(pc, addr, write, d, executed_cycles);
-#else
-    case 0x1:
-      return io_null(pc, addr, write, d, executed_cycles);
-    case 0x2:
-      return io_null(pc, addr, write, d, executed_cycles);
-    case 0x3:
-      return io_null(pc, addr, write, d, executed_cycles);
-#endif
-    case 0x4:
-      return io_null(pc, addr, write, d, executed_cycles);
-    case 0x5:
-      return io_null(pc, addr, write, d, executed_cycles);
-    case 0x6:
-      return io_null(pc, addr, write, d, executed_cycles);
-    case 0x7:
-      return io_null(pc, addr, write, d, executed_cycles);
-    case 0x8:
-      return io_null(pc, addr, write, d, executed_cycles);
-    case 0x9:
-      return io_null(pc, addr, write, d, executed_cycles);
-    case 0xA:
-      return io_null(pc, addr, write, d, executed_cycles);
-    case 0xB:
-      return io_null(pc, addr, write, d, executed_cycles);
-    case 0xC:
-      return io_null(pc, addr, write, d, executed_cycles);
-    case 0xD:
-      return io_null(pc, addr, write, d, executed_cycles);
-    case 0xE:
-      return io_null(pc, addr, write, d, executed_cycles);
-    case 0xF:
-      return video_check_mode(pc, addr, write, d, executed_cycles);
-    default:
-      break;
+  if ((addr & 0xF) == 0xF) {
+    return video_check_mode(pc, addr, write, d, executed_cycles);
   }
-
-  return 0;
+  return io_null(pc, addr, write, d, executed_cycles);
 }
 
 static iofunction IORead_C0xx[8] = {
@@ -943,14 +894,6 @@ auto mem_destroy() -> void {
     munlock(g_active_memory->memimage, MEMORY_64K);
   }
 
-#ifdef RAMWORKS
-  for (uint32_t i = 0; i < MAX_RAMWORKS_PAGES; i++) {
-    g_active_memory->buf_rw_pages[i].clear();
-    g_active_memory->buf_rw_pages[i].shrink_to_fit();
-    g_active_memory->rw_pages[i] = nullptr;
-  }
-#endif
-
   g_active_memory->buf_memaux.clear();
   g_active_memory->buf_memaux.shrink_to_fit();
   g_active_memory->buf_memmain.clear();
@@ -988,28 +931,10 @@ auto mem_check_slotcxrom() -> bool {
 }
 
 auto mem_get_aux_ptr(uint16_t offset) -> uint8_t* {
-  uint8_t* result = (g_active_memory->memshadow[(offset >> 8)] ==
-                     (g_active_memory->memaux + (offset & PAGE_MASK)))
-                        ? mem + offset
-                        : g_active_memory->memaux + offset;
-
-#ifdef RAMWORKS
-  if (((sw_page2(g_active_memory) && sw_80store(g_active_memory)) ||
-       video_get_sw_80col()) &&
-      ((((offset & PAGE_MASK) >= TXT1_BEGIN) &&
-        ((offset & PAGE_MASK) <= TXT1_END_PAGE)) ||
-       (sw_hires(g_active_memory) && ((offset & PAGE_MASK) >= HGR1_BEGIN) &&
-        ((offset & PAGE_MASK) <= HGR1_END_PAGE)))) {
-    if (g_active_memory->rw_pages[0] != nullptr) {
-      result = (g_active_memory->memshadow[(offset >> 8)] ==
-                (g_active_memory->rw_pages[0] + (offset & PAGE_MASK)))
-                   ? mem + offset
-                   : g_active_memory->rw_pages[0] + offset;
-    }
-  }
-#endif
-
-  return result;
+  return (g_active_memory->memshadow[(offset >> 8)] ==
+          (g_active_memory->memaux + (offset & PAGE_MASK)))
+             ? mem + offset
+             : g_active_memory->memaux + offset;
 }
 
 auto mem_get_main_ptr(uint16_t offset) -> uint8_t* {
@@ -1021,22 +946,14 @@ auto mem_get_main_ptr(uint16_t offset) -> uint8_t* {
 
 //===========================================================================
 
-auto mem_get_bank_ptr(const uint32_t bank) -> uint8_t* {
-#ifdef RAMWORKS
-  if (bank > g_max_ex_pages || bank >= MAX_RAMWORKS_PAGES) {
-    return nullptr;
-  }
-
+auto mem_get_bank_ptr(uint32_t bank) -> uint8_t* {
   if (bank == 0) {
     return g_active_memory->memmain;
   }
-
-  return g_active_memory->rw_pages[bank - 1];
-#else
-  return (bank == 0)   ? g_active_memory->memmain
-         : (bank == 1) ? g_active_memory->memaux
-                       : nullptr;
-#endif
+  if (bank == 1) {
+    return g_active_memory->memaux;
+  }
+  return nullptr;
 }
 
 auto mem_get_cx_rom_peripheral() -> uint8_t* {
@@ -1050,7 +967,7 @@ auto get_mem_ptr(uint16_t addr) -> uint8_t* { return mem + addr; }
 // Post:
 // . true:  code memory
 // . false: I/O memory or floating bus
-auto mem_is_addr_code_memory(const uint16_t addr) -> bool {
+auto mem_is_addr_code_memory(uint16_t addr) -> bool {
   if (addr < 0xC000 ||
       addr >
           FIRMWARE_EXPANSION_END) {  // Assume all A][ types have at least 48K
@@ -1095,12 +1012,6 @@ auto mem_initialize() -> int  // returns -1 if any error during initialization
 {
   mem_destroy();
 
-#ifdef RAMWORKS
-  if (g_max_ex_pages > MAX_RAMWORKS_PAGES) {
-    g_max_ex_pages = MAX_RAMWORKS_PAGES;
-  }
-#endif
-
   const uint32_t CxRomSize = CX_ROM_SIZE;
   const uint32_t Apple2RomSize = APPLE2_ROM_SIZE;
   const uint32_t Apple2eRomSize = Apple2RomSize + CxRomSize;
@@ -1123,16 +1034,6 @@ auto mem_initialize() -> int  // returns -1 if any error during initialization
     g_active_memory->cx_rom_peripheral =
         g_active_memory->buf_cx_rom_peripheral.data();
 
-#ifdef RAMWORKS
-    g_active_memory->buf_rw_pages[0].assign(MEMORY_64K, 0);
-    g_active_memory->rw_pages[0] = g_active_memory->buf_rw_pages[0].data();
-    g_active_memory->memaux = g_active_memory->rw_pages[0];
-
-    for (uint32_t i = 1; i < g_max_ex_pages && i < MAX_RAMWORKS_PAGES; ++i) {
-      g_active_memory->buf_rw_pages[i].assign(MEMORY_64K, 0);
-      g_active_memory->rw_pages[i] = g_active_memory->buf_rw_pages[i].data();
-    }
-#endif
   } catch (const std::bad_alloc& e) {
     Logger::error("Unable to allocate required memory buffers: %s", e.what());
     mem_destroy();
@@ -1319,15 +1220,15 @@ auto mem_return_random_data(uint8_t highbit) -> uint8_t {
   }
 }
 
-auto mem_read_floating_bus(const uint32_t executed_cycles) -> uint8_t {
+auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t {
   if (mem == nullptr) {
     return 0xFF;
   }
   return *(mem + video_get_scanner_address(nullptr, executed_cycles));
 }
 
-auto mem_read_floating_bus(const uint8_t highbit,
-                           const uint32_t executed_cycles) -> uint8_t {
+auto mem_read_floating_bus(uint8_t highbit, uint32_t executed_cycles)
+    -> uint8_t {
   uint8_t r = (mem != nullptr)
                   ? *(mem + video_get_scanner_address(nullptr, executed_cycles))
                   : 0xFF;
@@ -1407,17 +1308,6 @@ auto mem_set_paging(uint16_t programcounter, uint16_t address, uint8_t write,
       case SS_HIRES_ON:
         g_active_memory->mem_mode |= MF_HIRES;
         break;
-#ifdef RAMWORKS
-      case SS_RW_AUX_PAGE:
-      case SS_RW_III_PAGE:
-        if ((value < g_max_ex_pages) && (value < MAX_RAMWORKS_PAGES) &&
-            g_active_memory->rw_pages[value]) {
-          g_active_memory->active_bank = value;
-          g_active_memory->memaux = g_active_memory->rw_pages[value];
-          mem_update_paging(false, false);
-        }
-        break;
-#endif
       default:
         break;
     }
@@ -1486,7 +1376,7 @@ auto mem_get_slot_parameters(uint32_t slot) -> void* {
   return g_active_memory->slot_parameters[slot];
 }
 
-auto mem_get_snapshot(SS_BaseMemory* ss) -> uint32_t {
+auto mem_get_snapshot(SsBaseMemory_t* ss) -> uint32_t {
   ss->mem_mode = g_active_memory->mem_mode;
   ss->last_write_ram = g_active_memory->last_write_ram ? 1 : 0;
 
@@ -1500,7 +1390,7 @@ auto mem_get_snapshot(SS_BaseMemory* ss) -> uint32_t {
   return 0;
 }
 
-auto mem_set_snapshot(SS_BaseMemory* ss) -> uint32_t {
+auto mem_set_snapshot(SsBaseMemory_t* ss) -> uint32_t {
   g_active_memory->mem_mode = ss->mem_mode;
   g_active_memory->last_write_ram = (ss->last_write_ram != 0);
   memcpy(g_active_memory->memmain, ss->mem_main, mem_main_size);
