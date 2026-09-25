@@ -9,18 +9,6 @@
 
 struct Rect_t;
 
-#define USE_APPLE_FONT 1
-
-#define DEBUG_APPLE_FONT 0
-
-#define APPLE_FONT_NEW 1
-
-#if APPLE_FONT_NEW
-#define APPLE_FONT_BITMAP_PADDED 0
-#else
-#define APPLE_FONT_BITMAP_PADDED 1
-#endif
-
 enum ConsoleFontSize_e {
   CONSOLE_FONT_GRID_X = 8,
   CONSOLE_FONT_GRID_Y = 8,

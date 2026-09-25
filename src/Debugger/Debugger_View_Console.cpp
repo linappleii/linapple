@@ -23,10 +23,6 @@ auto DrawSubWindow_Console(Update_t bUpdate) -> void {
     return;
   }
 
-#if !USE_APPLE_FONT
-  SelectObject(GetDebuggerMemDC(), g_font_config[FONT_CONSOLE].h_font);
-#endif
-
   if ((bUpdate & UPDATE_CONSOLE_DISPLAY) || (bUpdate & UPDATE_CONSOLE_INPUT)) {
     DebuggerSetColorBG(DebuggerGetColor(BG_CONSOLE_OUTPUT));
 

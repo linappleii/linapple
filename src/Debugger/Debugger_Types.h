@@ -263,7 +263,7 @@ enum {
 typedef Update_t (*CmdFuncPtr_t)(int);
 
 struct Command_t {
-  char name[MAX_COMMAND_LEN];
+  const char* name;
   CmdFuncPtr_t function;
   int command_id;            // offset (enum) for direct command name lookup
   const char* help_summary;  // 1 line help summary
@@ -1020,7 +1020,6 @@ struct FontConfig_t {
 
 // Instructions / Opcodes
 #ifdef SUPPORT_Z80_EMU
-#define OUTPUT_Z80_REGS
 constexpr auto REG_AF = 0xF0;
 constexpr auto REG_BC = 0xF2;
 constexpr auto REG_DE = 0xF4;

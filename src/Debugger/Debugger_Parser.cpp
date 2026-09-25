@@ -829,7 +829,7 @@ auto FindParam(const char* pLookupName, Match_e eMatch, int& iParam_,
   if (eMatch == MATCH_EXACT) {
     //    while (iParam < NUM_PARAMS )
     for (iParam = iParamBegin; iParam <= iParamEnd; iParam++) {
-      char* pParamName = g_parameters[iParam].name;
+      const char* pParamName = g_parameters[iParam].name;
       int eCompare = strcasecmp(pLookupName, pParamName);
       if (!eCompare)  // exact match?
       {
@@ -846,7 +846,7 @@ auto FindParam(const char* pLookupName, Match_e eMatch, int& iParam_,
     }
 #endif
     for (iParam = iParamBegin; iParam <= iParamEnd; iParam++) {
-      char* pParamName = g_parameters[iParam].name;
+      const char* pParamName = g_parameters[iParam].name;
       // _tcsnccmp
 
 #if ALLOW_INPUT_LOWERCASE
@@ -902,7 +902,7 @@ auto FindCommand(const char* pName, CmdFuncPtr_t& pFunction_, int* iCommand_)
                                       // g_commands[iCommand].aName[0])) Command
                                       // no longer in Alphabetical order
   {
-    char* pCommandName = g_commands[iCommand].name;
+    const char* pCommandName = g_commands[iCommand].name;
 
     if (!strncmp(sCommand, pCommandName, nLen)) {
       g_command = g_commands[iCommand].command_id;
@@ -956,7 +956,7 @@ auto DisplayAmbigiousCommands(int nFound) -> void {
     int iWidth = strlen(sPotentialCommands);
     while ((iCommand < nFound) && (iWidth < g_console_display_width)) {
       int nCommand = g_potential_commands[iCommand];
-      char* pName = g_commands[nCommand].name;
+      const char* pName = g_commands[nCommand].name;
       int nLen = static_cast<int>(strlen(pName));
 
       if ((iWidth + nLen) >= (CONSOLE_WIDTH - 1)) {

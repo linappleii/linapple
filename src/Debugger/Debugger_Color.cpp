@@ -142,42 +142,6 @@ auto DebuggerSetColor(const int iScheme, const int iColor,
   return true;
 }
 
-#if _DEBUG
-#define DEBUG_COLOR_RAMP 0
-//===========================================================================
-static auto SetupColorRamp(const int iPrimary, int& iColor_) -> void {
-  char sRamp[CONSOLE_WIDTH * 2] = "";
-#if DEBUG_COLOR_RAMP
-  char sText[CONSOLE_WIDTH];
-#endif
-
-  bool bR = (iPrimary & 1) ? true : false;
-  bool bG = (iPrimary & 2) ? true : false;
-  bool bB = (iPrimary & 4) ? true : false;
-  int dStep = 32;
-  int nLevels = 256 / dStep;
-  for (int iLevel = nLevels; iLevel > 0; iLevel--) {
-    int nC = ((iLevel * dStep) - 1);
-    int nR = bR ? nC : 0;
-    int nG = bG ? nC : 0;
-    int nB = bB ? nC : 0;
-    ColorRef_t nColor = RGB(nR, nG, nB);
-    g_color_palette[iColor_] = nColor;
-#if DEBUG_COLOR_RAMP
-    wsprintf(sText, "RGB(%3d,%3d,%3d, ", nR, nG, nB);
-    util_safe_strncat(sRamp, sText, sizeof(sRamp));
-#endif
-    iColor_++;
-  }
-#if DEBUG_COLOR_RAMP
-  wsprintf(sText, " // %d%d%d\n", bB, bG, bR);
-  util_safe_strncat(sRamp, sText, sizeof(sRamp));
-  OutputDebugString(sRamp);
-  sRamp[0] = 0;
-#endif
-}
-#endif  // _DEBUG
-
 //===========================================================================
 auto ConfigColorsReset() -> void {
   //	int iColor = 1; // black only has one level, skip it, since black levels

@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#include <cstdint>
 #include <cstring>
 
+#include "Debugger/Debugger_Assembler.h"
 #include "Debugger/Debugger_Console.h"
 #include "Debugger/Debugger_Parser.h"
+#include "Debugger/Debugger_Range.h"
 #include "Debugger/Debugger_Types.h"
+#include "core/Util_Text.h"
 #include "doctest.h"
 
 namespace {

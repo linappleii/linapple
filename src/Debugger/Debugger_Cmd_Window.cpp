@@ -85,7 +85,6 @@ auto CmdWindowViewFull(int iNewWindow) -> Update_t {
 //===========================================================================
 auto WindowUpdateConsoleDisplayedSize() -> void {
   g_console_display_lines = MIN_DISPLAY_CONSOLE_LINES;
-#if USE_APPLE_FONT
   g_console_full_width = true;
   g_console_display_width = CONSOLE_WIDTH - 1;
 
@@ -94,16 +93,6 @@ auto WindowUpdateConsoleDisplayedSize() -> void {
     g_console_display_width = CONSOLE_WIDTH - 1;
     g_console_full_width = true;
   }
-#else
-  g_console_display_width = (CONSOLE_WIDTH / 2) + 10;
-  g_console_full_width = false;
-
-  if (g_window_this == WINDOW_CONSOLE) {
-    g_console_display_lines = MAX_DISPLAY_LINES;
-    g_console_display_width = CONSOLE_WIDTH - 1;
-    g_console_full_width = true;
-  }
-#endif
 }
 
 //===========================================================================

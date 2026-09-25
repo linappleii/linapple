@@ -39,8 +39,6 @@ const int DISPLAY_VIDEO_SCANNER_COLUMN = 357;
 const int MAX_DISPLAY_REGS_LINES = 12;
 const int MAX_DISPLAY_ZEROPAGE_LINES = 10;
 const int MAX_DISPLAY_TARGET_PTR_LINES = 3;
-#define DISPLAY_MEMORY_TITLE 1
-#define SOFTSWITCH_LANGCARD 1
 
 // Function prototypes for helpers in other files
 extern auto ColorizeFlags(bool bSet, int bg = BG_INFO, int fg = FG_INFO_REG)
@@ -81,7 +79,6 @@ auto DrawMemory(int line, int iMemDump) -> void {
   int iForeground = FG_INFO_OPCODE;
   int iBackground = BG_INFO;
 
-#if DISPLAY_MEMORY_TITLE
   snprintf(sAddress, sizeof(sAddress), "%04X", static_cast<unsigned>(addr));
 
   if (iView == MEM_VIEW_HEX) {
@@ -102,7 +99,6 @@ auto DrawMemory(int line, int iMemDump) -> void {
 
   DebuggerSetColorFG(DebuggerGetColor(FG_INFO_ADDRESS));
   PrintTextCursorY(sAddress, rect2);
-#endif
 
   rect.top = rect2.top;
   rect.bottom = rect2.bottom;
@@ -450,13 +446,11 @@ auto DrawSoftSwitches(int iSoftSwitch) -> void {
   bSet = !video_get_sw_alt_charset();
   DrawSoftSwitch(rect, 0xC00E, bSet, nullptr, "ASC", "MOUS", nullptr, bgMemory);
 
-#if SOFTSWITCH_LANGCARD
   DebuggerSetColorBG(DebuggerGetColor(bgMemory));
   DrawSoftSwitchLanguageCardBank(rect, 2, bgMemory);
 
   rect.left = DISPLAY_SOFTSWITCH_COLUMN;
   DrawSoftSwitchLanguageCardBank(rect, 1, bgMemory);
-#endif
 }
 
 auto DrawTargets(int line) -> void {

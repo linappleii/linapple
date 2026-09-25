@@ -102,7 +102,7 @@ auto DebuggerProcessCommand(const bool bEchoConsoleInput) -> Update_t {
 
 //===========================================================================
 
-#define DEBUGGER__COMMANDS_VERIFY_TXT__ "\xDE\xAD\xC0\xDE"
+constexpr const char* DEBUGGER__COMMANDS_VERIFY_TXT__ = "\xDE\xAD\xC0\xDE";
 
 // Setting function to nullptr, allows g_commands arguments to be safely listed
 // here Commands should be listed alphabetically per category. For the list
@@ -625,7 +625,7 @@ Command_t g_commands[] = {
 // Parameters
 // _____________________________________________________________________________________
 
-#define DEBUGGER__PARAMS_VERIFY_TXT__ "\xDE\xAD\xDA\x1A"
+constexpr const char* DEBUGGER__PARAMS_VERIFY_TXT__ = "\xDE\xAD\xDA\x1A";
 
 // NOTE: Order MUST match Parameters_e[] !!!
 Command_t g_parameters[] = {

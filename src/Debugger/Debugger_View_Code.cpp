@@ -86,22 +86,7 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
     NUM_TAB_STOPS
   };
 
-  float aTabs[NUM_TAB_STOPS] =
-#if USE_APPLE_FONT
-      {5, 14, 26, 41, 48, 49};
-#else
-      {5.75, 15.5, 25, 40.5, 45.5, 48.5};
-#endif
-
-#if !USE_APPLE_FONT
-  if (!g_config_disasm_address_colon) aTabs[TS_OPCODE] -= 1;
-
-  if ((g_config_disasm_opcodes_view) && (!g_config_disasm_opcode_spaces)) {
-    aTabs[TS_LABEL] -= 3;
-    aTabs[TS_INSTRUCTION] -= 2;
-    aTabs[TS_IMMEDIATE] -= 1;
-  }
-#endif
+  float aTabs[NUM_TAB_STOPS] = {5, 14, 26, 41, 48, 49};
 
   int iTab = 0;
   int nSpacer = 11;
@@ -380,17 +365,7 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
   if (bDisasmFormatFlags & DISASM_FORMAT_BRANCH) {
     linerect.left = static_cast<int>(aTabs[TS_BRANCH]);
     if (!bCursorLine) DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_BRANCH));
-#if !USE_APPLE_FONT
-    if (g_config_disasm_branch_type == DISASM_BRANCH_FANCY)
-      SelectObject(GetDebuggerMemDC(),
-                   g_font_config[FONT_DISASM_BRANCH].h_font);
-#endif
     PrintText(line.sBranch, linerect);
-#if !USE_APPLE_FONT
-    if (g_config_disasm_branch_type)
-      SelectObject(GetDebuggerMemDC(),
-                   g_font_config[FONT_DISASM_DEFAULT].h_font);
-#endif
   }
 
   return nOpbyte;
@@ -531,18 +506,10 @@ auto DrawSubWindow_Code(int iWindow) -> void {
   (void)iWindow;
   int nLines = g_disasm_win_height;
 
-#if !USE_APPLE_FONT
-  SelectObject(GetDebuggerMemDC(), g_font_config[FONT_DISASM_DEFAULT].h_font);
-#endif
-
   uint16_t address = g_disasm_top_address;
   for (int iLine = 0; iLine < nLines; iLine++) {
     address += DrawDisassemblyLine(iLine, address);
   }
-
-#if !USE_APPLE_FONT
-  SelectObject(GetDebuggerMemDC(), g_font_config[FONT_INFO].h_font);
-#endif
 }
 
 auto DrawSubWindow_Source(Update_t bUpdate) -> void {

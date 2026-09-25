@@ -23,7 +23,7 @@
 #include "apple2/Memory.h"
 #include "core/LinAppleCore.h"
 
-#define DEBUG_ASSEMBLER 0
+constexpr bool debug_assembler = false;
 
 // Globals __________________________________________________________________
 
@@ -75,13 +75,13 @@ std::vector<DisasmData_t> g_disassembler_data;
 // 10   signed: BPL BGE
 // B0 unsigned: BCS BGE
 
-#define R_ MEM_R
-#define W_ MEM_W
-#define RW MEM_R | MEM_W
-#define S_ MEM_S
+constexpr auto R_ = MEM_R;
+constexpr auto W_ = MEM_W;
+constexpr auto RW = MEM_R | MEM_W;
+constexpr auto S_ = MEM_S;
 constexpr auto IM = MEM_IM;
-#define SW MEM_S | MEM_WI
-#define SR MEM_S | MEM_RI
+constexpr auto SW = MEM_S | MEM_WI;
+constexpr auto SR = MEM_S | MEM_RI;
 const Opcodes_t g_opcodes65_c02[NUM_OPCODES] = {
     {"BRK", 0, SW},      {"ORA", AM_IZX, R_},
     {"nop", AM_M, IM},   {"nop", 0, 0},  // 00 .. 03
@@ -420,14 +420,6 @@ const Opcodes_t g_opcodes6502[NUM_OPCODES] = {
     {"nop", AM_AX, 0},  {"SBC", AM_AX, R_},
     {"INC", AM_AX, RW}, {"ins", AM_AX, RW}  // FF .. FF
 };
-
-#undef R_
-#undef W_
-#undef RW
-#undef S_
-#undef IM
-#undef SW
-#undef SR
 
 // @reference: http://www.textfiles.com/apple/DOCUMENTATION/merlin.docs1
 
@@ -1074,15 +1066,15 @@ auto AssemblerHashMnemonic(const char* pMnemonic) -> uint32_t {
   const int NUM_MSK_BITS = 5;   //  4 ->  5 prime
   const Hash_t BIT_MSK_HIGH = ((1 << NUM_MSK_BITS) - 1) << NUM_LOW_BITS;
 
-#if DEBUG_ASSEMBLER
-  int nLen = strlen(pMnemonic);
-  static int nMaxLen = 0;
-  if (nMaxLen < nLen) {
-    nMaxLen = nLen;
-    char sText[CONSOLE_WIDTH * 3];
-    ConsolePrintFormat(sText, "New Max Len: %d  %s", nMaxLen, pMnemonic);
+  if (debug_assembler) {
+    int nLen = strlen(text);
+    static int nMaxLen = 0;
+    if (nMaxLen < nLen) {
+      nMaxLen = nLen;
+      char sText[CONSOLE_WIDTH * 3];
+      ConsolePrintFormat(sText, "New Max Len: %d  %s", nMaxLen, text);
+    }
   }
-#endif
 
   while (*text)
   //	for( int iChar = 0; iChar < 4; iChar++ )
@@ -1112,12 +1104,10 @@ auto AssemblerHashOpcodes() -> void {
     const char* pMnemonic = g_opcodes65_c02[opcode].sMnemonic;
     nMnemonicHash = AssemblerHashMnemonic(pMnemonic);
     g_opcodes_hash[opcode] = nMnemonicHash;
-#if DEBUG_ASSEMBLER
-    // OutputDebugString( "" );
-    char sText[128];
-    ConsolePrintFormat(sText, "%s : %08X  ", pMnemonic, nMnemonicHash);
-    // CLC: 002B864
-#endif
+    if (debug_assembler) {
+      char sText[128];
+      ConsolePrintFormat(sText, "%s : %08X  ", pMnemonic, nMnemonicHash);
+    }
   }
   ConsoleUpdate();
 }
@@ -1925,12 +1915,12 @@ auto Assemble(int iArg, int nArgs, uint16_t address) -> bool {
   char* pMnemonic = g_args[iArg].sArg;
   uint32_t nMnemonicHash = AssemblerHashMnemonic(pMnemonic);
 
-#if DEBUG_ASSEMBLER
-  char sText[CONSOLE_WIDTH * 2];
-  ConsolePrintFormat(sText, "%s%04X%s: %s%s%s -> %s%08X", CHC_ADDRESS, address,
-                     CHC_DEFAULT, CHC_STRING, pMnemonic, CHC_DEFAULT,
-                     CHC_NUM_HEX, nMnemonicHash);
-#endif
+  if (debug_assembler) {
+    char sText[CONSOLE_WIDTH * 2];
+    ConsolePrintFormat(sText, "%s%04X%s: %s%s%s -> %s%08X", CHC_ADDRESS,
+                       address, CHC_DEFAULT, CHC_STRING, pMnemonic, CHC_DEFAULT,
+                       CHC_NUM_HEX, nMnemonicHash);
+  }
 
   g_asm_opcodes.clear();  // Candiate opcodes
   int opcode = 0;

@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include "Debugger_Breakpoints.h"
-#include "Debugger_Types.h"
-#include "Util_Text.h"
+#include "Debugger_Help.h"
 
 #include <algorithm>
 #include <cstdarg>
@@ -12,13 +10,15 @@
 #include <vector>
 
 #include "Debug.h"
+#include "Debugger_Breakpoints.h"
 #include "Debugger_Cmd_Config.h"
 #include "Debugger_Commands.h"
 #include "Debugger_Console.h"
-#include "Debugger_Help.h"
 #include "Debugger_Parser.h"
+#include "Debugger_Types.h"
+#include "Util_Text.h"
 
-#define DEBUG_COLOR_CONSOLE 0
+constexpr bool debug_color_console = false;
 
 // Utility
 // ________________________________________________________________________________________
@@ -230,7 +230,7 @@ auto Help_Categories() -> void {
 
   for (int iCategory = PARAM_HELPCATEGORIES_BEGIN;
        iCategory < PARAM_HELPCATEGORIES_END; iCategory++) {
-    char* pName = g_parameters[iCategory].name;
+    const char* pName = g_parameters[iCategory].name;
 
     if (nLen + strlen(pName) >= (CONSOLE_WIDTH - 1)) {
       console_print(sText);
@@ -558,11 +558,11 @@ auto CmdMOTD(int nArgs) -> Update_t  // Message Of The Day
   char sText[CONSOLE_WIDTH * 2];
   char sTemp[CONSOLE_WIDTH * 2];
 
-#if DEBUG_COLOR_CONSOLE
-  console_print("`");
-  console_print("`A");
-  console_print("`2`A");
-#endif
+  if (debug_color_console) {
+    console_print("`");
+    console_print("`A");
+    console_print("`2`A");
+  }
 
   ConsolePrintFormat(sText,
                      "`9`A`7 Apple `9][ ][+ //e `7Emulator for Linux `9`@");
@@ -978,7 +978,7 @@ auto CmdHelpList(int nArgs) -> Update_t {
   {
     Command_t* pCommand = &g_sorted_commands.at(iCommand);
     //		Command_t *pCommand = & g_commands[ iCommand ];
-    char* pName = pCommand->name;
+    const char* pName = pCommand->name;
 
     if (!pCommand->function) {
       continue;  // not implemented function
