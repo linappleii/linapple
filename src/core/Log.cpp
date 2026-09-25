@@ -98,11 +98,7 @@ auto initialize() -> void {
     auto now = std::chrono::system_clock::now();
     auto in_time_t = std::chrono::system_clock::to_time_t(now);
     struct tm tm_buf{};
-#if defined(_WIN32)
-    localtime_s(&tm_buf, &in_time_t);
-#else
     localtime_r(&in_time_t, &tm_buf);
-#endif
     std::stringstream ss;
     ss << std::put_time(&tm_buf, "%Y-%m-%d %H:%M:%S");
     std::fprintf(g_log_file.get(), "*** Logging started: %s\n",

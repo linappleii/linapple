@@ -27,12 +27,8 @@ auto set_verbosity(LogLevel_t level) -> void;
 auto get_verbosity() -> LogLevel_t;
 auto set_callback(LogCallback_t callback) -> void;
 
-#if defined(__GNUC__) || defined(__clang__)
 #define ATTRIBUTE_FORMAT_PRINTF(fmt, first) \
   __attribute__((format(printf, fmt, first)))
-#else
-#define ATTRIBUTE_FORMAT_PRINTF(fmt, first)
-#endif
 
 ATTRIBUTE_FORMAT_PRINTF(1, 2) auto error(const char* format, ...) -> void;
 ATTRIBUTE_FORMAT_PRINTF(1, 2) auto warning(const char* format, ...) -> void;
@@ -43,9 +39,3 @@ ATTRIBUTE_FORMAT_PRINTF(1, 2) auto debug(const char* format, ...) -> void;
 auto log_message_v(LogLevel_t level, const char* format, va_list args) -> void;
 
 }  // namespace Logger
-
-#if defined(DEBUG) || defined(_DEBUG)
-#define LOG(format, ...) Logger::debug(format, ##__VA_ARGS__)
-#else
-#define LOG(format, ...) ((void)0)
-#endif

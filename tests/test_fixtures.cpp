@@ -76,14 +76,10 @@ TEST_CASE("EphemeralDiskFixture: Lifecycle and Isolation (TASK-1)") {
       CHECK(access(captured_path.c_str(), F_OK) == 0);
 
       // Self-move assignment safety check
-#if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wself-move"
-#endif
       fixture3 = std::move(fixture3);
-#if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic pop
-#endif
       CHECK(fixture3.path() == captured_path);
       CHECK(access(captured_path.c_str(), F_OK) == 0);
     }

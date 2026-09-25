@@ -2,29 +2,19 @@
 #pragma once
 
 #if !defined(LINAPPLE_SDL_VERSION)
-#if defined(SDL_MAJOR_VERSION)
-#define LINAPPLE_SDL_VERSION SDL_MAJOR_VERSION
-#elif defined(SDL3_SDL_H)
 #define LINAPPLE_SDL_VERSION 3
-#elif defined(SDL2_SDL_H)
-#define LINAPPLE_SDL_VERSION 2
-#elif defined(SDL_SDL_H)
-#define LINAPPLE_SDL_VERSION 1
-#else
-#define LINAPPLE_SDL_VERSION 3
-#endif
 #endif
 
 #include <cstdint>
 
 #if LINAPPLE_SDL_VERSION == 1
-#include <SDL/SDL.h>            // IWYU pragma: export
-#include <SDL/SDL_events.h>     // IWYU pragma: export
-#include <SDL/SDL_joystick.h>   // IWYU pragma: export
-#include <SDL/SDL_keyboard.h>   // IWYU pragma: export
-#include <SDL/SDL_keysym.h>     // IWYU pragma: export
-#include <SDL/SDL_timer.h>      // IWYU pragma: export
-#include <SDL/SDL_video.h>      // IWYU pragma: export
+#include <SDL/SDL.h>           // IWYU pragma: export
+#include <SDL/SDL_events.h>    // IWYU pragma: export
+#include <SDL/SDL_joystick.h>  // IWYU pragma: export
+#include <SDL/SDL_keyboard.h>  // IWYU pragma: export
+#include <SDL/SDL_keysym.h>    // IWYU pragma: export
+#include <SDL/SDL_timer.h>     // IWYU pragma: export
+#include <SDL/SDL_video.h>     // IWYU pragma: export
 
 #include "frontends/sdl1/SdlPtr.h"  // IWYU pragma: export
 

@@ -113,11 +113,7 @@ typedef struct Peripheral_t {
 } Peripheral_t;
 
 // Export probe symbol for dynamic plugins.
-#if defined(__GNUC__) || defined(__clang__)
 #define PERIPHERAL_EXPORT __attribute__((visibility("default")))
-#else
-#define PERIPHERAL_EXPORT
-#endif
 
 #ifdef BUILD_SHARED_PERIPHERAL
 #ifdef __cplusplus
