@@ -8,10 +8,8 @@ on:
       - '**.md'
       - '.markdownlint.json'
   pull_request:
-    branches: [master, sdl3]
-    paths-ignore:
-      - '**.md'
-      - '.markdownlint.json'
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [master, develop]
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -378,3 +376,41 @@ jobs:
           ! grep -E '^(ZLIB_|LIBZIP_|pkgcfg_lib_LIBZIP)' build-nodisk/CMakeCache.txt
           ldd build-nodisk/linapple
           ! ldd build-nodisk/linapple | grep -E 'libz\.so|libzip\.so'
+
+  # 9. CI Gate (All Checks Passed)
+  ci-gate:
+    name: CI Status Gate
+    if: always()
+    needs:
+      - ubuntu-all-frontends
+      - distro-matrix
+      - rpi-arm64
+      - sanitizers-build
+      - clang-tidy-check
+      - fuzz-smoke
+      - shared-peripherals
+      - no-disk-peripherals
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify all required jobs passed
+        run: |
+          echo "Evaluating CI job statuses..."
+          passed=true
+          for result in "${{ needs.ubuntu-all-frontends.result }}" \
+                        "${{ needs.distro-matrix.result }}" \
+                        "${{ needs.rpi-arm64.result }}" \
+                        "${{ needs.sanitizers-build.result }}" \
+                        "${{ needs.clang-tidy-check.result }}" \
+                        "${{ needs.fuzz-smoke.result }}" \
+                        "${{ needs.shared-peripherals.result }}" \
+                        "${{ needs.no-disk-peripherals.result }}"; do
+            echo "Job result: $result"
+            if [ "$result" != "success" ]; then
+              passed=false
+            fi
+          done
+          if [ "$passed" = false ]; then
+            echo "Error: One or more required CI jobs failed or were cancelled."
+            exit 1
+          fi
+          echo "All required CI jobs succeeded."
