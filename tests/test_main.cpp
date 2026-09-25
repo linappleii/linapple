@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 
+#include "core/LinAppleCore.h"
 #include "doctest.h"
 
 TEST_CASE("Core: Emulation Speed Controls and Multipliers") {

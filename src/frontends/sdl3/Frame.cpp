@@ -218,7 +218,7 @@ void draw_status_area(int drawflags) {
   uint8_t mybluez = DARK_BLUE;
 
   if (drawflags & DRAW_BACKGROUND) {
-    g_status_cycle = SHOW_CYCLES;
+    g_status_cycle = show_cycles;
   }
   if (drawflags & DRAW_LEDS) {
     srect.x = 4;
@@ -233,7 +233,7 @@ void draw_status_area(int drawflags) {
     }
 
     std::array<char, 2> leds = {{"\x64"}};
-#define LEDS 1
+    constexpr int led_char_base = 1;
     int drive1_status = disk_status_off;
     int drive2_status = disk_status_off;
     int hdd_status = disk_status_off;
@@ -261,17 +261,17 @@ void draw_status_area(int drawflags) {
       hdd_status = hstatus.activity_status;
     }
 
-    leds[0] = static_cast<char>(LEDS + drive1_status);
+    leds[0] = static_cast<char>(led_char_base + drive1_status);
     font_print(8, 23, leds.data(), g_status_surface, 4.0f, 2.7f);
 
-    leds[0] = static_cast<char>(LEDS + drive2_status);
+    leds[0] = static_cast<char>(led_char_base + drive2_status);
     font_print(40, 23, leds.data(), g_status_surface, 4.0f, 2.7f);
 
-    leds[0] = static_cast<char>(LEDS + hdd_status);
+    leds[0] = static_cast<char>(led_char_base + hdd_status);
     font_print(71, 23, leds.data(), g_status_surface, 4.0f, 2.7f);
 
     if (drive1_status | drive2_status | hdd_status) {
-      g_status_cycle = SHOW_CYCLES;
+      g_status_cycle = show_cycles;
     }
   }
 }

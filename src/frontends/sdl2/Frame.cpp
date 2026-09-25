@@ -40,8 +40,8 @@
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
-#include "frontends/common/AudioMixer.h"
 #include "frontends/common/AppController.h"
+#include "frontends/common/AudioMixer.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/common/HelpText.h"
 #include "frontends/common/SaveStateManager.h"
@@ -195,7 +195,7 @@ void draw_status_area(int drawflags) {
   uint8_t mybluez = DARK_BLUE;
 
   if ((drawflags & DRAW_BACKGROUND) != 0) {
-    g_status_cycle = SHOW_CYCLES;
+    g_status_cycle = show_cycles;
   }
   if ((drawflags & DRAW_LEDS) != 0) {
     srect.x = 4;
@@ -250,7 +250,7 @@ void draw_status_area(int drawflags) {
     font_print(71, 23, leds.data(), g_status_surface, 4.0f, 2.7f);
 
     if ((drive1_status | drive2_status | hdd_status) != 0) {
-      g_status_cycle = SHOW_CYCLES;
+      g_status_cycle = show_cycles;
     }
   }
 }

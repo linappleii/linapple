@@ -9,9 +9,13 @@
 #include <SDL3/SDL_surface.h>
 #include <SDL3/SDL_video.h>
 
+#include "core/Asset.h"
+#include "core/Registry.h"
 #include "doctest.h"
 #include "frontends/common/Frontend.h"
+#include "frontends/common/sdl/JoystickFrontend.h"
 #include "frontends/sdl3/DiskChoose.h"
+#include "frontends/sdl3/Frame.h"
 
 auto ds_init() -> bool { return true; }
 auto ds_shutdown() -> void {}
