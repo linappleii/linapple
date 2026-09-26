@@ -97,8 +97,8 @@
 [[gnu::weak]] auto Logger::error(const char*, ...) -> void {}
 [[gnu::weak]] auto Logger::initialize() -> void {}
 [[gnu::weak]] auto Logger::destroy() -> void {}
-[[gnu::weak]] auto Logger::set_verbosity(LogLevel_t) -> void {}
-[[gnu::weak]] auto Logger::get_verbosity() -> LogLevel_t {
+[[gnu::weak]] auto Logger::set_verbosity(LogLevel_t) noexcept -> void {}
+[[gnu::weak]] auto Logger::get_verbosity() noexcept -> LogLevel_t {
   return LogLevel_t::k_info;
 }
 
