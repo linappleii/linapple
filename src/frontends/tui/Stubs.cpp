@@ -91,6 +91,7 @@
                                               void*) -> void {}
 
 #include "core/Log.h"
+[[gnu::weak]] auto Logger::debug(const char*, ...) -> void {}
 [[gnu::weak]] auto Logger::perf(const char*, ...) -> void {}
 [[gnu::weak]] auto Logger::info(const char*, ...) -> void {}
 [[gnu::weak]] auto Logger::warning(const char*, ...) -> void {}

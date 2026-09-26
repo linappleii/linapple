@@ -42,8 +42,9 @@ auto enable_file_logging(bool enable) noexcept -> void;
 [[gnu::format(printf, 1, 2)]] auto perf(const char* format, ...) -> void;
 [[gnu::format(printf, 1, 2)]] auto debug(const char* format, ...) -> void;
 
-auto log_message_v(LogLevel_t level, const char* format, va_list args) -> void;
-[[nodiscard]] auto log_level_to_string(LogLevel_t level) noexcept -> const
-    char*;
+[[gnu::format(printf, 2, 0)]] auto log_message_v(LogLevel_t level,
+                                                 const char* format,
+                                                 va_list args) -> void;
+[[nodiscard]] auto log_level_to_string(LogLevel_t) noexcept -> const char*;
 
 }  // namespace Logger

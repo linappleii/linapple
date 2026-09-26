@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include <cstdarg>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -25,18 +26,27 @@ struct LogCapture_t {
 
 static LogCapture_t test_capture;
 
-void global_test_callback(LogLevel_t level, const char* message) {
+auto global_test_callback(LogLevel_t level, const char* message) -> void {
   test_capture.levels.push_back(level);
   test_capture.messages.emplace_back(message != nullptr ? message : "");
 }
 
-void context_test_callback(LogLevel_t level, const char* message,
-                           void* user_data) {
+auto context_test_callback(LogLevel_t level, const char* message,
+                           void* user_data) -> void {
   auto* cap = static_cast<LogCapture_t*>(user_data);
   if (cap != nullptr) {
     cap->levels.push_back(level);
     cap->messages.emplace_back(message != nullptr ? message : "");
   }
+}
+
+[[gnu::format(printf, 2, 3)]] auto invoke_test_log_v(LogLevel_t level,
+                                                     const char* format, ...)
+    -> void {
+  va_list args;
+  va_start(args, format);
+  Logger::log_message_v(level, format, args);
+  va_end(args);
 }
 
 struct ScopedLoggerReset_t {
@@ -84,6 +94,8 @@ TEST_CASE("Logger: [LOG-01] Enum Values and String Conversion") {
         0);
   CHECK(std::strcmp(Logger::log_level_to_string(LogLevel_t::debug), "DEBUG") ==
         0);
+  CHECK(std::strcmp(Logger::log_level_to_string(static_cast<LogLevel_t>(99)),
+                    "UNKNOWN") == 0);
 }
 
 // LOG-02: Verbosity Filtering
@@ -224,4 +236,26 @@ TEST_CASE("Logger: [LOG-08] File Logging Disabled Toggle") {
   char buf[64] = {};
   size_t bytes = std::fread(buf, 1, sizeof(buf), f.get());
   CHECK(bytes == 0);
+}
+
+// LOG-09: Variadic list dispatch, null safety, and silent suppression
+TEST_CASE("Logger: [LOG-09] Variadic List Dispatch and Edge Cases") {
+  ScopedLoggerReset_t guard;
+  Logger::set_callback(global_test_callback);
+  Logger::set_verbosity(LogLevel_t::debug);
+
+  // Null format string should be safely ignored
+  Logger::error(nullptr);
+  invoke_test_log_v(LogLevel_t::info, nullptr);
+  CHECK(test_capture.messages.empty());
+
+  // Silent log level should never emit messages
+  invoke_test_log_v(LogLevel_t::silent, "silent message\n");
+  CHECK(test_capture.messages.empty());
+
+  // Direct log_message_v invocation
+  invoke_test_log_v(LogLevel_t::info, "log_v %s %d\n", "test", 123);
+  REQUIRE(test_capture.messages.size() == 1);
+  CHECK(test_capture.levels[0] == LogLevel_t::info);
+  CHECK(test_capture.messages[0] == "log_v test 123\n");
 }

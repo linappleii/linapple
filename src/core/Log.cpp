@@ -29,10 +29,30 @@ void* callback_user_data = nullptr;
 FilePtr_t log_file{nullptr, std::fclose};
 std::mutex log_mutex;
 
+struct ConsoleConfig_t {
+  bool to_stderr;
+  const char* prefix;
+};
+
+constexpr std::array<ConsoleConfig_t, 6> console_configs = {{
+    {false, nullptr},   // silent (no console output)
+    {true, "ERROR: "},  // error -> stderr
+    {true, "WARN: "},   // warning -> stderr
+    {false, ""},        // info -> stdout
+    {false, "PERF: "},  // perf -> stdout
+    {false, ""},        // debug -> stdout
+}};
+
 auto format_current_time(char* out_buf, size_t buf_size) -> void {
+  if (out_buf == nullptr || buf_size == 0) {
+    return;
+  }
+  out_buf[0] = '\0';
   const std::time_t now = std::time(nullptr);
   struct tm calendar_time{};
-  localtime_r(&now, &calendar_time);
+  if (localtime_r(&now, &calendar_time) == nullptr) {
+    return;
+  }
   std::strftime(out_buf, buf_size, "%Y-%m-%d %H:%M:%S", &calendar_time);
 }
 
@@ -51,7 +71,7 @@ auto log_level_to_string(LogLevel_t level) noexcept -> const char* {
 
 static auto output_log_message(LogLevel_t level, const char* format,
                                va_list args) -> void {
-  if (format == nullptr) {
+  if (format == nullptr || level == LogLevel_t::silent) {
     return;
   }
 
@@ -110,15 +130,13 @@ static auto output_log_message(LogLevel_t level, const char* format,
     active_context_callback(level, final_message, active_user_data);
   }
 
-  if (level <= LogLevel_t::error) {
-    std::fprintf(stderr, "ERROR: %s", final_message);
-    std::fflush(stderr);
-  } else if (level == LogLevel_t::perf) {
-    std::printf("PERF: %s", final_message);
-    std::fflush(stdout);
-  } else if (level <= LogLevel_t::info) {
-    std::printf("%s", final_message);
-    std::fflush(stdout);
+  const auto index = static_cast<size_t>(level);
+  if (index < console_configs.size() &&
+      console_configs[index].prefix != nullptr) {
+    const auto& cfg = console_configs[index];
+    FILE* stream = cfg.to_stderr ? stderr : stdout;
+    std::fprintf(stream, "%s%s", cfg.prefix, final_message);
+    std::fflush(stream);
   }
 }
 
