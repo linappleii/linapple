@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-#include "frontends/common/AppConfig.h"
+#include "core/Registry.h"
 
 /**
  * @brief Initialize the TUI video system.

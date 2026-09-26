@@ -33,10 +33,10 @@ auto sdl_surface_to_video_surface(SDL_Surface* s) -> VideoSurface_t {
     int ncolors =
         (s->format->palette->ncolors < 256) ? s->format->palette->ncolors : 256;
     for (int i = 0; i < ncolors; ++i) {
-      vs.palette[i].r = s->format->palette->colors[i].r;
-      vs.palette[i].g = s->format->palette->colors[i].g;
-      vs.palette[i].b = s->format->palette->colors[i].b;
-      vs.palette[i].a = 255;
+      vs.palette.at(static_cast<size_t>(i)).r = s->format->palette->colors[i].r;
+      vs.palette.at(static_cast<size_t>(i)).g = s->format->palette->colors[i].g;
+      vs.palette.at(static_cast<size_t>(i)).b = s->format->palette->colors[i].b;
+      vs.palette.at(static_cast<size_t>(i)).a = 255;
     }
   }
   return vs;

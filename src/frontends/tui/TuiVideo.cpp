@@ -4,6 +4,7 @@
 #include <asm-generic/ioctls.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include <array>
@@ -19,8 +20,8 @@
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
 #include "core/LinAppleCore.h"
+#include "core/Registry.h"
 #include "core/Util_Path.h"
-#include "frontends/common/AppConfig.h"
 #include "frontends/common/FileBrowser.h"
 #include "frontends/common/HelpText.h"
 #include "frontends/common/VideoSurface.h"
