@@ -422,7 +422,6 @@ set(SOURCES_FE_SDL3
     src/frontends/sdl3/Main.cpp
     src/frontends/sdl3/SDL_Asset.cpp
     src/frontends/sdl3/SDL_Input.cpp
-    src/frontends/sdl3/SDL_Path.cpp
     src/frontends/sdl3/SDL_Video.cpp
 )
 
@@ -433,7 +432,6 @@ set(SOURCES_FE_SDL2
     src/frontends/sdl2/Main.cpp
     src/frontends/sdl2/SDL_Asset.cpp
     src/frontends/sdl2/SDL_Input.cpp
-    src/frontends/sdl2/SDL_Path.cpp
     src/frontends/sdl2/SDL_Video.cpp
 )
 
@@ -444,20 +442,17 @@ set(SOURCES_FE_SDL1
     src/frontends/sdl1/Main.cpp
     src/frontends/sdl1/SDL_Asset.cpp
     src/frontends/sdl1/SDL_Input.cpp
-    src/frontends/sdl1/SDL_Path.cpp
     src/frontends/sdl1/SDL_Video.cpp
 )
 
 set(SOURCES_FE_HEADLESS
     src/frontends/headless/Main.cpp
     src/frontends/headless/Stubs.cpp
-    src/frontends/headless/Headless_Path.cpp
 )
 
 set(SOURCES_FE_TUI
     src/frontends/tui/Main.cpp
     src/frontends/tui/Stubs.cpp
-    src/frontends/tui/Tui_Path.cpp
     src/frontends/tui/TuiTerminal.cpp
     src/frontends/tui/TuiVideo.cpp
     src/frontends/tui/TuiShapeDetector.cpp
@@ -741,7 +736,7 @@ if(BUILD_TESTING)
 
     # Helper for adding tests
     macro(add_linapple_test name sources)
-        add_executable(test-${name} ${sources} tests/test_fixtures_core.cpp ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} src/frontends/headless/Stubs.cpp src/frontends/headless/Headless_Path.cpp)
+        add_executable(test-${name} ${sources} tests/test_fixtures_core.cpp ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} src/frontends/headless/Stubs.cpp)
         add_dependencies(test-${name} generate_xpms generate_embedded_roms)
         if(PERIPHERAL_MODULES)
             add_dependencies(test-${name} ${PERIPHERAL_MODULES})
@@ -755,11 +750,11 @@ if(BUILD_TESTING)
     endmacro()
 
     # Refactored tests
-    add_executable(test-app-config tests/test_app_config.cpp src/core/Registry.cpp src/core/Log.cpp src/frontends/headless/Headless_Path.cpp)
+    add_executable(test-app-config tests/test_app_config.cpp src/core/Registry.cpp src/core/Log.cpp)
     target_include_directories(test-app-config PRIVATE src src/core tests ${DOCTEST_INCLUDE_DIR})
     add_test(NAME AppConfig COMMAND test-app-config)
 
-    add_executable(test-app-args tests/test_app_args.cpp src/frontends/common/AppArgs.cpp src/core/Registry.cpp src/core/Log.cpp src/frontends/headless/Headless_Path.cpp)
+    add_executable(test-app-args tests/test_app_args.cpp src/frontends/common/AppArgs.cpp src/core/Registry.cpp src/core/Log.cpp)
     target_include_directories(test-app-args PRIVATE src src/core tests ${DOCTEST_INCLUDE_DIR})
     add_test(NAME AppArgs COMMAND test-app-args)
 
@@ -882,12 +877,12 @@ fi
         target_include_directories(test-disk-adapter PRIVATE src ${DOCTEST_INCLUDE_DIR})
         add_test(NAME test-disk-adapter COMMAND test-disk-adapter)
 
-        add_executable(test-disk-drivers tests/test_disk_drivers.cpp src/core/Log.cpp src/frontends/headless/Headless_Path.cpp src/apple2/peripherals/disk/DiskLoader.cpp ${DISK_BACKEND_SOURCES} ${DISK_FORMAT_SOURCES})
+        add_executable(test-disk-drivers tests/test_disk_drivers.cpp src/core/Log.cpp src/apple2/peripherals/disk/DiskLoader.cpp ${DISK_BACKEND_SOURCES} ${DISK_FORMAT_SOURCES})
         target_include_directories(test-disk-drivers PRIVATE src ${DOCTEST_INCLUDE_DIR})
         target_link_libraries(test-disk-drivers PRIVATE ${COMMON_LIBS} ${MEDIA_TARGETS})
         add_test(NAME test-disk-drivers COMMAND test-disk-drivers)
 
-        add_executable(test-disk-registry tests/test_disk_registry.cpp src/frontends/headless/Headless_Path.cpp src/apple2/peripherals/disk/DiskLoader.cpp ${DISK_BACKEND_SOURCES} ${DISK_FORMAT_SOURCES})
+        add_executable(test-disk-registry tests/test_disk_registry.cpp src/apple2/peripherals/disk/DiskLoader.cpp ${DISK_BACKEND_SOURCES} ${DISK_FORMAT_SOURCES})
         target_include_directories(test-disk-registry PRIVATE src ${DOCTEST_INCLUDE_DIR})
         target_compile_definitions(test-disk-registry PRIVATE DISK_FORMAT_DRIVER_COUNT=${DISK_FORMAT_DRIVER_COUNT})
         target_link_libraries(test-disk-registry PRIVATE ${COMMON_LIBS} ${MEDIA_TARGETS})
@@ -1169,7 +1164,7 @@ if(ENABLE_FUZZING)
     set(FUZZ_FLAGS "-fsanitize=fuzzer,address,undefined")
 
     macro(add_linapple_fuzzer name source)
-        add_executable(${name} ${source} ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} src/frontends/headless/Stubs.cpp src/frontends/headless/Headless_Path.cpp)
+        add_executable(${name} ${source} ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} src/frontends/headless/Stubs.cpp)
         add_dependencies(${name} generate_xpms)
         target_include_directories(${name} PRIVATE ${LINAPPLE_INCLUDES})
         target_compile_definitions(${name} PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF)
