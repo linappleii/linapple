@@ -337,7 +337,6 @@ set(SOURCES_CORE
     src/core/Registry.cpp
     src/core/Asset.cpp
     src/core/BasicLiveSync.cpp
-    src/core/Resource.cpp
     "${EMBEDDED_ROMS_CPP}"
     src/frontends/common/AppArgs.cpp
     src/frontends/common/AppEnvironment.cpp
