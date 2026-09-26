@@ -959,6 +959,10 @@ done
     target_include_directories(test-util-endian PRIVATE src src/core ${DOCTEST_INCLUDE_DIR})
     add_test(NAME test-util-endian COMMAND test-util-endian)
 
+    add_executable(test-util-crc32 tests/test_util_crc32.cpp)
+    target_include_directories(test-util-crc32 PRIVATE src src/core ${DOCTEST_INCLUDE_DIR})
+    add_test(NAME test-util-crc32 COMMAND test-util-crc32)
+
     add_linapple_test(video-stretch "tests/test_main.cpp;tests/test_video_stretch.cpp")
 
     add_linapple_test(ftp-parser "tests/test_main.cpp;tests/test_ftp_parser.cpp")
