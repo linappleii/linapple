@@ -4,8 +4,8 @@
 #include <iostream>
 
 #include "core/LinAppleCore.h"
+#include "core/Registry.h"
 #include "frontends/common/AppArgs.h"
-#include "frontends/common/AppConfig.h"
 #include "frontends/common/AppController.h"
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): video callback
@@ -32,7 +32,7 @@ auto audio_callback(const char* peripheral_id, int slot,
 auto title_callback(const char* title) -> void { (void)title; }
 
 auto main(int argc, char** argv) -> int {
-  AppConfig_t config = {};
+  AppConfig_t& config = Configuration_t::instance();
   if (app_args_parse(argc, argv, &config) != 0) {
     return 1;
   }

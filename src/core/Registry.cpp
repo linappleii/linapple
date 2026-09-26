@@ -14,7 +14,10 @@
 #include <string>
 #include <utility>
 
+#include "apple2/Apple2Types.h"
+#include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
+#include "core/Util_Text.h"
 
 static auto trim(const std::string& s) -> std::string {
   auto start = s.begin();
@@ -43,16 +46,211 @@ auto Configuration_t::instance() -> Configuration_t& {
 
 auto Configuration_t::set_path(const std::string& new_path) -> void {
   path = new_path;
+  util_safe_strcpy(config_path.data(), path.c_str(), path_max_len);
+}
+
+auto Configuration_t::sync_from_data() -> void {
+  if (!apple2_type_explicit) {
+    std::string emul_str =
+        get_string(cfg_sec_configuration, cfg_computer_emulation);
+    if (emul_str.empty()) {
+      emul_str = get_string(cfg_sec_preferences, cfg_computer_emulation);
+    }
+    if (!emul_str.empty()) {
+      try {
+        uint32_t emul = std::stoul(emul_str, nullptr, 0);
+        switch (emul) {
+          case 0:
+            apple2_type = A2TYPE_APPLE2;
+            break;
+          case 1:
+            apple2_type = A2TYPE_APPLE2PLUS;
+            break;
+          case 2:
+            apple2_type = A2TYPE_APPLE2E;
+            break;
+          case 3:
+          default:
+            apple2_type = A2TYPE_APPLE2EENHANCED;
+            break;
+        }
+      } catch (...) {
+      }
+    }
+  }
+
+  if (!is_fullscreen_explicit) {
+    std::string fs_str = get_string(cfg_sec_configuration, "Fullscreen");
+    if (!fs_str.empty()) {
+      is_fullscreen = (fs_str == "1" || fs_str == "true" || fs_str == "yes");
+    }
+  }
+
+  if (!is_pal_explicit) {
+    std::string vid_str = get_string(cfg_sec_configuration, "Video Emulation");
+    if (!vid_str.empty()) {
+      try {
+        uint32_t vid = std::stoul(vid_str, nullptr, 0);
+        is_pal = (vid == 2);
+      } catch (...) {
+      }
+    }
+  }
+
+  if (disk_path.at(0).at(0) == '\0') {
+    std::string d1 = get_string(cfg_sec_slots, cfg_disk_image1);
+    if (d1.empty()) d1 = get_string(cfg_sec_configuration, cfg_disk_image1);
+    if (d1.empty()) d1 = get_string(cfg_sec_preferences, cfg_disk_image1);
+    if (!d1.empty()) {
+      util_safe_strcpy(disk_path.at(0).data(), d1.c_str(), path_max_len);
+    }
+  }
+  if (disk_path.at(1).at(0) == '\0') {
+    std::string d2 = get_string(cfg_sec_slots, cfg_disk_image2);
+    if (d2.empty()) d2 = get_string(cfg_sec_configuration, cfg_disk_image2);
+    if (d2.empty()) d2 = get_string(cfg_sec_preferences, cfg_disk_image2);
+    if (!d2.empty()) {
+      util_safe_strcpy(disk_path.at(1).data(), d2.c_str(), path_max_len);
+    }
+  }
+
+  if (harddisk_path.at(0).at(0) == '\0') {
+    std::string hd1 = get_string(cfg_sec_preferences, cfg_hdd_image1);
+    if (hd1.empty()) hd1 = get_string(cfg_sec_configuration, cfg_hdd_image1);
+    if (!hd1.empty()) {
+      util_safe_strcpy(harddisk_path.at(0).data(), hd1.c_str(), path_max_len);
+    }
+  }
+  if (harddisk_path.at(1).at(0) == '\0') {
+    std::string hd2 = get_string(cfg_sec_preferences, cfg_hdd_image2);
+    if (hd2.empty()) hd2 = get_string(cfg_sec_configuration, cfg_hdd_image2);
+    if (!hd2.empty()) {
+      util_safe_strcpy(harddisk_path.at(1).data(), hd2.c_str(), path_max_len);
+    }
+  }
+
+  if (snapshot_path.at(0) == '\0') {
+    std::string snap =
+        get_string(cfg_sec_configuration, cfg_savestate_filename);
+    if (!snap.empty()) {
+      util_safe_strcpy(snapshot_path.data(), snap.c_str(), path_max_len);
+    }
+  }
+
+  if (basic_sync_file.at(0) == '\0') {
+    std::string sync_f = get_string(cfg_sec_configuration, cfg_basic_sync_file);
+    if (!sync_f.empty()) {
+      util_safe_strcpy(basic_sync_file.data(), sync_f.c_str(), path_max_len);
+    }
+  }
+  if (basic_line_mode < 0) {
+    std::string bmode_str =
+        get_string(cfg_sec_configuration, cfg_basic_line_mode);
+    if (!bmode_str.empty()) {
+      try {
+        basic_line_mode = static_cast<int>(std::stoul(bmode_str, nullptr, 0));
+      } catch (...) {
+      }
+    }
+  }
+
+  if (!tui_render_mode_explicit) {
+    std::string rmode = get_string(cfg_sec_configuration, cfg_tui_render_mode);
+    if (!rmode.empty()) {
+      if (rmode == "block" || rmode == "simple") {
+        tui_render_mode = TUI_RENDER_BLOCK;
+      } else if (rmode == "smart" || rmode == "shape") {
+        tui_render_mode = TUI_RENDER_SMART;
+      }
+    }
+  }
+
+  std::string dbg_str = get_string(cfg_sec_configuration, cfg_disable_debugger);
+  if (!dbg_str.empty()) {
+    bool dbg = (dbg_str == "1" || dbg_str == "true" || dbg_str == "yes");
+    disable_debugger = disable_debugger || dbg;
+  }
+
+  if (caps_lock_mode < 0) {
+    std::string cmode_str = get_string("Keyboard", "Caps Lock Mode");
+    if (!cmode_str.empty()) {
+      try {
+        caps_lock_mode = static_cast<int>(std::stoul(cmode_str, nullptr, 0));
+      } catch (...) {
+      }
+    }
+  }
+}
+
+auto Configuration_t::sync_to_data() -> void {
+  int emul_val = 3;
+  switch (apple2_type) {
+    case A2TYPE_APPLE2:
+      emul_val = 0;
+      break;
+    case A2TYPE_APPLE2PLUS:
+      emul_val = 1;
+      break;
+    case A2TYPE_APPLE2E:
+      emul_val = 2;
+      break;
+    case A2TYPE_APPLE2EENHANCED:
+    default:
+      emul_val = 3;
+      break;
+  }
+  data[cfg_sec_configuration][cfg_computer_emulation] =
+      std::to_string(emul_val);
+
+  data[cfg_sec_configuration]["Fullscreen"] = is_fullscreen ? "1" : "0";
+  data[cfg_sec_configuration]["Video Emulation"] = is_pal ? "2" : "1";
+
+  if (disk_path.at(0).at(0) != '\0') {
+    data[cfg_sec_slots][cfg_disk_image1] = disk_path.at(0).data();
+  }
+  if (disk_path.at(1).at(0) != '\0') {
+    data[cfg_sec_slots][cfg_disk_image2] = disk_path.at(1).data();
+  }
+
+  if (harddisk_path.at(0).at(0) != '\0') {
+    data[cfg_sec_preferences][cfg_hdd_image1] = harddisk_path.at(0).data();
+    data[cfg_sec_preferences][cfg_hdd_enabled] = "1";
+  }
+  if (harddisk_path.at(1).at(0) != '\0') {
+    data[cfg_sec_preferences][cfg_hdd_image2] = harddisk_path.at(1).data();
+  }
+
+  if (snapshot_path.at(0) != '\0') {
+    data[cfg_sec_configuration][cfg_savestate_filename] = snapshot_path.data();
+  }
+
+  if (disable_debugger) {
+    data[cfg_sec_configuration][cfg_disable_debugger] = "1";
+  }
+
+  if (basic_sync_file.at(0) != '\0') {
+    data[cfg_sec_configuration][cfg_basic_sync_file] = basic_sync_file.data();
+  }
+  if (basic_line_mode >= 0) {
+    data[cfg_sec_configuration][cfg_basic_line_mode] =
+        std::to_string(basic_line_mode);
+  }
+
+  if (tui_render_mode_explicit) {
+    data[cfg_sec_configuration][cfg_tui_render_mode] =
+        (tui_render_mode == TUI_RENDER_BLOCK) ? "block" : "smart";
+  }
 }
 
 auto Configuration_t::load(const std::string& config_path) -> bool {
-  path = config_path;
-  data.clear();
-
-  std::ifstream file(path);
+  std::ifstream file(config_path);
   if (!file.is_open()) {
     return false;
   }
+
+  path = config_path;
+  util_safe_strcpy(this->config_path.data(), path.c_str(), path_max_len);
+  data.clear();
 
   std::string line;
   std::string current_section = "Configuration";
@@ -72,12 +270,17 @@ auto Configuration_t::load(const std::string& config_path) -> bool {
       data[current_section][key] = value;
     }
   }
+  sync_from_data();
   return true;
 }
 
 // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers) Justification: Default configuration register values and slot assignments
 auto Configuration_t::load_defaults() -> void {
-  data.clear();
+  std::string saved_path = path;
+  std::array<char, path_max_len> saved_config_path = config_path;
+  *this = Configuration_t{};
+  path = std::move(saved_path);
+  config_path = saved_config_path;
   set_int(cfg_sec_configuration, cfg_computer_emulation, 3);
   set_int(cfg_sec_configuration, cfg_keyb_type, 0);
   set_int(cfg_sec_configuration, cfg_keyb_charset_switch, 0);
@@ -116,15 +319,23 @@ auto Configuration_t::load_defaults() -> void {
              "ftp://ftp.apple.asimov.net/pub/apple_II/images/");
   set_string(cfg_sec_preferences, cfg_ftp_userpass,
              "anonymous:my-mail@mail.com");
+  sync_from_data();
 }
 // NOLINTEND(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
 
 auto Configuration_t::save() -> bool {
   if (path.empty()) {
-    std::string config_dir = Path::get_user_config_dir();
-    Path::ensure_dir_exists(config_dir);
-    path = config_dir + "linapple.conf";
+    if (this->config_path.at(0) != '\0') {
+      path = this->config_path.data();
+    } else {
+      std::string config_dir = Path::get_user_config_dir();
+      Path::ensure_dir_exists(config_dir);
+      path = config_dir + "linapple.conf";
+      util_safe_strcpy(this->config_path.data(), path.c_str(), path_max_len);
+    }
   }
+
+  sync_to_data();
 
 #ifdef REGISTRY_WRITEABLE
   std::ofstream file(path);
@@ -278,35 +489,91 @@ auto Configuration_t::set_string(const std::string& section,
                                  const std::string& key,
                                  const std::string& value) -> void {
   data[section][key] = value;
+  if (key == cfg_disk_image1) {
+    util_safe_strcpy(disk_path.at(0).data(), value.c_str(), path_max_len);
+  } else if (key == cfg_disk_image2) {
+    util_safe_strcpy(disk_path.at(1).data(), value.c_str(), path_max_len);
+  } else if (key == cfg_hdd_image1 || key == "HDV Image 1") {
+    util_safe_strcpy(harddisk_path.at(0).data(), value.c_str(), path_max_len);
+  } else if (key == cfg_hdd_image2 || key == "HDV Image 2") {
+    util_safe_strcpy(harddisk_path.at(1).data(), value.c_str(), path_max_len);
+  } else if (key == cfg_savestate_filename) {
+    util_safe_strcpy(snapshot_path.data(), value.c_str(), path_max_len);
+  } else if (key == cfg_basic_sync_file || key == "BasicLiveSyncFile") {
+    util_safe_strcpy(basic_sync_file.data(), value.c_str(), path_max_len);
+  } else if (key == cfg_tui_render_mode) {
+    if (value == "block" || value == "simple") {
+      tui_render_mode = TUI_RENDER_BLOCK;
+      tui_render_mode_explicit = true;
+    } else if (value == "smart" || value == "shape") {
+      tui_render_mode = TUI_RENDER_SMART;
+      tui_render_mode_explicit = true;
+    }
+  }
 }
 
 auto Configuration_t::set_int(const std::string& section,
                               const std::string& key, uint32_t value) -> void {
   data[section][key] = std::to_string(value);
+  if (key == cfg_computer_emulation) {
+    switch (value) {
+      case 0:
+        apple2_type = A2TYPE_APPLE2;
+        break;
+      case 1:
+        apple2_type = A2TYPE_APPLE2PLUS;
+        break;
+      case 2:
+        apple2_type = A2TYPE_APPLE2E;
+        break;
+      case 3:
+      default:
+        apple2_type = A2TYPE_APPLE2EENHANCED;
+        break;
+    }
+  } else if (key == "Fullscreen") {
+    is_fullscreen = (value != 0);
+  } else if (key == "Video Emulation") {
+    is_pal = (value == 2);
+  } else if (key == cfg_disable_debugger) {
+    disable_debugger = (value != 0);
+  } else if (key == cfg_basic_line_mode || key == "BasicLineNumbering") {
+    basic_line_mode = static_cast<int>(value);
+  } else if (key == "Caps Lock Mode") {
+    caps_lock_mode = static_cast<int>(value);
+  }
 }
 
 auto Configuration_t::set_bool(const std::string& section,
                                const std::string& key, bool value) -> void {
   data[section][key] = value ? "1" : "0";
+  if (key == "Fullscreen") {
+    is_fullscreen = value;
+  } else if (key == cfg_disable_debugger) {
+    disable_debugger = value;
+  } else if (key == "Video Emulation") {
+    is_pal = value;
+  }
 }
 
 auto Configuration_t::set_string(const char* section, const char* key,
                                  const char* value) -> void {
   if (section == nullptr || key == nullptr || value == nullptr) return;
-  data[section][key] = value;
+  set_string(std::string(section), std::string(key), std::string(value));
 }
 
 auto Configuration_t::set_int(const char* section, const char* key,
                               uint32_t value) -> void {
   if (section == nullptr || key == nullptr) return;
-  data[section][key] = std::to_string(value);
+  set_int(std::string(section), std::string(key), value);
 }
 
 auto Configuration_t::set_bool(const char* section, const char* key, bool value)
     -> void {
   if (section == nullptr || key == nullptr) return;
-  data[section][key] = value ? "1" : "0";
+  set_bool(std::string(section), std::string(key), value);
 }
+// NOLINTEND(bugprone-easily-swappable-parameters)
 
 auto config_instance() -> Configuration_t& {
   return Configuration_t::instance();
@@ -424,4 +691,3 @@ auto config_save_string(const char* section, const char* key, const char* value)
   if (section == nullptr || key == nullptr || value == nullptr) return;
   Configuration_t::instance().set_string(section, key, value);
 }
-// NOLINTEND(bugprone-easily-swappable-parameters)

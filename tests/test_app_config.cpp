@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
+#include <fstream>
 #include <string>
+#include <type_traits>
 
 #include "LinAppleCore.h"
 #include "apple2/Apple2Types.h"
@@ -210,4 +213,156 @@ TEST_CASE("Registry: Null-safety boundary conditions") {
   reg.set_string(nullptr, nullptr, nullptr);
   reg.set_int(nullptr, nullptr, 0);
   reg.set_bool(nullptr, nullptr, false);
+}
+
+TEST_CASE("AppConfig_t: Type equivalence to Configuration_t") {
+  static_assert(std::is_same<AppConfig_t, Configuration_t>::value,
+                "AppConfig_t must be an alias for Configuration_t");
+  CHECK((std::is_same<AppConfig_t, Configuration_t>::value));
+}
+
+TEST_CASE("Configuration_t: Typed field synchronization via sync_to_data") {
+  Configuration_t cfg = {};
+  cfg.apple2_type = A2TYPE_APPLE2PLUS;
+  cfg.is_fullscreen = true;
+  cfg.is_pal = true;
+  cfg.disable_debugger = true;
+  util_safe_strcpy(cfg.disk_path.at(0).data(), "boot.dsk", path_max_len);
+  util_safe_strcpy(cfg.harddisk_path.at(0).data(), "hdd.hdv", path_max_len);
+  util_safe_strcpy(cfg.snapshot_path.data(), "state.snap", path_max_len);
+  util_safe_strcpy(cfg.basic_sync_file.data(), "code.bas", path_max_len);
+  cfg.basic_line_mode = 1;
+  cfg.tui_render_mode = TUI_RENDER_BLOCK;
+  cfg.tui_render_mode_explicit = true;
+
+  cfg.sync_to_data();
+
+  CHECK(cfg.get_int(cfg_sec_configuration, cfg_computer_emulation) == 1);
+  CHECK(cfg.get_bool(cfg_sec_configuration, "Fullscreen") == true);
+  CHECK(cfg.get_int(cfg_sec_configuration, "Video Emulation") == 2);
+  CHECK(cfg.get_bool(cfg_sec_configuration, cfg_disable_debugger) == true);
+  CHECK(cfg.get_string(cfg_sec_slots, cfg_disk_image1) == "boot.dsk");
+  CHECK(cfg.get_string(cfg_sec_preferences, cfg_hdd_image1) == "hdd.hdv");
+  CHECK(cfg.get_string(cfg_sec_preferences, cfg_hdd_enabled) == "1");
+  CHECK(cfg.get_string(cfg_sec_configuration, cfg_savestate_filename) ==
+        "state.snap");
+  CHECK(cfg.get_string(cfg_sec_configuration, cfg_basic_sync_file) ==
+        "code.bas");
+  CHECK(cfg.get_int(cfg_sec_configuration, cfg_basic_line_mode) == 1);
+  CHECK(cfg.get_string(cfg_sec_configuration, cfg_tui_render_mode) == "block");
+}
+
+TEST_CASE("Configuration_t: Setter synchronization to typed fields") {
+  Configuration_t cfg = {};
+  cfg.set_int(cfg_sec_configuration, cfg_computer_emulation, 2);
+  CHECK(cfg.apple2_type == A2TYPE_APPLE2E);
+
+  cfg.set_bool(cfg_sec_configuration, "Fullscreen", true);
+  CHECK(cfg.is_fullscreen == true);
+
+  cfg.set_int(cfg_sec_configuration, "Video Emulation", 2);
+  CHECK(cfg.is_pal == true);
+
+  cfg.set_string(cfg_sec_slots, cfg_disk_image1, "new_disk.dsk");
+  CHECK(std::string(cfg.disk_path.at(0).data()) == "new_disk.dsk");
+
+  cfg.set_string(cfg_sec_preferences, cfg_hdd_image1, "new_hd.hdv");
+  CHECK(std::string(cfg.harddisk_path.at(0).data()) == "new_hd.hdv");
+
+  cfg.set_string(cfg_sec_configuration, cfg_savestate_filename,
+                 "new_save.snap");
+  CHECK(std::string(cfg.snapshot_path.data()) == "new_save.snap");
+
+  cfg.set_string(cfg_sec_configuration, cfg_basic_sync_file, "live.bas");
+  CHECK(std::string(cfg.basic_sync_file.data()) == "live.bas");
+
+  cfg.set_int(cfg_sec_configuration, cfg_basic_line_mode, 0);
+  CHECK(cfg.basic_line_mode == 0);
+
+  cfg.set_bool(cfg_sec_configuration, cfg_disable_debugger, true);
+  CHECK(cfg.disable_debugger == true);
+}
+
+TEST_CASE("Configuration_t: Load INI file populates typed fields") {
+  const char* temp_filename = "test_config_sync.conf";
+  {
+    std::ofstream out(temp_filename);
+    out << "[Configuration]\n"
+        << "Computer Emulation = 0\n"
+        << "Fullscreen = 1\n"
+        << "Video Emulation = 2\n"
+        << "Disable Debugger = 1\n"
+        << "Save State Filename = loaded.snap\n"
+        << "Basic Live Sync File = loaded.bas\n"
+        << "Basic Line Numbering = 1\n"
+        << "TUI Render Mode = block\n"
+        << "\n[Slots]\n"
+        << "Disk Image 1 = loaded_d1.dsk\n"
+        << "\n[Preferences]\n"
+        << "Harddisk Image 1 = loaded_hd1.hdv\n";
+  }
+
+  Configuration_t cfg = {};
+  bool loaded = cfg.load(temp_filename);
+  std::remove(temp_filename);
+
+  REQUIRE(loaded);
+  CHECK(cfg.apple2_type == A2TYPE_APPLE2);
+  CHECK(cfg.is_fullscreen == true);
+  CHECK(cfg.is_pal == true);
+  CHECK(cfg.disable_debugger == true);
+  CHECK(std::string(cfg.snapshot_path.data()) == "loaded.snap");
+  CHECK(std::string(cfg.basic_sync_file.data()) == "loaded.bas");
+  CHECK(cfg.basic_line_mode == 1);
+  CHECK(cfg.tui_render_mode == TUI_RENDER_BLOCK);
+  CHECK(std::string(cfg.disk_path.at(0).data()) == "loaded_d1.dsk");
+  CHECK(std::string(cfg.harddisk_path.at(0).data()) == "loaded_hd1.hdv");
+}
+
+TEST_CASE(
+    "Configuration_t: Explicit CLI options take precedence over INI file") {
+  const char* temp_filename = "test_config_explicit.conf";
+  {
+    std::ofstream out(temp_filename);
+    out << "[Configuration]\n"
+        << "Fullscreen = 0\n"
+        << "Video Emulation = 1\n";
+  }
+
+  Configuration_t cfg = {};
+  cfg.is_fullscreen = true;
+  cfg.is_fullscreen_explicit = true;
+  cfg.is_pal = true;
+  cfg.is_pal_explicit = true;
+
+  bool loaded = cfg.load(temp_filename);
+  std::remove(temp_filename);
+
+  REQUIRE(loaded);
+  CHECK(cfg.is_fullscreen == true);
+  CHECK(cfg.is_pal == true);
+}
+
+TEST_CASE(
+    "Configuration_t: Failed load does not mutate path or clear existing "
+    "data") {
+  Configuration_t cfg = {};
+  cfg.set_path("/initial/path.conf");
+  cfg.set_string("Section", "Key", "Value");
+
+  bool loaded = cfg.load("/nonexistent/file/path.conf");
+  CHECK_FALSE(loaded);
+  CHECK(cfg.get_path() == "/initial/path.conf");
+  CHECK(std::string(cfg.config_path.data()) == "/initial/path.conf");
+  CHECK(cfg.get_string("Section", "Key") == "Value");
+}
+
+TEST_CASE("Configuration_t: load_defaults preserves configured path") {
+  Configuration_t cfg = {};
+  cfg.set_path("/saved/path.conf");
+  cfg.load_defaults();
+
+  CHECK(cfg.get_path() == "/saved/path.conf");
+  CHECK(std::string(cfg.config_path.data()) == "/saved/path.conf");
+  CHECK(cfg.apple2_type == A2TYPE_APPLE2EENHANCED);
 }

@@ -181,6 +181,7 @@ auto app_args_parse(int argc, char** argv, AppConfig_t* outConfig) -> int {
         break;
       case 'f':
         outConfig->is_fullscreen = true;
+        outConfig->is_fullscreen_explicit = true;
         break;
       case 'l':
         outConfig->is_log = true;
@@ -191,6 +192,7 @@ auto app_args_parse(int argc, char** argv, AppConfig_t* outConfig) -> int {
         break;
       case 'p':
         outConfig->is_pal = true;
+        outConfig->is_pal_explicit = true;
         break;
       case 'P':
         util_safe_strcpy(outConfig->program_path.data(), optarg, path_max_len);

@@ -9,7 +9,6 @@
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
-#include "frontends/common/AppConfig.h"
 
 static constexpr const char* CONFIG_FILE_NAME = "linapple.conf";
 
@@ -41,7 +40,7 @@ auto app_env_resolve_paths(AppConfig_t* config) -> void {
 
   for (const auto& path : searchPaths) {
     if (path.empty()) continue;
-    if (Configuration_t::instance().load(path)) {
+    if (config->load(path)) {
       finalPath = path;
       loaded = true;
       break;
@@ -52,12 +51,17 @@ auto app_env_resolve_paths(AppConfig_t* config) -> void {
   if (!loaded) {
     finalPath = Path::get_user_config_dir() + CONFIG_FILE_NAME;
     Path::ensure_dir_exists(Path::get_user_config_dir());
+    config->set_path(finalPath);
     // We don't call Load() again here as we know it's not there or failed,
     // we just want to set the path where it *should* be saved later.
   }
 
   // Populate back to config
   util_safe_strcpy(config->config_path.data(), finalPath.c_str(), path_max_len);
+
+  if (config != &Configuration_t::instance()) {
+    Configuration_t::instance() = *config;
+  }
 
   // Consolidate Logger initialization
   Logger::initialize();

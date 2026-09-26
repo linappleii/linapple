@@ -28,7 +28,6 @@
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 #include "frontends/common/AppArgs.h"
-#include "frontends/common/AppConfig.h"
 #include "frontends/common/AppEnvironment.h"
 #include "frontends/common/PrinterFrontend.h"
 #include "frontends/common/SaveStateManager.h"
@@ -112,28 +111,7 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   app_env_resolve_paths(config);
 
   // 2. Set Hardware Type before initializing core memory
-  uint32_t emul_type = 0;
-  if (!config->apple2_type_explicit &&
-      (config_load_int("Configuration", "Computer Emulation", &emul_type) ||
-       config_load_int("Preferences", "Computer Emulation", &emul_type))) {
-    switch (emul_type) {
-      case 0:
-        g_apple2_type = A2TYPE_APPLE2;
-        break;
-      case 1:
-        g_apple2_type = A2TYPE_APPLE2PLUS;
-        break;
-      case 2:
-        g_apple2_type = A2TYPE_APPLE2E;
-        break;
-      case 3:
-      default:
-        g_apple2_type = A2TYPE_APPLE2EENHANCED;
-        break;
-    }
-  } else {
-    g_apple2_type = config->apple2_type;
-  }
+  g_apple2_type = config->apple2_type;
 
   if (config->rom_path.at(0) != '\0') {
     std::string rom_path = config->rom_path.data();
@@ -282,40 +260,19 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   g_state.mode = MODE_RUNNING;
   g_state.restart = false;
   g_state.fullscreen = config->is_fullscreen;
-
-  bool disable_dbg_config = false;
-  if (config_load_bool("Configuration", REGVALUE_DISABLE_DEBUGGER,
-                       &disable_dbg_config)) {
-    g_state.disable_debugger = config->disable_debugger || disable_dbg_config;
-  } else {
-    g_state.disable_debugger = config->disable_debugger;
-  }
-
-  if (!config->tui_render_mode_explicit) {
-    std::string render_mode_str;
-    if (config_load_string("Configuration", REGVALUE_TUI_RENDER_MODE,
-                           &render_mode_str)) {
-      if (render_mode_str == "block" || render_mode_str == "simple") {
-        config->tui_render_mode = TUI_RENDER_BLOCK;
-      } else if (render_mode_str == "smart" || render_mode_str == "shape") {
-        config->tui_render_mode = TUI_RENDER_SMART;
-      }
-    }
-  }
+  g_state.disable_debugger = config->disable_debugger;
 
   if (config->harddisk_path.at(0).at(0) != '\0' ||
       config->harddisk_path.at(1).at(0) != '\0') {
     hdd_enabled = true;
-    Configuration_t::instance().set_int("Preferences", "Harddisk Enable", 1);
+    config->set_int(cfg_sec_preferences, cfg_hdd_enabled, 1);
     if (config->harddisk_path.at(0).at(0) != '\0') {
-      Configuration_t::instance().set_string(
-          "Preferences", "Harddisk Image 1",
-          config->harddisk_path.at(0).data());
+      config->set_string(cfg_sec_preferences, cfg_hdd_image1,
+                         config->harddisk_path.at(0).data());
     }
     if (config->harddisk_path.at(1).at(0) != '\0') {
-      Configuration_t::instance().set_string(
-          "Preferences", "Harddisk Image 2",
-          config->harddisk_path.at(1).data());
+      config->set_string(cfg_sec_preferences, cfg_hdd_image2,
+                         config->harddisk_path.at(1).data());
     }
     Peripheral_t* p = peripheral_find_internal("linapple.harddisk");
     if (p != nullptr) {
@@ -324,18 +281,7 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   }
 
   std::string sync_file = config->basic_sync_file.data();
-  if (sync_file.empty()) {
-    config_load_string("Configuration", REGVALUE_BASIC_SYNC_FILE, &sync_file);
-  }
-  int line_mode = config->basic_line_mode;
-  if (line_mode < 0) {
-    uint32_t mode_cfg = 0;
-    if (config_load_int("Configuration", REGVALUE_BASIC_LINE_MODE, &mode_cfg)) {
-      line_mode = static_cast<int>(mode_cfg);
-    } else {
-      line_mode = 0;
-    }
-  }
+  int line_mode = config->basic_line_mode < 0 ? 0 : config->basic_line_mode;
   if (!sync_file.empty()) {
     basic_sync_init(sync_file.c_str(), line_mode == 1
                                            ? basic_line_mode_positional

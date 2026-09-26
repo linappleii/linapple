@@ -9,8 +9,8 @@
 #include "TuiVideo.h"
 #include "apple2/peripherals/Peripheral_Audio.h"
 #include "core/LinAppleCore.h"
+#include "core/Registry.h"
 #include "frontends/common/AppArgs.h"
-#include "frontends/common/AppConfig.h"
 #include "frontends/common/AppController.h"
 #include "frontends/common/AudioMixer.h"
 #include "frontends/common/FramePacer.h"
@@ -39,7 +39,7 @@ auto audio_channel_callback(const char* peripheral_id, int slot,
 auto title_callback(const char* title) -> void { (void)title; }
 
 auto main(int argc, char** argv) -> int {
-  AppConfig_t config = {};
+  AppConfig_t& config = Configuration_t::instance();
   if (app_args_parse(argc, argv, &config) != 0) {
     return 1;
   }

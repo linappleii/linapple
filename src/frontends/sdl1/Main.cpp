@@ -15,6 +15,7 @@
 #include "apple2/Video.h"
 #include "apple2/peripherals/Peripheral_Audio.h"
 #include "core/LinAppleCore.h"
+#include "core/Registry.h"
 #include "frontends/common/AppArgs.h"
 #include "frontends/common/AppController.h"
 #include "frontends/common/AudioDumper.h"
@@ -149,7 +150,7 @@ auto enter_message_loop() -> void {
 }
 
 auto main(int argc, char** argv) -> int {
-  AppConfig_t config = {};
+  AppConfig_t& config = Configuration_t::instance();
   if (app_args_parse(argc, argv, &config) != 0) {
     return 1;
   }

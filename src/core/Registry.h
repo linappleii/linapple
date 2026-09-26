@@ -1,9 +1,24 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <map>
 #include <string>
+
+#include "apple2/Apple2Types.h"
+#include "apple2/CPU.h"
+#include "apple2/peripherals/disk/DiskCommands.h"
+#include "core/LinAppleCore.h"
+
+enum AppIntent_t { INTENT_RUN, INTENT_DIAGNOSTIC, INTENT_HELP, INTENT_ERROR };
+
+enum TuiRenderMode_t {
+  TUI_RENDER_SMART = 0,
+  TUI_RENDER_BLOCK = 1,
+};
+
+enum { ARGV_EXTRA_MAX = 64 };
 
 constexpr const char* cfg_sec_configuration = "Configuration";
 constexpr const char* cfg_sec_slots = "Slots";
@@ -126,6 +141,48 @@ constexpr const char* REGVALUE_FTP_USERPASS = cfg_ftp_userpass;
 
 struct Configuration_t {
   std::string path;
+
+  // Application intent and options
+  AppIntent_t intent = INTENT_RUN;
+  std::array<std::array<char, path_max_len>, disk_drive_count> disk_path = {};
+  std::array<std::array<char, path_max_len>, 2> harddisk_path = {};
+  std::array<char, path_max_len> program_path = {};
+  std::array<char, path_max_len> config_path = {};
+  std::array<char, path_max_len> snapshot_path = {};
+  std::array<char, path_max_len> audio_dump_path = {};
+  std::array<char, path_max_len> rom_path = {};
+
+  eApple2Type apple2_type = A2TYPE_APPLE2EENHANCED;
+  bool apple2_type_explicit = false;
+  bool is_pal = false;
+  bool is_pal_explicit = false;
+  bool is_fullscreen = false;
+  bool is_fullscreen_explicit = false;
+  bool is_boot = false;
+  bool is_benchmark = false;
+  bool is_log = false;
+  bool is_verbose = false;
+  int caps_lock_mode = -1;
+
+  bool is_list_hardware = false;
+  std::array<char, path_max_len> hardware_info_name = {};
+
+  // Test/Diagnostic fields
+  std::array<char, path_max_len> test_cpu_file = {};
+  uint16_t test_cpu_trap = TRAP_NMOS_DEFAULT;
+  std::array<char, path_max_len> debugger_script = {};
+  bool disable_debugger = false;
+
+  std::array<char, path_max_len> basic_sync_file = {};
+  int basic_line_mode = -1;
+
+  TuiRenderMode_t tui_render_mode = TUI_RENDER_SMART;
+  bool tui_render_mode_explicit = false;
+
+  // Extra args for frontend pass-through
+  int argc_extra = 0;
+  std::array<const char*, ARGV_EXTRA_MAX> argv_extra = {};
+
   std::map<std::string, std::map<std::string, std::string>> data;
 
   static auto instance() -> Configuration_t&;
@@ -135,6 +192,9 @@ struct Configuration_t {
   auto save() -> bool;
   auto set_path(const std::string& new_path) -> void;
   auto get_path() const -> const std::string& { return path; }
+
+  auto sync_from_data() -> void;
+  auto sync_to_data() -> void;
 
   // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) Justification: Section and key are distinct configuration coordinates
   auto get_string(const std::string& section, const std::string& key,
@@ -168,6 +228,8 @@ struct Configuration_t {
   auto set_int(const char* section, const char* key, uint32_t value) -> void;
   auto set_bool(const char* section, const char* key, bool value) -> void;
 };
+
+using AppConfig_t = Configuration_t;
 
 auto config_instance() -> Configuration_t&;
 auto config_load_file(const char* path) -> bool;
