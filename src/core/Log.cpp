@@ -1,18 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "core/Log.h"
 
-// C standard library variadic va_list formatting and system logging operations
-// NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-type-cstyle-cast, misc-include-cleaner, cppcoreguidelines-avoid-magic-numbers, modernize-use-scoped-lock, cppcoreguidelines-init-variables)
 #include <array>
 #include <atomic>
-#include <chrono>
 #include <cstdarg>
+#include <cstddef>
 #include <cstdio>
+#include <cstring>
 #include <ctime>
-#include <iomanip>
-#include <memory>
 #include <mutex>
-#include <sstream>
 #include <string>
 #include <vector>
 
@@ -20,10 +16,46 @@
 
 namespace Logger {
 
-static std::atomic<LogLevel_t> g_current_verbosity{LogLevel_t::k_info};
-static LogCallback_t g_external_callback = nullptr;
-static std::unique_ptr<FILE, int (*)(FILE*)> g_log_file(nullptr, std::fclose);
-static std::mutex g_log_mutex;
+namespace {
+
+constexpr size_t k_time_buffer_size = 32;
+
+std::atomic<LogLevel_t> g_current_verbosity{LogLevel_t::k_info};
+std::atomic<bool> g_file_logging_enabled{true};
+std::string g_custom_log_path;
+LogCallback_t g_external_callback = nullptr;
+LogCallbackWithContext_t g_context_callback = nullptr;
+void* g_callback_user_data = nullptr;
+FilePtr_t g_log_file{nullptr, std::fclose};
+std::mutex g_log_mutex;
+
+auto format_current_time(char* out_buf, size_t buf_size) -> void {
+  const std::time_t now = std::time(nullptr);
+  struct tm tm_buf{};
+  localtime_r(&now, &tm_buf);
+  std::strftime(out_buf, buf_size, "%Y-%m-%d %H:%M:%S", &tm_buf);
+}
+
+}  // namespace
+
+auto log_level_to_string(LogLevel_t level) noexcept -> const char* {
+  switch (level) {
+    case LogLevel_t::silent:
+      return "SILENT";
+    case LogLevel_t::error:
+      return "ERROR";
+    case LogLevel_t::warning:
+      return "WARN";
+    case LogLevel_t::info:
+      return "INFO";
+    case LogLevel_t::perf:
+      return "PERF";
+    case LogLevel_t::debug:
+      return "DEBUG";
+    default:
+      return "UNKNOWN";
+  }
+}
 
 static auto output_log_message(LogLevel_t level, const char* format,
                                va_list args) -> void {
@@ -31,18 +63,15 @@ static auto output_log_message(LogLevel_t level, const char* format,
     return;
   }
 
-  // Atomic load prevents thread data races during verbosity filtering
   if (level > g_current_verbosity.load(std::memory_order_relaxed)) {
     return;
   }
 
-  // Small-buffer optimization: Try a stack buffer first
   std::array<char, k_max_stack_log_size> stack_buffer{};
   va_list args_copy;
-
   va_copy(args_copy, args);
-  int length = std::vsnprintf(stack_buffer.data(), stack_buffer.size(), format,
-                              args_copy);
+  const int length = std::vsnprintf(stack_buffer.data(), stack_buffer.size(),
+                                    format, args_copy);
   va_end(args_copy);
 
   if (length < 0) {
@@ -63,15 +92,30 @@ static auto output_log_message(LogLevel_t level, const char* format,
     final_message = heap_buffer.data();
   }
 
-  std::lock_guard<std::mutex> lock(g_log_mutex);
+  LogCallback_t ext_cb = nullptr;
+  LogCallbackWithContext_t ctx_cb = nullptr;
+  void* user_data = nullptr;
 
-  if (g_log_file) {
-    std::fprintf(g_log_file.get(), "%s", final_message);
-    std::fflush(g_log_file.get());
+  {
+    std::lock_guard<std::mutex> lock(g_log_mutex);
+    ext_cb = g_external_callback;
+    ctx_cb = g_context_callback;
+    user_data = g_callback_user_data;
+
+    if (g_log_file && g_file_logging_enabled.load(std::memory_order_relaxed)) {
+      std::array<char, k_time_buffer_size> time_str{};
+      format_current_time(time_str.data(), time_str.size());
+      std::fprintf(g_log_file.get(), "[%s] [%-5s] %s", time_str.data(),
+                   log_level_to_string(level), final_message);
+      std::fflush(g_log_file.get());
+    }
   }
 
-  if (g_external_callback != nullptr) {
-    g_external_callback(level, final_message);
+  if (ext_cb != nullptr) {
+    ext_cb(level, final_message);
+  }
+  if (ctx_cb != nullptr) {
+    ctx_cb(level, final_message, user_data);
   }
 
   if (level <= LogLevel_t::k_error) {
@@ -88,35 +132,65 @@ static auto output_log_message(LogLevel_t level, const char* format,
 
 auto initialize() -> void {
   std::lock_guard<std::mutex> lock(g_log_mutex);
-  if (!g_log_file) {
-    std::string data_dir = Path::get_user_data_dir();
-    Path::ensure_dir_exists(data_dir);
-    g_log_file.reset(std::fopen((data_dir + "linapple.log").c_str(), "a+t"));
+  if (!g_log_file && g_file_logging_enabled.load(std::memory_order_relaxed)) {
+    std::string log_path;
+    if (!g_custom_log_path.empty()) {
+      log_path = g_custom_log_path;
+    } else {
+      const std::string data_dir = Path::get_user_data_dir();
+      Path::ensure_dir_exists(data_dir);
+      log_path = Path::join(data_dir, "linapple.log");
+    }
+    g_log_file.reset(std::fopen(log_path.c_str(), "a"));
   }
 
-  if (g_log_file) {
-    auto now = std::chrono::system_clock::now();
-    auto in_time_t = std::chrono::system_clock::to_time_t(now);
-    struct tm tm_buf{};
-    localtime_r(&in_time_t, &tm_buf);
-    std::stringstream ss;
-    ss << std::put_time(&tm_buf, "%Y-%m-%d %H:%M:%S");
+  if (g_log_file && g_file_logging_enabled.load(std::memory_order_relaxed)) {
+    std::array<char, k_time_buffer_size> time_str{};
+    format_current_time(time_str.data(), time_str.size());
     std::fprintf(g_log_file.get(), "*** Logging started: %s\n",
-                 ss.str().c_str());
+                 time_str.data());
+    std::fflush(g_log_file.get());
   }
 }
 
-auto set_verbosity(LogLevel_t level) -> void {
+auto set_verbosity(LogLevel_t level) noexcept -> void {
   g_current_verbosity.store(level, std::memory_order_relaxed);
 }
 
-auto get_verbosity() -> LogLevel_t {
+auto get_verbosity() noexcept -> LogLevel_t {
   return g_current_verbosity.load(std::memory_order_relaxed);
 }
 
 auto set_callback(LogCallback_t callback) -> void {
   std::lock_guard<std::mutex> lock(g_log_mutex);
   g_external_callback = callback;
+}
+
+auto set_callback_with_context(LogCallbackWithContext_t callback,
+                               void* user_data) -> void {
+  std::lock_guard<std::mutex> lock(g_log_mutex);
+  g_context_callback = callback;
+  g_callback_user_data = user_data;
+}
+
+auto set_log_path(const char* path) -> void {
+  std::lock_guard<std::mutex> lock(g_log_mutex);
+  if (g_log_file) {
+    g_log_file.reset();
+  }
+  if (path != nullptr && path[0] != '\0') {
+    g_custom_log_path = path;
+  } else {
+    g_custom_log_path.clear();
+  }
+}
+
+auto enable_file_logging(bool enable) noexcept -> void {
+  g_file_logging_enabled.store(enable, std::memory_order_relaxed);
+}
+
+auto is_file_logging_enabled() noexcept -> bool {
+  return g_file_logging_enabled.load(std::memory_order_relaxed);
 }
 
 auto log_message_v(LogLevel_t level, const char* format, va_list args) -> void {
@@ -162,9 +236,13 @@ auto destroy() -> void {
   std::lock_guard<std::mutex> lock(g_log_mutex);
   if (g_log_file) {
     std::fprintf(g_log_file.get(), "*** Logging ended\n\n");
+    std::fflush(g_log_file.get());
     g_log_file.reset();
   }
+  g_external_callback = nullptr;
+  g_context_callback = nullptr;
+  g_callback_user_data = nullptr;
+  g_custom_log_path.clear();
 }
 
 }  // namespace Logger
-// NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-owning-memory, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-type-cstyle-cast, misc-include-cleaner, cppcoreguidelines-avoid-magic-numbers, modernize-use-scoped-lock, cppcoreguidelines-init-variables)

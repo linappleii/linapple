@@ -3,18 +3,28 @@
 
 #include <cstdarg>
 #include <cstddef>
+#include <cstdint>
 
-enum class LogLevel_t {
-  k_silent = 0,
-  k_error,
-  k_warning,
-  k_info,
-  k_perf,
-  k_debug,
+enum class LogLevel_t : uint8_t {
+  silent = 0,
+  error = 1,
+  warning = 2,
+  info = 3,
+  perf = 4,
+  debug = 5,
 
+  // Compatibility aliases
+  k_silent = silent,
+  k_error = error,
+  k_warning = warning,
+  k_info = info,
+  k_perf = perf,
+  k_debug = debug,
 };
 
 using LogCallback_t = void (*)(LogLevel_t level, const char* message);
+using LogCallbackWithContext_t = void (*)(LogLevel_t level, const char* message,
+                                          void* user_data);
 
 namespace Logger {
 
@@ -23,9 +33,16 @@ constexpr size_t k_max_stack_log_size = 1024;
 auto initialize() -> void;
 auto destroy() -> void;
 
-auto set_verbosity(LogLevel_t level) -> void;
-auto get_verbosity() -> LogLevel_t;
+auto set_verbosity(LogLevel_t level) noexcept -> void;
+[[nodiscard]] auto get_verbosity() noexcept -> LogLevel_t;
+
 auto set_callback(LogCallback_t callback) -> void;
+auto set_callback_with_context(LogCallbackWithContext_t callback,
+                               void* user_data) -> void;
+
+auto set_log_path(const char* path) -> void;
+auto enable_file_logging(bool enable) noexcept -> void;
+[[nodiscard]] auto is_file_logging_enabled() noexcept -> bool;
 
 [[gnu::format(printf, 1, 2)]] auto error(const char* format, ...) -> void;
 [[gnu::format(printf, 1, 2)]] auto warning(const char* format, ...) -> void;
@@ -34,5 +51,7 @@ auto set_callback(LogCallback_t callback) -> void;
 [[gnu::format(printf, 1, 2)]] auto debug(const char* format, ...) -> void;
 
 auto log_message_v(LogLevel_t level, const char* format, va_list args) -> void;
+[[nodiscard]] auto log_level_to_string(LogLevel_t level) noexcept -> const
+    char*;
 
 }  // namespace Logger

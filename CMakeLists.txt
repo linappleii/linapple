@@ -937,6 +937,7 @@ done
     endif()
 
     add_linapple_test(program-loader tests/test_program_loader.cpp)
+    add_linapple_test(log tests/test_log.cpp)
     add_linapple_test(system-roms "tests/test_main.cpp;tests/test_system_roms.cpp")
     add_linapple_test(basic-live-sync "tests/test_main.cpp;tests/test_basic_live_sync.cpp")
 
