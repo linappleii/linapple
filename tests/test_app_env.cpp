@@ -15,7 +15,6 @@
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 #include "doctest.h"
-#include "frontends/common/AppConfig.h"
 #include "frontends/common/AppEnvironment.h"
 #include "test_fixtures.h"
 
@@ -87,7 +86,7 @@ class ScopedEnvVar_t {
   auto operator=(ScopedEnvVar_t&&) -> ScopedEnvVar_t& = delete;
 };
 
-LogLevel_t g_last_log_level = LogLevel_t::k_silent;
+LogLevel_t g_last_log_level = LogLevel_t::silent;
 int g_log_callback_count = 0;
 
 auto test_log_callback(LogLevel_t level, const char* /*message*/) -> void {
@@ -128,59 +127,59 @@ TEST_CASE("AppEnvironment: Logger Verbosity") {
   ScopedLoggerReset_t logger_reset;
   Logger::set_callback(test_log_callback);
 
-  SUBCASE("Verbose mode sets k_perf verbosity and delivers perf logs") {
+  SUBCASE("Verbose mode sets perf verbosity and delivers perf logs") {
     AppConfig_t config = {};
     config.is_verbose = true;
 
     app_env_resolve_paths(&config);
 
-    CHECK(Logger::get_verbosity() == LogLevel_t::k_perf);
+    CHECK(Logger::get_verbosity() == LogLevel_t::perf);
 
     g_log_callback_count = 0;
-    g_last_log_level = LogLevel_t::k_silent;
+    g_last_log_level = LogLevel_t::silent;
     Logger::perf("test perf\n");
     CHECK(g_log_callback_count == 1);
-    CHECK(g_last_log_level == LogLevel_t::k_perf);
+    CHECK(g_last_log_level == LogLevel_t::perf);
   }
 
-  SUBCASE("Logging mode sets k_info verbosity and filters perf logs") {
+  SUBCASE("Logging mode sets info verbosity and filters perf logs") {
     AppConfig_t config = {};
     config.is_verbose = false;
     config.is_log = true;
 
     app_env_resolve_paths(&config);
 
-    CHECK(Logger::get_verbosity() == LogLevel_t::k_info);
+    CHECK(Logger::get_verbosity() == LogLevel_t::info);
 
     g_log_callback_count = 0;
-    g_last_log_level = LogLevel_t::k_silent;
+    g_last_log_level = LogLevel_t::silent;
     Logger::perf("test perf\n");
     CHECK(g_log_callback_count == 0);
-    CHECK(g_last_log_level == LogLevel_t::k_silent);
+    CHECK(g_last_log_level == LogLevel_t::silent);
 
     Logger::info("test info\n");
     CHECK(g_log_callback_count == 1);
-    CHECK(g_last_log_level == LogLevel_t::k_info);
+    CHECK(g_last_log_level == LogLevel_t::info);
   }
 
-  SUBCASE("Default mode sets k_warning verbosity and filters info logs") {
+  SUBCASE("Default mode sets warning verbosity and filters info logs") {
     AppConfig_t config = {};
     config.is_verbose = false;
     config.is_log = false;
 
     app_env_resolve_paths(&config);
 
-    CHECK(Logger::get_verbosity() == LogLevel_t::k_warning);
+    CHECK(Logger::get_verbosity() == LogLevel_t::warning);
 
     g_log_callback_count = 0;
-    g_last_log_level = LogLevel_t::k_silent;
+    g_last_log_level = LogLevel_t::silent;
     Logger::info("test info\n");
     CHECK(g_log_callback_count == 0);
-    CHECK(g_last_log_level == LogLevel_t::k_silent);
+    CHECK(g_last_log_level == LogLevel_t::silent);
 
     Logger::warning("test warning\n");
     CHECK(g_log_callback_count == 1);
-    CHECK(g_last_log_level == LogLevel_t::k_warning);
+    CHECK(g_last_log_level == LogLevel_t::warning);
   }
 }
 

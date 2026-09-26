@@ -12,14 +12,6 @@ enum class LogLevel_t : uint8_t {
   info = 3,
   perf = 4,
   debug = 5,
-
-  // Compatibility aliases
-  k_silent = silent,
-  k_error = error,
-  k_warning = warning,
-  k_info = info,
-  k_perf = perf,
-  k_debug = debug,
 };
 
 using LogCallback_t = void (*)(LogLevel_t level, const char* message);
@@ -28,7 +20,7 @@ using LogCallbackWithContext_t = void (*)(LogLevel_t level, const char* message,
 
 namespace Logger {
 
-constexpr size_t k_max_stack_log_size = 1024;
+constexpr size_t max_stack_log_size = 1024;
 
 auto initialize() -> void;
 auto destroy() -> void;

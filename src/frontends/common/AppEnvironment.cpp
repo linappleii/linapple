@@ -68,11 +68,11 @@ auto app_env_resolve_paths(AppConfig_t* config) -> void {
 
   // Set verbosity based on config
   if (config->is_verbose) {
-    Logger::set_verbosity(LogLevel_t::k_perf);
+    Logger::set_verbosity(LogLevel_t::perf);
   } else if (config->is_log) {
-    Logger::set_verbosity(LogLevel_t::k_info);
+    Logger::set_verbosity(LogLevel_t::info);
   } else {
     // Default to errors and warnings only to keep console clean for normal use
-    Logger::set_verbosity(LogLevel_t::k_warning);
+    Logger::set_verbosity(LogLevel_t::warning);
   }
 }

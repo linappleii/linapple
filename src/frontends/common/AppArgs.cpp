@@ -205,7 +205,7 @@ auto app_args_parse(int argc, char** argv, AppConfig_t* outConfig) -> int {
         break;
       case 'v':
         outConfig->is_verbose = true;
-        Logger::set_verbosity(LogLevel_t::k_perf);
+        Logger::set_verbosity(LogLevel_t::perf);
         break;
       case 'x':
         util_safe_strcpy(outConfig->debugger_script.data(), optarg,

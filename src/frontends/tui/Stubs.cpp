@@ -99,7 +99,7 @@
 [[gnu::weak]] auto Logger::destroy() -> void {}
 [[gnu::weak]] auto Logger::set_verbosity(LogLevel_t) noexcept -> void {}
 [[gnu::weak]] auto Logger::get_verbosity() noexcept -> LogLevel_t {
-  return LogLevel_t::k_info;
+  return LogLevel_t::info;
 }
 
 [[gnu::weak]] uint64_t g_cumulative_cycles = 0;

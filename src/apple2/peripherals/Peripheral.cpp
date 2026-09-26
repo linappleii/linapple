@@ -232,16 +232,16 @@ static auto host_log(void* instance, PeripheralLogLevel_t level,
   if (fmt == nullptr) {
     return;
   }
-  LogLevel_t mapped = LogLevel_t::k_perf;
+  LogLevel_t mapped = LogLevel_t::perf;
   switch (level) {
     case log_info:
-      mapped = LogLevel_t::k_info;
+      mapped = LogLevel_t::info;
       break;
     case log_warn:
-      mapped = LogLevel_t::k_warning;
+      mapped = LogLevel_t::warning;
       break;
     case log_error:
-      mapped = LogLevel_t::k_error;
+      mapped = LogLevel_t::error;
       break;
     case log_debug:
     default:

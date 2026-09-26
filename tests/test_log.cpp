@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -22,11 +23,11 @@ struct LogCapture_t {
   }
 };
 
-static LogCapture_t g_test_capture;
+static LogCapture_t test_capture;
 
 void global_test_callback(LogLevel_t level, const char* message) {
-  g_test_capture.levels.push_back(level);
-  g_test_capture.messages.emplace_back(message != nullptr ? message : "");
+  test_capture.levels.push_back(level);
+  test_capture.messages.emplace_back(message != nullptr ? message : "");
 }
 
 void context_test_callback(LogLevel_t level, const char* message,
@@ -47,14 +48,14 @@ struct ScopedLoggerReset_t {
         orig_file_logging(Logger::is_file_logging_enabled()) {
     Logger::destroy();
     Logger::enable_file_logging(false);
-    g_test_capture.clear();
+    test_capture.clear();
   }
 
   ~ScopedLoggerReset_t() {
     Logger::destroy();
     Logger::set_verbosity(orig_level);
     Logger::enable_file_logging(orig_file_logging);
-    g_test_capture.clear();
+    test_capture.clear();
   }
 };
 
@@ -64,12 +65,12 @@ struct ScopedLoggerReset_t {
 TEST_CASE("Logger: [LOG-01] Enum Values and String Conversion") {
   static_assert(sizeof(LogLevel_t) == 1, "LogLevel_t must be 1 byte");
 
-  CHECK(LogLevel_t::silent == LogLevel_t::k_silent);
-  CHECK(LogLevel_t::error == LogLevel_t::k_error);
-  CHECK(LogLevel_t::warning == LogLevel_t::k_warning);
-  CHECK(LogLevel_t::info == LogLevel_t::k_info);
-  CHECK(LogLevel_t::perf == LogLevel_t::k_perf);
-  CHECK(LogLevel_t::debug == LogLevel_t::k_debug);
+  CHECK(static_cast<uint8_t>(LogLevel_t::silent) == 0);
+  CHECK(static_cast<uint8_t>(LogLevel_t::error) == 1);
+  CHECK(static_cast<uint8_t>(LogLevel_t::warning) == 2);
+  CHECK(static_cast<uint8_t>(LogLevel_t::info) == 3);
+  CHECK(static_cast<uint8_t>(LogLevel_t::perf) == 4);
+  CHECK(static_cast<uint8_t>(LogLevel_t::debug) == 5);
 
   CHECK(std::strcmp(Logger::log_level_to_string(LogLevel_t::silent),
                     "SILENT") == 0);
@@ -100,17 +101,17 @@ TEST_CASE("Logger: [LOG-02] Verbosity Filtering") {
   Logger::perf("perf msg\n");
   Logger::debug("debug msg\n");
 
-  REQUIRE(g_test_capture.messages.size() == 2);
-  CHECK(g_test_capture.levels[0] == LogLevel_t::error);
-  CHECK(g_test_capture.messages[0] == "error msg\n");
-  CHECK(g_test_capture.levels[1] == LogLevel_t::warning);
-  CHECK(g_test_capture.messages[1] == "warn msg\n");
+  REQUIRE(test_capture.messages.size() == 2);
+  CHECK(test_capture.levels[0] == LogLevel_t::error);
+  CHECK(test_capture.messages[0] == "error msg\n");
+  CHECK(test_capture.levels[1] == LogLevel_t::warning);
+  CHECK(test_capture.messages[1] == "warn msg\n");
 
   // Set to silent: everything dropped
-  g_test_capture.clear();
+  test_capture.clear();
   Logger::set_verbosity(LogLevel_t::silent);
   Logger::error("another error\n");
-  CHECK(g_test_capture.messages.empty());
+  CHECK(test_capture.messages.empty());
 }
 
 // LOG-03: Format string argument expansion
@@ -120,8 +121,8 @@ TEST_CASE("Logger: [LOG-03] Format String Argument Expansion") {
   Logger::set_verbosity(LogLevel_t::debug);
 
   Logger::info("Test %d %s 0x%04X\n", 42, "hello", 0xC000);
-  REQUIRE(g_test_capture.messages.size() == 1);
-  CHECK(g_test_capture.messages[0] == "Test 42 hello 0xC000\n");
+  REQUIRE(test_capture.messages.size() == 1);
+  CHECK(test_capture.messages[0] == "Test 42 hello 0xC000\n");
 }
 
 // LOG-04: Large message heap reallocation (>1024 bytes)
@@ -134,11 +135,11 @@ TEST_CASE("Logger: [LOG-04] Large Buffer Heap Reallocation") {
   std::string large_payload(2000, 'X');
   Logger::info("Header: %s\n", large_payload.c_str());
 
-  REQUIRE(g_test_capture.messages.size() == 1);
-  CHECK(g_test_capture.messages[0].size() ==
+  REQUIRE(test_capture.messages.size() == 1);
+  CHECK(test_capture.messages[0].size() ==
         2000 + 8 + 1);  // "Header: " + 2000 + "\n"
-  CHECK(g_test_capture.messages[0].substr(0, 8) == "Header: ");
-  CHECK(g_test_capture.messages[0].back() == '\n');
+  CHECK(test_capture.messages[0].substr(0, 8) == "Header: ");
+  CHECK(test_capture.messages[0].back() == '\n');
 }
 
 // LOG-05: Contextual callback with user_data pointer
@@ -156,13 +157,13 @@ TEST_CASE("Logger: [LOG-05] Contextual Callback Dispatch") {
 // LOG-06: Reentrancy & Deadlock Prevention
 TEST_CASE("Logger: [LOG-06] Reentrancy & Deadlock Safety") {
   ScopedLoggerReset_t guard;
-  static int s_recursion_depth = 0;
-  s_recursion_depth = 0;
+  static int recursion_depth = 0;
+  recursion_depth = 0;
 
   Logger::set_callback([](LogLevel_t, const char*) {
-    if (s_recursion_depth < 3) {
-      ++s_recursion_depth;
-      Logger::info("recursive call %d\n", s_recursion_depth);
+    if (recursion_depth < 3) {
+      ++recursion_depth;
+      Logger::info("recursive call %d\n", recursion_depth);
     }
   });
   Logger::set_verbosity(LogLevel_t::info);
@@ -170,7 +171,7 @@ TEST_CASE("Logger: [LOG-06] Reentrancy & Deadlock Safety") {
   // This would deadlock with a non-recursive lock held across callback
   // invocation
   Logger::info("initial trigger\n");
-  CHECK(s_recursion_depth == 3);
+  CHECK(recursion_depth == 3);
 }
 
 // LOG-07: Custom log file output & ISO timestamp formatting
