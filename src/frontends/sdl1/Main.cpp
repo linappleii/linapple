@@ -6,7 +6,6 @@
 #include <cstdlib>
 #include <string>
 
-#include "AppConfig.h"
 #include "SDL_audio.h"
 #include "SDL_error.h"
 #include "SDL_events.h"

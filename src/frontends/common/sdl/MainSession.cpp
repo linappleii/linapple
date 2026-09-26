@@ -2,10 +2,10 @@
 #include <memory>
 #include <new>
 
-#include "AppConfig.h"
 #include "apple2/Video.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
+#include "core/Registry.h"
 #include "core/services/ftp/FtpClient.h"
 #include "frontends/common/AppController.h"
 #include "frontends/common/Frontend.h"
