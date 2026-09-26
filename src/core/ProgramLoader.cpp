@@ -1,87 +1,96 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "core/ProgramLoader.h"
 
-// Centralized program image loader for APL and PRG formats
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-pro-type-cstyle-cast, cppcoreguidelines-pro-bounds-pointer-arithmetic, misc-include-cleaner, google-readability-function-size, cppcoreguidelines-owning-memory, google-runtime-int, modernize-use-auto, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+#include <stdio.h>
+#include <sys/stat.h>
+
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
-#include <cstdlib>
 #include <cstring>
+#include <vector>
 
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
+#include "core/Util_Endian.h"
 #include "core/Util_Path.h"
 
 namespace {
 
-constexpr uint16_t io_region_start = 0xC000;
-constexpr uint16_t io_region_end = 0xCFFF;
-constexpr uint32_t prg_header_size = 128;
-constexpr uint32_t apl_header_size = 4;
-constexpr uint8_t mem_fill_value = 0xFF;
-constexpr uint32_t prg_magic = 0x214C470A;
+constexpr uint16_t k_apple2_ram_limit = 0xC000;
+constexpr size_t k_prg_header_size = 128;
+constexpr size_t k_apl_header_size = 4;
+constexpr uint8_t k_mem_fill_value = 0xFF;
+constexpr uint32_t k_prg_magic = 0x214C470A;
 
-enum class ProgramType_t { none, prg, apl };
+constexpr size_t k_prg_load_addr_offset = 5;
+constexpr size_t k_prg_word_len_offset = 7;
+constexpr size_t k_min_prg_read_size = 9;
 
-struct ProgramHeader_t {
-  ProgramType_t type;
-  uint16_t load_addr;
-  uint32_t length;
-  uint32_t offset;
-};
+constexpr size_t k_apl_load_addr_offset = 0;
+constexpr size_t k_apl_len_offset = 2;
+constexpr uint32_t k_page_size = 256;
+constexpr uint32_t k_page_mask = 255;
 
-static auto detect_program(const char* path, ProgramHeader_t* out_header)
+constexpr int64_t k_max_program_file_size = 0x10000 + k_prg_header_size;
+constexpr uint16_t k_dos33_bload_addr = 0xAA72;
+constexpr uint16_t k_dos33_bload_len = 0xAA60;
+
+}  // namespace
+
+auto program_loader_inspect(FILE* f, ProgramInfo_t* out_info) noexcept
     -> ProgramLoadResult_t {
-  if (path == nullptr || out_header == nullptr) {
+  if (f == nullptr || out_info == nullptr) {
     return program_load_file_error;
   }
 
-  FilePtr_t f{std::fopen(path, "rb"), std::fclose};
-  if (!f) {
+  struct stat st{};
+  if (fstat(fileno(f), &st) != 0 || !S_ISREG(st.st_mode)) {
     return program_load_file_error;
   }
 
-  int64_t ftell_res = Path::file_size(f.get());
-  if (ftell_res < 0) {
-    return program_load_file_error;
+  const auto ftell_res = Path::file_size(f);
+  if (ftell_res <= 0 || ftell_res > k_max_program_file_size) {
+    return (ftell_res < 0) ? program_load_file_error
+                           : program_load_not_a_program;
   }
-  uint32_t file_size = static_cast<uint32_t>(ftell_res);
+  const auto file_size = static_cast<uint32_t>(ftell_res);
 
-  uint8_t buffer[prg_header_size] = {};
-  size_t read = std::fread(buffer, 1, sizeof(buffer), f.get());
-
-  if (read < 9) {
+  std::array<uint8_t, k_prg_header_size> buf{};
+  const auto bytes_read = std::fread(buf.data(), 1, buf.size(), f);
+  if (bytes_read < k_apl_header_size) {
     return program_load_not_a_program;
   }
 
-  uint32_t magic = 0;
-  std::memcpy(&magic, buffer, 4);
-  if (magic == prg_magic) {
-    uint16_t word_len = 0;
-    out_header->type = ProgramType_t::prg;
-    std::memcpy(&out_header->load_addr, buffer + 5, 2);
-    std::memcpy(&word_len, buffer + 7, 2);
-    out_header->length = static_cast<uint32_t>(word_len) << 1;
-    out_header->offset = prg_header_size;
-    if (file_size < out_header->offset + out_header->length) {
-      return program_load_invalid;
+  if (bytes_read >= k_min_prg_read_size) {
+    const auto magic = read_u32_le(&buf[0]);
+    if (magic == k_prg_magic) {
+      const auto word_len = read_u16_le(&buf[k_prg_word_len_offset]);
+      out_info->format = ProgramFormat_t::prg;
+      out_info->load_addr = read_u16_le(&buf[k_prg_load_addr_offset]);
+      out_info->length = static_cast<uint32_t>(word_len) * 2;
+      out_info->offset = static_cast<uint32_t>(k_prg_header_size);
+      if (file_size < out_info->offset + out_info->length) {
+        return program_load_invalid;
+      }
+      return program_load_ok;
     }
-    return program_load_ok;
   }
 
-  uint16_t apl_len = 0;
-  std::memcpy(&apl_len, buffer + 2, 2);
-  bool size_match =
-      ((static_cast<uint32_t>(apl_len) + apl_header_size) == file_size) ||
-      ((static_cast<uint32_t>(apl_len) + apl_header_size +
-        ((256 - ((apl_len + apl_header_size) & 255)) & 255)) == file_size);
+  const auto apl_len = read_u16_le(&buf[k_apl_len_offset]);
+  const auto exact_size = static_cast<uint32_t>(apl_len) + k_apl_header_size;
+  const auto pad = (k_page_size - (exact_size & k_page_mask)) & k_page_mask;
+  const auto padded_size = exact_size + pad;
 
+  const auto size_match =
+      (exact_size == file_size) || (padded_size == file_size);
   if (size_match) {
-    out_header->type = ProgramType_t::apl;
-    std::memcpy(&out_header->load_addr, buffer, 2);
-    out_header->length = apl_len;
-    out_header->offset = apl_header_size;
-    if (file_size < out_header->offset + out_header->length) {
+    out_info->format = ProgramFormat_t::apl;
+    out_info->load_addr = read_u16_le(&buf[k_apl_load_addr_offset]);
+    out_info->length = apl_len;
+    out_info->offset = static_cast<uint32_t>(k_apl_header_size);
+    if (file_size < out_info->offset + out_info->length) {
       return program_load_invalid;
     }
     return program_load_ok;
@@ -90,28 +99,11 @@ static auto detect_program(const char* path, ProgramHeader_t* out_header)
   return program_load_not_a_program;
 }
 
-}  // namespace
-
-auto program_loader_try_load(const char* path) -> ProgramLoadResult_t {
-  if (path == nullptr || mem == nullptr || memdirty == nullptr) {
+auto program_loader_try_load(const char* path, ProgramInfo_t* out_info) noexcept
+    -> ProgramLoadResult_t {
+  if (path == nullptr || path[0] == '\0' || mem == nullptr ||
+      memdirty == nullptr) {
     return program_load_file_error;
-  }
-
-  ProgramHeader_t header = {ProgramType_t::none, 0, 0, 0};
-  ProgramLoadResult_t res = detect_program(path, &header);
-
-  if (res != program_load_ok) {
-    return res;
-  }
-
-  if (header.load_addr >= io_region_start &&
-      header.load_addr <= io_region_end) {
-    return program_load_invalid;
-  }
-
-  if (static_cast<uint64_t>(header.load_addr) + header.length >
-      io_region_start) {
-    return program_load_invalid;
   }
 
   FilePtr_t f{std::fopen(path, "rb"), std::fclose};
@@ -119,21 +111,98 @@ auto program_loader_try_load(const char* path) -> ProgramLoadResult_t {
     return program_load_file_error;
   }
 
-  if (std::fseek(f.get(), static_cast<long>(header.offset), SEEK_SET) != 0) {
-    return program_load_file_error;
+  ProgramInfo_t info{};
+  const auto res = program_loader_inspect(f.get(), &info);
+  if (res != program_load_ok) {
+    return res;
   }
-  if (std::fread(mem + header.load_addr, 1, header.length, f.get()) !=
-      header.length) {
+
+  if (info.length == 0 || static_cast<uint64_t>(info.load_addr) + info.length >
+                              k_apple2_ram_limit) {
+    return program_load_invalid;
+  }
+
+  if (std::fseek(f.get(), static_cast<long>(info.offset), SEEK_SET) != 0) {
     return program_load_file_error;
   }
 
-  std::memset(memdirty, mem_fill_value, NUM_PAGES_48K);
+  std::vector<uint8_t> staging(info.length);
+  if (std::fread(staging.data(), 1, staging.size(), f.get()) !=
+      staging.size()) {
+    return program_load_file_error;
+  }
+  std::memcpy(&mem[info.load_addr], staging.data(), staging.size());
+
+  std::memset(memdirty, k_mem_fill_value, NUM_PAGES_48K);
+  write_u16_le(&mem[k_dos33_bload_addr], info.load_addr);
+  write_u16_le(&mem[k_dos33_bload_len], static_cast<uint16_t>(info.length));
+
   auto* regs = cpu_get_registers();
   if (regs != nullptr) {
-    regs->pc = header.load_addr;
+    regs->pc = info.load_addr;
+  }
+
+  if (out_info != nullptr) {
+    *out_info = info;
   }
 
   return program_load_ok;
 }
 
-// NOLINTEND(cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-pro-type-cstyle-cast, cppcoreguidelines-pro-bounds-pointer-arithmetic, misc-include-cleaner, google-readability-function-size, cppcoreguidelines-owning-memory, google-runtime-int, modernize-use-auto, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+auto program_loader_load_raw(const char* path, uint16_t load_addr,
+                             ProgramInfo_t* out_info) noexcept
+    -> ProgramLoadResult_t {
+  if (path == nullptr || path[0] == '\0' || mem == nullptr ||
+      memdirty == nullptr) {
+    return program_load_file_error;
+  }
+
+  FilePtr_t f{std::fopen(path, "rb"), std::fclose};
+  if (!f) {
+    return program_load_file_error;
+  }
+
+  struct stat st{};
+  if (fstat(fileno(f.get()), &st) != 0 || !S_ISREG(st.st_mode)) {
+    return program_load_file_error;
+  }
+
+  const auto ftell_res = Path::file_size(f.get());
+  if (ftell_res <= 0 || ftell_res > 65536) {
+    return (ftell_res < 0) ? program_load_file_error
+                           : program_load_not_a_program;
+  }
+  const auto size = static_cast<size_t>(ftell_res);
+
+  auto actual_load_addr = load_addr;
+  if (actual_load_addr == 0x0800 && size == 65536) {
+    actual_load_addr = 0x0000;
+  }
+
+  if (static_cast<size_t>(actual_load_addr) + size > 65536) {
+    return program_load_invalid;
+  }
+
+  std::vector<uint8_t> staging(size);
+  if (std::fread(staging.data(), 1, staging.size(), f.get()) !=
+      staging.size()) {
+    return program_load_file_error;
+  }
+
+  std::memcpy(&mem[actual_load_addr], staging.data(), staging.size());
+  std::memset(memdirty, k_mem_fill_value, NUM_PAGES_48K);
+
+  auto* regs = cpu_get_registers();
+  if (regs != nullptr) {
+    regs->pc = actual_load_addr;
+  }
+
+  if (out_info != nullptr) {
+    out_info->format = ProgramFormat_t::raw_binary;
+    out_info->load_addr = actual_load_addr;
+    out_info->length = static_cast<uint32_t>(size);
+    out_info->offset = 0;
+  }
+
+  return program_load_ok;
+}

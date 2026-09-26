@@ -252,9 +252,22 @@ auto linapple_cpu_test(const char* test_file, uint16_t trap_addr) -> void {
 }
 
 auto linapple_load_program(const char* path) -> int {
-  if (path == nullptr) {
+  if (path == nullptr || path[0] == '\0') {
     return static_cast<int>(program_load_not_a_program);
   }
+
+  // Avoid trying to load known disk image formats as programs
+  const char* ext = std::strrchr(path, '.');
+  if (ext != nullptr) {
+    static const char* const disk_exts[] = {".woz", ".dsk", ".nib",
+                                            ".2mg", ".po",  ".do"};
+    for (const auto* d_ext : disk_exts) {
+      if (strcasecmp(ext, d_ext) == 0) {
+        return static_cast<int>(program_load_not_a_program);
+      }
+    }
+  }
+
   auto res = program_loader_try_load(path);
   if (res == program_load_ok) {
     return 0;
@@ -263,43 +276,12 @@ auto linapple_load_program(const char* path) -> int {
     return static_cast<int>(res);
   }
 
-  // Avoid trying to load known disk image formats as raw programs
-  const char* ext = std::strrchr(path, '.');
-  if (ext != nullptr) {
-    static const char* disk_exts[] = {".woz", ".dsk", ".nib",
-                                      ".2mg", ".po",  ".do"};
-    for (auto d_ext : disk_exts) {
-      if (strcasecmp(ext, d_ext) == 0) {
-        return static_cast<int>(program_load_not_a_program);
-      }
-    }
+  // Raw binary fallback: attempt loading binary image at default start address
+  auto raw_res = program_loader_load_raw(path, 0x0800);
+  if (raw_res == program_load_ok) {
+    return 0;
   }
-
-  // Raw binary fallback
-  FilePtr_t f{std::fopen(path, "rb"), std::fclose};
-  if (!f) {
-    return static_cast<int>(program_load_not_a_program);
-  }
-
-  int64_t size = Path::file_size(f.get());
-  if (size <= 0 || size > 65536) {
-    return static_cast<int>(program_load_not_a_program);
-  }
-
-  uint16_t load_addr = (size == 65536) ? 0x0000 : 0x0800;
-
-  if (static_cast<size_t>(load_addr) + static_cast<size_t>(size) > 65536) {
-    return static_cast<int>(program_load_not_a_program);
-  }
-
-  if (std::fread(mem + load_addr, 1, static_cast<size_t>(size), f.get()) !=
-      static_cast<size_t>(size)) {
-    return static_cast<int>(program_load_file_error);
-  }
-
-  memset(memdirty, 0xFF, NUM_PAGES_48K);
-  cpu_get_registers()->pc = load_addr;
-  return static_cast<int>(program_load_ok);
+  return static_cast<int>(raw_res);
 }
 
 static auto internal_run_cycles(uint32_t dw_cycles) -> uint32_t {
