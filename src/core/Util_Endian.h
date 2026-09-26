@@ -3,38 +3,41 @@
 
 #include <cstdint>
 
-// NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic) Justification:
-// Byte-level binary decoding requires indexing into unaligned byte arrays.
-
 inline auto read_u16_le(const uint8_t* ptr) -> uint16_t {
   if (ptr == nullptr) {
     return 0;
   }
-  constexpr int bits_per_byte = 8;
-  return static_cast<uint16_t>(
-      static_cast<uint16_t>(ptr[0]) |
-      static_cast<uint16_t>(static_cast<uint16_t>(ptr[1]) << bits_per_byte));
+  return static_cast<uint16_t>(static_cast<uint32_t>(ptr[0]) |
+                               (static_cast<uint32_t>(ptr[1]) << 8));
 }
 
 inline auto read_u32_le(const uint8_t* ptr) -> uint32_t {
   if (ptr == nullptr) {
     return 0;
   }
-  constexpr int shift_8 = 8;
-  constexpr int shift_16 = 16;
-  constexpr int shift_24 = 24;
-  return static_cast<uint32_t>(ptr[0]) |
-         (static_cast<uint32_t>(ptr[1]) << shift_8) |
-         (static_cast<uint32_t>(ptr[2]) << shift_16) |
-         (static_cast<uint32_t>(ptr[3]) << shift_24);
+  return static_cast<uint32_t>(ptr[0]) | (static_cast<uint32_t>(ptr[1]) << 8) |
+         (static_cast<uint32_t>(ptr[2]) << 16) |
+         (static_cast<uint32_t>(ptr[3]) << 24);
+}
+
+inline auto write_u16_le(uint8_t* ptr, uint16_t val) -> void {
+  if (ptr == nullptr) {
+    return;
+  }
+  ptr[0] = static_cast<uint8_t>(val & 0xFF);
+  ptr[1] = static_cast<uint8_t>((val >> 8) & 0xFF);
+}
+
+inline auto write_u32_le(uint8_t* ptr, uint32_t val) -> void {
+  if (ptr == nullptr) {
+    return;
+  }
+  ptr[0] = static_cast<uint8_t>(val & 0xFF);
+  ptr[1] = static_cast<uint8_t>((val >> 8) & 0xFF);
+  ptr[2] = static_cast<uint8_t>((val >> 16) & 0xFF);
+  ptr[3] = static_cast<uint8_t>((val >> 24) & 0xFF);
 }
 
 inline auto read_u16_unaligned(const uint8_t* ptr) -> uint16_t {
   return read_u16_le(ptr);
 }
-
-inline auto read_u32_unaligned(const uint8_t* ptr) -> uint32_t {
-  return read_u32_le(ptr);
-}
-
-// NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)

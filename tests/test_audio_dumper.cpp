@@ -8,24 +8,11 @@
 #include <vector>
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include "core/Util_Endian.h"
 #include "core/Util_Path.h"
 #include "doctest.h"
 #include "frontends/common/AudioDumper.h"
 #include "test_fixtures.h"
-
-namespace {
-
-auto read_u16_le(const uint8_t* p) -> uint16_t {
-  return static_cast<uint16_t>(p[0]) | (static_cast<uint16_t>(p[1]) << 8);
-}
-
-auto read_u32_le(const uint8_t* p) -> uint32_t {
-  return static_cast<uint32_t>(p[0]) | (static_cast<uint32_t>(p[1]) << 8) |
-         (static_cast<uint32_t>(p[2]) << 16) |
-         (static_cast<uint32_t>(p[3]) << 24);
-}
-
-}  // namespace
 
 TEST_CASE("AudioDumper: [AUD-1] Explicit lifecycle generates valid WAV file") {
   TestFixtures::ScopedTempFile_t temp_wav(".wav");
