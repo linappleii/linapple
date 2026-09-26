@@ -1260,7 +1260,7 @@ auto CmdAssemble(uint16_t address, int iArg, int nArgs) -> Update_t {
   ParserFindToken(g_console_input_ptr, g_tokens, NUM_TOKENS, &iTokenSrc);
 
   if (iTokenSrc == NO_TOKEN) {  // is TOKEN_ALPHANUMERIC
-    if (g_console_input_ptr[0] != CHAR_SPACE) {
+    if (g_console_input_ptr[0] != ' ') {
       // Symbol
       char* pSymbolName = g_args[iArg].sArg;  // pArg->sArg;
       SymbolUpdate(SYMBOLS_ASSEMBLY, pSymbolName, address, false,
@@ -1373,7 +1373,7 @@ auto ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols) -> bool {
         int byte = 0;
         for (byte = 0; byte < 4; byte++) {
           start = pEnd + 1;
-          pEnd = const_cast<char*>(skip_until_white_space(start));
+          pEnd = skip_until_white_space(start);
           int nLen = static_cast<int>(pEnd - start);
           if (nLen != 2) {
             break;
@@ -1405,12 +1405,10 @@ auto ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols) -> bool {
 
       if (pLabel) {
         char* pLabelEnd = pLabel - 1;
-        pLabelEnd =
-            const_cast<char*>(skip_white_space_reverse(pLabelEnd, &sLine[0]));
+        pLabelEnd = skip_white_space_reverse(pLabelEnd, &sLine[0]);
         char* pLabelStart = nullptr;
         if (pLabelEnd) {
-          pLabelStart = const_cast<char*>(
-              skip_until_white_space_reverse(pLabelEnd, &sLine[0]));
+          pLabelStart = skip_until_white_space_reverse(pLabelEnd, &sLine[0]);
           pLabelEnd++;
           pLabelStart++;
 

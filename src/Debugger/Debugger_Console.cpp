@@ -337,16 +337,16 @@ auto ConsoleDisplayPause() -> void {
 //===========================================================================
 auto ConsoleInputBackSpace() -> bool {
   if (g_console_input_chars) {
-    g_console_input_ptr[g_console_input_chars] = CHAR_SPACE;
+    g_console_input_ptr[g_console_input_chars] = ' ';
 
     g_console_input_chars--;
 
-    if ((g_console_input_ptr[g_console_input_chars] == CHAR_QUOTE_DOUBLE) ||
-        (g_console_input_ptr[g_console_input_chars] == CHAR_QUOTE_SINGLE)) {
+    if ((g_console_input_ptr[g_console_input_chars] == '"') ||
+        (g_console_input_ptr[g_console_input_chars] == '\'')) {
       g_console_input_quoted = !g_console_input_quoted;
     }
 
-    g_console_input_ptr[g_console_input_chars] = CHAR_SPACE;
+    g_console_input_ptr[g_console_input_chars] = ' ';
     return true;
   }
   return false;
@@ -384,7 +384,7 @@ auto ConsoleUpdateCursor(char ch) -> void {
   } else {
     ch = g_console_input[g_console_input_chars + g_console_prompt_len];
     if (!ch) {
-      ch = CHAR_SPACE;
+      ch = ' ';
     }
     g_console_cursor[0] = ch;
   }
@@ -558,11 +558,11 @@ auto debugger_input_console_char(char ch) -> void {
     return;
   }
 
-  if ((ch < CHAR_SPACE) || (ch > 126)) {
+  if ((ch < ' ') || (ch > 126)) {
     return;
   }
 
-  if ((ch == CHAR_QUOTE_DOUBLE) || (ch == CHAR_QUOTE_SINGLE)) {
+  if ((ch == '"') || (ch == '\'')) {
     g_console_input_quoted = !g_console_input_quoted;
   }
 

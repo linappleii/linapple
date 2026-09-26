@@ -176,7 +176,7 @@ auto ArgsGet(char* pInput) -> int {
     // Technically, there shouldn't be any leading spaces,
     // since pressing the spacebar is an alias for TRACE.
     // However, there is spaces between arguments
-    src_ptr = const_cast<char*>(skip_white_space(src_ptr));
+    src_ptr = skip_white_space(src_ptr);
 
     if (src_ptr) {
       pEnd = FindTokenOrAlphaNumeric(src_ptr, g_tokens, NUM_TOKENS, &iTokenSrc);
@@ -200,10 +200,10 @@ auto ArgsGet(char* pInput) -> int {
 
       if (iTokenSrc == TOKEN_QUOTE_DOUBLE) {
         src_ptr++;  // Don't store start of quote
-        pEnd = skip_until_char(src_ptr, CHAR_QUOTE_DOUBLE);
+        pEnd = skip_until_char(src_ptr, '"');
       } else if (iTokenSrc == TOKEN_QUOTE_SINGLE) {
         src_ptr++;  // Don't store start of quote
-        pEnd = skip_until_char(src_ptr, CHAR_QUOTE_SINGLE);
+        pEnd = skip_until_char(src_ptr, '\'');
       }
 
       if (pEnd) {
@@ -758,7 +758,7 @@ auto TextConvertTabsToSpaces(char* pDeTabified_, const char* text,
   int nGap = 0;  // actual gap
   int nCur = 0;  // current cursor position
   while (src_ptr && *src_ptr && (nCur < nDstSize)) {
-    if (*src_ptr == CHAR_TAB) {
+    if (*src_ptr == '\t') {
       if (nTabStop) {
         nTab = nCur % TAB_SPACING;
         nGap = (TAB_SPACING - nTab);
@@ -778,10 +778,10 @@ auto TextConvertTabsToSpaces(char* pDeTabified_, const char* text,
       }
 
       for (int iSpc = 0; iSpc < nGap; iSpc++) {
-        *pDst++ = CHAR_SPACE;
+        *pDst++ = ' ';
       }
       nCur += nGap;
-    } else if ((*src_ptr == CHAR_LF) || (*src_ptr == CHAR_CR)) {
+    } else if ((*src_ptr == '\n') || (*src_ptr == '\r')) {
       *pDst++ = 0;  // *src_ptr;
       nCur++;
     } else {
@@ -799,7 +799,7 @@ auto RemoveWhiteSpaceReverse(char* src_ptr) -> int {
   char* pDst = src_ptr + nLen;
   while (nLen--) {
     pDst--;
-    if (*pDst == CHAR_SPACE) {
+    if (*pDst == ' ') {
       *pDst = 0;
     } else {
       break;

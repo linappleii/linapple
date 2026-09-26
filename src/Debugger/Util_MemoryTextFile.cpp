@@ -7,6 +7,7 @@
 #include <cstring>
 #include <string>
 
+#include "Debugger_Parser.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 
@@ -76,13 +77,19 @@ auto MemoryTextFile_t::GetLinePointers() -> void {
       lines_.push_back(begin_ptr);
     }
 
-    char* end_ptr = const_cast<char*>(skip_until_eol(begin_ptr));
+    char* end_ptr = skip_until_eol(begin_ptr);
     char* start_next_line = nullptr;
 
     if (*end_ptr == eol_null) {
       start_next_line = end_ptr + 1;
     } else {
-      start_next_line = const_cast<char*>(eat_eol(end_ptr));
+      start_next_line = end_ptr;
+      if (*start_next_line == '\r') {
+        start_next_line++;
+      }
+      if (*start_next_line == '\n') {
+        start_next_line++;
+      }
       int eol_len = static_cast<int>(start_next_line - end_ptr);
       while (eol_len-- > 1) {
         *end_ptr++ = ' ';
@@ -98,7 +105,7 @@ auto MemoryTextFile_t::GetLinePointers() -> void {
 auto MemoryTextFile_t::PushLine(char* line) -> void {
   char* src_ptr = line;
   while (src_ptr != nullptr && *src_ptr != 0) {
-    if (*src_ptr == CHAR_CR || *src_ptr == CHAR_LF) {
+    if (*src_ptr == '\r' || *src_ptr == '\n') {
       buffer_.push_back(eol_null);
     } else {
       buffer_.push_back(*src_ptr);

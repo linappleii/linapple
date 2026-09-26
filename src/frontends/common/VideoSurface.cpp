@@ -9,6 +9,8 @@
 #include <memory>
 #include <vector>
 
+#include "core/Util_Text.h"
+
 // Low-level pixel buffer manipulation and XPM pixel layout parser.
 // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
@@ -27,18 +29,9 @@ auto video_create_surface(int w, int h, int bpp) -> VideoSurface_t* {
 
 auto video_destroy_surface(VideoSurface_t* s) -> void { delete s; }
 
-constexpr uint8_t HEX_ALPHA_OFFSET = 10;
 constexpr size_t COLOR_STR_SIZE = 32;
 constexpr size_t HEX_COLOR_MIN_LEN = 7;
 constexpr uint8_t OPAQUE_ALPHA = 255;
-constexpr uint8_t NIBBLE_SHIFT = 4;
-
-static auto hex_to_int(char c) -> uint8_t {
-  if (c >= '0' && c <= '9') return c - '0';
-  if (c >= 'A' && c <= 'F') return c - 'A' + HEX_ALPHA_OFFSET;
-  if (c >= 'a' && c <= 'f') return c - 'a' + HEX_ALPHA_OFFSET;
-  return 0;
-}
 
 auto video_load_xpm(const char* const* xpm) -> VideoSurface_t* {
   if (!xpm || !xpm[0]) {
@@ -79,12 +72,9 @@ auto video_load_xpm(const char* const* xpm) -> VideoSurface_t* {
     }
     palette_map[i].c = c;
     if (color_str[0] == '#' && strlen(color_str) >= HEX_COLOR_MIN_LEN) {
-      uint8_t r =
-          (hex_to_int(color_str[1]) << NIBBLE_SHIFT) | hex_to_int(color_str[2]);
-      uint8_t g =
-          (hex_to_int(color_str[3]) << NIBBLE_SHIFT) | hex_to_int(color_str[4]);
-      uint8_t b =
-          (hex_to_int(color_str[5]) << NIBBLE_SHIFT) | hex_to_int(color_str[6]);
+      uint8_t r = text_convert_2_chars_to_byte(&color_str[1]);
+      uint8_t g = text_convert_2_chars_to_byte(&color_str[3]);
+      uint8_t b = text_convert_2_chars_to_byte(&color_str[5]);
       palette_map[i].color = {r, g, b, OPAQUE_ALPHA};
     } else if (strcmp(color_str, "None") == 0) {
       palette_map[i].color = {0, 0, 0, 0};

@@ -956,6 +956,10 @@ done
     target_include_directories(test-util-path PRIVATE src src/core ${DOCTEST_INCLUDE_DIR})
     add_test(NAME test-util-path COMMAND test-util-path)
 
+    add_executable(test-util-text tests/test_util_text.cpp)
+    target_include_directories(test-util-text PRIVATE src src/core ${DOCTEST_INCLUDE_DIR})
+    add_test(NAME test-util-text COMMAND test-util-text)
+
     add_linapple_test(video-stretch "tests/test_main.cpp;tests/test_video_stretch.cpp")
 
     add_linapple_test(ftp-parser "tests/test_main.cpp;tests/test_ftp_parser.cpp")

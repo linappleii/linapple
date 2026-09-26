@@ -28,6 +28,120 @@ inline auto SkipUntilToken(const char* src_ptr, const TokenTable_t* aTokens,
   return src_ptr;
 }
 
+inline auto skip_white_space(char* src_ptr) -> char* {
+  while (src_ptr != nullptr && ((*src_ptr == ' ') || (*src_ptr == '\t'))) {
+    src_ptr++;
+  }
+  return src_ptr;
+}
+
+inline auto skip_white_space(const char* src_ptr) -> const char* {
+  while (src_ptr != nullptr && ((*src_ptr == ' ') || (*src_ptr == '\t'))) {
+    src_ptr++;
+  }
+  return src_ptr;
+}
+
+inline auto skip_white_space_reverse(char* src_ptr, const char* start)
+    -> char* {
+  while (src_ptr != nullptr && ((*src_ptr == ' ') || (*src_ptr == '\t')) &&
+         (src_ptr > start)) {
+    src_ptr--;
+  }
+  return src_ptr;
+}
+
+inline auto skip_white_space_reverse(const char* src_ptr, const char* start)
+    -> const char* {
+  while (src_ptr != nullptr && ((*src_ptr == ' ') || (*src_ptr == '\t')) &&
+         (src_ptr > start)) {
+    src_ptr--;
+  }
+  return src_ptr;
+}
+
+inline auto skip_until_char(char* src_ptr, char delim) -> char* {
+  while (src_ptr != nullptr && (*src_ptr != '\0')) {
+    if (*src_ptr == delim) {
+      break;
+    }
+    src_ptr++;
+  }
+  return src_ptr;
+}
+
+inline auto skip_until_char(const char* src_ptr, char delim) -> const char* {
+  while (src_ptr != nullptr && (*src_ptr != '\0')) {
+    if (*src_ptr == delim) {
+      break;
+    }
+    src_ptr++;
+  }
+  return src_ptr;
+}
+
+inline auto skip_until_eol(char* src_ptr) -> char* {
+  while (src_ptr != nullptr && (*src_ptr != '\0')) {
+    if ((*src_ptr == '\n') || (*src_ptr == '\r')) {
+      break;
+    }
+    src_ptr++;
+  }
+  return src_ptr;
+}
+
+inline auto skip_until_eol(const char* src_ptr) -> const char* {
+  while (src_ptr != nullptr && (*src_ptr != '\0')) {
+    if ((*src_ptr == '\n') || (*src_ptr == '\r')) {
+      break;
+    }
+    src_ptr++;
+  }
+  return src_ptr;
+}
+
+inline auto skip_until_white_space(char* src_ptr) -> char* {
+  while (src_ptr != nullptr && (*src_ptr != '\0')) {
+    if ((*src_ptr == ' ') || (*src_ptr == '\t')) {
+      break;
+    }
+    src_ptr++;
+  }
+  return src_ptr;
+}
+
+inline auto skip_until_white_space(const char* src_ptr) -> const char* {
+  while (src_ptr != nullptr && (*src_ptr != '\0')) {
+    if ((*src_ptr == ' ') || (*src_ptr == '\t')) {
+      break;
+    }
+    src_ptr++;
+  }
+  return src_ptr;
+}
+
+inline auto skip_until_white_space_reverse(char* src_ptr, const char* start)
+    -> char* {
+  while (src_ptr != nullptr && (src_ptr > start)) {
+    if ((*src_ptr == ' ') || (*src_ptr == '\t')) {
+      break;
+    }
+    src_ptr--;
+  }
+  return src_ptr;
+}
+
+inline auto skip_until_white_space_reverse(const char* src_ptr,
+                                           const char* start) -> const char* {
+  while (src_ptr != nullptr && (src_ptr > start)) {
+    if ((*src_ptr == ' ') || (*src_ptr == '\t')) {
+      break;
+    }
+    src_ptr--;
+  }
+  return src_ptr;
+}
+
 // Globals __________________________________________________________________
 
 extern int g_arg_raw_count;
