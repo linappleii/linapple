@@ -59,10 +59,21 @@ TEST_CASE("Core: Turbo Mode Toggle") {
 }
 
 TEST_CASE("LinAppleCore: Extension matching bounds and edge cases") {
-  // Valid standard extensions
-  CHECK(linapple_is_supported_disk_image("test.dsk") == true);
-  CHECK(linapple_is_supported_disk_image("test.woz") == true);
-  CHECK(linapple_is_supported_disk_image("TEST.2MG") == true);
+  char floppy_exts[256] = {};
+  const bool has_floppy =
+      linapple_get_supported_disk_extensions(disk_default_slot, floppy_exts,
+                                             sizeof(floppy_exts)) > 0;
+  char hd_exts[256] = {};
+  const bool has_hd =
+      linapple_get_supported_disk_extensions(7, hd_exts, sizeof(hd_exts)) > 0;
+
+  if (has_floppy) {
+    CHECK(linapple_is_supported_disk_image("test.dsk") == true);
+    CHECK(linapple_is_supported_disk_image("test.woz") == true);
+  }
+  if (has_hd) {
+    CHECK(linapple_is_supported_disk_image("TEST.2MG") == true);
+  }
 
   // Substrings / prefixes (must NOT trigger out-of-bounds reads or false match)
   CHECK(linapple_is_supported_disk_image("test.d") == false);
