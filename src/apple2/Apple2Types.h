@@ -14,7 +14,7 @@ constexpr uint32_t APPLE2_6502_MEM_END = 0xFFFF;
 
 constexpr uint8_t APPLE2E_MASK = 0x10;
 
-enum Apple2Type_t {
+enum Apple2Type_t : uint8_t {
   A2TYPE_APPLE2 = 0,
   A2TYPE_APPLE2PLUS,
   A2TYPE_APPLE2JPLUS,
@@ -29,7 +29,7 @@ enum Apple2Type_t {
 };
 using eApple2Type = Apple2Type_t;
 
-enum Apple2Language_t {
+enum Apple2Language_t : uint8_t {
   A2LANG_US = 1,
   A2LANG_UK,
   A2LANG_FR,
@@ -42,7 +42,6 @@ using eApple2Language = Apple2Language_t;
 extern Apple2Type_t current_apple2_type;
 extern Apple2Language_t current_language;
 
-inline auto is_apple2() -> bool {
+[[nodiscard]] inline auto is_apple2() noexcept -> bool {
   return (current_apple2_type & APPLE2E_MASK) == 0;
 }
-inline auto IS_APPLE2() -> bool { return is_apple2(); }

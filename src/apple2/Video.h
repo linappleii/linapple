@@ -6,8 +6,8 @@
 #include <mutex>
 
 struct SsIoVideo_t;
-using SS_IO_Video = SsIoVideo_t;
-#include "frontends/common/VideoSurface.h"
+struct VideoSurface_t;
+struct VideoColor_t;
 
 constexpr uint32_t apple2_visible_width = 280;
 constexpr uint32_t apple2_visible_height = 192;
@@ -98,7 +98,8 @@ constexpr uint8_t WHITE = 0xFF;
 constexpr uint32_t GREEN_SHIFT = 8;
 constexpr uint32_t BLUE_SHIFT = 16;
 
-inline auto RGB(uint8_t r, uint8_t g, uint8_t b) -> uint32_t {
+[[nodiscard]] constexpr auto RGB(uint8_t r, uint8_t g, uint8_t b) noexcept
+    -> uint32_t {
   return (static_cast<uint32_t>(r)) |
          (static_cast<uint32_t>(g) << GREEN_SHIFT) |
          (static_cast<uint32_t>(b) << BLUE_SHIFT);
@@ -171,55 +172,54 @@ extern VideoSurface_t* g_origscreen;
 
 auto video_get_output_buffer() -> uint32_t*;
 auto video_get_output_palette() -> VideoColor_t*;
-inline auto video_is_frame_ready() noexcept -> bool {
+[[nodiscard]] inline auto video_is_frame_ready() noexcept -> bool {
   return g_frame_ready.load();
 }
 inline auto video_clear_frame_ready() noexcept -> void {
   g_frame_ready.store(false);
 }
-
-auto video_set_budget(bool enable) -> void;
-auto video_get_budget() -> bool;
-auto video_set_current_clk6502() -> void;
+inline auto video_set_frame_ready(bool ready = true) noexcept -> void {
+  g_frame_ready.store(ready);
+}
 
 auto video_create_color_mix_map() -> void;
-auto video_apparently_dirty() -> bool;
+[[nodiscard]] auto video_apparently_dirty() noexcept -> bool;
 auto video_benchmark() -> void;
 auto video_check_page(bool page) -> void;
-auto video_choose_color() -> void;
 auto video_destroy() -> void;
-auto video_draw_logo_bitmap() -> void;
 auto video_display_logo() -> void;
-auto video_has_refreshed() -> bool;
+[[nodiscard]] auto video_has_refreshed() noexcept -> bool;
 auto video_init_worker() -> bool;
 auto video_initialize() -> void;
 auto video_realize_palette() -> void;
 auto video_set_next_scheduled_update() -> void;
 auto video_set_rendering_enabled(bool enabled) -> void;
-auto video_is_rendering_enabled() -> bool;
+[[nodiscard]] auto video_is_rendering_enabled() noexcept -> bool;
 auto video_redraw_screen() -> void;
 auto video_refresh_screen(uint32_t mode = 0, bool redraw_whole = false) -> void;
 auto video_perform_refresh() -> void;
 auto video_reinitialize() -> void;
 auto video_reset_state() -> void;
 
-auto video_get_scanner_address(bool* vbl_bar_out, uint32_t executed_cycles)
+[[nodiscard]] auto video_get_scanner_address(bool* vbl_bar_out,
+                                             uint32_t executed_cycles) noexcept
     -> uint16_t;
-auto video_get_vbl(uint32_t executed_cycles) -> bool;
+[[nodiscard]] auto video_get_vbl(uint32_t executed_cycles) noexcept -> bool;
 auto video_update_vbl(uint32_t cycles_this_frame) -> void;
 auto video_update_flash() -> void;
 
-auto video_get_sw_80col() -> bool;
-auto video_get_sw_dhires() -> bool;
-auto video_get_sw_hires() -> bool;
-auto video_get_sw_80store() -> bool;
-auto video_get_sw_mixed() -> bool;
-auto video_get_sw_page2() -> bool;
-auto video_get_sw_text() -> bool;
-auto video_get_sw_alt_charset() -> bool;
+[[nodiscard]] auto video_get_sw_80col() noexcept -> bool;
+[[nodiscard]] auto video_get_sw_dhires() noexcept -> bool;
+[[nodiscard]] auto video_get_sw_hires() noexcept -> bool;
+[[nodiscard]] auto video_get_sw_80store() noexcept -> bool;
+[[nodiscard]] auto video_get_sw_mixed() noexcept -> bool;
+[[nodiscard]] auto video_get_sw_page2() noexcept -> bool;
+[[nodiscard]] auto video_get_sw_text() noexcept -> bool;
+[[nodiscard]] auto video_get_sw_alt_charset() noexcept -> bool;
 
-auto video_get_snapshot(SsIoVideo_t* ss) -> uint32_t;
-auto video_set_snapshot(const SsIoVideo_t* ss) -> uint32_t;
+[[nodiscard]] auto video_get_snapshot(SsIoVideo_t* ss) noexcept -> uint32_t;
+[[nodiscard]] auto video_set_snapshot(const SsIoVideo_t* ss) noexcept
+    -> uint32_t;
 
 auto video_check_mode(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
                       uint32_t executed_cycles) -> uint8_t;
@@ -229,4 +229,4 @@ auto video_set_mode(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
                     uint32_t executed_cycles) -> uint8_t;
 
 auto set_budget_video(bool b) -> void;
-auto get_budget_video() -> bool;
+[[nodiscard]] auto get_budget_video() noexcept -> bool;

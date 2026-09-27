@@ -208,3 +208,13 @@ TEST_CASE("Video - Mode Switch Preserves Drawn Screen") {
 
   CHECK(crc_after == expected_crc);
 }
+
+TEST_CASE("Video: Frame ready state transitions") {
+  video_set_frame_ready(true);
+  CHECK(video_is_frame_ready() == true);
+  video_set_frame_ready(false);
+  CHECK(video_is_frame_ready() == false);
+  video_set_frame_ready(true);
+  video_clear_frame_ready();
+  CHECK(video_is_frame_ready() == false);
+}

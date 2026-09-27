@@ -46,7 +46,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   // Verify deserializing arbitrary/corrupted memory snapshots does not crash or
   // corrupt host state
-  snapshot_deserialize(snapshot.get());
+  static_cast<void>(snapshot_deserialize(snapshot.get()));
 
   return 0;
 }

@@ -22,7 +22,7 @@ static std::unique_ptr<CurlGlobalGuard_t> g_curl_guard;
 static bool g_budget_video = false;
 
 void set_budget_video(bool b) { g_budget_video = b; }
-auto get_budget_video() -> bool { return g_budget_video; }
+auto get_budget_video() noexcept -> bool { return g_budget_video; }
 
 void single_step(bool is_reinit) {
   (void)is_reinit;

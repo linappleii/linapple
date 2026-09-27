@@ -70,21 +70,28 @@
 [[gnu::weak]] auto video_update_vbl(uint32_t) -> void {}
 [[gnu::weak]] auto video_redraw_screen() -> void {}
 [[gnu::weak]] auto video_reset_state() -> void {}
-[[gnu::weak]] auto video_get_scanner_address(bool*, uint32_t) -> uint16_t {
+[[gnu::weak]] auto video_get_scanner_address(bool*, uint32_t) noexcept
+    -> uint16_t {
   return 0;
 }
 [[gnu::weak]] auto video_choose_color() -> void {}
 [[gnu::weak]] auto video_set_border_color(uint8_t) -> void {}
 [[gnu::weak]] auto linapple_list_hardware() -> void {}
 
-[[gnu::weak]] auto mem_read_floating_bus(uint32_t) -> uint8_t { return 0; }
-[[gnu::weak]] auto get_mem_ptr(uint16_t) -> uint8_t* { return nullptr; }
-[[gnu::weak]] auto mem_get_cx_rom_peripheral() -> uint8_t* { return nullptr; }
+[[gnu::weak]] auto mem_read_floating_bus(uint32_t) noexcept -> uint8_t {
+  return 0;
+}
+[[gnu::weak]] auto get_mem_ptr(uint16_t) noexcept -> uint8_t* {
+  return nullptr;
+}
+[[gnu::weak]] auto mem_get_cx_rom_peripheral() noexcept -> uint8_t* {
+  return nullptr;
+}
 [[gnu::weak]] auto register_io_handler(uint32_t, iofunction, iofunction,
-                                       iofunction, iofunction, void*, uint8_t*)
-    -> void {}
+                                       iofunction, iofunction, void*,
+                                       uint8_t*) noexcept -> void {}
 [[gnu::weak]] auto register_direct_io_handler(uint16_t, iofunction, iofunction,
-                                              void*) -> void {}
+                                              void*) noexcept -> void {}
 
 [[gnu::weak]] uint64_t g_cumulative_cycles = 0;
 [[gnu::weak]] SystemState_t system_state = {};

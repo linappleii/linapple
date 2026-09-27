@@ -234,7 +234,7 @@ auto linapple_reset_hard() -> void {
 
 auto linapple_reset_soft() -> void {
   cpu_reset();
-  if (!IS_APPLE2()) {
+  if (!is_apple2()) {
     mem_reset_paging();
   }
 }

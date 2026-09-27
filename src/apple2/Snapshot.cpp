@@ -23,7 +23,7 @@ struct SlotRegionDesc_t {
 };
 
 // Fixed-body snapshot regions for slots 0 through 7.
-constexpr std::array<SlotRegionDesc_t, NUM_SLOTS> slot_region_descriptors{{
+constexpr std::array<SlotRegionDesc_t, NUM_SLOTS> k_slot_region_descriptors{{
     {offsetof(Snapshot_t, apple2_unit.speaker),
      sizeof(Snapshot_t::apple2_unit.speaker), "Speaker"},
     {offsetof(Snapshot_t, empty1), sizeof(SsCardEmpty_t), nullptr},
@@ -37,11 +37,12 @@ constexpr std::array<SlotRegionDesc_t, NUM_SLOTS> slot_region_descriptors{{
     {offsetof(Snapshot_t, empty7), sizeof(SsCardEmpty_t), nullptr},
 }};
 
-auto fixed_slot_desc(int slot) -> const SlotRegionDesc_t* {
+[[nodiscard]] auto fixed_slot_desc(int slot) noexcept
+    -> const SlotRegionDesc_t* {
   if (slot < 0 || slot >= NUM_SLOTS) {
     return nullptr;
   }
-  const auto& desc = slot_region_descriptors[static_cast<size_t>(slot)];
+  const auto& desc = k_slot_region_descriptors[static_cast<size_t>(slot)];
   if (desc.size == 0) {
     return nullptr;
   }
@@ -49,27 +50,33 @@ auto fixed_slot_desc(int slot) -> const SlotRegionDesc_t* {
 }
 
 // Disk II persists state to mounted image; omitted from snapshot trailer.
-constexpr int skipped_slot = 6;
+constexpr int k_skipped_slot = 6;
 
-auto trailer_entry(Snapshot_t* snapshot, int slot) -> SsSlotState_t* {
-  if (slot < 1 || slot > static_cast<int>(snapshot_trailer_slots) ||
-      slot == skipped_slot) {
+[[nodiscard]] auto trailer_entry(Snapshot_t* snapshot, int slot) noexcept
+    -> SsSlotState_t* {
+  if (snapshot == nullptr || slot < 1 ||
+      slot > static_cast<int>(snapshot_trailer_slots) ||
+      slot == k_skipped_slot) {
     return nullptr;
   }
   return &snapshot->slot_trailer.slots[slot - 1];
 }
 
-auto trailer_entry(const Snapshot_t* snapshot, int slot)
+[[nodiscard]] auto trailer_entry(const Snapshot_t* snapshot, int slot) noexcept
     -> const SsSlotState_t* {
-  if (slot < 1 || slot > static_cast<int>(snapshot_trailer_slots) ||
-      slot == skipped_slot) {
+  if (snapshot == nullptr || slot < 1 ||
+      slot > static_cast<int>(snapshot_trailer_slots) ||
+      slot == k_skipped_slot) {
     return nullptr;
   }
   return &snapshot->slot_trailer.slots[slot - 1];
 }
 
 // Query required buffer size before allocating frame.
-auto save_slot_to_trailer(int slot, SsSlotState_t* entry) -> void {
+auto save_slot_to_trailer(int slot, SsSlotState_t* entry) noexcept -> void {
+  if (entry == nullptr) {
+    return;
+  }
   entry->length = 0;
   size_t needed = 0;
   peripheral_save_state(slot, nullptr, &needed);
@@ -88,7 +95,11 @@ auto save_slot_to_trailer(int slot, SsSlotState_t* entry) -> void {
   entry->length = static_cast<uint32_t>(needed);
 }
 
-auto trailer_is_sane(const Snapshot_t* snapshot) -> bool {
+[[nodiscard]] auto trailer_is_sane(const Snapshot_t* snapshot) noexcept
+    -> bool {
+  if (snapshot == nullptr) {
+    return false;
+  }
   for (int slot = 1; slot <= static_cast<int>(snapshot_trailer_slots); ++slot) {
     const SsSlotState_t* entry = trailer_entry(snapshot, slot);
     if (entry != nullptr && entry->length > snapshot_slot_state_capacity) {
@@ -103,8 +114,10 @@ auto trailer_is_sane(const Snapshot_t* snapshot) -> bool {
 
 }  // namespace
 
-auto snapshot_serialize(Snapshot_t* snapshot) -> void {
-  if (!snapshot) return;
+auto snapshot_serialize(Snapshot_t* snapshot) noexcept -> void {
+  if (snapshot == nullptr) {
+    return;
+  }
 
   *snapshot = Snapshot_t{};
 
@@ -119,12 +132,12 @@ auto snapshot_serialize(Snapshot_t* snapshot) -> void {
 
   peripheral_get_manifest(&snapshot->manifest);
 
-  cpu_get_snapshot(&snapshot->apple2_unit.cpu_6502);
+  static_cast<void>(cpu_get_snapshot(&snapshot->apple2_unit.cpu_6502));
   size_t joystick_size = sizeof(snapshot->apple2_unit.joystick);
   peripheral_save_state_by_name(0, "Joystick", &snapshot->apple2_unit.joystick,
                                 &joystick_size);
-  video_get_snapshot(&snapshot->apple2_unit.video);
-  mem_get_snapshot(&snapshot->apple2_unit.memory);
+  static_cast<void>(video_get_snapshot(&snapshot->apple2_unit.video));
+  static_cast<void>(mem_get_snapshot(&snapshot->apple2_unit.memory));
 
   size_t kbd_size = sizeof(snapshot->apple2_unit.keyboard);
   peripheral_save_state_by_name(0, "Keyboard", &snapshot->apple2_unit.keyboard,
@@ -155,7 +168,9 @@ auto snapshot_serialize(Snapshot_t* snapshot) -> void {
 }
 
 auto snapshot_deserialize(const Snapshot_t* snapshot) -> bool {
-  if (!snapshot) return false;
+  if (snapshot == nullptr) {
+    return false;
+  }
 
   if (!peripheral_verify_manifest(&snapshot->manifest)) {
     return false;
@@ -174,13 +189,19 @@ auto snapshot_deserialize(const Snapshot_t* snapshot) -> bool {
   peripheral_manager_reset();
   video_reset_state();
 
-  cpu_set_snapshot(&snapshot->apple2_unit.cpu_6502);
+  if (cpu_set_snapshot(&snapshot->apple2_unit.cpu_6502) != 0) {
+    return false;
+  }
   peripheral_load_state_by_name(0, "Joystick", &snapshot->apple2_unit.joystick,
                                 sizeof(snapshot->apple2_unit.joystick));
   peripheral_load_state_by_name(0, "Keyboard", &snapshot->apple2_unit.keyboard,
                                 sizeof(snapshot->apple2_unit.keyboard));
-  video_set_snapshot(&snapshot->apple2_unit.video);
-  mem_set_snapshot(&snapshot->apple2_unit.memory);
+  if (video_set_snapshot(&snapshot->apple2_unit.video) != 0) {
+    return false;
+  }
+  if (mem_set_snapshot(&snapshot->apple2_unit.memory) != 0) {
+    return false;
+  }
 
   for (int i = 0; i < NUM_SLOTS; ++i) {
     // Fall back to fixed body if slot trailer is empty.

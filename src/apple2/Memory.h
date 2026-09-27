@@ -9,7 +9,6 @@
 #include "apple2/Apple2Types.h"
 
 struct SsBaseMemory_t;
-using SS_BaseMemory = SsBaseMemory_t;
 
 using IoFunction_t = uint8_t (*)(uint16_t pc, uint16_t addr, uint8_t write_flag,
                                  uint8_t write_value, uint32_t executed_cycles);
@@ -199,11 +198,16 @@ struct MemoryInstance_t {
   uint8_t io_select_internal_rom = 0;
   uint8_t* expansion_rom[NUM_SLOTS]{};
 
+  MemoryInstance_t() = default;
   ~MemoryInstance_t();
+  MemoryInstance_t(const MemoryInstance_t&) = delete;
+  auto operator=(const MemoryInstance_t&) -> MemoryInstance_t& = delete;
+  MemoryInstance_t(MemoryInstance_t&&) noexcept = default;
+  auto operator=(MemoryInstance_t&&) noexcept -> MemoryInstance_t& = default;
 };
 
-auto mem_get_active_context() -> MemoryInstance_t*;
-auto mem_set_active_context(MemoryInstance_t* context) -> void;
+[[nodiscard]] auto mem_get_active_context() noexcept -> MemoryInstance_t*;
+auto mem_set_active_context(MemoryInstance_t* context) noexcept -> void;
 
 extern IoFunction_t* g_io_read;
 extern IoFunction_t* g_io_write;
@@ -216,41 +220,44 @@ extern uint8_t* memdirty;
 auto register_io_handler(uint32_t slot, IoFunction_t io_read_c0,
                          IoFunction_t io_write_c0, IoFunction_t io_read_cx,
                          IoFunction_t io_write_cx, void* slot_parameter,
-                         uint8_t* expansion_rom) -> void;
+                         uint8_t* expansion_rom) noexcept -> void;
 
 auto register_direct_io_handler(uint16_t addr, IoFunction_t read,
-                                IoFunction_t write, void* instance) -> void;
+                                IoFunction_t write, void* instance) noexcept
+    -> void;
 
 auto mem_destroy() -> void;
-auto mem_get_80store() -> bool;
-auto mem_check_slotcxrom() -> bool;
-auto mem_get_aux_ptr(uint16_t addr) -> uint8_t*;
-auto mem_get_main_ptr(uint16_t addr) -> uint8_t*;
-auto mem_get_cx_rom_peripheral() -> uint8_t*;
-auto mem_refresh_cx_page(int slot) -> void;
-auto get_mem_ptr(uint16_t addr) -> uint8_t*;
-inline auto mem_get_ptr(uint16_t addr) -> uint8_t* { return get_mem_ptr(addr); }
-auto mem_get_bank_ptr(uint32_t bank) -> uint8_t*;
-auto get_mem_mode() -> uint32_t;
-auto set_mem_mode(uint32_t mode) -> void;
-inline auto mem_get_mode() -> uint32_t { return get_mem_mode(); }
-inline auto mem_set_mode(uint32_t mode) -> void { set_mem_mode(mode); }
-auto mem_is_addr_code_memory(uint16_t addr) -> bool;
+[[nodiscard]] auto mem_get_80store() noexcept -> bool;
+[[nodiscard]] auto mem_check_slotcxrom() noexcept -> bool;
+[[nodiscard]] auto mem_get_aux_ptr(uint16_t addr) noexcept -> uint8_t*;
+[[nodiscard]] auto mem_get_main_ptr(uint16_t addr) noexcept -> uint8_t*;
+[[nodiscard]] auto mem_get_cx_rom_peripheral() noexcept -> uint8_t*;
+auto mem_refresh_cx_page(int slot) noexcept -> void;
+[[nodiscard]] auto get_mem_ptr(uint16_t addr) noexcept -> uint8_t*;
+[[nodiscard]] inline auto mem_get_ptr(uint16_t addr) noexcept -> uint8_t* {
+  return get_mem_ptr(addr);
+}
+[[nodiscard]] auto mem_get_bank_ptr(uint32_t bank) noexcept -> uint8_t*;
+[[nodiscard]] auto get_mem_mode() noexcept -> uint32_t;
+auto set_mem_mode(uint32_t mode) noexcept -> void;
+[[nodiscard]] inline auto mem_get_mode() noexcept -> uint32_t {
+  return get_mem_mode();
+}
+inline auto mem_set_mode(uint32_t mode) noexcept -> void { set_mem_mode(mode); }
+[[nodiscard]] auto mem_is_addr_code_memory(uint16_t addr) noexcept -> bool;
 auto mem_set_custom_rom_data(const uint8_t* data, size_t size) -> void;
-auto mem_pre_initialize() -> void;
-auto mem_initialize() -> int;
-auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
-auto mem_read_floating_bus(uint8_t highbit, uint32_t executed_cycles)
+auto mem_pre_initialize() noexcept -> void;
+[[nodiscard]] auto mem_initialize() -> int;
+[[nodiscard]] auto mem_read_floating_bus(uint32_t executed_cycles) noexcept
     -> uint8_t;
-auto mem_reset() -> void;
-auto mem_reset_paging() -> void;
-auto mem_return_random_data(uint8_t highbit) -> uint8_t;
-auto mem_set_fast_paging(bool enable) -> void;
-auto mem_set_80store(bool enable) -> void;
-auto mem_trim_images() -> void;
-auto mem_get_slot_parameters(uint32_t slot) -> void*;
-auto mem_get_snapshot(SsBaseMemory_t* snapshot) -> uint32_t;
-auto mem_set_snapshot(const SsBaseMemory_t* snapshot) -> uint32_t;
+[[nodiscard]] auto mem_read_floating_bus(uint8_t highbit,
+                                         uint32_t executed_cycles) noexcept
+    -> uint8_t;
+auto mem_reset() noexcept -> void;
+auto mem_reset_paging() noexcept -> void;
+[[nodiscard]] auto mem_get_slot_parameters(uint32_t slot) noexcept -> void*;
+[[nodiscard]] auto mem_get_snapshot(SsBaseMemory_t* snapshot) -> uint32_t;
+[[nodiscard]] auto mem_set_snapshot(const SsBaseMemory_t* snapshot) -> uint32_t;
 auto io_null(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
              uint32_t cycles) -> uint8_t;
 auto mem_update_paging(bool initialize, bool updatewriteonly) -> void;

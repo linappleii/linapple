@@ -37,28 +37,29 @@ struct CpuInstance_t {
   bool nmi_flank = false;
 };
 
-// Modern snake_case API
-auto cpu_get_registers() -> CpuRegisters_t*;
-auto cpu_get_cumulative_cycles() -> uint64_t;
-auto cpu_add_cumulative_cycles(uint32_t cycles) -> void;
+[[nodiscard]] auto cpu_get_registers() noexcept -> CpuRegisters_t*;
+[[nodiscard]] auto cpu_get_cumulative_cycles() noexcept -> uint64_t;
+auto cpu_add_cumulative_cycles(uint32_t cycles) noexcept -> void;
 extern uint64_t g_cumulative_cycles;
 
-auto cpu_get_active_context() -> CpuInstance_t*;
-auto cpu_set_active_context(CpuInstance_t* context) -> void;
+[[nodiscard]] auto cpu_get_active_context() noexcept -> CpuInstance_t*;
+auto cpu_set_active_context(CpuInstance_t* context) noexcept -> void;
 
-auto cpu_destroy() -> void;
-auto cpu_calc_cycles(uint32_t executed_cycles) -> void;
-auto cpu_execute(uint32_t total_cycles) -> uint32_t;
-auto cpu_get_cycles_this_frame(uint32_t executed_cycles) -> uint32_t;
-auto cpu_initialize() -> void;
+auto cpu_destroy() noexcept -> void;
+auto cpu_calc_cycles(uint32_t executed_cycles) noexcept -> void;
+[[nodiscard]] auto cpu_execute(uint32_t total_cycles) -> uint32_t;
+[[nodiscard]] auto cpu_get_cycles_this_frame(uint32_t executed_cycles) noexcept
+    -> uint32_t;
+auto cpu_initialize() noexcept -> void;
 auto cpu_step() -> void;
 auto cpu_setup_benchmark() -> void;
-auto cpu_irq_reset() -> void;
-auto cpu_irq_assert(IrqSrc_t device) -> void;
-auto cpu_irq_deassert(IrqSrc_t device) -> void;
-auto cpu_nmi_reset() -> void;
-auto cpu_nmi_assert(IrqSrc_t device) -> void;
-auto cpu_nmi_deassert(IrqSrc_t device) -> void;
-auto cpu_reset() -> void;
-auto cpu_get_snapshot(SsCpu6502_t* snapshot) -> uint32_t;
-auto cpu_set_snapshot(const SsCpu6502_t* snapshot) -> uint32_t;
+auto cpu_irq_reset() noexcept -> void;
+auto cpu_irq_assert(IrqSrc_t device) noexcept -> void;
+auto cpu_irq_deassert(IrqSrc_t device) noexcept -> void;
+auto cpu_nmi_reset() noexcept -> void;
+auto cpu_nmi_assert(IrqSrc_t device) noexcept -> void;
+auto cpu_nmi_deassert(IrqSrc_t device) noexcept -> void;
+auto cpu_reset() noexcept -> void;
+[[nodiscard]] auto cpu_get_snapshot(SsCpu6502_t* snapshot) noexcept -> uint32_t;
+[[nodiscard]] auto cpu_set_snapshot(const SsCpu6502_t* snapshot) noexcept
+    -> uint32_t;

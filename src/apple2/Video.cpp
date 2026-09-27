@@ -34,7 +34,6 @@ static auto get_tick_count_ms() -> uint32_t {
 #include "apple2/Memory.h"
 #include "apple2/SnapshotTypes.h"
 #include "apple2/peripherals/Peripheral.h"
-#include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "charset40.xpm"
 #include "charset40_IIplus.xpm"
 #include "charset40_british.xpm"
@@ -228,7 +227,7 @@ auto copy_source(int destx, int desty, int xsize, int ysize, int sourcex,
   }
 }
 
-void create_frame_offset_table(uint8_t* addr, int pitch) {
+auto create_frame_offset_table(uint8_t* addr, int pitch) -> void {
   if (framebufferaddr == addr && framebufferpitch == pitch) {
     return;
   }
@@ -241,7 +240,7 @@ void create_frame_offset_table(uint8_t* addr, int pitch) {
   }
 }
 
-void create_identity_palette() {
+auto create_identity_palette() -> void {
   memset(framebufferinfo, 0, max_palette_size * sizeof(VideoColor_t));
   set_frame_color(DEEP_RED, 0xD0, 0x00, 0x30);
   set_frame_color(LIGHT_BLUE, 0x60, 0xA0, 0xFF);
@@ -304,7 +303,7 @@ void create_identity_palette() {
   set_frame_color(DARKEST_GREEN, 0x00, 31, 0x00);
 }
 
-void video_init_buffers() {
+auto video_init_buffers() -> void {
   const std::lock_guard<std::recursive_mutex> lock(g_video_draw_mutex);
 
   memcpy(g_source_header, framebufferinfo,
@@ -412,7 +411,7 @@ void video_init_buffers() {
   }
 }
 
-void draw_dhires_source() {
+auto draw_dhires_source() -> void {
   uint8_t colorval[16] = {BLACK,    DARK_BLUE,  DARK_GREEN, BLUE,
                           BROWN,    LIGHT_GRAY, GREEN,      AQUA,
                           DEEP_RED, MAGENTA,    DARK_GRAY,  LIGHT_BLUE,
@@ -494,7 +493,7 @@ enum ColorMapping {
 const uint8_t aColorIndex[NUM_COLOR_MAPPING] = {
     HGR_MAGENTA, HGR_BLUE, HGR_GREEN, HGR_RED, HGR_BLACK, HGR_WHITE};
 
-void draw_hires_source_half_shift_dim() {
+auto draw_hires_source_half_shift_dim() -> void {
   for (int column = 0; column < 16; column++) {
     int coloffs = column << 5;
 
@@ -644,7 +643,7 @@ void draw_hires_source_half_shift_dim() {
   }
 }
 
-void draw_hires_source() {
+auto draw_hires_source() -> void {
   for (int column = 0; column < 16; column++) {
     int coloffs = column << 5;
 
@@ -711,7 +710,7 @@ void draw_hires_source() {
   }
 }
 
-void draw_lores_source() {
+auto draw_lores_source() -> void {
   uint8_t colorval[16] = {BLACK,      DEEP_RED,  DARK_BLUE,  MAGENTA,
                           DARK_GREEN, DARK_GRAY, BLUE,       LIGHT_BLUE,
                           BROWN,      ORANGE,    LIGHT_GRAY, PINK,
@@ -746,7 +745,7 @@ auto get_monochrome_index() -> int {
   return iMonochrome;
 }
 
-void draw_mono_dhires_source() {
+auto draw_mono_dhires_source() -> void {
   int iMonochrome = get_monochrome_index();
 
   for (int column = 0; column < 256; column++) {
@@ -766,7 +765,7 @@ void draw_mono_dhires_source() {
   }
 }
 
-void draw_mono_hires_source() {
+auto draw_mono_hires_source() -> void {
   int iMonochrome = get_monochrome_index();
 
   for (int column = 0; column < 512; column += 16) {
@@ -784,7 +783,7 @@ void draw_mono_hires_source() {
   }
 }
 
-void draw_mono_lores_source() {
+auto draw_mono_lores_source() -> void {
   int iMonochrome = get_monochrome_index();
   for (int color = 0; color < 16; color++) {
     for (int x = 0; x < 16; x++) {
@@ -796,7 +795,7 @@ void draw_mono_lores_source() {
   }
 }
 
-void draw_mono_text_source(VideoSurface_t* hDstDC) {
+auto draw_mono_text_source(VideoSurface_t* hDstDC) -> void {
   if (charset40 == nullptr) {
     return;
   }
@@ -848,7 +847,7 @@ void draw_mono_text_source(VideoSurface_t* hDstDC) {
   }
 }
 
-void draw_text_source(VideoSurface_t* dc) {
+auto draw_text_source(VideoSurface_t* dc) -> void {
   if (charset40 == nullptr) {
     return;
   }
@@ -886,7 +885,7 @@ void draw_text_source(VideoSurface_t* dc) {
   }
 }
 
-void set_last_drawn_image() {
+auto set_last_drawn_image() -> void {
   if (vidlastmem == nullptr) {
     return;
   }
@@ -1085,11 +1084,11 @@ auto video_create_color_mix_map() -> void {
   }
 }
 
-static inline auto clamp_mix(int idx) -> int {
+[[nodiscard]] static inline auto clamp_mix(int idx) noexcept -> int {
   return (idx >= 0 && idx < 6) ? idx : 0;
 }
 
-void mix_colors_vertical(int matx, int maty) {
+auto mix_colors_vertical(int matx, int maty) -> void {
   uint16_t twoHalfPixel = 0;
   int bot1idx = 0, bot2idx = 0;
 
@@ -1123,7 +1122,7 @@ void mix_colors_vertical(int matx, int maty) {
   colormixbuffer[5] = twoHalfPixel & 0x00FF;
 }
 
-void copy_mixed_source(int x, int y, int sourcex, int sourcey) {
+auto copy_mixed_source(int x, int y, int sourcex, int sourcey) -> void {
   uint8_t* currsourceptr = g_source_start_of_line[sourcey] + sourcex;
   uint8_t* currdestptr = frameoffsettable[y << 1] + (x << 1);
   uint8_t* currptr = nullptr;
@@ -1275,7 +1274,7 @@ auto load_charset() -> VideoSurface_t* {
 
 // All globally accessible functions are below this line
 
-auto video_apparently_dirty() -> bool {
+auto video_apparently_dirty() noexcept -> bool {
   if (sw_mixed() || redrawfull || video_worker_active_) {
     return true;
   }
@@ -1376,7 +1375,7 @@ auto video_benchmark() -> void {
   milliseconds = static_cast<uint32_t>(get_tick_count_ms());
   cycle = 0;
   do {
-    cpu_execute(100000);
+    static_cast<void>(cpu_execute(100000));
     totalmhz10++;
   } while (get_tick_count_ms() - milliseconds < 1000);
 
@@ -1390,7 +1389,7 @@ auto video_benchmark() -> void {
     int loop = 0;
     while ((loop < 10000) && !error) {
       cpu_setup_benchmark();
-      cpu_execute(loop);
+      static_cast<void>(cpu_execute(loop));
       if ((cpu_get_registers()->pc < 0x300) ||
           (cpu_get_registers()->pc > 0x400)) {
         error = true;
@@ -1443,7 +1442,7 @@ auto video_benchmark() -> void {
   } while (get_tick_count_ms() - milliseconds < 1000);
   printf("Pure Video FPS:\t%u hires, %u text\n", totalhiresfps, totaltextfps);
   printf("Pure CPU MHz:\t%u.%u%s\n\n", (totalmhz10 / 10), (totalmhz10 % 10),
-         (IS_APPLE2() ? " (6502" : ""));
+         (is_apple2() ? " (6502" : ""));
   printf("EXPECTED AVERAGE VIDEO GAME PERFORMANCE:\t%u FPS\n\n", realisticfps);
   std::this_thread::sleep_for(std::chrono::milliseconds(1500));
 }
@@ -1453,33 +1452,29 @@ auto video_check_mode(uint16_t, uint16_t address, uint8_t, uint8_t,
   address &= 0xFF;
   if (address == 0x7F) {
     return mem_read_floating_bus(sw_dhires(), executed_cycles);
-  } else {
-    bool result = false;
-    switch (address) {
-      case 0x1A:
-        result = sw_text();
-        break;
-      case 0x1B:
-        result = sw_mixed();
-        break;
-      case 0x1D:
-        result = sw_hires();
-        break;
-      case 0x1E:
-        result = g_alt_char_set_offset != 0;
-        break;
-      case 0x1F:
-        result = sw_80col();
-        break;
-      case 0x7F:
-        result = sw_dhires();
-        break;
-      default:
-        break;
-    }
-    return (mem_read_floating_bus(executed_cycles) & 0x7F) |
-           (result ? 0x80 : 0);
   }
+
+  bool result = false;
+  switch (address) {
+    case 0x1A:
+      result = sw_text();
+      break;
+    case 0x1B:
+      result = sw_mixed();
+      break;
+    case 0x1D:
+      result = sw_hires();
+      break;
+    case 0x1E:
+      result = g_alt_char_set_offset != 0;
+      break;
+    case 0x1F:
+      result = sw_80col();
+      break;
+    default:
+      break;
+  }
+  return (mem_read_floating_bus(executed_cycles) & 0x7F) | (result ? 0x80 : 0);
 }
 
 auto video_check_page(bool force) -> void {
@@ -1494,12 +1489,10 @@ auto video_check_page(bool force) -> void {
 auto video_check_vbl(uint16_t, uint16_t, uint8_t, uint8_t,
                      uint32_t executed_cycles) -> uint8_t {
   bool vbl_bar = false;
-  video_get_scanner_address(&vbl_bar, executed_cycles);
+  static_cast<void>(video_get_scanner_address(&vbl_bar, executed_cycles));
   uint8_t r = mem_read_floating_bus(executed_cycles);
   return static_cast<uint8_t>((r & ~0x80) | ((vbl_bar) ? 0x80 : 0));
 }
-
-auto video_choose_color() -> void {}
 
 auto video_destroy() -> void {
   {
@@ -1569,7 +1562,7 @@ auto video_display_logo() -> void {
   }
 }
 
-auto video_has_refreshed() -> bool {
+auto video_has_refreshed() noexcept -> bool {
   bool result = hasrefreshed;
   hasrefreshed = false;
   return result;
@@ -1617,7 +1610,7 @@ auto video_set_next_scheduled_update() -> void {
   }
 }
 
-void video_worker_thread_func() {
+auto video_worker_thread_func() -> void {
   while (!video_worker_terminate_) {
     std::unique_lock<std::mutex> lck(s_video_worker_mutex);
     video_cv.wait_until(lck, video_next_scheduled_update_, [] {
@@ -1635,6 +1628,9 @@ void video_worker_thread_func() {
 auto video_init_worker() -> bool {
   if (video_worker_active_ && video_worker_thread_.joinable()) {
     return true;
+  }
+  if (video_worker_thread_.joinable()) {
+    video_worker_thread_.join();
   }
   video_worker_terminate_ = false;
   video_worker_active_ = true;
@@ -1659,14 +1655,16 @@ auto video_set_rendering_enabled(bool enabled) -> void {
   s_rendering_enabled = enabled;
 }
 
-auto video_is_rendering_enabled() -> bool { return s_rendering_enabled; }
+auto video_is_rendering_enabled() noexcept -> bool {
+  return s_rendering_enabled;
+}
 
 auto video_redraw_screen() -> void {
   redrawfull = true;
   video_refresh_screen(0, true);
 }
 
-void video_update_output_buffer() {
+auto video_update_output_buffer() -> void {
   VideoRect_t s = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
   VideoSurface_t dst{};
   dst.pixels = reinterpret_cast<uint8_t*>(g_video_output);
@@ -1857,22 +1855,22 @@ auto video_set_mode(uint16_t, uint16_t address, uint8_t write, uint8_t,
       g_video_mode |= VF_MASK2;
       break;
     case 0x0C:
-      if (!IS_APPLE2()) {
+      if (!is_apple2()) {
         g_video_mode &= ~VF_80COL;
       }
       break;
     case 0x0D:
-      if (!IS_APPLE2()) {
+      if (!is_apple2()) {
         g_video_mode |= VF_80COL;
       }
       break;
     case 0x0E:
-      if (!IS_APPLE2()) {
+      if (!is_apple2()) {
         g_alt_char_set_offset = 0;
       }
       break;
     case 0x0F:
-      if (!IS_APPLE2()) {
+      if (!is_apple2()) {
         g_alt_char_set_offset = 256;
       }
       break;
@@ -1901,12 +1899,12 @@ auto video_set_mode(uint16_t, uint16_t address, uint8_t write, uint8_t,
       g_video_mode |= VF_HIRES;
       break;
     case 0x5E:
-      if (!IS_APPLE2()) {
+      if (!is_apple2()) {
         g_video_mode |= VF_DHIRES;
       }
       break;
     case 0x5F:
-      if (!IS_APPLE2()) {
+      if (!is_apple2()) {
         g_video_mode &= ~VF_DHIRES;
       }
       break;
@@ -1955,31 +1953,33 @@ auto video_update_flash() -> void {
   }
 }
 
-auto video_get_sw_80col() -> bool { return sw_80col(); }
+auto video_get_sw_80col() noexcept -> bool { return sw_80col(); }
 
-auto video_get_sw_dhires() -> bool { return sw_dhires(); }
+auto video_get_sw_dhires() noexcept -> bool { return sw_dhires(); }
 
-auto video_get_sw_hires() -> bool { return sw_hires(); }
+auto video_get_sw_hires() noexcept -> bool { return sw_hires(); }
 
-auto video_get_sw_80store() -> bool { return sw_mask2(); }
+auto video_get_sw_80store() noexcept -> bool { return sw_mask2(); }
 
-auto video_get_sw_mixed() -> bool { return sw_mixed(); }
+auto video_get_sw_mixed() noexcept -> bool { return sw_mixed(); }
 
-auto video_get_sw_page2() -> bool { return sw_page2(); }
+auto video_get_sw_page2() noexcept -> bool { return sw_page2(); }
 
-auto video_get_sw_text() -> bool { return sw_text(); }
+auto video_get_sw_text() noexcept -> bool { return sw_text(); }
 
-auto video_get_sw_alt_charset() -> bool { return g_alt_char_set_offset != 0; }
+auto video_get_sw_alt_charset() noexcept -> bool {
+  return g_alt_char_set_offset != 0;
+}
 
 //===========================================================================
-auto video_get_snapshot(SsIoVideo_t* ss) -> uint32_t {
+auto video_get_snapshot(SsIoVideo_t* ss) noexcept -> uint32_t {
   if (!ss) return 1;
   ss->alt_char_set = (g_alt_char_set_offset != 0) ? 1 : 0;
   ss->vid_mode = g_video_mode;
   return 0;
 }
 
-auto video_set_snapshot(const SsIoVideo_t* ss) -> uint32_t {
+auto video_set_snapshot(const SsIoVideo_t* ss) noexcept -> uint32_t {
   if (!ss) return 1;
   g_alt_char_set_offset = (ss->alt_char_set == 0) ? 0 : 256;
   g_video_mode = ss->vid_mode;
@@ -1991,7 +1991,8 @@ auto video_set_snapshot(const SsIoVideo_t* ss) -> uint32_t {
 }
 
 auto video_get_scanner_address(bool* pbVblBar_OUT,
-                               const uint32_t executed_cycles) -> uint16_t {
+                               const uint32_t executed_cycles) noexcept
+    -> uint16_t {
   if (system_state.clks_per_frame == 0) return 0;
   // get video scanner position
   int cycles =
@@ -2064,7 +2065,7 @@ auto video_get_scanner_address(bool* pbVblBar_OUT,
     address |= (page2 & (1 ^ n80Store)) << 14;        // a14
   } else {
     // N: text, so no higher address bits unless Apple ][, not Apple //e
-    if ((IS_APPLE2()) &&           // Apple ][?
+    if ((is_apple2()) &&           // Apple ][?
         (kHPEClock <= h_clock) &&  // Y: HBL?
         (h_clock <= (kHClocks - 1))) {
       address |= 1 << 12;  // Y: a12 (add $1000 to address!)
@@ -2081,7 +2082,7 @@ auto video_get_scanner_address(bool* pbVblBar_OUT,
   return static_cast<uint16_t>(address);
 }
 
-auto video_get_vbl(const uint32_t executed_cycles) -> bool {
+auto video_get_vbl(const uint32_t executed_cycles) noexcept -> bool {
   if (system_state.clks_per_frame == 0) return false;
   // get cycles within current frame
   int cycles =

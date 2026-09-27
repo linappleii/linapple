@@ -437,3 +437,12 @@ TEST_CASE("Snapshot: A manifest naming any slot-0 device is the same machine") {
            "%s", "Mockingboard");
   CHECK(peripheral_verify_manifest(&manifest) == false);
 }
+
+TEST_CASE("Snapshot: Memory snapshot null pointer defense") {
+  CHECK(mem_get_snapshot(nullptr) == 1);
+  CHECK(mem_set_snapshot(nullptr) == 1);
+}
+
+TEST_CASE("Snapshot: Deserialization null pointer defense") {
+  CHECK(snapshot_deserialize(nullptr) == false);
+}

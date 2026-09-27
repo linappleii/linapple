@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <type_traits>
 
 #include "apple2/Apple2Types.h"
 #include "apple2/chips/AY8910.h"
@@ -12,18 +13,16 @@
 #include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
 #include "core/LinAppleCore.h"
 
-constexpr uint32_t BYTE3_SHIFT = 24;
-constexpr uint32_t BYTE2_SHIFT = 16;
-constexpr uint32_t BYTE1_SHIFT = 8;
+constexpr uint32_t k_byte3_shift = 24;
+constexpr uint32_t k_byte2_shift = 16;
+constexpr uint32_t k_byte1_shift = 8;
 
-constexpr auto make_version(uint32_t a, uint32_t b, uint32_t c, uint32_t d)
-    -> uint32_t {
-  return ((a) << BYTE3_SHIFT) | ((b) << BYTE2_SHIFT) | ((c) << BYTE1_SHIFT) |
-         (d);
+[[nodiscard]] constexpr auto make_version(uint32_t a, uint32_t b, uint32_t c,
+                                          uint32_t d) noexcept -> uint32_t {
+  return (a << k_byte3_shift) | (b << k_byte2_shift) | (c << k_byte1_shift) | d;
 }
 
-constexpr uint32_t snapshot_file_tag =
-    (('S' << BYTE3_SHIFT) | ('S' << BYTE2_SHIFT) | ('W' << BYTE1_SHIFT) | 'A');
+constexpr uint32_t snapshot_file_tag = make_version('S', 'S', 'W', 'A');
 constexpr uint32_t aw_ss_tag = snapshot_file_tag;
 
 struct SsFileHdr_t {
@@ -67,7 +66,6 @@ struct SsIoVideo_t {
   uint8_t alt_char_set;
   uint32_t vid_mode;
 };
-using SS_IO_Video = SsIoVideo_t;
 
 constexpr uint32_t mem_main_size = 65536;
 constexpr uint32_t mem_aux_size = 65536;
@@ -78,7 +76,6 @@ struct SsBaseMemory_t {
   uint8_t mem_main[mem_main_size];
   uint8_t mem_aux[mem_aux_size];
 };
-using SS_BaseMemory = SsBaseMemory_t;
 
 struct SsApple2Unit_t {
   SsUnitHdr_t unit_hdr;
@@ -110,27 +107,6 @@ struct SsCardHdr_t {
   uint32_t type;
   uint32_t slot;
 };
-using SS_CARD_HDR = SsCardHdr_t;
-
-enum SsCardType_t {
-  ct_empty = 0,
-  ct_disk2,
-  ct_ssc,
-  ct_mockingboard,
-  ct_generic_printer,
-  ct_generic_hdd,
-  ct_generic_clock,
-  ct_mouse_interface,
-};
-using SS_CARDTYPE = SsCardType_t;
-constexpr SsCardType_t CT_Empty = ct_empty;
-constexpr SsCardType_t CT_Disk2 = ct_disk2;
-constexpr SsCardType_t CT_SSC = ct_ssc;
-constexpr SsCardType_t CT_Mockingboard = ct_mockingboard;
-constexpr SsCardType_t CT_GenericPrinter = ct_generic_printer;
-constexpr SsCardType_t CT_GenericHDD = ct_generic_hdd;
-constexpr SsCardType_t CT_GenericClock = ct_generic_clock;
-constexpr SsCardType_t CT_MouseInterface = ct_mouse_interface;
 
 struct SsCardEmpty_t {
   SsCardHdr_t hdr;
@@ -207,12 +183,13 @@ struct Snapshot_t {
   SsSlotTrailer_t slot_trailer;
 };
 using ApplewinSnapshot_t = Snapshot_t;
-using APPLEWIN_SNAPSHOT = Snapshot_t;
 
 // Differentiate snapshot format with slot trailer by file size.
 constexpr uint32_t snapshot_version = make_version(1, 0, 0, 1);
 constexpr size_t snapshot_size_fixed_body = offsetof(Snapshot_t, slot_trailer);
 
+static_assert(std::is_standard_layout<Snapshot_t>::value,
+              "Snapshot_t must be standard layout");
 static_assert(snapshot_size_fixed_body == 132344,
               "the fixed-body snapshot layout is a wire format frozen on disk");
 static_assert(sizeof(Snapshot_t) ==

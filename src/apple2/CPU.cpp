@@ -25,12 +25,12 @@ constexpr uint8_t AF_INTERRUPT = 0x04;
 constexpr uint8_t AF_ZERO = 0x02;
 constexpr uint8_t AF_CARRY = 0x01;
 
-constexpr uint8_t SHORT_OPCODES = 22;
+constexpr uint8_t k_short_opcodes = 22;
 static constexpr uint8_t bench_opcodes[] = {
     0x06, 0x16, 0x24, 0x45, 0x48, 0x65, 0x68, 0x76, 0x84, 0x85, 0x86,
     0x91, 0x94, 0xA4, 0xA5, 0xA6, 0xB1, 0xB4, 0xC0, 0xC4, 0xC5, 0xE6,
     0x19, 0x6D, 0x8D, 0x99, 0x9D, 0xAD, 0xB9, 0xBD, 0xDD, 0xED, 0xEE};
-constexpr uint8_t BENCH_OPCODES = sizeof(bench_opcodes);
+constexpr uint8_t k_bench_opcodes = sizeof(bench_opcodes);
 
 static CpuInstance_t g_cpu_context{};
 CpuInstance_t* g_active_cpu = &g_cpu_context;
@@ -45,13 +45,17 @@ static std::atomic<bool> g_nmi_flank{
     false};  // Positive going flank on NMI line
 static std::mutex g_interrupt_mutex;
 
-auto cpu_get_registers() -> CpuRegisters_t* { return &regs; }
-auto cpu_get_cumulative_cycles() -> uint64_t { return g_cumulative_cycles; }
-auto cpu_add_cumulative_cycles(uint32_t cycles) -> void {
+auto cpu_get_registers() noexcept -> CpuRegisters_t* { return &regs; }
+auto cpu_get_cumulative_cycles() noexcept -> uint64_t {
+  return g_cumulative_cycles;
+}
+auto cpu_add_cumulative_cycles(uint32_t cycles) noexcept -> void {
   g_cumulative_cycles += cycles;
 }
-auto cpu_get_active_context() -> CpuInstance_t* { return g_active_cpu; }
-auto cpu_set_active_context(CpuInstance_t* context) -> void {
+auto cpu_get_active_context() noexcept -> CpuInstance_t* {
+  return g_active_cpu;
+}
+auto cpu_set_active_context(CpuInstance_t* context) noexcept -> void {
   if (context == nullptr) {
     return;
   }
@@ -78,15 +82,9 @@ auto cpu_set_active_context(CpuInstance_t* context) -> void {
   }
 }
 
-static uint32_t g_internal_executed_cycles;
-
-extern auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write,
-                            uint8_t d, uint32_t cycles) -> uint8_t;
-
 static inline auto fetch_opcode(uint8_t& opcode, uint32_t executed_cycles)
     -> void {
   const uint16_t PC = regs.pc;
-  g_internal_executed_cycles = executed_cycles;
 
   opcode = ((PC & IO_REGION_MASK) == IO_REGION_START)
                ? io_map_dispatch(PC, PC, 0, 0, executed_cycles)
@@ -777,8 +775,7 @@ struct CpuLoopContext_t {
 
   template <bool cmos>
   inline auto check_nmi() -> void {
-    if (g_nmi_flank) {
-      g_nmi_flank = false;
+    if (g_nmi_flank.exchange(false)) {
       push(regs.pc >> 8);
       push(regs.pc & 0xFF);
       pack_ps();
@@ -3019,15 +3016,15 @@ static auto internal_cpu_execute(uint32_t total_cycles) -> uint32_t {
 
 // Modern API implementation
 
-auto cpu_destroy() -> void {}
+auto cpu_destroy() noexcept -> void {}
 
-auto cpu_calc_cycles(uint32_t executed_cycles) -> void {
+auto cpu_calc_cycles(uint32_t executed_cycles) noexcept -> void {
   uint32_t cycles = executed_cycles - g_cycles_executed;
   g_cycles_executed += cycles;
   g_cumulative_cycles += cycles;
 }
 
-auto cpu_get_cycles_this_frame(uint32_t executed_cycles) -> uint32_t {
+auto cpu_get_cycles_this_frame(uint32_t executed_cycles) noexcept -> uint32_t {
   cpu_calc_cycles(executed_cycles);
   return g_cycles_executed;
 }
@@ -3044,7 +3041,7 @@ auto cpu_execute(uint32_t total_cycles) -> uint32_t {
   return executed_cycles;
 }
 
-auto cpu_initialize() -> void {
+auto cpu_initialize() noexcept -> void {
   cpu_destroy();
   regs.a = regs.x = regs.y = regs.ps = 0xFF;
   regs.sp = STACK_END;
@@ -3068,12 +3065,12 @@ auto cpu_setup_benchmark() -> void {
       *(mem + addr++) = bench_opcodes[opcode];
       *(mem + addr++) = bench_opcodes[opcode];
 
-      if (opcode >= SHORT_OPCODES) {
+      if (opcode >= k_short_opcodes) {
         *(mem + addr++) = 0;
       }
 
-      if ((++opcode >= BENCH_OPCODES) || ((addr & 0x0F) >= 0x0B)) {
-        uint8_t jump_low = (opcode >= BENCH_OPCODES)
+      if ((++opcode >= k_bench_opcodes) || ((addr & 0x0F) >= 0x0B)) {
+        uint8_t jump_low = (opcode >= k_bench_opcodes)
                                ? 0x00
                                : static_cast<uint8_t>(((addr >> 4) + 1) << 4);
         *(mem + addr++) = 0x4C;
@@ -3083,32 +3080,32 @@ auto cpu_setup_benchmark() -> void {
           ++addr;
         }
       }
-    } while (opcode < BENCH_OPCODES);
+    } while (opcode < k_bench_opcodes);
   }
 }
 
-auto cpu_irq_reset() -> void {
+auto cpu_irq_reset() noexcept -> void {
   const std::lock_guard<std::mutex> lock(g_interrupt_mutex);
   g_bm_irq = 0;
 }
 
-auto cpu_irq_assert(IrqSrc_t device) -> void {
+auto cpu_irq_assert(IrqSrc_t device) noexcept -> void {
   const std::lock_guard<std::mutex> lock(g_interrupt_mutex);
   g_bm_irq |= 1U << device;
 }
 
-auto cpu_irq_deassert(IrqSrc_t device) -> void {
+auto cpu_irq_deassert(IrqSrc_t device) noexcept -> void {
   const std::lock_guard<std::mutex> lock(g_interrupt_mutex);
   g_bm_irq &= ~(1U << device);
 }
 
-auto cpu_nmi_reset() -> void {
+auto cpu_nmi_reset() noexcept -> void {
   const std::lock_guard<std::mutex> lock(g_interrupt_mutex);
   g_bm_nmi = 0;
   g_nmi_flank = false;
 }
 
-auto cpu_nmi_assert(IrqSrc_t device) -> void {
+auto cpu_nmi_assert(IrqSrc_t device) noexcept -> void {
   const std::lock_guard<std::mutex> lock(g_interrupt_mutex);
   if (g_bm_nmi == 0) {  // NMI line is just becoming active
     g_nmi_flank = true;
@@ -3116,12 +3113,12 @@ auto cpu_nmi_assert(IrqSrc_t device) -> void {
   g_bm_nmi |= 1U << device;
 }
 
-auto cpu_nmi_deassert(IrqSrc_t device) -> void {
+auto cpu_nmi_deassert(IrqSrc_t device) noexcept -> void {
   const std::lock_guard<std::mutex> lock(g_interrupt_mutex);
   g_bm_nmi &= ~(1U << device);
 }
 
-auto cpu_reset() -> void {
+auto cpu_reset() noexcept -> void {
   regs.ps = (regs.ps | AF_INTERRUPT) & ~AF_DECIMAL;
   if (mem != nullptr) {
     regs.pc = read_u16_unaligned(mem + RESET_VECTOR_ADDR);
@@ -3133,7 +3130,7 @@ auto cpu_reset() -> void {
   regs.is_jammed = false;
 }
 
-auto cpu_get_snapshot(SsCpu6502_t* snapshot) -> uint32_t {
+auto cpu_get_snapshot(SsCpu6502_t* snapshot) noexcept -> uint32_t {
   if (!snapshot) {
     return 1;
   }
@@ -3151,7 +3148,7 @@ auto cpu_get_snapshot(SsCpu6502_t* snapshot) -> uint32_t {
   return 0;
 }
 
-auto cpu_set_snapshot(const SsCpu6502_t* snapshot) -> uint32_t {
+auto cpu_set_snapshot(const SsCpu6502_t* snapshot) noexcept -> uint32_t {
   if (!snapshot) {
     return 1;
   }

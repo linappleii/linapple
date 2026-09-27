@@ -24,37 +24,48 @@
 // Unavoidable hardware architectural constraints for Apple II memory management
 // unit and page table multiplexer
 // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-no-malloc, cppcoreguidelines-owning-memory, cppcoreguidelines-pro-type-reinterpret-cast, bugprone-easily-swappable-parameters, bugprone-branch-clone, cppcoreguidelines-macro-usage, modernize-use-auto, cppcoreguidelines-init-variables, cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
-static inline auto sw_80store(const MemoryInstance_t* ctx) -> bool {
+[[nodiscard]] static inline auto sw_80store(
+    const MemoryInstance_t* ctx) noexcept -> bool {
   return (ctx->mem_mode & MF_80STORE) != 0;
 }
-static inline auto sw_altzp(const MemoryInstance_t* ctx) -> bool {
+[[nodiscard]] static inline auto sw_altzp(const MemoryInstance_t* ctx) noexcept
+    -> bool {
   return (ctx->mem_mode & MF_ALTZP) != 0;
 }
-static inline auto sw_auxread(const MemoryInstance_t* ctx) -> bool {
+[[nodiscard]] static inline auto sw_auxread(
+    const MemoryInstance_t* ctx) noexcept -> bool {
   return (ctx->mem_mode & MF_AUXREAD) != 0;
 }
-static inline auto sw_auxwrite(const MemoryInstance_t* ctx) -> bool {
+[[nodiscard]] static inline auto sw_auxwrite(
+    const MemoryInstance_t* ctx) noexcept -> bool {
   return (ctx->mem_mode & MF_AUXWRITE) != 0;
 }
-static inline auto sw_hram_bank2(const MemoryInstance_t* ctx) -> bool {
+[[nodiscard]] static inline auto sw_hram_bank2(
+    const MemoryInstance_t* ctx) noexcept -> bool {
   return (ctx->mem_mode & MF_HRAM_BANK2) != 0;
 }
-static inline auto sw_highram(const MemoryInstance_t* ctx) -> bool {
+[[nodiscard]] static inline auto sw_highram(
+    const MemoryInstance_t* ctx) noexcept -> bool {
   return (ctx->mem_mode & MF_HIGHRAM) != 0;
 }
-static inline auto sw_hires(const MemoryInstance_t* ctx) -> bool {
+[[nodiscard]] static inline auto sw_hires(const MemoryInstance_t* ctx) noexcept
+    -> bool {
   return (ctx->mem_mode & MF_HIRES) != 0;
 }
-static inline auto sw_page2(const MemoryInstance_t* ctx) -> bool {
+[[nodiscard]] static inline auto sw_page2(const MemoryInstance_t* ctx) noexcept
+    -> bool {
   return (ctx->mem_mode & MF_PAGE2) != 0;
 }
-static inline auto sw_slotc3rom(const MemoryInstance_t* ctx) -> bool {
+[[nodiscard]] static inline auto sw_slotc3rom(
+    const MemoryInstance_t* ctx) noexcept -> bool {
   return (ctx->mem_mode & MF_SLOTC3ROM) != 0;
 }
-static inline auto sw_slotcxrom(const MemoryInstance_t* ctx) -> bool {
+[[nodiscard]] static inline auto sw_slotcxrom(
+    const MemoryInstance_t* ctx) noexcept -> bool {
   return (ctx->mem_mode & MF_SLOTCXROM) != 0;
 }
-static inline auto sw_hram_write(const MemoryInstance_t* ctx) -> bool {
+[[nodiscard]] static inline auto sw_hram_write(
+    const MemoryInstance_t* ctx) noexcept -> bool {
   return (ctx->mem_mode & MF_HRAM_WRITE) != 0;
 }
 
@@ -126,9 +137,11 @@ MemoryInstance_t::~MemoryInstance_t() {
   }
 }
 
-auto mem_get_active_context() -> MemoryInstance_t* { return g_active_memory; }
+auto mem_get_active_context() noexcept -> MemoryInstance_t* {
+  return g_active_memory;
+}
 
-auto mem_set_active_context(MemoryInstance_t* context) -> void {
+auto mem_set_active_context(MemoryInstance_t* context) noexcept -> void {
   if (!context) return;
   g_active_memory = context;
   g_io_read = context->io_read;
@@ -590,7 +603,7 @@ static auto init_io_handlers() -> void {
 auto register_io_handler(uint32_t slot, IoFunction_t io_read_c0,
                          IoFunction_t io_write_c0, IoFunction_t io_read_cx,
                          IoFunction_t io_write_cx, void* slot_parameter,
-                         uint8_t* expansion_rom) -> void {
+                         uint8_t* expansion_rom) noexcept -> void {
   if (slot >= NUM_SLOTS) {
     return;
   }
@@ -621,7 +634,8 @@ auto register_io_handler(uint32_t slot, IoFunction_t io_read_c0,
 }
 
 auto register_direct_io_handler(uint16_t addr, IoFunction_t read,
-                                IoFunction_t write, void* instance) -> void {
+                                IoFunction_t write, void* instance) noexcept
+    -> void {
   if ((addr & 0xFF00) != 0xC000) return;
   uint8_t index = static_cast<uint8_t>(addr & 0xFF);
 
@@ -632,9 +646,9 @@ auto register_direct_io_handler(uint16_t addr, IoFunction_t read,
 }
 //===========================================================================
 
-auto get_mem_mode() -> uint32_t { return g_active_memory->mem_mode; }
+auto get_mem_mode() noexcept -> uint32_t { return g_active_memory->mem_mode; }
 
-auto set_mem_mode(uint32_t new_mem_mode) -> void {
+auto set_mem_mode(uint32_t new_mem_mode) noexcept -> void {
   g_active_memory->mem_mode = new_mem_mode;
 }
 
@@ -878,20 +892,22 @@ auto mem_destroy() -> void {
   memset(g_active_memory->memshadow, 0, NUM_PAGES_64K * sizeof(uint8_t*));
 }
 
-auto mem_get_80store() -> bool { return sw_80store(g_active_memory) != 0; }
+auto mem_get_80store() noexcept -> bool {
+  return sw_80store(g_active_memory) != 0;
+}
 
-auto mem_check_slotcxrom() -> bool {
+auto mem_check_slotcxrom() noexcept -> bool {
   return sw_slotcxrom(g_active_memory) != 0;
 }
 
-auto mem_get_aux_ptr(uint16_t offset) -> uint8_t* {
+auto mem_get_aux_ptr(uint16_t offset) noexcept -> uint8_t* {
   return (g_active_memory->memshadow[(offset >> 8)] ==
           (g_active_memory->memaux + (offset & PAGE_MASK)))
              ? mem + offset
              : g_active_memory->memaux + offset;
 }
 
-auto mem_get_main_ptr(uint16_t offset) -> uint8_t* {
+auto mem_get_main_ptr(uint16_t offset) noexcept -> uint8_t* {
   return (g_active_memory->memshadow[(offset >> 8)] ==
           (g_active_memory->memmain + (offset & 0xFF00)))
              ? mem + offset
@@ -900,7 +916,7 @@ auto mem_get_main_ptr(uint16_t offset) -> uint8_t* {
 
 //===========================================================================
 
-auto mem_get_bank_ptr(uint32_t bank) -> uint8_t* {
+auto mem_get_bank_ptr(uint32_t bank) noexcept -> uint8_t* {
   if (bank == 0) {
     return g_active_memory->memmain;
   }
@@ -910,7 +926,7 @@ auto mem_get_bank_ptr(uint32_t bank) -> uint8_t* {
   return nullptr;
 }
 
-auto mem_get_cx_rom_peripheral() -> uint8_t* {
+auto mem_get_cx_rom_peripheral() noexcept -> uint8_t* {
   return g_active_memory->cx_rom_peripheral;
 }
 
@@ -925,7 +941,7 @@ auto mem_get_cx_rom_peripheral() -> uint8_t* {
 // that page is shadowed from it, by the very comparison mem_update_paging
 // makes, which is what covers the II+ and slot 3 under SLOTC3ROM without a
 // case of their own.
-auto mem_refresh_cx_page(int slot) -> void {
+auto mem_refresh_cx_page(int slot) noexcept -> void {
   if (slot < 1 || slot > 7 || mem == nullptr ||
       g_active_memory->cx_rom_peripheral == nullptr) {
     return;
@@ -939,14 +955,14 @@ auto mem_refresh_cx_page(int slot) -> void {
   memcpy(mem + (page << 8), store, PAGE_SIZE);
 }
 
-auto get_mem_ptr(uint16_t addr) -> uint8_t* { return mem + addr; }
+auto get_mem_ptr(uint16_t addr) noexcept -> uint8_t* { return mem + addr; }
 
 //===========================================================================
 
 // Post:
 // . true:  code memory
 // . false: I/O memory or floating bus
-auto mem_is_addr_code_memory(uint16_t addr) -> bool {
+auto mem_is_addr_code_memory(uint16_t addr) noexcept -> bool {
   if (addr < 0xC000 ||
       addr >
           FIRMWARE_EXPANSION_END) {  // Assume all A][ types have at least 48K
@@ -985,7 +1001,7 @@ auto mem_is_addr_code_memory(uint16_t addr) -> bool {
   return true;
 }
 
-auto mem_pre_initialize() -> void { init_io_handlers(); }
+auto mem_pre_initialize() noexcept -> void { init_io_handlers(); }
 
 auto mem_initialize() -> int  // returns -1 if any error during initialization
 {
@@ -1150,7 +1166,7 @@ auto mem_initialize() -> int  // returns -1 if any error during initialization
   return 0;
 }
 
-auto mem_reset() -> void {
+auto mem_reset() noexcept -> void {
   memset(g_active_memory->memshadow, 0, NUM_PAGES_64K * sizeof(uint8_t*));
   memset(memwrite, 0, NUM_PAGES_64K * sizeof(uint8_t*));
 
@@ -1178,33 +1194,16 @@ auto mem_reset() -> void {
 // Call by:
 // . Soft-reset (Ctrl+Reset)
 // . Snapshot_LoadState()
-auto mem_reset_paging() -> void { reset_paging(false); }
+auto mem_reset_paging() noexcept -> void { reset_paging(false); }
 
-// Called by Disk][ I/O only
-auto mem_return_random_data(uint8_t highbit) -> uint8_t {
-  static const uint8_t RANDOM_DATA_VALUES_COUNT = 16;
-  static const uint8_t retval[RANDOM_DATA_VALUES_COUNT] = {
-      0x00, 0x2D, 0x2D, 0x30, 0x30, 0x32, 0x32, 0x34,
-      0x35, 0x39, 0x43, 0x43, 0x43, 0x60, 0x7F, 0x7F};
-  const uint8_t PROBABILITY_2_3_THRESHOLD = 170;
-  const uint8_t RANDOM_DATA_BASE_VALUE = 0x20;
-
-  auto r = static_cast<uint8_t>(rand() & 0xFF);
-  if (r <= PROBABILITY_2_3_THRESHOLD) {
-    return RANDOM_DATA_BASE_VALUE | (highbit ? 0x80 : 0);
-  } else {
-    return retval[r & (RANDOM_DATA_VALUES_COUNT - 1)] | (highbit ? 0x80 : 0);
-  }
-}
-
-auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t {
+auto mem_read_floating_bus(uint32_t executed_cycles) noexcept -> uint8_t {
   if (mem == nullptr) {
     return 0xFF;
   }
   return *(mem + video_get_scanner_address(nullptr, executed_cycles));
 }
 
-auto mem_read_floating_bus(uint8_t highbit, uint32_t executed_cycles)
+auto mem_read_floating_bus(uint8_t highbit, uint32_t executed_cycles) noexcept
     -> uint8_t {
   uint8_t r = (mem != nullptr)
                   ? *(mem + video_get_scanner_address(nullptr, executed_cycles))
@@ -1346,7 +1345,7 @@ auto mem_set_paging(uint16_t programcounter, uint16_t address, uint8_t write,
   return write ? 0 : mem_read_floating_bus(executed_cycles);
 }
 
-auto mem_get_slot_parameters(uint32_t slot) -> void* {
+auto mem_get_slot_parameters(uint32_t slot) noexcept -> void* {
   if (slot >= NUM_SLOTS) {
     return nullptr;
   }
@@ -1354,6 +1353,9 @@ auto mem_get_slot_parameters(uint32_t slot) -> void* {
 }
 
 auto mem_get_snapshot(SsBaseMemory_t* ss) -> uint32_t {
+  if (ss == nullptr) {
+    return 1;
+  }
   ss->mem_mode = g_active_memory->mem_mode;
   ss->last_write_ram = g_active_memory->last_write_ram ? 1 : 0;
 
@@ -1368,6 +1370,9 @@ auto mem_get_snapshot(SsBaseMemory_t* ss) -> uint32_t {
 }
 
 auto mem_set_snapshot(const SsBaseMemory_t* ss) -> uint32_t {
+  if (ss == nullptr) {
+    return 1;
+  }
   g_active_memory->mem_mode = ss->mem_mode;
   g_active_memory->last_write_ram = (ss->last_write_ram != 0);
   memcpy(g_active_memory->memmain, ss->mem_main, mem_main_size);
