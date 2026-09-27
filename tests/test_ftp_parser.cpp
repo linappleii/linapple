@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <cstring>
+#include <string>
 
 #include "core/services/ftp/FtpParser.h"
 #include "core/services/ftp/FtpTypes.h"
@@ -120,4 +121,20 @@ TEST_CASE("FTPParser: Malformed and Truncated Inputs") {
   const char* truncated_unix = "-rw-r--r-- 1";
   CHECK_FALSE(
       ftp_parse_line(truncated_unix, std::strlen(truncated_unix), entry));
+}
+
+TEST_CASE("FTPParser: std::string Overload") {
+  const std::string line =
+      "-rw-r--r--   1 1000     1000       143360 Sep 19 12:00 "
+      "apple_dos.dsk\r\n";
+  FtpFileEntry_t entry{};
+  const bool ok = ftp_parse_line(line, entry);
+
+  CHECK(ok);
+  CHECK(entry.name == "apple_dos.dsk");
+  CHECK(entry.type == FtpEntryType_t::file);
+  CHECK(entry.size == 143360);
+
+  const std::string empty;
+  CHECK_FALSE(ftp_parse_line(empty, entry));
 }

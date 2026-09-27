@@ -147,3 +147,30 @@ TEST_CASE("FTPClient: URL Encoding and Slash Collapsing") {
   CHECK(
       (status == FtpStatus_t::connect_error || status == FtpStatus_t::timeout));
 }
+
+TEST_CASE("FTPClient: Status to String Conversion") {
+  CHECK(std::strcmp(ftp_status_to_string(FtpStatus_t::ok), "OK") == 0);
+  CHECK(std::strcmp(ftp_status_to_string(FtpStatus_t::invalid_param),
+                    "Invalid parameter") == 0);
+  CHECK(std::strcmp(ftp_status_to_string(FtpStatus_t::failed_init),
+                    "Failed initialization") == 0);
+  CHECK(std::strcmp(ftp_status_to_string(FtpStatus_t::connect_error),
+                    "Connection error") == 0);
+  CHECK(std::strcmp(ftp_status_to_string(FtpStatus_t::file_not_found),
+                    "File not found") == 0);
+  CHECK(std::strcmp(ftp_status_to_string(FtpStatus_t::write_error),
+                    "Write error") == 0);
+  CHECK(std::strcmp(ftp_status_to_string(FtpStatus_t::path_traversal_rejected),
+                    "Path traversal rejected") == 0);
+  CHECK(std::strcmp(ftp_status_to_string(FtpStatus_t::transfer_failed),
+                    "Transfer failed") == 0);
+  CHECK(std::strcmp(ftp_status_to_string(FtpStatus_t::timeout),
+                    "Operation timed out") == 0);
+  CHECK(std::strcmp(ftp_status_to_string(FtpStatus_t::disabled),
+                    "FTP support disabled") == 0);
+
+  // Out of range status returns fallback
+  auto invalid_status = static_cast<FtpStatus_t>(99);
+  CHECK(std::strcmp(ftp_status_to_string(invalid_status), "Unknown error") ==
+        0);
+}

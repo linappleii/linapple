@@ -59,3 +59,6 @@ class FtpClient_t {
   CurlHandlePtr_t curl_handle_;
 #endif
 };
+
+[[nodiscard]] auto ftp_status_to_string(FtpStatus_t status) noexcept -> const
+    char*;

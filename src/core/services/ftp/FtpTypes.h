@@ -14,10 +14,15 @@ enum class FtpStatus_t : uint8_t {
   path_traversal_rejected,
   transfer_failed,
   timeout,
-  disabled
+  disabled,
 };
 
-enum class FtpEntryType_t : uint8_t { file, directory, symlink, unknown };
+enum class FtpEntryType_t : uint8_t {
+  file = 0,
+  directory,
+  symlink,
+  unknown,
+};
 
 struct FtpFileEntry_t {
   std::string name;
