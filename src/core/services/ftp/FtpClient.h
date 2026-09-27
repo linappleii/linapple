@@ -7,10 +7,6 @@
 
 #include "core/services/ftp/FtpTypes.h"
 
-#ifndef ENABLE_FTP
-#define ENABLE_FTP 1
-#endif
-
 #if ENABLE_FTP
 using CURL = void;
 struct CurlDeleter_t {
@@ -43,20 +39,20 @@ class FtpClient_t {
   FtpClient_t(FtpClient_t&&) noexcept;
   auto operator=(FtpClient_t&&) noexcept -> FtpClient_t&;
 
-  auto download_file(const std::string& remote_url,
-                     const std::string& local_cache_dir,
-                     const std::string& filename,
-                     const std::string& user_pwd = "",
-                     FtpProgressCallback_t progress_cb = nullptr,
-                     void* user_data = nullptr) -> FtpStatus_t;
+  [[nodiscard]] auto download_file(const std::string& remote_url,
+                                   const std::string& local_cache_dir,
+                                   const std::string& filename,
+                                   const std::string& user_pwd = "",
+                                   FtpProgressCallback_t progress_cb = nullptr,
+                                   void* user_data = nullptr) -> FtpStatus_t;
 
-  auto fetch_directory_listing(const std::string& remote_dir_url,
-                               std::vector<FtpFileEntry_t>& entries,
-                               const std::string& user_pwd = "") -> FtpStatus_t;
+  [[nodiscard]] auto fetch_directory_listing(
+      const std::string& remote_dir_url, std::vector<FtpFileEntry_t>& entries,
+      const std::string& user_pwd = "") -> FtpStatus_t;
 
  private:
 #if ENABLE_FTP
-  CurlHandlePtr_t curl_handle_;
+  CurlHandlePtr_t curl_handle;
 #endif
 };
 

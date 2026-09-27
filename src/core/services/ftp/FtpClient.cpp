@@ -36,6 +36,11 @@ CurlGlobalGuard_t::~CurlGlobalGuard_t() { curl_global_cleanup(); }
 
 namespace {
 
+constexpr long k_connect_timeout_seconds = 10;
+constexpr long k_download_timeout_seconds = 60;
+constexpr long k_listing_timeout_seconds = 30;
+constexpr long k_no_signal_flag = 1;
+
 struct ProgressContext_t {
   FtpProgressCallback_t callback{nullptr};
   void* user_data{nullptr};
@@ -44,29 +49,40 @@ struct ProgressContext_t {
       : callback(cb), user_data(ud) {}
 };
 
+struct StagingGuard_t {
+  const std::string& path;
+  const bool& success;
+  ~StagingGuard_t() {
+    if (!success) {
+      std::remove(path.c_str());
+    }
+  }
+};
+
 auto curl_xfer_callback(void* clientp, curl_off_t dltotal, curl_off_t dlnow,
                         curl_off_t, curl_off_t) -> int {
   auto* ctx = static_cast<ProgressContext_t*>(clientp);
-  if (ctx != nullptr && ctx->callback != nullptr) {
-    const bool keep_going = ctx->callback(
-        ctx->user_data, static_cast<uint64_t>(dlnow >= 0 ? dlnow : 0),
-        static_cast<uint64_t>(dltotal >= 0 ? dltotal : 0));
-    return keep_going ? 0 : 1;
+  if (ctx == nullptr || ctx->callback == nullptr) {
+    return 0;
   }
-  return 0;
+  const bool keep_going = ctx->callback(
+      ctx->user_data, static_cast<uint64_t>(dlnow >= 0 ? dlnow : 0),
+      static_cast<uint64_t>(dltotal >= 0 ? dltotal : 0));
+  return keep_going ? 0 : 1;
 }
 
 auto write_string_callback(char* ptr, size_t size, size_t nmemb, void* userdata)
     -> size_t {
   const size_t total = size * nmemb;
   auto* str = static_cast<std::string*>(userdata);
-  if (str != nullptr && ptr != nullptr) {
-    str->append(ptr, total);
+  if (str == nullptr || ptr == nullptr) {
+    return total;
   }
+  str->append(ptr, total);
   return total;
 }
 
-auto map_curl_code(CURLcode code) -> FtpStatus_t {
+auto map_curl_code(CURLcode code) noexcept -> FtpStatus_t {
   switch (code) {
     case CURLE_OK:
       return FtpStatus_t::ok;
@@ -87,6 +103,15 @@ auto map_curl_code(CURLcode code) -> FtpStatus_t {
     default:
       return FtpStatus_t::transfer_failed;
   }
+}
+
+auto configure_ftp_protocols(CURL* curl) -> void {
+#if LIBCURL_VERSION_NUM >= 0x075500
+  curl_easy_setopt(curl, CURLOPT_PROTOCOLS_STR, "ftp,ftps");
+#elif defined(CURLOPT_PROTOCOLS)
+  curl_easy_setopt(curl, CURLOPT_PROTOCOLS,
+                   static_cast<long>(CURLPROTO_FTP | CURLPROTO_FTPS));
+#endif
 }
 
 auto encode_ftp_url(CURL* curl, const std::string& raw_url) -> std::string {
@@ -110,27 +135,28 @@ auto encode_ftp_url(CURL* curl, const std::string& raw_url) -> std::string {
   size_t curr = 0;
   while (curr < raw_path.size()) {
     if (raw_path[curr] == '/') {
-      result += raw_path[curr];
+      result += '/';
       while (curr + 1 < raw_path.size() && raw_path[curr + 1] == '/') {
         ++curr;
       }
       ++curr;
-    } else {
-      const size_t next_slash = raw_path.find('/', curr);
-      const size_t seg_len = (next_slash == std::string::npos)
-                                 ? (raw_path.size() - curr)
-                                 : (next_slash - curr);
-      const std::string segment = raw_path.substr(curr, seg_len);
-      char* escaped = curl_easy_escape(curl, segment.c_str(),
-                                       static_cast<int>(segment.size()));
-      if (escaped != nullptr) {
-        result += escaped;
-        curl_free(escaped);
-      } else {
-        result += segment;
-      }
-      curr += seg_len;
+      continue;
     }
+
+    const size_t next_slash = raw_path.find('/', curr);
+    const size_t seg_len = (next_slash == std::string::npos)
+                               ? (raw_path.size() - curr)
+                               : (next_slash - curr);
+    const std::string segment = raw_path.substr(curr, seg_len);
+    char* escaped = curl_easy_escape(curl, segment.c_str(),
+                                     static_cast<int>(segment.size()));
+    if (escaped != nullptr) {
+      result += escaped;
+      curl_free(escaped);
+    } else {
+      result += segment;
+    }
+    curr += seg_len;
   }
 
   return result;
@@ -138,7 +164,7 @@ auto encode_ftp_url(CURL* curl, const std::string& raw_url) -> std::string {
 
 }  // namespace
 
-FtpClient_t::FtpClient_t() : curl_handle_(curl_easy_init(), CurlDeleter_t{}) {}
+FtpClient_t::FtpClient_t() : curl_handle(curl_easy_init(), CurlDeleter_t{}) {}
 
 FtpClient_t::FtpClient_t(FtpClient_t&&) noexcept = default;
 auto FtpClient_t::operator=(FtpClient_t&&) noexcept -> FtpClient_t& = default;
@@ -165,7 +191,7 @@ auto FtpClient_t::download_file(const std::string& remote_url,
     return FtpStatus_t::path_traversal_rejected;
   }
 
-  if (!curl_handle_) {
+  if (!curl_handle) {
     return FtpStatus_t::failed_init;
   }
 
@@ -179,31 +205,17 @@ auto FtpClient_t::download_file(const std::string& remote_url,
   }
 
   bool download_succeeded = false;
-  struct StagingGuard_t {
-    const std::string& path;
-    const bool& success;
-    ~StagingGuard_t() {
-      if (!success) {
-        std::remove(path.c_str());
-      }
-    }
-  } staging_guard{staging_path, download_succeeded};
+  StagingGuard_t staging_guard{staging_path, download_succeeded};
 
-  CURL* curl = curl_handle_.get();
+  CURL* curl = curl_handle.get();
   curl_easy_reset(curl);
   const std::string encoded_url = encode_ftp_url(curl, remote_url);
   curl_easy_setopt(curl, CURLOPT_URL, encoded_url.c_str());
-#if LIBCURL_VERSION_NUM >= 0x075500
-  curl_easy_setopt(curl, CURLOPT_PROTOCOLS_STR, "ftp,ftps");
-#elif defined(CURLOPT_PROTOCOLS)
-  // NOLINTNEXTLINE(clang-diagnostic-deprecated-declarations)
-  curl_easy_setopt(curl, CURLOPT_PROTOCOLS,
-                   static_cast<long>(CURLPROTO_FTP | CURLPROTO_FTPS));
-#endif
+  configure_ftp_protocols(curl);
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, stream.get());
-  curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
-  curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);
-  curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+  curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, k_connect_timeout_seconds);
+  curl_easy_setopt(curl, CURLOPT_TIMEOUT, k_download_timeout_seconds);
+  curl_easy_setopt(curl, CURLOPT_NOSIGNAL, k_no_signal_flag);
 
   if (!user_pwd.empty()) {
     curl_easy_setopt(curl, CURLOPT_USERPWD, user_pwd.c_str());
@@ -241,29 +253,23 @@ auto FtpClient_t::fetch_directory_listing(const std::string& remote_dir_url,
     return FtpStatus_t::invalid_param;
   }
 
-  if (!curl_handle_) {
+  if (!curl_handle) {
     return FtpStatus_t::failed_init;
   }
 
   entries.clear();
   std::string response_buffer;
 
-  CURL* curl = curl_handle_.get();
+  CURL* curl = curl_handle.get();
   curl_easy_reset(curl);
   const std::string encoded_url = encode_ftp_url(curl, remote_dir_url);
   curl_easy_setopt(curl, CURLOPT_URL, encoded_url.c_str());
-#if LIBCURL_VERSION_NUM >= 0x075500
-  curl_easy_setopt(curl, CURLOPT_PROTOCOLS_STR, "ftp,ftps");
-#elif defined(CURLOPT_PROTOCOLS)
-  // NOLINTNEXTLINE(clang-diagnostic-deprecated-declarations)
-  curl_easy_setopt(curl, CURLOPT_PROTOCOLS,
-                   static_cast<long>(CURLPROTO_FTP | CURLPROTO_FTPS));
-#endif
+  configure_ftp_protocols(curl);
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_string_callback);
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_buffer);
-  curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
-  curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
-  curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+  curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, k_connect_timeout_seconds);
+  curl_easy_setopt(curl, CURLOPT_TIMEOUT, k_listing_timeout_seconds);
+  curl_easy_setopt(curl, CURLOPT_NOSIGNAL, k_no_signal_flag);
 
   if (!user_pwd.empty()) {
     curl_easy_setopt(curl, CURLOPT_USERPWD, user_pwd.c_str());
