@@ -26,36 +26,36 @@
 
 using Logger::error;
 
-const char* g_app_title = title_apple_2e_enhanced;
+const char* app_title = title_apple_2e_enhanced;
 
-eApple2Type g_apple2_type = A2TYPE_APPLE2EENHANCED;
-eApple2Language g_language = A2LANG_US;
+eApple2Type current_apple2_type = A2TYPE_APPLE2EENHANCED;
+eApple2Language current_language = A2LANG_US;
 
 uint32_t emul_msec = 0;
-bool g_full_speed = false;
+bool full_speed = false;
 bool hdd_enabled = false;
 
-SystemState_t g_state = {app_mode_logo,
-                         false,
-                         false,
-                         emulation_speed_normal,
-                         SCREEN_WIDTH,
-                         SCREEN_HEIGHT,
-                         false,
-                         {""},
-                         {""},
-                         {""},
-                         {""},
-                         {""},
-                         {""},
-                         {""},
-                         {"anonymous:mymail@hotmail.com"},
-                         {""},
-                         true,
-                         17030,
-                         false};
+SystemState_t system_state = {app_mode_logo,
+                              false,
+                              false,
+                              emulation_speed_normal,
+                              SCREEN_WIDTH,
+                              SCREEN_HEIGHT,
+                              false,
+                              {""},
+                              {""},
+                              {""},
+                              {""},
+                              {""},
+                              {""},
+                              {""},
+                              {"anonymous:mymail@hotmail.com"},
+                              {""},
+                              true,
+                              17030,
+                              false};
 
-double g_current_clk_6502 = CLOCK_6502;
+double current_clk_6502 = CLOCK_6502;
 
 auto get_title_apple_2() noexcept -> const char* { return title_apple_2; }
 auto get_title_apple_2_plus() noexcept -> const char* {
@@ -71,38 +71,38 @@ namespace {
 constexpr uint64_t cpu_test_max_cycles = 100000000;
 constexpr int full_speed_disk_iterations = 100;
 
-static LinappleVideoCallback_t s_video_cb = nullptr;
-static LinappleTitleCallback_t s_title_cb = nullptr;
+static LinappleVideoCallback_t video_cb = nullptr;
+static LinappleTitleCallback_t title_cb = nullptr;
 
-static uint32_t s_turbo_start_ms = 0;
-static bool s_was_turbo = false;
-static bool s_user_turbo = false;
-static bool s_disk_turbo_enabled = true;
+static uint32_t turbo_start_ms = 0;
+static bool was_turbo = false;
+static bool user_turbo = false;
+static bool disk_turbo_enabled = true;
 
 auto is_disk_turbo() -> bool {
-  return s_disk_turbo_enabled && peripheral_is_any_active();
+  return disk_turbo_enabled && peripheral_is_any_active();
 }
 
 auto is_user_turbo() -> bool {
-  return s_user_turbo || (g_state.speed >= emulation_speed_max);
+  return user_turbo || (system_state.speed >= emulation_speed_max);
 }
 
 auto should_run_full_speed() -> bool {
   bool disk_turbo = is_disk_turbo();
-  bool user_turbo = is_user_turbo();
-  bool should_turbo = disk_turbo || user_turbo;
+  bool user_turbo_active = is_user_turbo();
+  bool should_turbo = disk_turbo || user_turbo_active;
 
-  if (should_turbo && !s_was_turbo) {
-    s_turbo_start_ms = linapple_get_ticks();
+  if (should_turbo && !was_turbo) {
+    turbo_start_ms = linapple_get_ticks();
     Logger::perf("Full-speed mode engaged (disk=%d, user=%d)\n",
-                 disk_turbo ? 1 : 0, user_turbo ? 1 : 0);
-  } else if (!should_turbo && s_was_turbo) {
-    uint32_t elapsed = linapple_get_ticks() - s_turbo_start_ms;
+                 disk_turbo ? 1 : 0, user_turbo_active ? 1 : 0);
+  } else if (!should_turbo && was_turbo) {
+    uint32_t elapsed = linapple_get_ticks() - turbo_start_ms;
     Logger::perf("Full-speed mode disengaged after %ums\n", elapsed);
   }
 
-  s_was_turbo = should_turbo;
-  g_full_speed = should_turbo;
+  was_turbo = should_turbo;
+  full_speed = should_turbo;
   return should_turbo;
 }
 
@@ -135,22 +135,22 @@ auto extension_matches_list(const char* ext, const char* list) -> bool {
 
 }  // namespace
 
-extern FrontendAudioChannelCallback_t g_frontend_audio_channel_cb;
-extern FrontendAudioSourceRegisterCallback_t g_frontend_audio_register_cb;
-extern FrontendAudioSourceUnregisterCallback_t g_frontend_audio_unregister_cb;
+extern FrontendAudioChannelCallback_t frontend_audio_channel_cb;
+extern FrontendAudioSourceRegisterCallback_t frontend_audio_register_cb;
+extern FrontendAudioSourceUnregisterCallback_t frontend_audio_unregister_cb;
 
 auto linapple_set_video_callback(LinappleVideoCallback_t cb) -> void {
-  s_video_cb = cb;
+  video_cb = cb;
 }
 
 auto linapple_set_audio_channel_callback(FrontendAudioChannelCallback_t cb)
     -> void {
-  g_frontend_audio_channel_cb = cb;
+  frontend_audio_channel_cb = cb;
 }
 
 auto linapple_set_audio_source_register_callback(
     FrontendAudioSourceRegisterCallback_t cb) -> void {
-  g_frontend_audio_register_cb = cb;
+  frontend_audio_register_cb = cb;
   // A late subscriber is the normal case, not the exception: every frontend
   // installs this callback from its audio init, which runs after
   // app_controller_initialize has already registered the internal speaker
@@ -163,19 +163,19 @@ auto linapple_set_audio_source_register_callback(
 
 auto linapple_set_audio_source_unregister_callback(
     FrontendAudioSourceUnregisterCallback_t cb) -> void {
-  g_frontend_audio_unregister_cb = cb;
+  frontend_audio_unregister_cb = cb;
 }
 
 auto linapple_set_title_callback(LinappleTitleCallback_t cb) -> void {
-  s_title_cb = cb;
+  title_cb = cb;
 }
 
 auto linapple_update_title(const char* title) -> void {
   if (title == nullptr) {
     return;
   }
-  if (s_title_cb != nullptr) {
-    s_title_cb(title);
+  if (title_cb != nullptr) {
+    title_cb(title);
   }
 }
 
@@ -189,7 +189,7 @@ auto linapple_get_ticks() noexcept -> uint32_t {
 auto linapple_init() -> int {
   uint32_t disk_turbo = 1;
   config_load_int("Configuration", "Disk Turbo", &disk_turbo);
-  s_disk_turbo_enabled = (disk_turbo != 0);
+  disk_turbo_enabled = (disk_turbo != 0);
 
   mem_pre_initialize();
   if (!asset_init()) {
@@ -253,7 +253,7 @@ auto linapple_cpu_test(const char* test_file, uint16_t trap_addr) -> void {
     if (executed == 0) {
       break;
     }
-    g_cumulative_cycles += executed;
+    cpu_add_cumulative_cycles(executed);
     count += executed;
     if (cpu_get_registers()->pc == trap_addr) {
       printf("CPU trapped at 0x%04X after %" PRIu64 " cycles\n",
@@ -378,7 +378,7 @@ static auto run_frame_cycles(uint32_t cycles) -> uint32_t {
 }
 
 auto linapple_run_frame(uint32_t cycles) -> uint32_t {
-  if (g_state.mode != app_mode_running) {
+  if (system_state.mode != app_mode_running) {
     return 0;
   }
 
@@ -387,66 +387,88 @@ auto linapple_run_frame(uint32_t cycles) -> uint32_t {
   peripheral_manager_on_vblank(true);
   basic_sync_update();
 
-  if (s_video_cb != nullptr && g_frame_ready) {
+  if (video_cb != nullptr && video_is_frame_ready()) {
     uint32_t* output = video_get_output_buffer();
-    s_video_cb(output, video_width, video_height, video_width * 4);
-    g_frame_ready = false;
+    video_cb(output, video_width, video_height, video_width * 4);
+    video_clear_frame_ready();
   }
   return executed;
 }
 
-auto linapple_get_speed() noexcept -> uint32_t { return g_state.speed; }
+auto linapple_get_speed() noexcept -> uint32_t { return system_state.speed; }
 
 auto linapple_set_speed(uint32_t speed) noexcept -> void {
   if (speed > emulation_speed_max) {
     speed = emulation_speed_max;
   }
-  g_state.speed = speed;
+  system_state.speed = speed;
 }
 
 auto linapple_speed_increase() noexcept -> uint32_t {
-  uint32_t next_speed = g_state.speed + 2;
+  uint32_t next_speed = system_state.speed + 2;
   if (next_speed > emulation_speed_max) {
     next_speed = emulation_speed_max;
   }
-  g_state.speed = next_speed;
-  return g_state.speed;
+  system_state.speed = next_speed;
+  return system_state.speed;
 }
 
 auto linapple_speed_decrease() noexcept -> uint32_t {
-  if (g_state.speed > emulation_speed_min) {
-    g_state.speed -= 1;
+  if (system_state.speed > emulation_speed_min) {
+    system_state.speed -= 1;
   }
-  return g_state.speed;
+  return system_state.speed;
 }
 
 auto linapple_speed_reset() noexcept -> uint32_t {
-  g_state.speed = emulation_speed_normal;
-  return g_state.speed;
+  system_state.speed = emulation_speed_normal;
+  return system_state.speed;
 }
 
 auto linapple_get_frame_cycles() noexcept -> uint32_t {
   uint32_t base_cycles =
-      (g_state.clks_per_frame > 0) ? g_state.clks_per_frame : 17030;
-  if (g_state.speed == emulation_speed_normal) {
+      (system_state.clks_per_frame > 0) ? system_state.clks_per_frame : 17030;
+  if (system_state.speed == emulation_speed_normal) {
     return base_cycles;
   }
   double multiplier = 1.0;
-  if (g_state.speed < emulation_speed_normal) {
-    multiplier = 0.5 + static_cast<double>(g_state.speed) * 0.05;
+  if (system_state.speed < emulation_speed_normal) {
+    multiplier = 0.5 + static_cast<double>(system_state.speed) * 0.05;
   } else {
-    multiplier = static_cast<double>(g_state.speed) / 10.0;
+    multiplier = static_cast<double>(system_state.speed) / 10.0;
   }
   return static_cast<uint32_t>(static_cast<double>(base_cycles) * multiplier);
 }
 
-auto linapple_get_turbo() noexcept -> bool { return s_user_turbo; }
+auto linapple_get_turbo() noexcept -> bool { return user_turbo; }
 
-auto linapple_set_turbo(bool turbo) noexcept -> void { s_user_turbo = turbo; }
+auto linapple_set_turbo(bool turbo) noexcept -> void { user_turbo = turbo; }
 
 auto linapple_toggle_turbo() noexcept -> bool {
-  s_user_turbo = !s_user_turbo;
-  return s_user_turbo;
+  user_turbo = !user_turbo;
+  return user_turbo;
+}
+
+auto linapple_is_full_speed() noexcept -> bool { return full_speed; }
+
+auto linapple_get_app_title() noexcept -> const char* { return app_title; }
+
+auto linapple_get_clock_hz() noexcept -> double { return current_clk_6502; }
+
+auto linapple_get_apple2_type() noexcept -> Apple2Type_t {
+  return current_apple2_type;
+}
+
+auto linapple_set_apple2_type(Apple2Type_t type) noexcept -> void {
+  current_apple2_type = type;
+}
+
+auto linapple_get_language() noexcept -> Apple2Language_t {
+  return current_language;
+}
+
+auto linapple_set_language(Apple2Language_t lang) noexcept -> void {
+  current_language = lang;
 }
 
 auto linapple_set_key_state(uint8_t apple_code, bool down) -> void {

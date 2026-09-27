@@ -143,7 +143,7 @@ auto sys_input() -> void {
 
 auto enter_message_loop() -> void {
   FramePacer_t pacer;
-  while (g_state.mode != app_mode_exit) {
+  while (system_state.mode != app_mode_exit) {
     sys_input();
     joy_frontend_update();
 

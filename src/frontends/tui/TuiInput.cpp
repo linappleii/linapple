@@ -79,17 +79,17 @@ static auto map_key(uint8_t a2_code) -> void {
 }
 
 static auto reset_machine() -> void {
-  g_full_speed = false;
+  full_speed = false;
   linapple_reset_hard();
   peripheral_command(0, JOY_CMD_RESET, nullptr, 0);
-  g_state.mode = app_mode_running;
-  g_state.reset_timing = true;
+  system_state.mode = app_mode_running;
+  system_state.reset_timing = true;
 }
 
 static auto soft_reset_machine() -> void {
   linapple_reset_soft();
-  g_state.mode = app_mode_running;
-  g_state.reset_timing = true;
+  system_state.mode = app_mode_running;
+  system_state.reset_timing = true;
 }
 
 static auto restart_machine() -> void { app_controller_set_restart(true); }
@@ -103,8 +103,8 @@ static auto swap_drives() -> void {
 }
 
 static auto toggle_keyboard_rocker() -> void {
-  if ((g_apple2_type == A2TYPE_APPLE2E) ||
-      (g_apple2_type == A2TYPE_APPLE2EENHANCED)) {
+  if ((current_apple2_type == A2TYPE_APPLE2E) ||
+      (current_apple2_type == A2TYPE_APPLE2EENHANCED)) {
     uint8_t cur_rocker = 0;
     size_t rocker_sz = sizeof(cur_rocker);
     peripheral_query_by_id(0, "linapple.keyboard", keyboard_query_rocker,
@@ -116,10 +116,10 @@ static auto toggle_keyboard_rocker() -> void {
 }
 
 static auto toggle_debugger() -> void {
-  if (g_state.disable_debugger) {
+  if (system_state.disable_debugger) {
     return;
   }
-  if (g_state.mode != app_mode_debug) {
+  if (system_state.mode != app_mode_debug) {
     debug_begin();
   } else {
     debug_end();
@@ -130,9 +130,9 @@ static auto save_configuration() -> void {
   Configuration_t::instance().set_int("Configuration", "Video Emulation",
                                       static_cast<int>(g_videotype));
   Configuration_t::instance().set_int("Configuration", "Emulation Speed",
-                                      g_state.speed);
+                                      system_state.speed);
   Configuration_t::instance().set_int("Configuration", "Fullscreen",
-                                      g_state.fullscreen ? 1 : 0);
+                                      system_state.fullscreen ? 1 : 0);
   Configuration_t::instance().save();
 }
 
@@ -142,8 +142,8 @@ static auto cycle_video_mode() -> void {
     g_videotype = 0;
   }
   video_reinitialize();
-  if (g_state.mode != app_mode_logo) {
-    if (g_state.mode == app_mode_debug) {
+  if (system_state.mode != app_mode_logo) {
+    if (system_state.mode == app_mode_debug) {
 #if ENABLE_DEBUGGER
       uint32_t debug_video_mode = 0;
       if (debug_get_video_mode(&debug_video_mode)) {
@@ -157,19 +157,19 @@ static auto cycle_video_mode() -> void {
 }
 
 static auto toggle_pause() -> void {
-  switch (g_state.mode) {
+  switch (system_state.mode) {
     case app_mode_running:
-      g_state.mode = app_mode_paused;
+      system_state.mode = app_mode_paused;
       audio_mixer_set_fade(fade_out);
       break;
     case app_mode_paused:
-      g_state.mode = app_mode_running;
+      system_state.mode = app_mode_running;
       audio_mixer_set_fade(fade_in);
       break;
     default:
       break;
   }
-  g_state.reset_timing = true;
+  system_state.reset_timing = true;
 }
 
 static auto toggle_scroll_lock() -> void { linapple_toggle_turbo(); }
@@ -459,7 +459,7 @@ static auto process_sequences() -> void {
               tui_disk_select_move(-1, disk_select_page_size);
             } else if (tui_video_is_help_visible()) {
               tui_video_close_help();
-            } else if (g_state.mode == app_mode_debug) {
+            } else if (system_state.mode == app_mode_debug) {
               debugger_process_key(linapple_key_up);
             } else {
               map_key(a2_key_up);
@@ -469,7 +469,7 @@ static auto process_sequences() -> void {
               tui_disk_select_move(1, disk_select_page_size);
             } else if (tui_video_is_help_visible()) {
               tui_video_close_help();
-            } else if (g_state.mode == app_mode_debug) {
+            } else if (system_state.mode == app_mode_debug) {
               debugger_process_key(linapple_key_down);
             } else {
               map_key(a2_key_down);
@@ -479,7 +479,7 @@ static auto process_sequences() -> void {
               tui_disk_select_move(-1, disk_select_page_size);
             } else if (tui_video_is_help_visible()) {
               tui_video_close_help();
-            } else if (g_state.mode == app_mode_debug) {
+            } else if (system_state.mode == app_mode_debug) {
               debugger_process_key(linapple_key_left);
             } else {
               map_key(a2_key_left);
@@ -489,7 +489,7 @@ static auto process_sequences() -> void {
               tui_disk_select_move(1, disk_select_page_size);
             } else if (tui_video_is_help_visible()) {
               tui_video_close_help();
-            } else if (g_state.mode == app_mode_debug) {
+            } else if (system_state.mode == app_mode_debug) {
               debugger_process_key(linapple_key_right);
             } else {
               map_key(a2_key_right);
@@ -507,7 +507,7 @@ static auto process_sequences() -> void {
         tui_disk_select_close();
       } else if (tui_video_is_help_visible()) {
         tui_video_close_help();
-      } else if (g_state.mode == app_mode_debug) {
+      } else if (system_state.mode == app_mode_debug) {
         debugger_process_key(linapple_key_escape);
       } else {
         map_key(a2_key_esc);
@@ -529,7 +529,7 @@ static auto process_sequences() -> void {
       }
     } else if (tui_video_is_help_visible()) {
       tui_video_close_help();
-    } else if (g_state.mode == app_mode_debug) {
+    } else if (system_state.mode == app_mode_debug) {
       if (b == a2_key_enter || b == '\n') {
         debugger_process_key(linapple_key_return);
       } else if (b == a2_key_backspace || b == a2_key_delete) {

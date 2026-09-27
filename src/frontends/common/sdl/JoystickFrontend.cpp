@@ -184,7 +184,7 @@ void joy_frontend_check_exit() {
           joy1.get(), static_cast<int>(g_joyConfig.joy_exit_button[1]));
 
   if (quit) {
-    g_state.mode = app_mode_exit;
+    system_state.mode = app_mode_exit;
   }
 }
 

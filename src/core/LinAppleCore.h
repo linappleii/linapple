@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "apple2/Apple2Types.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 
 struct PeripheralAudioInfo_t;
@@ -113,7 +114,7 @@ struct SystemState_t {
   bool disable_debugger;
 };
 
-extern SystemState_t g_state;
+extern SystemState_t system_state;
 
 constexpr uint32_t emulation_speed_min = 0;
 constexpr uint32_t emulation_speed_normal = 10;
@@ -133,11 +134,11 @@ constexpr const char* title_apple_2e_enhanced = "Enhanced Apple //e Emulator";
 extern "C" {
 #endif
 
-extern const char* g_app_title;
+extern const char* app_title;
 extern uint32_t emul_msec;
-extern bool g_full_speed;
+extern bool full_speed;
 extern bool hdd_enabled;
-extern double g_current_clk_6502;
+extern double current_clk_6502;
 
 using LinappleVideoCallback_t = void (*)(const uint32_t* pixels, int width,
                                          int height, int pitch);
@@ -175,6 +176,13 @@ auto linapple_speed_reset() noexcept -> uint32_t;
 [[nodiscard]] auto linapple_get_turbo() noexcept -> bool;
 auto linapple_set_turbo(bool turbo) noexcept -> void;
 auto linapple_toggle_turbo() noexcept -> bool;
+[[nodiscard]] auto linapple_is_full_speed() noexcept -> bool;
+[[nodiscard]] auto linapple_get_app_title() noexcept -> const char*;
+[[nodiscard]] auto linapple_get_clock_hz() noexcept -> double;
+[[nodiscard]] auto linapple_get_apple2_type() noexcept -> Apple2Type_t;
+auto linapple_set_apple2_type(Apple2Type_t type) noexcept -> void;
+[[nodiscard]] auto linapple_get_language() noexcept -> Apple2Language_t;
+auto linapple_set_language(Apple2Language_t lang) noexcept -> void;
 
 auto peripheral_manager_init() -> void;
 auto peripheral_manager_reset() -> void;

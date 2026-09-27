@@ -94,21 +94,21 @@ auto square_wave(double rate_hz, double tone_hz, size_t count,
 /**
  * @brief RAII mixer at a declared output rate and 6502 clock.
  *
- * g_slots and g_current_clk_6502 are process globals, so every case goes
+ * g_slots and current_clk_6502 are process globals, so every case goes
  * through the fixture: it owns the initialize/destroy pair and restores the
  * clock it borrowed.
  */
 class MixerFixture_t {
  public:
   MixerFixture_t(uint32_t output_rate_hz, double clock_hz)
-      : rate_(output_rate_hz), previous_clock_(g_current_clk_6502) {
-    g_current_clk_6502 = clock_hz;
+      : rate_(output_rate_hz), previous_clock_(current_clk_6502) {
+    current_clk_6502 = clock_hz;
     audio_mixer_initialize(output_rate_hz);
   }
 
   ~MixerFixture_t() {
     audio_mixer_destroy();
-    g_current_clk_6502 = previous_clock_;
+    current_clk_6502 = previous_clock_;
   }
 
   MixerFixture_t(const MixerFixture_t&) = delete;
@@ -118,7 +118,7 @@ class MixerFixture_t {
 
   auto rate() const -> uint32_t { return rate_; }
 
-  auto set_clock(double clock_hz) -> void { g_current_clk_6502 = clock_hz; }
+  auto set_clock(double clock_hz) -> void { current_clk_6502 = clock_hz; }
 
   auto upload_mono(int slot, const float* samples, size_t count) -> void {
     const float* channels[1] = {samples};

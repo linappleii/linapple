@@ -319,8 +319,8 @@ void video_init_buffers() {
     video_destroy_surface(g_origscreen);
   }
   g_origscreen =
-      video_create_surface(static_cast<int>(g_state.screen_width),
-                           static_cast<int>(g_state.screen_height), 1);
+      video_create_surface(static_cast<int>(system_state.screen_width),
+                           static_cast<int>(system_state.screen_height), 1);
 
   if (g_device_bitmap == nullptr || g_origscreen == nullptr) {
     fprintf(stderr, "g_device_bitmap or g_origscreen was not created\n");
@@ -816,9 +816,9 @@ void draw_mono_text_source(VideoSurface_t* hDstDC) {
       break;
   }
 
-  if ((g_apple2_type == A2TYPE_APPLE2) ||
-      (g_apple2_type == A2TYPE_APPLE2PLUS) ||
-      (g_apple2_type == A2TYPE_APPLE2JPLUS)) {
+  if ((current_apple2_type == A2TYPE_APPLE2) ||
+      (current_apple2_type == A2TYPE_APPLE2PLUS) ||
+      (current_apple2_type == A2TYPE_APPLE2JPLUS)) {
     soft_stretch_mono(charset40, 0, 0, 128, 128, hDstDC, SRCOFFS_40COL, 0, 256,
                       256, hBrush);
   } else {
@@ -837,7 +837,7 @@ void draw_mono_text_source(VideoSurface_t* hDstDC) {
       soft_stretch_mono(hDstDC, 0, dstYofs, 256, 64, hDstDC, SRCOFFS_40COL,
                         64 + dstYofs, 256, 64, hBrush);
 
-      if (g_apple2_type == A2TYPE_APPLE2E) {
+      if (current_apple2_type == A2TYPE_APPLE2E) {
         soft_stretch_mono(hDstDC, 0, 256 + dstYofs, 256, 32, hDstDC,
                           SRCOFFS_40COL, 256 + 64 + dstYofs, 256, 32, hBrush);
       }
@@ -854,9 +854,9 @@ void draw_text_source(VideoSurface_t* dc) {
   }
   uint8_t hBrush = get_monochrome_index();
 
-  if ((g_apple2_type == A2TYPE_APPLE2) ||
-      (g_apple2_type == A2TYPE_APPLE2PLUS) ||
-      (g_apple2_type == A2TYPE_APPLE2JPLUS)) {
+  if ((current_apple2_type == A2TYPE_APPLE2) ||
+      (current_apple2_type == A2TYPE_APPLE2PLUS) ||
+      (current_apple2_type == A2TYPE_APPLE2JPLUS)) {
     soft_stretch_mono(charset40, 0, 0, 128, 128, dc, SRCOFFS_40COL, 0, 256, 256,
                       hBrush);
   } else {
@@ -875,7 +875,7 @@ void draw_text_source(VideoSurface_t* dc) {
       soft_stretch_mono(dc, 0, dstYofs, 256, 64, dc, SRCOFFS_40COL,
                         64 + dstYofs, 256, 64, hBrush);
 
-      if (g_apple2_type == A2TYPE_APPLE2E) {
+      if (current_apple2_type == A2TYPE_APPLE2E) {
         soft_stretch_mono(dc, 0, 256 + dstYofs, 256, 32, dc, SRCOFFS_40COL,
                           256 + 64 + dstYofs, 256, 32, hBrush);
       }
@@ -1233,13 +1233,13 @@ auto update_dlores_cell(int x, int y, int xpixel, int ypixel, int offset)
 auto load_charset() -> VideoSurface_t* {
   VideoSurface_t* result = nullptr;
 
-  if ((g_apple2_type == A2TYPE_APPLE2) ||
-      (g_apple2_type == A2TYPE_APPLE2PLUS) ||
-      (g_apple2_type == A2TYPE_APPLE2JPLUS)) {
+  if ((current_apple2_type == A2TYPE_APPLE2) ||
+      (current_apple2_type == A2TYPE_APPLE2PLUS) ||
+      (current_apple2_type == A2TYPE_APPLE2JPLUS)) {
     // character bitmap for II and IIplus
     result = video_load_xpm(charset40_IIplus_xpm);
   } else {
-    switch (g_language) {
+    switch (current_language) {
       case A2LANG_UK:
         result = video_load_xpm(charset40_british_xpm);
         break;
@@ -1703,7 +1703,7 @@ auto video_perform_refresh() -> void {
   displaypage2_latched = displaypage2;
   vidmode_latched = g_video_mode;
 
-  if (g_state.mode == app_mode_debug) {
+  if (system_state.mode == app_mode_debug) {
     if (redrawfull == 0) {
       return;
     }
@@ -1935,8 +1935,8 @@ auto video_set_mode(uint16_t, uint16_t address, uint8_t write, uint8_t,
 static uint32_t g_video_cycles_in_frame = 0;
 auto video_update_vbl(uint32_t cycles_this_frame) -> void {
   g_video_cycles_in_frame += cycles_this_frame;
-  while (g_video_cycles_in_frame >= g_state.clks_per_frame) {
-    g_video_cycles_in_frame -= g_state.clks_per_frame;
+  while (g_video_cycles_in_frame >= system_state.clks_per_frame) {
+    g_video_cycles_in_frame -= system_state.clks_per_frame;
     video_refresh_screen();
     video_update_flash();
   }
@@ -1992,10 +1992,10 @@ auto video_set_snapshot(const SsIoVideo_t* ss) -> uint32_t {
 
 auto video_get_scanner_address(bool* pbVblBar_OUT,
                                const uint32_t executed_cycles) -> uint16_t {
-  if (g_state.clks_per_frame == 0) return 0;
+  if (system_state.clks_per_frame == 0) return 0;
   // get video scanner position
   int cycles =
-      (g_video_cycles_in_frame + executed_cycles) % g_state.clks_per_frame;
+      (g_video_cycles_in_frame + executed_cycles) % system_state.clks_per_frame;
 
   // machine state switches
   int hires = (sw_hires() && !sw_text()) ? 1 : 0;
@@ -2003,7 +2003,8 @@ auto video_get_scanner_address(bool* pbVblBar_OUT,
   int n80Store = (mem_get_80store()) ? 1 : 0;
 
   // calculate video parameters according to display standard
-  int scan_lines = g_state.video_scanner_ntsc ? kNTSCScanLines : kPALScanLines;
+  int scan_lines =
+      system_state.video_scanner_ntsc ? kNTSCScanLines : kPALScanLines;
 
   // calculate horizontal scanning state
   int h_clock =
@@ -2081,10 +2082,10 @@ auto video_get_scanner_address(bool* pbVblBar_OUT,
 }
 
 auto video_get_vbl(const uint32_t executed_cycles) -> bool {
-  if (g_state.clks_per_frame == 0) return false;
+  if (system_state.clks_per_frame == 0) return false;
   // get cycles within current frame
   int cycles =
-      (g_video_cycles_in_frame + executed_cycles) % g_state.clks_per_frame;
+      (g_video_cycles_in_frame + executed_cycles) % system_state.clks_per_frame;
 
   // Apple II NTSC: 262 lines, 65 cycles per line.
   // Visible area: lines 0-191. VBL: lines 192-261.

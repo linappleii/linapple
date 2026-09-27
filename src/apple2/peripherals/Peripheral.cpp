@@ -25,10 +25,9 @@
 #include "core/Registry.h"
 #include "core/Util_Text.h"
 
-FrontendAudioChannelCallback_t g_frontend_audio_channel_cb = nullptr;
-FrontendAudioSourceRegisterCallback_t g_frontend_audio_register_cb = nullptr;
-FrontendAudioSourceUnregisterCallback_t g_frontend_audio_unregister_cb =
-    nullptr;
+FrontendAudioChannelCallback_t frontend_audio_channel_cb = nullptr;
+FrontendAudioSourceRegisterCallback_t frontend_audio_register_cb = nullptr;
+FrontendAudioSourceUnregisterCallback_t frontend_audio_unregister_cb = nullptr;
 
 auto peripheral_get_builtin_registry() -> std::vector<Peripheral_t*>& {
   static std::vector<Peripheral_t*> registry;
@@ -363,7 +362,7 @@ static auto host_get_cycles() -> uint64_t {
   return cpu_get_cumulative_cycles();
 }
 
-static auto host_get_clock_hz() -> double { return g_current_clk_6502; }
+static auto host_get_clock_hz() -> double { return current_clk_6502; }
 
 static auto host_get_config(const char* section, const char* key, char* buffer,
                             size_t buffer_size) -> bool {
@@ -385,14 +384,14 @@ static auto host_set_config(const char* section, const char* key,
 static auto announce_audio_source(int slot, Peripheral_t* api, void* instance)
     -> void {
   if (api == nullptr || api->query == nullptr ||
-      g_frontend_audio_register_cb == nullptr) {
+      frontend_audio_register_cb == nullptr) {
     return;
   }
   PeripheralAudioInfo_t info{};
   size_t out_size = sizeof(info);
   if (api->query(instance, PERIPHERAL_QUERY_AUDIO_INFO, &info, &out_size) ==
       peripheral_ok) {
-    g_frontend_audio_register_cb(slot, api->id, &info);
+    frontend_audio_register_cb(slot, api->id, &info);
   }
 }
 
@@ -433,7 +432,7 @@ static auto host_audio_push_channels(void* instance,
                                      size_t num_channels, size_t num_samples)
     -> void {
   if (channel_buffers == nullptr || num_channels == 0 || num_samples == 0 ||
-      g_full_speed) {
+      full_speed) {
     return;
   }
   for (size_t c = 0; c < num_channels; ++c) {
@@ -461,9 +460,9 @@ static auto host_audio_push_channels(void* instance,
     }
   }
 
-  if (g_frontend_audio_channel_cb != nullptr) {
-    g_frontend_audio_channel_cb(peripheral_id, slot, channel_buffers,
-                                num_channels, num_samples);
+  if (frontend_audio_channel_cb != nullptr) {
+    frontend_audio_channel_cb(peripheral_id, slot, channel_buffers,
+                              num_channels, num_samples);
   }
 }
 
@@ -755,8 +754,8 @@ static auto clear_all_peripherals() -> void {
   g_direct_io_handlers.fill({});
 
   for (size_t i = 0; i < NUM_SLOTS; ++i) {
-    if (g_frontend_audio_unregister_cb != nullptr) {
-      g_frontend_audio_unregister_cb(static_cast<int>(i));
+    if (frontend_audio_unregister_cb != nullptr) {
+      frontend_audio_unregister_cb(static_cast<int>(i));
     }
     g_peripheral_activity_state.at(i) = false;
     for (auto& ap : g_active_peripherals.at(i)) {
@@ -901,8 +900,8 @@ static auto remove_direct_io_handlers_for_instance(void* instance) -> void {
 
 auto peripheral_unregister(int slot) -> int {
   if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) return -1;
-  if (g_frontend_audio_unregister_cb != nullptr) {
-    g_frontend_audio_unregister_cb(slot);
+  if (frontend_audio_unregister_cb != nullptr) {
+    frontend_audio_unregister_cb(slot);
   }
   auto& slot_peripherals = g_active_peripherals.at(static_cast<size_t>(slot));
   for (auto& ap : slot_peripherals) {

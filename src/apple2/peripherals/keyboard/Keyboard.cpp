@@ -16,7 +16,7 @@
 #include "apple2/peripherals/keyboard/Keyboard_Maps.h"
 
 auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
-extern bool g_full_speed;
+extern bool full_speed;
 
 namespace {
 
@@ -244,7 +244,7 @@ auto keyboard_abi_shutdown(void* instance) -> void {
 }
 
 auto keyboard_abi_think(void* instance, uint32_t cycles) -> void {
-  if (instance == nullptr || g_full_speed) {
+  if (instance == nullptr || full_speed) {
     return;
   }
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);

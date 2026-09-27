@@ -20,8 +20,6 @@
 #include <vector>
 
 #include "apple2/Video.h"
-#include "apple2/peripherals/disk/DiskCommands.h"
-#include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "core/LinAppleCore.h"
 #include "frontends/common/FileBrowser.h"
 #include "frontends/common/VideoStretch.h"
@@ -117,7 +115,7 @@ void disk_choose_tick(SDL_Event* event) {
   if (key == SDLK_F12) {
     g_diskChooseState.active = false;
     g_diskChooseState.cancelled = true;
-    g_state.mode = app_mode_exit;
+    system_state.mode = app_mode_exit;
     SDL_Event qe = {};
     qe.type = SDL_QUIT;
     SDL_PushEvent(&qe);
@@ -174,12 +172,12 @@ extern void frame_refresh();
 void disk_choose_draw() {
   if (g_diskChooseState.active == false) return;
 
-  const float facx_f = static_cast<float>(g_state.screen_width) /
+  const float facx_f = static_cast<float>(system_state.screen_width) /
                        static_cast<float>(SCREEN_WIDTH);
-  const float facy_f = static_cast<float>(g_state.screen_height) /
+  const float facy_f = static_cast<float>(system_state.screen_height) /
                        static_cast<float>(SCREEN_HEIGHT);
   const auto facy = static_cast<double>(facy_f);
-  const int sx = static_cast<int>(g_state.screen_width);
+  const int sx = static_cast<int>(system_state.screen_width);
 
   // We assume ownership of g_video_draw_mutex is handled by the caller (main
   // loop or blocking proxy)
@@ -285,9 +283,9 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
                          std::string& filename, bool& isdir, size_t& index_file)
     -> bool {
   (void)sy;
-  const auto facx = static_cast<double>(g_state.screen_width) /
+  const auto facx = static_cast<double>(system_state.screen_width) /
                     static_cast<double>(SCREEN_WIDTH);
-  const auto facy = static_cast<double>(g_state.screen_height) /
+  const auto facy = static_cast<double>(system_state.screen_height) /
                     static_cast<double>(SCREEN_HEIGHT);
 
   if (font_sfc == nullptr) {
@@ -301,7 +299,7 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
 
   VideoSurface_t* tempSurface = nullptr;
   if (g_window_resized == false) {
-    if (g_state.mode == app_mode_logo) {
+    if (system_state.mode == app_mode_logo) {
       tempSurface = g_logo_bitmap;
     } else {
       tempSurface = g_device_bitmap;
@@ -383,7 +381,7 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
       while (SDL_PollEvent(&event) != 0) {
         if (event.type == SDL_KEYDOWN) {
           if (event.key.keysym.sym == SDLK_F12) {
-            g_state.mode = app_mode_exit;
+            system_state.mode = app_mode_exit;
             SDL_Event qe = {};
             qe.type = SDL_QUIT;
             SDL_PushEvent(&qe);
@@ -395,7 +393,7 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
             (event.type == SDL_WINDOWEVENT &&
              event.window.event == SDL_WINDOWEVENT_CLOSE)) {
           SDL_PushEvent(&event);
-          g_state.mode = app_mode_exit;
+          system_state.mode = app_mode_exit;
           waiting = false;
           break;
         }
@@ -430,8 +428,8 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
   g_diskChooseState.cancelled = false;
   g_diskChooseState.index_file_out = &index_file;
 
-  AppMode_t old_mode = g_state.mode;
-  g_state.mode = app_mode_disk_choose;
+  AppMode_t old_mode = system_state.mode;
+  system_state.mode = app_mode_disk_choose;
 
   // Run a blocking input/render loop to simplify state management for modal
   // dialogs.
@@ -442,13 +440,13 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
           (event.type == SDL_WINDOWEVENT &&
            event.window.event == SDL_WINDOWEVENT_CLOSE)) {
         SDL_PushEvent(&event);
-        g_state.mode = app_mode_exit;
+        system_state.mode = app_mode_exit;
         g_diskChooseState.active = false;
         g_diskChooseState.cancelled = true;
         break;
       }
       if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_F12) {
-        g_state.mode = app_mode_exit;
+        system_state.mode = app_mode_exit;
         g_diskChooseState.active = false;
         g_diskChooseState.cancelled = true;
         SDL_Event qe = {};
@@ -464,8 +462,8 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
     SDL_Delay(10);
   }
 
-  if (g_state.mode != app_mode_exit) {
-    g_state.mode = old_mode;
+  if (system_state.mode != app_mode_exit) {
+    system_state.mode = old_mode;
   }
   g_diskChooseState.bg_screen.reset();
 

@@ -205,7 +205,7 @@ auto CmdBookmarkLoad(int nArgs) -> Update_t {
     //    strcpy( sMiniFileName, pFileName );
     //  strcat( sMiniFileName, ".aws" ); // HACK: MAGIC STRING
 
-    //    strcpy(sFileName, g_state.current_dir); //
+    //    strcpy(sFileName, system_state.current_dir); //
     //    strcat(sFileName, sMiniFileName);
   }
 

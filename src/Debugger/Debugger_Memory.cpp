@@ -329,7 +329,7 @@ auto CmdConfigGetDebugDir(int nArgs) -> Update_t {
 
   char sPath[path_max_len + 8];
   // TODO: debugger dir has no ` CONSOLE_COLOR_ESCAPE_CHAR ?!?!
-  ConsoleBufferPushFormat(sPath, "Path: %s", g_state.current_dir.data());
+  ConsoleBufferPushFormat(sPath, "Path: %s", system_state.current_dir.data());
 
   return ConsoleUpdate();
 }
@@ -494,7 +494,7 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
     g_memory_load_save_file_name = pFileName;
   }
   const std::string sLoadSaveFilePath =
-      std::string(g_state.current_dir.data()) +
+      std::string(system_state.current_dir.data()) +
       g_memory_load_save_file_name;  // TODO: g_debug_dir
 
   uint8_t* const pMemBankBase = bBankSpecified ? mem_get_bank_ptr(bank) : mem;
@@ -686,7 +686,7 @@ auto CmdMemorySave(int nArgs) -> Update_t {
     //      return Help_Arg_1( CMD_MEMORY_SAVE );
 
     std::string sLoadSaveFilePath =
-        g_state.current_dir.data();  // g_state.program_dir
+        system_state.current_dir.data();  // system_state.program_dir
 
     RangeType_t eRange;
     eRange = Range_Get(nAddressStart, nAddress2, iArgAddress);
@@ -915,7 +915,7 @@ auto CmdTextSave(int nArgs) -> int {
   size_t nSize = Util_GetTextScreen(text);
 
   std::string sLoadSaveFilePath =
-      g_state.current_dir.data();  // g_state.program_dir
+      system_state.current_dir.data();  // system_state.program_dir
 
   if (bHaveFileName) {
     g_memory_load_save_file_name = g_args[1].sArg;

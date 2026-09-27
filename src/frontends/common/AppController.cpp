@@ -73,7 +73,7 @@ static auto install_printer_sink() -> void {
   config_load_int("Configuration", REGVALUE_PRINTER_EIGHT_BIT, &eight_bit);
   settings.append = append != 0;
   settings.eight_bit = eight_bit != 0;
-  settings.base_dir = g_state.save_state_dir.data();
+  settings.base_dir = system_state.save_state_dir.data();
   settings.primary_slot = lowest_configured_printer_slot();
   printer_frontend_install(settings);
 }
@@ -111,7 +111,7 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   app_env_resolve_paths(config);
 
   // 2. Set Hardware Type before initializing core memory
-  g_apple2_type = config->apple2_type;
+  current_apple2_type = config->apple2_type;
 
   if (config->rom_path.at(0) != '\0') {
     std::string rom_path = config->rom_path.data();
@@ -176,9 +176,9 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
     try {
       float factor = std::stof(factor_str);
       if (factor >= MIN_SCREEN_FACTOR && factor <= MAX_SCREEN_FACTOR) {
-        g_state.screen_width =
+        system_state.screen_width =
             static_cast<int>(static_cast<float>(SCREEN_WIDTH) * factor);
-        g_state.screen_height =
+        system_state.screen_height =
             static_cast<int>(static_cast<float>(SCREEN_HEIGHT) * factor);
       }
     } catch (...) {
@@ -187,14 +187,14 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
 
   if (config->is_pal) {
     g_videotype = VT_COLOR_TVEMU;
-    g_state.video_scanner_ntsc = false;
-    g_state.clks_per_frame = CLKS_PER_FRAME_PAL;
-    g_current_clk_6502 = CLOCK_6502_PAL;
+    system_state.video_scanner_ntsc = false;
+    system_state.clks_per_frame = CLKS_PER_FRAME_PAL;
+    current_clk_6502 = CLOCK_6502_PAL;
   } else {
     g_videotype = VT_COLOR_STANDARD;
-    g_state.video_scanner_ntsc = true;
-    g_state.clks_per_frame = CLKS_PER_FRAME_NTSC;
-    g_current_clk_6502 = CLOCK_6502_NTSC;
+    system_state.video_scanner_ntsc = true;
+    system_state.clks_per_frame = CLKS_PER_FRAME_NTSC;
+    current_clk_6502 = CLOCK_6502_NTSC;
   }
 
   const int config_speed = Configuration_t::instance().get_int(
@@ -202,7 +202,7 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
       static_cast<int>(emulation_speed_normal));
   if (config_speed >= 0 &&
       static_cast<uint32_t>(config_speed) <= emulation_speed_max) {
-    g_state.speed = static_cast<uint32_t>(config_speed);
+    system_state.speed = static_cast<uint32_t>(config_speed);
   }
 
   // 4. Init Snapshots
@@ -212,14 +212,15 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   save_state_startup();
 
   // 5. Initialize directories
-  initialize_directory(REGVALUE_PREF_START_DIR, &g_state.current_dir[0],
-                       sizeof(g_state.current_dir));
-  initialize_directory(REGVALUE_PREF_HDD_START_DIR, &g_state.hdd_dir[0],
-                       sizeof(g_state.hdd_dir));
-  initialize_directory(REGVALUE_PREF_SAVESTATE_DIR, &g_state.save_state_dir[0],
-                       sizeof(g_state.save_state_dir));
-  initialize_directory(REGVALUE_FTP_LOCAL_DIR, &g_state.ftp_local_dir[0],
-                       sizeof(g_state.ftp_local_dir));
+  initialize_directory(REGVALUE_PREF_START_DIR, &system_state.current_dir[0],
+                       sizeof(system_state.current_dir));
+  initialize_directory(REGVALUE_PREF_HDD_START_DIR, &system_state.hdd_dir[0],
+                       sizeof(system_state.hdd_dir));
+  initialize_directory(REGVALUE_PREF_SAVESTATE_DIR,
+                       &system_state.save_state_dir[0],
+                       sizeof(system_state.save_state_dir));
+  initialize_directory(REGVALUE_FTP_LOCAL_DIR, &system_state.ftp_local_dir[0],
+                       sizeof(system_state.ftp_local_dir));
 
   install_printer_sink();
 
@@ -229,8 +230,8 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   if (ftp_server.empty()) {
     ftp_server = "ftp://ftp.apple.asimov.net/pub/apple_II/images/games/";
   }
-  util_safe_strcpy(g_state.ftp_server.data(), ftp_server.c_str(),
-                   g_state.ftp_server.size());
+  util_safe_strcpy(system_state.ftp_server.data(), ftp_server.c_str(),
+                   system_state.ftp_server.size());
 
   std::string ftp_server_hdd = Configuration_t::instance().get_string(
       "Preferences", REGVALUE_FTP_HDD_DIR,
@@ -238,16 +239,16 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   if (ftp_server_hdd.empty()) {
     ftp_server_hdd = "ftp://ftp.apple.asimov.net/pub/apple_II/images/";
   }
-  util_safe_strcpy(g_state.ftp_server_hdd.data(), ftp_server_hdd.c_str(),
-                   g_state.ftp_server_hdd.size());
+  util_safe_strcpy(system_state.ftp_server_hdd.data(), ftp_server_hdd.c_str(),
+                   system_state.ftp_server_hdd.size());
 
   std::string ftp_userpass = Configuration_t::instance().get_string(
       "Preferences", REGVALUE_FTP_USERPASS, "anonymous:my-mail@mail.com");
   if (ftp_userpass.empty()) {
     ftp_userpass = "anonymous:my-mail@mail.com";
   }
-  util_safe_strcpy(g_state.ftp_user_pass.data(), ftp_userpass.c_str(),
-                   g_state.ftp_user_pass.size());
+  util_safe_strcpy(system_state.ftp_user_pass.data(), ftp_userpass.c_str(),
+                   system_state.ftp_user_pass.size());
 
   frontend_update_keyboard_mapping();
   if (config->caps_lock_mode >= 0) {
@@ -255,14 +256,14 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   }
 
   if (config->debugger_script.at(0) != '\0') {
-    util_safe_strcpy(&g_state.debugger_script[0],
+    util_safe_strcpy(&system_state.debugger_script[0],
                      config->debugger_script.data(), path_max_len);
   }
 
-  g_state.mode = app_mode_running;
-  g_state.restart = false;
-  g_state.fullscreen = config->is_fullscreen;
-  g_state.disable_debugger = config->disable_debugger;
+  system_state.mode = app_mode_running;
+  system_state.restart = false;
+  system_state.fullscreen = config->is_fullscreen;
+  system_state.disable_debugger = config->disable_debugger;
 
   if (config->harddisk_path.at(0).at(0) != '\0' ||
       config->harddisk_path.at(1).at(0) != '\0') {
@@ -483,6 +484,8 @@ void app_controller_save_disk_config(int drive) {
       (drive == 0) ? status.drive0_full_path : status.drive1_full_path);
 }
 
-auto app_controller_should_restart() -> bool { return g_state.restart; }
+auto app_controller_should_restart() -> bool { return system_state.restart; }
 
-void app_controller_set_restart(bool restart) { g_state.restart = restart; }
+void app_controller_set_restart(bool restart) {
+  system_state.restart = restart;
+}

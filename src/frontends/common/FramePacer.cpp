@@ -42,11 +42,11 @@ FramePacer_t::FramePacer_t(FrameClockNowFn_t now,
     : now_(now), sleep_until_(sleep_until) {}
 
 auto FramePacer_t::frame_period_ns() const -> int64_t {
-  // g_state.clks_per_frame and not linapple_get_frame_cycles(): the latter is
-  // scaled by the emulation speed control, and pacing to it would turn a
+  // system_state.clks_per_frame and not linapple_get_frame_cycles(): the latter
+  // is scaled by the emulation speed control, and pacing to it would turn a
   // request for double speed into a request for half the frame rate.
-  const double cycles = static_cast<double>(g_state.clks_per_frame);
-  const double clock_hz = g_current_clk_6502;
+  const double cycles = static_cast<double>(system_state.clks_per_frame);
+  const double clock_hz = current_clk_6502;
   if (!(cycles > 0.0) || !(clock_hz > 0.0)) {
     return fallback_period_ns;
   }

@@ -38,12 +38,12 @@ auto operator<<(std::ostream& out, Order_t order) -> std::ostream& {
 
 // Slot 0 fixture managing registration and teardown of keyboard and joystick.
 struct Slot0_t {
-  eApple2Type saved_type{g_apple2_type};
+  eApple2Type saved_type{current_apple2_type};
   int keyboard_registered{-1};
   int joystick_registered{-1};
 
   explicit Slot0_t(Order_t order) {
-    g_apple2_type = A2TYPE_APPLE2EENHANCED;
+    current_apple2_type = A2TYPE_APPLE2EENHANCED;
     mem_initialize();
     peripheral_manager_init();
     if (order == Order_t::keyboard_first) {
@@ -59,7 +59,7 @@ struct Slot0_t {
   ~Slot0_t() {
     peripheral_manager_shutdown();
     mem_destroy();
-    g_apple2_type = saved_type;
+    current_apple2_type = saved_type;
   }
 
   Slot0_t(const Slot0_t&) = delete;

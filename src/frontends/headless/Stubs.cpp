@@ -87,7 +87,7 @@
                                               void*) -> void {}
 
 [[gnu::weak]] uint64_t g_cumulative_cycles = 0;
-[[gnu::weak]] SystemState_t g_state = {};
-[[gnu::weak]] eApple2Type g_apple2_type = A2TYPE_APPLE2EENHANCED;
+[[gnu::weak]] SystemState_t system_state = {};
+[[gnu::weak]] eApple2Type current_apple2_type = A2TYPE_APPLE2EENHANCED;
 [[gnu::weak]] uint32_t g_videotype = 0;
 [[gnu::weak]] void (*g_frontendAudioCB)(const int16_t*, size_t) = nullptr;

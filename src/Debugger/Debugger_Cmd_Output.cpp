@@ -49,7 +49,7 @@ auto DebuggerRunScript(const char* pFileName) -> void {
   if (*pFileName == '/') {
     sFileName = pFileName;
   } else {
-    sFileName = g_state.current_dir.data();
+    sFileName = system_state.current_dir.data();
     sFileName += "/";
     sFileName += pFileName;
   }

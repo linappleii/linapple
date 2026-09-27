@@ -8,7 +8,7 @@ TEST_CASE("Core: Emulation Speed Controls and Multipliers") {
   linapple_set_speed(emulation_speed_normal);
   CHECK(linapple_get_speed() == emulation_speed_normal);
 
-  g_state.clks_per_frame = 17030;
+  system_state.clks_per_frame = 17030;
   CHECK(linapple_get_frame_cycles() == 17030);
 
   // Increase speed (+2 per step)

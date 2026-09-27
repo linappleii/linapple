@@ -37,7 +37,7 @@ void sdl_handle_event(SDL_Event* e) {
 
   switch (e->type) {
     case SDL_QUIT:
-      g_state.mode = app_mode_exit;
+      system_state.mode = app_mode_exit;
       break;
 
     case SDL_VIDEORESIZE:
@@ -96,13 +96,13 @@ void sdl_handle_event(SDL_Event* e) {
         }
       } else if (mysym == SDLK_PAUSE) {
         set_using_cursor(false);
-        switch (g_state.mode) {
+        switch (system_state.mode) {
           case app_mode_running:
-            g_state.mode = app_mode_paused;
+            system_state.mode = app_mode_paused;
             audio_mixer_set_fade(fade_out);
             break;
           case app_mode_paused:
-            g_state.mode = app_mode_running;
+            system_state.mode = app_mode_running;
             audio_mixer_set_fade(fade_in);
             break;
           case app_mode_stepping:
@@ -116,17 +116,17 @@ void sdl_handle_event(SDL_Event* e) {
             break;
         }
         draw_status_area(draw_title);
-        if ((g_state.mode != app_mode_logo) &&
-            (g_state.mode != app_mode_debug)) {
+        if ((system_state.mode != app_mode_logo) &&
+            (system_state.mode != app_mode_debug)) {
           video_redraw_screen();
         }
-        g_state.reset_timing = true;
+        system_state.reset_timing = true;
       } else if (mysym == SDLK_SCROLLOCK) {
         bool turbo = linapple_toggle_turbo();
         printf("Turbo mode: %s\n", turbo ? "ON" : "OFF");
-      } else if ((g_state.mode == app_mode_running) ||
-                 (g_state.mode == app_mode_logo) ||
-                 (g_state.mode == app_mode_stepping)) {
+      } else if ((system_state.mode == app_mode_running) ||
+                 (system_state.mode == app_mode_logo) ||
+                 (system_state.mode == app_mode_stepping)) {
 #if ENABLE_DEBUGGER
         g_debugger_eat_key = false;
 #endif
@@ -140,7 +140,7 @@ void sdl_handle_event(SDL_Event* e) {
           }
         }
 #if ENABLE_DEBUGGER
-      } else if (g_state.mode == app_mode_debug) {
+      } else if (system_state.mode == app_mode_debug) {
         LinAppleKey_t core_key = frontend_to_core_key(mysym, mymod);
         if (core_key != linapple_key_unknown) {
           debugger_process_key(core_key);
@@ -187,7 +187,7 @@ void sdl_handle_event(SDL_Event* e) {
           x_local = static_cast<int>(e->button.x);
           y_local = static_cast<int>(e->button.y);
 #if ENABLE_DEBUGGER
-          if (g_state.mode == app_mode_debug) {
+          if (system_state.mode == app_mode_debug) {
             debugger_mouse_click(x_local, y_local);
           } else
 #endif
@@ -219,8 +219,8 @@ void sdl_handle_event(SDL_Event* e) {
                                &mouse_active, &qsize);
               bool mouse_in_use = (mouse_active != 0) ||
                                   joy_frontend_is_mouse_emulation_active();
-              if (mouse_in_use && ((g_state.mode == app_mode_running) ||
-                                   (g_state.mode == app_mode_stepping))) {
+              if (mouse_in_use && ((system_state.mode == app_mode_running) ||
+                                   (system_state.mode == app_mode_stepping))) {
                 set_using_cursor(true);
               }
             }

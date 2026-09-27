@@ -510,7 +510,7 @@ auto ConsoleFlush() -> void {
 }
 
 auto DebuggerCursorUpdate() -> void {
-  if (g_state.mode != app_mode_debug) {
+  if (system_state.mode != app_mode_debug) {
     return;
   }
 
@@ -543,9 +543,9 @@ auto DebuggerCursorNext() -> void {
 auto DebuggerUpdate() -> void { DebuggerCursorUpdate(); }
 
 auto debugger_input_console_char(char ch) -> void {
-  assert(g_state.mode == app_mode_debug);
+  assert(system_state.mode == app_mode_debug);
 
-  if (g_state.mode != app_mode_debug) {
+  if (system_state.mode != app_mode_debug) {
     return;
   }
 
@@ -599,7 +599,7 @@ extern auto CmdCursorPageUp4K(int) -> Update_t;
 extern auto CmdCursorPageDown4K(int) -> Update_t;
 
 auto debugger_process_key(int keycode) -> void {
-  if (g_state.mode != app_mode_debug) {
+  if (system_state.mode != app_mode_debug) {
     return;
   }
 
@@ -724,7 +724,7 @@ auto debugger_process_key(int keycode) -> void {
 }
 
 auto debugger_mouse_click(int /*x*/, int /*y*/) -> void {
-  if (g_state.mode != app_mode_debug) {
+  if (system_state.mode != app_mode_debug) {
     return;
   }
 

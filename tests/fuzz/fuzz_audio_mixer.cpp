@@ -86,7 +86,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // Capped at 192 kHz: the ring is sized from the rate, and there is nothing
   // to learn from allocating megabytes per iteration.
   const auto rate = static_cast<uint32_t>(reader.u16() % 24001) * 8;
-  g_current_clk_6502 = 1020484.0;
+  current_clk_6502 = 1020484.0;
   audio_mixer_initialize(rate);
 
   std::vector<float> plane(max_upload_samples, 0.0f);

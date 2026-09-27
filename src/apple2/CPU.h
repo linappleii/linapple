@@ -40,6 +40,7 @@ struct CpuInstance_t {
 // Modern snake_case API
 auto cpu_get_registers() -> CpuRegisters_t*;
 auto cpu_get_cumulative_cycles() -> uint64_t;
+auto cpu_add_cumulative_cycles(uint32_t cycles) -> void;
 extern uint64_t g_cumulative_cycles;
 
 auto cpu_get_active_context() -> CpuInstance_t*;

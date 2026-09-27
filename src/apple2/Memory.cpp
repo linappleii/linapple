@@ -1039,10 +1039,10 @@ auto mem_initialize() -> int  // returns -1 if any error during initialization
       ROM_SIZE = Apple2RomSize;
     } else if (g_custom_rom_data.size() > Apple2RomSize) {
       if (g_custom_rom_data.size() >= Apple2eRomSize &&
-          (g_apple2_type == A2TYPE_APPLE2E ||
-           g_apple2_type == A2TYPE_APPLE2EENHANCED ||
-           g_apple2_type == A2TYPE_CLONE_PRAVETS8C ||
-           g_apple2_type == A2TYPE_CLONE_TK3000E)) {
+          (current_apple2_type == A2TYPE_APPLE2E ||
+           current_apple2_type == A2TYPE_APPLE2EENHANCED ||
+           current_apple2_type == A2TYPE_CLONE_PRAVETS8C ||
+           current_apple2_type == A2TYPE_CLONE_TK3000E)) {
         rom_data = g_custom_rom_data.data() +
                    (g_custom_rom_data.size() - Apple2eRomSize);
         ROM_SIZE = Apple2eRomSize;
@@ -1053,7 +1053,7 @@ auto mem_initialize() -> int  // returns -1 if any error during initialization
       }
     }
   } else {
-    switch (g_apple2_type) {
+    switch (current_apple2_type) {
 #if ENABLE_ROM_APPLE2
       case A2TYPE_APPLE2:
         rom_data = g_rom_apple2;
@@ -1117,7 +1117,7 @@ auto mem_initialize() -> int  // returns -1 if any error during initialization
   }
 
   if (rom_data == nullptr) {
-    auto info = get_machine_rom_info(g_apple2_type);
+    auto info = get_machine_rom_info(current_apple2_type);
     Logger::error(
         "\nError: The ROM for %s is not available in this build.\n"
         "To run this machine model, you can either:\n"

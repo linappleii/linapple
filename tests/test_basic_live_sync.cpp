@@ -9,7 +9,7 @@
 #include "core/BasicLiveSync.h"
 #include "doctest.h"
 
-extern eApple2Type g_apple2_type;
+extern eApple2Type current_apple2_type;
 
 namespace {
 
@@ -38,13 +38,13 @@ static std::array<uint8_t, test_mem_size> g_mock_ram{};
 
 struct ScopedMemoryContext_t {
   uint8_t* original_mem{mem};
-  eApple2Type original_type{g_apple2_type};
+  eApple2Type original_type{current_apple2_type};
 
   ScopedMemoryContext_t() = default;
 
   ~ScopedMemoryContext_t() {
     mem = original_mem;
-    g_apple2_type = original_type;
+    current_apple2_type = original_type;
   }
 
   ScopedMemoryContext_t(const ScopedMemoryContext_t&) = delete;
@@ -85,7 +85,7 @@ static auto setup_mock_memory() -> void {
 TEST_CASE("BasicLiveSync: Explicit Line Mode Roundtrip") {
   ScopedMemoryContext_t mem_guard;
   setup_mock_memory();
-  g_apple2_type = A2TYPE_APPLE2EENHANCED;
+  current_apple2_type = A2TYPE_APPLE2EENHANCED;
 
   std::string source =
       "10 HOME\n"
@@ -113,7 +113,7 @@ TEST_CASE("BasicLiveSync: Explicit Line Mode Roundtrip") {
 TEST_CASE("BasicLiveSync: Positional Line Mode") {
   ScopedMemoryContext_t mem_guard;
   setup_mock_memory();
-  g_apple2_type = A2TYPE_APPLE2EENHANCED;
+  current_apple2_type = A2TYPE_APPLE2EENHANCED;
 
   std::string source;
   constexpr int pad_first = 10;
@@ -149,7 +149,7 @@ TEST_CASE("BasicLiveSync: Positional Line Mode") {
 TEST_CASE("BasicLiveSync: REM and Quoted String Keyword Protection") {
   ScopedMemoryContext_t mem_guard;
   setup_mock_memory();
-  g_apple2_type = A2TYPE_APPLE2EENHANCED;
+  current_apple2_type = A2TYPE_APPLE2EENHANCED;
 
   // "PRINT" inside string and after REM should not be tokenized as $BA
   std::string source =
@@ -168,7 +168,7 @@ TEST_CASE("BasicLiveSync: Character Filtering & Hardware Casing") {
   setup_mock_memory();
 
   // Test Apple ][+ mode (uppercase only)
-  g_apple2_type = A2TYPE_APPLE2PLUS;
+  current_apple2_type = A2TYPE_APPLE2PLUS;
   std::string source = "10 print \"hello world\"\n";
   bool ok = basic_sync_import_from_string(source, basic_line_mode_explicit);
   CHECK(ok);
@@ -187,7 +187,7 @@ TEST_CASE("BasicLiveSync: Character Filtering & Hardware Casing") {
 TEST_CASE("BasicLiveSync: HIMEM Memory Overflow Protection") {
   ScopedMemoryContext_t mem_guard;
   setup_mock_memory();
-  g_apple2_type = A2TYPE_APPLE2EENHANCED;
+  current_apple2_type = A2TYPE_APPLE2EENHANCED;
 
   // Set tight HIMEM ($0810) - only enough space for 1 line
   constexpr uint8_t tight_himem_l = 0x10;
@@ -217,7 +217,7 @@ TEST_CASE("BasicLiveSync: HIMEM Memory Overflow Protection") {
 TEST_CASE("BasicLiveSync: Line Length Truncation") {
   ScopedMemoryContext_t mem_guard;
   setup_mock_memory();
-  g_apple2_type = A2TYPE_APPLE2EENHANCED;
+  current_apple2_type = A2TYPE_APPLE2EENHANCED;
 
   constexpr size_t extra_chars = 300;
   std::string huge_line = "10 REM ";
@@ -234,7 +234,7 @@ TEST_CASE("BasicLiveSync: Line Length Truncation") {
 TEST_CASE("BasicLiveSync: Math Tokens Longest-Prefix Matching") {
   ScopedMemoryContext_t mem_guard;
   setup_mock_memory();
-  g_apple2_type = A2TYPE_APPLE2EENHANCED;
+  current_apple2_type = A2TYPE_APPLE2EENHANCED;
 
   std::string source = "10 PRINT ATN(1) + COS(X)\n";
   bool ok = basic_sync_import_from_string(source, basic_line_mode_explicit);

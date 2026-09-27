@@ -25,16 +25,16 @@
 namespace {
 
 struct ScopedMemoryContext_t {
-  eApple2Type orig_type{g_apple2_type};
+  eApple2Type orig_type{current_apple2_type};
 
   ScopedMemoryContext_t() {
-    g_apple2_type = A2TYPE_APPLE2EENHANCED;
+    current_apple2_type = A2TYPE_APPLE2EENHANCED;
     mem_initialize();
   }
 
   ~ScopedMemoryContext_t() {
     mem_destroy();
-    g_apple2_type = orig_type;
+    current_apple2_type = orig_type;
   }
 
   ScopedMemoryContext_t(const ScopedMemoryContext_t&) = delete;

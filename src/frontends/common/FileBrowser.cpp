@@ -373,11 +373,11 @@ auto disk_browser_open(DiskBrowser_t* b, int slot, int drive,
 
   if (start_dir != nullptr && start_dir[0] != '\0') {
     util_safe_strcpy(b->current_dir, start_dir, sizeof(b->current_dir));
-  } else if (b->slot == 7 && g_state.hdd_dir.at(0) != '\0') {
-    util_safe_strcpy(b->current_dir, g_state.hdd_dir.data(),
+  } else if (b->slot == 7 && system_state.hdd_dir.at(0) != '\0') {
+    util_safe_strcpy(b->current_dir, system_state.hdd_dir.data(),
                      sizeof(b->current_dir));
-  } else if (g_state.current_dir.at(0) != '\0') {
-    util_safe_strcpy(b->current_dir, g_state.current_dir.data(),
+  } else if (system_state.current_dir.at(0) != '\0') {
+    util_safe_strcpy(b->current_dir, system_state.current_dir.data(),
                      sizeof(b->current_dir));
   } else {
     util_safe_strcpy(b->current_dir, ".", sizeof(b->current_dir));
@@ -567,10 +567,11 @@ auto disk_browser_confirm(DiskBrowser_t* b) -> bool {
   }
 
   if (b->slot == 7) {
-    util_safe_strcpy(g_state.hdd_dir.data(), b->current_dir,
-                     g_state.hdd_dir.size());
-    Configuration_t::instance().set_string(
-        "Preferences", REGVALUE_PREF_HDD_START_DIR, g_state.hdd_dir.data());
+    util_safe_strcpy(system_state.hdd_dir.data(), b->current_dir,
+                     system_state.hdd_dir.size());
+    Configuration_t::instance().set_string("Preferences",
+                                           REGVALUE_PREF_HDD_START_DIR,
+                                           system_state.hdd_dir.data());
     Configuration_t::instance().save();
 
     HarddiskInsertCmd_t hcmd{};
@@ -593,10 +594,10 @@ auto disk_browser_confirm(DiskBrowser_t* b) -> bool {
   }
 
   // Update current_dir and save to Preferences
-  util_safe_strcpy(g_state.current_dir.data(), b->current_dir,
-                   g_state.current_dir.size());
+  util_safe_strcpy(system_state.current_dir.data(), b->current_dir,
+                   system_state.current_dir.size());
   Configuration_t::instance().set_string("Preferences", REGVALUE_PREF_START_DIR,
-                                         g_state.current_dir.data());
+                                         system_state.current_dir.data());
   Configuration_t::instance().save();
 
   // Mount image into hardware

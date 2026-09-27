@@ -67,23 +67,23 @@ TEST_CASE("AppController: Initialize and Shutdown") {
   // Test initialization
   int result = app_controller_initialize(&config);
   CHECK(result == 0);
-  CHECK(g_state.mode == app_mode_running);
+  CHECK(system_state.mode == app_mode_running);
 
   // Check if default directories are initialized, valid, and accessible
-  CHECK(g_state.current_dir.at(0) != '\0');
-  CHECK(g_state.hdd_dir.at(0) != '\0');
-  CHECK(g_state.save_state_dir.at(0) != '\0');
-  CHECK(is_valid_directory(g_state.current_dir.data()));
-  CHECK(is_valid_directory(g_state.hdd_dir.data()));
-  CHECK(is_valid_directory(g_state.save_state_dir.data()));
+  CHECK(system_state.current_dir.at(0) != '\0');
+  CHECK(system_state.hdd_dir.at(0) != '\0');
+  CHECK(system_state.save_state_dir.at(0) != '\0');
+  CHECK(is_valid_directory(system_state.current_dir.data()));
+  CHECK(is_valid_directory(system_state.hdd_dir.data()));
+  CHECK(is_valid_directory(system_state.save_state_dir.data()));
 
   std::string expected_user_dir = Path::get_user_data_dir();
   while (expected_user_dir.size() > 1 && expected_user_dir.back() == '/') {
     expected_user_dir.pop_back();
   }
-  CHECK(std::string(g_state.current_dir.data()) == expected_user_dir);
-  CHECK(std::string(g_state.hdd_dir.data()) == expected_user_dir);
-  CHECK(std::string(g_state.save_state_dir.data()) == expected_user_dir);
+  CHECK(std::string(system_state.current_dir.data()) == expected_user_dir);
+  CHECK(std::string(system_state.hdd_dir.data()) == expected_user_dir);
+  CHECK(std::string(system_state.save_state_dir.data()) == expected_user_dir);
 }
 
 TEST_CASE("AppController: Video Mode Reset") {
@@ -166,9 +166,9 @@ TEST_CASE(
   int result = app_controller_initialize(&config);
   CHECK(result == 0);
 
-  CHECK(g_apple2_type == A2TYPE_APPLE2PLUS);
-  CHECK(g_state.screen_width == 1120);
-  CHECK(g_state.screen_height == 768);
+  CHECK(current_apple2_type == A2TYPE_APPLE2PLUS);
+  CHECK(system_state.screen_width == 1120);
+  CHECK(system_state.screen_height == 768);
 }
 
 TEST_CASE("AppController: Initialize Failure on Nonexistent ROM") {
@@ -263,8 +263,10 @@ TEST_CASE("AppController: FTP Configuration Defaults and Preferences") {
   int result = app_controller_initialize(&config);
   CHECK(result == 0);
 
-  CHECK(std::string(g_state.ftp_server.data()) == "ftp://test.server/games/");
-  CHECK(std::string(g_state.ftp_server_hdd.data()) == "ftp://test.server/hdd/");
-  CHECK(std::string(g_state.ftp_user_pass.data()) == "user:pass");
-  CHECK(is_valid_directory(g_state.ftp_local_dir.data()));
+  CHECK(std::string(system_state.ftp_server.data()) ==
+        "ftp://test.server/games/");
+  CHECK(std::string(system_state.ftp_server_hdd.data()) ==
+        "ftp://test.server/hdd/");
+  CHECK(std::string(system_state.ftp_user_pass.data()) == "user:pass");
+  CHECK(is_valid_directory(system_state.ftp_local_dir.data()));
 }

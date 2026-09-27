@@ -39,8 +39,10 @@ enum Apple2Language_t {
 };
 using eApple2Language = Apple2Language_t;
 
-extern Apple2Type_t g_apple2_type;
-extern Apple2Language_t g_language;
+extern Apple2Type_t current_apple2_type;
+extern Apple2Language_t current_language;
 
-inline auto is_apple2() -> bool { return (g_apple2_type & APPLE2E_MASK) == 0; }
+inline auto is_apple2() -> bool {
+  return (current_apple2_type & APPLE2E_MASK) == 0;
+}
 inline auto IS_APPLE2() -> bool { return is_apple2(); }

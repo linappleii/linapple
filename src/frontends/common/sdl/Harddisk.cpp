@@ -32,15 +32,15 @@ void harddisk_ui_ftp_select(int drive) {
   bool isDirectory = true;
 
   fileIndex = backdx;
-  fullPath = g_state.ftp_server_hdd.data();
+  fullPath = system_state.ftp_server_hdd.data();
   if (fullPath.empty()) {
     fullPath = "ftp://ftp.apple.asimov.net/pub/apple_II/images/";
   }
 
   while (isDirectory) {
-    if (!choose_an_image_ftp(g_state.screen_width, g_state.screen_height,
-                             fullPath, HARDDISK_SLOT, filename, isDirectory,
-                             fileIndex)) {
+    if (!choose_an_image_ftp(system_state.screen_width,
+                             system_state.screen_height, fullPath,
+                             HARDDISK_SLOT, filename, isDirectory, fileIndex)) {
       draw_frame_window();
       return;
     }
@@ -69,10 +69,10 @@ void harddisk_ui_ftp_select(int drive) {
     }
   }
 
-  util_safe_strcpy(g_state.ftp_server_hdd.data(), fullPath.c_str(),
-                   g_state.ftp_server_hdd.size());
+  util_safe_strcpy(system_state.ftp_server_hdd.data(), fullPath.c_str(),
+                   system_state.ftp_server_hdd.size());
   Configuration_t::instance().set_string("Preferences", REGVALUE_FTP_HDD_DIR,
-                                         g_state.ftp_server_hdd.data());
+                                         system_state.ftp_server_hdd.data());
   Configuration_t::instance().save();
 
   std::string safe_filename = Path::sanitize_filename(filename);
@@ -92,11 +92,11 @@ void harddisk_ui_ftp_select(int drive) {
 #if ENABLE_FTP
   FtpClient_t client;
   const FtpStatus_t status =
-      client.download_file(fullPath, g_state.ftp_local_dir.data(),
-                           safe_filename, g_state.ftp_user_pass.data());
+      client.download_file(fullPath, system_state.ftp_local_dir.data(),
+                           safe_filename, system_state.ftp_user_pass.data());
   if (status == FtpStatus_t::ok) {
     const std::string localPath =
-        std::string(g_state.ftp_local_dir.data()) + "/" + safe_filename;
+        std::string(system_state.ftp_local_dir.data()) + "/" + safe_filename;
     HarddiskInsertCmd_t cmd{};
     cmd.drive = static_cast<uint8_t>(drive);
     util_safe_strcpy(cmd.path, localPath.c_str(), sizeof(cmd.path));
@@ -137,11 +137,12 @@ void harddisk_ui_select(int drive) {
 
   fileIndex = backdx;
   isDirectory = true;
-  fullPath = g_state.hdd_dir.data();
+  fullPath = system_state.hdd_dir.data();
 
   while (isDirectory) {
-    if (!choose_an_image(g_state.screen_width, g_state.screen_height, fullPath,
-                         HARDDISK_SLOT, filename, isDirectory, fileIndex)) {
+    if (!choose_an_image(system_state.screen_width, system_state.screen_height,
+                         fullPath, HARDDISK_SLOT, filename, isDirectory,
+                         fileIndex)) {
       draw_frame_window();
       return;
     }
@@ -168,10 +169,10 @@ void harddisk_ui_select(int drive) {
     }
   }
 
-  util_safe_strcpy(g_state.hdd_dir.data(), fullPath.c_str(),
-                   g_state.hdd_dir.size());
+  util_safe_strcpy(system_state.hdd_dir.data(), fullPath.c_str(),
+                   system_state.hdd_dir.size());
   Configuration_t::instance().set_string(
-      "Preferences", REGVALUE_PREF_HDD_START_DIR, g_state.hdd_dir.data());
+      "Preferences", REGVALUE_PREF_HDD_START_DIR, system_state.hdd_dir.data());
   Configuration_t::instance().save();
 
   fullPath += "/" + filename;

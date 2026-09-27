@@ -67,8 +67,8 @@ TEST_CASE("SDL3 Frontend Initialization and Screen Scaling") {
   REQUIRE(asset_init());
 
   // Set scaled screen resolution (e.g. Screen Factor = 2 => 1120x768)
-  g_state.screen_width = 1120;
-  g_state.screen_height = 768;
+  system_state.screen_width = 1120;
+  system_state.screen_height = 768;
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
@@ -91,9 +91,9 @@ TEST_CASE("SDL3 Frontend draw_frame_window Scaled Stretching") {
   REQUIRE(init_result);
   REQUIRE(asset_init());
 
-  g_state.screen_width = 1120;
-  g_state.screen_height = 768;
-  g_state.mode = app_mode_logo;
+  system_state.screen_width = 1120;
+  system_state.screen_height = 768;
+  system_state.mode = app_mode_logo;
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
@@ -132,8 +132,8 @@ TEST_CASE("SDL3 Frontend Fullscreen Toggle Preserves Scaled Dimensions") {
   REQUIRE(asset_init());
 
   // 1. Configure scaled resolution (Screen Factor = 2 => 1120x768)
-  g_state.screen_width = 1120;
-  g_state.screen_height = 768;
+  system_state.screen_width = 1120;
+  system_state.screen_height = 768;
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
@@ -159,8 +159,8 @@ TEST_CASE("SDL3 Frontend Fullscreen Toggle Preserves Scaled Dimensions") {
   set_normal_mode();
 
   // Windowed mode must restore original configured dimensions and full rect
-  CHECK(g_state.screen_width == 1120);
-  CHECK(g_state.screen_height == 768);
+  CHECK(system_state.screen_width == 1120);
+  CHECK(system_state.screen_height == 768);
   CHECK(g_screen->w == 1120);
   CHECK(g_screen->h == 768);
   CHECK(g_new_rect.w == 1120);
@@ -193,8 +193,8 @@ TEST_CASE("SDL3 Frontend Help Screen Quit Event Handling") {
   REQUIRE(push_result);
 
   // frame_show_help_screen should not hang or discard the quit event
-  frame_show_help_screen(static_cast<int>(g_state.screen_width),
-                         static_cast<int>(g_state.screen_height));
+  frame_show_help_screen(static_cast<int>(system_state.screen_width),
+                         static_cast<int>(system_state.screen_height));
 
   // Verify that SDL_EVENT_QUIT was re-pushed and is available in the event
   // queue
@@ -232,8 +232,8 @@ TEST_CASE("SDL3 Frontend Help Screen Key Down Dismissal") {
   REQUIRE(push_result);
 
   // frame_show_help_screen should immediately consume the key event and dismiss
-  frame_show_help_screen(static_cast<int>(g_state.screen_width),
-                         static_cast<int>(g_state.screen_height));
+  frame_show_help_screen(static_cast<int>(system_state.screen_width),
+                         static_cast<int>(system_state.screen_height));
 
   // Verify that the event queue is drained
   SDL_Event polled_event{};
@@ -267,8 +267,8 @@ TEST_CASE("SDL3 Frontend Help Screen Window Close Event Handling") {
   REQUIRE(push_result);
 
   // frame_show_help_screen should not hang or discard the window close event
-  frame_show_help_screen(static_cast<int>(g_state.screen_width),
-                         static_cast<int>(g_state.screen_height));
+  frame_show_help_screen(static_cast<int>(system_state.screen_width),
+                         static_cast<int>(system_state.screen_height));
 
   // Verify that SDL_EVENT_WINDOW_CLOSE_REQUESTED was re-pushed and is available
   SDL_Event polled_event{};
@@ -284,11 +284,11 @@ TEST_CASE("SDL3 Frontend Help Screen Window Close Event Handling") {
 }
 
 TEST_CASE("SDL3 Frontend Main Event Handler Window Close Request") {
-  g_state.mode = app_mode_running;
+  system_state.mode = app_mode_running;
   SDL_Event close_event{};
   close_event.type = SDL_EVENT_WINDOW_CLOSE_REQUESTED;
   sdl_handle_event(&close_event);
-  CHECK(g_state.mode == app_mode_exit);
+  CHECK(system_state.mode == app_mode_exit);
 }
 
 TEST_CASE("SDL3 Frontend Help Screen Scaling at High Screen Factors") {
@@ -298,8 +298,8 @@ TEST_CASE("SDL3 Frontend Help Screen Scaling at High Screen Factors") {
   REQUIRE(asset_init());
 
   // Screen Factor = 3 => 1680x1152
-  g_state.screen_width = 1680;
-  g_state.screen_height = 1152;
+  system_state.screen_width = 1680;
+  system_state.screen_height = 1152;
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
@@ -315,8 +315,8 @@ TEST_CASE("SDL3 Frontend Help Screen Scaling at High Screen Factors") {
   key_event.key.key = SDLK_ESCAPE;
   REQUIRE(SDL_PushEvent(&key_event));
 
-  frame_show_help_screen(static_cast<int>(g_state.screen_width),
-                         static_cast<int>(g_state.screen_height));
+  frame_show_help_screen(static_cast<int>(system_state.screen_width),
+                         static_cast<int>(system_state.screen_height));
 
   // Verify that after dismissal, g_screen is properly restored with the
   // emulator frame
@@ -337,8 +337,8 @@ TEST_CASE(
   REQUIRE(init_result);
   REQUIRE(asset_init());
 
-  g_state.screen_width = 1120;
-  g_state.screen_height = 768;
+  system_state.screen_width = 1120;
+  system_state.screen_height = 768;
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
@@ -359,8 +359,8 @@ TEST_CASE(
   key_event.key.key = SDLK_SPACE;
   REQUIRE(SDL_PushEvent(&key_event));
 
-  frame_show_help_screen(static_cast<int>(g_state.screen_width),
-                         static_cast<int>(g_state.screen_height));
+  frame_show_help_screen(static_cast<int>(system_state.screen_width),
+                         static_cast<int>(system_state.screen_height));
 
   const auto* screen_pixels =
       reinterpret_cast<const uint32_t*>(g_screen->pixels);
@@ -400,8 +400,8 @@ TEST_CASE("SDL3 Frontend Disk Chooser Modal Outline Borders Rendered") {
   REQUIRE(init_result);
   REQUIRE(asset_init());
 
-  g_state.screen_width = 560;
-  g_state.screen_height = 384;
+  system_state.screen_width = 560;
+  system_state.screen_height = 384;
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
@@ -464,7 +464,7 @@ TEST_CASE("SDL3 Frontend Help Screen F12 Event Handling") {
   REQUIRE(win_result == 0);
   REQUIRE(g_screen != nullptr);
 
-  g_state.mode = app_mode_running;
+  system_state.mode = app_mode_running;
 
   SDL_Event key_event{};
   key_event.type = SDL_EVENT_KEY_DOWN;
@@ -473,10 +473,10 @@ TEST_CASE("SDL3 Frontend Help Screen F12 Event Handling") {
   bool push_result = SDL_PushEvent(&key_event);
   REQUIRE(push_result);
 
-  frame_show_help_screen(static_cast<int>(g_state.screen_width),
-                         static_cast<int>(g_state.screen_height));
+  frame_show_help_screen(static_cast<int>(system_state.screen_width),
+                         static_cast<int>(system_state.screen_height));
 
-  CHECK(g_state.mode == app_mode_exit);
+  CHECK(system_state.mode == app_mode_exit);
 
   SDL_Event polled_event{};
   int count = SDL_PeepEvents(&polled_event, 1, SDL_GETEVENT, SDL_EVENT_FIRST,
@@ -503,7 +503,7 @@ TEST_CASE("SDL3 Frontend Disk Choose Quit Event Handling") {
   REQUIRE(win_result == 0);
   REQUIRE(g_screen != nullptr);
 
-  g_state.mode = app_mode_running;
+  system_state.mode = app_mode_running;
 
   // Push an SDL_EVENT_QUIT event into the event queue
   SDL_Event quit_event{};
@@ -514,11 +514,11 @@ TEST_CASE("SDL3 Frontend Disk Choose Quit Event Handling") {
   std::string filename;
   bool isdir = false;
   size_t index_file = 0;
-  bool chosen = choose_an_image(static_cast<int>(g_state.screen_width),
-                                static_cast<int>(g_state.screen_height), ".", 6,
-                                filename, isdir, index_file);
+  bool chosen = choose_an_image(static_cast<int>(system_state.screen_width),
+                                static_cast<int>(system_state.screen_height),
+                                ".", 6, filename, isdir, index_file);
   CHECK(!chosen);
-  CHECK(g_state.mode == app_mode_exit);
+  CHECK(system_state.mode == app_mode_exit);
 
   // Verify that SDL_EVENT_QUIT was re-pushed and is available in the event
   // queue
@@ -547,7 +547,7 @@ TEST_CASE("SDL3 Frontend Disk Choose Key Down Dismissal") {
   REQUIRE(win_result == 0);
   REQUIRE(g_screen != nullptr);
 
-  g_state.mode = app_mode_running;
+  system_state.mode = app_mode_running;
 
   // Push an ESCAPE key down event into the event queue
   SDL_Event key_event{};
@@ -560,11 +560,11 @@ TEST_CASE("SDL3 Frontend Disk Choose Key Down Dismissal") {
   std::string filename;
   bool isdir = false;
   size_t index_file = 0;
-  bool chosen = choose_an_image(static_cast<int>(g_state.screen_width),
-                                static_cast<int>(g_state.screen_height), ".", 6,
-                                filename, isdir, index_file);
+  bool chosen = choose_an_image(static_cast<int>(system_state.screen_width),
+                                static_cast<int>(system_state.screen_height),
+                                ".", 6, filename, isdir, index_file);
   CHECK(!chosen);
-  CHECK(g_state.mode == app_mode_running);
+  CHECK(system_state.mode == app_mode_running);
 
   // Verify that the event queue is drained
   SDL_Event polled_event{};
@@ -591,7 +591,7 @@ TEST_CASE("SDL3 Frontend Disk Choose Window Close Event Handling") {
   REQUIRE(win_result == 0);
   REQUIRE(g_screen != nullptr);
 
-  g_state.mode = app_mode_running;
+  system_state.mode = app_mode_running;
 
   // Push an SDL_EVENT_WINDOW_CLOSE_REQUESTED event into the event queue
   SDL_Event close_event{};
@@ -602,11 +602,11 @@ TEST_CASE("SDL3 Frontend Disk Choose Window Close Event Handling") {
   std::string filename;
   bool isdir = false;
   size_t index_file = 0;
-  bool chosen = choose_an_image(static_cast<int>(g_state.screen_width),
-                                static_cast<int>(g_state.screen_height), ".", 6,
-                                filename, isdir, index_file);
+  bool chosen = choose_an_image(static_cast<int>(system_state.screen_width),
+                                static_cast<int>(system_state.screen_height),
+                                ".", 6, filename, isdir, index_file);
   CHECK(!chosen);
-  CHECK(g_state.mode == app_mode_exit);
+  CHECK(system_state.mode == app_mode_exit);
 
   // Verify that SDL_EVENT_WINDOW_CLOSE_REQUESTED was re-pushed and is available
   SDL_Event polled_event{};
@@ -634,7 +634,7 @@ TEST_CASE("SDL3 Frontend Disk Choose F12 Event Handling") {
   REQUIRE(win_result == 0);
   REQUIRE(g_screen != nullptr);
 
-  g_state.mode = app_mode_running;
+  system_state.mode = app_mode_running;
 
   SDL_Event key_event{};
   key_event.type = SDL_EVENT_KEY_DOWN;
@@ -646,11 +646,11 @@ TEST_CASE("SDL3 Frontend Disk Choose F12 Event Handling") {
   std::string filename;
   bool isdir = false;
   size_t index_file = 0;
-  bool chosen = choose_an_image(static_cast<int>(g_state.screen_width),
-                                static_cast<int>(g_state.screen_height), ".", 6,
-                                filename, isdir, index_file);
+  bool chosen = choose_an_image(static_cast<int>(system_state.screen_width),
+                                static_cast<int>(system_state.screen_height),
+                                ".", 6, filename, isdir, index_file);
   CHECK(!chosen);
-  CHECK(g_state.mode == app_mode_exit);
+  CHECK(system_state.mode == app_mode_exit);
 
   SDL_Event polled_event{};
   int count = SDL_PeepEvents(&polled_event, 1, SDL_GETEVENT, SDL_EVENT_FIRST,

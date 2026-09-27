@@ -253,7 +253,7 @@ TEST_CASE(
   std::string path;
   {
     HeadlessHarness_t harness(config);
-    path = std::string(g_state.save_state_dir.data()) + "/Printer.txt";
+    path = std::string(system_state.save_state_dir.data()) + "/Printer.txt";
     CHECK(printer_frontend_output_path(1) == path);
     strobe(1, 0xC8);
     strobe(1, 0x8D);

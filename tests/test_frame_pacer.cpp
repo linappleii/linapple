@@ -37,23 +37,23 @@ auto fake_sleep_until(int64_t deadline_ns) -> void {
 /**
  * @brief RAII machine description and fake clock.
  *
- * g_state and g_current_clk_6502 are process globals, and so is the fake
+ * system_state and current_clk_6502 are process globals, and so is the fake
  * clock the pacer is handed, so every case goes through this.
  */
 class ScopedPacerWorld_t {
  public:
   ScopedPacerWorld_t(uint32_t clks_per_frame, double clock_hz)
-      : previous_cycles_(g_state.clks_per_frame),
-        previous_clock_(g_current_clk_6502) {
-    g_state.clks_per_frame = clks_per_frame;
-    g_current_clk_6502 = clock_hz;
+      : previous_cycles_(system_state.clks_per_frame),
+        previous_clock_(current_clk_6502) {
+    system_state.clks_per_frame = clks_per_frame;
+    current_clk_6502 = clock_hz;
     g_now_ns = 0;
     g_sleeps.clear();
   }
 
   ~ScopedPacerWorld_t() {
-    g_state.clks_per_frame = previous_cycles_;
-    g_current_clk_6502 = previous_clock_;
+    system_state.clks_per_frame = previous_cycles_;
+    current_clk_6502 = previous_clock_;
     g_now_ns = 0;
     g_sleeps.clear();
   }
@@ -205,8 +205,8 @@ TEST_CASE("Frame Pacer: A Machine Type Change Takes Effect Next Frame") {
   pacer.wait_for_next_frame();
   const int64_t after_ntsc = g_now_ns;
 
-  g_state.clks_per_frame = PAL_FRAME_CYCLES;
-  g_current_clk_6502 = CLOCK_6502_PAL;
+  system_state.clks_per_frame = PAL_FRAME_CYCLES;
+  current_clk_6502 = CLOCK_6502_PAL;
   pacer.wait_for_next_frame();
   CHECK(g_now_ns - after_ntsc == PAL_PERIOD_NS);
 }

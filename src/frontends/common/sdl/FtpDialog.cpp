@@ -40,7 +40,7 @@ auto ftp_gen_generate(FileListGenerator_t* self) -> FileList_t* {
   FtpClient_t client;
   std::vector<FtpFileEntry_t> entries;
   const FtpStatus_t status = client.fetch_directory_listing(
-      ctx->directory, entries, g_state.ftp_user_pass.data());
+      ctx->directory, entries, system_state.ftp_user_pass.data());
 
   if (status != FtpStatus_t::ok) {
     if (status == FtpStatus_t::connect_error) {

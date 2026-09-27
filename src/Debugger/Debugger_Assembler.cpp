@@ -1160,7 +1160,7 @@ auto CmdSource(int nArgs) -> Update_t {
         g_source_add_memory = true;
       } else {
         const std::string sFileName =
-            std::string(g_state.program_dir.data()) + pFileName;
+            std::string(system_state.program_dir.data()) + pFileName;
 
         const int MAX_MINI_FILENAME = 20;
         const std::string sMiniFileName = sFileName.substr(

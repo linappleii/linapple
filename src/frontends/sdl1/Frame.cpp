@@ -88,10 +88,10 @@ void draw_apple_content() {
 
   draw_status_area(draw_background | draw_leds);
 
-  if (g_state.mode == app_mode_logo) {
+  if (system_state.mode == app_mode_logo) {
     video_display_logo();
     g_frame_ready = true;
-  } else if (g_state.mode == app_mode_debug) {
+  } else if (system_state.mode == app_mode_debug) {
     debug_display(true);
     g_frame_ready = true;
   } else {
@@ -120,7 +120,7 @@ void draw_frame_window() {
     SDL_Rect r = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
 
     // Fill g_screen from RGB32 output buffer
-    if (g_state.mode != app_mode_debug) {
+    if (system_state.mode != app_mode_debug) {
       VideoSurface_t vs_texture = sdl_surface_to_video_surface(g_texture.get());
       VideoSurface_t vs_output{};
       vs_output.pixels = reinterpret_cast<uint8_t*>(output);
@@ -253,7 +253,7 @@ void frame_show_help_screen(int sx, int sy) {
     }
   }
   if (g_window_resized == false) {
-    if (g_state.mode == app_mode_logo) {
+    if (system_state.mode == app_mode_logo) {
       tempSurface = g_logo_bitmap;
     } else {
       tempSurface = g_device_bitmap;
@@ -299,9 +299,9 @@ void frame_show_help_screen(int sx, int sy) {
     SDL_BlitSurface(dim_surface.get(), nullptr, g_screen, nullptr);
   }
 
-  const float facx_f = static_cast<float>(g_state.screen_width) /
+  const float facx_f = static_cast<float>(system_state.screen_width) /
                        static_cast<float>(SCREEN_WIDTH);
-  const float facy_f = static_cast<float>(g_state.screen_height) /
+  const float facy_f = static_cast<float>(system_state.screen_height) /
                        static_cast<float>(SCREEN_HEIGHT);
 
   const float scale_x = facx_f;
@@ -310,7 +310,7 @@ void frame_show_help_screen(int sx, int sy) {
   const int hdr_top = static_cast<int>(4.0f * facy_f);
   const int hdr_height = static_cast<int>(42.0f * facy_f);
   rectangle(&vs_actual_g_screen, static_cast<int>(4.0f * facx_f), hdr_top,
-            static_cast<int>(g_state.screen_width - (8.0f * facx_f)),
+            static_cast<int>(system_state.screen_width - (8.0f * facx_f)),
             hdr_height, 0xFFFF00);
 
   font_print_centered(sx / 2, hdr_top + static_cast<int>(4.0f * facy_f),
@@ -325,9 +325,9 @@ void frame_show_help_screen(int sx, int sy) {
 
   const int body_top = hdr_top + hdr_height + static_cast<int>(4.0f * facy_f);
   const int body_height =
-      static_cast<int>(g_state.screen_height - body_top - (4.0f * facy_f));
+      static_cast<int>(system_state.screen_height - body_top - (4.0f * facy_f));
   rectangle(&vs_actual_g_screen, static_cast<int>(4.0f * facx_f), body_top,
-            static_cast<int>(g_state.screen_width - (8.0f * facx_f)),
+            static_cast<int>(system_state.screen_width - (8.0f * facx_f)),
             body_height, 0xFFFFFF);
 
   const float line_spacing = 13.0f * facy_f;
@@ -366,7 +366,7 @@ void frame_show_help_screen(int sx, int sy) {
     while (SDL_PollEvent(&event) != 0) {
       if (event.type == SDL_KEYDOWN) {
         if (event.key.keysym.sym == SDLK_F12) {
-          g_state.mode = app_mode_exit;
+          system_state.mode = app_mode_exit;
           SDL_Event qe = {};
           qe.type = SDL_QUIT;
           SDL_PushEvent(&qe);
@@ -376,7 +376,7 @@ void frame_show_help_screen(int sx, int sy) {
       }
       if (event.type == SDL_QUIT) {
         SDL_PushEvent(&event);
-        g_state.mode = app_mode_exit;
+        system_state.mode = app_mode_exit;
         waiting = false;
         break;
       }
@@ -399,8 +399,8 @@ void frame_quick_state(int num, int mod) {
   // being saved, otherwise - being loaded
   std::array<char, path_max_len> fpath;
   snprintf(fpath.data(), fpath.size(), "%.*s/SaveState%d.aws",
-           static_cast<int>(strlen(g_state.save_state_dir.data())),
-           g_state.save_state_dir.data(), num);
+           static_cast<int>(strlen(system_state.save_state_dir.data())),
+           system_state.save_state_dir.data(), num);
   save_state_set_filename(fpath.data());
   if ((mod & KMOD_SHIFT) != 0) {
     save_state_save();
@@ -436,8 +436,8 @@ void frame_on_resize(int width, int height) {
   }
 
   g_video_draw_mutex.lock();
-  g_state.screen_width = static_cast<uint32_t>(width);
-  g_state.screen_height = static_cast<uint32_t>(height);
+  system_state.screen_width = static_cast<uint32_t>(width);
+  system_state.screen_height = static_cast<uint32_t>(height);
 
   if (!is_full_screened) {
     s_windowed_width = static_cast<uint32_t>(width);
@@ -445,23 +445,23 @@ void frame_on_resize(int width, int height) {
   }
 
   Uint32 flags = SDL_SWSURFACE | SDL_RESIZABLE;
-  if (g_state.fullscreen) flags |= SDL_FULLSCREEN;
+  if (system_state.fullscreen) flags |= SDL_FULLSCREEN;
 
   g_screen =
-      SDL_SetVideoMode(static_cast<int>(g_state.screen_width),
-                       static_cast<int>(g_state.screen_height), 32, flags);
+      SDL_SetVideoMode(static_cast<int>(system_state.screen_width),
+                       static_cast<int>(system_state.screen_height), 32, flags);
 
-  g_texture.reset(SDL_CreateRGBSurface(0, g_state.screen_width,
-                                       g_state.screen_height, 32, 0x00FF0000,
-                                       0x0000FF00, 0x000000FF, 0));
+  g_texture.reset(SDL_CreateRGBSurface(0, system_state.screen_width,
+                                       system_state.screen_height, 32,
+                                       0x00FF0000, 0x0000FF00, 0x000000FF, 0));
 
   if (g_screen == nullptr || g_texture == nullptr) {
-    g_state.mode = app_mode_exit;
+    system_state.mode = app_mode_exit;
     g_video_draw_mutex.unlock();
     return;
   }
-  g_window_resized = (g_state.screen_width != SCREEN_WIDTH) |
-                     (g_state.screen_height != SCREEN_HEIGHT);
+  g_window_resized = (system_state.screen_width != SCREEN_WIDTH) |
+                     (system_state.screen_height != SCREEN_HEIGHT);
   if (g_window_resized) {
     g_orig_rect.x = g_orig_rect.y = 0;
     g_orig_rect.w = static_cast<int16_t>(SCREEN_WIDTH);
@@ -482,10 +482,11 @@ void frame_on_resize(int width, int height) {
     } else {
       g_new_rect.x = 0;
       g_new_rect.y = 0;
-      g_new_rect.w = static_cast<int16_t>(g_state.screen_width);
-      g_new_rect.h = static_cast<int16_t>(g_state.screen_height);
+      g_new_rect.w = static_cast<int16_t>(system_state.screen_width);
+      g_new_rect.h = static_cast<int16_t>(system_state.screen_height);
     }
-    if ((g_state.mode != app_mode_logo) && (g_state.mode != app_mode_debug)) {
+    if ((system_state.mode != app_mode_logo) &&
+        (system_state.mode != app_mode_debug)) {
       video_redraw_screen();
     }
   }
@@ -503,7 +504,8 @@ void frame_on_focus(bool gained) {
 }
 
 void frame_on_expose() {
-  if ((g_state.mode != app_mode_logo) && (g_state.mode != app_mode_debug)) {
+  if ((system_state.mode != app_mode_logo) &&
+      (system_state.mode != app_mode_debug)) {
     video_redraw_screen();
   }
 }
@@ -518,11 +520,11 @@ auto psp_save_state_select_image(bool saveit) -> bool {
   bool isDirectory = true;
 
   fileIndex = static_cast<size_t>(backdx);
-  fullPath = g_state.save_state_dir.data();
+  fullPath = system_state.save_state_dir.data();
 
   while (isDirectory) {
-    if (choose_an_image(g_state.screen_width, g_state.screen_height, fullPath,
-                        saveit ? 1 : 0, filename, isDirectory,
+    if (choose_an_image(system_state.screen_width, system_state.screen_height,
+                        fullPath, saveit ? 1 : 0, filename, isDirectory,
                         fileIndex) == false) {
       draw_frame_window();
       return false;
@@ -552,10 +554,10 @@ auto psp_save_state_select_image(bool saveit) -> bool {
       }
     }
   }
-  util_safe_strcpy(g_state.save_state_dir.data(), fullPath.c_str(),
-                   g_state.save_state_dir.size());
+  util_safe_strcpy(system_state.save_state_dir.data(), fullPath.c_str(),
+                   system_state.save_state_dir.size());
   Configuration_t::instance().set_string("Preferences", "Save State Directory",
-                                         g_state.save_state_dir.data());
+                                         system_state.save_state_dir.data());
   Configuration_t::instance().save();
 
   backdx = static_cast<int>(fileIndex);
@@ -610,21 +612,21 @@ void process_button_click(int button, int mod) {
     case btn_run:
       if ((mod & (KMOD_LCTRL)) == (KMOD_LCTRL) ||
           (mod & (KMOD_RCTRL)) == (KMOD_RCTRL)) {
-        if (g_state.mode == app_mode_logo) {
+        if (system_state.mode == app_mode_logo) {
           linapple_reset_hard();
-        } else if (g_state.mode == app_mode_running) {
+        } else if (system_state.mode == app_mode_running) {
           reset_machine_state();
         }
-        if ((g_state.mode == app_mode_debug) ||
-            (g_state.mode == app_mode_stepping)) {
+        if ((system_state.mode == app_mode_debug) ||
+            (system_state.mode == app_mode_stepping)) {
           debug_end();
         }
-        g_state.mode = app_mode_running;
+        system_state.mode = app_mode_running;
         draw_status_area(draw_title);
         video_redraw_screen();
-        g_state.reset_timing = true;
+        system_state.reset_timing = true;
       } else if ((mod & KMOD_SHIFT) != 0) {
-        g_state.restart = true;
+        system_state.restart = true;
         qe.type = SDL_QUIT;
         SDL_PushEvent(&qe);
       }
@@ -678,9 +680,9 @@ void process_button_click(int button, int mod) {
       if ((mod & KMOD_SHIFT) != 0) {
         // only IIe and enhanced have a keyboard rocker switch (and only non-US
         // keyboards)
-        if ((g_language != A2LANG_US) &&
-            ((g_apple2_type == A2TYPE_APPLE2E) ||
-             (g_apple2_type == A2TYPE_APPLE2EENHANCED))) {
+        if ((current_language != A2LANG_US) &&
+            ((current_apple2_type == A2TYPE_APPLE2E) ||
+             (current_apple2_type == A2TYPE_APPLE2EENHANCED))) {
           uint8_t cur_rocker = 0;
           size_t rocker_sz = sizeof(cur_rocker);
           peripheral_query_by_id(0, "linapple.keyboard", keyboard_query_rocker,
@@ -694,11 +696,11 @@ void process_button_click(int button, int mod) {
               (new_rocker != 0) ? "local" : "standard/US");
         }
       } else {
-        if (g_state.fullscreen) {
-          g_state.fullscreen = false;
+        if (system_state.fullscreen) {
+          system_state.fullscreen = false;
           set_normal_mode();
         } else {
-          g_state.fullscreen = true;
+          system_state.fullscreen = true;
           set_fullscreen_mode();
         }
         peripheral_command(0, JOY_CMD_RESET, nullptr, 0);
@@ -707,11 +709,11 @@ void process_button_click(int button, int mod) {
 
     case btn_debug:
 #if ENABLE_DEBUGGER
-      if (!g_state.disable_debugger) {
-        if (g_state.mode != app_mode_debug) {
+      if (!system_state.disable_debugger) {
+        if (system_state.mode != app_mode_debug) {
           debug_begin();
           set_using_cursor(false);
-        } else if (g_state.mode == app_mode_debug) {
+        } else if (system_state.mode == app_mode_debug) {
           debug_end();
         }
       }
@@ -722,10 +724,11 @@ void process_button_click(int button, int mod) {
       if ((mod & KMOD_SHIFT) != 0) {
         Configuration_t::instance().set_int("Configuration", "Video Emulation",
                                             static_cast<int>(g_videotype));
-        Configuration_t::instance().set_int("Configuration", "Emulation Speed",
-                                            static_cast<int>(g_state.speed));
+        Configuration_t::instance().set_int(
+            "Configuration", "Emulation Speed",
+            static_cast<int>(system_state.speed));
         Configuration_t::instance().set_int("Configuration", "Fullscreen",
-                                            g_state.fullscreen ? 1 : 0);
+                                            system_state.fullscreen ? 1 : 0);
         Configuration_t::instance().save();
 
       } else {
@@ -742,8 +745,8 @@ void process_button_click(int button, int mod) {
           g_videotype = 0;
         }
         video_reinitialize();
-        if (g_state.mode != app_mode_logo) {
-          if (g_state.mode == app_mode_debug) {
+        if (system_state.mode != app_mode_logo) {
+          if (system_state.mode == app_mode_debug) {
             uint32_t debugVideoMode = 0;
             if (debug_get_video_mode(&debugVideoMode)) {
               video_redraw_screen();
@@ -778,15 +781,15 @@ void process_button_click(int button, int mod) {
       break;
   }
 
-  if ((g_state.mode != app_mode_debug) && (g_state.mode != app_mode_paused)) {
+  if ((system_state.mode != app_mode_debug) &&
+      (system_state.mode != app_mode_paused)) {
     audio_mixer_set_fade(fade_in);
   }
 }
 
 void reset_machine_state() {
-  g_full_speed =
-      false;  // Might've hit reset in middle of internal_cpu_execute()
-              // - so beep may get (partially) muted
+  full_speed = false;  // Might've hit reset in middle of internal_cpu_execute()
+                       // - so beep may get (partially) muted
 
   linapple_reset_hard();
   peripheral_command(0, JOY_CMD_RESET, nullptr, 0);
@@ -796,11 +799,11 @@ void set_fullscreen_mode() {
   if (!is_full_screened) {
     is_full_screened = true;
     if (s_windowed_width == 0 || s_windowed_height == 0) {
-      s_windowed_width = g_state.screen_width;
-      s_windowed_height = g_state.screen_height;
+      s_windowed_width = system_state.screen_width;
+      s_windowed_height = system_state.screen_height;
     }
     SDL_WM_ToggleFullScreen(g_screen);
-    if (g_state.mode != app_mode_debug) {
+    if (system_state.mode != app_mode_debug) {
       SDL_ShowCursor(SDL_DISABLE);
     }
   }
@@ -817,7 +820,7 @@ void set_normal_mode() {
     if (!g_usingcursor) {
       SDL_ShowCursor(SDL_ENABLE);
     }
-  } else if (g_state.mode == app_mode_debug) {
+  } else if (system_state.mode == app_mode_debug) {
     SDL_ShowCursor(SDL_ENABLE);
     SDL_WM_GrabInput(SDL_GRAB_OFF);
   }
@@ -829,7 +832,7 @@ void set_using_cursor(bool newvalue) {
     SDL_ShowCursor(SDL_DISABLE);
     SDL_WM_GrabInput(SDL_GRAB_ON);
   } else {
-    if (!is_full_screened || (g_state.mode == app_mode_debug)) {
+    if (!is_full_screened || (system_state.mode == app_mode_debug)) {
       SDL_ShowCursor(SDL_ENABLE);
     }
     SDL_WM_GrabInput(SDL_GRAB_OFF);
@@ -842,38 +845,39 @@ extern void sdl_asset_free_icon();
 auto frame_create_window() -> int {
   sdl_asset_load_icon();
   is_full_screened = false;
-  if (!g_state.fullscreen) {
-    s_windowed_width = g_state.screen_width;
-    s_windowed_height = g_state.screen_height;
+  if (!system_state.fullscreen) {
+    s_windowed_width = system_state.screen_width;
+    s_windowed_height = system_state.screen_height;
   }
 
   Uint32 flags = SDL_SWSURFACE;
-  if (g_state.fullscreen) flags |= SDL_FULLSCREEN;
+  if (system_state.fullscreen) flags |= SDL_FULLSCREEN;
 
   g_screen =
-      SDL_SetVideoMode(static_cast<int>(g_state.screen_width),
-                       static_cast<int>(g_state.screen_height), 32, flags);
+      SDL_SetVideoMode(static_cast<int>(system_state.screen_width),
+                       static_cast<int>(system_state.screen_height), 32, flags);
   if (g_screen == nullptr) {
     fprintf(stderr, "Could not set video mode: %s\n", SDL_GetError());
     return 1;
   }
 
-  g_texture.reset(SDL_CreateRGBSurface(0, g_state.screen_width,
-                                       g_state.screen_height, 32, 0x00FF0000,
-                                       0x0000FF00, 0x000000FF, 0));
+  g_texture.reset(SDL_CreateRGBSurface(0, system_state.screen_width,
+                                       system_state.screen_height, 32,
+                                       0x00FF0000, 0x0000FF00, 0x000000FF, 0));
 
-  SDL_WM_SetCaption(g_app_title, g_app_title);
+  SDL_WM_SetCaption(app_title, app_title);
   set_icon();
 
-  g_window_resized = (g_state.screen_width != SCREEN_WIDTH) |
-                     (g_state.screen_height != SCREEN_HEIGHT);
-  printf("Screen size is %ux%u\n", g_state.screen_width, g_state.screen_height);
+  g_window_resized = (system_state.screen_width != SCREEN_WIDTH) |
+                     (system_state.screen_height != SCREEN_HEIGHT);
+  printf("Screen size is %ux%u\n", system_state.screen_width,
+         system_state.screen_height);
   if (g_window_resized) {
     g_orig_rect.x = g_orig_rect.y = g_new_rect.x = g_new_rect.y = 0;
     g_orig_rect.w = static_cast<int16_t>(SCREEN_WIDTH);
     g_orig_rect.h = static_cast<int16_t>(SCREEN_HEIGHT);
-    g_new_rect.w = static_cast<int16_t>(g_state.screen_width);
-    g_new_rect.h = static_cast<int16_t>(g_state.screen_height);
+    g_new_rect.w = static_cast<int16_t>(system_state.screen_width);
+    g_new_rect.h = static_cast<int16_t>(system_state.screen_height);
   }
   return 0;
 }
@@ -940,10 +944,10 @@ void frame_refresh_status(int drawflags) {
         std::array<char, disk_ui_display_name_max + 1> display_name = {};
         disk_ui_format_display_name(g_last_disk_status.drive0_name,
                                     display_name.data(), display_name.size());
-        snprintf(title_buf.data(), title_buf.size(), "%s - %s", g_app_title,
+        snprintf(title_buf.data(), title_buf.size(), "%s - %s", app_title,
                  display_name.data());
       } else {
-        snprintf(title_buf.data(), title_buf.size(), "%s", g_app_title);
+        snprintf(title_buf.data(), title_buf.size(), "%s", app_title);
       }
       linapple_update_title(title_buf.data());
     }

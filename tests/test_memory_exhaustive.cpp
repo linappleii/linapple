@@ -19,7 +19,7 @@ namespace {
 
 struct MachineHarness_t {
   MachineHarness_t() {
-    g_apple2_type = A2TYPE_APPLE2EENHANCED;
+    current_apple2_type = A2TYPE_APPLE2EENHANCED;
     mem_initialize();
     cpu_initialize();
   }

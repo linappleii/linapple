@@ -20,7 +20,7 @@ extern "C" const char* __asan_default_options() { return "detect_leaks=1"; }
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static bool s_initialized = false;
   if (!s_initialized) {
-    g_apple2_type = A2TYPE_APPLE2EENHANCED;
+    current_apple2_type = A2TYPE_APPLE2EENHANCED;
     video_initialize();
     mem_initialize();
     cpu_initialize();

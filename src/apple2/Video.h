@@ -171,6 +171,12 @@ extern VideoSurface_t* g_origscreen;
 
 auto video_get_output_buffer() -> uint32_t*;
 auto video_get_output_palette() -> VideoColor_t*;
+inline auto video_is_frame_ready() noexcept -> bool {
+  return g_frame_ready.load();
+}
+inline auto video_clear_frame_ready() noexcept -> void {
+  g_frame_ready.store(false);
+}
 
 auto video_set_budget(bool enable) -> void;
 auto video_get_budget() -> bool;

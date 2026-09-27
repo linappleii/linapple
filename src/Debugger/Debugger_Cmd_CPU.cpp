@@ -145,7 +145,7 @@ auto CmdGo(int nArgs, const bool bFullSpeed) -> Update_t {
   g_last_go_cmd_was_full_speed = bFullSpeed;
   g_go_cmd_reinit_flag = true;
 
-  g_state.mode = app_mode_stepping;
+  system_state.mode = app_mode_stepping;
   frame_refresh_status(draw_title);
 
   audio_mixer_set_fade(fade_in);
@@ -234,7 +234,7 @@ auto CmdTrace(int nArgs) -> Update_t {
   g_debug_step_cycles = 0;
   g_debug_step_start = cpu_get_registers()->pc;
   g_debug_step_until = -1;
-  g_state.mode = app_mode_stepping;
+  system_state.mode = app_mode_stepping;
   frame_refresh_status(draw_title);
   DebugContinueStepping(true);
 
@@ -261,7 +261,7 @@ auto CmdTraceFile(int nArgs) -> Update_t {
     g_trace_file_with_video_scanner = (nArgs >= 2);
 
     const std::string sFilePath =
-        std::string(g_state.current_dir.data()) + sFileName;
+        std::string(system_state.current_dir.data()) + sFileName;
 
     g_trace_file.reset(fopen(sFilePath.c_str(), "wt"));
 
@@ -288,7 +288,7 @@ auto CmdTraceLine(int nArgs) -> Update_t {
   g_debug_step_start = cpu_get_registers()->pc;
   g_debug_step_until = -1;
 
-  g_state.mode = app_mode_stepping;
+  system_state.mode = app_mode_stepping;
   frame_refresh_status(draw_title);
   DebugContinueStepping(true);
 
@@ -485,11 +485,11 @@ auto DebugContinueStepping(const bool bCallerWillUpdateDisplay) -> void {
         (cpu_get_registers()->pc < (g_debug_skip_start + g_debug_skip_len))) {
       // Enter turbo debugger mode -- UI not updated, etc.
       g_debug_steps = -1;
-      g_state.mode = app_mode_stepping;
+      system_state.mode = app_mode_stepping;
     } else {
       // Enter normal debugger mode -- UI updated every instruction, etc.
       g_debug_steps = 1;
-      g_state.mode = app_mode_stepping;
+      system_state.mode = app_mode_stepping;
     }
   }
 
@@ -531,8 +531,8 @@ auto DebugContinueStepping(const bool bCallerWillUpdateDisplay) -> void {
       bForceSingleStepNext = false;
 
       // Single-step the CPU
-      if (g_state.mode == app_mode_debug) {
-        g_state.mode = app_mode_stepping;
+      if (system_state.mode == app_mode_debug) {
+        system_state.mode = app_mode_stepping;
       }
 
       cpu_step();
@@ -540,7 +540,7 @@ auto DebugContinueStepping(const bool bCallerWillUpdateDisplay) -> void {
   }
 
   if ((g_debug_steps == 0) && (!bForceSingleStepNext)) {
-    g_state.mode = app_mode_debug;
+    system_state.mode = app_mode_debug;
     g_debug_steps = 0;
 
     DisasmCalcTopBotAddress();
@@ -552,9 +552,9 @@ auto DebugContinueStepping(const bool bCallerWillUpdateDisplay) -> void {
 }
 
 auto DebugStopStepping() -> void {
-  assert(g_state.mode == app_mode_stepping);
+  assert(system_state.mode == app_mode_stepping);
 
-  if (g_state.mode != app_mode_stepping) {
+  if (system_state.mode != app_mode_stepping) {
     return;
   }
 

@@ -44,7 +44,7 @@ class DiskMotorHarness_t {
 
     setup_spin_loop();
 
-    g_state.mode = app_mode_running;
+    system_state.mode = app_mode_running;
 
     mount_disk();
     peripheral_manager_think(0);

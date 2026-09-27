@@ -78,7 +78,7 @@ auto PrintSymbolInvalidTable() -> Update_t;
 
 //===========================================================================
 auto PrintCurrentPath() -> void {
-  console_display_error(g_state.program_dir.data());
+  console_display_error(system_state.program_dir.data());
 }
 
 auto PrintSymbolInvalidTable() -> Update_t {
@@ -597,7 +597,7 @@ auto ParseSymbolTable(const std::string& pPathFileName,
                              CHC_DEFAULT                   , CHC_SYMBOL                   ,
                              pSymbolPrev
                                                           );
-
+                  
                                                           ConsolePrintFormat( sText, "  %s$%s%04X
                              %s%-31s%s"                   , CHC_ARG_SEP                   ,
                              CHC_ADDRESS                   , address                   ,
@@ -634,7 +634,7 @@ auto ParseSymbolTable(const std::string& pPathFileName,
 
 //===========================================================================
 auto CmdSymbolsLoad(int nArgs) -> Update_t {
-  std::string sFileName = g_state.program_dir.data();
+  std::string sFileName = system_state.program_dir.data();
 
   int iSymbolTable = GetSymbolTableFromCommand();
   if ((iSymbolTable < 0) || (iSymbolTable >= NUM_SYMBOL_TABLES)) {
@@ -658,7 +658,7 @@ auto CmdSymbolsLoad(int nArgs) -> Update_t {
     if (g_args[iArg].bType & TYPE_QUOTED_2) {
       pFileName = g_args[iArg].sArg;
 
-      sFileName = std::string(g_state.program_dir.data()) + pFileName;
+      sFileName = std::string(system_state.program_dir.data()) + pFileName;
 
       // Remember File Name of last symbols loaded
       g_file_name_symbols_user = pFileName;

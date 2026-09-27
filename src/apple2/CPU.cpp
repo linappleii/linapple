@@ -47,6 +47,9 @@ static std::mutex g_interrupt_mutex;
 
 auto cpu_get_registers() -> CpuRegisters_t* { return &regs; }
 auto cpu_get_cumulative_cycles() -> uint64_t { return g_cumulative_cycles; }
+auto cpu_add_cumulative_cycles(uint32_t cycles) -> void {
+  g_cumulative_cycles += cycles;
+}
 auto cpu_get_active_context() -> CpuInstance_t* { return g_active_cpu; }
 auto cpu_set_active_context(CpuInstance_t* context) -> void {
   if (context == nullptr) {
@@ -3006,7 +3009,7 @@ static auto cpu_execute_loop(uint32_t total_cycles) -> uint32_t {
 }
 
 static auto internal_cpu_execute(uint32_t total_cycles) -> uint32_t {
-  if (is_apple2() || (g_apple2_type == A2TYPE_APPLE2E)) {
+  if (is_apple2() || (current_apple2_type == A2TYPE_APPLE2E)) {
     return cpu_execute_loop<false>(
         total_cycles);  // Apple ][, ][+, //e (NMOS 6502)
   }

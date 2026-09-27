@@ -265,12 +265,12 @@ struct AudioSourceSlot_t {
 static std::array<AudioSourceSlot_t, MAX_AUDIO_SLOTS> g_slots;
 static AudioChannelTapCallback_t g_channel_tap_cb = nullptr;
 
-// g_current_clk_6502 is the core's public API and the mixer is a frontend
+// current_clk_6502 is the core's public API and the mixer is a frontend
 // consuming it.
 static auto source_rate_hz(const PeripheralAudioInfo_t& info) -> double {
   if (info.time_base == peripheral_audio_cpu_clocked) {
     const uint32_t divisor = (info.cycle_divisor == 0) ? 1 : info.cycle_divisor;
-    return g_current_clk_6502 / static_cast<double>(divisor);
+    return current_clk_6502 / static_cast<double>(divisor);
   }
   return static_cast<double>(info.sample_rate);
 }

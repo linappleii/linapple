@@ -74,7 +74,7 @@ auto tui_video_close_help() -> void { g_show_help = false; }
 
 auto tui_video_toggle_fullscreen() -> void {
   g_fullscreen = !g_fullscreen;
-  g_state.fullscreen = g_fullscreen;
+  system_state.fullscreen = g_fullscreen;
 }
 
 auto tui_video_is_fullscreen() -> bool { return g_fullscreen; }
@@ -825,7 +825,7 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
   g_frame_count++;
   bool flash_on = (g_frame_count / flash_divisor) % 2 == 0;
 
-  bool is_debug_mode = (g_state.mode == app_mode_debug);
+  bool is_debug_mode = (system_state.mode == app_mode_debug);
   bool is_text_mode = !is_debug_mode && video_get_sw_text();
   bool is_mixed_mode = !is_debug_mode && video_get_sw_mixed();
   bool is_80col = video_get_sw_80col();

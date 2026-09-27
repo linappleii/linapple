@@ -28,7 +28,7 @@ constexpr uint16_t CODE_BASE_ADDR = 0x0300;
 
 struct CpuTestFixture_t {
   CpuTestFixture_t() {
-    g_apple2_type = A2TYPE_APPLE2EENHANCED;
+    current_apple2_type = A2TYPE_APPLE2EENHANCED;
     mem_initialize();
     cpu_initialize();
   }

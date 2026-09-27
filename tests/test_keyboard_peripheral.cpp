@@ -7,10 +7,10 @@
 #include <string>
 #include <vector>
 
-#include "apple2/peripherals/keyboard/Keyboard.h"
-#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Types.h"
+#include "apple2/peripherals/keyboard/Keyboard.h"
+#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "doctest.h"
 
 auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
@@ -675,7 +675,7 @@ TEST_CASE("KBD-17: Corrupt State Rejection") {
   CHECK_EQ(harness.load_state(&bad_size, sizeof(bad_size)), peripheral_error);
 }
 
-TEST_CASE("KBD-18: Auto-Repeat Suppression in Warp Speed (g_full_speed)") {
+TEST_CASE("KBD-18: Auto-Repeat Suppression in Warp Speed (full_speed)") {
   KeyboardTestHarness_t harness;
 
   KeyboardEvent_t ev = {'B', 1, 0, 0, 0, 0, {0, 0}};
@@ -686,17 +686,17 @@ TEST_CASE("KBD-18: Auto-Repeat Suppression in Warp Speed (g_full_speed)") {
   harness.read_c010();
   CHECK_EQ(harness.read_c000() & 0x80, 0);
 
-  // When g_full_speed is true, even 1,000,000 cycles must NOT trigger
+  // When full_speed is true, even 1,000,000 cycles must NOT trigger
   // auto-repeat
-  extern bool g_full_speed;
-  const bool prev_full_speed = g_full_speed;
-  g_full_speed = true;
+  extern bool full_speed;
+  const bool prev_full_speed = full_speed;
+  full_speed = true;
   harness.think(1000000);
   CHECK_EQ(harness.read_c000() & 0x80, 0);
 
   // Restore normal speed: auto-repeat can now advance and fire
-  g_full_speed = false;
+  full_speed = false;
   harness.think(600000);
   CHECK_EQ(harness.read_c000() & 0x80, 0x80);
-  g_full_speed = prev_full_speed;
+  full_speed = prev_full_speed;
 }
