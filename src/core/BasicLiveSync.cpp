@@ -48,15 +48,15 @@ constexpr uint16_t max_line_number = 63999;
 constexpr size_t max_input_line_len = 255;
 constexpr size_t inotify_event_buf_size = 4096;
 constexpr int frame_check_interval = 15;
-constexpr uint8_t BYTE_SHIFT = 8;
-constexpr uint8_t BYTE_MASK = 0xFF;
-constexpr uint32_t DJB2_INIT = 5381;
-constexpr uint32_t DJB2_SHIFT = 5;
-constexpr unsigned char ASCII_PRINTABLE_MIN = 32;
-constexpr unsigned char ASCII_PRINTABLE_MAX = 126;
-constexpr uint8_t TOKEN_REM = 0xB2;
-constexpr uint8_t HIGH_BIT_MASK = 0x80;
-constexpr uint8_t ASCII_7BIT_MASK = 0x7F;
+constexpr uint8_t byte_shift = 8;
+constexpr uint8_t byte_mask = 0xFF;
+constexpr uint32_t djb2_init = 5381;
+constexpr uint32_t djb2_shift = 5;
+constexpr unsigned char ascii_printable_min = 32;
+constexpr unsigned char ascii_printable_max = 126;
+constexpr uint8_t token_rem = 0xB2;
+constexpr uint8_t high_bit_mask = 0x80;
+constexpr uint8_t ascii_7bit_mask = 0x7F;
 
 struct TokenDef_t {
   uint8_t token;
@@ -66,121 +66,43 @@ struct TokenDef_t {
 
 // Applesoft BASIC tokens ($80..$EA) ordered by keyword length descending
 // to ensure longest-prefix matching (e.g. ATN before AT, HCOLOR= before COLOR=)
-static const std::array<TokenDef_t, 107> k_applesoft_tokens = {
-    {// Length 7
-     {0x92, "HCOLOR=", 7},
-     {0x9C, "NOTRACE", 7},
-     {0x9E, "INVERSE", 7},
-     {0xAE, "RESTORE", 7},
-     // Length 6
-     {0x99, "SCALE=", 6},
-     {0x9A, "SHLOAD", 6},
-     {0x9D, "NORMAL", 6},
-     {0xA0, "COLOR=", 6},
-     {0xA3, "HIMEM:", 6},
-     {0xA4, "LOMEM:", 6},
-     {0xA6, "RESUME", 6},
-     {0xA7, "RECALL", 6},
-     {0xA9, "SPEED=", 6},
-     {0xB1, "RETURN", 6},
-     {0xE9, "RIGHT$", 6},
-     // Length 5
-     {0x84, "INPUT", 5},
-     {0x93, "HPLOT", 5},
-     {0x95, "XDRAW", 5},
-     {0x9B, "TRACE", 5},
-     {0x9F, "FLASH", 5},
-     {0xA5, "ONERR", 5},
-     {0xA8, "STORE", 5},
-     {0xB0, "GOSUB", 5},
-     {0xBA, "PRINT", 5},
-     {0xBD, "CLEAR", 5},
-     {0xD7, "SCRN(", 5},
-     {0xE8, "LEFT$", 5},
-     // Length 4
-     {0x82, "NEXT", 4},
-     {0x83, "DATA", 4},
-     {0x87, "READ", 4},
-     {0x89, "TEXT", 4},
-     {0x8C, "CALL", 4},
-     {0x8D, "PLOT", 4},
-     {0x8E, "HLIN", 4},
-     {0x8F, "VLIN", 4},
-     {0x90, "HGR2", 4},
-     {0x94, "DRAW", 4},
-     {0x96, "HTAB", 4},
-     {0x97, "HOME", 4},
-     {0x98, "ROT=", 4},
-     {0xA2, "VTAB", 4},
-     {0xAB, "GOTO", 4},
-     {0xB3, "STOP", 4},
-     {0xB5, "WAIT", 4},
-     {0xB6, "LOAD", 4},
-     {0xB7, "SAVE", 4},
-     {0xB9, "POKE", 4},
-     {0xBB, "CONT", 4},
-     {0xBC, "LIST", 4},
-     {0xC0, "TAB(", 4},
-     {0xC3, "SPC(", 4},
-     {0xC4, "THEN", 4},
-     {0xC7, "STEP", 4},
-     {0xE2, "PEEK", 4},
-     {0xE4, "STR$", 4},
-     {0xE7, "CHR$", 4},
-     {0xEA, "MID$", 4},
-     // Length 3
-     {0x80, "END", 3},
-     {0x81, "FOR", 3},
-     {0x85, "DEL", 3},
-     {0x86, "DIM", 3},
-     {0x8A, "PR#", 3},
-     {0x8B, "IN#", 3},
-     {0x91, "HGR", 3},
-     {0xA1, "POP", 3},
-     {0xAA, "LET", 3},
-     {0xAC, "RUN", 3},
-     {0xB2, "REM", 3},
-     {0xB8, "DEF", 3},
-     {0xBE, "GET", 3},
-     {0xBF, "NEW", 3},
-     {0xC6, "NOT", 3},
-     {0xCD, "AND", 3},
-     {0xD2, "SGN", 3},
-     {0xD3, "INT", 3},
-     {0xD4, "ABS", 3},
-     {0xD5, "USR", 3},
-     {0xD6, "FRE", 3},
-     {0xD8, "PDL", 3},
-     {0xD9, "POS", 3},
-     {0xDA, "SQR", 3},
-     {0xDB, "RND", 3},
-     {0xDC, "LOG", 3},
-     {0xDD, "EXP", 3},
-     {0xDE, "COS", 3},
-     {0xDF, "SIN", 3},
-     {0xE0, "TAN", 3},
-     {0xE1, "ATN", 3},
-     {0xE3, "LEN", 3},
-     {0xE5, "VAL", 3},
-     {0xE6, "ASC", 3},
-     // Length 2
-     {0x88, "GR", 2},
-     {0xAD, "IF", 2},
-     {0xB4, "ON", 2},
-     {0xC1, "TO", 2},
-     {0xC2, "FN", 2},
-     {0xC5, "AT", 2},
-     {0xCE, "OR", 2},
-     // Length 1
-     {0xAF, "&", 1},
-     {0xC8, "+", 1},
-     {0xC9, "-", 1},
-     {0xCA, "*", 1},
-     {0xCB, "/", 1},
-     {0xCC, "^", 1},
-     {0xCF, ">", 1},
-     {0xD0, "=", 1},
-     {0xD1, "<", 1}}};
+static const std::array<TokenDef_t, 107> applesoft_tokens = {
+    {{0x92, "HCOLOR=", 7}, {0x9C, "NOTRACE", 7}, {0x9E, "INVERSE", 7},
+     {0xAE, "RESTORE", 7}, {0x99, "SCALE=", 6},  {0x9A, "SHLOAD", 6},
+     {0x9D, "NORMAL", 6},  {0xA0, "COLOR=", 6},  {0xA3, "HIMEM:", 6},
+     {0xA4, "LOMEM:", 6},  {0xA6, "RESUME", 6},  {0xA7, "RECALL", 6},
+     {0xA9, "SPEED=", 6},  {0xB1, "RETURN", 6},  {0xE9, "RIGHT$", 6},
+     {0x84, "INPUT", 5},   {0x93, "HPLOT", 5},   {0x95, "XDRAW", 5},
+     {0x9B, "TRACE", 5},   {0x9F, "FLASH", 5},   {0xA5, "ONERR", 5},
+     {0xA8, "STORE", 5},   {0xB0, "GOSUB", 5},   {0xBA, "PRINT", 5},
+     {0xBD, "CLEAR", 5},   {0xD7, "SCRN(", 5},   {0xE8, "LEFT$", 5},
+     {0x82, "NEXT", 4},    {0x83, "DATA", 4},    {0x87, "READ", 4},
+     {0x89, "TEXT", 4},    {0x8C, "CALL", 4},    {0x8D, "PLOT", 4},
+     {0x8E, "HLIN", 4},    {0x8F, "VLIN", 4},    {0x90, "HGR2", 4},
+     {0x94, "DRAW", 4},    {0x96, "HTAB", 4},    {0x97, "HOME", 4},
+     {0x98, "ROT=", 4},    {0xA2, "VTAB", 4},    {0xAB, "GOTO", 4},
+     {0xB3, "STOP", 4},    {0xB5, "WAIT", 4},    {0xB6, "LOAD", 4},
+     {0xB7, "SAVE", 4},    {0xB9, "POKE", 4},    {0xBB, "CONT", 4},
+     {0xBC, "LIST", 4},    {0xC0, "TAB(", 4},    {0xC3, "SPC(", 4},
+     {0xC4, "THEN", 4},    {0xC7, "STEP", 4},    {0xE2, "PEEK", 4},
+     {0xE4, "STR$", 4},    {0xE7, "CHR$", 4},    {0xEA, "MID$", 4},
+     {0x80, "END", 3},     {0x81, "FOR", 3},     {0x85, "DEL", 3},
+     {0x86, "DIM", 3},     {0x8A, "PR#", 3},     {0x8B, "IN#", 3},
+     {0x91, "HGR", 3},     {0xA1, "POP", 3},     {0xAA, "LET", 3},
+     {0xAC, "RUN", 3},     {0xB2, "REM", 3},     {0xB8, "DEF", 3},
+     {0xBE, "GET", 3},     {0xBF, "NEW", 3},     {0xC6, "NOT", 3},
+     {0xCD, "AND", 3},     {0xD2, "SGN", 3},     {0xD3, "INT", 3},
+     {0xD4, "ABS", 3},     {0xD5, "USR", 3},     {0xD6, "FRE", 3},
+     {0xD8, "PDL", 3},     {0xD9, "POS", 3},     {0xDA, "SQR", 3},
+     {0xDB, "RND", 3},     {0xDC, "LOG", 3},     {0xDD, "EXP", 3},
+     {0xDE, "COS", 3},     {0xDF, "SIN", 3},     {0xE0, "TAN", 3},
+     {0xE1, "ATN", 3},     {0xE3, "LEN", 3},     {0xE5, "VAL", 3},
+     {0xE6, "ASC", 3},     {0x88, "GR", 2},      {0xAD, "IF", 2},
+     {0xB4, "ON", 2},      {0xC1, "TO", 2},      {0xC2, "FN", 2},
+     {0xC5, "AT", 2},      {0xCE, "OR", 2},      {0xAF, "&", 1},
+     {0xC8, "+", 1},       {0xC9, "-", 1},       {0xCA, "*", 1},
+     {0xCB, "/", 1},       {0xCC, "^", 1},       {0xCF, ">", 1},
+     {0xD0, "=", 1},       {0xD1, "<", 1}}};
 
 struct ParsedLine_t {
   uint16_t line_number = 0;
@@ -191,24 +113,24 @@ struct ParsedLine_t {
       : line_number(num), token_bytes(std::move(bytes)) {}
 };
 
-static BasicSyncConfig_t g_sync_config;
-static std::string g_watch_dir;
-static std::string g_watch_filename;
-static uint32_t g_last_exported_hash = 0;
-static uint32_t g_last_file_content_hash = 0;
-static time_t g_last_file_mtime = 0;
-static bool g_initial_import_pending = false;
-static int g_frame_counter = 0;
+static BasicSyncConfig_t sync_config;
+static std::string watch_dir;
+static std::string watch_filename;
+static uint32_t last_exported_hash = 0;
+static uint32_t last_file_content_hash = 0;
+static time_t last_file_mtime = 0;
+static bool initial_import_pending = false;
+static int frame_counter = 0;
 
-static int g_inotify_fd = -1;
-static int g_inotify_wd = -1;
-static int g_inotify_dir_wd = -1;
+static int inotify_fd = -1;
+static int inotify_wd = -1;
+static int inotify_dir_wd = -1;
 
 static auto split_path(const std::string& full_path, std::string* out_dir,
                        std::string* out_filename) -> void {
   size_t pos = full_path.find_last_of("/\\");
   if (pos != std::string::npos) {
-    *out_dir = full_path.substr(0, pos);
+    *out_dir = (pos == 0) ? "/" : full_path.substr(0, pos);
     *out_filename = full_path.substr(pos + 1);
   } else {
     *out_dir = ".";
@@ -220,10 +142,10 @@ static auto split_path(const std::string& full_path, std::string* out_dir,
 }
 
 static auto get_ram_byte_ptr(uint16_t addr) -> uint8_t* {
-  if (mem != nullptr) {
-    return mem + addr;
+  if (mem == nullptr) {
+    return nullptr;
   }
-  return mem_get_main_ptr(addr);
+  return mem + addr;
 }
 
 static auto read_zero_page_16(uint16_t addr, uint16_t fallback) -> uint16_t {
@@ -235,22 +157,23 @@ static auto read_zero_page_16(uint16_t addr, uint16_t fallback) -> uint16_t {
   if (m_high == nullptr) {
     return fallback;
   }
-  return static_cast<uint16_t>(*m | (*m_high << BYTE_SHIFT));
+  return static_cast<uint16_t>(*m | (*m_high << byte_shift));
 }
 
 static auto write_zero_page_16(uint16_t addr, uint16_t val) -> void {
   uint8_t* m = get_ram_byte_ptr(addr);
   uint8_t* m_high = get_ram_byte_ptr(static_cast<uint16_t>(addr + 1));
-  if (m != nullptr && m_high != nullptr) {
-    *m = static_cast<uint8_t>(val & BYTE_MASK);
-    *m_high = static_cast<uint8_t>((val >> BYTE_SHIFT) & BYTE_MASK);
+  if (m == nullptr || m_high == nullptr) {
+    return;
   }
+  *m = static_cast<uint8_t>(val & byte_mask);
+  *m_high = static_cast<uint8_t>((val >> byte_shift) & byte_mask);
 }
 
 static auto compute_string_hash(const std::string& str) -> uint32_t {
-  uint32_t hash = DJB2_INIT;
+  uint32_t hash = djb2_init;
   for (char ch : str) {
-    hash = ((hash << DJB2_SHIFT) + hash) + static_cast<unsigned char>(ch);
+    hash = ((hash << djb2_shift) + hash) + static_cast<unsigned char>(ch);
   }
   return hash;
 }
@@ -264,13 +187,13 @@ static auto compute_program_hash() -> uint32_t {
     return 0;
   }
 
-  uint32_t hash = DJB2_INIT;
+  uint32_t hash = djb2_init;
   for (uint32_t addr = txttab; addr < end_addr; ++addr) {
     uint8_t* ptr = get_ram_byte_ptr(static_cast<uint16_t>(addr));
     if (ptr == nullptr) {
       break;
     }
-    hash = ((hash << DJB2_SHIFT) + hash) + *ptr;
+    hash = ((hash << djb2_shift) + hash) + *ptr;
   }
   return hash;
 }
@@ -288,15 +211,17 @@ static auto sanitize_and_truncate_line(const std::string& input,
 
   for (char ch : input) {
     auto uch = static_cast<unsigned char>(ch);
-    if (uch >= ASCII_PRINTABLE_MIN && uch <= ASCII_PRINTABLE_MAX) {
-      if (force_uppercase && uch >= 'a' && uch <= 'z') {
-        result.push_back(static_cast<char>(uch - ('a' - 'A')));
-      } else {
-        result.push_back(ch);
-      }
-      if (result.length() >= max_input_line_len) {
-        break;
-      }
+    if (uch < ascii_printable_min || uch > ascii_printable_max) {
+      continue;
+    }
+
+    if (force_uppercase && uch >= 'a' && uch <= 'z') {
+      uch = static_cast<unsigned char>(uch - ('a' - 'A'));
+    }
+
+    result.push_back(static_cast<char>(uch));
+    if (result.length() >= max_input_line_len) {
+      break;
     }
   }
   return result;
@@ -317,10 +242,39 @@ static auto iequals_prefix(const std::string& str, size_t pos, const char* kw,
   return true;
 }
 
+static auto find_token_name(uint8_t token) -> const char* {
+  for (const auto& t : applesoft_tokens) {
+    if (t.token == token) {
+      return t.name;
+    }
+  }
+  return nullptr;
+}
+
+static auto match_token(const std::string& content, size_t pos)
+    -> const TokenDef_t* {
+  for (const auto& t : applesoft_tokens) {
+    if (iequals_prefix(content, pos, t.name, t.length)) {
+      return &t;
+    }
+  }
+  return nullptr;
+}
+
+static auto to_normalized_byte(char ch, bool force_uppercase) -> uint8_t {
+  auto uch = static_cast<unsigned char>(ch);
+  if (force_uppercase && uch >= 'a' && uch <= 'z') {
+    uch = static_cast<unsigned char>(uch - ('a' - 'A'));
+  }
+  return uch;
+}
+
 static auto tokenize_line_content(const std::string& content,
                                   bool force_uppercase)
     -> std::vector<uint8_t> {
   std::vector<uint8_t> tokens;
+  tokens.reserve(content.length());
+
   bool in_quotes = false;
   bool in_rem = false;
   size_t i = 0;
@@ -335,116 +289,313 @@ static auto tokenize_line_content(const std::string& content,
       continue;
     }
 
-    if (in_quotes || in_rem) {
-      auto uch = static_cast<unsigned char>(ch);
-      if (force_uppercase && uch >= 'a' && uch <= 'z') {
-        uch = static_cast<unsigned char>(uch - ('a' - 'A'));
-      }
-      tokens.push_back(uch);
-      ++i;
-      continue;
-    }
-
-    // Match keywords: check longest matches first
-    bool matched = false;
-    for (size_t k = 0; k < k_applesoft_tokens.size(); ++k) {
-      const auto& t = k_applesoft_tokens.at(k);
-      if (iequals_prefix(content, i, t.name, t.length)) {
-        tokens.push_back(t.token);
-        if (t.token == TOKEN_REM) {
-          in_rem = true;
-        }
-        i += t.length;
-        matched = true;
-        break;
+    if (!in_quotes && !in_rem) {
+      const auto* matched = match_token(content, i);
+      if (matched != nullptr) {
+        tokens.push_back(matched->token);
+        in_rem = (matched->token == token_rem);
+        i += matched->length;
+        continue;
       }
     }
 
-    if (!matched) {
-      auto uch = static_cast<unsigned char>(ch);
-      if (force_uppercase && uch >= 'a' && uch <= 'z') {
-        uch = static_cast<unsigned char>(uch - ('a' - 'A'));
-      }
-      tokens.push_back(uch);
-      ++i;
-    }
+    tokens.push_back(to_normalized_byte(ch, force_uppercase));
+    ++i;
   }
 
   return tokens;
 }
 
-}  // namespace
+static auto detokenize_line_bytes(uint16_t start_addr, uint16_t end_addr)
+    -> std::string {
+  std::string line;
+  if (end_addr > start_addr) {
+    line.reserve(end_addr - start_addr);
+  }
+  bool in_quotes = false;
+  bool in_rem = false;
 
-auto basic_sync_init(const char* file_path, BasicLineMode_t mode) -> void {
-  if (file_path == nullptr || file_path[0] == '\0') {
-    g_sync_config = BasicSyncConfig_t{};
+  for (uint16_t addr = start_addr; addr < end_addr; ++addr) {
+    uint8_t* byte_ptr = get_ram_byte_ptr(addr);
+    if (byte_ptr == nullptr || *byte_ptr == 0) {
+      break;
+    }
+
+    uint8_t b = *byte_ptr;
+    if (b == '"') {
+      in_quotes = !in_quotes;
+      line.push_back('"');
+      continue;
+    }
+
+    if (in_quotes || in_rem || b < high_bit_mask) {
+      line.push_back(static_cast<char>(b & ascii_7bit_mask));
+      continue;
+    }
+
+    const char* token_name = find_token_name(b);
+    if (token_name != nullptr) {
+      in_rem = in_rem || (b == token_rem);
+      line.append(token_name);
+      continue;
+    }
+
+    std::ostringstream fallback;
+    fallback << "?TOKEN_$" << std::hex << static_cast<int>(b) << std::dec
+             << "?";
+    line.append(fallback.str());
+  }
+
+  return line;
+}
+
+static auto parse_positional_line(const std::string& sanitized,
+                                  uint32_t line_index, uint16_t* out_num,
+                                  std::string* out_statement) -> bool {
+  if (line_index > max_line_number) {
+    return false;
+  }
+  *out_num = static_cast<uint16_t>(line_index);
+
+  size_t pos = 0;
+  while (pos < sanitized.length() && std::isdigit(sanitized.at(pos))) {
+    pos++;
+  }
+  if (pos == 0 || pos >= sanitized.length() ||
+      !std::isspace(sanitized.at(pos))) {
+    *out_statement = sanitized;
+    return true;
+  }
+
+  unsigned long val = (pos <= 5) ? std::stoul(sanitized.substr(0, pos))
+                                 : static_cast<unsigned long>(max_line_number);
+  if (val != line_index) {
+    *out_statement = sanitized;
+    return true;
+  }
+
+  while (pos < sanitized.length() && std::isspace(sanitized.at(pos))) {
+    pos++;
+  }
+  *out_statement = sanitized.substr(pos);
+  return true;
+}
+
+static auto parse_explicit_line(const std::string& sanitized, uint16_t* out_num,
+                                std::string* out_statement) -> bool {
+  size_t pos = 0;
+  while (pos < sanitized.length() && std::isspace(sanitized.at(pos))) {
+    pos++;
+  }
+  size_t num_start = pos;
+  while (pos < sanitized.length() && std::isdigit(sanitized.at(pos))) {
+    pos++;
+  }
+  if (pos == num_start) {
+    return false;
+  }
+
+  size_t num_len = pos - num_start;
+  unsigned long val = (num_len <= 5)
+                          ? std::stoul(sanitized.substr(num_start, num_len))
+                          : static_cast<unsigned long>(max_line_number);
+  *out_num =
+      static_cast<uint16_t>(std::min<unsigned long>(val, max_line_number));
+
+  while (pos < sanitized.length() && std::isspace(sanitized.at(pos))) {
+    pos++;
+  }
+  *out_statement = sanitized.substr(pos);
+  return true;
+}
+
+static auto inject_program_lines(uint16_t txttab, uint16_t himem,
+                                 const std::vector<ParsedLine_t>& lines)
+    -> uint16_t {
+  uint16_t current_addr = txttab;
+  for (const auto& line : lines) {
+    size_t line_size = 4 + line.token_bytes.size() + 1;
+    if (current_addr + line_size + 2 >= himem) {
+      Logger::warning(
+          "BasicLiveSync: Program exceeded HIMEM ($%04X). Truncated at line "
+          "%u\n",
+          himem, line.line_number);
+      break;
+    }
+
+    uint16_t next_line_addr = static_cast<uint16_t>(current_addr + line_size);
+    uint8_t* ptr = get_ram_byte_ptr(current_addr);
+    if (ptr == nullptr) {
+      break;
+    }
+
+    ptr[0] = static_cast<uint8_t>(next_line_addr & byte_mask);
+    ptr[1] = static_cast<uint8_t>((next_line_addr >> byte_shift) & byte_mask);
+    ptr[2] = static_cast<uint8_t>(line.line_number & byte_mask);
+    ptr[3] = static_cast<uint8_t>((line.line_number >> byte_shift) & byte_mask);
+
+    for (size_t k = 0; k < line.token_bytes.size(); ++k) {
+      ptr[4 + k] = line.token_bytes.at(k);
+    }
+    ptr[4 + line.token_bytes.size()] = 0x00;
+
+    current_addr = next_line_addr;
+  }
+
+  uint8_t* end_ptr = get_ram_byte_ptr(current_addr);
+  if (end_ptr != nullptr) {
+    end_ptr[0] = 0x00;
+    end_ptr[1] = 0x00;
+    end_ptr[2] = 0x00;
+  }
+
+  return current_addr;
+}
+
+static auto check_inotify_events() -> bool {
+  if (inotify_fd < 0) {
+    return false;
+  }
+
+  alignas(struct inotify_event) std::array<char, inotify_event_buf_size> buf{};
+  ssize_t len = read(inotify_fd, buf.data(), buf.size());
+  if (len <= 0) {
+    return false;
+  }
+
+  constexpr uint32_t modify_mask =
+      IN_CLOSE_WRITE | IN_MODIFY | IN_MOVED_TO | IN_CREATE;
+
+  ssize_t pos = 0;
+  while (pos < len) {
+    const auto* event =
+        reinterpret_cast<const struct inotify_event*>(&buf.at(pos));
+
+    bool is_file_event = (event->wd == inotify_wd);
+    bool is_dir_event = (event->wd == inotify_dir_wd && event->len > 0 &&
+                         watch_filename == event->name);
+
+    if ((event->mask & modify_mask) != 0 && (is_file_event || is_dir_event)) {
+      return true;
+    }
+
+    pos += static_cast<ssize_t>(sizeof(struct inotify_event) + event->len);
+  }
+
+  return false;
+}
+
+static auto rearm_file_watch() -> void {
+  if (inotify_fd < 0) {
+    return;
+  }
+  if (inotify_wd >= 0) {
+    inotify_rm_watch(inotify_fd, inotify_wd);
+  }
+  inotify_wd = inotify_add_watch(inotify_fd, sync_config.file_path.c_str(),
+                                 IN_CLOSE_WRITE | IN_MODIFY);
+}
+
+static auto inotify_teardown() noexcept -> void {
+  if (inotify_fd < 0) {
+    return;
+  }
+  if (inotify_wd >= 0) {
+    inotify_rm_watch(inotify_fd, inotify_wd);
+  }
+  if (inotify_dir_wd >= 0) {
+    inotify_rm_watch(inotify_fd, inotify_dir_wd);
+  }
+  close(inotify_fd);
+  inotify_fd = -1;
+  inotify_wd = -1;
+  inotify_dir_wd = -1;
+}
+
+static auto check_file_mtime_changed() -> bool {
+  struct stat st{};
+  if (stat(sync_config.file_path.c_str(), &st) != 0) {
+    return false;
+  }
+  return (last_file_mtime != 0 && st.st_mtime > last_file_mtime);
+}
+
+static auto append_line_prefix(std::ostringstream& ss, BasicLineMode_t mode,
+                               uint16_t line_num,
+                               uint32_t* expected_positional_line) -> void {
+  if (mode != basic_line_mode_positional) {
+    ss << line_num << " ";
     return;
   }
 
-  g_sync_config.file_path = file_path;
-  g_sync_config.line_mode = mode;
-  g_sync_config.enabled = true;
-  g_last_exported_hash = compute_program_hash();
-  g_last_file_content_hash = 0;
-  g_frame_counter = 0;
-  g_initial_import_pending = false;
+  while (*expected_positional_line < line_num &&
+         *expected_positional_line <= max_line_number) {
+    ss << "\n";
+    (*expected_positional_line)++;
+  }
+  *expected_positional_line = line_num + 1;
+}
 
-  split_path(g_sync_config.file_path, &g_watch_dir, &g_watch_filename);
+}  // namespace
+
+auto basic_sync_init(const char* file_path, BasicLineMode_t mode) -> void {
+  basic_sync_shutdown();
+  if (file_path == nullptr || file_path[0] == '\0') {
+    return;
+  }
+
+  sync_config.file_path = file_path;
+  sync_config.line_mode = mode;
+  sync_config.enabled = true;
+  last_exported_hash = compute_program_hash();
+  last_file_content_hash = compute_string_hash("");
+  frame_counter = 0;
+  initial_import_pending = false;
+
+  split_path(sync_config.file_path, &watch_dir, &watch_filename);
 
   // Clear live sync file on disk at startup so stale programs from previous
   // runs do not clobber boot
   {
-    std::ofstream out(g_sync_config.file_path, std::ios::out | std::ios::trunc);
+    std::ofstream out(sync_config.file_path, std::ios::out | std::ios::trunc);
   }
 
   struct stat st{};
-  if (stat(g_sync_config.file_path.c_str(), &st) == 0) {
-    g_last_file_mtime = st.st_mtime;
+  if (stat(sync_config.file_path.c_str(), &st) == 0) {
+    last_file_mtime = st.st_mtime;
   } else {
-    g_last_file_mtime = 0;
+    last_file_mtime = 0;
   }
 
-  if (g_inotify_fd >= 0) {
-    close(g_inotify_fd);
-    g_inotify_fd = -1;
-    g_inotify_wd = -1;
-    g_inotify_dir_wd = -1;
-  }
-
-  g_inotify_fd = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
-  if (g_inotify_fd >= 0) {
-    g_inotify_dir_wd =
-        inotify_add_watch(g_inotify_fd, g_watch_dir.c_str(),
+  inotify_fd = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
+  if (inotify_fd >= 0) {
+    inotify_dir_wd =
+        inotify_add_watch(inotify_fd, watch_dir.c_str(),
                           IN_CLOSE_WRITE | IN_MOVED_TO | IN_CREATE | IN_MODIFY);
-    g_inotify_wd =
-        inotify_add_watch(g_inotify_fd, g_sync_config.file_path.c_str(),
-                          IN_CLOSE_WRITE | IN_MODIFY);
+    inotify_wd = inotify_add_watch(inotify_fd, sync_config.file_path.c_str(),
+                                   IN_CLOSE_WRITE | IN_MODIFY);
   }
 
   Logger::info("BasicLiveSync: initialized for '%s' (mode: %s)\n", file_path,
                mode == basic_line_mode_positional ? "positional" : "explicit");
 }
 
-auto basic_sync_shutdown() -> void {
-  if (g_inotify_fd >= 0) {
-    if (g_inotify_wd >= 0) {
-      inotify_rm_watch(g_inotify_fd, g_inotify_wd);
-      g_inotify_wd = -1;
-    }
-    if (g_inotify_dir_wd >= 0) {
-      inotify_rm_watch(g_inotify_fd, g_inotify_dir_wd);
-      g_inotify_dir_wd = -1;
-    }
-    close(g_inotify_fd);
-    g_inotify_fd = -1;
-  }
-  g_sync_config = BasicSyncConfig_t{};
+auto basic_sync_shutdown() noexcept -> void {
+  inotify_teardown();
+  watch_dir.clear();
+  watch_filename.clear();
+  last_exported_hash = 0;
+  last_file_content_hash = 0;
+  last_file_mtime = 0;
+  initial_import_pending = false;
+  frame_counter = 0;
+  sync_config = BasicSyncConfig_t{};
 }
 
-auto basic_sync_is_active() -> bool { return g_sync_config.enabled; }
+auto basic_sync_is_active() noexcept -> bool { return sync_config.enabled; }
 
-auto basic_sync_get_config() -> const BasicSyncConfig_t& {
-  return g_sync_config;
+auto basic_sync_get_config() noexcept -> const BasicSyncConfig_t& {
+  return sync_config;
 }
 
 auto basic_sync_export_to_string(BasicLineMode_t mode) -> std::string {
@@ -470,73 +621,21 @@ auto basic_sync_export_to_string(BasicLineMode_t mode) -> std::string {
       break;
     }
 
-    uint16_t next_line = static_cast<uint16_t>(ptr[0] | (ptr[1] << BYTE_SHIFT));
+    uint16_t next_line = static_cast<uint16_t>(ptr[0] | (ptr[1] << byte_shift));
     if (next_line == 0 || next_line <= current_addr + 4 ||
         next_line > program_end) {
       break;
     }
 
-    uint16_t line_num = static_cast<uint16_t>(ptr[2] | (ptr[3] << BYTE_SHIFT));
+    uint16_t line_num = static_cast<uint16_t>(ptr[2] | (ptr[3] << byte_shift));
     if (line_num > max_line_number) {
       break;
     }
+    append_line_prefix(ss, mode, line_num, &expected_positional_line);
 
-    if (mode == basic_line_mode_positional) {
-      while (expected_positional_line < line_num &&
-             expected_positional_line <= max_line_number) {
-        ss << "\n";
-        expected_positional_line++;
-      }
-    } else {
-      ss << line_num << " ";
-    }
-
-    uint16_t offset = 4;
-    bool in_quotes = false;
-    bool in_rem = false;
-
-    while (current_addr + offset < next_line) {
-      uint8_t* byte_ptr =
-          get_ram_byte_ptr(static_cast<uint16_t>(current_addr + offset));
-      if (byte_ptr == nullptr) {
-        break;
-      }
-      uint8_t b = *byte_ptr;
-      if (b == 0) {
-        break;
-      }
-
-      if (b == '"') {
-        in_quotes = !in_quotes;
-        ss << '"';
-      } else if (in_quotes || in_rem || b < HIGH_BIT_MASK) {
-        ss << static_cast<char>(b & ASCII_7BIT_MASK);
-      } else {
-        // Token lookup
-        bool found = false;
-        for (const auto& t : k_applesoft_tokens) {
-          if (t.token == b) {
-            ss << t.name;
-            if (b == TOKEN_REM) {
-              in_rem = true;
-            }
-            found = true;
-            break;
-          }
-        }
-        if (!found) {
-          // Graceful fallback for invalid / non-standard token
-          ss << "?TOKEN_$" << std::hex << static_cast<int>(b) << std::dec
-             << "?";
-        }
-      }
-      offset++;
-    }
-
-    ss << "\n";
-    if (mode == basic_line_mode_positional) {
-      expected_positional_line = line_num + 1;
-    }
+    ss << detokenize_line_bytes(static_cast<uint16_t>(current_addr + 4),
+                                next_line)
+       << "\n";
     current_addr = next_line;
   }
 
@@ -573,7 +672,6 @@ auto basic_sync_import_from_string(const std::string& text,
   while (std::getline(stream, raw_line)) {
     std::string sanitized =
         sanitize_and_truncate_line(raw_line, force_uppercase);
-
     if (sanitized.empty()) {
       file_line_index++;
       continue;
@@ -581,123 +679,33 @@ auto basic_sync_import_from_string(const std::string& text,
 
     uint16_t line_num = 0;
     std::string statement;
+    bool parsed = (mode == basic_line_mode_positional)
+                      ? parse_positional_line(sanitized, file_line_index,
+                                              &line_num, &statement)
+                      : parse_explicit_line(sanitized, &line_num, &statement);
 
-    if (mode == basic_line_mode_positional) {
-      if (file_line_index > max_line_number) {
-        break;
-      }
-      line_num = static_cast<uint16_t>(file_line_index);
-
-      // Check if user entered leading redundant line number matching line index
-      size_t pos = 0;
-      while (pos < sanitized.length() && std::isdigit(sanitized.at(pos))) {
-        pos++;
-      }
-      if (pos > 0 && pos < sanitized.length() &&
-          std::isspace(sanitized.at(pos))) {
-        unsigned long val = std::stoul(sanitized.substr(0, pos));
-        if (val == file_line_index) {
-          while (pos < sanitized.length() && std::isspace(sanitized.at(pos))) {
-            pos++;
-          }
-          statement = sanitized.substr(pos);
-        } else {
-          statement = sanitized;
-        }
-      } else {
-        statement = sanitized;
-      }
-    } else {
-      // Explicit mode
-      size_t pos = 0;
-      while (pos < sanitized.length() && std::isspace(sanitized.at(pos))) {
-        pos++;
-      }
-      size_t num_start = pos;
-      while (pos < sanitized.length() && std::isdigit(sanitized.at(pos))) {
-        pos++;
-      }
-      if (pos == num_start) {
-        // No line number; skip
-        file_line_index++;
-        continue;
-      }
-      unsigned long val =
-          std::stoul(sanitized.substr(num_start, pos - num_start));
-      if (val > max_line_number) {
-        val = max_line_number;
-      }
-      line_num = static_cast<uint16_t>(val);
-
-      while (pos < sanitized.length() && std::isspace(sanitized.at(pos))) {
-        pos++;
-      }
-      statement = sanitized.substr(pos);
+    if (parsed) {
+      lines.emplace_back(line_num,
+                         tokenize_line_content(statement, force_uppercase));
     }
-
-    std::vector<uint8_t> tokens =
-        tokenize_line_content(statement, force_uppercase);
-    lines.push_back({line_num, std::move(tokens)});
     file_line_index++;
   }
 
-  // Sort lines sequentially
   std::sort(lines.begin(), lines.end(),
             [](const ParsedLine_t& a, const ParsedLine_t& b) {
               return a.line_number < b.line_number;
             });
 
-  // Inject into memory starting at TXTTAB
-  uint16_t current_addr = txttab;
-  for (const auto& line : lines) {
-    // 2 bytes next pointer + 2 bytes line number + tokens + 1 byte (0x00)
-    size_t line_size = 4 + line.token_bytes.size() + 1;
-    if (current_addr + line_size + 2 >= himem) {
-      Logger::warning(
-          "BasicLiveSync: Program exceeded HIMEM ($%04X). Truncated at line "
-          "%u\n",
-          himem, line.line_number);
-      break;
-    }
-
-    uint16_t next_line_addr = static_cast<uint16_t>(current_addr + line_size);
-    uint8_t* ptr = get_ram_byte_ptr(current_addr);
-    if (ptr == nullptr) {
-      break;
-    }
-
-    ptr[0] = static_cast<uint8_t>(next_line_addr & BYTE_MASK);
-    ptr[1] = static_cast<uint8_t>((next_line_addr >> BYTE_SHIFT) & BYTE_MASK);
-    ptr[2] = static_cast<uint8_t>(line.line_number & BYTE_MASK);
-    ptr[3] = static_cast<uint8_t>((line.line_number >> BYTE_SHIFT) & BYTE_MASK);
-
-    for (size_t k = 0; k < line.token_bytes.size(); ++k) {
-      ptr[4 + k] = line.token_bytes.at(k);
-    }
-    ptr[4 + line.token_bytes.size()] = 0x00;
-
-    current_addr = next_line_addr;
-  }
-
-  // Write end-of-program terminator (00 00 00)
-  uint8_t* end_ptr = get_ram_byte_ptr(current_addr);
-  if (end_ptr != nullptr) {
-    end_ptr[0] = 0x00;
-    end_ptr[1] = 0x00;
-    end_ptr[2] = 0x00;
-  }
-
+  uint16_t current_addr = inject_program_lines(txttab, himem, lines);
   uint16_t var_start = static_cast<uint16_t>(current_addr + 2);
 
-  // Update Applesoft zero-page pointers
   write_zero_page_16(addr_prgend, current_addr);
   write_zero_page_16(addr_vartab, var_start);
   write_zero_page_16(addr_arytab, var_start);
   write_zero_page_16(addr_strend, var_start);
   write_zero_page_16(addr_fretop, himem);
 
-  g_last_exported_hash = compute_program_hash();
-  g_last_file_content_hash = compute_string_hash(text);
+  last_exported_hash = compute_program_hash();
 
   Logger::info(
       "BasicLiveSync: Injected %zu BASIC lines into RAM ($%04X-$%04X)\n",
@@ -705,52 +713,59 @@ auto basic_sync_import_from_string(const std::string& text,
   return true;
 }
 
+auto basic_sync_import_from_string(const char* text, size_t length,
+                                   BasicLineMode_t mode) -> bool {
+  if (text == nullptr) {
+    return false;
+  }
+  return basic_sync_import_from_string(std::string(text, length), mode);
+}
+
 auto basic_sync_export_file() -> bool {
-  if (g_sync_config.file_path.empty()) {
+  if (sync_config.file_path.empty()) {
     return false;
   }
 
-  std::string text = basic_sync_export_to_string(g_sync_config.line_mode);
+  std::string text = basic_sync_export_to_string(sync_config.line_mode);
   uint32_t text_hash = compute_string_hash(text);
 
-  // Avoid redundant writes if file content has not changed
-  if (text_hash == g_last_file_content_hash) {
-    g_last_exported_hash = compute_program_hash();
+  if (text_hash == last_file_content_hash) {
+    last_exported_hash = compute_program_hash();
     return true;
   }
 
   // Do not wipe out host file if memory is completely empty
-  if (text.empty() && g_last_file_content_hash != 0) {
+  if (text.empty() && last_file_content_hash != 0) {
     return false;
   }
 
-  std::ofstream out(g_sync_config.file_path, std::ios::out | std::ios::trunc);
+  std::ofstream out(sync_config.file_path, std::ios::out | std::ios::trunc);
   if (!out.is_open()) {
     Logger::warning("BasicLiveSync: Unable to open file '%s' for writing\n",
-                    g_sync_config.file_path.c_str());
+                    sync_config.file_path.c_str());
     return false;
   }
 
   out << text;
   out.close();
 
-  g_last_file_content_hash = text_hash;
-  g_last_exported_hash = compute_program_hash();
+  last_file_content_hash = text_hash;
+  last_exported_hash = compute_program_hash();
 
   struct stat st{};
-  if (stat(g_sync_config.file_path.c_str(), &st) == 0) {
-    g_last_file_mtime = st.st_mtime;
+  if (stat(sync_config.file_path.c_str(), &st) == 0) {
+    last_file_mtime = st.st_mtime;
   }
 
   return true;
 }
 
 auto basic_sync_import_file() -> bool {
-  if (g_sync_config.file_path.empty()) {
+  if (sync_config.file_path.empty()) {
     return false;
   }
 
-  std::ifstream in(g_sync_config.file_path);
+  std::ifstream in(sync_config.file_path);
   if (!in.is_open()) {
     return false;
   }
@@ -760,79 +775,46 @@ auto basic_sync_import_file() -> bool {
   in.close();
 
   uint32_t content_hash = compute_string_hash(content);
-  if (content_hash == g_last_file_content_hash) {
+  if (content_hash == last_file_content_hash &&
+      compute_program_hash() == last_exported_hash) {
     return true;
   }
 
   struct stat st{};
-  if (stat(g_sync_config.file_path.c_str(), &st) == 0) {
-    g_last_file_mtime = st.st_mtime;
+  if (stat(sync_config.file_path.c_str(), &st) == 0) {
+    last_file_mtime = st.st_mtime;
   }
 
-  return basic_sync_import_from_string(content, g_sync_config.line_mode);
+  last_file_content_hash = content_hash;
+  return basic_sync_import_from_string(content, sync_config.line_mode);
 }
 
 auto basic_sync_update() -> void {
-  if (!g_sync_config.enabled) {
+  if (!sync_config.enabled) {
     return;
   }
 
-  if (g_initial_import_pending) {
-    g_initial_import_pending = false;
-    basic_sync_import_file();
+  if (initial_import_pending) {
+    initial_import_pending = false;
+    static_cast<void>(basic_sync_import_file());
   }
 
-  bool file_modified = false;
-  if (g_inotify_fd >= 0) {
-    alignas(struct inotify_event) std::array<char, inotify_event_buf_size>
-        buf{};
-    ssize_t len = read(g_inotify_fd, buf.data(), buf.size());
-    if (len > 0) {
-      ssize_t pos = 0;
-      while (pos < len) {
-        auto* event = reinterpret_cast<struct inotify_event*>(&buf.at(pos));
-        if ((event->mask &
-             (IN_CLOSE_WRITE | IN_MODIFY | IN_MOVED_TO | IN_CREATE)) != 0) {
-          if (event->wd == g_inotify_wd) {
-            file_modified = true;
-          } else if (event->wd == g_inotify_dir_wd && event->len > 0) {
-            if (g_watch_filename == event->name) {
-              file_modified = true;
-            }
-          }
-        }
-        pos += static_cast<ssize_t>(sizeof(struct inotify_event) + event->len);
-      }
-    }
-  } else {
-    struct stat st{};
-    if (stat(g_sync_config.file_path.c_str(), &st) == 0) {
-      if (g_last_file_mtime != 0 && st.st_mtime > g_last_file_mtime) {
-        file_modified = true;
-      }
-    }
-  }
+  bool file_modified =
+      (inotify_fd >= 0) ? check_inotify_events() : check_file_mtime_changed();
 
   if (file_modified) {
-    if (g_inotify_fd >= 0) {
-      if (g_inotify_wd >= 0) {
-        inotify_rm_watch(g_inotify_fd, g_inotify_wd);
-      }
-      g_inotify_wd =
-          inotify_add_watch(g_inotify_fd, g_sync_config.file_path.c_str(),
-                            IN_CLOSE_WRITE | IN_MODIFY);
-    }
-    basic_sync_import_file();
+    rearm_file_watch();
+    static_cast<void>(basic_sync_import_file());
     return;
   }
 
-  // Periodic memory check for Apple II -> Host sync
-  if (++g_frame_counter >= frame_check_interval) {
-    g_frame_counter = 0;
+  if (++frame_counter < frame_check_interval) {
+    return;
+  }
+  frame_counter = 0;
 
-    uint32_t current_hash = compute_program_hash();
-    if (current_hash != 0 && current_hash != g_last_exported_hash) {
-      basic_sync_export_file();
-    }
+  uint32_t current_hash = compute_program_hash();
+  if (current_hash != 0 && current_hash != last_exported_hash) {
+    static_cast<void>(basic_sync_export_file());
   }
 }

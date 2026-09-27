@@ -2,6 +2,8 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
+#include <cstring>
 #include <string>
 
 #include "apple2/Apple2Types.h"
@@ -34,7 +36,7 @@ constexpr uint8_t val_txttab_h = 0x08;
 constexpr uint8_t val_himem_l = 0x00;
 constexpr uint8_t val_himem_h = 0x96;
 
-static std::array<uint8_t, test_mem_size> g_mock_ram{};
+static std::array<uint8_t, test_mem_size> mock_ram{};
 
 struct ScopedMemoryContext_t {
   uint8_t* original_mem{mem};
@@ -55,29 +57,29 @@ struct ScopedMemoryContext_t {
 };
 
 static auto setup_mock_memory() -> void {
-  g_mock_ram.fill(0);
-  mem = g_mock_ram.data();
+  mock_ram.fill(0);
+  mem = mock_ram.data();
 
   // Set default Applesoft zero page pointers
   // TXTTAB: $0801
-  g_mock_ram.at(addr_txttab_l) = val_txttab_l;
-  g_mock_ram.at(addr_txttab_h) = val_txttab_h;
+  mock_ram.at(addr_txttab_l) = val_txttab_l;
+  mock_ram.at(addr_txttab_h) = val_txttab_h;
 
   // HIMEM: $9600
-  g_mock_ram.at(addr_himem_l) = val_himem_l;
-  g_mock_ram.at(addr_himem_h) = val_himem_h;
+  mock_ram.at(addr_himem_l) = val_himem_l;
+  mock_ram.at(addr_himem_h) = val_himem_h;
 
   // PRGEND, VARTAB, ARYTAB: $0801
-  g_mock_ram.at(addr_prgend_l) = val_txttab_l;
-  g_mock_ram.at(addr_prgend_h) = val_txttab_h;
-  g_mock_ram.at(addr_vartab_l) = val_txttab_l;
-  g_mock_ram.at(addr_vartab_h) = val_txttab_h;
-  g_mock_ram.at(addr_arytab_l) = val_txttab_l;
-  g_mock_ram.at(addr_arytab_h) = val_txttab_h;
-  g_mock_ram.at(addr_strend_l) = val_txttab_l;
-  g_mock_ram.at(addr_strend_h) = val_txttab_h;
-  g_mock_ram.at(addr_fretop_l) = val_himem_l;
-  g_mock_ram.at(addr_fretop_h) = val_himem_h;
+  mock_ram.at(addr_prgend_l) = val_txttab_l;
+  mock_ram.at(addr_prgend_h) = val_txttab_h;
+  mock_ram.at(addr_vartab_l) = val_txttab_l;
+  mock_ram.at(addr_vartab_h) = val_txttab_h;
+  mock_ram.at(addr_arytab_l) = val_txttab_l;
+  mock_ram.at(addr_arytab_h) = val_txttab_h;
+  mock_ram.at(addr_strend_l) = val_txttab_l;
+  mock_ram.at(addr_strend_h) = val_txttab_h;
+  mock_ram.at(addr_fretop_l) = val_himem_l;
+  mock_ram.at(addr_fretop_h) = val_himem_h;
 }
 
 }  // namespace
@@ -101,10 +103,10 @@ TEST_CASE("BasicLiveSync: Explicit Line Mode Roundtrip") {
   // Line number at 0x0803/0x0804 (10 = 0x000A)
   // HOME token at 0x0805 ($97)
   // End of line at 0x0806 ($00)
-  CHECK(g_mock_ram.at(0x0803) == 0x0A);
-  CHECK(g_mock_ram.at(0x0804) == 0x00);
-  CHECK(g_mock_ram.at(0x0805) == 0x97);
-  CHECK(g_mock_ram.at(0x0806) == 0x00);
+  CHECK(mock_ram.at(0x0803) == 0x0A);
+  CHECK(mock_ram.at(0x0804) == 0x00);
+  CHECK(mock_ram.at(0x0805) == 0x97);
+  CHECK(mock_ram.at(0x0806) == 0x00);
 
   std::string exported = basic_sync_export_to_string(basic_line_mode_explicit);
   CHECK(exported == source);
@@ -137,8 +139,8 @@ TEST_CASE("BasicLiveSync: Positional Line Mode") {
   constexpr uint16_t addr_line1_num_h = 0x0804;
   constexpr uint8_t shift_8 = 8;
   auto line1_num =
-      static_cast<uint16_t>(g_mock_ram.at(addr_line1_num_l) |
-                            (g_mock_ram.at(addr_line1_num_h) << shift_8));
+      static_cast<uint16_t>(mock_ram.at(addr_line1_num_l) |
+                            (mock_ram.at(addr_line1_num_h) << shift_8));
   CHECK(line1_num == 10);
 
   std::string exported =
@@ -192,8 +194,8 @@ TEST_CASE("BasicLiveSync: HIMEM Memory Overflow Protection") {
   // Set tight HIMEM ($0810) - only enough space for 1 line
   constexpr uint8_t tight_himem_l = 0x10;
   constexpr uint8_t tight_himem_h = 0x08;
-  g_mock_ram.at(addr_himem_l) = tight_himem_l;
-  g_mock_ram.at(addr_himem_h) = tight_himem_h;
+  mock_ram.at(addr_himem_l) = tight_himem_l;
+  mock_ram.at(addr_himem_h) = tight_himem_h;
 
   std::string source =
       "10 HOME\n"
@@ -205,8 +207,8 @@ TEST_CASE("BasicLiveSync: HIMEM Memory Overflow Protection") {
   CHECK(ok);
 
   constexpr uint8_t shift_8 = 8;
-  auto prgend = static_cast<uint16_t>(
-      g_mock_ram.at(addr_prgend_l) | (g_mock_ram.at(addr_prgend_h) << shift_8));
+  auto prgend = static_cast<uint16_t>(mock_ram.at(addr_prgend_l) |
+                                      (mock_ram.at(addr_prgend_h) << shift_8));
   CHECK(prgend < 0x0810);
 
   std::string exported = basic_sync_export_to_string(basic_line_mode_explicit);
@@ -248,9 +250,151 @@ TEST_CASE("BasicLiveSync: Math Tokens Longest-Prefix Matching") {
   // $0807: ATN ($E1) - NOT AT ($C5)
   constexpr uint16_t addr_print_token = 0x0805;
   constexpr uint16_t addr_atn_token = 0x0807;
-  CHECK(g_mock_ram.at(addr_print_token) == 0xBA);
-  CHECK(g_mock_ram.at(addr_atn_token) == 0xE1);
+  CHECK(mock_ram.at(addr_print_token) == 0xBA);
+  CHECK(mock_ram.at(addr_atn_token) == 0xE1);
 
   std::string exported = basic_sync_export_to_string(basic_line_mode_explicit);
   CHECK(exported == source);
+}
+
+TEST_CASE("BasicLiveSync: Raw Buffer Import Overload") {
+  ScopedMemoryContext_t mem_guard;
+  setup_mock_memory();
+  current_apple2_type = A2TYPE_APPLE2EENHANCED;
+
+  const char* raw_source = "10 PRINT \"BUFFER TEST\"\n";
+  size_t raw_len = std::strlen(raw_source);
+
+  // Null pointer safety
+  CHECK_FALSE(
+      basic_sync_import_from_string(nullptr, 10, basic_line_mode_explicit));
+
+  // Empty buffer
+  CHECK(basic_sync_import_from_string("", 0, basic_line_mode_explicit));
+  CHECK(basic_sync_export_to_string(basic_line_mode_explicit).empty());
+
+  // Buffer without trailing newline
+  const char* no_newline = "10 PRINT \"NO NEWLINE\"";
+  CHECK(basic_sync_import_from_string(no_newline, std::strlen(no_newline),
+                                      basic_line_mode_explicit));
+  CHECK(basic_sync_export_to_string(basic_line_mode_explicit) ==
+        "10 PRINT \"NO NEWLINE\"\n");
+
+  // Valid buffer import
+  bool ok = basic_sync_import_from_string(raw_source, raw_len,
+                                          basic_line_mode_explicit);
+  CHECK(ok);
+
+  std::string exported = basic_sync_export_to_string(basic_line_mode_explicit);
+  CHECK(exported == raw_source);
+}
+
+TEST_CASE("BasicLiveSync: Line Number Overflow Safety") {
+  ScopedMemoryContext_t mem_guard;
+  setup_mock_memory();
+  current_apple2_type = A2TYPE_APPLE2EENHANCED;
+
+  // Extremely long line number must clamp to 63999 and never throw out_of_range
+  std::string overflow_source =
+      "999999999999999999999999999999 PRINT \"SAFE\"\n";
+  bool ok =
+      basic_sync_import_from_string(overflow_source, basic_line_mode_explicit);
+  CHECK(ok);
+
+  std::string exported = basic_sync_export_to_string(basic_line_mode_explicit);
+  CHECK(exported == "63999 PRINT \"SAFE\"\n");
+}
+
+TEST_CASE("BasicLiveSync: Lifecycle and Configuration") {
+  ScopedMemoryContext_t mem_guard;
+  setup_mock_memory();
+
+  // Ensure starting state is inactive
+  basic_sync_shutdown();
+  CHECK_FALSE(basic_sync_is_active());
+
+  // Null or empty path does not activate
+  basic_sync_init(nullptr, basic_line_mode_explicit);
+  CHECK_FALSE(basic_sync_is_active());
+
+  basic_sync_init("", basic_line_mode_positional);
+  CHECK_FALSE(basic_sync_is_active());
+
+  // Valid init
+  const char* test_file = "/tmp/linapple_sync_lifecycle_test.bas";
+  const char* test_file2 = "/tmp/linapple_sync_lifecycle_test2.bas";
+  std::remove(test_file);
+  std::remove(test_file2);
+
+  basic_sync_init(test_file, basic_line_mode_positional);
+  CHECK(basic_sync_is_active());
+
+  const auto& config = basic_sync_get_config();
+  CHECK(config.enabled);
+  CHECK(config.line_mode == basic_line_mode_positional);
+  CHECK(config.file_path == test_file);
+
+  // Re-initialization without prior shutdown
+  basic_sync_init(test_file2, basic_line_mode_explicit);
+  CHECK(basic_sync_is_active());
+  CHECK(basic_sync_get_config().file_path == test_file2);
+  CHECK(basic_sync_get_config().line_mode == basic_line_mode_explicit);
+
+  // Idempotent shutdown
+  basic_sync_shutdown();
+  basic_sync_shutdown();
+  CHECK_FALSE(basic_sync_is_active());
+  CHECK(basic_sync_get_config().file_path.empty());
+
+  std::remove(test_file);
+  std::remove(test_file2);
+}
+
+TEST_CASE("BasicLiveSync: File Export and Import Roundtrip") {
+  ScopedMemoryContext_t mem_guard;
+  setup_mock_memory();
+  current_apple2_type = A2TYPE_APPLE2EENHANCED;
+
+  const char* test_file = "/tmp/linapple_sync_file_test.bas";
+  std::remove(test_file);
+
+  // Export/import with no active configuration fails safely
+  basic_sync_shutdown();
+  CHECK_FALSE(basic_sync_export_file());
+  CHECK_FALSE(basic_sync_import_file());
+
+  // Initialize sync
+  basic_sync_init(test_file, basic_line_mode_explicit);
+  CHECK(basic_sync_is_active());
+
+  // Inject program into RAM
+  std::string source = "10 PRINT \"FILE TEST\"\n20 GOTO 10\n";
+  bool ok = basic_sync_import_from_string(source, basic_line_mode_explicit);
+  REQUIRE(ok);
+
+  // Export to file
+  bool export_ok = basic_sync_export_file();
+  CHECK(export_ok);
+
+  // Exercise basic_sync_update frame throttling for auto-export
+  for (int frame = 0; frame < 20; ++frame) {
+    basic_sync_update();
+  }
+
+  // Clear RAM mock
+  setup_mock_memory();
+  std::string empty_exported =
+      basic_sync_export_to_string(basic_line_mode_explicit);
+  CHECK(empty_exported.empty());
+
+  // Import from file
+  bool import_ok = basic_sync_import_file();
+  CHECK(import_ok);
+
+  std::string restored = basic_sync_export_to_string(basic_line_mode_explicit);
+  CHECK(restored == source);
+
+  // Cleanup
+  basic_sync_shutdown();
+  std::remove(test_file);
 }

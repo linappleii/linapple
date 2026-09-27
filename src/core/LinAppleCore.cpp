@@ -213,6 +213,7 @@ auto linapple_init() -> int {
 auto linapple_register_peripherals() -> void { peripheral_register_internal(); }
 
 auto linapple_shutdown() -> void {
+  basic_sync_shutdown();
   peripheral_manager_shutdown();
   peripheral_plugins_shutdown();
   video_destroy();
