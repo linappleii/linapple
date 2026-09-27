@@ -366,3 +366,20 @@ TEST_CASE("Configuration_t: load_defaults preserves configured path") {
   CHECK(std::string(cfg.config_path.data()) == "/saved/path.conf");
   CHECK(cfg.apple2_type == A2TYPE_APPLE2EENHANCED);
 }
+
+TEST_CASE("Registry: Const Accessor Integrity") {
+  auto& reg = Configuration_t::instance();
+  reg.set_string("TestSection", "TestStr", "hello");
+  reg.set_int("TestSection", "TestInt", 42);
+  reg.set_bool("TestSection", "TestBool", true);
+
+  const Configuration_t& const_reg = reg;
+  CHECK(const_reg.get_string("TestSection", "TestStr", "") == "hello");
+  CHECK(const_reg.get_int("TestSection", "TestInt", 0) == 42);
+  CHECK(const_reg.get_bool("TestSection", "TestBool", false) == true);
+
+  // Missing keys query defaults through const reference
+  CHECK(const_reg.get_string("TestSection", "Missing", "default") == "default");
+  CHECK(const_reg.get_int("TestSection", "Missing", 99) == 99);
+  CHECK(const_reg.get_bool("TestSection", "Missing", false) == false);
+}

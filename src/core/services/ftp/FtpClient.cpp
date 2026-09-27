@@ -76,7 +76,7 @@ auto write_string_callback(char* ptr, size_t size, size_t nmemb, void* userdata)
   const size_t total = size * nmemb;
   auto* str = static_cast<std::string*>(userdata);
   if (str == nullptr || ptr == nullptr) {
-    return total;
+    return 0;
   }
   str->append(ptr, total);
   return total;
@@ -237,10 +237,10 @@ auto FtpClient_t::download_file(const std::string& remote_url,
     return map_curl_code(res);
   }
 
-  download_succeeded = true;
   if (std::rename(staging_path.c_str(), target_path.c_str()) != 0) {
     return FtpStatus_t::write_error;
   }
+  download_succeeded = true;
 
   return FtpStatus_t::ok;
 }

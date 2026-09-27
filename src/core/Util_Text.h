@@ -3,7 +3,7 @@
 
 #include <cstddef>
 #include <cstdint>
-inline auto hex_char_to_val(char c) -> uint8_t {
+[[nodiscard]] inline auto hex_char_to_val(char c) noexcept -> uint8_t {
   if (c >= '0' && c <= '9') {
     return static_cast<uint8_t>(c - '0');
   }
@@ -16,27 +16,29 @@ inline auto hex_char_to_val(char c) -> uint8_t {
   return 0;
 }
 
-inline auto text_convert_2_chars_to_byte(const char* text) -> uint8_t {
-  if (text == nullptr) {
+[[nodiscard]] inline auto text_convert_2_chars_to_byte(
+    const char* text) noexcept -> uint8_t {
+  if (text == nullptr || text[0] == '\0' || text[1] == '\0') {
     return 0;
   }
   return static_cast<uint8_t>((hex_char_to_val(text[0]) << 4) |
                               hex_char_to_val(text[1]));
 }
 
-inline auto text_is_hex_char(char ch) -> bool {
+[[nodiscard]] inline auto text_is_hex_char(char ch) noexcept -> bool {
   return ((ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'F') ||
           (ch >= 'a' && ch <= 'f'));
 }
 
-inline auto text_is_hex_byte(const char* text) -> bool {
+[[nodiscard]] inline auto text_is_hex_byte(const char* text) noexcept -> bool {
   if (text == nullptr) {
     return false;
   }
   return text_is_hex_char(text[0]) && text_is_hex_char(text[1]);
 }
 
-inline auto text_is_hex_string(const char* text) -> bool {
+[[nodiscard]] inline auto text_is_hex_string(const char* text) noexcept
+    -> bool {
   if (text == nullptr || *text == '\0') {
     return false;
   }
@@ -49,7 +51,8 @@ inline auto text_is_hex_string(const char* text) -> bool {
   return true;
 }
 
-inline auto util_safe_strcpy(char* dest, const char* src, size_t size) -> void {
+inline auto util_safe_strcpy(char* dest, const char* src, size_t size) noexcept
+    -> void {
   if (dest == nullptr || src == nullptr || size == 0 || dest == src) {
     return;
   }
@@ -60,7 +63,7 @@ inline auto util_safe_strcpy(char* dest, const char* src, size_t size) -> void {
   dest[i] = '\0';
 }
 
-inline auto util_safe_strncat(char* dest, const char* src, size_t size)
+inline auto util_safe_strncat(char* dest, const char* src, size_t size) noexcept
     -> void {
   if (dest == nullptr || src == nullptr || size == 0) {
     return;

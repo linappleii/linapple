@@ -23,7 +23,7 @@ auto raw_hd_probe(const uint8_t* header_data, size_t header_size,
     if (ext_hint != nullptr &&
         (strcmp(ext_hint, ".hdv") == 0 || strcmp(ext_hint, ".po") == 0 ||
          strcmp(ext_hint, ".2meg") == 0 || strcmp(ext_hint, ".2mg") == 0 ||
-         strcmp(ext_hint, ".img") == 0 || strcmp(ext_hint, ".bin") == 0)) {
+         strcmp(ext_hint, ".img") == 0)) {
       return harddisk_probe_possible;
     }
     return harddisk_probe_possible;
@@ -89,8 +89,8 @@ auto raw_hd_get_total_blocks(void* instance_handle) -> uint32_t {
 }
 
 const char* const g_raw_hd_creatable_exts[] = {".hdv", ".po", nullptr};
-const char* const g_raw_hd_supported_exts[] = {"hdv", "po",  "2meg", "2mg",
-                                               "img", "bin", nullptr};
+const char* const g_raw_hd_supported_exts[] = {"hdv", "po",  "2meg",
+                                               "2mg", "img", nullptr};
 }  // namespace
 
 extern "C" const HarddiskFormatDriver_t g_raw_hd_driver = {

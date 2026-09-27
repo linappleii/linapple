@@ -128,6 +128,9 @@ static int inotify_dir_wd = -1;
 
 static auto split_path(const std::string& full_path, std::string* out_dir,
                        std::string* out_filename) -> void {
+  if (out_dir == nullptr || out_filename == nullptr) {
+    return;
+  }
   size_t pos = full_path.find_last_of("/\\");
   if (pos != std::string::npos) {
     *out_dir = (pos == 0) ? "/" : full_path.substr(0, pos);

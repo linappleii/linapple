@@ -395,7 +395,7 @@ static auto find_alias(const std::string& key) -> const char* {
 // NOLINTBEGIN(bugprone-easily-swappable-parameters) Justification: Section, key, and default value are distinct configuration query arguments
 auto Configuration_t::get_string(const std::string& section,
                                  const std::string& key,
-                                 const std::string& default_value)
+                                 const std::string& default_value) const
     -> std::string {
   auto sec_it = data.find(section);
   if (sec_it != data.end()) {
@@ -429,8 +429,8 @@ auto Configuration_t::get_string(const std::string& section,
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
 auto Configuration_t::get_int(const std::string& section,
-                              const std::string& key, uint32_t default_value)
-    -> uint32_t {
+                              const std::string& key,
+                              uint32_t default_value) const -> uint32_t {
   std::string val = get_string(section, key);
   if (val.empty()) return default_value;
   try {
@@ -441,7 +441,7 @@ auto Configuration_t::get_int(const std::string& section,
 }
 
 auto Configuration_t::get_bool(const std::string& section,
-                               const std::string& key, bool default_value)
+                               const std::string& key, bool default_value) const
     -> bool {
   std::string val = get_string(section, key);
   if (val.empty()) return default_value;
@@ -454,7 +454,8 @@ auto Configuration_t::get_bool(const std::string& section,
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters) Justification: Section, key, and default value are distinct configuration query arguments
 auto Configuration_t::get_string(const char* section, const char* key,
-                                 const char* default_value) -> std::string {
+                                 const char* default_value) const
+    -> std::string {
   if (section == nullptr || key == nullptr) {
     return default_value != nullptr ? default_value : "";
   }
@@ -464,13 +465,13 @@ auto Configuration_t::get_string(const char* section, const char* key,
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
 auto Configuration_t::get_int(const char* section, const char* key,
-                              uint32_t default_value) -> uint32_t {
+                              uint32_t default_value) const -> uint32_t {
   if (section == nullptr || key == nullptr) return default_value;
   return get_int(std::string(section), std::string(key), default_value);
 }
 
 auto Configuration_t::get_bool(const char* section, const char* key,
-                               bool default_value) -> bool {
+                               bool default_value) const -> bool {
   if (section == nullptr || key == nullptr) return default_value;
   return get_bool(std::string(section), std::string(key), default_value);
 }

@@ -72,6 +72,17 @@ TEST_CASE("FTPParser: EPLF Format") {
   CHECK(entry.mtime == 825718503);
 }
 
+TEST_CASE("FTPParser: EPLF Consecutive Delimiters Underflow Protection") {
+  const char* line = "+i123,,m456,r,\tfilename\r\n";
+  FtpFileEntry_t entry{};
+  const bool ok = ftp_parse_line(line, std::strlen(line), entry);
+
+  CHECK(ok == true);
+  CHECK(entry.name == "filename");
+  CHECK(entry.mtime == 456);
+  CHECK(entry.type == FtpEntryType_t::file);
+}
+
 TEST_CASE("FTPParser: Windows NT Format") {
   SUBCASE("Directory") {
     const char* line = "05-18-00  01:00PM       <DIR>          games\r\n";

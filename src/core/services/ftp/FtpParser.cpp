@@ -240,7 +240,9 @@ auto parse_eplf(FtpParsedEntry_t& fp, const char* buf, size_t len) -> bool {
     if (buf[j] != '\t' && buf[j] != ',') {
       continue;
     }
-    parse_eplf_fact(fp, buf[i], buf + i + 1, j - i - 1, base);
+    if (j > i) {
+      parse_eplf_fact(fp, buf[i], buf + i + 1, j - i - 1, base);
+    }
     i = j + 1;
     if (buf[j] == '\t') {
       fp.name = buf + j + 1;

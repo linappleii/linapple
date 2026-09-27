@@ -12,7 +12,6 @@
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
-
 #include "font.xpm"
 #include "splash.xpm"
 
@@ -101,14 +100,13 @@ auto asset_insert_master_disk() -> int {
     return -1;
   }
 
-  Configuration_t::instance().set_string("Slots", cfg_disk_image1, path);
+  Configuration_t::instance().set_string(cfg_sec_slots, cfg_disk_image1, path);
 
   DiskInsertCmd_t cmd{};
   cmd.drive = disk_drive_0;
   util_safe_strcpy(cmd.path, path.c_str(), disk_insert_path_max);
   cmd.write_protected = 0;
 
-  peripheral_command(disk_default_slot, disk_cmd_insert, &cmd, sizeof(cmd));
-
-  return 0;
+  return peripheral_command(disk_default_slot, disk_cmd_insert, &cmd,
+                            sizeof(cmd));
 }

@@ -307,7 +307,7 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
 
   if (config->disk_path.at(0).at(0) == '\0') {
     if (!has_autoload || autoload == 0 || !has_disk1 || disk1.empty()) {
-      asset_insert_master_disk();
+      static_cast<void>(asset_insert_master_disk());
     } else if (has_autoload && autoload != 0 && has_disk1 && !disk1.empty()) {
       DiskInsertCmd_t cmd{};
       cmd.drive = disk_drive_0;

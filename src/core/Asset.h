@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-#include "VideoSurface.h"
+struct VideoSurface_t;
 
 struct Assets_t {
   void* icon{nullptr};
@@ -16,4 +16,4 @@ auto asset_set_free_icon_callback(AssetFreeIconFn_t cb) noexcept -> void;
 
 [[nodiscard]] auto asset_init() -> bool;
 auto asset_quit() noexcept -> void;
-auto asset_insert_master_disk() -> int;
+[[nodiscard]] auto asset_insert_master_disk() -> int;

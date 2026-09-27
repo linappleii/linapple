@@ -81,6 +81,9 @@ TEST_CASE("Util_Text: hex conversion and validation") {
   CHECK(text_convert_2_chars_to_byte("A5") == 0xA5);
   CHECK(text_convert_2_chars_to_byte("ff") == 0xFF);
   CHECK(text_convert_2_chars_to_byte(nullptr) == 0);
+  CHECK(text_convert_2_chars_to_byte("") == 0x00);
+  CHECK(text_convert_2_chars_to_byte("A") == 0x00);
+  CHECK(text_convert_2_chars_to_byte("1") == 0x00);
 
   CHECK(text_is_hex_char('0'));
   CHECK(text_is_hex_char('F'));

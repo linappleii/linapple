@@ -57,3 +57,24 @@ TEST_CASE("Core: Turbo Mode Toggle") {
   CHECK(linapple_get_turbo() == true);
   linapple_set_turbo(false);
 }
+
+TEST_CASE("LinAppleCore: Extension matching bounds and edge cases") {
+  // Valid standard extensions
+  CHECK(linapple_is_supported_disk_image("test.dsk") == true);
+  CHECK(linapple_is_supported_disk_image("test.woz") == true);
+  CHECK(linapple_is_supported_disk_image("TEST.2MG") == true);
+
+  // Substrings / prefixes (must NOT trigger out-of-bounds reads or false match)
+  CHECK(linapple_is_supported_disk_image("test.d") == false);
+  CHECK(linapple_is_supported_disk_image("test.ds") == false);
+
+  // Longer extensions
+  CHECK(linapple_is_supported_disk_image("test.dski") == false);
+  CHECK(linapple_is_supported_disk_image("test.toolongextension") == false);
+
+  // Boundary edges
+  CHECK(linapple_is_supported_disk_image("test.") == false);
+  CHECK(linapple_is_supported_disk_image("test") == false);
+  CHECK(linapple_is_supported_disk_image("") == false);
+  CHECK(linapple_is_supported_disk_image(nullptr) == false);
+}

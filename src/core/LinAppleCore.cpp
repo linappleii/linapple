@@ -113,6 +113,10 @@ auto extension_matches_list(const char* ext, const char* list) -> bool {
   if (*ext == '.') {
     ++ext;
   }
+  const size_t ext_len = std::strlen(ext);
+  if (ext_len == 0) {
+    return false;
+  }
   const char* p = list;
   while (*p != '\0') {
     while (*p == ';' || *p == ' ' || *p == ',') {
@@ -126,7 +130,7 @@ auto extension_matches_list(const char* ext, const char* list) -> bool {
       ++p;
     }
     const size_t len = static_cast<size_t>(p - start);
-    if (strncasecmp(ext, start, len) == 0 && ext[len] == '\0') {
+    if (len == ext_len && strncasecmp(ext, start, len) == 0) {
       return true;
     }
   }

@@ -197,13 +197,16 @@ struct Configuration_t {
   auto sync_to_data() -> void;
 
   // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) Justification: Section and key are distinct configuration coordinates
-  auto get_string(const std::string& section, const std::string& key,
-                  const std::string& default_value = "") -> std::string;
-  auto get_int(const std::string& section, const std::string& key,
-               uint32_t default_value = 0) -> uint32_t;
-  auto get_bool(const std::string& section, const std::string& key,
-                bool default_value = false) -> bool;
-  auto get_section(const std::string& section) const
+  [[nodiscard]] auto get_string(const std::string& section,
+                                const std::string& key,
+                                const std::string& default_value = "") const
+      -> std::string;
+  [[nodiscard]] auto get_int(const std::string& section, const std::string& key,
+                             uint32_t default_value = 0) const -> uint32_t;
+  [[nodiscard]] auto get_bool(const std::string& section,
+                              const std::string& key,
+                              bool default_value = false) const -> bool;
+  [[nodiscard]] auto get_section(const std::string& section) const
       -> const std::map<std::string, std::string>*;
 
   // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) Justification: Section, key, and value are distinct configuration parameters
@@ -215,12 +218,13 @@ struct Configuration_t {
       -> void;
 
   // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) Justification: Section and key are distinct configuration coordinates
-  auto get_string(const char* section, const char* key,
-                  const char* default_value = "") -> std::string;
-  auto get_int(const char* section, const char* key, uint32_t default_value = 0)
-      -> uint32_t;
-  auto get_bool(const char* section, const char* key,
-                bool default_value = false) -> bool;
+  [[nodiscard]] auto get_string(const char* section, const char* key,
+                                const char* default_value = "") const
+      -> std::string;
+  [[nodiscard]] auto get_int(const char* section, const char* key,
+                             uint32_t default_value = 0) const -> uint32_t;
+  [[nodiscard]] auto get_bool(const char* section, const char* key,
+                              bool default_value = false) const -> bool;
 
   // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) Justification: Section, key, and value are distinct configuration parameters
   auto set_string(const char* section, const char* key, const char* value)

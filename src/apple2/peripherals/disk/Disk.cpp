@@ -1187,10 +1187,9 @@ auto disk_abi_command(void* instance, uint32_t cmd, const void* data,
 
 auto disk_abi_query(void* instance, uint32_t cmd, void* data, size_t* size)
     -> PeripheralStatus_t {
-  if (instance == nullptr || size == nullptr) {
+  if (size == nullptr) {
     return peripheral_error;
   }
-  auto* dp = static_cast<DiskPeripheral_t*>(instance);
 
   if (!peripheral_cmd_is_mine(cmd, PERIPHERAL_SUBSYSTEM_DISK)) {
     return peripheral_incompatible;  // another peripheral in the slot owns it
@@ -1198,6 +1197,10 @@ auto disk_abi_query(void* instance, uint32_t cmd, void* data, size_t* size)
 
   switch (cmd) {
     case disk_query_status: {
+      if (instance == nullptr) {
+        return peripheral_error;
+      }
+      auto* dp = static_cast<DiskPeripheral_t*>(instance);
       const size_t required_size = sizeof(DiskStatus_t);
       if (data == nullptr) {
         *size = required_size;

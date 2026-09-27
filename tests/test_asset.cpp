@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "core/Asset.h"
+#include "core/Registry.h"
 #include "doctest.h"
 
 namespace {
@@ -45,4 +46,12 @@ TEST_CASE("Asset: Lifecycle initialization and shutdown") {
   // Idempotent quit
   asset_quit();
   CHECK(assets == nullptr);
+}
+
+TEST_CASE("Asset: Master disk insertion contract") {
+  const int result = asset_insert_master_disk();
+  CHECK(result == 0);
+  CHECK(!Configuration_t::instance()
+             .get_string(cfg_sec_slots, cfg_disk_image1, "")
+             .empty());
 }

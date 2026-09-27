@@ -231,6 +231,10 @@ void harddisk_loader_get_supported_extensions(char* out_buffer,
   }
   out_buffer[0] = '\0';
 
+  if (g_harddisk_drivers.empty()) {
+    harddisk_loader_init();
+  }
+
   std::vector<std::string> exts;
   for (const auto* driver : g_harddisk_drivers) {
     if (driver != nullptr && driver->supported_exts != nullptr) {
