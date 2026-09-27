@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "core/LinAppleCore.h"
 
-// Core emulator lifecycle, cycle accounting, and binary program file loading
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-type-cstyle-cast, misc-include-cleaner, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-owning-memory, google-runtime-int, cppcoreguidelines-init-variables, cppcoreguidelines-pro-bounds-array-to-pointer-decay, clang-diagnostic-missing-braces)
-
 #include <strings.h>
 
 #include <chrono>
@@ -12,15 +9,13 @@
 #include <cstdio>
 #include <cstring>
 
-#if ENABLE_DEBUGGER
-#endif
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "apple2/SnapshotTypes.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Internal.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/Asset.h"
@@ -28,17 +23,14 @@
 #include "core/Log.h"
 #include "core/ProgramLoader.h"
 #include "core/Registry.h"
-#include "core/Util_Path.h"
 
 using Logger::error;
-using Logger::info;
 
 const char* g_app_title = title_apple_2e_enhanced;
 
 eApple2Type g_apple2_type = A2TYPE_APPLE2EENHANCED;
 eApple2Language g_language = A2LANG_US;
 
-uint64_t cumulative_cycles = 0;
 uint32_t emul_msec = 0;
 bool g_full_speed = false;
 bool hdd_enabled = false;
@@ -79,11 +71,67 @@ namespace {
 constexpr uint64_t cpu_test_max_cycles = 100000000;
 constexpr int full_speed_disk_iterations = 100;
 
-static LinappleVideoCallback_t g_video_cb = nullptr;
-static LinappleTitleCallback_t g_title_cb = nullptr;
+static LinappleVideoCallback_t s_video_cb = nullptr;
+static LinappleTitleCallback_t s_title_cb = nullptr;
 
 static uint32_t s_turbo_start_ms = 0;
 static bool s_was_turbo = false;
+static bool s_user_turbo = false;
+static bool s_disk_turbo_enabled = true;
+
+auto is_disk_turbo() -> bool {
+  return s_disk_turbo_enabled && peripheral_is_any_active();
+}
+
+auto is_user_turbo() -> bool {
+  return s_user_turbo || (g_state.speed >= emulation_speed_max);
+}
+
+auto should_run_full_speed() -> bool {
+  bool disk_turbo = is_disk_turbo();
+  bool user_turbo = is_user_turbo();
+  bool should_turbo = disk_turbo || user_turbo;
+
+  if (should_turbo && !s_was_turbo) {
+    s_turbo_start_ms = linapple_get_ticks();
+    Logger::perf("Full-speed mode engaged (disk=%d, user=%d)\n",
+                 disk_turbo ? 1 : 0, user_turbo ? 1 : 0);
+  } else if (!should_turbo && s_was_turbo) {
+    uint32_t elapsed = linapple_get_ticks() - s_turbo_start_ms;
+    Logger::perf("Full-speed mode disengaged after %ums\n", elapsed);
+  }
+
+  s_was_turbo = should_turbo;
+  g_full_speed = should_turbo;
+  return should_turbo;
+}
+
+auto extension_matches_list(const char* ext, const char* list) -> bool {
+  if (ext == nullptr || list == nullptr || *list == '\0') {
+    return false;
+  }
+  if (*ext == '.') {
+    ++ext;
+  }
+  const char* p = list;
+  while (*p != '\0') {
+    while (*p == ';' || *p == ' ' || *p == ',') {
+      ++p;
+    }
+    if (*p == '\0') {
+      break;
+    }
+    const char* start = p;
+    while (*p != '\0' && *p != ';' && *p != ' ' && *p != ',') {
+      ++p;
+    }
+    const size_t len = static_cast<size_t>(p - start);
+    if (strncasecmp(ext, start, len) == 0 && ext[len] == '\0') {
+      return true;
+    }
+  }
+  return false;
+}
 
 }  // namespace
 
@@ -92,7 +140,7 @@ extern FrontendAudioSourceRegisterCallback_t g_frontend_audio_register_cb;
 extern FrontendAudioSourceUnregisterCallback_t g_frontend_audio_unregister_cb;
 
 auto linapple_set_video_callback(LinappleVideoCallback_t cb) -> void {
-  g_video_cb = cb;
+  s_video_cb = cb;
 }
 
 auto linapple_set_audio_channel_callback(FrontendAudioChannelCallback_t cb)
@@ -119,15 +167,15 @@ auto linapple_set_audio_source_unregister_callback(
 }
 
 auto linapple_set_title_callback(LinappleTitleCallback_t cb) -> void {
-  g_title_cb = cb;
+  s_title_cb = cb;
 }
 
 auto linapple_update_title(const char* title) -> void {
   if (title == nullptr) {
     return;
   }
-  if (g_title_cb != nullptr) {
-    g_title_cb(title);
+  if (s_title_cb != nullptr) {
+    s_title_cb(title);
   }
 }
 
@@ -138,39 +186,7 @@ auto linapple_get_ticks() noexcept -> uint32_t {
       .count();
 }
 
-static bool s_user_turbo = false;
-static bool s_disk_turbo_enabled = true;
-
-static auto is_disk_turbo() -> bool {
-  return s_disk_turbo_enabled && peripheral_is_any_active();
-}
-
-static auto is_user_turbo() -> bool {
-  return s_user_turbo || (g_state.speed >= emulation_speed_max);
-}
-
-static auto should_run_full_speed() -> bool {
-  bool disk_turbo = is_disk_turbo();
-  bool user_turbo = is_user_turbo();
-  bool should_turbo = disk_turbo || user_turbo;
-
-  if (should_turbo && !s_was_turbo) {
-    s_turbo_start_ms = linapple_get_ticks();
-    Logger::perf("Full-speed mode engaged (disk=%d, user=%d)\n",
-                 disk_turbo ? 1 : 0, user_turbo ? 1 : 0);
-  } else if (!should_turbo && s_was_turbo) {
-    uint32_t elapsed = linapple_get_ticks() - s_turbo_start_ms;
-    Logger::perf("Full-speed mode disengaged after %ums\n", elapsed);
-  }
-
-  s_was_turbo = should_turbo;
-  g_full_speed = should_turbo;
-  return should_turbo;
-}
-
 auto linapple_init() -> int {
-  // Whether a drive access is worth skipping ahead for is the user's call, not
-  // the card's, and it cannot change under a running frame.
   uint32_t disk_turbo = 1;
   config_load_int("Configuration", "Disk Turbo", &disk_turbo);
   s_disk_turbo_enabled = (disk_turbo != 0);
@@ -252,21 +268,69 @@ auto linapple_cpu_test(const char* test_file, uint16_t trap_addr) -> void {
   linapple_shutdown();
 }
 
+auto linapple_get_supported_disk_extensions(int slot, char* out_buffer,
+                                            size_t buffer_size) -> size_t {
+  if (out_buffer == nullptr || buffer_size == 0) {
+    return 0;
+  }
+  out_buffer[0] = '\0';
+  size_t exts_size = buffer_size;
+  if (slot == 7) {
+    if (peripheral_query(7, harddisk_query_supported_extensions, out_buffer,
+                         &exts_size) == peripheral_ok) {
+      return std::strlen(out_buffer);
+    }
+    auto* p = peripheral_find_internal("linapple.harddisk");
+    if (p != nullptr && p->query != nullptr) {
+      if (p->query(nullptr, harddisk_query_supported_extensions, out_buffer,
+                   &exts_size) == peripheral_ok) {
+        return std::strlen(out_buffer);
+      }
+    }
+  } else {
+    int target_slot = (slot > 0) ? slot : disk_default_slot;
+    if (peripheral_query(target_slot, disk_query_supported_extensions,
+                         out_buffer, &exts_size) == peripheral_ok) {
+      return std::strlen(out_buffer);
+    }
+    auto* p = peripheral_find_internal("linapple.disk_II");
+    if (p != nullptr && p->query != nullptr) {
+      if (p->query(nullptr, disk_query_supported_extensions, out_buffer,
+                   &exts_size) == peripheral_ok) {
+        return std::strlen(out_buffer);
+      }
+    }
+  }
+  return 0;
+}
+
+auto linapple_is_supported_disk_image(const char* path) -> bool {
+  if (path == nullptr || path[0] == '\0') {
+    return false;
+  }
+  const char* ext = std::strrchr(path, '.');
+  if (ext == nullptr) {
+    return false;
+  }
+  constexpr size_t buf_size = 256;
+  char floppy_exts[buf_size] = {};
+  linapple_get_supported_disk_extensions(disk_default_slot, floppy_exts,
+                                         sizeof(floppy_exts));
+  if (extension_matches_list(ext, floppy_exts)) {
+    return true;
+  }
+  char hdd_exts[buf_size] = {};
+  linapple_get_supported_disk_extensions(7, hdd_exts, sizeof(hdd_exts));
+  return extension_matches_list(ext, hdd_exts);
+}
+
 auto linapple_load_program(const char* path) -> int {
   if (path == nullptr || path[0] == '\0') {
     return static_cast<int>(program_load_not_a_program);
   }
 
-  // Avoid trying to load known disk image formats as programs
-  const char* ext = std::strrchr(path, '.');
-  if (ext != nullptr) {
-    static const char* const disk_exts[] = {".woz", ".dsk", ".nib",
-                                            ".2mg", ".po",  ".do"};
-    for (const auto* d_ext : disk_exts) {
-      if (strcasecmp(ext, d_ext) == 0) {
-        return static_cast<int>(program_load_not_a_program);
-      }
-    }
+  if (linapple_is_supported_disk_image(path)) {
+    return static_cast<int>(program_load_not_a_program);
   }
 
   auto res = program_loader_try_load(path);
@@ -277,7 +341,6 @@ auto linapple_load_program(const char* path) -> int {
     return static_cast<int>(res);
   }
 
-  // Raw binary fallback: attempt loading binary image at default start address
   auto raw_res = program_loader_load_raw(path, 0x0800);
   if (raw_res == program_load_ok) {
     return 0;
@@ -285,13 +348,12 @@ auto linapple_load_program(const char* path) -> int {
   return static_cast<int>(raw_res);
 }
 
-static auto internal_run_cycles(uint32_t dw_cycles) -> uint32_t {
-  if (dw_cycles == 0) {
+static auto internal_run_cycles(uint32_t cycles) -> uint32_t {
+  if (cycles == 0) {
     return 0;
   }
 
-  uint32_t executed_cycles = cpu_execute(dw_cycles);
-  cumulative_cycles = g_cumulative_cycles;
+  uint32_t executed_cycles = cpu_execute(cycles);
 
   peripheral_manager_think(executed_cycles);
   video_update_vbl(executed_cycles);
@@ -299,37 +361,38 @@ static auto internal_run_cycles(uint32_t dw_cycles) -> uint32_t {
   return executed_cycles;
 }
 
-auto linapple_run_frame(uint32_t cycles) -> uint32_t {
-  if (g_state.mode == MODE_RUNNING) {
-    uint32_t executed = 0;
-    if (should_run_full_speed()) {
-      if (is_disk_turbo()) {
-        for (int i = 0; i < full_speed_disk_iterations; i++) {
-          executed += internal_run_cycles(cycles);
-          if (!peripheral_is_any_active()) {
-            break;
-          }
-        }
-      } else {
-        for (int i = 0; i < full_speed_disk_iterations; i++) {
-          executed += internal_run_cycles(cycles);
-        }
-      }
-    } else {
-      executed = internal_run_cycles(cycles);
-    }
-
-    peripheral_manager_on_vblank(true);
-    basic_sync_update();
-
-    if (g_video_cb != nullptr && g_frame_ready) {
-      uint32_t* output = video_get_output_buffer();
-      g_video_cb(output, video_width, video_height, video_width * 4);
-      g_frame_ready = false;
-    }
-    return executed;
+static auto run_frame_cycles(uint32_t cycles) -> uint32_t {
+  if (!should_run_full_speed()) {
+    return internal_run_cycles(cycles);
   }
-  return 0;
+
+  const bool disk_turbo = is_disk_turbo();
+  uint32_t executed = 0;
+  for (int i = 0; i < full_speed_disk_iterations; ++i) {
+    executed += internal_run_cycles(cycles);
+    if (disk_turbo && !peripheral_is_any_active()) {
+      break;
+    }
+  }
+  return executed;
+}
+
+auto linapple_run_frame(uint32_t cycles) -> uint32_t {
+  if (g_state.mode != app_mode_running) {
+    return 0;
+  }
+
+  uint32_t executed = run_frame_cycles(cycles);
+
+  peripheral_manager_on_vblank(true);
+  basic_sync_update();
+
+  if (s_video_cb != nullptr && g_frame_ready) {
+    uint32_t* output = video_get_output_buffer();
+    s_video_cb(output, video_width, video_height, video_width * 4);
+    g_frame_ready = false;
+  }
+  return executed;
 }
 
 auto linapple_get_speed() noexcept -> uint32_t { return g_state.speed; }
@@ -433,5 +496,3 @@ auto linapple_set_joystick_button(int button, bool down) -> void {
       static_cast<uint8_t>(button), down, {0, 0}};
   peripheral_command(0, JOY_CMD_SET_BUTTON, &payload, sizeof(payload));
 }
-
-// NOLINTEND(cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-type-cstyle-cast, misc-include-cleaner, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, cppcoreguidelines-owning-memory, google-runtime-int, cppcoreguidelines-init-variables, cppcoreguidelines-pro-bounds-array-to-pointer-decay, clang-diagnostic-missing-braces)

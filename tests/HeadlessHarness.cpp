@@ -82,12 +82,12 @@ auto HeadlessHarness_t::mount_disk(int slot, int drive, const std::string& path)
 
 auto HeadlessHarness_t::boot() -> void {
   linapple_reset_hard();
-  g_state.mode = MODE_RUNNING;
+  g_state.mode = app_mode_running;
 }
 
 auto HeadlessHarness_t::reset_soft() -> void {
   linapple_reset_soft();
-  g_state.mode = MODE_RUNNING;
+  g_state.mode = app_mode_running;
 }
 
 auto HeadlessHarness_t::run_frames(uint32_t count) -> void {

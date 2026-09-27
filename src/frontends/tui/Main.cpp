@@ -87,7 +87,7 @@ auto main(int argc, char** argv) -> int {
 
       tui_input_poll();
 
-      if (g_state.mode == MODE_DEBUG) {
+      if (g_state.mode == app_mode_debug) {
         tui_video_render_frame(nullptr, 0, 0, 0);
       } else {
         uint32_t cycles = linapple_get_frame_cycles();

@@ -198,7 +198,8 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   }
 
   const int config_speed = Configuration_t::instance().get_int(
-      "Configuration", "Emulation Speed", static_cast<int>(SPEED_NORMAL));
+      "Configuration", "Emulation Speed",
+      static_cast<int>(emulation_speed_normal));
   if (config_speed >= 0 &&
       static_cast<uint32_t>(config_speed) <= emulation_speed_max) {
     g_state.speed = static_cast<uint32_t>(config_speed);
@@ -258,7 +259,7 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
                      config->debugger_script.data(), path_max_len);
   }
 
-  g_state.mode = MODE_RUNNING;
+  g_state.mode = app_mode_running;
   g_state.restart = false;
   g_state.fullscreen = config->is_fullscreen;
   g_state.disable_debugger = config->disable_debugger;

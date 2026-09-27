@@ -117,7 +117,7 @@ void disk_choose_tick(SDL_Event* event) {
   if (key == SDLK_F12) {
     g_diskChooseState.active = false;
     g_diskChooseState.cancelled = true;
-    g_state.mode = MODE_EXIT;
+    g_state.mode = app_mode_exit;
     SDL_Event qe = {};
     qe.type = SDL_QUIT;
     SDL_PushEvent(&qe);
@@ -301,7 +301,7 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
 
   VideoSurface_t* tempSurface = nullptr;
   if (g_window_resized == false) {
-    if (g_state.mode == MODE_LOGO) {
+    if (g_state.mode == app_mode_logo) {
       tempSurface = g_logo_bitmap;
     } else {
       tempSurface = g_device_bitmap;
@@ -383,7 +383,7 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
       while (SDL_PollEvent(&event) != 0) {
         if (event.type == SDL_KEYDOWN) {
           if (event.key.keysym.sym == SDLK_F12) {
-            g_state.mode = MODE_EXIT;
+            g_state.mode = app_mode_exit;
             SDL_Event qe = {};
             qe.type = SDL_QUIT;
             SDL_PushEvent(&qe);
@@ -395,7 +395,7 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
             (event.type == SDL_WINDOWEVENT &&
              event.window.event == SDL_WINDOWEVENT_CLOSE)) {
           SDL_PushEvent(&event);
-          g_state.mode = MODE_EXIT;
+          g_state.mode = app_mode_exit;
           waiting = false;
           break;
         }
@@ -431,7 +431,7 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
   g_diskChooseState.index_file_out = &index_file;
 
   AppMode_t old_mode = g_state.mode;
-  g_state.mode = MODE_DISK_CHOOSE;
+  g_state.mode = app_mode_disk_choose;
 
   // Run a blocking input/render loop to simplify state management for modal
   // dialogs.
@@ -442,13 +442,13 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
           (event.type == SDL_WINDOWEVENT &&
            event.window.event == SDL_WINDOWEVENT_CLOSE)) {
         SDL_PushEvent(&event);
-        g_state.mode = MODE_EXIT;
+        g_state.mode = app_mode_exit;
         g_diskChooseState.active = false;
         g_diskChooseState.cancelled = true;
         break;
       }
       if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_F12) {
-        g_state.mode = MODE_EXIT;
+        g_state.mode = app_mode_exit;
         g_diskChooseState.active = false;
         g_diskChooseState.cancelled = true;
         SDL_Event qe = {};
@@ -464,7 +464,7 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
     SDL_Delay(10);
   }
 
-  if (g_state.mode != MODE_EXIT) {
+  if (g_state.mode != app_mode_exit) {
     g_state.mode = old_mode;
   }
   g_diskChooseState.bg_screen.reset();
@@ -487,14 +487,8 @@ auto choose_an_image(int sx, int sy, const std::string& incoming_dir, int slot,
                      std::string& filename, bool& isdir, size_t& index_file)
     -> bool {
   char supported_exts[256] = {};
-  size_t exts_size = sizeof(supported_exts);
-  if (slot == 7) {
-    (void)peripheral_query(7, harddisk_query_supported_extensions,
-                           supported_exts, &exts_size);
-  } else {
-    (void)peripheral_query(slot, disk_query_supported_extensions,
-                           supported_exts, &exts_size);
-  }
+  linapple_get_supported_disk_extensions(slot, supported_exts,
+                                         sizeof(supported_exts));
 
   FileListGenerator_t* generator =
       file_browser_create_local_generator(incoming_dir.c_str(), supported_exts);

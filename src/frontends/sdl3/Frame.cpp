@@ -111,12 +111,12 @@ void draw_apple_content() {
   g_video_draw_mutex.lock();
   video_realize_palette();
 
-  draw_status_area(DRAW_BACKGROUND | DRAW_LEDS);
+  draw_status_area(draw_background | draw_leds);
 
-  if (g_state.mode == MODE_LOGO) {
+  if (g_state.mode == app_mode_logo) {
     video_display_logo();
     g_frame_ready = true;
-  } else if (g_state.mode == MODE_DEBUG) {
+  } else if (g_state.mode == app_mode_debug) {
 #if ENABLE_DEBUGGER
     debug_display(true);
 #endif
@@ -173,7 +173,7 @@ void draw_frame_window() {
     SDL_Rect r = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
 
     // Fill g_screen from RGB32 output buffer
-    if (g_state.mode != MODE_DEBUG) {
+    if (g_state.mode != app_mode_debug) {
       VideoSurface_t vs_screen = sdl_surface_to_video_surface(g_screen.get());
       VideoSurface_t vs_output{};
       vs_output.pixels = reinterpret_cast<uint8_t*>(output);
@@ -217,10 +217,10 @@ void draw_status_area(int drawflags) {
   VideoRect_t srect{};
   uint8_t mybluez = DARK_BLUE;
 
-  if (drawflags & DRAW_BACKGROUND) {
+  if (drawflags & draw_background) {
     g_status_cycle = show_cycles;
   }
-  if (drawflags & DRAW_LEDS) {
+  if (drawflags & draw_leds) {
     srect.x = 4;
     srect.y = 22;
     srect.w = static_cast<int16_t>(STATUS_PANEL_W - 8);
@@ -292,7 +292,7 @@ void frame_show_help_screen(int sx, int sy) {
     }
   }
   if (!g_window_resized) {
-    if (g_state.mode == MODE_LOGO) {
+    if (g_state.mode == app_mode_logo) {
       tempSurface = g_logo_bitmap;
     } else {
       tempSurface = g_device_bitmap;
@@ -405,7 +405,7 @@ void frame_show_help_screen(int sx, int sy) {
     while (SDL_PollEvent(&event)) {
       if (event.type == SDL_EVENT_KEY_DOWN) {
         if (event.key.key == SDLK_F12) {
-          g_state.mode = MODE_EXIT;
+          g_state.mode = app_mode_exit;
           SDL_Event qe{};
           qe.type = SDL_EVENT_QUIT;
           SDL_PushEvent(&qe);
@@ -416,7 +416,7 @@ void frame_show_help_screen(int sx, int sy) {
       if (event.type == SDL_EVENT_QUIT ||
           event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
         SDL_PushEvent(&event);
-        g_state.mode = MODE_EXIT;
+        g_state.mode = app_mode_exit;
         waiting = false;
         break;
       }
@@ -490,7 +490,7 @@ void frame_on_resize(int width, int height) {
       g_state.screen_width, g_state.screen_height));
 
   if (g_screen == nullptr || g_texture == nullptr) {
-    g_state.mode = MODE_EXIT;
+    g_state.mode = app_mode_exit;
     g_video_draw_mutex.unlock();
     return;
   }
@@ -520,7 +520,7 @@ void frame_on_resize(int width, int height) {
       g_new_rect.w = static_cast<int16_t>(g_state.screen_width);
       g_new_rect.h = static_cast<int16_t>(g_state.screen_height);
     }
-    if ((g_state.mode != MODE_LOGO) && (g_state.mode != MODE_DEBUG)) {
+    if ((g_state.mode != app_mode_logo) && (g_state.mode != app_mode_debug)) {
       video_redraw_screen();
     }
   }
@@ -529,7 +529,7 @@ void frame_on_resize(int width, int height) {
 
 void frame_on_focus(bool gained) {
   g_app_active = gained;
-  if (g_app_active && keyboard_get_caps_mode() == CAPS_MODE_HOST) {
+  if (g_app_active && keyboard_get_caps_mode() == caps_mode_host) {
     // Re-sync Caps Lock state upon regaining focus
     SDL_Keymod mod = SDL_GetModState();
     uint8_t caps = (mod & SDL_KMOD_CAPS) ? 1 : 0;
@@ -538,7 +538,7 @@ void frame_on_focus(bool gained) {
 }
 
 void frame_on_expose() {
-  if ((g_state.mode != MODE_LOGO) && (g_state.mode != MODE_DEBUG)) {
+  if ((g_state.mode != app_mode_logo) && (g_state.mode != app_mode_debug)) {
     video_redraw_screen();
   }
 }
@@ -644,18 +644,19 @@ void process_button_click(int button, int mod) {
     case btn_run:
       if ((mod & (SDL_KMOD_LCTRL)) == (SDL_KMOD_LCTRL) ||
           (mod & (SDL_KMOD_RCTRL)) == (SDL_KMOD_RCTRL)) {
-        if (g_state.mode == MODE_LOGO) {
+        if (g_state.mode == app_mode_logo) {
           linapple_reset_hard();
-        } else if (g_state.mode == MODE_RUNNING) {
+        } else if (g_state.mode == app_mode_running) {
           reset_machine_state();
         }
 #if ENABLE_DEBUGGER
-        if ((g_state.mode == MODE_DEBUG) || (g_state.mode == MODE_STEPPING)) {
+        if ((g_state.mode == app_mode_debug) ||
+            (g_state.mode == app_mode_stepping)) {
           debug_end();
         }
 #endif
-        g_state.mode = MODE_RUNNING;
-        draw_status_area(DRAW_TITLE);
+        g_state.mode = app_mode_running;
+        draw_status_area(draw_title);
         video_redraw_screen();
         g_state.reset_timing = true;
       } else if (mod & SDL_KMOD_SHIFT) {
@@ -743,10 +744,10 @@ void process_button_click(int button, int mod) {
     case btn_debug:
 #if ENABLE_DEBUGGER
       if (!g_state.disable_debugger) {
-        if (g_state.mode != MODE_DEBUG) {
+        if (g_state.mode != app_mode_debug) {
           debug_begin();
           set_using_cursor(false);
-        } else if (g_state.mode == MODE_DEBUG) {
+        } else if (g_state.mode == app_mode_debug) {
           debug_end();
         }
       }
@@ -777,8 +778,8 @@ void process_button_click(int button, int mod) {
           g_videotype = 0;
         }
         video_reinitialize();
-        if (g_state.mode != MODE_LOGO) {
-          if (g_state.mode == MODE_DEBUG) {
+        if (g_state.mode != app_mode_logo) {
+          if (g_state.mode == app_mode_debug) {
 #if ENABLE_DEBUGGER
             uint32_t debugVideoMode = 0;
             if (debug_get_video_mode(&debugVideoMode)) {
@@ -815,7 +816,7 @@ void process_button_click(int button, int mod) {
       break;
   }
 
-  if ((g_state.mode != MODE_DEBUG) && (g_state.mode != MODE_PAUSED)) {
+  if ((g_state.mode != app_mode_debug) && (g_state.mode != app_mode_paused)) {
     audio_mixer_set_fade(fade_in);
   }
 }
@@ -839,7 +840,7 @@ void set_fullscreen_mode() {
     if (g_window) {
       SDL_SetWindowFullscreen(g_window.get(), true);
     }
-    if (g_state.mode != MODE_DEBUG) {
+    if (g_state.mode != app_mode_debug) {
       SDL_HideCursor();
     }
   }
@@ -860,7 +861,7 @@ void set_normal_mode() {
     if (!g_usingcursor) {
       SDL_ShowCursor();
     }
-  } else if (g_state.mode == MODE_DEBUG) {
+  } else if (g_state.mode == app_mode_debug) {
     SDL_ShowCursor();
     if (g_window) {
       SDL_SetWindowMouseGrab(g_window.get(), false);
@@ -876,7 +877,7 @@ void set_using_cursor(bool newvalue) {
       SDL_SetWindowMouseGrab(g_window.get(), true);
     }
   } else {
-    if ((!is_full_screened) || (g_state.mode == MODE_DEBUG)) {
+    if ((!is_full_screened) || (g_state.mode == app_mode_debug)) {
       SDL_ShowCursor();
     }
     if (g_window) {
@@ -985,7 +986,7 @@ auto init_sdl() -> int {
 }
 
 void frame_refresh_status(int drawflags) {
-  if (drawflags & DRAW_LEDS) {
+  if (drawflags & draw_leds) {
     size_t size = sizeof(g_last_disk_status);
     if (peripheral_query(disk_default_slot, disk_query_status,
                          &g_last_disk_status, &size) == peripheral_ok) {

@@ -37,7 +37,7 @@ auto debug_initialize() -> void {
 }
 
 auto is_debug_stepping_at_full_speed() -> bool {
-  return (g_state.mode == MODE_STEPPING) && g_debug_full_speed;
+  return (g_state.mode == app_mode_stepping) && g_debug_full_speed;
 }
 
 bool g_debugger_eat_key = false;

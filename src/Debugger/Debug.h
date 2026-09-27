@@ -243,7 +243,7 @@ extern const int DEBUGGER_VERSION;
 
 enum {
   DEBUG_EXIT_KEY = 0x1B,  // Escape
-  DEBUG_TOGGLE_KEY = LINAPPLE_KEY_F1 + 6
+  DEBUG_TOGGLE_KEY = linapple_key_f7
 };
 
 auto CmdGoNormalSpeed(int nArgs) -> Update_t;

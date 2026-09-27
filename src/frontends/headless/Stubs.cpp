@@ -26,7 +26,7 @@
     -> LinAppleKey_t {
   (void)key;
   (void)mod;
-  return LINAPPLE_KEY_UNKNOWN;
+  return linapple_key_unknown;
 }
 
 [[gnu::weak]] auto frame_refresh_status(int drawflags) -> void {

@@ -22,10 +22,11 @@
   (void)is_down;
 }
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters): stub callback signature
-[[gnu::weak]] auto frontend_to_core_key(int key, uint32_t mod) -> LinAppleKey {
+[[gnu::weak]] auto frontend_to_core_key(int key, uint32_t mod)
+    -> LinAppleKey_t {
   (void)key;
   (void)mod;
-  return LINAPPLE_KEY_UNKNOWN;
+  return linapple_key_unknown;
 }
 
 [[gnu::weak]] auto frame_refresh_status(int drawflags) -> void {

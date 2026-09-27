@@ -245,7 +245,8 @@ auto DebuggerPrintColor(int x, int y, const conchar_t* text) -> void {
 }
 
 auto can_draw_debugger() -> bool {
-  return (g_state.mode == MODE_DEBUG) || (g_state.mode == MODE_STEPPING);
+  return (g_state.mode == app_mode_debug) ||
+         (g_state.mode == app_mode_stepping);
 }
 
 auto PrintText(const char* text, Rect_t& rRect) -> int {
@@ -972,13 +973,13 @@ auto debug_begin() -> void {
     return;
   }
   // This is called every time the debugger is entered.
-  g_state.mode = MODE_DEBUG;
+  g_state.mode = app_mode_debug;
 
   debug_initialize();
   AllocateDebuggerMemDC();
 
-  g_state.mode = MODE_DEBUG;
-  frame_refresh_status(DRAW_TITLE);
+  g_state.mode = app_mode_debug;
+  frame_refresh_status(draw_title);
 
   UpdateDisplay(UPDATE_ALL);
 }
@@ -1003,7 +1004,7 @@ auto debug_end() -> void {
   g_memory_search_results.erase(g_memory_search_results.begin(),
                                 g_memory_search_results.end());
 
-  g_state.mode = MODE_RUNNING;
+  g_state.mode = app_mode_running;
 
   ReleaseDebuggerMemDC();
 }

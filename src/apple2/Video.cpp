@@ -1703,7 +1703,7 @@ auto video_perform_refresh() -> void {
   displaypage2_latched = displaypage2;
   vidmode_latched = g_video_mode;
 
-  if (g_state.mode == MODE_DEBUG) {
+  if (g_state.mode == app_mode_debug) {
     if (redrawfull == 0) {
       return;
     }

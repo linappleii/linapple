@@ -10,10 +10,10 @@
 #include "SDL_keysym.h"
 #include "SDL_mouse.h"
 #include "apple2/Video.h"
+#include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "apple2/peripherals/mouse/MouseCommands.h"
 #include "core/LinAppleCore.h"
-#include "apple2/peripherals/Peripheral.h"
 #include "core/Registry.h"
 #include "frontends/common/AudioMixer.h"
 #include "frontends/common/Frontend.h"
@@ -37,7 +37,7 @@ void sdl_handle_event(SDL_Event* e) {
 
   switch (e->type) {
     case SDL_QUIT:
-      g_state.mode = MODE_EXIT;
+      g_state.mode = app_mode_exit;
       break;
 
     case SDL_VIDEORESIZE:
@@ -88,7 +88,7 @@ void sdl_handle_event(SDL_Event* e) {
         uint32_t speed = linapple_speed_reset();
         printf("Now speed=%u\n", speed);
       } else if (mysym == SDLK_CAPSLOCK) {
-        if (keyboard_get_caps_mode() == CAPS_MODE_HOST) {
+        if (keyboard_get_caps_mode() == caps_mode_host) {
           uint8_t caps = ((mymod & KMOD_CAPS) != 0) ? 1 : 0;
           peripheral_command(0, keyboard_cmd_set_caps, &caps, 1);
         } else {
@@ -97,35 +97,36 @@ void sdl_handle_event(SDL_Event* e) {
       } else if (mysym == SDLK_PAUSE) {
         set_using_cursor(false);
         switch (g_state.mode) {
-          case MODE_RUNNING:
-            g_state.mode = MODE_PAUSED;
+          case app_mode_running:
+            g_state.mode = app_mode_paused;
             audio_mixer_set_fade(fade_out);
             break;
-          case MODE_PAUSED:
-            g_state.mode = MODE_RUNNING;
+          case app_mode_paused:
+            g_state.mode = app_mode_running;
             audio_mixer_set_fade(fade_in);
             break;
-          case MODE_STEPPING:
+          case app_mode_stepping:
 #if ENABLE_DEBUGGER
             debugger_input_console_char(DEBUG_EXIT_KEY);
 #endif
             break;
-          case MODE_LOGO:
-          case MODE_DEBUG:
+          case app_mode_logo:
+          case app_mode_debug:
           default:
             break;
         }
-        draw_status_area(DRAW_TITLE);
-        if ((g_state.mode != MODE_LOGO) && (g_state.mode != MODE_DEBUG)) {
+        draw_status_area(draw_title);
+        if ((g_state.mode != app_mode_logo) &&
+            (g_state.mode != app_mode_debug)) {
           video_redraw_screen();
         }
         g_state.reset_timing = true;
       } else if (mysym == SDLK_SCROLLOCK) {
         bool turbo = linapple_toggle_turbo();
         printf("Turbo mode: %s\n", turbo ? "ON" : "OFF");
-      } else if ((g_state.mode == MODE_RUNNING) ||
-                 (g_state.mode == MODE_LOGO) ||
-                 (g_state.mode == MODE_STEPPING)) {
+      } else if ((g_state.mode == app_mode_running) ||
+                 (g_state.mode == app_mode_logo) ||
+                 (g_state.mode == app_mode_stepping)) {
 #if ENABLE_DEBUGGER
         g_debugger_eat_key = false;
 #endif
@@ -139,9 +140,9 @@ void sdl_handle_event(SDL_Event* e) {
           }
         }
 #if ENABLE_DEBUGGER
-      } else if (g_state.mode == MODE_DEBUG) {
-        LinAppleKey core_key = frontend_to_core_key(mysym, mymod);
-        if (core_key != LINAPPLE_KEY_UNKNOWN) {
+      } else if (g_state.mode == app_mode_debug) {
+        LinAppleKey_t core_key = frontend_to_core_key(mysym, mymod);
+        if (core_key != linapple_key_unknown) {
           debugger_process_key(core_key);
         }
 #endif
@@ -161,7 +162,7 @@ void sdl_handle_event(SDL_Event* e) {
       } else if (frontend_handle_key_event(mysym, false)) {
         break;
       } else if (mysym == SDLK_CAPSLOCK) {
-        if (keyboard_get_caps_mode() == CAPS_MODE_HOST) {
+        if (keyboard_get_caps_mode() == caps_mode_host) {
           uint8_t caps = ((mymod & KMOD_CAPS) != 0) ? 1 : 0;
           peripheral_command(0, keyboard_cmd_set_caps, &caps, 1);
         }
@@ -186,7 +187,7 @@ void sdl_handle_event(SDL_Event* e) {
           x_local = static_cast<int>(e->button.x);
           y_local = static_cast<int>(e->button.y);
 #if ENABLE_DEBUGGER
-          if (g_state.mode == MODE_DEBUG) {
+          if (g_state.mode == app_mode_debug) {
             debugger_mouse_click(x_local, y_local);
           } else
 #endif
@@ -218,8 +219,8 @@ void sdl_handle_event(SDL_Event* e) {
                                &mouse_active, &qsize);
               bool mouse_in_use = (mouse_active != 0) ||
                                   joy_frontend_is_mouse_emulation_active();
-              if (mouse_in_use && ((g_state.mode == MODE_RUNNING) ||
-                                   (g_state.mode == MODE_STEPPING))) {
+              if (mouse_in_use && ((g_state.mode == app_mode_running) ||
+                                   (g_state.mode == app_mode_stepping))) {
                 set_using_cursor(true);
               }
             }

@@ -75,7 +75,7 @@ TEST_CASE("AppArgs: Caps Lock Mode Arguments") {
     AppConfig_t config = {};
     int res = app_args_parse(2, argv, &config);
     CHECK(res == 0);
-    CHECK(config.caps_lock_mode == CAPS_MODE_EMULATED);
+    CHECK(config.caps_lock_mode == caps_mode_emulated);
   }
 
   SUBCASE("--caps-mode host") {
@@ -83,6 +83,6 @@ TEST_CASE("AppArgs: Caps Lock Mode Arguments") {
     AppConfig_t config = {};
     int res = app_args_parse(3, argv, &config);
     CHECK(res == 0);
-    CHECK(config.caps_lock_mode == CAPS_MODE_HOST);
+    CHECK(config.caps_lock_mode == caps_mode_host);
   }
 }

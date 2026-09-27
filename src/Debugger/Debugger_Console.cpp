@@ -510,7 +510,7 @@ auto ConsoleFlush() -> void {
 }
 
 auto DebuggerCursorUpdate() -> void {
-  if (g_state.mode != MODE_DEBUG) {
+  if (g_state.mode != app_mode_debug) {
     return;
   }
 
@@ -543,9 +543,9 @@ auto DebuggerCursorNext() -> void {
 auto DebuggerUpdate() -> void { DebuggerCursorUpdate(); }
 
 auto debugger_input_console_char(char ch) -> void {
-  assert(g_state.mode == MODE_DEBUG);
+  assert(g_state.mode == app_mode_debug);
 
-  if (g_state.mode != MODE_DEBUG) {
+  if (g_state.mode != app_mode_debug) {
     return;
   }
 
@@ -599,14 +599,14 @@ extern auto CmdCursorPageUp4K(int) -> Update_t;
 extern auto CmdCursorPageDown4K(int) -> Update_t;
 
 auto debugger_process_key(int keycode) -> void {
-  if (g_state.mode != MODE_DEBUG) {
+  if (g_state.mode != app_mode_debug) {
     return;
   }
 
   if (DebugVideoMode::Instance().IsSet()) {
-    if ((LINAPPLE_KEY_LSHIFT == keycode) || (LINAPPLE_KEY_RSHIFT == keycode) ||
-        (LINAPPLE_KEY_LCTRL == keycode) || (LINAPPLE_KEY_RCTRL == keycode) ||
-        (LINAPPLE_KEY_MENU == keycode)) {
+    if ((linapple_key_lshift == keycode) || (linapple_key_rshift == keycode) ||
+        (linapple_key_lctrl == keycode) || (linapple_key_rctrl == keycode) ||
+        (linapple_key_menu == keycode)) {
       return;
     }
 
@@ -620,32 +620,32 @@ auto debugger_process_key(int keycode) -> void {
 
   // For long output, allow user to read it
   if (g_console_buffer_size != 0 &&
-      ((LINAPPLE_KEY_SPACE == keycode) || (LINAPPLE_KEY_RETURN == keycode) ||
-       (LINAPPLE_KEY_TAB == keycode) || (LINAPPLE_KEY_ESCAPE == keycode))) {
+      ((linapple_key_space == keycode) || (linapple_key_return == keycode) ||
+       (linapple_key_tab == keycode) || (linapple_key_escape == keycode))) {
     int nLines =
-        (LINAPPLE_KEY_ESCAPE == keycode)
+        (linapple_key_escape == keycode)
             ? g_console_buffer_size
             : std::min(g_console_buffer_size, g_console_display_lines - 1);
     ConsoleBufferTryUnpause(nLines);
     keycode = 0;  // don't single-step
   }
 
-  if (keycode == LINAPPLE_KEY_BACKSPACE) {
+  if (keycode == linapple_key_backspace) {
     if (g_console_input_chars) {
       ConsoleInputBackSpace();
       DebuggerCursorNext();
       DrawConsoleInput();
       stretch_blt_mem_to_frame_dc();
     }
-  } else if ((keycode == LINAPPLE_KEY_RETURN) ||
-             (keycode == LINAPPLE_KEY_KP_ENTER)) {
+  } else if ((keycode == linapple_key_return) ||
+             (keycode == linapple_key_kp_enter)) {
     if (g_console_input_chars) {
       bUpdateDisplay |=
           DebuggerProcessCommand(true);  // copy console input to console output
     } else {
       bUpdateDisplay |= CmdGoNormalSpeed(0);
     }
-  } else if (keycode == LINAPPLE_KEY_ESCAPE) {
+  } else if (keycode == linapple_key_escape) {
     if (g_console_input_chars) {
       ConsoleInputReset();
       bUpdateDisplay |= UPDATE_CONSOLE_INPUT;
@@ -662,7 +662,7 @@ auto debugger_process_key(int keycode) -> void {
     peripheral_query(0, keyboard_query_mods, &mods, &mods_sz);
 
     switch (keycode) {
-      case LINAPPLE_KEY_TAB: {
+      case linapple_key_tab: {
         if (g_console_input_chars) {
           bUpdateDisplay |= ConsoleInputTabCompletion();
         } else {
@@ -672,14 +672,14 @@ auto debugger_process_key(int keycode) -> void {
         break;
       }
 
-      case LINAPPLE_KEY_UP:
+      case linapple_key_up:
         bUpdateDisplay |= ConsoleInputHistoryPrev();
         break;
-      case LINAPPLE_KEY_DOWN:
+      case linapple_key_down:
         bUpdateDisplay |= ConsoleInputHistoryNext();
         break;
 
-      case LINAPPLE_KEY_PAGEUP:
+      case linapple_key_pageup:
         if (mods.ctrl) {
           bUpdateDisplay |= CmdCursorPageUp4K(0);
         } else if (mods.shift) {
@@ -689,7 +689,7 @@ auto debugger_process_key(int keycode) -> void {
         }
         break;
 
-      case LINAPPLE_KEY_PAGEDOWN:
+      case linapple_key_pagedown:
         if (mods.ctrl) {
           bUpdateDisplay |= CmdCursorPageDown4K(0);
         } else if (mods.shift) {
@@ -699,18 +699,18 @@ auto debugger_process_key(int keycode) -> void {
         }
         break;
 
-      case LINAPPLE_KEY_F1:
-      case LINAPPLE_KEY_F2:
-      case LINAPPLE_KEY_F3:
-      case LINAPPLE_KEY_F4:
-      case LINAPPLE_KEY_F5:
-      case LINAPPLE_KEY_F6:
-      case LINAPPLE_KEY_F7:
-      case LINAPPLE_KEY_F8:
-      case LINAPPLE_KEY_F9:
-      case LINAPPLE_KEY_F10:
-      case LINAPPLE_KEY_F11:
-      case LINAPPLE_KEY_F12:
+      case linapple_key_f1:
+      case linapple_key_f2:
+      case linapple_key_f3:
+      case linapple_key_f4:
+      case linapple_key_f5:
+      case linapple_key_f6:
+      case linapple_key_f7:
+      case linapple_key_f8:
+      case linapple_key_f9:
+      case linapple_key_f10:
+      case linapple_key_f11:
+      case linapple_key_f12:
         break;
 
       default:
@@ -724,7 +724,7 @@ auto debugger_process_key(int keycode) -> void {
 }
 
 auto debugger_mouse_click(int /*x*/, int /*y*/) -> void {
-  if (g_state.mode != MODE_DEBUG) {
+  if (g_state.mode != app_mode_debug) {
     return;
   }
 

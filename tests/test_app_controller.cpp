@@ -67,7 +67,7 @@ TEST_CASE("AppController: Initialize and Shutdown") {
   // Test initialization
   int result = app_controller_initialize(&config);
   CHECK(result == 0);
-  CHECK(g_state.mode == MODE_RUNNING);
+  CHECK(g_state.mode == app_mode_running);
 
   // Check if default directories are initialized, valid, and accessible
   CHECK(g_state.current_dir.at(0) != '\0');

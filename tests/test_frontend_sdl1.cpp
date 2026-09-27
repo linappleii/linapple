@@ -356,7 +356,7 @@ TEST_CASE("SDL1 Frontend Help Screen F12 Event Handling") {
   REQUIRE(win_result == 0);
   REQUIRE(g_screen != nullptr);
 
-  g_state.mode = MODE_RUNNING;
+  g_state.mode = app_mode_running;
 
   SDL_Event key_event{};
   key_event.type = SDL_KEYDOWN;
@@ -368,7 +368,7 @@ TEST_CASE("SDL1 Frontend Help Screen F12 Event Handling") {
   frame_show_help_screen(static_cast<int>(g_state.screen_width),
                          static_cast<int>(g_state.screen_height));
 
-  CHECK(g_state.mode == MODE_EXIT);
+  CHECK(g_state.mode == app_mode_exit);
 
   SDL_Event polled_event{};
   int count = SDL_PeepEvents(&polled_event, 1, SDL_GETEVENT, SDL_ALLEVENTS);
@@ -394,7 +394,7 @@ TEST_CASE("SDL1 Frontend Disk Choose Quit Event Handling") {
   REQUIRE(win_result == 0);
   REQUIRE(g_screen != nullptr);
 
-  g_state.mode = MODE_RUNNING;
+  g_state.mode = app_mode_running;
 
   // Push an SDL_QUIT event into the event queue
   SDL_Event quit_event{};
@@ -409,7 +409,7 @@ TEST_CASE("SDL1 Frontend Disk Choose Quit Event Handling") {
                                 static_cast<int>(g_state.screen_height), ".", 6,
                                 filename, isdir, index_file);
   CHECK(!chosen);
-  CHECK(g_state.mode == MODE_EXIT);
+  CHECK(g_state.mode == app_mode_exit);
 
   // Verify that SDL_QUIT was re-pushed and is available in the event queue
   SDL_Event polled_event{};
@@ -436,7 +436,7 @@ TEST_CASE("SDL1 Frontend Disk Choose Key Down Dismissal") {
   REQUIRE(win_result == 0);
   REQUIRE(g_screen != nullptr);
 
-  g_state.mode = MODE_RUNNING;
+  g_state.mode = app_mode_running;
 
   // Push an ESCAPE key down event into the event queue
   SDL_Event key_event{};
@@ -453,7 +453,7 @@ TEST_CASE("SDL1 Frontend Disk Choose Key Down Dismissal") {
                                 static_cast<int>(g_state.screen_height), ".", 6,
                                 filename, isdir, index_file);
   CHECK(!chosen);
-  CHECK(g_state.mode == MODE_RUNNING);
+  CHECK(g_state.mode == app_mode_running);
 
   // Verify that the event queue is drained
   SDL_Event polled_event{};
@@ -479,7 +479,7 @@ TEST_CASE("SDL1 Frontend Disk Choose F12 Event Handling") {
   REQUIRE(win_result == 0);
   REQUIRE(g_screen != nullptr);
 
-  g_state.mode = MODE_RUNNING;
+  g_state.mode = app_mode_running;
 
   SDL_Event key_event{};
   key_event.type = SDL_KEYDOWN;
@@ -495,7 +495,7 @@ TEST_CASE("SDL1 Frontend Disk Choose F12 Event Handling") {
                                 static_cast<int>(g_state.screen_height), ".", 6,
                                 filename, isdir, index_file);
   CHECK(!chosen);
-  CHECK(g_state.mode == MODE_EXIT);
+  CHECK(g_state.mode == app_mode_exit);
 
   SDL_Event polled_event{};
   int count = SDL_PeepEvents(&polled_event, 1, SDL_GETEVENT, SDL_ALLEVENTS);

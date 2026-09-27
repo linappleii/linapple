@@ -6,9 +6,9 @@
 #include <cstring>
 
 #include "apple2/Video.h"
+#include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "core/LinAppleCore.h"
-#include "apple2/peripherals/Peripheral.h"
 #include "core/Registry.h"
 #include "frontends/common/sdl/SdlCompat.h"
 
@@ -184,7 +184,7 @@ void joy_frontend_check_exit() {
           joy1.get(), static_cast<int>(g_joyConfig.joy_exit_button[1]));
 
   if (quit) {
-    g_state.mode = MODE_EXIT;
+    g_state.mode = app_mode_exit;
   }
 }
 

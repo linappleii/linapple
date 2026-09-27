@@ -7,10 +7,10 @@
 #include <string>
 
 #include "apple2/Memory.h"
-#include "apple2/peripherals/disk/DiskCommands.h"
-#include "core/LinAppleCore.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Internal.h"
+#include "apple2/peripherals/disk/DiskCommands.h"
+#include "core/LinAppleCore.h"
 #include "core/Util_Text.h"
 #include "doctest.h"
 #include "test_fixtures.h"
@@ -44,7 +44,7 @@ class DiskMotorHarness_t {
 
     setup_spin_loop();
 
-    g_state.mode = MODE_RUNNING;
+    g_state.mode = app_mode_running;
 
     mount_disk();
     peripheral_manager_think(0);

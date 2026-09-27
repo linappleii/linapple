@@ -5,8 +5,8 @@
 #include "doctest.h"
 
 TEST_CASE("Core: Emulation Speed Controls and Multipliers") {
-  linapple_set_speed(SPEED_NORMAL);
-  CHECK(linapple_get_speed() == SPEED_NORMAL);
+  linapple_set_speed(emulation_speed_normal);
+  CHECK(linapple_get_speed() == emulation_speed_normal);
 
   g_state.clks_per_frame = 17030;
   CHECK(linapple_get_frame_cycles() == 17030);
@@ -26,8 +26,8 @@ TEST_CASE("Core: Emulation Speed Controls and Multipliers") {
   CHECK(linapple_get_speed() == 19);
 
   // Reset speed to normal (10)
-  CHECK(linapple_speed_reset() == SPEED_NORMAL);
-  CHECK(linapple_get_speed() == SPEED_NORMAL);
+  CHECK(linapple_speed_reset() == emulation_speed_normal);
+  CHECK(linapple_get_speed() == emulation_speed_normal);
   CHECK(linapple_get_frame_cycles() == 17030);
 
   // Slow motion: speed 0 (0.5x)

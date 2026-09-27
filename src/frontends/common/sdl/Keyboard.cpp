@@ -3,16 +3,16 @@
 #include <cstdint>
 #include <string>
 
-#include "core/LinAppleCore.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Types.h"
+#include "core/LinAppleCore.h"
 #include "core/Registry.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/common/KeyboardTranslator.h"
 #include "frontends/common/sdl/SdlCompat.h"
 
 static int keyboard_mapping_mode = 0;
-static int keyboard_caps_mode = CAPS_MODE_HOST;
+static int keyboard_caps_mode = caps_mode_host;
 
 auto keyboard_get_caps_mode() -> int { return keyboard_caps_mode; }
 auto keyboard_set_caps_mode(int mode) -> void { keyboard_caps_mode = mode; }
@@ -69,16 +69,16 @@ auto frontend_update_keyboard_mapping() -> void {
   keyboard_apply_custom_mappings();
 }
 
-auto frontend_to_core_key(int key, uint32_t mod) -> LinAppleKey {
+auto frontend_to_core_key(int key, uint32_t mod) -> LinAppleKey_t {
   switch (key) {
     case SDLK_UP:
-      return LINAPPLE_KEY_UP;
+      return linapple_key_up;
     case SDLK_DOWN:
-      return LINAPPLE_KEY_DOWN;
+      return linapple_key_down;
     case SDLK_LEFT:
-      return LINAPPLE_KEY_LEFT;
+      return linapple_key_left;
     case SDLK_RIGHT:
-      return LINAPPLE_KEY_RIGHT;
+      return linapple_key_right;
     default:
       break;
   }
@@ -97,7 +97,7 @@ auto frontend_dispatch_key_event(uint32_t scancode, uint32_t keycode,
       {0, 0, 0}};
   peripheral_command(0, keyboard_cmd_set_mods, &mods, sizeof(mods));
 
-  LinAppleKey core_key = LINAPPLE_KEY_UNKNOWN;
+  LinAppleKey_t core_key = linapple_key_unknown;
 
   if (keyboard_mapping_mode == KBD_MODE_POSITIONAL ||
       keyboard_has_custom_mappings()) {
@@ -106,7 +106,7 @@ auto frontend_dispatch_key_event(uint32_t scancode, uint32_t keycode,
     core_key = frontend_to_core_key(static_cast<int>(keycode), mod);
   }
 
-  if (core_key == LINAPPLE_KEY_UNKNOWN) {
+  if (core_key == linapple_key_unknown) {
     return;
   }
 

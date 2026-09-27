@@ -266,9 +266,9 @@ auto app_args_parse(int argc, char** argv, AppConfig_t* outConfig) -> int {
       case opt_caps_mode:
         if (std::strcmp(optarg, "emulated") == 0 ||
             std::strcmp(optarg, "1") == 0) {
-          outConfig->caps_lock_mode = CAPS_MODE_EMULATED;
+          outConfig->caps_lock_mode = caps_mode_emulated;
         } else {
-          outConfig->caps_lock_mode = CAPS_MODE_HOST;
+          outConfig->caps_lock_mode = caps_mode_host;
         }
         break;
       case opt_tui_render:

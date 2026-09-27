@@ -419,7 +419,7 @@ auto peripheral_announce_audio_sources() -> void {
 static auto host_notify_status_changed(int slot) -> void {
   announce_audio_source(slot);
   extern void frame_refresh_status(int drawflags);
-  frame_refresh_status(static_cast<int>(DRAW_LEDS | DRAW_BUTTON_DRIVES));
+  frame_refresh_status(static_cast<int>(draw_leds | draw_button_drives));
 }
 
 static auto host_notify_activity_changed(int slot, bool active) -> void {

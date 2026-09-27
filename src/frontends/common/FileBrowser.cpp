@@ -15,11 +15,9 @@
 #include <string>
 #include <vector>
 
-#include "apple2/peripherals/disk/DiskCommands.h"
-#include "apple2/peripherals/harddisk/HarddiskCommands.h"
-#include "core/LinAppleCore.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Types.h"
+#include "core/LinAppleCore.h"
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
@@ -199,7 +197,6 @@ static void local_gen_destroy(FileListGenerator_t* self) {
 }
 
 // --- Public C ABI ---
-
 
 auto file_entry_is_dir_type(const FileEntry_t* entry) -> bool {
   if (entry == nullptr) {
@@ -422,15 +419,8 @@ void disk_browser_refresh(DiskBrowser_t* b) {
   }
 
   char supported_exts[256] = {};
-  size_t exts_size = sizeof(supported_exts);
-  if (b->slot == 7) {
-    (void)peripheral_query(7, harddisk_query_supported_extensions,
-                           supported_exts, &exts_size);
-  } else {
-    (void)peripheral_query(b->slot != 0 ? b->slot : disk_default_slot,
-                           disk_query_supported_extensions, supported_exts,
-                           &exts_size);
-  }
+  linapple_get_supported_disk_extensions(b->slot, supported_exts,
+                                         sizeof(supported_exts));
 
   b->generator =
       file_browser_create_local_generator(b->current_dir, supported_exts);
@@ -643,4 +633,3 @@ auto disk_browser_get_title(int slot) -> const char* {
   }
   return "Choose disk image";
 }
-

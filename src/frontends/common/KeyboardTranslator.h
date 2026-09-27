@@ -22,8 +22,8 @@ typedef enum {
   QUICKSAVE_MODE_DISABLED = 3
 } QuickSaveMode_t;
 
-LinAppleKey keyboard_symbolic_to_core(int key, uint32_t mod);
-LinAppleKey keyboard_scancode_to_positional(uint32_t scancode);
+LinAppleKey_t keyboard_symbolic_to_core(int key, uint32_t mod);
+LinAppleKey_t keyboard_scancode_to_positional(uint32_t scancode);
 
 uint32_t keyboard_parse_host_key(const char* name);
 uint8_t keyboard_parse_apple2_val(const char* name, uint8_t* out_flags);

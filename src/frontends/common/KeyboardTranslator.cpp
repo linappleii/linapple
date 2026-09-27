@@ -15,10 +15,10 @@
 #include <string>
 #include <vector>
 
-#include "apple2/peripherals/keyboard/Keyboard_Maps.h"
-#include "core/LinAppleCore.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Types.h"
+#include "apple2/peripherals/keyboard/Keyboard_Maps.h"
+#include "core/LinAppleCore.h"
 #include "core/Registry.h"
 
 namespace keyboard_translator {
@@ -53,40 +53,40 @@ static auto to_lower_str(std::string s) -> std::string {
 
 }  // namespace keyboard_translator
 
-auto keyboard_symbolic_to_core(int key, uint32_t mod) -> LinAppleKey {
+auto keyboard_symbolic_to_core(int key, uint32_t mod) -> LinAppleKey_t {
   (void)mod;
 
   namespace kt = keyboard_translator;
 
   if (key >= kt::ascii_printable_min && key <= kt::ascii_printable_max) {
-    return static_cast<LinAppleKey>(key);
+    return static_cast<LinAppleKey_t>(key);
   }
 
   switch (key) {
     case kt::ascii_cr:
-      return LINAPPLE_KEY_RETURN;
+      return linapple_key_return;
     case kt::ascii_esc:
-      return LINAPPLE_KEY_ESCAPE;
+      return linapple_key_escape;
     case kt::ascii_bs:
-      return LINAPPLE_KEY_BACKSPACE;
+      return linapple_key_backspace;
     case kt::ascii_tab:
-      return LINAPPLE_KEY_TAB;
+      return linapple_key_tab;
     case kt::ascii_del:
-      return LINAPPLE_KEY_DELETE;
+      return linapple_key_delete;
     default:
-      return LINAPPLE_KEY_UNKNOWN;
+      return linapple_key_unknown;
   }
 }
 
-auto keyboard_scancode_to_positional(uint32_t scancode) -> LinAppleKey {
+auto keyboard_scancode_to_positional(uint32_t scancode) -> LinAppleKey_t {
   namespace kt = keyboard_translator;
 
-  // SDL Scancodes map directly to our LINAPPLE_KEY_POS_* values
+  // SDL Scancodes map directly to our key values
   // if we align the enum values correctly (which we did in LinAppleCore.h).
   if (scancode >= kt::sdl_scancode_min && scancode <= kt::sdl_scancode_max) {
-    return static_cast<LinAppleKey>(kt::positional_key_base + scancode);
+    return static_cast<LinAppleKey_t>(kt::positional_key_base + scancode);
   }
-  return LINAPPLE_KEY_UNKNOWN;
+  return linapple_key_unknown;
 }
 
 auto keyboard_parse_host_key(const char* name) -> uint32_t {

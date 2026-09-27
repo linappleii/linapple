@@ -7,9 +7,6 @@
 #include <string>
 #include <vector>
 
-#include "apple2/peripherals/Peripheral.h"
-#include "apple2/peripherals/disk/DiskCommands.h"
-#include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
@@ -21,7 +18,6 @@
 namespace {
 
 constexpr size_t EXT_LIST_CAP = 256;
-constexpr int HARDDISK_SLOT = 7;
 
 struct FtpGeneratorContext_t {
   std::string directory;
@@ -125,7 +121,6 @@ auto ftp_gen_destroy(FileListGenerator_t* self) -> void {
 
 }  // namespace
 
-
 auto file_browser_create_ftp_generator(const char* directory,
                                        const char* filter_extensions)
     -> FileListGenerator_t* {
@@ -159,20 +154,13 @@ auto file_browser_create_ftp_generator(const char* directory,
   return gen;
 }
 
-
 auto choose_an_image_ftp(int sx, int sy, const std::string& ftp_dir, int slot,
                          std::string& filename, bool& isdir, size_t& index_file)
     -> bool {
 #if ENABLE_FTP
   char supported_exts[EXT_LIST_CAP] = {};
-  size_t exts_size = sizeof(supported_exts);
-  if (slot == HARDDISK_SLOT) {
-    (void)peripheral_query(HARDDISK_SLOT, harddisk_query_supported_extensions,
-                           supported_exts, &exts_size);
-  } else {
-    (void)peripheral_query(slot, disk_query_supported_extensions,
-                           supported_exts, &exts_size);
-  }
+  linapple_get_supported_disk_extensions(slot, supported_exts,
+                                         sizeof(supported_exts));
 
   FileListGenerator_t* generator =
       file_browser_create_ftp_generator(ftp_dir.c_str(), supported_exts);

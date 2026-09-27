@@ -145,8 +145,8 @@ auto CmdGo(int nArgs, const bool bFullSpeed) -> Update_t {
   g_last_go_cmd_was_full_speed = bFullSpeed;
   g_go_cmd_reinit_flag = true;
 
-  g_state.mode = MODE_STEPPING;
-  frame_refresh_status(DRAW_TITLE);
+  g_state.mode = app_mode_stepping;
+  frame_refresh_status(draw_title);
 
   audio_mixer_set_fade(fade_in);
 
@@ -234,8 +234,8 @@ auto CmdTrace(int nArgs) -> Update_t {
   g_debug_step_cycles = 0;
   g_debug_step_start = cpu_get_registers()->pc;
   g_debug_step_until = -1;
-  g_state.mode = MODE_STEPPING;
-  frame_refresh_status(DRAW_TITLE);
+  g_state.mode = app_mode_stepping;
+  frame_refresh_status(draw_title);
   DebugContinueStepping(true);
 
   return UPDATE_ALL;  // TODO: Verify // 0
@@ -288,8 +288,8 @@ auto CmdTraceLine(int nArgs) -> Update_t {
   g_debug_step_start = cpu_get_registers()->pc;
   g_debug_step_until = -1;
 
-  g_state.mode = MODE_STEPPING;
-  frame_refresh_status(DRAW_TITLE);
+  g_state.mode = app_mode_stepping;
+  frame_refresh_status(draw_title);
   DebugContinueStepping(true);
 
   return UPDATE_ALL;  // TODO: Verify // 0
@@ -485,11 +485,11 @@ auto DebugContinueStepping(const bool bCallerWillUpdateDisplay) -> void {
         (cpu_get_registers()->pc < (g_debug_skip_start + g_debug_skip_len))) {
       // Enter turbo debugger mode -- UI not updated, etc.
       g_debug_steps = -1;
-      g_state.mode = MODE_STEPPING;
+      g_state.mode = app_mode_stepping;
     } else {
       // Enter normal debugger mode -- UI updated every instruction, etc.
       g_debug_steps = 1;
-      g_state.mode = MODE_STEPPING;
+      g_state.mode = app_mode_stepping;
     }
   }
 
@@ -531,8 +531,8 @@ auto DebugContinueStepping(const bool bCallerWillUpdateDisplay) -> void {
       bForceSingleStepNext = false;
 
       // Single-step the CPU
-      if (g_state.mode == MODE_DEBUG) {
-        g_state.mode = MODE_STEPPING;
+      if (g_state.mode == app_mode_debug) {
+        g_state.mode = app_mode_stepping;
       }
 
       cpu_step();
@@ -540,7 +540,7 @@ auto DebugContinueStepping(const bool bCallerWillUpdateDisplay) -> void {
   }
 
   if ((g_debug_steps == 0) && (!bForceSingleStepNext)) {
-    g_state.mode = MODE_DEBUG;
+    g_state.mode = app_mode_debug;
     g_debug_steps = 0;
 
     DisasmCalcTopBotAddress();
@@ -552,14 +552,14 @@ auto DebugContinueStepping(const bool bCallerWillUpdateDisplay) -> void {
 }
 
 auto DebugStopStepping() -> void {
-  assert(g_state.mode == MODE_STEPPING);
+  assert(g_state.mode == app_mode_stepping);
 
-  if (g_state.mode != MODE_STEPPING) {
+  if (g_state.mode != app_mode_stepping) {
     return;
   }
 
   g_debug_steps = 0;  // On next DebugContinueStepping(), stop single-stepping
-                      // and transition to MODE_DEBUG
+                      // and transition to app_mode_debug
   ClearTempBreakpoints();
 }
 

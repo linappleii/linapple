@@ -12,10 +12,6 @@ struct PeripheralAudioInfo_t;
 enum CapsLockMode_t {
   caps_mode_host = 0,
   caps_mode_emulated = 1,
-
-  // Legacy uppercase aliases
-  CAPS_MODE_HOST = caps_mode_host,
-  CAPS_MODE_EMULATED = caps_mode_emulated,
 };
 
 enum LinAppleKey_t {
@@ -82,66 +78,6 @@ enum LinAppleKey_t {
   linapple_key_menu,
 };
 
-using LinAppleKey = LinAppleKey_t;
-
-constexpr LinAppleKey_t LINAPPLE_KEY_UNKNOWN = linapple_key_unknown;
-constexpr LinAppleKey_t LINAPPLE_KEY_RETURN = linapple_key_return;
-constexpr LinAppleKey_t LINAPPLE_KEY_ESCAPE = linapple_key_escape;
-constexpr LinAppleKey_t LINAPPLE_KEY_BACKSPACE = linapple_key_backspace;
-constexpr LinAppleKey_t LINAPPLE_KEY_TAB = linapple_key_tab;
-constexpr LinAppleKey_t LINAPPLE_KEY_SPACE = linapple_key_space;
-constexpr LinAppleKey_t LINAPPLE_KEY_UP = linapple_key_up;
-constexpr LinAppleKey_t LINAPPLE_KEY_DOWN = linapple_key_down;
-constexpr LinAppleKey_t LINAPPLE_KEY_LEFT = linapple_key_left;
-constexpr LinAppleKey_t LINAPPLE_KEY_RIGHT = linapple_key_right;
-constexpr LinAppleKey_t LINAPPLE_KEY_PAGEUP = linapple_key_pageup;
-constexpr LinAppleKey_t LINAPPLE_KEY_PAGEDOWN = linapple_key_pagedown;
-constexpr LinAppleKey_t LINAPPLE_KEY_HOME = linapple_key_home;
-constexpr LinAppleKey_t LINAPPLE_KEY_END = linapple_key_end;
-constexpr LinAppleKey_t LINAPPLE_KEY_INSERT = linapple_key_insert;
-constexpr LinAppleKey_t LINAPPLE_KEY_DELETE = linapple_key_delete;
-constexpr LinAppleKey_t LINAPPLE_KEY_PAUSE = linapple_key_pause;
-constexpr LinAppleKey_t LINAPPLE_KEY_SCROLLLOCK = linapple_key_scrolllock;
-constexpr LinAppleKey_t LINAPPLE_KEY_CAPSLOCK = linapple_key_capslock;
-constexpr LinAppleKey_t LINAPPLE_KEY_PRINT = linapple_key_print;
-constexpr LinAppleKey_t LINAPPLE_KEY_F1 = linapple_key_f1;
-constexpr LinAppleKey_t LINAPPLE_KEY_F2 = linapple_key_f2;
-constexpr LinAppleKey_t LINAPPLE_KEY_F3 = linapple_key_f3;
-constexpr LinAppleKey_t LINAPPLE_KEY_F4 = linapple_key_f4;
-constexpr LinAppleKey_t LINAPPLE_KEY_F5 = linapple_key_f5;
-constexpr LinAppleKey_t LINAPPLE_KEY_F6 = linapple_key_f6;
-constexpr LinAppleKey_t LINAPPLE_KEY_F7 = linapple_key_f7;
-constexpr LinAppleKey_t LINAPPLE_KEY_F8 = linapple_key_f8;
-constexpr LinAppleKey_t LINAPPLE_KEY_F9 = linapple_key_f9;
-constexpr LinAppleKey_t LINAPPLE_KEY_F10 = linapple_key_f10;
-constexpr LinAppleKey_t LINAPPLE_KEY_F11 = linapple_key_f11;
-constexpr LinAppleKey_t LINAPPLE_KEY_F12 = linapple_key_f12;
-constexpr LinAppleKey_t LINAPPLE_KEY_KP_0 = linapple_key_kp_0;
-constexpr LinAppleKey_t LINAPPLE_KEY_KP_1 = linapple_key_kp_1;
-constexpr LinAppleKey_t LINAPPLE_KEY_KP_2 = linapple_key_kp_2;
-constexpr LinAppleKey_t LINAPPLE_KEY_KP_3 = linapple_key_kp_3;
-constexpr LinAppleKey_t LINAPPLE_KEY_KP_4 = linapple_key_kp_4;
-constexpr LinAppleKey_t LINAPPLE_KEY_KP_5 = linapple_key_kp_5;
-constexpr LinAppleKey_t LINAPPLE_KEY_KP_6 = linapple_key_kp_6;
-constexpr LinAppleKey_t LINAPPLE_KEY_KP_7 = linapple_key_kp_7;
-constexpr LinAppleKey_t LINAPPLE_KEY_KP_8 = linapple_key_kp_8;
-constexpr LinAppleKey_t LINAPPLE_KEY_KP_9 = linapple_key_kp_9;
-constexpr LinAppleKey_t LINAPPLE_KEY_KP_PLUS = linapple_key_kp_plus;
-constexpr LinAppleKey_t LINAPPLE_KEY_KP_MINUS = linapple_key_kp_minus;
-constexpr LinAppleKey_t LINAPPLE_KEY_KP_MULTIPLY = linapple_key_kp_multiply;
-constexpr LinAppleKey_t LINAPPLE_KEY_KP_DIVIDE = linapple_key_kp_divide;
-constexpr LinAppleKey_t LINAPPLE_KEY_KP_ENTER = linapple_key_kp_enter;
-constexpr LinAppleKey_t LINAPPLE_KEY_KP_PERIOD = linapple_key_kp_period;
-constexpr LinAppleKey_t LINAPPLE_KEY_LSHIFT = linapple_key_lshift;
-constexpr LinAppleKey_t LINAPPLE_KEY_RSHIFT = linapple_key_rshift;
-constexpr LinAppleKey_t LINAPPLE_KEY_LCTRL = linapple_key_lctrl;
-constexpr LinAppleKey_t LINAPPLE_KEY_RCTRL = linapple_key_rctrl;
-constexpr LinAppleKey_t LINAPPLE_KEY_LALT = linapple_key_lalt;
-constexpr LinAppleKey_t LINAPPLE_KEY_RALT = linapple_key_ralt;
-constexpr LinAppleKey_t LINAPPLE_KEY_LGUI = linapple_key_lgui;
-constexpr LinAppleKey_t LINAPPLE_KEY_RGUI = linapple_key_rgui;
-constexpr LinAppleKey_t LINAPPLE_KEY_MENU = linapple_key_menu;
-
 enum AppMode_t {
   app_mode_logo = 0,
   app_mode_paused,
@@ -150,15 +86,6 @@ enum AppMode_t {
   app_mode_stepping,
   app_mode_disk_choose,
   app_mode_exit,
-
-  // Legacy uppercase aliases
-  MODE_LOGO = app_mode_logo,
-  MODE_PAUSED = app_mode_paused,
-  MODE_RUNNING = app_mode_running,
-  MODE_DEBUG = app_mode_debug,
-  MODE_STEPPING = app_mode_stepping,
-  MODE_DISK_CHOOSE = app_mode_disk_choose,
-  MODE_EXIT = app_mode_exit,
 };
 
 constexpr size_t path_max_len = 260;
@@ -192,38 +119,21 @@ constexpr uint32_t emulation_speed_min = 0;
 constexpr uint32_t emulation_speed_normal = 10;
 constexpr uint32_t emulation_speed_max = 40;
 
-// Legacy speed aliases
-constexpr uint32_t SPEED_MIN = emulation_speed_min;
-constexpr uint32_t SPEED_NORMAL = emulation_speed_normal;
-
 constexpr uint32_t draw_background = 1;
 constexpr uint32_t draw_leds = 2;
 constexpr uint32_t draw_title = 4;
 constexpr uint32_t draw_button_drives = 8;
-
-// Legacy draw aliases
-constexpr uint32_t DRAW_BACKGROUND = draw_background;
-constexpr uint32_t DRAW_LEDS = draw_leds;
-constexpr uint32_t DRAW_TITLE = draw_title;
-constexpr uint32_t DRAW_BUTTON_DRIVES = draw_button_drives;
 
 constexpr const char* title_apple_2 = "Apple ][ Emulator";
 constexpr const char* title_apple_2_plus = "Apple ][+ Emulator";
 constexpr const char* title_apple_2e = "Apple //e Emulator";
 constexpr const char* title_apple_2e_enhanced = "Enhanced Apple //e Emulator";
 
-// Legacy title aliases
-constexpr const char* TITLE_APPLE_2 = title_apple_2;
-constexpr const char* TITLE_APPLE_2_PLUS = title_apple_2_plus;
-constexpr const char* TITLE_APPLE_2E = title_apple_2e;
-constexpr const char* TITLE_APPLE_2E_ENHANCED = title_apple_2e_enhanced;
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 extern const char* g_app_title;
-extern uint64_t cumulative_cycles;
 extern uint32_t emul_msec;
 extern bool g_full_speed;
 extern bool hdd_enabled;
@@ -247,6 +157,9 @@ auto linapple_shutdown() -> void;
 auto linapple_cpu_test(const char* test_file, uint16_t trap_addr) -> void;
 [[nodiscard]] auto linapple_get_ticks() noexcept -> uint32_t;
 auto linapple_load_program(const char* path) -> int;
+auto linapple_get_supported_disk_extensions(int slot, char* out_buffer,
+                                            size_t buffer_size) -> size_t;
+[[nodiscard]] auto linapple_is_supported_disk_image(const char* path) -> bool;
 auto linapple_list_hardware() -> void;
 auto linapple_run_frame(uint32_t cycles) -> uint32_t;
 auto linapple_reset_hard() -> void;
@@ -269,8 +182,7 @@ auto peripheral_manager_shutdown() -> void;
 auto peripheral_manager_think(uint32_t cycles) -> void;
 auto peripheral_manager_on_vblank(bool vblank) -> void;
 [[nodiscard]] auto peripheral_is_any_active() -> bool;
-// Core-internal: it exists so a late subscriber can be handed the state that
-// already exists.
+
 auto peripheral_announce_audio_sources() -> void;
 
 auto peripheral_command(int slot, uint32_t cmd_id, const void* data,

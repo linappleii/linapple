@@ -93,7 +93,7 @@ TEST_CASE("SDL3 Frontend draw_frame_window Scaled Stretching") {
 
   g_state.screen_width = 1120;
   g_state.screen_height = 768;
-  g_state.mode = MODE_LOGO;
+  g_state.mode = app_mode_logo;
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
@@ -284,11 +284,11 @@ TEST_CASE("SDL3 Frontend Help Screen Window Close Event Handling") {
 }
 
 TEST_CASE("SDL3 Frontend Main Event Handler Window Close Request") {
-  g_state.mode = MODE_RUNNING;
+  g_state.mode = app_mode_running;
   SDL_Event close_event{};
   close_event.type = SDL_EVENT_WINDOW_CLOSE_REQUESTED;
   sdl_handle_event(&close_event);
-  CHECK(g_state.mode == MODE_EXIT);
+  CHECK(g_state.mode == app_mode_exit);
 }
 
 TEST_CASE("SDL3 Frontend Help Screen Scaling at High Screen Factors") {
@@ -464,7 +464,7 @@ TEST_CASE("SDL3 Frontend Help Screen F12 Event Handling") {
   REQUIRE(win_result == 0);
   REQUIRE(g_screen != nullptr);
 
-  g_state.mode = MODE_RUNNING;
+  g_state.mode = app_mode_running;
 
   SDL_Event key_event{};
   key_event.type = SDL_EVENT_KEY_DOWN;
@@ -476,7 +476,7 @@ TEST_CASE("SDL3 Frontend Help Screen F12 Event Handling") {
   frame_show_help_screen(static_cast<int>(g_state.screen_width),
                          static_cast<int>(g_state.screen_height));
 
-  CHECK(g_state.mode == MODE_EXIT);
+  CHECK(g_state.mode == app_mode_exit);
 
   SDL_Event polled_event{};
   int count = SDL_PeepEvents(&polled_event, 1, SDL_GETEVENT, SDL_EVENT_FIRST,
@@ -503,7 +503,7 @@ TEST_CASE("SDL3 Frontend Disk Choose Quit Event Handling") {
   REQUIRE(win_result == 0);
   REQUIRE(g_screen != nullptr);
 
-  g_state.mode = MODE_RUNNING;
+  g_state.mode = app_mode_running;
 
   // Push an SDL_EVENT_QUIT event into the event queue
   SDL_Event quit_event{};
@@ -518,7 +518,7 @@ TEST_CASE("SDL3 Frontend Disk Choose Quit Event Handling") {
                                 static_cast<int>(g_state.screen_height), ".", 6,
                                 filename, isdir, index_file);
   CHECK(!chosen);
-  CHECK(g_state.mode == MODE_EXIT);
+  CHECK(g_state.mode == app_mode_exit);
 
   // Verify that SDL_EVENT_QUIT was re-pushed and is available in the event
   // queue
@@ -547,7 +547,7 @@ TEST_CASE("SDL3 Frontend Disk Choose Key Down Dismissal") {
   REQUIRE(win_result == 0);
   REQUIRE(g_screen != nullptr);
 
-  g_state.mode = MODE_RUNNING;
+  g_state.mode = app_mode_running;
 
   // Push an ESCAPE key down event into the event queue
   SDL_Event key_event{};
@@ -564,7 +564,7 @@ TEST_CASE("SDL3 Frontend Disk Choose Key Down Dismissal") {
                                 static_cast<int>(g_state.screen_height), ".", 6,
                                 filename, isdir, index_file);
   CHECK(!chosen);
-  CHECK(g_state.mode == MODE_RUNNING);
+  CHECK(g_state.mode == app_mode_running);
 
   // Verify that the event queue is drained
   SDL_Event polled_event{};
@@ -591,7 +591,7 @@ TEST_CASE("SDL3 Frontend Disk Choose Window Close Event Handling") {
   REQUIRE(win_result == 0);
   REQUIRE(g_screen != nullptr);
 
-  g_state.mode = MODE_RUNNING;
+  g_state.mode = app_mode_running;
 
   // Push an SDL_EVENT_WINDOW_CLOSE_REQUESTED event into the event queue
   SDL_Event close_event{};
@@ -606,7 +606,7 @@ TEST_CASE("SDL3 Frontend Disk Choose Window Close Event Handling") {
                                 static_cast<int>(g_state.screen_height), ".", 6,
                                 filename, isdir, index_file);
   CHECK(!chosen);
-  CHECK(g_state.mode == MODE_EXIT);
+  CHECK(g_state.mode == app_mode_exit);
 
   // Verify that SDL_EVENT_WINDOW_CLOSE_REQUESTED was re-pushed and is available
   SDL_Event polled_event{};
@@ -634,7 +634,7 @@ TEST_CASE("SDL3 Frontend Disk Choose F12 Event Handling") {
   REQUIRE(win_result == 0);
   REQUIRE(g_screen != nullptr);
 
-  g_state.mode = MODE_RUNNING;
+  g_state.mode = app_mode_running;
 
   SDL_Event key_event{};
   key_event.type = SDL_EVENT_KEY_DOWN;
@@ -650,7 +650,7 @@ TEST_CASE("SDL3 Frontend Disk Choose F12 Event Handling") {
                                 static_cast<int>(g_state.screen_height), ".", 6,
                                 filename, isdir, index_file);
   CHECK(!chosen);
-  CHECK(g_state.mode == MODE_EXIT);
+  CHECK(g_state.mode == app_mode_exit);
 
   SDL_Event polled_event{};
   int count = SDL_PeepEvents(&polled_event, 1, SDL_GETEVENT, SDL_EVENT_FIRST,
