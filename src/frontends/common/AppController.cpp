@@ -197,9 +197,10 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
     g_current_clk_6502 = CLOCK_6502_NTSC;
   }
 
-  int config_speed = Configuration_t::instance().get_int(
-      "Configuration", "Emulation Speed", SPEED_NORMAL);
-  if (config_speed >= SPEED_MIN && config_speed <= emulation_speed_max) {
+  const int config_speed = Configuration_t::instance().get_int(
+      "Configuration", "Emulation Speed", static_cast<int>(SPEED_NORMAL));
+  if (config_speed >= 0 &&
+      static_cast<uint32_t>(config_speed) <= emulation_speed_max) {
     g_state.speed = static_cast<uint32_t>(config_speed);
   }
 

@@ -11,7 +11,6 @@
 #include "apple2/Memory.h"
 #include "apple2/SnapshotTypes.h"
 #include "apple2/peripherals/Peripheral_Types.h"
-#include "core/LinAppleCore.h"
 #include "core/Util_Endian.h"
 
 // Unavoidable hardware architectural constraints for low-level 6502 CPU core
@@ -3027,7 +3026,7 @@ auto cpu_calc_cycles(uint32_t executed_cycles) -> void {
 
 auto cpu_get_cycles_this_frame(uint32_t executed_cycles) -> uint32_t {
   cpu_calc_cycles(executed_cycles);
-  return g_cycles_this_frame + g_cycles_executed;
+  return g_cycles_executed;
 }
 
 auto cpu_execute(uint32_t total_cycles) -> uint32_t {

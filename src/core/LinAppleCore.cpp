@@ -33,42 +33,45 @@
 using Logger::error;
 using Logger::info;
 
-static const char TITLE_APPLE_2_[] = "Apple ][ Emulator";
-static const char TITLE_APPLE_2_PLUS_[] = "Apple ][+ Emulator";
-static const char TITLE_APPLE_2E_[] = "Apple //e Emulator";
-static const char TITLE_APPLE_2E_ENHANCED_[] = "Enhanced Apple //e Emulator";
-
-const char* g_app_title = TITLE_APPLE_2E_ENHANCED_;
-char videoDriverName[video_driver_name_max_len]{};
+const char* g_app_title = title_apple_2e_enhanced;
 
 eApple2Type g_apple2_type = A2TYPE_APPLE2EENHANCED;
 eApple2Language g_language = A2LANG_US;
 
 uint64_t cumulative_cycles = 0;
-uint64_t cycle_num = 0;
 uint32_t emul_msec = 0;
 bool g_full_speed = false;
 bool hdd_enabled = false;
 
-SystemState_t g_state = {
-    MODE_LOGO,     false, false, SPEED_NORMAL, SCREEN_WIDTH,
-    SCREEN_HEIGHT, false, {""},  {""},         {""},
-    {""},          {""},  {""},  {""},         {"anonymous:mymail@hotmail.com"},
-    {""},          true,  17030, false};
+SystemState_t g_state = {app_mode_logo,
+                         false,
+                         false,
+                         emulation_speed_normal,
+                         SCREEN_WIDTH,
+                         SCREEN_HEIGHT,
+                         false,
+                         {""},
+                         {""},
+                         {""},
+                         {""},
+                         {""},
+                         {""},
+                         {""},
+                         {"anonymous:mymail@hotmail.com"},
+                         {""},
+                         true,
+                         17030,
+                         false};
 
 double g_current_clk_6502 = CLOCK_6502;
-int g_cpu_cycles_feedback = 0;
-uint32_t g_cycles_this_frame = 0;
 
-bool g_disable_direct_sound = false;
-
-uint32_t g_slot4 = CT_Mockingboard;
-
-auto get_title_apple_2() -> const char* { return TITLE_APPLE_2_; }
-auto get_title_apple_2_plus() -> const char* { return TITLE_APPLE_2_PLUS_; }
-auto get_title_apple_2e() -> const char* { return TITLE_APPLE_2E_; }
-auto get_title_apple_2e_enhanced() -> const char* {
-  return TITLE_APPLE_2E_ENHANCED_;
+auto get_title_apple_2() noexcept -> const char* { return title_apple_2; }
+auto get_title_apple_2_plus() noexcept -> const char* {
+  return title_apple_2_plus;
+}
+auto get_title_apple_2e() noexcept -> const char* { return title_apple_2e; }
+auto get_title_apple_2e_enhanced() noexcept -> const char* {
+  return title_apple_2e_enhanced;
 }
 
 namespace {
@@ -128,7 +131,7 @@ auto linapple_update_title(const char* title) -> void {
   }
 }
 
-auto linapple_get_ticks() -> uint32_t {
+auto linapple_get_ticks() noexcept -> uint32_t {
   static auto start_time = std::chrono::steady_clock::now();
   auto now = std::chrono::steady_clock::now();
   return std::chrono::duration_cast<std::chrono::milliseconds>(now - start_time)
@@ -143,8 +146,7 @@ static auto is_disk_turbo() -> bool {
 }
 
 static auto is_user_turbo() -> bool {
-  return s_user_turbo ||
-         (g_state.speed >= static_cast<uint32_t>(emulation_speed_max));
+  return s_user_turbo || (g_state.speed >= emulation_speed_max);
 }
 
 static auto should_run_full_speed() -> bool {
@@ -235,7 +237,6 @@ auto linapple_cpu_test(const char* test_file, uint16_t trap_addr) -> void {
     if (executed == 0) {
       break;
     }
-    cycle_num += executed;
     g_cumulative_cycles += executed;
     count += executed;
     if (cpu_get_registers()->pc == trap_addr) {
@@ -290,7 +291,6 @@ static auto internal_run_cycles(uint32_t dw_cycles) -> uint32_t {
   }
 
   uint32_t executed_cycles = cpu_execute(dw_cycles);
-  cycle_num += executed_cycles;
   cumulative_cycles = g_cumulative_cycles;
 
   peripheral_manager_think(executed_cycles);
@@ -332,44 +332,44 @@ auto linapple_run_frame(uint32_t cycles) -> uint32_t {
   return 0;
 }
 
-auto linapple_get_speed() -> uint32_t { return g_state.speed; }
+auto linapple_get_speed() noexcept -> uint32_t { return g_state.speed; }
 
-auto linapple_set_speed(uint32_t speed) -> void {
-  if (speed > static_cast<uint32_t>(emulation_speed_max)) {
-    speed = static_cast<uint32_t>(emulation_speed_max);
+auto linapple_set_speed(uint32_t speed) noexcept -> void {
+  if (speed > emulation_speed_max) {
+    speed = emulation_speed_max;
   }
   g_state.speed = speed;
 }
 
-auto linapple_speed_increase() -> uint32_t {
+auto linapple_speed_increase() noexcept -> uint32_t {
   uint32_t next_speed = g_state.speed + 2;
-  if (next_speed > static_cast<uint32_t>(emulation_speed_max)) {
-    next_speed = static_cast<uint32_t>(emulation_speed_max);
+  if (next_speed > emulation_speed_max) {
+    next_speed = emulation_speed_max;
   }
   g_state.speed = next_speed;
   return g_state.speed;
 }
 
-auto linapple_speed_decrease() -> uint32_t {
-  if (g_state.speed > static_cast<uint32_t>(SPEED_MIN)) {
+auto linapple_speed_decrease() noexcept -> uint32_t {
+  if (g_state.speed > emulation_speed_min) {
     g_state.speed -= 1;
   }
   return g_state.speed;
 }
 
-auto linapple_speed_reset() -> uint32_t {
-  g_state.speed = static_cast<uint32_t>(SPEED_NORMAL);
+auto linapple_speed_reset() noexcept -> uint32_t {
+  g_state.speed = emulation_speed_normal;
   return g_state.speed;
 }
 
-auto linapple_get_frame_cycles() -> uint32_t {
+auto linapple_get_frame_cycles() noexcept -> uint32_t {
   uint32_t base_cycles =
       (g_state.clks_per_frame > 0) ? g_state.clks_per_frame : 17030;
-  if (g_state.speed == static_cast<uint32_t>(SPEED_NORMAL)) {
+  if (g_state.speed == emulation_speed_normal) {
     return base_cycles;
   }
   double multiplier = 1.0;
-  if (g_state.speed < static_cast<uint32_t>(SPEED_NORMAL)) {
+  if (g_state.speed < emulation_speed_normal) {
     multiplier = 0.5 + static_cast<double>(g_state.speed) * 0.05;
   } else {
     multiplier = static_cast<double>(g_state.speed) / 10.0;
@@ -377,11 +377,11 @@ auto linapple_get_frame_cycles() -> uint32_t {
   return static_cast<uint32_t>(static_cast<double>(base_cycles) * multiplier);
 }
 
-auto linapple_get_turbo() -> bool { return s_user_turbo; }
+auto linapple_get_turbo() noexcept -> bool { return s_user_turbo; }
 
-auto linapple_set_turbo(bool turbo) -> void { s_user_turbo = turbo; }
+auto linapple_set_turbo(bool turbo) noexcept -> void { s_user_turbo = turbo; }
 
-auto linapple_toggle_turbo() -> bool {
+auto linapple_toggle_turbo() noexcept -> bool {
   s_user_turbo = !s_user_turbo;
   return s_user_turbo;
 }

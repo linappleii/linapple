@@ -9,6 +9,15 @@
 
 struct PeripheralAudioInfo_t;
 
+enum CapsLockMode_t {
+  caps_mode_host = 0,
+  caps_mode_emulated = 1,
+
+  // Legacy uppercase aliases
+  CAPS_MODE_HOST = caps_mode_host,
+  CAPS_MODE_EMULATED = caps_mode_emulated,
+};
+
 enum LinAppleKey_t {
   linapple_key_unknown = 0,
   linapple_key_return = 0x0D,
@@ -70,7 +79,7 @@ enum LinAppleKey_t {
   linapple_key_ralt,
   linapple_key_lgui,
   linapple_key_rgui,
-  linapple_key_menu
+  linapple_key_menu,
 };
 
 using LinAppleKey = LinAppleKey_t;
@@ -134,20 +143,28 @@ constexpr LinAppleKey_t LINAPPLE_KEY_RGUI = linapple_key_rgui;
 constexpr LinAppleKey_t LINAPPLE_KEY_MENU = linapple_key_menu;
 
 enum AppMode_t {
-  MODE_LOGO = 0,
-  MODE_PAUSED,
-  MODE_RUNNING,
-  MODE_DEBUG,
-  MODE_STEPPING,
-  MODE_DISK_CHOOSE,
-  MODE_EXIT,
+  app_mode_logo = 0,
+  app_mode_paused,
+  app_mode_running,
+  app_mode_debug,
+  app_mode_stepping,
+  app_mode_disk_choose,
+  app_mode_exit,
+
+  // Legacy uppercase aliases
+  MODE_LOGO = app_mode_logo,
+  MODE_PAUSED = app_mode_paused,
+  MODE_RUNNING = app_mode_running,
+  MODE_DEBUG = app_mode_debug,
+  MODE_STEPPING = app_mode_stepping,
+  MODE_DISK_CHOOSE = app_mode_disk_choose,
+  MODE_EXIT = app_mode_exit,
 };
 
-constexpr int path_max_len = 260;
+constexpr size_t path_max_len = 260;
 constexpr size_t ftp_user_pass_max_len = 512;
-constexpr size_t video_driver_name_max_len = 100;
 
-using SystemState_t = struct SystemState_tag {
+struct SystemState_t {
   AppMode_t mode;
   bool restart;
   bool fullscreen;
@@ -171,41 +188,46 @@ using SystemState_t = struct SystemState_tag {
 
 extern SystemState_t g_state;
 
-constexpr int SPEED_MIN = 0;
-constexpr int SPEED_NORMAL = 10;
-constexpr int emulation_speed_max = 40;
+constexpr uint32_t emulation_speed_min = 0;
+constexpr uint32_t emulation_speed_normal = 10;
+constexpr uint32_t emulation_speed_max = 40;
 
-constexpr uint32_t DRAW_BACKGROUND = 1;
-constexpr uint32_t DRAW_LEDS = 2;
-constexpr uint32_t DRAW_TITLE = 4;
-constexpr uint32_t DRAW_BUTTON_DRIVES = 8;
+// Legacy speed aliases
+constexpr uint32_t SPEED_MIN = emulation_speed_min;
+constexpr uint32_t SPEED_NORMAL = emulation_speed_normal;
 
-constexpr const char* TITLE_APPLE_2 = "Apple ][ Emulator";
-constexpr const char* TITLE_APPLE_2_PLUS = "Apple ][+ Emulator";
-constexpr const char* TITLE_APPLE_2E = "Apple //e Emulator";
-constexpr const char* TITLE_APPLE_2E_ENHANCED = "Enhanced Apple //e Emulator";
+constexpr uint32_t draw_background = 1;
+constexpr uint32_t draw_leds = 2;
+constexpr uint32_t draw_title = 4;
+constexpr uint32_t draw_button_drives = 8;
 
-constexpr const char* TITLE_PAUSED = " Paused ";
-constexpr const char* TITLE_STEPPING = "Stepping";
+// Legacy draw aliases
+constexpr uint32_t DRAW_BACKGROUND = draw_background;
+constexpr uint32_t DRAW_LEDS = draw_leds;
+constexpr uint32_t DRAW_TITLE = draw_title;
+constexpr uint32_t DRAW_BUTTON_DRIVES = draw_button_drives;
 
-using CURL = void;
+constexpr const char* title_apple_2 = "Apple ][ Emulator";
+constexpr const char* title_apple_2_plus = "Apple ][+ Emulator";
+constexpr const char* title_apple_2e = "Apple //e Emulator";
+constexpr const char* title_apple_2e_enhanced = "Enhanced Apple //e Emulator";
+
+// Legacy title aliases
+constexpr const char* TITLE_APPLE_2 = title_apple_2;
+constexpr const char* TITLE_APPLE_2_PLUS = title_apple_2_plus;
+constexpr const char* TITLE_APPLE_2E = title_apple_2e;
+constexpr const char* TITLE_APPLE_2E_ENHANCED = title_apple_2e_enhanced;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 extern const char* g_app_title;
-extern char videoDriverName[video_driver_name_max_len];
 extern uint64_t cumulative_cycles;
-extern uint64_t cycle_num;
 extern uint32_t emul_msec;
 extern bool g_full_speed;
 extern bool hdd_enabled;
 extern double g_current_clk_6502;
-extern int g_cpu_cycles_feedback;
-extern uint32_t g_cycles_this_frame;
-extern bool g_disable_direct_sound;
-extern uint32_t g_slot4;
 
 using LinappleVideoCallback_t = void (*)(const uint32_t* pixels, int width,
                                          int height, int pitch);
@@ -219,41 +241,37 @@ using FrontendAudioSourceRegisterCallback_t = void (*)(
 using FrontendAudioSourceUnregisterCallback_t = void (*)(int slot);
 using LinappleTitleCallback_t = void (*)(const char* title);
 
-using LinappleVideoCallback = LinappleVideoCallback_t;
-using LinappleTitleCallback = LinappleTitleCallback_t;
-
 auto linapple_init() -> int;
 auto linapple_register_peripherals() -> void;
 auto linapple_shutdown() -> void;
 auto linapple_cpu_test(const char* test_file, uint16_t trap_addr) -> void;
-auto linapple_get_ticks() -> uint32_t;
+[[nodiscard]] auto linapple_get_ticks() noexcept -> uint32_t;
 auto linapple_load_program(const char* path) -> int;
 auto linapple_list_hardware() -> void;
 auto linapple_run_frame(uint32_t cycles) -> uint32_t;
 auto linapple_reset_hard() -> void;
 auto linapple_reset_soft() -> void;
 
-auto linapple_get_speed() -> uint32_t;
-auto linapple_set_speed(uint32_t speed) -> void;
-auto linapple_speed_increase() -> uint32_t;
-auto linapple_speed_decrease() -> uint32_t;
-auto linapple_speed_reset() -> uint32_t;
-auto linapple_get_frame_cycles() -> uint32_t;
+[[nodiscard]] auto linapple_get_speed() noexcept -> uint32_t;
+auto linapple_set_speed(uint32_t speed) noexcept -> void;
+auto linapple_speed_increase() noexcept -> uint32_t;
+auto linapple_speed_decrease() noexcept -> uint32_t;
+auto linapple_speed_reset() noexcept -> uint32_t;
+[[nodiscard]] auto linapple_get_frame_cycles() noexcept -> uint32_t;
 
-auto linapple_get_turbo() -> bool;
-auto linapple_set_turbo(bool turbo) -> void;
-auto linapple_toggle_turbo() -> bool;
+[[nodiscard]] auto linapple_get_turbo() noexcept -> bool;
+auto linapple_set_turbo(bool turbo) noexcept -> void;
+auto linapple_toggle_turbo() noexcept -> bool;
 
 auto peripheral_manager_init() -> void;
 auto peripheral_manager_reset() -> void;
 auto peripheral_manager_shutdown() -> void;
 auto peripheral_manager_think(uint32_t cycles) -> void;
 auto peripheral_manager_on_vblank(bool vblank) -> void;
-auto peripheral_is_any_active() -> bool;
+[[nodiscard]] auto peripheral_is_any_active() -> bool;
 // Core-internal: it exists so a late subscriber can be handed the state that
 // already exists.
 auto peripheral_announce_audio_sources() -> void;
-auto linapple_list_hardware() -> void;
 
 auto peripheral_command(int slot, uint32_t cmd_id, const void* data,
                         size_t size) -> PeripheralStatus_t;
@@ -266,11 +284,9 @@ auto peripheral_query_by_id(int slot, const char* peripheral_id,
                             uint32_t cmd_id, void* out, size_t* out_size)
     -> PeripheralStatus_t;
 
-enum CapsLockMode_t { CAPS_MODE_HOST = 0, CAPS_MODE_EMULATED = 1 };
-
 auto linapple_set_key_state(uint8_t apple_code, bool down) -> void;
 auto linapple_set_caps_lock_state(bool enabled) -> void;
-auto linapple_get_caps_lock_state() -> bool;
+[[nodiscard]] auto linapple_get_caps_lock_state() -> bool;
 auto linapple_toggle_caps_lock_state() -> bool;
 auto linapple_set_apple_key(int key, bool down) -> void;
 auto linapple_set_joystick_axis(int axis, int value) -> void;
@@ -286,10 +302,10 @@ auto linapple_set_audio_source_unregister_callback(
 auto linapple_set_title_callback(LinappleTitleCallback_t cb) -> void;
 auto linapple_update_title(const char* title) -> void;
 
-auto get_title_apple_2() -> const char*;
-auto get_title_apple_2_plus() -> const char*;
-auto get_title_apple_2e() -> const char*;
-auto get_title_apple_2e_enhanced() -> const char*;
+[[nodiscard]] auto get_title_apple_2() noexcept -> const char*;
+[[nodiscard]] auto get_title_apple_2_plus() noexcept -> const char*;
+[[nodiscard]] auto get_title_apple_2e() noexcept -> const char*;
+[[nodiscard]] auto get_title_apple_2e_enhanced() noexcept -> const char*;
 
 #ifdef __cplusplus
 }
