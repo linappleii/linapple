@@ -466,8 +466,6 @@ static auto host_audio_push_channels(void* instance,
   }
 }
 
-extern void cpu_reset();
-
 static auto host_reset_system(void* instance) -> void {
   (void)instance;
   cpu_reset();

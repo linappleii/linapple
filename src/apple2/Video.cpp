@@ -169,14 +169,8 @@ static inline auto swl_dhires() -> bool {
 static inline auto swl_hires() -> bool {
   return (vidmode_latched & VF_HIRES) != 0;
 }
-static inline auto swl_mask2() -> bool {
-  return (vidmode_latched & VF_MASK2) != 0;
-}
 static inline auto swl_mixed() -> bool {
   return (vidmode_latched & VF_MIXED) != 0;
-}
-static inline auto swl_page2() -> bool {
-  return (vidmode_latched & VF_PAGE2) != 0;
 }
 static inline auto swl_text() -> bool {
   return (vidmode_latched & VF_TEXT) != 0;

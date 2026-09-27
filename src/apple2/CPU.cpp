@@ -3170,4 +3170,4 @@ auto cpu_set_snapshot(const SsCpu6502_t* snapshot) noexcept -> uint32_t {
 
 // NOLINTEND(cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-pro-bounds-pointer-arithmetic, bugprone-easily-swappable-parameters, google-readability-function-size)
 
-auto cpu_step() -> void { cpu_execute(0); }
+auto cpu_step() -> void { static_cast<void>(cpu_execute(0)); }
