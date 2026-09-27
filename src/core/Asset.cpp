@@ -1,32 +1,50 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "core/Asset.h"
 
-// Core asset and resource manager for font and splash surfaces
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, misc-include-cleaner, cppcoreguidelines-pro-type-cstyle-cast, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-init-variables)
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
 #include <memory>
 #include <string>
 
+#include "VideoSurface.h"
+#include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
-#include "apple2/peripherals/Peripheral.h"
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
+
 #include "font.xpm"
 #include "splash.xpm"
 
-static constexpr const char* asset_master_dsk = "Master.dsk";
+namespace {
 
-static std::unique_ptr<Assets_t> assets_ptr;
+constexpr const char* asset_master_dsk = "Master.dsk";
+
+std::unique_ptr<Assets_t> assets_ptr;
+AssetFreeIconFn_t free_icon_cb = nullptr;
+
+auto asset_find_master_disk(std::string* path_out) -> bool {
+  if (path_out == nullptr) {
+    return false;
+  }
+
+  std::string full_path = Path::find_data_file(asset_master_dsk);
+  if (full_path.empty()) {
+    Logger::warning("Could not find %s in any search path\n", asset_master_dsk);
+    return false;
+  }
+
+  *path_out = full_path;
+  Logger::info("Master disk: %s\n", path_out->c_str());
+  return true;
+}
+
+}  // namespace
+
 Assets_t* assets = nullptr;
-static AssetFreeIconFn_t s_free_icon_cb = nullptr;
 
-auto asset_set_free_icon_callback(AssetFreeIconFn_t cb) -> void {
-  s_free_icon_cb = cb;
+auto asset_set_free_icon_callback(AssetFreeIconFn_t cb) noexcept -> void {
+  free_icon_cb = cb;
 }
 
 auto asset_init() -> bool {
@@ -36,7 +54,6 @@ auto asset_init() -> bool {
 
   assets_ptr.reset(new Assets_t());
   assets = assets_ptr.get();
-  assets->icon = nullptr;
 
   assets->font = video_load_xpm(font_xpm);
   if (assets->font == nullptr) {
@@ -53,61 +70,45 @@ auto asset_init() -> bool {
   return true;
 }
 
-auto asset_quit() -> void {
-  if (assets != nullptr) {
-    if (s_free_icon_cb != nullptr) {
-      s_free_icon_cb();
-    }
-
-    if (assets->font != nullptr) {
-      video_destroy_surface(assets->font);
-      assets->font = nullptr;
-    }
-
-    if (assets->splash != nullptr) {
-      video_destroy_surface(assets->splash);
-      assets->splash = nullptr;
-    }
-
-    assets_ptr.reset();
-    assets = nullptr;
-  }
-}
-
-static auto asset_find_master_disk(char* path_out, size_t max_len) -> int {
-  if (path_out == nullptr || max_len == 0) {
-    return 255;
+auto asset_quit() noexcept -> void {
+  if (assets == nullptr) {
+    return;
   }
 
-  std::string full_path = Path::find_data_file(asset_master_dsk);
-  if (full_path.empty()) {
-    Logger::warning("Could not find %s in any search path\n", asset_master_dsk);
-    return 255;
+  if (free_icon_cb != nullptr) {
+    free_icon_cb();
   }
 
-  util_safe_strcpy(path_out, full_path.c_str(), max_len);
-  Logger::info("Master disk: %s\n", path_out);
-  return 0;
+  assets->icon = nullptr;
+
+  if (assets->font != nullptr) {
+    video_destroy_surface(assets->font);
+    assets->font = nullptr;
+  }
+
+  if (assets->splash != nullptr) {
+    video_destroy_surface(assets->splash);
+    assets->splash = nullptr;
+  }
+
+  assets_ptr.reset();
+  assets = nullptr;
 }
 
 auto asset_insert_master_disk() -> int {
-  char path[path_max_len]{};
-
-  int err = asset_find_master_disk(path, sizeof(path));
-  if (err != 0) {
-    return 255;
+  std::string path;
+  if (!asset_find_master_disk(&path)) {
+    return -1;
   }
 
-  Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1, path);
+  Configuration_t::instance().set_string("Slots", cfg_disk_image1, path);
 
   DiskInsertCmd_t cmd{};
   cmd.drive = disk_drive_0;
-  util_safe_strcpy(cmd.path, path, disk_insert_path_max);
+  util_safe_strcpy(cmd.path, path.c_str(), disk_insert_path_max);
   cmd.write_protected = 0;
 
   peripheral_command(disk_default_slot, disk_cmd_insert, &cmd, sizeof(cmd));
 
   return 0;
 }
-
-// NOLINTEND(cppcoreguidelines-avoid-magic-numbers, misc-include-cleaner, cppcoreguidelines-pro-type-cstyle-cast, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-init-variables)

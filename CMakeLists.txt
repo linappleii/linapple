@@ -940,6 +940,7 @@ done
     add_linapple_test(log tests/test_log.cpp)
     add_linapple_test(system-roms "tests/test_main.cpp;tests/test_system_roms.cpp")
     add_linapple_test(basic-live-sync "tests/test_main.cpp;tests/test_basic_live_sync.cpp")
+    add_linapple_test(asset "tests/test_main.cpp;tests/test_asset.cpp")
 
     add_linapple_test(file-browser tests/test_file_browser.cpp)
 
