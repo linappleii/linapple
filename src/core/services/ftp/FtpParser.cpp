@@ -130,11 +130,7 @@ auto totai(int64_t year, int64_t month, int64_t mday) noexcept -> int64_t {
 auto get_time_base() noexcept -> int64_t {
   time_t zero = 0;
   struct tm t{};
-#if defined(_WIN32)
-  gmtime_s(&t, &zero);
-#else
   gmtime_r(&zero, &t);
-#endif
   return -(totai(t.tm_year + k_base_year_tm, t.tm_mon, t.tm_mday) +
            static_cast<int64_t>(t.tm_hour * k_seconds_per_hour) +
            static_cast<int64_t>(t.tm_min * k_seconds_per_minute) + t.tm_sec);
@@ -143,11 +139,7 @@ auto get_time_base() noexcept -> int64_t {
 auto get_current_time() noexcept -> CurrentTime_t {
   const time_t raw_time = std::time(nullptr);
   struct tm t{};
-#if defined(_WIN32)
-  gmtime_s(&t, &raw_time);
-#else
   gmtime_r(&raw_time, &t);
-#endif
   CurrentTime_t result{};
   result.now_seconds = static_cast<int64_t>(raw_time);
   result.current_year = t.tm_year + k_base_year_tm;
