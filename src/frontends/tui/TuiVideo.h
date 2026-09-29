@@ -10,6 +10,8 @@
  */
 auto tui_video_initialize() -> void;
 
+auto tui_video_shutdown() -> void;
+
 /**
  * @brief Set the TUI graphics rendering mode (smart shape detector vs classic
  * block).

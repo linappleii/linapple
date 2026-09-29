@@ -14,7 +14,9 @@
 #include <string>
 #include <vector>
 
+#if ENABLE_DEBUGGER
 #include "Debugger/Debugger_Display.h"
+#endif
 #include "TuiDiskSelect.h"
 #include "TuiShapeDetector.h"
 #include "apple2/Memory.h"
@@ -597,6 +599,21 @@ auto tui_video_initialize() -> void {
   tui_video_on_resize();
 }
 
+auto tui_video_shutdown() -> void {
+  g_back_buffer.clear();
+  g_back_buffer.shrink_to_fit();
+  g_next_buffer.clear();
+  g_next_buffer.shrink_to_fit();
+  g_output_buffer.clear();
+  g_output_buffer.shrink_to_fit();
+  g_frame_count = 0;
+  g_show_help = false;
+  g_fullscreen = false;
+  system_state.fullscreen = false;
+  printf("\x1b[?7h");
+  fflush(stdout);
+}
+
 auto tui_video_on_resize() -> void {
   struct winsize w;
   if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == 0) {
@@ -713,6 +730,9 @@ static auto render_text_cell(int r, int c, bool is_80col, uint16_t page_offset,
 static auto render_gfx_cell(const uint32_t* pixels, int pitch, int width,
                             int sample_height, int x, int y, int gfx_w,
                             int gfx_h, TuiState_t& cell) -> void {
+  if (pixels == nullptr || pitch <= 0) {
+    return;
+  }
   if (g_render_mode == TUI_RENDER_SMART) {
     int x_start = (gfx_w > 0) ? (x * width / gfx_w) : 0;
     int x_end = (gfx_w > 0) ? ((x + 1) * width / gfx_w) : width;

@@ -15,6 +15,8 @@
 #include "frontends/common/AudioMixer.h"
 #include "frontends/common/FramePacer.h"
 
+namespace {
+
 auto video_callback(const uint32_t* pixels, int width, int height, int pitch)
     -> void {
   tui_video_render_frame(pixels, width, height, pitch);
@@ -37,6 +39,8 @@ auto audio_channel_callback(const char* peripheral_id, int slot,
 }
 
 auto title_callback(const char* title) -> void { (void)title; }
+
+}  // namespace
 
 auto main(int argc, char** argv) -> int {
   AppConfig_t& config = Configuration_t::instance();
@@ -78,7 +82,6 @@ auto main(int argc, char** argv) -> int {
 
     FramePacer_t pacer;
 
-    // Run until interrupted or restart requested
     while (!tui_terminal_is_interrupted() && !app_controller_should_restart()) {
       if (tui_terminal_was_resized()) {
         tui_terminal_clear_resized();
@@ -97,18 +100,22 @@ auto main(int argc, char** argv) -> int {
       if (!linapple_get_turbo()) {
         pacer.wait_for_next_frame();
       } else {
-        std::this_thread::yield();
         pacer.resync();
+        std::this_thread::yield();
       }
     }
 
-    app_controller_shutdown();
+    linapple_set_video_callback(nullptr);
+    linapple_set_title_callback(nullptr);
     linapple_set_audio_channel_callback(nullptr);
     linapple_set_audio_source_register_callback(nullptr);
     linapple_set_audio_source_unregister_callback(nullptr);
+
     tui_audio_shutdown();
-    audio_mixer_destroy();
+    tui_video_shutdown();
     tui_input_shutdown();
+
+    app_controller_shutdown();
   } while (app_controller_should_restart() && !tui_terminal_is_interrupted());
 
   tui_terminal_shutdown();

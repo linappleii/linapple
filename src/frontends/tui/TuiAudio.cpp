@@ -163,5 +163,7 @@ auto tui_audio_shutdown() -> void {
   }
 #endif
 
+  audio_mixer_destroy();
+
   g_driver = AudioDriver::None;
 }
