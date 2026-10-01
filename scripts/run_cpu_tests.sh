@@ -10,6 +10,14 @@ TRAP_65C02="0x2434"
 if [ -z "$EMULATOR" ]; then
     if [ -f "$REPO_ROOT/build/linapple" ]; then
         EMULATOR="$REPO_ROOT/build/linapple"
+    elif [ -f "$REPO_ROOT/build/local/linapple" ]; then
+        EMULATOR="$REPO_ROOT/build/local/linapple"
+    elif [ -f "$REPO_ROOT/build/ci/linapple" ]; then
+        EMULATOR="$REPO_ROOT/build/ci/linapple"
+    elif [ -f "$REPO_ROOT/build/dev_debug/linapple" ]; then
+        EMULATOR="$REPO_ROOT/build/dev_debug/linapple"
+    elif [ -f "$REPO_ROOT/build/dist/linapple" ]; then
+        EMULATOR="$REPO_ROOT/build/dist/linapple"
     elif [ -f "$REPO_ROOT/build/bin/linapple" ]; then
         EMULATOR="$REPO_ROOT/build/bin/linapple"
     else

@@ -59,6 +59,9 @@ jobs:
         run: |
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=OFF \
+            -DENABLE_NATIVE=OFF \
+            -DENABLE_LTO=ON \
             -DCMAKE_INSTALL_PREFIX=/usr \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
@@ -167,6 +170,9 @@ jobs:
         run: |
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=OFF \
+            -DENABLE_NATIVE=OFF \
+            -DENABLE_LTO=ON \
             -DCMAKE_INSTALL_PREFIX=/usr \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
@@ -255,6 +261,9 @@ jobs:
         run: |
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=OFF \
+            -DENABLE_NATIVE=OFF \
+            -DENABLE_LTO=ON \
             -DCMAKE_INSTALL_PREFIX=/usr \
             -DFRONTEND=sdl3 \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5
@@ -303,6 +312,9 @@ jobs:
         run: |
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=OFF \
+            -DENABLE_NATIVE=OFF \
+            -DENABLE_LTO=ON \
             -DCMAKE_INSTALL_PREFIX=/usr \
             -DFRONTEND=sdl3 \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5

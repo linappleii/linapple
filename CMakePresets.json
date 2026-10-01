@@ -1,0 +1,111 @@
+{
+  "version": 7,
+  "configurePresets": [
+    {
+      "name": "dev_debug",
+      "displayName": "Dev / Debug",
+      "description": "Full debug info, tracing, no aggressive optimisations.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/dev_debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BUILD_TESTING": "ON",
+        "ENABLE_DEBUGGER": "ON",
+        "ENABLE_TRACING": "ON",
+        "ENABLE_STRICT_WARNINGS": "ON",
+        "ENABLE_NATIVE": "OFF",
+        "ENABLE_LTO": "OFF"
+      }
+    },
+    {
+      "name": "local",
+      "displayName": "Local build",
+      "description": "Optimised for developer machine with native instructions, LTO, strict warnings.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/local",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BUILD_TESTING": "ON",
+        "ENABLE_NATIVE": "ON",
+        "ENABLE_LTO": "ON",
+        "ENABLE_STRICT_WARNINGS": "ON",
+        "ENABLE_DEBUGGER": "OFF",
+        "ENABLE_TRACING": "OFF"
+      }
+    },
+    {
+      "name": "ci",
+      "displayName": "CI / CD",
+      "description": "Deterministic, portable build for automated CI pipelines.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/ci",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BUILD_TESTING": "ON",
+        "ENABLE_NATIVE": "OFF",
+        "ENABLE_LTO": "ON",
+        "ENABLE_STRICT_WARNINGS": "ON",
+        "ENABLE_DEBUGGER": "OFF",
+        "ENABLE_TRACING": "OFF"
+      }
+    },
+    {
+      "name": "dist",
+      "displayName": "Distributable",
+      "description": "Optimized, portable release package without test binaries.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/dist",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BUILD_TESTING": "OFF",
+        "ENABLE_NATIVE": "OFF",
+        "ENABLE_LTO": "ON",
+        "ENABLE_STRICT_WARNINGS": "ON",
+        "ENABLE_DEBUGGER": "OFF",
+        "ENABLE_TRACING": "OFF",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/dist"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "dev_debug",
+      "configurePreset": "dev_debug"
+    },
+    {
+      "name": "local",
+      "configurePreset": "local"
+    },
+    {
+      "name": "ci",
+      "configurePreset": "ci"
+    },
+    {
+      "name": "dist",
+      "configurePreset": "dist"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "dev_debug",
+      "configurePreset": "dev_debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "local",
+      "configurePreset": "local",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "ci",
+      "configurePreset": "ci",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

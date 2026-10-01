@@ -53,6 +53,22 @@ cmake --build build -j$(nproc)
 cmake --install build
 ```
 
+### Build Presets
+
+LinApple provides CMake presets (`CMakePresets.json`) for standard workflows:
+
+- **Local (Default):** `cmake --preset local` (Release, native host CPU `-march=native`, LTO).
+- **Debug:** `cmake --preset dev_debug` (Debug, debugger enabled, tracing, no optimization).
+- **CI:** `cmake --preset ci` (Release, portable CPU, LTO, strict warnings, tests enabled).
+- **Distributable:** `cmake --preset dist` (Release, portable CPU, LTO, tests disabled).
+
+Compile and test using presets:
+
+```bash
+cmake --build --preset local
+ctest --preset local
+```
+
 More on building in <!-- Imported from: INSTALL.md -->
 
 ### Running

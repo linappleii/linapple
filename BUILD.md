@@ -214,3 +214,34 @@ cmake -B build \
 cmake --build build -j$(nproc)
 ctest --test-dir build --output-on-failure
 ```
+
+### Using CMake Presets
+
+LinApple includes preconfigured CMake presets (`CMakePresets.json`) for common workflows:
+
+- **Local Development (Optimized Native):**
+  ```bash
+  cmake --preset local
+  cmake --build --preset local
+  ctest --preset local
+  ```
+
+- **Debug Development (GDB / Tracing):**
+  ```bash
+  cmake --preset dev_debug
+  cmake --build --preset dev_debug
+  ctest --preset dev_debug
+  ```
+
+- **Deterministic CI / CD Build:**
+  ```bash
+  cmake --preset ci
+  cmake --build --preset ci
+  ctest --preset ci
+  ```
+
+- **Distributable Release Package:**
+  ```bash
+  cmake --preset dist
+  cmake --build --preset dist
+  ```
