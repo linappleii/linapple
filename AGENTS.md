@@ -173,6 +173,14 @@ More on building in <!-- Imported from: INSTALL.md -->
     through `linapple_set_byte_sink`; the file, its path, its mode (append
     or overwrite) and its flushing belong to the frontend, never to the
     card.
+  - A line two devices drive (the //e wires Open and Solid Apple in
+    parallel with the game connector's PB0 and PB1, and the shift-key mod
+    puts shift on PB2; IIe Technical Reference p. 41) is owned by one card,
+    which registers the address and composes the levels; the other device's
+    level reaches it from the host as a second source on the same command
+    (`JOYSTICK_CMD_SET_BUTTON` carries `source`, 0 the connector, 1 the
+    keyboard). No two cards register one address: the direct-I/O bridge
+    serves the first registrant, and registration order is not a contract.
   - `Peripheral_Types.h` re-exports the command headers of five cards:
     `DiskCommands.h`, `HarddiskCommands.h`, `KeyboardCommands.h`,
     `MockingboardCommands.h` and `MouseCommands.h`. A card whose commands
