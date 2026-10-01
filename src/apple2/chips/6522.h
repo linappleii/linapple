@@ -2,6 +2,7 @@
 #pragma once
 
 #include <cstdint>
+#include <type_traits>
 
 namespace via_reg {
 constexpr uint8_t orb = 0x0;
@@ -74,8 +75,11 @@ struct Via6522_t {
   bool pb7 = false;
 };
 
-auto via_reset(Via6522_t* v) -> void;
-auto via_write(Via6522_t* v, uint8_t reg, uint8_t val) -> void;
-auto via_read(Via6522_t* v, uint8_t reg) -> uint8_t;
-auto via_step(Via6522_t* v, uint32_t cycles) -> bool;
-auto via_irq(const Via6522_t* v) -> bool;
+static_assert(std::is_standard_layout<Via6522_t>::value,
+              "Via6522_t must satisfy standard layout guarantees");
+
+auto via_reset(Via6522_t* v) noexcept -> void;
+auto via_write(Via6522_t* v, uint8_t reg, uint8_t val) noexcept -> void;
+auto via_read(Via6522_t* v, uint8_t reg) noexcept -> uint8_t;
+auto via_step(Via6522_t* v, uint32_t cycles) noexcept -> bool;
+[[nodiscard]] auto via_irq(const Via6522_t* v) noexcept -> bool;

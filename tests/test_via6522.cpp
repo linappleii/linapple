@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers) Justification: Hardware register offsets, bit masks and cycle-count goldens
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <cstdint>
 
@@ -357,4 +356,3 @@ TEST_CASE("6522 VIA: Null Instance Is Inert") {
   CHECK_FALSE(via_step(nullptr, 100));
   CHECK_FALSE(via_irq(nullptr));
 }
-// NOLINTEND(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)

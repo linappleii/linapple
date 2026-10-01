@@ -19,12 +19,6 @@
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 
-// Justification: the detect signature is the shared probe shape, so its size
-// parameters sit side by side. Pointer arithmetic and array decay come from
-// indexing the 128-byte MacBinary header, walking path suffixes and the zlib
-// and libzip C ABIs.
-// NOLINTBEGIN(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-
 namespace macbinary {
 namespace {
 // Header layout per the MacBinary II standard (1987) and the MacBinary III
@@ -51,7 +45,11 @@ constexpr uint16_t crc16_polynomial = 0x1021;
 constexpr uint16_t crc16_msb = 0x8000;
 constexpr int bits_per_byte = 8;
 
-auto crc16_xmodem(const uint8_t* data, size_t length) -> uint16_t {
+[[nodiscard]] auto crc16_xmodem(const uint8_t* data, size_t length) noexcept
+    -> uint16_t {
+  if (data == nullptr || length == 0) {
+    return 0;
+  }
   uint16_t crc = 0;
   for (size_t i = 0; i < length; ++i) {
     crc = static_cast<uint16_t>(crc ^ (static_cast<uint16_t>(data[i]) << 8));
@@ -78,8 +76,11 @@ constexpr const char* macosx_sidecar_dir = "__MACOSX/";
 constexpr const char* appledouble_prefix = "._";
 constexpr const char* temp_template_suffix = "/linapple_XXXXXX";
 
-auto copy_whole(char* dest, const char* src, size_t size)
+[[nodiscard]] auto copy_whole(char* dest, const char* src, size_t size) noexcept
     -> ImageContainerError_e {
+  if (dest == nullptr || src == nullptr || size == 0) {
+    return image_container_invalid_argument;
+  }
   if (strlen(src) >= size) {
     dest[0] = '\0';
     return image_container_invalid_argument;
@@ -88,14 +89,21 @@ auto copy_whole(char* dest, const char* src, size_t size)
   return image_container_ok;
 }
 
-auto has_extension(const char* path, const char* extension) -> bool {
+[[nodiscard]] auto has_extension(const char* path,
+                                 const char* extension) noexcept -> bool {
+  if (path == nullptr || extension == nullptr) {
+    return false;
+  }
   const size_t name_len = strlen(path);
   const size_t suffix_len = strlen(extension) + 1;
   return name_len > suffix_len && path[name_len - suffix_len] == '.' &&
          strcasecmp(path + name_len - suffix_len + 1, extension) == 0;
 }
 
-auto get_file_size(const char* path) -> size_t {
+[[nodiscard]] auto get_file_size(const char* path) noexcept -> size_t {
+  if (path == nullptr) {
+    return 0;
+  }
   struct stat st{};
   if (stat(path, &st) == 0 && st.st_size > 0) {
     return static_cast<size_t>(st.st_size);
@@ -103,8 +111,9 @@ auto get_file_size(const char* path) -> size_t {
   return 0;
 }
 
-auto output_exceeds_bound(size_t total_written, size_t compressed_size,
-                          size_t uncompressed_threshold) -> bool {
+[[nodiscard]] constexpr auto output_exceeds_bound(
+    size_t total_written, size_t compressed_size,
+    size_t uncompressed_threshold) noexcept -> bool {
   return total_written > uncompressed_threshold &&
          (compressed_size == 0 ||
           total_written > compressed_size * image_container_ratio_limit);
@@ -112,7 +121,11 @@ auto output_exceeds_bound(size_t total_written, size_t compressed_size,
 
 // libzip reports a missing archive, a host read failure and a damaged archive
 // through one error object; the caller needs them told apart.
-auto map_zip_error(const zip_error_t* error) -> ImageContainerError_e {
+[[nodiscard]] auto map_zip_error(const zip_error_t* error) noexcept
+    -> ImageContainerError_e {
+  if (error == nullptr) {
+    return image_container_io;
+  }
   switch (zip_error_code_zip(error)) {
     case ZIP_ER_NOENT:
       return image_container_not_found;
@@ -127,7 +140,8 @@ auto map_zip_error(const zip_error_t* error) -> ImageContainerError_e {
   }
 }
 
-auto open_zip(const char* path, zip** out_archive) -> ImageContainerError_e {
+[[nodiscard]] auto open_zip(const char* path, zip** out_archive)
+    -> ImageContainerError_e {
   int code = 0;
   *out_archive = zip_open(path, ZIP_RDONLY, &code);
   if (*out_archive != nullptr) {
@@ -140,8 +154,10 @@ auto open_zip(const char* path, zip** out_archive) -> ImageContainerError_e {
   return mapped;
 }
 
-auto decompress_gzip(const char* compressed_path, FILE* output_file,
-                     size_t uncompressed_threshold) -> ImageContainerError_e {
+[[nodiscard]] auto decompress_gzip(const char* compressed_path,
+                                   FILE* output_file,
+                                   size_t uncompressed_threshold)
+    -> ImageContainerError_e {
   errno = 0;
   const std::unique_ptr<gzFile_s, decltype(&gzclose)> compressed_file(
       gzopen(compressed_path, "rb"), gzclose);
@@ -188,7 +204,10 @@ auto decompress_gzip(const char* compressed_path, FILE* output_file,
 // before the files it holds, and macOS adds a __MACOSX/._name AppleDouble
 // sidecar per file, often first. The payload is the first entry that is
 // neither. Returns -1 when the archive holds no file at all.
-auto first_payload_entry(zip* archive) -> int64_t {
+[[nodiscard]] auto first_payload_entry(zip* archive) noexcept -> int64_t {
+  if (archive == nullptr) {
+    return -1;
+  }
   const int64_t entry_count = zip_get_num_entries(archive, 0);
   for (int64_t index = 0; index < entry_count; ++index) {
     const char* name = zip_get_name(archive, static_cast<uint64_t>(index), 0);
@@ -210,8 +229,10 @@ auto first_payload_entry(zip* archive) -> int64_t {
   return -1;
 }
 
-auto decompress_zip(const char* compressed_path, FILE* output_file,
-                    size_t uncompressed_threshold) -> ImageContainerError_e {
+[[nodiscard]] auto decompress_zip(const char* compressed_path,
+                                  FILE* output_file,
+                                  size_t uncompressed_threshold)
+    -> ImageContainerError_e {
   zip* zip_archive = nullptr;
   const ImageContainerError_e opened = open_zip(compressed_path, &zip_archive);
   if (opened != image_container_ok) {
@@ -335,6 +356,9 @@ extern "C" auto image_container_payload_name(const char* image_path,
     }
     const char* entry =
         zip_get_name(archive, static_cast<uint64_t>(payload_index), 0);
+    if (entry == nullptr) {
+      return image_container_corrupt;
+    }
     const char* entry_slash = strrchr(entry, '/');
     return copy_whole(out_name,
                       (entry_slash != nullptr) ? (entry_slash + 1) : entry,
@@ -427,5 +451,3 @@ extern "C" auto image_container_supported_extensions(void) -> const
     char* const* {
   return supported_extensions;
 }
-
-// NOLINTEND(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-array-to-pointer-decay)

@@ -1,41 +1,50 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers) Justification: Hardware register offsets, bit masks and counter widths
 #include "apple2/chips/6522.h"
 
 #include <cstdint>
 
 namespace {
 
-auto lo(uint16_t w) -> uint8_t { return static_cast<uint8_t>(w & 0xFF); }
+[[nodiscard]] constexpr auto lo(uint16_t w) noexcept -> uint8_t {
+  return static_cast<uint8_t>(w & 0xFF);
+}
 
-auto hi(uint16_t w) -> uint8_t { return static_cast<uint8_t>(w >> 8); }
+[[nodiscard]] constexpr auto hi(uint16_t w) noexcept -> uint8_t {
+  return static_cast<uint8_t>(w >> 8);
+}
 
-auto set_lo(uint16_t* w, uint8_t v) -> void {
+auto set_lo(uint16_t* w, uint8_t v) noexcept -> void {
+  if (w == nullptr) {
+    return;
+  }
   *w = static_cast<uint16_t>((*w & 0xFF00) | v);
 }
 
-auto set_hi(uint16_t* w, uint8_t v) -> void {
+auto set_hi(uint16_t* w, uint8_t v) noexcept -> void {
+  if (w == nullptr) {
+    return;
+  }
   *w = static_cast<uint16_t>((*w & 0x00FF) | (static_cast<uint16_t>(v) << 8));
 }
 
 // Phi2 ticks from now until the counter's 0x0000 -> 0xFFFF transition. A
 // counter at c wraps c + 1 ticks from now, and each pending phase tick costs
 // one more.
-auto ticks_to_underflow(uint16_t counter, uint16_t latch, ViaTimerPhase_t phase)
+[[nodiscard]] constexpr auto ticks_to_underflow(uint16_t counter,
+                                                uint16_t latch,
+                                                ViaTimerPhase_t phase) noexcept
     -> uint32_t {
-  if (phase == ViaTimerPhase_t::load_delay) {
-    return static_cast<uint32_t>(counter) + 2U;
-  }
-  if (phase == ViaTimerPhase_t::reload_pending) {
-    return static_cast<uint32_t>(latch) + 2U;
-  }
-  return static_cast<uint32_t>(counter) + 1U;
+  return (phase == ViaTimerPhase_t::load_delay)
+             ? static_cast<uint32_t>(counter) + 2U
+         : (phase == ViaTimerPhase_t::reload_pending)
+             ? static_cast<uint32_t>(latch) + 2U
+             : static_cast<uint32_t>(counter) + 1U;
 }
 
 // Modular, so any tick count is correct; the caller decides where flags fall.
 auto advance(uint16_t* counter, uint16_t latch, ViaTimerPhase_t* phase,
-             uint32_t ticks) -> void {
-  if (ticks == 0) {
+             uint32_t ticks) noexcept -> void {
+  if (counter == nullptr || phase == nullptr || ticks == 0) {
     return;
   }
   if (*phase == ViaTimerPhase_t::reload_pending) {
@@ -49,7 +58,10 @@ auto advance(uint16_t* counter, uint16_t latch, ViaTimerPhase_t* phase,
   *counter = static_cast<uint16_t>(*counter - ticks);
 }
 
-auto step_timer1(Via6522_t* v, uint32_t cycles) -> void {
+auto step_timer1(Via6522_t* v, uint32_t cycles) noexcept -> void {
+  if (v == nullptr) {
+    return;
+  }
   const bool free_run = (v->acr & via_acr::t1_free_run) != 0;
   const bool pb7_driven = (v->acr & via_acr::pb7_output) != 0;
   uint32_t remaining = cycles;
@@ -76,7 +88,10 @@ auto step_timer1(Via6522_t* v, uint32_t cycles) -> void {
   }
 }
 
-auto step_timer2(Via6522_t* v, uint32_t cycles) -> void {
+auto step_timer2(Via6522_t* v, uint32_t cycles) noexcept -> void {
+  if (v == nullptr) {
+    return;
+  }
   // Pulse-count mode clocks T2 from PB6, which no Mockingboard trace reaches.
   if ((v->acr & via_acr::t2_pulse_count) != 0) {
     return;
@@ -103,11 +118,11 @@ auto step_timer2(Via6522_t* v, uint32_t cycles) -> void {
 
 }  // namespace
 
-auto via_irq(const Via6522_t* v) -> bool {
+auto via_irq(const Via6522_t* v) noexcept -> bool {
   return v != nullptr && (v->ifr & v->ier & via_ifr::mask) != 0;
 }
 
-auto via_reset(Via6522_t* v) -> void {
+auto via_reset(Via6522_t* v) noexcept -> void {
   if (v == nullptr) {
     return;
   }
@@ -129,7 +144,7 @@ auto via_reset(Via6522_t* v) -> void {
   v->pb7 = false;
 }
 
-auto via_write(Via6522_t* v, uint8_t reg, uint8_t val) -> void {
+auto via_write(Via6522_t* v, uint8_t reg, uint8_t val) noexcept -> void {
   if (v == nullptr) {
     return;
   }
@@ -201,7 +216,7 @@ auto via_write(Via6522_t* v, uint8_t reg, uint8_t val) -> void {
   }
 }
 
-auto via_read(Via6522_t* v, uint8_t reg) -> uint8_t {
+auto via_read(Via6522_t* v, uint8_t reg) noexcept -> uint8_t {
   if (v == nullptr) {
     return 0;
   }
@@ -249,7 +264,7 @@ auto via_read(Via6522_t* v, uint8_t reg) -> uint8_t {
   }
 }
 
-auto via_step(Via6522_t* v, uint32_t cycles) -> bool {
+auto via_step(Via6522_t* v, uint32_t cycles) noexcept -> bool {
   if (v == nullptr) {
     return false;
   }
@@ -258,4 +273,3 @@ auto via_step(Via6522_t* v, uint32_t cycles) -> bool {
   step_timer2(v, cycles);
   return via_irq(v) != was_asserted;
 }
-// NOLINTEND(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)

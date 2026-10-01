@@ -851,6 +851,10 @@ fi
     target_include_directories(test-ay8910 PRIVATE src ${DOCTEST_INCLUDE_DIR})
     add_test(NAME test-ay8910 COMMAND test-ay8910)
 
+    add_executable(test-6821 tests/test_6821.cpp src/apple2/chips/6821.cpp)
+    target_include_directories(test-6821 PRIVATE src ${DOCTEST_INCLUDE_DIR})
+    add_test(NAME test-6821 COMMAND test-6821)
+
     add_linapple_test(mockingboard-peripheral "tests/test_main.cpp;tests/test_mockingboard_peripheral.cpp")
     add_linapple_test(mockingboard-core "tests/test_main.cpp;tests/test_mockingboard_core.cpp")
     add_linapple_test(mockingboard-e2e "tests/test_main.cpp;tests/test_mockingboard_e2e.cpp")

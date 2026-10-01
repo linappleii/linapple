@@ -1,10 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers) Justification: Hardware emulation register masks, bit widths, volume tables, and clock divider constants
-// NOLINTBEGIN(bugprone-easily-swappable-parameters) Justification: Hardware signal interface and multi-channel audio buffer parameters
-// NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic) Justification: Multi-channel audio sample buffer output indexing
-// NOLINTBEGIN(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access) Justification: Direct indexed access to hardware registers and volume tables
-// NOLINTBEGIN(cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays) Justification: Planar output buffers handed in by the card, one per voice
-
 #include "apple2/chips/AY8910.h"
 
 #include <array>
@@ -18,22 +12,28 @@ namespace {
 // card declares as its peak magnitude. The chip is unipolar: it really does
 // swing 0..Vmax, and the AC coupling that centres it is the card's output
 // stage.
-constexpr float vol_full_scale = 18776.0F;
-constexpr std::array<float, 16> vol_table = {
-    {0.0F / vol_full_scale, 103.0F / vol_full_scale, 150.0F / vol_full_scale,
-     218.0F / vol_full_scale, 316.0F / vol_full_scale, 458.0F / vol_full_scale,
-     665.0F / vol_full_scale, 963.0F / vol_full_scale, 1396.0F / vol_full_scale,
-     2023.0F / vol_full_scale, 2933.0F / vol_full_scale,
-     4251.0F / vol_full_scale, 6163.0F / vol_full_scale,
-     8934.0F / vol_full_scale, 12952.0F / vol_full_scale,
-     18776.0F / vol_full_scale}};
+constexpr float k_vol_full_scale = 18776.0F;
+constexpr std::array<float, 16> k_vol_table = {
+    {0.0F / k_vol_full_scale, 103.0F / k_vol_full_scale,
+     150.0F / k_vol_full_scale, 218.0F / k_vol_full_scale,
+     316.0F / k_vol_full_scale, 458.0F / k_vol_full_scale,
+     665.0F / k_vol_full_scale, 963.0F / k_vol_full_scale,
+     1396.0F / k_vol_full_scale, 2023.0F / k_vol_full_scale,
+     2933.0F / k_vol_full_scale, 4251.0F / k_vol_full_scale,
+     6163.0F / k_vol_full_scale, 8934.0F / k_vol_full_scale,
+     12952.0F / k_vol_full_scale, 18776.0F / k_vol_full_scale}};
 
-auto tone_period(uint8_t fine, uint8_t coarse) -> uint16_t {
+[[nodiscard]] constexpr auto tone_period(uint8_t fine, uint8_t coarse) noexcept
+    -> uint16_t {
   return static_cast<uint16_t>(fine | ((coarse & 0x0F) << 8));
 }
 
 // The output toggles every TP ticks, giving f = clock / (16 * TP).
-auto step_tone(uint16_t* count, uint8_t* out, uint16_t period) -> void {
+auto step_tone(uint16_t* count, uint8_t* out, uint16_t period) noexcept
+    -> void {
+  if (count == nullptr || out == nullptr) {
+    return;
+  }
   if (period == 0) {
     *out = 1;
     return;
@@ -45,46 +45,63 @@ auto step_tone(uint16_t* count, uint8_t* out, uint16_t period) -> void {
   }
 }
 
-auto advance_noise(Ay8910_t* p) -> void {
+auto advance_noise(Ay8910_t* p) noexcept -> void {
+  if (p == nullptr) {
+    return;
+  }
   if ((((p->rng + 1) & 2) ^ (p->rng & 1)) != 0) {
     p->out_n ^= 1;
   }
   p->rng = (p->rng >> 1) | (((p->rng & 1) ^ ((p->rng >> 3) & 1)) << 16);
 }
 
-auto refresh_envelope_vol(Ay8910_t* p) -> void {
+auto refresh_envelope_vol(Ay8910_t* p) noexcept -> void {
+  if (p == nullptr) {
+    return;
+  }
   p->envelope_vol = static_cast<uint8_t>(
       p->env_attack ? p->envelope_step : (15U - p->envelope_step));
 }
 
 // The step that produces `amplitude` depends on which way the sweep was
 // running, because the level is read off the step in opposite directions.
-auto hold_at(Ay8910_t* p, uint32_t amplitude) -> void {
+auto hold_at(Ay8910_t* p, uint32_t amplitude) noexcept -> void {
+  if (p == nullptr) {
+    return;
+  }
   p->env_holding = true;
   p->envelope_step = p->env_attack ? amplitude : (15U - amplitude);
 }
 
-auto step_envelope(Ay8910_t* p, bool cont, bool alt, bool hold) -> void {
+auto step_envelope(Ay8910_t* p, bool cont, bool alt, bool hold) noexcept
+    -> void {
+  if (p == nullptr) {
+    return;
+  }
   ++p->envelope_step;
-  if (p->envelope_step > 15) {
-    if (!cont) {
-      // Shapes 0x0-0x7 end the cycle at silence whichever way they swept.
-      hold_at(p, 0U);
-    } else if (hold) {
-      // 0x9 and 0xF hold at silence, 0xB and 0xD at full scale.
-      hold_at(p, (p->env_attack != alt) ? 15U : 0U);
-    } else {
-      p->envelope_step = 0;
-      if (alt) {
-        p->env_attack = !p->env_attack;
-      }
-    }
+  if (p->envelope_step <= 15) {
+    refresh_envelope_vol(p);
+    return;
+  }
+  if (!cont) {
+    // Shapes 0x0-0x7 end the cycle at silence whichever way they swept.
+    hold_at(p, 0U);
+  } else if (hold) {
+    // 0x9 and 0xF hold at silence, 0xB and 0xD at full scale.
+    hold_at(p, (p->env_attack != alt) ? 15U : 0U);
+  } else {
+    p->envelope_step = 0;
+    p->env_attack = alt ? !p->env_attack : p->env_attack;
   }
   refresh_envelope_vol(p);
 }
 
-auto voice_level(const Ay8910_t* p, uint8_t tone_out, bool tone_off,
-                 bool noise_off, uint8_t amplitude) -> float {
+[[nodiscard]] auto voice_level(const Ay8910_t* p, uint8_t tone_out,
+                               bool tone_off, bool noise_off,
+                               uint8_t amplitude) noexcept -> float {
+  if (p == nullptr) {
+    return 0.0F;
+  }
   const uint8_t tone = tone_off ? uint8_t{1} : tone_out;
   const uint8_t noise = noise_off ? uint8_t{1} : p->out_n;
   if ((tone & noise) == 0) {
@@ -92,20 +109,20 @@ auto voice_level(const Ay8910_t* p, uint8_t tone_out, bool tone_off,
   }
   const uint8_t vol =
       ((amplitude & 0x10) != 0) ? p->envelope_vol : (amplitude & 0x0F);
-  return vol_table[vol & 0x0F];
+  return k_vol_table[vol & 0x0F];
 }
 
 }  // namespace
 
-auto ay8910_reset(Ay8910_t* p) -> void {
+auto ay8910_reset(Ay8910_t* p) noexcept -> void {
   if (p == nullptr) {
     return;
   }
   *p = Ay8910_t{};
 }
 
-auto ay8910_write(Ay8910_t* p, uint8_t reg, uint8_t val) -> void {
-  if (p == nullptr || reg >= AY8910_NUM_REGISTERS) {
+auto ay8910_write(Ay8910_t* p, uint8_t reg, uint8_t val) noexcept -> void {
+  if (p == nullptr || reg >= k_ay8910_num_registers) {
     return;
   }
   p->regs[reg] = val;
@@ -135,13 +152,17 @@ auto ay8910_write(Ay8910_t* p, uint8_t reg, uint8_t val) -> void {
 }
 
 auto ay8910_step(Ay8910_t* p, size_t ticks, float* const out[AY8910_NUM_VOICES],
-                 size_t max) -> void {
-  if (p == nullptr || out == nullptr) {
+                 size_t max) noexcept -> void {
+  if (p == nullptr || out == nullptr || out[0] == nullptr ||
+      out[1] == nullptr || out[2] == nullptr) {
     return;
   }
   // Asking for more than the buffers hold would overrun them, so the chip
   // renders what fits and advances only that far.
   const size_t count = (ticks < max) ? ticks : max;
+  if (count == 0) {
+    return;
+  }
 
   const uint16_t period_a = tone_period(p->regs[0], p->regs[1]);
   const uint16_t period_b = tone_period(p->regs[2], p->regs[3]);
@@ -188,8 +209,3 @@ auto ay8910_step(Ay8910_t* p, size_t ticks, float* const out[AY8910_NUM_VOICES],
                             (enable & 0x20) != 0, p->regs[10]);
   }
 }
-// NOLINTEND(cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
-// NOLINTEND(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
-// NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-// NOLINTEND(bugprone-easily-swappable-parameters)
-// NOLINTEND(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)

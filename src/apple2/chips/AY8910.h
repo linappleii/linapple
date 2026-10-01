@@ -4,9 +4,12 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <type_traits>
 
-constexpr size_t AY8910_NUM_REGISTERS = 16;
-constexpr size_t AY8910_NUM_VOICES = 3;
+constexpr size_t k_ay8910_num_registers = 16;
+constexpr size_t k_ay8910_num_voices = 3;
+constexpr size_t AY8910_NUM_REGISTERS = k_ay8910_num_registers;
+constexpr size_t AY8910_NUM_VOICES = k_ay8910_num_voices;
 
 // AY-3-8910 emulation, per the General Instrument data sheet.
 //
@@ -40,10 +43,11 @@ struct Ay8910_t {
   bool env_attack = false;
 };
 
-auto ay8910_reset(Ay8910_t* p) -> void;
-auto ay8910_write(Ay8910_t* p, uint8_t reg, uint8_t val) -> void;
+static_assert(std::is_standard_layout<Ay8910_t>::value,
+              "Ay8910_t must satisfy standard layout guarantees");
 
-// NOLINTBEGIN(cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays) Justification: Planar output buffers handed in by the card, one per voice
+auto ay8910_reset(Ay8910_t* p) noexcept -> void;
+auto ay8910_write(Ay8910_t* p, uint8_t reg, uint8_t val) noexcept -> void;
+
 auto ay8910_step(Ay8910_t* p, size_t ticks, float* const out[AY8910_NUM_VOICES],
-                 size_t max) -> void;
-// NOLINTEND(cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
+                 size_t max) noexcept -> void;

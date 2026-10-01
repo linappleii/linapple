@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays) Justification: Hardware register values, divisor goldens and planar output buffers
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <array>
 #include <cstddef>
@@ -432,5 +431,24 @@ TEST_CASE("AY-3-8910: Null Instance And Null Buffers Are Inert") {
   ay8910_step(nullptr, 10, nullptr, 0);
   ay8910_step(&chip, 10, nullptr, 0);
   CHECK(chip.regs[0] == 0);
+
+  // Verification of the planar buffer early-abort contract:
+  // If any voice buffer is null, no buffers are written and non-null buffers
+  // retain sentinel values.
+  std::array<float, 8> buf_b{};
+  std::array<float, 8> buf_c{};
+  buf_b.fill(42.0F);
+  buf_c.fill(42.0F);
+  float* bad_pointers[AY8910_NUM_VOICES] = {nullptr, buf_b.data(),
+                                            buf_c.data()};
+  ay8910_step(&chip, 4, bad_pointers, 8);
+  CHECK(buf_b[0] == 42.0F);
+  CHECK(buf_c[0] == 42.0F);
+
+  // Zero count or zero max leaves buffers untouched
+  float* valid_pointers[AY8910_NUM_VOICES] = {buf_b.data(), buf_b.data(),
+                                              buf_c.data()};
+  ay8910_step(&chip, 0, valid_pointers, 8);
+  ay8910_step(&chip, 4, valid_pointers, 0);
+  CHECK(buf_b[0] == 42.0F);
 }
-// NOLINTEND(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
