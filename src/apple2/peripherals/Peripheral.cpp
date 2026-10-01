@@ -45,12 +45,17 @@ auto peripheral_register_builtin(Peripheral_t* p) -> void {
   // Static initialisers fill this registry in an order the language leaves
   // unspecified, and the first card to register an address is the one that
   // answers it. Sorting by id where the registry is filled gives every walk of
-  // it, and so every machine built from it, the same order.
+  // it, and so every machine built from it, the same order. The direction is
+  // not a free choice: the snapshot manifest names each slot's front device,
+  // and readers built before the sort compare that name with their own front
+  // device, which for slot 0 was the speaker in every static build. Ids
+  // descend so that the speaker stays in front and those readers still load
+  // the files this build writes.
   auto& registry = peripheral_get_builtin_registry();
   const auto position =
       std::lower_bound(registry.begin(), registry.end(), p,
                        [](const Peripheral_t* a, const Peripheral_t* b) {
-                         return strcmp(builtin_id(a), builtin_id(b)) < 0;
+                         return strcmp(builtin_id(a), builtin_id(b)) > 0;
                        });
   registry.insert(position, p);
 }
