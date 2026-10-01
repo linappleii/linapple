@@ -532,9 +532,18 @@ auto is_modifier_key(SDLKey sym) noexcept -> bool {
 }
 
 auto frame_on_resize(int width, int height) -> void {
+  if (width <= 0 || height <= 0) {
+    return;
+  }
+
   const std::lock_guard<std::recursive_mutex> lock(g_video_draw_mutex);
   system_state.screen_width = static_cast<uint32_t>(width);
   system_state.screen_height = static_cast<uint32_t>(height);
+
+  if (!s_is_fullscreen) {
+    s_windowed_width = static_cast<uint32_t>(width);
+    s_windowed_height = static_cast<uint32_t>(height);
+  }
 
   Uint32 flags = SDL_SWSURFACE;
   if (system_state.fullscreen) {
@@ -554,11 +563,28 @@ auto frame_on_resize(int width, int height) -> void {
   g_window_resized = (system_state.screen_width != SCREEN_WIDTH) ||
                      (system_state.screen_height != SCREEN_HEIGHT);
   if (g_window_resized) {
-    g_orig_rect.x = g_orig_rect.y = g_new_rect.x = g_new_rect.y = 0;
+    g_orig_rect.x = g_orig_rect.y = 0;
     g_orig_rect.w = static_cast<int16_t>(SCREEN_WIDTH);
     g_orig_rect.h = static_cast<int16_t>(SCREEN_HEIGHT);
-    g_new_rect.w = static_cast<int16_t>(system_state.screen_width);
-    g_new_rect.h = static_cast<int16_t>(system_state.screen_height);
+    if (s_is_fullscreen) {
+      int target_w = width;
+      int target_h = (target_w * SCREEN_HEIGHT) / SCREEN_WIDTH;
+      if (target_h > height) {
+        target_h = height;
+        target_w = (target_h * SCREEN_WIDTH) / SCREEN_HEIGHT;
+      }
+      const int offset_x = (width - target_w) / 2;
+      const int offset_y = (height - target_h) / 2;
+      g_new_rect.x = static_cast<int16_t>(offset_x);
+      g_new_rect.y = static_cast<int16_t>(offset_y);
+      g_new_rect.w = static_cast<int16_t>(target_w);
+      g_new_rect.h = static_cast<int16_t>(target_h);
+    } else {
+      g_new_rect.x = 0;
+      g_new_rect.y = 0;
+      g_new_rect.w = static_cast<int16_t>(system_state.screen_width);
+      g_new_rect.h = static_cast<int16_t>(system_state.screen_height);
+    }
   }
 
   draw_apple_content();

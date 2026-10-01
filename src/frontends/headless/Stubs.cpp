@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <cstddef>
 #include <cstdint>
 
 #include "Apple2Types.h"
@@ -11,61 +10,36 @@
 // Stubs for headless/test environments
 [[gnu::weak]] auto frontend_update_keyboard_mapping() -> void {}
 [[gnu::weak]] auto keyboard_get_caps_mode() -> int { return 0; }
-[[gnu::weak]] auto keyboard_set_caps_mode(int mode) -> void { (void)mode; }
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): stub callback signature
-[[gnu::weak]] auto frontend_dispatch_key_event(uint32_t scancode,
-                                               uint32_t keycode, uint32_t mod,
-                                               bool is_down) -> void {
-  (void)scancode;
-  (void)keycode;
-  (void)mod;
-  (void)is_down;
-}
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): stub callback signature
-[[gnu::weak]] auto frontend_to_core_key(int key, uint32_t mod)
+[[gnu::weak]] auto keyboard_set_caps_mode(int /*mode*/) -> void {}
+[[gnu::weak]] auto frontend_dispatch_key_event(uint32_t /*scancode*/,
+                                               uint32_t /*keycode*/,
+                                               uint32_t /*mod*/,
+                                               bool /*is_down*/) -> void {}
+[[gnu::weak]] auto frontend_to_core_key(int /*key*/, uint32_t /*mod*/)
     -> LinAppleKey_t {
-  (void)key;
-  (void)mod;
   return linapple_key_unknown;
 }
 
-[[gnu::weak]] auto frame_refresh_status(int drawflags) -> void {
-  (void)drawflags;
-}
+[[gnu::weak]] auto frame_refresh_status(int /*drawflags*/) -> void {}
 
 // SSC Stubs
-[[gnu::weak]] auto super_serial_frontend_initialize(const char* p) -> bool {
-  (void)p;
+[[gnu::weak]] auto super_serial_frontend_initialize(const char* /*p*/) -> bool {
   return false;
 }
 [[gnu::weak]] auto super_serial_frontend_close() -> void {}
 [[gnu::weak]] auto super_serial_frontend_is_active() -> bool { return false; }
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): stub callback signature
-[[gnu::weak]] auto super_serial_frontend_update_state(uint32_t b, uint32_t d,
-                                                      int p, int s) -> void {
-  (void)b;
-  (void)d;
-  (void)p;
-  (void)s;
-}
-[[gnu::weak]] auto super_serial_frontend_send_byte(uint8_t c) -> void {
-  (void)c;
-}
-[[gnu::weak]] auto super_serial_frontend_set_serial_port_path(const char* p)
-    -> void {
-  (void)p;
-}
-[[gnu::weak]] auto super_serial_frontend_set_loopback(bool e) -> void {
-  (void)e;
-}
+[[gnu::weak]] auto super_serial_frontend_update_state(uint32_t /*b*/,
+                                                      uint32_t /*d*/, int /*p*/,
+                                                      int /*s*/) -> void {}
+[[gnu::weak]] auto super_serial_frontend_send_byte(uint8_t /*c*/) -> void {}
+[[gnu::weak]] auto super_serial_frontend_set_serial_port_path(const char* /*p*/)
+    -> void {}
+[[gnu::weak]] auto super_serial_frontend_set_loopback(bool /*e*/) -> void {}
 
 // Video/Frontend Stubs needed for Debugger source linkage
 [[gnu::weak]] auto stretch_blt_mem_to_frame_dc() -> void {}
 [[gnu::weak]] auto joy_set_trim(int16_t, bool) -> void {}
-[[gnu::weak]] auto joy_set_button(int button, bool down) -> void {
-  (void)button;
-  (void)down;
-}
+[[gnu::weak]] auto joy_set_button(int /*button*/, bool /*down*/) -> void {}
 [[gnu::weak]] auto joy_update_position(uint32_t) -> void {}
 [[gnu::weak]] auto video_update_vbl(uint32_t) -> void {}
 [[gnu::weak]] auto video_redraw_screen() -> void {}
@@ -97,4 +71,3 @@
 [[gnu::weak]] SystemState_t system_state = {};
 [[gnu::weak]] eApple2Type current_apple2_type = A2TYPE_APPLE2EENHANCED;
 [[gnu::weak]] uint32_t g_videotype = 0;
-[[gnu::weak]] void (*g_frontendAudioCB)(const int16_t*, size_t) = nullptr;

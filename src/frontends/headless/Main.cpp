@@ -8,28 +8,18 @@
 #include "frontends/common/AppArgs.h"
 #include "frontends/common/AppController.h"
 
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): video callback
-// signature
-auto video_callback(const uint32_t* pixels, int width, int height, int pitch)
-    -> void {
-  (void)pixels;
-  (void)width;
-  (void)height;
-  (void)pitch;
-}
+namespace {
 
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-auto audio_callback(const char* peripheral_id, int slot,
-                    const float* const* channels, size_t num_channels,
-                    size_t num_samples) -> void {
-  (void)peripheral_id;
-  (void)slot;
-  (void)channels;
-  (void)num_channels;
-  (void)num_samples;
-}
+auto video_callback(const uint32_t* /*pixels*/, int /*width*/, int /*height*/,
+                    int /*pitch*/) -> void {}
 
-auto title_callback(const char* title) -> void { (void)title; }
+auto audio_callback(const char* /*peripheral_id*/, int /*slot*/,
+                    const float* const* /*channels*/, size_t /*num_channels*/,
+                    size_t /*num_samples*/) -> void {}
+
+auto title_callback(const char* /*title*/) -> void {}
+
+}  // namespace
 
 auto main(int argc, char** argv) -> int {
   AppConfig_t& config = Configuration_t::instance();
@@ -53,11 +43,12 @@ auto main(int argc, char** argv) -> int {
 
   app_controller_load_initial_media(&config);
 
-  constexpr int HEADLESS_FRAMES = 60;
-  constexpr int apple2_frame_cycles = 17030;
+  constexpr int k_headless_frames = 60;
+  constexpr int k_apple2_frame_cycles = 17030;
 
-  for (int i = 0; i < HEADLESS_FRAMES; ++i) {
-    linapple_run_frame(apple2_frame_cycles);
+  for (int i = 0; i < k_headless_frames && system_state.mode != app_mode_exit;
+       ++i) {
+    linapple_run_frame(k_apple2_frame_cycles);
   }
 
   linapple_set_audio_channel_callback(nullptr);
