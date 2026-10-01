@@ -4,27 +4,42 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
-#include <cstring>
 #include <mutex>
 #include <utility>
 
+#include "core/Util_Endian.h"
+
 namespace {
 
-constexpr uint32_t fmt_chunk_size = 16;
-constexpr uint16_t bits_per_sample = 16;
-constexpr uint16_t pcm_format_tag = 1;
+constexpr uint32_t k_fmt_chunk_size = 16;
+constexpr uint16_t k_bits_per_sample = 16;
+constexpr uint16_t k_pcm_format_tag = 1;
+constexpr uint32_t k_riff_size_offset = 4;
+constexpr uint32_t k_data_size_offset = 40;
 
-auto write_u16_le(FILE* f, uint16_t val) -> bool {
-  uint8_t buf[2] = {static_cast<uint8_t>(val & 0xFF),
-                    static_cast<uint8_t>((val >> 8) & 0xFF)};
-  return fwrite(buf, 1, 2, f) == 2;
-}
+#pragma pack(push, 1)
+struct WavHeader_t {
+  uint8_t riff_id[4] = {'R', 'I', 'F', 'F'};
+  uint8_t riff_size[4] = {0, 0, 0, 0};
+  uint8_t wave_id[4] = {'W', 'A', 'V', 'E'};
+  uint8_t fmt_id[4] = {'f', 'm', 't', ' '};
+  uint8_t fmt_size[4] = {16, 0, 0, 0};
+  uint8_t audio_format[2] = {1, 0};
+  uint8_t num_channels[2] = {2, 0};
+  uint8_t sample_rate[4] = {0, 0, 0, 0};
+  uint8_t byte_rate[4] = {0, 0, 0, 0};
+  uint8_t block_align[2] = {0, 0};
+  uint8_t bits_per_sample[2] = {16, 0};
+  uint8_t data_id[4] = {'d', 'a', 't', 'a'};
+  uint8_t data_size[4] = {0, 0, 0, 0};
+};
+#pragma pack(pop)
+static_assert(sizeof(WavHeader_t) == 44,
+              "WavHeader_t must be exactly 44 bytes");
 
-auto write_u32_le(FILE* f, uint32_t val) -> bool {
-  uint8_t buf[4] = {static_cast<uint8_t>(val & 0xFF),
-                    static_cast<uint8_t>((val >> 8) & 0xFF),
-                    static_cast<uint8_t>((val >> 16) & 0xFF),
-                    static_cast<uint8_t>((val >> 24) & 0xFF)};
+auto write_file_u32_le(FILE* f, uint32_t val) -> bool {
+  uint8_t buf[4];
+  write_u32_le(buf, val);
   return fwrite(buf, 1, 4, f) == 4;
 }
 
@@ -76,85 +91,30 @@ auto AudioDumper_t::initialize(const char* filename, uint32_t sample_rate,
   }
 
   num_channels_ = num_channels;
+  total_offset_ = k_riff_size_offset;
+  data_offset_ = k_data_size_offset;
 
-  if (fwrite("RIFF", 1, 4, file_.get()) != 4) {
+  WavHeader_t header{};
+  write_u32_le(header.fmt_size, k_fmt_chunk_size);
+  write_u16_le(header.audio_format, k_pcm_format_tag);
+  write_u16_le(header.num_channels, static_cast<uint16_t>(num_channels));
+  write_u32_le(header.sample_rate, sample_rate);
+
+  const uint32_t byte_rate =
+      sample_rate * num_channels * (k_bits_per_sample / 8);
+  write_u32_le(header.byte_rate, byte_rate);
+
+  const uint16_t block_align =
+      static_cast<uint16_t>(num_channels * (k_bits_per_sample / 8));
+  write_u16_le(header.block_align, block_align);
+  write_u16_le(header.bits_per_sample, k_bits_per_sample);
+
+  if (fwrite(&header, 1, sizeof(header), file_.get()) != sizeof(header)) {
     file_.reset();
     return false;
   }
 
-  const long total_pos = ftell(file_.get());
-  if (total_pos < 0) {
-    file_.reset();
-    return false;
-  }
-  total_offset_ = static_cast<uint32_t>(total_pos);
-  if (!write_u32_le(file_.get(), 0)) {
-    file_.reset();
-    return false;
-  }
-
-  if (fwrite("WAVEfmt ", 1, 8, file_.get()) != 8) {
-    file_.reset();
-    return false;
-  }
-
-  if (!write_u32_le(file_.get(), fmt_chunk_size)) {
-    file_.reset();
-    return false;
-  }
-
-  if (!write_u16_le(file_.get(), pcm_format_tag)) {
-    file_.reset();
-    return false;
-  }
-
-  if (!write_u16_le(file_.get(), static_cast<uint16_t>(num_channels))) {
-    file_.reset();
-    return false;
-  }
-
-  if (!write_u32_le(file_.get(), sample_rate)) {
-    file_.reset();
-    return false;
-  }
-
-  const uint32_t byte_rate = sample_rate * 2 * num_channels;
-  if (!write_u32_le(file_.get(), byte_rate)) {
-    file_.reset();
-    return false;
-  }
-
-  const uint16_t block_align = static_cast<uint16_t>(2 * num_channels);
-  if (!write_u16_le(file_.get(), block_align)) {
-    file_.reset();
-    return false;
-  }
-
-  if (!write_u16_le(file_.get(), bits_per_sample)) {
-    file_.reset();
-    return false;
-  }
-
-  if (fwrite("data", 1, 4, file_.get()) != 4) {
-    file_.reset();
-    return false;
-  }
-
-  const long data_pos = ftell(file_.get());
-  if (data_pos < 0) {
-    file_.reset();
-    return false;
-  }
-  data_offset_ = static_cast<uint32_t>(data_pos);
-  if (!write_u32_le(file_.get(), 0)) {
-    file_.reset();
-    return false;
-  }
-
-  const long current_pos = ftell(file_.get());
-  total_bytes_written_ =
-      (current_pos >= 0) ? static_cast<uint32_t>(current_pos) : 0;
-
+  total_bytes_written_ = sizeof(header);
   return true;
 }
 
@@ -186,7 +146,7 @@ auto AudioDumper_t::finalize_unlocked() -> void {
   if (total_bytes_written_ >= (total_offset_ + 4)) {
     const uint32_t riff_size = total_bytes_written_ - (total_offset_ + 4);
     if (fseek(file_.get(), static_cast<long>(total_offset_), SEEK_SET) == 0) {
-      write_u32_le(file_.get(), riff_size);
+      write_file_u32_le(file_.get(), riff_size);
     }
   }
 
@@ -194,7 +154,7 @@ auto AudioDumper_t::finalize_unlocked() -> void {
   if (total_bytes_written_ >= (data_offset_ + 4)) {
     const uint32_t data_size = total_bytes_written_ - (data_offset_ + 4);
     if (fseek(file_.get(), static_cast<long>(data_offset_), SEEK_SET) == 0) {
-      write_u32_le(file_.get(), data_size);
+      write_file_u32_le(file_.get(), data_size);
     }
   }
 
@@ -229,4 +189,9 @@ auto audio_dumper_finalize(AudioDumper_t* dumper) -> int {
   if (dumper == nullptr) return 1;
   dumper->finalize();
   return 0;
+}
+
+auto audio_dumper_is_active(const AudioDumper_t* dumper) -> bool {
+  if (dumper == nullptr) return false;
+  return dumper->is_active();
 }

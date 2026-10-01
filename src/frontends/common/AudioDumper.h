@@ -17,11 +17,11 @@ struct AudioDumper_t {
   AudioDumper_t(AudioDumper_t&& other) noexcept;
   auto operator=(AudioDumper_t&& other) noexcept -> AudioDumper_t&;
 
-  auto initialize(const char* filename, uint32_t sample_rate,
-                  uint32_t num_channels) -> bool;
+  [[nodiscard]] auto initialize(const char* filename, uint32_t sample_rate,
+                                uint32_t num_channels) -> bool;
   auto put_samples(const int16_t* buf, uint32_t num_samples) -> bool;
   auto finalize() -> void;
-  auto is_active() const -> bool;
+  [[nodiscard]] auto is_active() const -> bool;
 
  private:
   auto finalize_unlocked() -> void;
@@ -42,3 +42,5 @@ auto audio_dumper_put_samples(AudioDumper_t* dumper, const int16_t* buf,
                               uint32_t num_samples) -> int;
 
 auto audio_dumper_finalize(AudioDumper_t* dumper) -> int;
+
+[[nodiscard]] auto audio_dumper_is_active(const AudioDumper_t* dumper) -> bool;

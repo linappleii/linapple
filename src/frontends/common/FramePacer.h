@@ -30,7 +30,7 @@ class FramePacer_t {
 
   // One emulated frame of wall time, re-read every frame because a machine
   // type change moves it.
-  auto frame_period_ns() const -> int64_t;
+  [[nodiscard]] auto frame_period_ns() const -> int64_t;
 
   // Call once per loop iteration, after the frame has been run and drawn.
   auto wait_for_next_frame() -> void;
@@ -45,3 +45,10 @@ class FramePacer_t {
   int64_t deadline_ns_ = 0;
   bool armed_ = false;
 };
+
+// Procedural C-style interface
+auto frame_pacer_init(FramePacer_t* pacer, FrameClockNowFn_t now = nullptr,
+                      FrameClockSleepUntilFn_t sleep_until = nullptr) -> void;
+auto frame_pacer_wait(FramePacer_t* pacer) -> void;
+auto frame_pacer_resync(FramePacer_t* pacer) -> void;
+[[nodiscard]] auto frame_pacer_period_ns(const FramePacer_t* pacer) -> int64_t;
