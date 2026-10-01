@@ -2,7 +2,6 @@
 #include "frontends/common/SuperSerialFrontend.h"
 
 #include <fcntl.h>
-#include <pthread.h>
 #include <termios.h>
 #include <unistd.h>
 
@@ -13,6 +12,7 @@
 #include <cstring>
 #include <mutex>
 #include <string>
+#include <thread>
 
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
@@ -24,7 +24,7 @@ static std::string g_serial_port_path;
 static bool g_serial_loopback = false;
 static uint32_t g_comm_inactivity = 0;
 static std::mutex g_critical_section;
-static pthread_t g_comm_thread;
+static std::thread g_comm_thread;
 static std::atomic<bool> g_thread_running{false};
 static std::atomic<bool> g_thread_terminate{false};
 
@@ -117,8 +117,7 @@ auto super_serial_frontend_update_comm_state(uint32_t baud, uint32_t bits,
   tcsetattr(g_comm_handle, TCSANOW, &dcb);
 }
 
-auto serial_polling_thread(void* arg) -> void* {
-  (void)arg;
+auto serial_polling_thread() -> void {
   std::array<uint8_t, k_serial_rx_buffer_size> buffer{};
 
   while (!g_thread_terminate.load(std::memory_order_relaxed)) {
@@ -136,7 +135,6 @@ auto serial_polling_thread(void* arg) -> void* {
     }
     usleep(k_serial_poll_interval_us);  // Poll every 1ms
   }
-  return nullptr;
 }
 
 auto super_serial_frontend_transmit_byte(uint8_t byte) -> bool {
@@ -179,10 +177,8 @@ auto super_serial_frontend_is_active() -> bool {
 
   if (!g_thread_running.load(std::memory_order_relaxed)) {
     g_thread_terminate.store(false, std::memory_order_relaxed);
-    if (pthread_create(&g_comm_thread, nullptr, serial_polling_thread,
-                       nullptr) == 0) {
-      g_thread_running.store(true, std::memory_order_release);
-    }
+    g_thread_running.store(true, std::memory_order_release);
+    g_comm_thread = std::thread(serial_polling_thread);
   }
 
   return true;
@@ -198,7 +194,9 @@ auto super_serial_frontend_update_state(uint32_t baud, uint32_t bits,
 auto super_serial_frontend_close() -> void {
   if (g_thread_running.load(std::memory_order_acquire)) {
     g_thread_terminate.store(true, std::memory_order_release);
-    pthread_join(g_comm_thread, nullptr);
+    if (g_comm_thread.joinable()) {
+      g_comm_thread.join();
+    }
     g_thread_running.store(false, std::memory_order_release);
   }
 

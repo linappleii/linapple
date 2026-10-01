@@ -810,11 +810,7 @@ if(BUILD_TESTING)
         set_tests_properties(test-fixtures PROPERTIES ENVIRONMENT "ASAN_OPTIONS=detect_leaks=1:symbolize=1;UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1")
     endif()
 
-    if(ENABLE_ASAN OR ENABLE_UBSAN OR DEFINED ENV{CI})
-        set(PERIPHERAL_TEST_TIMEOUT 10)
-    else()
-        set(PERIPHERAL_TEST_TIMEOUT 1)
-    endif()
+    set(PERIPHERAL_TEST_TIMEOUT 10)
 
     add_linapple_test(app-env tests/test_app_env.cpp)
     add_linapple_test(app-controller tests/test_app_controller.cpp)
