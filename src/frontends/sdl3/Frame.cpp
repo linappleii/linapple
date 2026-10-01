@@ -19,30 +19,21 @@
 #include <SDL3/SDL_video.h>
 #include <sys/stat.h>
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <mutex>
 #include <string>
 
 #include "apple2/Apple2Types.h"
+#include "apple2/Video.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Types.h"
-#include "apple2/peripherals/disk/DiskError.h"
-#include "core/LinAppleCore.h"
-#include "core/Util_Path.h"
-#include "frontends/common/AppController.h"
-#include "frontends/common/Frontend.h"
-#include "frontends/common/HelpText.h"
-#include "frontends/common/VideoSurface.h"
-#include "frontends/sdl3/SDL_Video.h"
-auto sdl_surface_to_video_surface(SDL_Surface* s) -> VideoSurface_t;
-#if ENABLE_DEBUGGER
-#include "Debugger/Debug.h"
-#endif
-#include "apple2/Video.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
+#include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "core/Asset.h"
@@ -50,14 +41,23 @@ auto sdl_surface_to_video_surface(SDL_Surface* s) -> VideoSurface_t;
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
+#include "frontends/common/AppController.h"
 #include "frontends/common/AudioMixer.h"
+#include "frontends/common/Frontend.h"
+#include "frontends/common/HelpText.h"
 #include "frontends/common/SaveStateManager.h"
 #include "frontends/common/VideoStretch.h"
+#include "frontends/common/VideoSurface.h"
 #include "frontends/common/sdl/DiskUI.h"
 #include "frontends/sdl3/DiskChoose.h"
+#include "frontends/sdl3/SDL_Asset.h"
+#include "frontends/sdl3/SDL_Video.h"
 #include "frontends/sdl3/SdlPtr.h"
 
-constexpr bool ENABLE_MENU = false;
+#if ENABLE_DEBUGGER
+#include "Debugger/Debug.h"
+extern VideoSurface_t* g_debug_screen;
+#endif
 
 SdlSurfacePtr_t g_screen;
 SdlWindowPtr_t g_window;
@@ -66,77 +66,22 @@ SdlTexturePtr_t g_texture;
 SDL_Rect g_orig_rect;
 SDL_Rect g_new_rect;
 
-constexpr int VIEWPORTCX_LOCAL = 560;
-constexpr int VIEWPORTCY_LOCAL = ENABLE_MENU ? 400 : 384;
-constexpr int BUTTON_X = (VIEWPORTCX_LOCAL + (VIEWPORTX << 1));
-enum { BUTTONY = 0, BUTTONCX = 45, BUTTONCY = 45 };
-constexpr int FS_VIEWPORT_X = (640 - BUTTONCX - VIEWPORTX - VIEWPORTCX_LOCAL);
-constexpr int FS_VIEWPORT_Y = ((480 - VIEWPORTCY_LOCAL) >> 1);
-constexpr int FS_BUTTON_X = (640 - BUTTONCX);
-constexpr int FS_BUTTON_Y = (((480 - VIEWPORTCY_LOCAL) >> 1) - 1);
-enum { BUTTONS = 8 };
-
-static bool g_app_active = false;
-static bool is_full_screened = false;
-static uint32_t s_windowed_width = 0;
-static uint32_t s_windowed_height = 0;
-
-static DiskStatus_t g_last_disk_status{};
-static int g_drive0_last_reported_error = disk_err_none;
-static int g_drive1_last_reported_error = disk_err_none;
-
 int g_buttondown = -1;
-
-bool g_window_resized;
-
+bool g_window_resized = false;
 bool g_usingcursor = false;
 
-void draw_status_area(int drawflags);
+namespace {
 
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): button and mod are
-// semantically distinct
-void process_button_click(int button, int mod);
+bool s_app_active = false;
+bool s_is_fullscreen = false;
+uint32_t s_windowed_width = 0;
+uint32_t s_windowed_height = 0;
 
-void reset_machine_state();
+DiskStatus_t s_last_disk_status{};
+int s_drive0_last_reported_error = disk_err_none;
+int s_drive1_last_reported_error = disk_err_none;
 
-void set_fullscreen_mode();
-
-void set_normal_mode();
-
-void set_using_cursor(bool);
-
-void set_icon();
-
-void draw_apple_content() {
-  g_video_draw_mutex.lock();
-  video_realize_palette();
-
-  draw_status_area(draw_background | draw_leds);
-
-  if (system_state.mode == app_mode_logo) {
-    video_display_logo();
-    g_frame_ready = true;
-  } else if (system_state.mode == app_mode_debug) {
-#if ENABLE_DEBUGGER
-    debug_display(true);
-#endif
-    g_frame_ready = true;
-  } else {
-    video_redraw_screen();
-  }
-  g_video_draw_mutex.unlock();
-}
-
-void frame_refresh() {
-  if (g_texture != nullptr && g_screen != nullptr && g_renderer != nullptr) {
-    SDL_UpdateTexture(g_texture.get(), nullptr, g_screen->pixels,
-                      g_screen->pitch);
-    SDL_RenderTexture(g_renderer.get(), g_texture.get(), nullptr, nullptr);
-    SDL_RenderPresent(g_renderer.get());
-  }
-}
-
-static inline auto to_video_rect(const SDL_Rect& r) -> VideoRect_t {
+inline auto to_video_rect(const SDL_Rect& r) noexcept -> VideoRect_t {
   VideoRect_t vr{};
   vr.x = static_cast<int16_t>(r.x);
   vr.y = static_cast<int16_t>(r.y);
@@ -146,10 +91,8 @@ static inline auto to_video_rect(const SDL_Rect& r) -> VideoRect_t {
 }
 
 #if ENABLE_DEBUGGER
-extern VideoSurface_t* g_debug_screen;
-
-static void draw_debugger_tui(VideoSurface_t* vs_screen, const SDL_Rect& r) {
-  if (!g_debug_screen) {
+auto draw_debugger_tui(VideoSurface_t* vs_screen, const SDL_Rect& r) -> void {
+  if (g_debug_screen == nullptr) {
     return;
   }
 
@@ -164,15 +107,285 @@ static void draw_debugger_tui(VideoSurface_t* vs_screen, const SDL_Rect& r) {
 }
 #endif
 
-void draw_frame_window() {
-  if (!g_frame_ready) return;
+auto reset_machine_state() -> void {
+  full_speed = false;
+  linapple_reset_hard();
+  peripheral_command(0, JOY_CMD_RESET, nullptr, 0);
+}
 
-  g_video_draw_mutex.lock();
-  if (g_texture != nullptr && g_screen != nullptr) {
+auto set_icon() -> void {
+  if (assets == nullptr || assets->icon == nullptr || !g_window) {
+    return;
+  }
+  auto* icon_surf = static_cast<SDL_Surface*>(assets->icon);
+  const Uint32 colorkey =
+      SDL_MapRGB(SDL_GetPixelFormatDetails(icon_surf->format),
+                 SDL_GetSurfacePalette(icon_surf), 0, 0, 0);
+  SDL_SetSurfaceColorKey(icon_surf, true, colorkey);
+  SDL_SetWindowIcon(g_window.get(), icon_surf);
+}
+
+auto frame_save_bmp() -> void {
+  if (g_screen == nullptr) {
+    return;
+  }
+  struct stat bufp{};
+  static int s_screenshot_index = 1;
+  std::array<char, 32> bmp_name{};
+
+  std::snprintf(bmp_name.data(), bmp_name.size(), "linapple%7d.bmp",
+                s_screenshot_index);
+  while (stat(bmp_name.data(), &bufp) == 0) {
+    s_screenshot_index++;
+    std::snprintf(bmp_name.data(), bmp_name.size(), "linapple%7d.bmp",
+                  s_screenshot_index);
+  }
+
+  if (!SDL_SaveBMP(g_screen.get(), bmp_name.data())) {
+    std::fprintf(stderr, "Failed to save screenshot: %s\n", SDL_GetError());
+  } else {
+    std::printf("File %s saved!\n", bmp_name.data());
+  }
+  s_screenshot_index++;
+}
+
+auto handle_btn_run(int mod) -> void {
+  if ((mod & SDL_KMOD_LCTRL) != 0 || (mod & SDL_KMOD_RCTRL) != 0) {
+    if (system_state.mode == app_mode_logo) {
+      linapple_reset_hard();
+    } else if (system_state.mode == app_mode_running) {
+      reset_machine_state();
+    }
+#if ENABLE_DEBUGGER
+    if (system_state.mode == app_mode_debug ||
+        system_state.mode == app_mode_stepping) {
+      debug_end();
+    }
+#endif
+    system_state.mode = app_mode_running;
+    draw_status_area(draw_title);
+    video_redraw_screen();
+    system_state.reset_timing = true;
+  } else if ((mod & SDL_KMOD_SHIFT) != 0) {
+    system_state.restart = true;
+    SDL_Event qe{};
+    qe.type = SDL_EVENT_QUIT;
+    SDL_PushEvent(&qe);
+  }
+}
+
+auto handle_btn_drive(int drive_index, int mod) -> void {
+  peripheral_command(0, JOY_CMD_RESET, nullptr, 0);
+  if ((mod & SDL_KMOD_CTRL) != 0) {
+    if ((mod & SDL_KMOD_SHIFT) != 0) {
+      std::printf("HDD  Eject Drive #%d\n", drive_index + 1);
+      HarddiskEjectCmd_t ecmd = {static_cast<uint8_t>(drive_index)};
+      peripheral_command(harddisk_default_slot, harddisk_cmd_eject, &ecmd,
+                         sizeof(ecmd));
+    } else {
+      std::printf("Disk Eject Drive #%d\n", drive_index + 1);
+      DiskEjectCmd_t ecmd{};
+      ecmd.drive = static_cast<uint8_t>(drive_index);
+      if (peripheral_command(disk_default_slot, disk_cmd_eject, &ecmd,
+                             sizeof(ecmd)) == peripheral_ok) {
+        app_controller_save_disk_config(drive_index);
+      }
+    }
+    return;
+  }
+
+  if ((mod & SDL_KMOD_SHIFT) != 0) {
+    if ((mod & SDL_KMOD_ALT) != 0) {
+      harddisk_ui_ftp_select(drive_index);
+    } else {
+      harddisk_ui_select(drive_index);
+    }
+  } else {
+    if ((mod & SDL_KMOD_ALT) != 0) {
+      disk_ftp_select_image(drive_index);
+    } else {
+      disk_select(drive_index);
+    }
+  }
+}
+
+auto handle_btn_fullscreen(int mod) -> void {
+  if ((mod & SDL_KMOD_SHIFT) != 0) {
+    if (current_language != A2LANG_US &&
+        (current_apple2_type == A2TYPE_APPLE2E ||
+         current_apple2_type == A2TYPE_APPLE2EENHANCED)) {
+      uint8_t cur_rocker = 0;
+      size_t rocker_sz = sizeof(cur_rocker);
+      peripheral_query_by_id(0, "linapple.keyboard", keyboard_query_rocker,
+                             &cur_rocker, &rocker_sz);
+      const uint8_t new_rocker = (cur_rocker != 0) ? 0 : 1;
+      peripheral_command_by_id(0, "linapple.keyboard", keyboard_cmd_set_rocker,
+                               &new_rocker, 1);
+      std::printf(
+          "Toggling keyboard rocker switch. Selected character set: %s...\n",
+          new_rocker != 0 ? "local" : "standard/US");
+    }
+  } else {
+    if (system_state.fullscreen) {
+      system_state.fullscreen = false;
+      set_normal_mode();
+    } else {
+      system_state.fullscreen = true;
+      set_fullscreen_mode();
+    }
+    peripheral_command(0, JOY_CMD_RESET, nullptr, 0);
+  }
+}
+
+auto handle_btn_setup(int mod) -> void {
+  if ((mod & SDL_KMOD_SHIFT) != 0) {
+    Configuration_t::instance().set_int("Configuration", "Video Emulation",
+                                        g_videotype);
+    Configuration_t::instance().set_int("Configuration", "Emulation Speed",
+                                        system_state.speed);
+    Configuration_t::instance().set_int("Configuration", "Fullscreen",
+                                        system_state.fullscreen ? 1 : 0);
+    Configuration_t::instance().save();
+  } else {
+    frame_save_bmp();
+  }
+}
+
+auto handle_btn_cycle(int mod) -> void {
+  if ((mod & SDL_KMOD_SHIFT) != 0) {
+    set_budget_video(!get_budget_video());
+  } else {
+    g_videotype++;
+    if (g_videotype >= VT_NUM_MODES) {
+      g_videotype = 0;
+    }
+    video_reinitialize();
+    if (system_state.mode != app_mode_logo) {
+#if ENABLE_DEBUGGER
+      if (system_state.mode == app_mode_debug) {
+        uint32_t debug_video_mode = 0;
+        if (debug_get_video_mode(&debug_video_mode)) {
+          video_redraw_screen();
+        }
+      } else
+#endif
+      {
+        video_redraw_screen();
+      }
+    }
+  }
+}
+
+auto psp_save_state_select_image(bool saveit) -> bool {
+  static size_t s_file_index = 0;
+  static int s_backdx = 0;
+  static int s_dirdx = 0;
+
+  std::string filename;
+  std::string full_path;
+  bool is_directory = true;
+
+  s_file_index = static_cast<size_t>(s_backdx);
+  full_path = system_state.save_state_dir.data();
+
+  while (is_directory) {
+    if (!choose_an_image(system_state.screen_width, system_state.screen_height,
+                         full_path, saveit ? 1 : 0, filename, is_directory,
+                         s_file_index)) {
+      draw_frame_window();
+      return false;
+    }
+    if (is_directory) {
+      if (filename == "..") {
+        const auto last_sep_pos = full_path.find_last_of(file_separator);
+        if (last_sep_pos != std::string::npos) {
+          if (last_sep_pos == 0) {
+            full_path = "/";
+          } else {
+            full_path = full_path.substr(0, last_sep_pos);
+          }
+        }
+        if (full_path.empty()) {
+          full_path = "/";
+        }
+        s_file_index = static_cast<size_t>(s_dirdx);
+      } else {
+        if (full_path != "/") {
+          full_path += "/" + filename;
+        } else {
+          full_path = "/" + filename;
+        }
+        s_dirdx = static_cast<int>(s_file_index);
+        s_file_index = 0;
+      }
+    }
+  }
+
+  util_safe_strcpy(system_state.save_state_dir.data(), full_path.c_str(),
+                   system_state.save_state_dir.size());
+  Configuration_t::instance().set_string("Preferences", "Save State Directory",
+                                         system_state.save_state_dir.data());
+  Configuration_t::instance().save();
+
+  s_backdx = static_cast<int>(s_file_index);
+  full_path += "/" + filename;
+
+  save_state_set_filename(full_path.c_str());
+  Configuration_t::instance().set_string(
+      "Preferences", REGVALUE_SAVESTATE_FILENAME, full_path.c_str());
+  Configuration_t::instance().save();
+  draw_frame_window();
+  return true;
+}
+
+}  // namespace
+
+auto draw_apple_content() -> void {
+  const std::lock_guard<std::recursive_mutex> lock(g_video_draw_mutex);
+  video_realize_palette();
+
+  draw_status_area(draw_background | draw_leds);
+
+  if (system_state.mode == app_mode_logo) {
+    video_display_logo();
+    video_set_frame_ready(true);
+  } else if (system_state.mode == app_mode_debug) {
+#if ENABLE_DEBUGGER
+    debug_display(true);
+#endif
+    video_set_frame_ready(true);
+  } else {
+    video_redraw_screen();
+  }
+}
+
+auto frame_refresh() -> void {
+  if (g_texture != nullptr && g_screen != nullptr && g_renderer != nullptr) {
+    SDL_UpdateTexture(g_texture.get(), nullptr, g_screen->pixels,
+                      g_screen->pitch);
+    SDL_RenderTexture(g_renderer.get(), g_texture.get(), nullptr, nullptr);
+    SDL_RenderPresent(g_renderer.get());
+  }
+}
+
+auto draw_frame_window() -> void {
+  if (!g_frame_ready) {
+    return;
+  }
+
+  {
+    const std::lock_guard<std::recursive_mutex> lock(g_video_draw_mutex);
+    if (g_texture == nullptr || g_screen == nullptr) {
+      return;
+    }
+
     uint32_t* output = video_get_output_buffer();
-    SDL_Rect r = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
+    if (output == nullptr) {
+      return;
+    }
 
-    // Fill g_screen from RGB32 output buffer
+    const SDL_Rect r = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
+
     if (system_state.mode != app_mode_debug) {
       VideoSurface_t vs_screen = sdl_surface_to_video_surface(g_screen.get());
       VideoSurface_t vs_output{};
@@ -197,39 +410,42 @@ void draw_frame_window() {
 #endif
     }
 
-    frame_refresh();
-    g_frame_ready = false;
+    video_set_frame_ready(false);
   }
-  g_video_draw_mutex.unlock();
+
+  frame_refresh();
 }
 
-void draw_status_area(int drawflags) {
+auto draw_status_area(int drawflags) -> void {
   if (g_status_surface == nullptr || g_status_surface->pixels == nullptr) {
     return;
   }
-  if (font_sfc == nullptr) {
-    if (!fonts_initialization()) {
-      fprintf(stderr, "Font file was not loaded.\n");
-      return;
-    }
+  if (font_sfc == nullptr && !fonts_initialization()) {
+    std::fprintf(stderr, "Font file was not loaded.\n");
+    return;
   }
 
-  VideoRect_t srect{};
-  uint8_t mybluez = DARK_BLUE;
-
-  if (drawflags & draw_background) {
-    g_status_cycle = show_cycles;
+  if ((drawflags & draw_background) != 0) {
+    g_status_cycle = k_show_cycles;
   }
-  if (drawflags & draw_leds) {
+
+  if ((drawflags & draw_leds) != 0) {
+    VideoRect_t srect{};
+    const uint8_t mybluez = DARK_BLUE;
     srect.x = 4;
     srect.y = 22;
     srect.w = static_cast<int16_t>(STATUS_PANEL_W - 8);
     srect.h = static_cast<int16_t>(STATUS_PANEL_H - 25);
 
-    for (int y = srect.y; y < srect.y + srect.h; ++y) {
-      memset(g_status_surface->pixels +
-                 static_cast<ptrdiff_t>(y * g_status_surface->pitch) + srect.x,
-             mybluez, static_cast<size_t>(srect.w));
+    if (srect.x >= 0 && srect.y >= 0 &&
+        (srect.x + srect.w) <= g_status_surface->w &&
+        (srect.y + srect.h) <= g_status_surface->h) {
+      for (int y = srect.y; y < srect.y + srect.h; ++y) {
+        std::memset(g_status_surface->pixels +
+                        static_cast<ptrdiff_t>(y * g_status_surface->pitch) +
+                        srect.x,
+                    mybluez, static_cast<size_t>(srect.w));
+      }
     }
 
     std::array<char, 2> leds = {{"\x64"}};
@@ -238,102 +454,90 @@ void draw_status_area(int drawflags) {
     int drive2_status = disk_status_off;
     int hdd_status = disk_status_off;
 
-    if (g_last_disk_status.drive0_spinning) {
-      drive1_status = g_last_disk_status.drive0_writing ? disk_status_write
-                                                        : disk_status_read;
-    } else if (g_last_disk_status.drive0_loaded &&
-               g_last_disk_status.drive0_write_protected) {
+    if (s_last_disk_status.drive0_spinning != 0) {
+      drive1_status = (s_last_disk_status.drive0_writing != 0)
+                          ? disk_status_write
+                          : disk_status_read;
+    } else if (s_last_disk_status.drive0_loaded != 0 &&
+               s_last_disk_status.drive0_write_protected != 0) {
       drive1_status = disk_status_prot;
     }
 
-    if (g_last_disk_status.drive1_spinning) {
-      drive2_status = g_last_disk_status.drive1_writing ? disk_status_write
-                                                        : disk_status_read;
-    } else if (g_last_disk_status.drive1_loaded &&
-               g_last_disk_status.drive1_write_protected) {
+    if (s_last_disk_status.drive1_spinning != 0) {
+      drive2_status = (s_last_disk_status.drive1_writing != 0)
+                          ? disk_status_write
+                          : disk_status_read;
+    } else if (s_last_disk_status.drive1_loaded != 0 &&
+               s_last_disk_status.drive1_write_protected != 0) {
       drive2_status = disk_status_prot;
     }
 
     HarddiskStatus_t hstatus{};
     size_t hsize = sizeof(hstatus);
-    if (peripheral_query(7, harddisk_query_status, &hstatus, &hsize) ==
-        peripheral_ok) {
+    if (peripheral_query(harddisk_default_slot, harddisk_query_status, &hstatus,
+                         &hsize) == peripheral_ok) {
       hdd_status = hstatus.activity_status;
     }
 
-    leds[0] = static_cast<char>(led_char_base + drive1_status);
+    leds.at(0) = static_cast<char>(led_char_base + drive1_status);
     font_print(8, 23, leds.data(), g_status_surface, 4.0f, 2.7f);
 
-    leds[0] = static_cast<char>(led_char_base + drive2_status);
+    leds.at(0) = static_cast<char>(led_char_base + drive2_status);
     font_print(40, 23, leds.data(), g_status_surface, 4.0f, 2.7f);
 
-    leds[0] = static_cast<char>(led_char_base + hdd_status);
+    leds.at(0) = static_cast<char>(led_char_base + hdd_status);
     font_print(71, 23, leds.data(), g_status_surface, 4.0f, 2.7f);
 
-    if (drive1_status | drive2_status | hdd_status) {
-      g_status_cycle = show_cycles;
+    if ((drive1_status | drive2_status | hdd_status) != 0) {
+      g_status_cycle = k_show_cycles;
     }
   }
 }
 
-void frame_show_help_screen(int sx, int sy) {
+auto frame_show_help_screen(int sx, int sy) -> void {
   (void)sy;
-
   if (g_screen == nullptr) {
     return;
   }
-
-  VideoSurface_t* tempSurface = nullptr;
-
-  if (font_sfc == nullptr) {
-    if (!fonts_initialization()) {
-      fprintf(stderr, "Font file was not loaded.\n");
-      return;
-    }
+  if (font_sfc == nullptr && !fonts_initialization()) {
+    std::fprintf(stderr, "Font file was not loaded.\n");
+    return;
   }
+
+  VideoSurface_t* temp_surface = nullptr;
   if (!g_window_resized) {
-    if (system_state.mode == app_mode_logo) {
-      tempSurface = g_logo_bitmap;
-    } else {
-      tempSurface = g_device_bitmap;
-    }
+    temp_surface =
+        (system_state.mode == app_mode_logo) ? g_logo_bitmap : g_device_bitmap;
   } else {
-    tempSurface = g_origscreen;
+    temp_surface = g_origscreen;
   }
 
-  if (tempSurface == nullptr) {
-    // Wrap g_screen as fallback
-    static VideoSurface_t vs_screen;
-    vs_screen = sdl_surface_to_video_surface(g_screen.get());
-    tempSurface = &vs_screen;
+  VideoSurface_t vs_screen_fallback{};
+  if (temp_surface == nullptr) {
+    vs_screen_fallback = sdl_surface_to_video_surface(g_screen.get());
+    temp_surface = &vs_screen_fallback;
   }
 
   VideoSurface_t vs_actual_screen =
       sdl_surface_to_video_surface(g_screen.get());
+  video_soft_stretch(temp_surface, nullptr, &vs_actual_screen, nullptr);
 
-  // Capture original g_screen
-  video_soft_stretch(tempSurface, nullptr, &vs_actual_screen, nullptr);
-
-  // Blur the background by downscaling and upscaling
-  // We use a small temporary surface (1/16 size) to create a pixelated blur
-  // effect
-  SdlSurfacePtr_t blur_temp(SDL_CreateSurface(
-      g_screen->w / 16, g_screen->h / 16, SDL_PIXELFORMAT_ARGB8888));
-  if (blur_temp) {
+  const int blur_w = std::max(1, g_screen->w / 16);
+  const int blur_h = std::max(1, g_screen->h / 16);
+  SdlSurfacePtr_t blur_temp(
+      SDL_CreateSurface(blur_w, blur_h, SDL_PIXELFORMAT_ARGB8888));
+  if (blur_temp != nullptr) {
     VideoSurface_t vs_blur = sdl_surface_to_video_surface(blur_temp.get());
-    video_soft_stretch(&vs_actual_screen, nullptr, &vs_blur,
-                       nullptr);  // Downscale
-    video_soft_stretch(&vs_blur, nullptr, &vs_actual_screen,
-                       nullptr);  // Upscale back
+    video_soft_stretch(&vs_actual_screen, nullptr, &vs_blur, nullptr);
+    video_soft_stretch(&vs_blur, nullptr, &vs_actual_screen, nullptr);
   }
 
-  // Dim the background using SDL blending for better text readability
   SdlSurfacePtr_t dim_surface(
       SDL_CreateSurface(g_screen->w, g_screen->h, SDL_PIXELFORMAT_ARGB8888));
-  if (dim_surface) {
-    Uint32 dim_color =
+  if (dim_surface != nullptr) {
+    const Uint32 dim_color =
         SDL_MapRGBA(SDL_GetPixelFormatDetails(dim_surface->format),
-                    SDL_GetSurfacePalette(dim_surface.get()), 0, 0, 0, 200);
+                    SDL_GetSurfacePalette(dim_surface.get()), 0, 0, 0, 160);
     SDL_FillSurfaceRect(dim_surface.get(), nullptr, dim_color);
     SDL_SetSurfaceBlendMode(dim_surface.get(), SDL_BLENDMODE_BLEND);
     SDL_BlitSurface(dim_surface.get(), nullptr, g_screen.get(), nullptr);
@@ -343,7 +547,6 @@ void frame_show_help_screen(int sx, int sy) {
                        static_cast<float>(SCREEN_WIDTH);
   const float facy_f = static_cast<float>(system_state.screen_height) /
                        static_cast<float>(SCREEN_HEIGHT);
-
   const float scale_x = facx_f;
   const float scale_y = facy_f;
 
@@ -351,55 +554,52 @@ void frame_show_help_screen(int sx, int sy) {
   const int hdr_height = static_cast<int>(42.0f * facy_f);
   rectangle(&vs_actual_screen, static_cast<int>(4.0f * facx_f), hdr_top,
             static_cast<int>(system_state.screen_width - (8.0f * facx_f)),
-            hdr_height, 0xFFFF00);
+            hdr_height, RGB(255, 255, 0));
 
   font_print_centered(sx / 2, hdr_top + static_cast<int>(4.0f * facy_f),
-                      const_cast<char*>(HELP_HEADER_STRINGS.at(0)),
-                      &vs_actual_screen, scale_x, scale_y);
+                      HELP_HEADER_STRINGS.at(0), &vs_actual_screen, scale_x,
+                      scale_y);
   font_print_centered(sx / 2, hdr_top + static_cast<int>(16.0f * facy_f),
-                      const_cast<char*>(HELP_HEADER_STRINGS.at(1)),
-                      &vs_actual_screen, scale_x, scale_y);
+                      HELP_HEADER_STRINGS.at(1), &vs_actual_screen, scale_x,
+                      scale_y);
   font_print_centered(sx / 2, hdr_top + static_cast<int>(28.0f * facy_f),
-                      const_cast<char*>(HELP_HEADER_STRINGS.at(2)),
-                      &vs_actual_screen, scale_x, scale_y);
+                      HELP_HEADER_STRINGS.at(2), &vs_actual_screen, scale_x,
+                      scale_y);
 
   const int body_top = hdr_top + hdr_height + static_cast<int>(4.0f * facy_f);
   const int body_height =
       static_cast<int>(system_state.screen_height - body_top - (4.0f * facy_f));
   rectangle(&vs_actual_screen, static_cast<int>(4.0f * facx_f), body_top,
             static_cast<int>(system_state.screen_width - (8.0f * facx_f)),
-            body_height, 0xFFFFFF);
+            body_height, RGB(255, 255, 255));
 
   const float line_spacing = 13.0f * facy_f;
-  for (size_t i = 0; i < HELP_BODY_LINES.size(); i++) {
+  for (size_t i = 0; i < HELP_BODY_LINES.size(); ++i) {
     if (HELP_BODY_LINES.at(i).text != nullptr &&
-        *HELP_BODY_LINES.at(i).text != '\0') {
+        HELP_BODY_LINES.at(i).text[0] != '\0') {
       font_print(
           static_cast<int>(16.0f * facx_f),
           body_top + static_cast<int>(6.0f * facy_f +
                                       static_cast<float>(i) * line_spacing),
-          const_cast<char*>(HELP_BODY_LINES.at(i).text), &vs_actual_screen,
-          scale_x, scale_y);
+          HELP_BODY_LINES.at(i).text, &vs_actual_screen, scale_x, scale_y);
     }
   }
 
-  // Logo bit
-  VideoSurface_t vs_icon =
-      sdl_surface_to_video_surface(static_cast<SDL_Surface*>(assets->icon));
-
-  VideoRect_t logo{}, scrr{};
-  logo.x = logo.y = 0;
-  logo.w = vs_icon.w;
-  logo.h = vs_icon.h;
-  scrr.x = static_cast<int16_t>(460.0f * facx_f);
-  scrr.y = static_cast<int16_t>(270.0f * facy_f);
-  scrr.w = static_cast<int16_t>(100.0f * facy_f);
-  scrr.h = static_cast<int16_t>(100.0f * facy_f);
-  video_soft_stretch_or(&vs_icon, &logo, &vs_actual_screen, &scrr);
+  if (assets != nullptr && assets->icon != nullptr) {
+    VideoSurface_t vs_icon =
+        sdl_surface_to_video_surface(static_cast<SDL_Surface*>(assets->icon));
+    VideoRect_t logo{0, 0, static_cast<int16_t>(vs_icon.w),
+                     static_cast<int16_t>(vs_icon.h)};
+    VideoRect_t scrr{static_cast<int16_t>(460.0f * facx_f),
+                     static_cast<int16_t>(270.0f * facy_f),
+                     static_cast<int16_t>(100.0f * facy_f),
+                     static_cast<int16_t>(100.0f * facy_f)};
+    video_soft_stretch_or(&vs_icon, &logo, &vs_actual_screen, &scrr);
+  }
 
   frame_refresh();
 
-  SDL_Event event;
+  SDL_Event event{};
   bool waiting = true;
   while (waiting) {
     while (SDL_PollEvent(&event)) {
@@ -432,27 +632,25 @@ void frame_show_help_screen(int sx, int sy) {
         SDL_MapRGB(SDL_GetPixelFormatDetails(g_screen->format),
                    SDL_GetSurfacePalette(g_screen.get()), 0, 0, 0));
   }
-  g_frame_ready = true;
+  video_set_frame_ready(true);
   draw_frame_window();
 }
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): num and mod are
-// semantically distinct
-void frame_quick_state(int num, int mod) {
-  // quick load or save state with number num, if Shift is pressed, state is
-  // being saved, otherwise - being loaded
-  std::array<char, path_max_len> fpath;
-  snprintf(fpath.data(), fpath.size(), "%.*s/SaveState%d.aws",
-           static_cast<int>(strlen(system_state.save_state_dir.data())),
-           system_state.save_state_dir.data(), num);
+
+auto frame_quick_state(int state, int mod) -> void {
+  std::array<char, path_max_len> fpath{};
+  std::snprintf(
+      fpath.data(), fpath.size(), "%.*s/SaveState%d.aws",
+      static_cast<int>(std::strlen(system_state.save_state_dir.data())),
+      system_state.save_state_dir.data(), state);
   save_state_set_filename(fpath.data());
-  if (mod & SDL_KMOD_SHIFT) {
+  if ((mod & SDL_KMOD_SHIFT) != 0) {
     save_state_save();
   } else {
     save_state_load();
   }
 }
 
-auto is_modifier_key(SDL_Keycode sym) -> bool {
+auto is_modifier_key(SDL_Keycode sym) noexcept -> bool {
   switch (sym) {
     case SDLK_LSHIFT:
     case SDLK_RSHIFT:
@@ -469,48 +667,48 @@ auto is_modifier_key(SDL_Keycode sym) -> bool {
   }
 }
 
-void frame_on_resize(int width, int height) {
+auto frame_on_resize(int width, int height) -> void {
   if (width <= 0 || height <= 0) {
     return;
   }
 
-  g_video_draw_mutex.lock();
-  system_state.screen_width = width;
-  system_state.screen_height = height;
+  const std::lock_guard<std::recursive_mutex> lock(g_video_draw_mutex);
+  system_state.screen_width = static_cast<uint32_t>(width);
+  system_state.screen_height = static_cast<uint32_t>(height);
 
-  if (!is_full_screened) {
+  if (!s_is_fullscreen) {
     s_windowed_width = static_cast<uint32_t>(width);
     s_windowed_height = static_cast<uint32_t>(height);
   }
 
-  g_screen.reset(SDL_CreateSurface(system_state.screen_width,
-                                   system_state.screen_height,
+  g_screen.reset(SDL_CreateSurface(static_cast<int>(system_state.screen_width),
+                                   static_cast<int>(system_state.screen_height),
                                    SDL_PIXELFORMAT_XRGB8888));
   g_texture.reset(SDL_CreateTexture(
       g_renderer.get(), SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING,
-      system_state.screen_width, system_state.screen_height));
+      static_cast<int>(system_state.screen_width),
+      static_cast<int>(system_state.screen_height)));
 
   if (g_screen == nullptr || g_texture == nullptr) {
     system_state.mode = app_mode_exit;
-    g_video_draw_mutex.unlock();
     return;
   }
 
-  g_window_resized = (system_state.screen_width != SCREEN_WIDTH) |
+  g_window_resized = (system_state.screen_width != SCREEN_WIDTH) ||
                      (system_state.screen_height != SCREEN_HEIGHT);
   if (g_window_resized) {
     g_orig_rect.x = g_orig_rect.y = 0;
     g_orig_rect.w = static_cast<int16_t>(SCREEN_WIDTH);
     g_orig_rect.h = static_cast<int16_t>(SCREEN_HEIGHT);
-    if (is_full_screened) {
+    if (s_is_fullscreen) {
       int target_w = width;
       int target_h = (target_w * SCREEN_HEIGHT) / SCREEN_WIDTH;
       if (target_h > height) {
         target_h = height;
         target_w = (target_h * SCREEN_WIDTH) / SCREEN_HEIGHT;
       }
-      int offset_x = (width - target_w) / 2;
-      int offset_y = (height - target_h) / 2;
+      const int offset_x = (width - target_w) / 2;
+      const int offset_y = (height - target_h) / 2;
       g_new_rect.x = static_cast<int16_t>(offset_x);
       g_new_rect.y = static_cast<int16_t>(offset_y);
       g_new_rect.w = static_cast<int16_t>(target_w);
@@ -526,186 +724,44 @@ void frame_on_resize(int width, int height) {
       video_redraw_screen();
     }
   }
-  g_video_draw_mutex.unlock();
 }
 
-void frame_on_focus(bool gained) {
-  g_app_active = gained;
-  if (g_app_active && keyboard_get_caps_mode() == caps_mode_host) {
-    // Re-sync Caps Lock state upon regaining focus
-    SDL_Keymod mod = SDL_GetModState();
-    uint8_t caps = (mod & SDL_KMOD_CAPS) ? 1 : 0;
+auto frame_on_focus(bool gained) -> void {
+  s_app_active = gained;
+  if (s_app_active && keyboard_get_caps_mode() == caps_mode_host) {
+    const SDL_Keymod mod = SDL_GetModState();
+    const uint8_t caps = ((mod & SDL_KMOD_CAPS) != 0) ? 1 : 0;
     peripheral_command(0, keyboard_cmd_set_caps, &caps, 1);
   }
 }
 
-void frame_on_expose() {
+auto frame_on_expose() -> void {
   if ((system_state.mode != app_mode_logo) &&
       (system_state.mode != app_mode_debug)) {
     video_redraw_screen();
   }
 }
 
-auto psp_save_state_select_image(bool saveit) -> bool {
-  static size_t fileIndex = 0;
-  static int backdx = 0;
-  static int dirdx = 0;
-
-  std::string filename;  // given filename
-  std::string fullPath;  // full path for it
-  bool isDirectory = true;
-
-  fileIndex = backdx;
-  fullPath = system_state.save_state_dir.data();
-
-  while (isDirectory) {
-    if (!choose_an_image(system_state.screen_width, system_state.screen_height,
-                         fullPath, saveit, filename, isDirectory, fileIndex)) {
-      draw_frame_window();
-      return false;
-    }
-    if (isDirectory) {
-      if (filename == "..") {
-        const auto last_sep_pos = fullPath.find_last_of(file_separator);
-        if (last_sep_pos != std::string::npos) {
-          if (last_sep_pos == 0) {
-            fullPath = "/";
-          } else {
-            fullPath = fullPath.substr(0, last_sep_pos);
-          }
-        }
-        if (fullPath.empty()) {
-          fullPath = "/";
-        }
-        fileIndex = dirdx;
-      } else {
-        if (fullPath != "/") {
-          fullPath += "/" + filename;
-        } else {
-          fullPath = "/" + filename;
-        }
-        dirdx = fileIndex;
-        fileIndex = 0;
-      }
-    }
-  }
-  util_safe_strcpy(system_state.save_state_dir.data(), fullPath.c_str(),
-                   system_state.save_state_dir.size());
-  Configuration_t::instance().set_string("Preferences", "Save State Directory",
-                                         system_state.save_state_dir.data());
-  Configuration_t::instance().save();
-
-  backdx = fileIndex;
-
-  fullPath += "/" + filename;
-
-  save_state_set_filename(fullPath.c_str());
-  Configuration_t::instance().set_string(
-      "Preferences", REGVALUE_SAVESTATE_FILENAME, fullPath.c_str());
-  Configuration_t::instance().save();
-  draw_frame_window();
-  return true;
-}
-
-void frame_save_bmp() {
-  if (g_screen == nullptr) {
-    return;
-  }
-  // Save current g_screen as a .bmp file in current directory
-  struct stat bufp{};
-  static int i = 1;
-  std::array<char, 20> bmpName;
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-truncation"
-  snprintf(bmpName.data(), bmpName.size(), "linapple%7d.bmp", i);
-  while (!stat(bmpName.data(), &bufp)) {
-    i++;
-    snprintf(bmpName.data(), bmpName.size(), "linapple%7d.bmp", i);
-  }
-#pragma GCC diagnostic pop
-
-  SDL_SaveBMP(g_screen.get(), bmpName.data());
-  printf("File %s saved!\n", bmpName.data());
-  i++;
-}
-
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters): button and mod are
-// semantically distinct
-void process_button_click(int button, int mod) {
-  SDL_Event qe;
-
+auto process_button_click(int button, int mod) -> void {
   audio_mixer_set_fade(fade_out);
 
   switch (button) {
-    case btn_help:
+    case k_btn_help:
       if (g_screen != nullptr) {
         frame_show_help_screen(g_screen->w, g_screen->h);
       }
       break;
 
-    case btn_run:
-      if ((mod & (SDL_KMOD_LCTRL)) == (SDL_KMOD_LCTRL) ||
-          (mod & (SDL_KMOD_RCTRL)) == (SDL_KMOD_RCTRL)) {
-        if (system_state.mode == app_mode_logo) {
-          linapple_reset_hard();
-        } else if (system_state.mode == app_mode_running) {
-          reset_machine_state();
-        }
-#if ENABLE_DEBUGGER
-        if ((system_state.mode == app_mode_debug) ||
-            (system_state.mode == app_mode_stepping)) {
-          debug_end();
-        }
-#endif
-        system_state.mode = app_mode_running;
-        draw_status_area(draw_title);
-        video_redraw_screen();
-        system_state.reset_timing = true;
-      } else if (mod & SDL_KMOD_SHIFT) {
-        system_state.restart = true;
-        qe.type = SDL_EVENT_QUIT;
-        SDL_PushEvent(&qe);
-      }
+    case k_btn_run:
+      handle_btn_run(mod);
       break;
 
-    case btn_drive1:
-    case btn_drive2:
-      peripheral_command(0, JOY_CMD_RESET, nullptr, 0);
-      if (mod & SDL_KMOD_CTRL) {
-        if (mod & SDL_KMOD_SHIFT) {
-          printf("HDD  Eject Drive #%d\n", (button - btn_drive1) + 1);
-          HarddiskEjectCmd_t ecmd = {static_cast<uint8_t>(button - btn_drive1)};
-          peripheral_command(harddisk_default_slot, harddisk_cmd_eject, &ecmd,
-                             sizeof(ecmd));
-        } else {
-          printf("Disk Eject Drive #%d\n", (button - btn_drive1) + 1);
-          DiskEjectCmd_t ecmd{};
-          ecmd.drive = static_cast<uint8_t>(button - btn_drive1);
-          if (peripheral_command(disk_default_slot, disk_cmd_eject, &ecmd,
-                                 sizeof(ecmd)) == peripheral_ok) {
-            app_controller_save_disk_config(button - btn_drive1);
-          }
-        }
-        break;
-      }
-
-      if (mod & SDL_KMOD_SHIFT) {
-        if (mod & SDL_KMOD_ALT) {
-          harddisk_ui_ftp_select(button - btn_drive1);
-        } else {
-          harddisk_ui_select(button - btn_drive1);
-        }
-      } else {
-        if (mod & SDL_KMOD_ALT) {
-          disk_ftp_select_image(button - btn_drive1);
-        } else {
-          disk_select(button - btn_drive1);
-        }
-      }
+    case k_btn_drive1:
+    case k_btn_drive2:
+      handle_btn_drive(button - k_btn_drive1, mod);
       break;
 
-    case btn_driveswap:
+    case k_btn_driveswap:
       if (peripheral_command(disk_default_slot, disk_cmd_swap_drives, nullptr,
                              0) == peripheral_ok) {
         app_controller_save_disk_config(0);
@@ -713,108 +769,53 @@ void process_button_click(int button, int mod) {
       }
       break;
 
-    case btn_fullscr:
-      if (mod & SDL_KMOD_SHIFT) {
-        // only IIe and enhanced have a keyboard rocker switch (and only non-US
-        // keyboards)
-        if ((current_language != A2LANG_US) &&
-            ((current_apple2_type == A2TYPE_APPLE2E) ||
-             (current_apple2_type == A2TYPE_APPLE2EENHANCED))) {
-          uint8_t cur_rocker = 0;
-          size_t rocker_sz = sizeof(cur_rocker);
-          peripheral_query_by_id(0, "linapple.keyboard", keyboard_query_rocker,
-                                 &cur_rocker, &rocker_sz);
-          uint8_t new_rocker = cur_rocker ? 0 : 1;
-          peripheral_command_by_id(0, "linapple.keyboard",
-                                   keyboard_cmd_set_rocker, &new_rocker, 1);
-          printf(
-              "Toggling keyboard rocker switch. Selected character set: "
-              "%s...\n",
-              new_rocker ? "local" : "standard/US");
-        }
-      } else {
-        if (system_state.fullscreen) {
-          system_state.fullscreen = false;
-          set_normal_mode();
-        } else {
-          system_state.fullscreen = true;
-          set_fullscreen_mode();
-        }
-        peripheral_command(0, JOY_CMD_RESET, nullptr, 0);
-      }
+    case k_btn_fullscr:
+      handle_btn_fullscreen(mod);
       break;
 
-    case btn_debug:
+    case k_btn_debug:
 #if ENABLE_DEBUGGER
       if (!system_state.disable_debugger) {
         if (system_state.mode != app_mode_debug) {
           debug_begin();
           set_using_cursor(false);
-        } else if (system_state.mode == app_mode_debug) {
+        } else {
           debug_end();
         }
       }
 #endif
       break;
 
-    case btn_setup:
-      if (mod & SDL_KMOD_SHIFT) {
-        Configuration_t::instance().set_int("Configuration", "Video Emulation",
-                                            g_videotype);
-        Configuration_t::instance().set_int("Configuration", "Emulation Speed",
-                                            system_state.speed);
-        Configuration_t::instance().set_int("Configuration", "Fullscreen",
-                                            system_state.fullscreen ? 1 : 0);
-        Configuration_t::instance().save();
-
-      } else {
-        frame_save_bmp();
-      }
+    case k_btn_setup:
+      handle_btn_setup(mod);
       break;
 
-    case btn_cycle:
-      if (mod & SDL_KMOD_SHIFT) {
-        set_budget_video(!get_budget_video());
-      } else {
-        g_videotype++;
-        if (g_videotype >= VT_NUM_MODES) {
-          g_videotype = 0;
-        }
-        video_reinitialize();
-        if (system_state.mode != app_mode_logo) {
-          if (system_state.mode == app_mode_debug) {
-#if ENABLE_DEBUGGER
-            uint32_t debugVideoMode = 0;
-            if (debug_get_video_mode(&debugVideoMode)) {
-              video_redraw_screen();
-            }
-#endif
-          } else {
-            video_redraw_screen();
-          }
-        }
-      }
+    case k_btn_cycle:
+      handle_btn_cycle(mod);
       break;
-    case btn_quit:
+
+    case k_btn_quit: {
+      SDL_Event qe{};
       qe.type = SDL_EVENT_QUIT;
       SDL_PushEvent(&qe);
       break;
-    case btn_savest:
-      if (mod & SDL_KMOD_ALT) {
-        save_state_save();
-      } else if (psp_save_state_select_image(true)) {
+    }
+
+    case k_btn_savest:
+      if ((mod & SDL_KMOD_ALT) != 0 || psp_save_state_select_image(true)) {
         save_state_save();
       }
       break;
-    case btn_loadst:
-      if (mod & SDL_KMOD_CTRL) {
+
+    case k_btn_loadst:
+      if ((mod & SDL_KMOD_CTRL) != 0) {
         linapple_reset_soft();
-      } else if (mod & SDL_KMOD_ALT) {
-        save_state_load();
-      } else if (psp_save_state_select_image(false)) {
+      } else if ((mod & SDL_KMOD_ALT) != 0 ||
+                 psp_save_state_select_image(false)) {
         save_state_load();
       }
       break;
+
     default:
       break;
   }
@@ -825,22 +826,14 @@ void process_button_click(int button, int mod) {
   }
 }
 
-void reset_machine_state() {
-  full_speed = false;  // Might've hit reset in middle of internal_cpu_execute()
-                       // - so beep may get (partially) muted
-
-  linapple_reset_hard();
-  peripheral_command(0, JOY_CMD_RESET, nullptr, 0);
-}
-
-void set_fullscreen_mode() {
-  if (!is_full_screened) {
-    is_full_screened = true;
+auto set_fullscreen_mode() -> void {
+  if (!s_is_fullscreen) {
+    s_is_fullscreen = true;
     if (s_windowed_width == 0 || s_windowed_height == 0) {
       s_windowed_width = system_state.screen_width;
       s_windowed_height = system_state.screen_height;
     }
-    if (g_window) {
+    if (g_window != nullptr) {
       SDL_SetWindowFullscreen(g_window.get(), true);
     }
     if (system_state.mode != app_mode_debug) {
@@ -849,10 +842,10 @@ void set_fullscreen_mode() {
   }
 }
 
-void set_normal_mode() {
-  if (is_full_screened) {
-    is_full_screened = false;
-    if (g_window) {
+auto set_normal_mode() -> void {
+  if (s_is_fullscreen) {
+    s_is_fullscreen = false;
+    if (g_window != nullptr) {
       SDL_SetWindowFullscreen(g_window.get(), false);
       if (s_windowed_width > 0 && s_windowed_height > 0) {
         SDL_SetWindowSize(g_window.get(), static_cast<int>(s_windowed_width),
@@ -866,59 +859,61 @@ void set_normal_mode() {
     }
   } else if (system_state.mode == app_mode_debug) {
     SDL_ShowCursor();
-    if (g_window) {
+    if (g_window != nullptr) {
       SDL_SetWindowMouseGrab(g_window.get(), false);
     }
   }
 }
 
-void set_using_cursor(bool newvalue) {
-  g_usingcursor = newvalue;
+auto set_using_cursor(bool enable) -> void {
+  g_usingcursor = enable;
   if (g_usingcursor) {
     SDL_HideCursor();
-    if (g_window) {
+    if (g_window != nullptr) {
       SDL_SetWindowMouseGrab(g_window.get(), true);
     }
   } else {
-    if ((!is_full_screened) || (system_state.mode == app_mode_debug)) {
+    if (!s_is_fullscreen || system_state.mode == app_mode_debug) {
       SDL_ShowCursor();
     }
-    if (g_window) {
+    if (g_window != nullptr) {
       SDL_SetWindowMouseGrab(g_window.get(), false);
     }
   }
 }
 
-extern void sdl_asset_load_icon();
-extern void sdl_asset_free_icon();
-
 auto frame_create_window() -> int {
   sdl_asset_load_icon();
-  is_full_screened = false;
+  s_is_fullscreen = false;
   if (!system_state.fullscreen) {
     s_windowed_width = system_state.screen_width;
     s_windowed_height = system_state.screen_height;
   }
 
   Uint32 flags = 0;
-  if (system_state.fullscreen) flags |= SDL_WINDOW_FULLSCREEN;
+  if (system_state.fullscreen) {
+    flags |= SDL_WINDOW_FULLSCREEN;
+  }
 
   if (g_window == nullptr) {
-    g_window.reset(SDL_CreateWindow(app_title, system_state.screen_width,
-                                    system_state.screen_height, flags));
+    g_window.reset(
+        SDL_CreateWindow(app_title, static_cast<int>(system_state.screen_width),
+                         static_cast<int>(system_state.screen_height), flags));
     if (!g_window) {
-      fprintf(stderr, "Could not create SDL window: %s\n", SDL_GetError());
+      std::fprintf(stderr, "Could not create SDL window: %s\n", SDL_GetError());
       return 1;
     }
   } else {
-    SDL_SetWindowSize(g_window.get(), system_state.screen_width,
-                      system_state.screen_height);
+    SDL_SetWindowSize(g_window.get(),
+                      static_cast<int>(system_state.screen_width),
+                      static_cast<int>(system_state.screen_height));
   }
 
   if (g_renderer == nullptr) {
     g_renderer.reset(SDL_CreateRenderer(g_window.get(), nullptr));
     if (!g_renderer) {
-      fprintf(stderr, "Could not create SDL renderer: %s\n", SDL_GetError());
+      std::fprintf(stderr, "Could not create SDL renderer: %s\n",
+                   SDL_GetError());
       return 1;
     }
   }
@@ -927,22 +922,23 @@ auto frame_create_window() -> int {
                                    static_cast<int>(system_state.screen_height),
                                    SDL_PIXELFORMAT_XRGB8888));
   if (g_screen == nullptr) {
-    fprintf(stderr, "Could not create SDL surface: %s\n", SDL_GetError());
+    std::fprintf(stderr, "Could not create SDL surface: %s\n", SDL_GetError());
     return 1;
   }
 
   g_texture.reset(SDL_CreateTexture(
       g_renderer.get(), SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING,
-      system_state.screen_width, system_state.screen_height));
+      static_cast<int>(system_state.screen_width),
+      static_cast<int>(system_state.screen_height)));
   if (g_texture == nullptr) {
-    fprintf(stderr, "Could not create SDL texture: %s\n", SDL_GetError());
+    std::fprintf(stderr, "Could not create SDL texture: %s\n", SDL_GetError());
     return 1;
   }
 
   SDL_ShowWindow(g_window.get());
   set_icon();
 
-  g_window_resized = (system_state.screen_width != SCREEN_WIDTH) |
+  g_window_resized = (system_state.screen_width != SCREEN_WIDTH) ||
                      (system_state.screen_height != SCREEN_HEIGHT);
   if (g_window_resized) {
     g_orig_rect.x = g_orig_rect.y = g_new_rect.x = g_new_rect.y = 0;
@@ -951,12 +947,12 @@ auto frame_create_window() -> int {
     g_new_rect.w = static_cast<int16_t>(system_state.screen_width);
     g_new_rect.h = static_cast<int16_t>(system_state.screen_height);
   }
-  printf("Screen size is %dx%d\n", system_state.screen_width,
-         system_state.screen_height);
+  std::printf("Screen size is %dx%d\n", system_state.screen_width,
+              system_state.screen_height);
   return 0;
 }
 
-void frame_destroy_window() {
+auto frame_destroy_window() -> void {
   g_texture.reset();
   g_screen.reset();
   g_renderer.reset();
@@ -964,71 +960,54 @@ void frame_destroy_window() {
   sdl_asset_free_icon();
 }
 
-void set_icon() {
-  if (assets == nullptr || assets->icon == nullptr || !g_window) {
-    return;
-  }
-  auto* icon_surf = static_cast<SDL_Surface*>(assets->icon);
-  /* Black is the transparency colour.
-     Part of the logo seems to use it !? */
-  Uint32 colorkey = SDL_MapRGB(SDL_GetPixelFormatDetails(icon_surf->format),
-                               SDL_GetSurfacePalette(icon_surf), 0, 0, 0);
-  SDL_SetSurfaceColorKey(icon_surf, true, colorkey);
-
-  /* No need to pass a mask given the above. */
-  SDL_SetWindowIcon(g_window.get(), icon_surf);
-}
-
 auto init_sdl() -> int {
   if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK)) {
-    fprintf(stderr, "Could not initialize SDL: %s\n", SDL_GetError());
+    std::fprintf(stderr, "Could not initialize SDL: %s\n", SDL_GetError());
     return 1;
   }
-
-  // SDL ref: Icon should be set *before* the first call to SDL_SetVideoMode.
   return 0;
 }
 
-void frame_refresh_status(int drawflags) {
-  if (drawflags & draw_leds) {
-    size_t size = sizeof(g_last_disk_status);
+auto frame_refresh_status(int drawflags) -> void {
+  if ((drawflags & draw_leds) != 0) {
+    size_t size = sizeof(s_last_disk_status);
     if (peripheral_query(disk_default_slot, disk_query_status,
-                         &g_last_disk_status, &size) == peripheral_ok) {
-      if (g_last_disk_status.drive0_last_error != disk_err_none &&
-          g_last_disk_status.drive0_last_error !=
-              g_drive0_last_reported_error) {
+                         &s_last_disk_status, &size) == peripheral_ok) {
+      if (s_last_disk_status.drive0_last_error != disk_err_none &&
+          s_last_disk_status.drive0_last_error !=
+              s_drive0_last_reported_error) {
         SDL_ShowSimpleMessageBox(
             SDL_MESSAGEBOX_ERROR, "Disk 1 error",
-            disk_ui_get_error_message(g_last_disk_status.drive0_last_error),
+            disk_ui_get_error_message(s_last_disk_status.drive0_last_error),
             g_window.get());
-        g_drive0_last_reported_error = g_last_disk_status.drive0_last_error;
-      } else if (g_last_disk_status.drive0_last_error == disk_err_none) {
-        g_drive0_last_reported_error = disk_err_none;
+        s_drive0_last_reported_error = s_last_disk_status.drive0_last_error;
+      } else if (s_last_disk_status.drive0_last_error == disk_err_none) {
+        s_drive0_last_reported_error = disk_err_none;
       }
 
-      if (g_last_disk_status.drive1_last_error != disk_err_none &&
-          g_last_disk_status.drive1_last_error !=
-              g_drive1_last_reported_error) {
+      if (s_last_disk_status.drive1_last_error != disk_err_none &&
+          s_last_disk_status.drive1_last_error !=
+              s_drive1_last_reported_error) {
         SDL_ShowSimpleMessageBox(
             SDL_MESSAGEBOX_ERROR, "Disk 2 error",
-            disk_ui_get_error_message(g_last_disk_status.drive1_last_error),
+            disk_ui_get_error_message(s_last_disk_status.drive1_last_error),
             g_window.get());
-        g_drive1_last_reported_error = g_last_disk_status.drive1_last_error;
-      } else if (g_last_disk_status.drive1_last_error == disk_err_none) {
-        g_drive1_last_reported_error = disk_err_none;
+        s_drive1_last_reported_error = s_last_disk_status.drive1_last_error;
+      } else if (s_last_disk_status.drive1_last_error == disk_err_none) {
+        s_drive1_last_reported_error = disk_err_none;
       }
 
-      char title_buf[512] = {};
-      if (g_last_disk_status.drive0_loaded) {
-        char display_name[disk_ui_display_name_max + 1] = {};
-        disk_ui_format_display_name(g_last_disk_status.drive0_name,
-                                    display_name, sizeof(display_name));
-        snprintf(title_buf, sizeof(title_buf), "%s - %s", app_title,
-                 display_name);
+      std::array<char, 512> title_buf{};
+      if (s_last_disk_status.drive0_loaded) {
+        std::array<char, disk_ui_display_name_max + 1> display_name{};
+        disk_ui_format_display_name(s_last_disk_status.drive0_name,
+                                    display_name.data(), display_name.size());
+        std::snprintf(title_buf.data(), title_buf.size(), "%s - %s", app_title,
+                      display_name.data());
       } else {
-        snprintf(title_buf, sizeof(title_buf), "%s", app_title);
+        std::snprintf(title_buf.data(), title_buf.size(), "%s", app_title);
       }
-      linapple_update_title(title_buf);
+      linapple_update_title(title_buf.data());
     }
   }
   draw_status_area(drawflags);

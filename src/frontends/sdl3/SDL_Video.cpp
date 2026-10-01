@@ -4,43 +4,48 @@
 #include <SDL3/SDL_pixels.h>
 #include <SDL3/SDL_surface.h>
 
+#include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <mutex>
 
 #include "apple2/Video.h"
 #include "frontends/common/VideoSurface.h"
 
-extern VideoSurface_t* g_debug_screen;
-extern std::recursive_mutex g_video_draw_mutex;
-extern SDL_Surface* g_screen;
-
-void stretch_blt_mem_to_frame_dc() {
-  g_video_draw_mutex.lock();
-  // In our new architecture, we just set frame ready and let the main loop draw
-  // it.
-  g_frame_ready = true;
-  g_video_draw_mutex.unlock();
+auto stretch_blt_mem_to_frame_dc() -> void {
+  const std::lock_guard<std::recursive_mutex> lock(g_video_draw_mutex);
+  video_set_frame_ready(true);
 }
 
-auto sdl_surface_to_video_surface(SDL_Surface* s) -> VideoSurface_t {
-  VideoSurface_t vs{};
-  if (s == nullptr) {
-    return vs;
+[[nodiscard]] auto sdl_surface_to_video_surface(SDL_Surface* surface)
+    -> VideoSurface_t {
+  constexpr int k_default_bpp = 4;
+
+  VideoSurface_t video_surface{};
+  if (surface == nullptr) {
+    return video_surface;
   }
-  vs.pixels = static_cast<uint8_t*>(s->pixels);
-  vs.w = s->w;
-  vs.h = s->h;
-  vs.pitch = s->pitch;
-  vs.bpp = SDL_BYTESPERPIXEL(s->format);
-  SDL_Palette* pal = SDL_GetSurfacePalette(s);
-  if (pal != nullptr) {
-    int ncolors = (pal->ncolors < 256) ? pal->ncolors : 256;
+
+  video_surface.pixels = static_cast<uint8_t*>(surface->pixels);
+  video_surface.w = surface->w;
+  video_surface.h = surface->h;
+  video_surface.pitch = surface->pitch;
+
+  const int bpp = SDL_BYTESPERPIXEL(surface->format);
+  video_surface.bpp = (bpp > 0) ? bpp : k_default_bpp;
+
+  SDL_Palette* palette = SDL_GetSurfacePalette(surface);
+  if (palette != nullptr && palette->colors != nullptr) {
+    const int ncolors = std::max(
+        0, std::min(palette->ncolors, static_cast<int>(k_video_palette_size)));
     for (int i = 0; i < ncolors; ++i) {
-      vs.palette[i].r = pal->colors[i].r;
-      vs.palette[i].g = pal->colors[i].g;
-      vs.palette[i].b = pal->colors[i].b;
-      vs.palette[i].a = pal->colors[i].a;
+      const auto idx = static_cast<size_t>(i);
+      video_surface.palette.at(idx).r = palette->colors[i].r;
+      video_surface.palette.at(idx).g = palette->colors[i].g;
+      video_surface.palette.at(idx).b = palette->colors[i].b;
+      video_surface.palette.at(idx).a = palette->colors[i].a;
     }
   }
-  return vs;
+
+  return video_surface;
 }
