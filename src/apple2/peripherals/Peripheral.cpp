@@ -82,7 +82,10 @@ static std::array<std::vector<ActivePeripheral_t>, NUM_SLOTS>
     g_active_peripherals;
 static std::array<bool, NUM_SLOTS> g_peripheral_activity_state;
 
-static constexpr size_t io_direct_count = 64;
+// Room for every address the motherboard devices and the shipped cards claim,
+// with headroom: a registration past the end is dropped with one log line and
+// the address reads as the floating bus from then on.
+static constexpr size_t io_direct_count = 128;
 static std::array<DirectIoHandler_t, io_direct_count> g_direct_io_handlers;
 static size_t g_num_direct_handlers = 0;
 

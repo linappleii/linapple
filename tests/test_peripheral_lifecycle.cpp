@@ -9,10 +9,12 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "apple2/Memory.h"
 #include "apple2/SnapshotTypes.h"
+#include "apple2/Video.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Internal.h"
 #include "apple2/peripherals/clock/ClockCardCommands.h"
 #include "core/LinAppleCore.h"
+#include "core/Log.h"
 #include "core/Registry.h"
 #include "doctest.h"
 #include "fixture_plugin_slot0.h"
@@ -501,4 +503,70 @@ TEST_CASE("Peripheral Manager: The built-in cards register in id order") {
   CHECK(std::string(front->id) == "linapple.joystick");
   CHECK(std::string(manifest.peripherals[0].name) == "Joystick");
 #endif
+}
+
+namespace {
+
+auto record_log_line(LogLevel_t level, const char* message, void* user_data)
+    -> void {
+  (void)level;
+  auto* lines = static_cast<std::string*>(user_data);
+  if (lines != nullptr && message != nullptr) {
+    lines->append(message);
+  }
+}
+
+}  // namespace
+
+TEST_CASE(
+    "Peripheral Manager: The shipped slot layout fits the direct I/O table") {
+  // A registration past the end of the table is dropped with one log line and
+  // its address reads as the floating bus from then on, so a machine that
+  // overflows it loses inputs silently.
+  std::string log;
+  Logger::set_callback_with_context(record_log_line, &log);
+
+  TestFixtures::ScopedTestConfig_t::Description_t description;
+  description.slots[0] = "Parallel Printer";
+  description.slots[1] = "Super Serial Card";
+  description.slots[3] = "Mockingboard";
+  description.slots[4] = "Mockingboard";
+#ifdef ENABLE_PERIPHERAL_DISK
+  description.slots[5] = "Disk II";
+#endif
+#ifdef ENABLE_PERIPHERAL_HARDDISK
+  description.slots[6] = "Harddisk";
+#endif
+  {
+    TestFixtures::ScopedTestConfig_t config(description);
+    TestFixtures::ScopedCore_t core(config);
+
+    CHECK(log.find("Too many direct IO handlers") == std::string::npos);
+
+    // An unhandled address returns the bus byte whole, a game-port handler
+    // keeps only its low seven bits, so a marker with bit 7 set tells them
+    // apart. With the counter far past any pulse every paddle reads low, and
+    // the strobe at $C070 is proven by the paddles reading high afterwards.
+    constexpr uint32_t probe_cycle = 100;
+    constexpr uint8_t marker = 0xDA;
+    constexpr uint8_t marker_masked = 0x5A;
+    constexpr uint16_t first_button = 0xC061;
+    constexpr uint16_t first_paddle = 0xC064;
+    constexpr uint16_t last_paddle = 0xC067;
+    constexpr uint16_t paddle_strobe = 0xC070;
+    constexpr uint64_t long_after_any_pulse = 1000000;
+    TestFixtures::ScopedCore_t::poke(
+        video_get_scanner_address(nullptr, probe_cycle), &marker, 1);
+    g_cumulative_cycles = long_after_any_pulse;
+    for (uint16_t addr = first_button; addr <= last_paddle; ++addr) {
+      CAPTURE(addr);
+      CHECK(io_map_dispatch(0, addr, 0, 0, probe_cycle) == marker_masked);
+    }
+    static_cast<void>(io_map_dispatch(0, paddle_strobe, 0, 0, probe_cycle));
+    for (uint16_t addr = first_paddle; addr <= last_paddle; ++addr) {
+      CAPTURE(addr);
+      CHECK(io_map_dispatch(0, addr, 0, 0, probe_cycle) == marker);
+    }
+  }
+  Logger::set_callback_with_context(nullptr, nullptr);
 }
