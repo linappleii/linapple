@@ -133,9 +133,6 @@ auto snapshot_serialize(Snapshot_t* snapshot) noexcept -> void {
   peripheral_get_manifest(&snapshot->manifest);
 
   static_cast<void>(cpu_get_snapshot(&snapshot->apple2_unit.cpu_6502));
-  size_t joystick_size = sizeof(snapshot->apple2_unit.joystick);
-  peripheral_save_state_by_name(0, "Joystick", &snapshot->apple2_unit.joystick,
-                                &joystick_size);
   static_cast<void>(video_get_snapshot(&snapshot->apple2_unit.video));
   static_cast<void>(mem_get_snapshot(&snapshot->apple2_unit.memory));
 
@@ -192,8 +189,6 @@ auto snapshot_deserialize(const Snapshot_t* snapshot) -> bool {
   if (cpu_set_snapshot(&snapshot->apple2_unit.cpu_6502) != 0) {
     return false;
   }
-  peripheral_load_state_by_name(0, "Joystick", &snapshot->apple2_unit.joystick,
-                                sizeof(snapshot->apple2_unit.joystick));
   peripheral_load_state_by_name(0, "Keyboard", &snapshot->apple2_unit.keyboard,
                                 sizeof(snapshot->apple2_unit.keyboard));
   if (video_set_snapshot(&snapshot->apple2_unit.video) != 0) {

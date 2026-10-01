@@ -58,6 +58,9 @@ struct SsIoComms_t {
   uint8_t stop_bits;
 };
 
+// Written and read as eight zero bytes. They keep the fixed body at its
+// length; the game port lives in slot 0, which has no entry in the trailer and
+// no frame that fits here, so its state has no home in this format.
 struct SsIoJoystick_t {
   uint64_t joy_cntr_reset_cycle;
 };

@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 #include <array>
+#include <cstddef>
 #include <cstdio>
 #include <cstring>
 #include <fstream>
@@ -445,4 +446,78 @@ TEST_CASE("Snapshot: Memory snapshot null pointer defense") {
 
 TEST_CASE("Snapshot: Deserialization null pointer defense") {
   CHECK(snapshot_deserialize(nullptr) == false);
+}
+
+namespace {
+
+constexpr uint32_t cycles_per_frame = 17030;
+constexpr uint16_t probe_address = 0x0300;
+constexpr uint8_t bit7 = 0x80;
+
+// Runs one instruction at probe_address and leaves the registers as it found
+// them for the caller to read.
+auto step_one(const std::array<uint8_t, 3>& instruction) -> void {
+  TestFixtures::ScopedCore_t::poke(probe_address, instruction);
+  cpu_get_registers()->pc = probe_address;
+  REQUIRE(cpu_execute(0) > 0);
+}
+
+}  // namespace
+
+TEST_CASE("Snapshot: The game port's eight bytes are written as zeros") {
+  static_assert(offsetof(Snapshot_t, apple2_unit.joystick) == 72,
+                "the game port's field sits at byte 72 of the file");
+  static_assert(sizeof(SsIoJoystick_t) == 8,
+                "the game port's field is eight bytes long");
+
+  TestConfig_t config(TestConfig_t::enhanced_2e_only());
+  TestFixtures::ScopedCore_t core(config);
+  REQUIRE(cpu_execute(cycles_per_frame) >= cycles_per_frame);
+  // Any access to $C070 triggers the paddle timers (Apple II Reference Manual,
+  // 1979, p. 99), so the card holds a running timer when the file is written.
+  step_one({0xAD, 0x70, 0xC0});
+
+  TestFixtures::ScopedTempFile_t file(".aws");
+  save_state_set_filename(file.c_str());
+  save_state_save();
+
+  struct stat written{};
+  REQUIRE(stat(file.c_str(), &written) == 0);
+  CHECK(static_cast<size_t>(written.st_size) == 134200);
+
+  std::ifstream in(file.path(), std::ios::binary);
+  std::array<char, sizeof(SsIoJoystick_t)> field{};
+  in.seekg(offsetof(Snapshot_t, apple2_unit.joystick));
+  in.read(field.data(), field.size());
+  REQUIRE(in.good());
+  CHECK(field == std::array<char, sizeof(SsIoJoystick_t)>{});
+}
+
+TEST_CASE("Snapshot: A loaded file starts with every paddle timer expired") {
+  TestFixtures::ScopedTempFile_t file(".aws");
+  uint64_t saved_cycles = 0;
+  {
+    TestConfig_t config(TestConfig_t::enhanced_2e_only());
+    TestFixtures::ScopedCore_t core(config);
+    // A frame of running puts the counter the file restores well past the
+    // longest pulse, so only a trigger carried by the file could read high.
+    REQUIRE(cpu_execute(cycles_per_frame) >= cycles_per_frame);
+    step_one({0xAD, 0x70, 0xC0});
+    saved_cycles = cpu_get_cumulative_cycles();
+    REQUIRE(saved_cycles >= cycles_per_frame);
+    save_state_set_filename(file.c_str());
+    save_state_save();
+  }
+
+  TestConfig_t config(TestConfig_t::enhanced_2e_only());
+  TestFixtures::ScopedCore_t core(config);
+  save_state_set_filename(file.c_str());
+  REQUIRE(save_state_load());
+  REQUIRE(cpu_get_cumulative_cycles() == saved_cycles);
+
+  // LDA $C064: paddle 0 four cycles after the counter the file restored. Had
+  // the strobe travelled with the file the timer would still be charging.
+  cpu_get_registers()->a = 0xFF;
+  step_one({0xAD, 0x64, 0xC0});
+  CHECK((cpu_get_registers()->a & bit7) == 0);
 }
