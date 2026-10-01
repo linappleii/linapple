@@ -1,4 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
+//
+// Hardware reference for "Datasheet Page X" citations in this file:
+// Motorola Semiconductor MC6821 NMOS Peripheral Interface Adapter (PIA)
+// https://colorcomputerarchive.com/repo/Documents/Datasheets/MC6821%20NMOS%20Peripheral%20Interface%20Adapter%20(Motorola).pdf
 #include "apple2/chips/6821.h"
 
 #include <cstdint>
@@ -93,8 +97,8 @@ auto pia_6821_read(Pia6821_t* p, uint8_t addr) noexcept -> uint8_t {
           pia_call(p->out_ca2, 1);
         }
       }
-      // Datasheet: When reading Port A, the actual pin is read (not the ORA
-      // latch)
+      // Datasheet Page 8: When reading Port A, the actual pin is read (not
+      // the ORA latch)
       return p->port_a_in;
 
     case 1:  // Control A
