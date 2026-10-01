@@ -16,17 +16,12 @@
 
 namespace {
 
-// The "6" line of the I/O selector enables a 74LS251 that puts one of eight
-// inputs on bit 7 of the data bus alone, chosen by A0-A2: input 0 is the
-// cassette input (the motherboard's, not this card's), inputs 1-3 the three
-// pushbuttons and inputs 4-7 the four NE558 timer outputs. A3 does not reach
-// the multiplexer, so $C068-$C06F read as $C060-$C067. Bits 0-6 are whatever
-// the undriven bus holds (Apple II Reference Manual, 1979, p. 99; Sather,
-// Understanding the Apple II, 7-8; Apple IIe Technical Reference Manual,
-// pp. 41 and 189). The "7" line, any access to $C070-$C07F, read or write,
-// triggers all four timers (1979 manual pp. 78-79 and 99; IIe Tech Ref pp. 29
-// and 187). $C07F is left to the motherboard: on the //e its read also answers
-// RDDHIRES, which the strobe registration would silence.
+// The 74LS251 behind $C060-$C06F puts one input on D7 alone, selected by
+// A0-A2; A3 is not decoded, so $C068-$C06F mirror $C060-$C067, and bits 0-6
+// are the undriven bus. Input 0 is the cassette input, the motherboard's. Any
+// access to $C070-$C07F triggers all four timers. $C07F stays with the
+// motherboard: on the //e its read answers RDDHIRES. (Apple II Reference
+// Manual 1979 pp. 78-79, 99; Sather 7-8; IIe Tech Ref pp. 29, 41, 187.)
 constexpr uint16_t addr_mux_first = 0xC060;
 constexpr uint16_t addr_mux_last = 0xC06F;
 constexpr uint16_t addr_trigger_first = 0xC070;
@@ -44,39 +39,31 @@ constexpr uint8_t axis_count = 2;
 constexpr uint8_t level_max = 1;
 constexpr uint8_t flag_max = 1;
 
-// PB0-PB2 are 74LS TTL inputs: a pressed button puts +5 V on the input and
-// the 560 ohm pull-down that takes a released one to ground sits in the
-// controller's plug, two of them in a standard paddle set (Apple II Reference
-// Manual, 1979, p. 100; Sather 7-9 and 7-11; IIe Tech Ref p. 189). An open
-// bipolar TTL input reads high (TI, Designing With Logic, SDYA009C, section
-// 3), so a line with nothing plugged into it reads 1. The //e wires the Open
-// Apple and Solid Apple keys in parallel with PB0 and PB1 (IIe Tech Ref
-// pp. 13 and 41), so a line is the OR of its connector switch and its
-// keyboard switch, over whatever pull-down is present.
+// PB0-PB2 are TTL inputs: a button puts +5 V on the line, the 560 ohm
+// pull-down lives in the controller's plug, and an open input reads 1 (Apple
+// II Reference Manual 1979 p. 100; Sather 7-9, 7-11; TI SDYA009C section 3).
+// The //e wires Open and Solid Apple in parallel with PB0 and PB1 (IIe Tech
+// Ref pp. 13, 41), so a line is the OR of its two switches over whatever
+// pull-down is present.
 enum SwitchSource_t : uint8_t { source_connector = 0, source_keyboard = 1 };
 constexpr uint8_t source_max = source_keyboard;
 constexpr uint8_t default_pulldowns = 0x03;
 constexpr uint8_t pulldowns_max = 0x07;
 
-// The single-wire shift-key mod grounds PB2 through the shift key (IIe Tech
-// Ref p. 41; Sather 7-31), so with the jumper in a pressed shift reads 0
-// whatever the button does. Sather notes that neither the mod nor a
-// pulled-down button works when both share the line; here the shift key wins
-// both ways, so a three-button game sees button 2 held whenever shift is up,
-// which is why the jumper is out by default, as on a stock machine.
+// The shift-key mod grounds PB2 through the shift key, so with the jumper in
+// the line reads 0 while shift is down and 1 otherwise, whatever the button
+// does (IIe Tech Ref p. 41; Sather 7-31 calls the mod and a pulled-down button
+// on one line a combination where neither works). Out by default, as shipped.
 constexpr size_t shift_mod_line = 2;
 
-// Halfway along the pot's travel, where a centred stick rests.
+// Where a centred stick rests.
 constexpr uint8_t centre_position = 127;
 
-// PREAD, at $FB1E in every monitor ROM under res/roms, strobes $C070 and then
-// LDY #0, NOP, NOP and the fourth cycle of LDA $C064,X put its first sample
-// ten cycles after the strobe; its loop (LDA 4, BPL 2, INY 2, BNE 3) samples
-// every eleven cycles after that (Sather, Understanding the Apple II, 7-24).
-// A pulse of 11 x position + 10 cycles therefore makes PREAD return exactly
-// position. This is a count model: position 255 is a 2,815-cycle pulse, not
-// the 3,370-cycle pulse of a 150 kOhm pot at full travel (Sather 7-11), so a
-// program that polls faster than PREAD sees the top of the travel compressed.
+// PREAD ($FB1E) samples the timer 10 cycles after its strobe and every 11
+// after that (Sather 7-24), so a pulse of 11 x position + 10 cycles makes it
+// return exactly position. A count model: 255 is a 2,815-cycle pulse, not the
+// 3,370 of a 150 kOhm pot at full travel (Sather 7-11), so a program polling
+// faster than PREAD sees the top of the travel compressed.
 constexpr uint64_t pulse_cycles_per_count = 11;
 constexpr uint64_t pulse_lead_in_cycles = 10;
 
@@ -84,8 +71,8 @@ struct GamePort_t {
   std::array<uint64_t, paddle_count> trigger_cycle{};
   std::array<uint8_t, paddle_count> position{
       {centre_position, centre_position, centre_position, centre_position}};
-  // The position each running pulse is measured against: the pot as it stood
-  // at the accepted strobe, moved with the pot only while the output is high.
+  // The pot as it stood at the accepted strobe, moved with the pot only while
+  // the output is high.
   std::array<uint8_t, paddle_count> pulse_position{};
   std::array<bool, switch_count> connector{};
   std::array<bool, switch_count> keyboard{};
@@ -100,14 +87,10 @@ auto pulse_cycles(uint8_t position) -> uint64_t {
          pulse_lead_in_cycles;
 }
 
-// A trigger of 0 is a timer never triggered since power-on, when the NE558's
-// output is low (NE558 datasheet, note 3); a trigger ahead of the counter is
-// one the counter was wound back past, and the real machine would have run
-// that pulse out long before. The pulse is measured against the position
-// latched for it, not the pot's current one: the output falls when the
-// capacitor reaches the threshold and the timer is then idle whatever the pot
-// does afterwards (NE558 datasheet; Sather 7-11), so a pot moved up after the
-// fall must not stretch a finished pulse back into a running one.
+// Trigger 0 is never triggered (the NE558 output idles low, datasheet note 3);
+// a trigger ahead of the counter was wound past and has long run out. The
+// pulse is measured against its latched position: once the output has fallen
+// the timer is idle whatever the pot does (NE558 datasheet; Sather 7-11).
 auto timer_expired(const GamePort_t* port, size_t paddle, uint64_t now)
     -> bool {
   const uint64_t trigger = port->trigger_cycle.at(paddle);
@@ -117,9 +100,8 @@ auto timer_expired(const GamePort_t* port, size_t paddle, uint64_t now)
   return now - trigger >= pulse_cycles(port->pulse_position.at(paddle));
 }
 
-// Nothing between the connector pin and D7 stores state (Apple II Reference
-// Manual, 1979, p. 100; Sather 7-9): the level is what the switches are doing
-// at the instant of the read.
+// No latch sits between the pin and D7: the level is the switches at the
+// instant of the read (Apple II Reference Manual 1979 p. 100; Sather 7-9).
 auto switch_level(const GamePort_t* port, size_t line) -> bool {
   if (line == shift_mod_line && port->shift_key_mod) {
     return !port->keyboard.at(line);
@@ -179,12 +161,9 @@ auto joystick_io_read_paddle(void* instance, uint16_t program_counter,
   return result;
 }
 
-// Each timer is a monostable: "the timers are not retriggered by C07X if they
-// have not yet reset from the previous trigger" (Sather 7-24; the NE558
-// datasheet lists the output as independent of trigger conditions), so a
-// channel still high keeps its fall time and only an expired one starts a
-// pulse. The trigger is recorded as no earlier than cycle 1 so that a strobe
-// in cycle 0, before the counter has moved, is told from never.
+// A monostable: "the timers are not retriggered by C07X if they have not yet
+// reset" (Sather 7-24), so only an expired channel starts a pulse. The trigger
+// is recorded as at least cycle 1 so a strobe in cycle 0 is told from never.
 auto joystick_strobe(void* instance) -> void {
   if (instance == nullptr) {
     return;
@@ -199,10 +178,8 @@ auto joystick_strobe(void* instance) -> void {
   }
 }
 
-// Without the I/O members the 6502 never reaches the port, without the cycle
-// counter every timer reads as charging for ever, and without the bus a read
-// has no low seven bits to return: better no card than a phantom one, and the
-// log says which member was missing.
+// Better no card than a phantom one: without these members the port cannot be
+// reached, timed or read, and the log names the missing one.
 auto missing_host_member(const HostInterface_t* host) -> const char* {
   if (host->RegisterDirectIO == nullptr) {
     return "RegisterDirectIO";
@@ -285,9 +262,8 @@ auto joystick_abi_command(void* instance, uint32_t command_id,
       }
       const size_t paddle =
           (static_cast<size_t>(axis->joystick) * axis_count) + axis->axis;
-      // The capacitor charges through the pot it has now, so a pot moved while
-      // the output is high moves that fall; one moved after the fall meets an
-      // idle timer and changes nothing until the next strobe.
+      // The capacitor charges through the pot it has now: a move while the
+      // output is high moves the fall; a move after it meets an idle timer.
       const bool running =
           !timer_expired(port, paddle, port->host->GetCycles());
       port->position.at(paddle) = axis->value;
@@ -338,8 +314,7 @@ auto joystick_abi_command(void* instance, uint32_t command_id,
   }
 }
 
-// The port answers no query: its state is read through the switches and the
-// timers, and the host keeps its own input mapping.
+// The port has no queries: its state is read through the switches and timers.
 auto joystick_abi_query(void* instance, uint32_t query_id, void* output,
                         size_t* output_size) -> PeripheralStatus_t {
   (void)instance;
@@ -376,10 +351,8 @@ static_assert(offsetof(JoystickSaveState_t, trim_y) == 50,
 static_assert(offsetof(JoystickSaveState_t, reserved1) == 52,
               "the fields after the triggers keep their place");
 
-// Four trigger cycles are the port's whole state at an instant: the positions
-// and the switch levels are the player's hands and the host sends them again,
-// and trim is host calibration, so x_pos, y_pos, buttons, trim_x and trim_y go
-// out as zeros and are read past.
+// Four trigger cycles are the whole state; positions, switches and trim are
+// the host's and go out as zeros.
 auto joystick_abi_save_state(void* instance, void* state_buffer,
                              size_t* buffer_size) -> PeripheralStatus_t {
   if (buffer_size == nullptr) {
@@ -407,13 +380,10 @@ auto joystick_abi_save_state(void* instance, void* state_buffer,
   return peripheral_ok;
 }
 
-// Any trigger loads: one ahead of the counter reads expired, as a real
-// machine's timer would be three milliseconds after anything. The frame
-// carries no positions, so a loaded pulse is measured against the pot as the
-// host holds it now; the host re-sends positions within one slice and a
-// pulse is under three milliseconds, so the two seldom differ. The shift-key
-// jumper and the pull-down mask are the machine's wiring, not its state, and
-// stay as the host set them.
+// Any trigger loads; one ahead of the counter reads expired. The frame carries
+// no positions, so a loaded pulse is measured against the pot as the host
+// holds it now (it re-sends within a slice; a pulse is under 3 ms). The jumper
+// and the pull-down mask are wiring, not state, and stay as the host set them.
 auto joystick_abi_load_state(void* instance, const void* state_buffer,
                              size_t buffer_size) -> PeripheralStatus_t {
   if (instance == nullptr || state_buffer == nullptr ||
@@ -449,13 +419,10 @@ static const Peripheral_t joystick_peripheral = {
     .compatible_slots = PERIPHERAL_MASK_INTERNAL,
     .default_slot = 0,
     .init = joystick_abi_init,
-    // RESET' reaches neither the NE558, whose RESET pin the Apple leaves
-    // unused (Sather 7-11), so a pulse in progress runs out, nor a switch,
-    // which is a contact. The //e monitor reads $C062 and $C061 a few dozen
-    // instructions into its reset routine to choose the Solid Apple self-test
-    // or the Open Apple cold start (Apple IIe Technical Reference Manual,
-    // pp. 90-91), so a reset that cleared the switch levels would put both out
-    // of reach.
+    // RESET' reaches neither the NE558 (its RESET pin is unused, Sather 7-11)
+    // nor a switch, and the //e monitor reads $C062/$C061 inside its reset
+    // routine to pick the self-test or the cold start (IIe Tech Ref pp. 90-91),
+    // so clearing the levels here would put both out of reach.
     .reset = nullptr,
     .shutdown = joystick_abi_shutdown,
     .think = nullptr,
@@ -465,9 +432,8 @@ static const Peripheral_t joystick_peripheral = {
     .command = joystick_abi_command,
     .query = joystick_abi_query};
 
-// peripheral_register and ActivePeripheral_t::api take a mutable
-// Peripheral_t*, so the immutable descriptor is cast the same way
-// PERIPHERAL_REGISTER casts it.
+// peripheral_register takes a mutable Peripheral_t*, as PERIPHERAL_REGISTER's
+// own cast does.
 auto joystick_get_descriptor() -> Peripheral_t* {
   return const_cast<Peripheral_t*>(&joystick_peripheral);
 }
