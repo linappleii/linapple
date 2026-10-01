@@ -3,7 +3,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
-#include <cstdlib>
 #include <string>
 
 #include "SDL_audio.h"
@@ -25,12 +24,13 @@
 #include "frontends/common/sdl/JoystickFrontend.h"
 #include "frontends/sdl1/Frame.h"
 
-// SDL Audio Device for Frontend
-bool g_ds_available = false;
-static std::string g_audio_dump_file;
-static AudioDumper_t g_audio_dumper;
+namespace {
 
-static auto SDLCALL sdl1_audio_callback(void* userdata, Uint8* stream, int len)
+bool g_ds_available = false;
+std::string g_audio_dump_file;
+AudioDumper_t g_audio_dumper;
+
+auto SDLCALL sdl1_audio_callback(void* userdata, Uint8* stream, int len)
     -> void {
   (void)userdata;
   if (len <= 0) {
@@ -41,11 +41,13 @@ static auto SDLCALL sdl1_audio_callback(void* userdata, Uint8* stream, int len)
   int num_samples = len / (static_cast<int>(sizeof(int16_t)));
   audio_mixer_get_samples(temp_buf, static_cast<size_t>(num_samples));
 
-  if (g_audio_dumper.is_active()) {
+  if (audio_dumper_is_active(&g_audio_dumper)) {
     audio_dumper_put_samples(&g_audio_dumper, temp_buf,
                              static_cast<uint32_t>(num_samples));
   }
 }
+
+}  // namespace
 
 auto ds_init() -> bool {
   if (g_ds_available) {
@@ -55,20 +57,21 @@ auto ds_init() -> bool {
   // SDL1 has no native-format query, so 44100 is the request and obtained.freq
   // is the answer. SDL1 may hand back something else entirely, and that is the
   // rate the mixer and the dumper have to work in.
-  constexpr int fallback_rate_hz = 44100;
+  constexpr uint32_t k_fallback_rate_hz = 44100;
 
   SDL_AudioSpec desired;
   SDL_AudioSpec obtained;
   SDL_memset(&desired, 0, sizeof(desired));
-  desired.freq = fallback_rate_hz;
+  desired.freq = static_cast<int>(k_fallback_rate_hz);
   desired.channels = 2;
   desired.format = AUDIO_S16SYS;
-  desired.samples = audio_device_buffer_samples(fallback_rate_hz);
+  desired.samples =
+      static_cast<Uint16>(audio_device_buffer_samples(k_fallback_rate_hz));
   desired.callback = sdl1_audio_callback;
   desired.userdata = nullptr;
 
   if (SDL_OpenAudio(&desired, &obtained) < 0) {
-    printf("Unable to open SDL audio: %s\n", SDL_GetError());
+    std::fprintf(stderr, "Unable to open SDL audio: %s\n", SDL_GetError());
     return false;
   }
 
@@ -109,18 +112,17 @@ auto ds_shutdown() -> void {
   linapple_set_audio_source_unregister_callback(nullptr);
 
   if (g_ds_available) {
+    SDL_PauseAudio(1);
     SDL_CloseAudio();
     g_ds_available = false;
   }
 
   audio_mixer_destroy();
 
-  if (g_audio_dumper.is_active()) {
+  if (audio_dumper_is_active(&g_audio_dumper)) {
     audio_dumper_finalize(&g_audio_dumper);
   }
 }
-
-extern void sdl_handle_event(SDL_Event* e);
 
 auto sys_input() -> void {
   SDL_Event event;
@@ -133,7 +135,15 @@ auto enter_message_loop() -> void {
   FramePacer_t pacer;
   while (system_state.mode != app_mode_exit) {
     sys_input();
+    if (system_state.mode == app_mode_exit) {
+      break;
+    }
     joy_frontend_update();
+
+    if (system_state.reset_timing) {
+      pacer.resync();
+      system_state.reset_timing = false;
+    }
 
     uint32_t cycles = linapple_get_frame_cycles();
     linapple_run_frame(cycles);
@@ -159,9 +169,7 @@ auto main(int argc, char** argv) -> int {
   }
 
   // Store the audio dump file name explicitly since AppConfig_t only holds it
-  // in a buffer and ds_init needs it later. Alternatively we could access
-  // config.audio_dump_path directly but it's cleaner to keep the frontend's
-  // specific state separate if it uses a heap string.
+  // in a buffer and ds_init needs it later.
   if (config.audio_dump_path.at(0) != '\0') {
     g_audio_dump_file = config.audio_dump_path.data();
   }

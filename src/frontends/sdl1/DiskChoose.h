@@ -1,45 +1,49 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-#include <SDL/SDL.h>
 #include <SDL/SDL_events.h>
 
 #include <cstddef>
 #include <string>
 
-#include "frontends/common/FileBrowser.h"
 #include "frontends/sdl1/SdlPtr.h"
 
+struct FileList_t;
+struct FileListGenerator_t;
+
 struct DiskChooseState_t {
-  int slot;
+  int slot = 0;
   std::string current_dir;
-  FileList_t* list_handle;  // Opaque handle from C API
-  size_t act_file;
-  size_t first_file;
-  bool active;
+  FileList_t* list_handle = nullptr;
+  size_t act_file = 0;
+  size_t first_file = 0;
+  bool active = false;
 
   // Surface for background
   SdlSurfacePtr_t bg_screen;
 
   // Callback or storage for result
   std::string result_filename;
-  bool result_isdir;
-  bool finished;
-  bool cancelled;
+  bool result_isdir = false;
+  bool finished = false;
+  bool cancelled = false;
 
-  // For returning results to the original caller (which is still blocking for
-  // now)
-  size_t* index_file_out;
+  // For returning results to the original caller
+  size_t* index_file_out = nullptr;
 };
 
-void disk_choose_tick(SDL_Event* event);
-void disk_choose_draw();
+extern DiskChooseState_t g_diskChooseState;
 
-auto choose_an_image(int sx, int sy, const std::string& incoming_dir, int slot,
-                     std::string& filename, bool& isdir, size_t& index_file)
-    -> bool;
+auto disk_choose_tick(SDL_Event* event) -> void;
+auto disk_choose_draw() -> void;
 
-auto choose_image_dialog(int sx, int sy, const std::string& dir, int slot,
-                         FileListGenerator_t* file_list_generator,
-                         std::string& filename, bool& isdir, size_t& index_file)
-    -> bool;
+[[nodiscard]] auto choose_an_image(int sx, int sy,
+                                   const std::string& incoming_dir, int slot,
+                                   std::string& filename, bool& isdir,
+                                   size_t& index_file) -> bool;
+
+[[nodiscard]] auto choose_image_dialog(int sx, int sy, const std::string& dir,
+                                       int slot,
+                                       FileListGenerator_t* file_list_generator,
+                                       std::string& filename, bool& isdir,
+                                       size_t& index_file) -> bool;
