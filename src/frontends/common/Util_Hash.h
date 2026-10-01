@@ -11,4 +11,4 @@
  * @param input Null-terminated string.
  * @return Static pointer to a 32-character hex string (+ null).
  */
-auto md5str(const char* input) -> char*;
+[[nodiscard]] auto md5str(const char* input) -> char*;

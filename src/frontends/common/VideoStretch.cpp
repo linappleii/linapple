@@ -9,9 +9,6 @@
 
 #include "frontends/common/VideoSurface.h"
 
-// Low-level pixel stretching and scanline blitting routines operating on raw
-// NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic, framebuffers.)
-
 template <typename T>
 static auto copy_row(T* src, int src_w, T* dst, int dst_x, int dst_w, int max_w)
     -> void {
@@ -672,5 +669,3 @@ auto rectangle(VideoSurface_t* surface, int x, int y, int w, int h,
     putpixel(surface, x + w, y + i, pixel);
   }
 }
-
-// NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic, framebuffers.)

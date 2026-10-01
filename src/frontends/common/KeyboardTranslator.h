@@ -1,40 +1,37 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, bugprone-easily-swappable-parameters)
-// Justification: This header defines C-compatible structures and types for the
-// keyboard translation system to ensure interoperability across different
-// frontends. Public ABI functions have fixed parameter types.
-
-#include <stdint.h>
+#include <cstdint>
 
 #include "core/LinAppleCore.h"
 
-typedef enum {
+enum KeyboardMappingMode_t : uint8_t {
   KBD_MODE_SYMBOLIC = 0,
   KBD_MODE_POSITIONAL = 1
-} KeyboardMappingMode_t;
+};
 
-typedef enum {
+enum QuickSaveMode_t : uint8_t {
   QUICKSAVE_MODE_ALT = 0,
   QUICKSAVE_MODE_CTRL = 1,
   QUICKSAVE_MODE_ALT_CTRL = 2,
   QUICKSAVE_MODE_DISABLED = 3
-} QuickSaveMode_t;
+};
 
-LinAppleKey_t keyboard_symbolic_to_core(int key, uint32_t mod);
-LinAppleKey_t keyboard_scancode_to_positional(uint32_t scancode);
+[[nodiscard]] auto keyboard_symbolic_to_core(int key, uint32_t mod)
+    -> LinAppleKey_t;
+[[nodiscard]] auto keyboard_scancode_to_positional(uint32_t scancode)
+    -> LinAppleKey_t;
 
-uint32_t keyboard_parse_host_key(const char* name);
-uint8_t keyboard_parse_apple2_val(const char* name, uint8_t* out_flags);
-void keyboard_apply_custom_mappings();
-bool keyboard_has_custom_mappings();
+[[nodiscard]] auto keyboard_parse_host_key(const char* name) -> uint32_t;
+[[nodiscard]] auto keyboard_parse_apple2_val(const char* name,
+                                             uint8_t* out_flags) -> uint8_t;
+auto keyboard_apply_custom_mappings() -> void;
+[[nodiscard]] auto keyboard_has_custom_mappings() -> bool;
 
-QuickSaveMode_t keyboard_get_quicksave_mode(void);
-void keyboard_set_quicksave_mode(QuickSaveMode_t mode);
-bool keyboard_is_quicksave_combo(uint32_t sym, uint32_t mod, int* out_slot,
-                                 bool* out_is_save);
-bool keyboard_get_hotkeys_enabled(void);
-void keyboard_set_hotkeys_enabled(bool enabled);
-
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, bugprone-easily-swappable-parameters)
+[[nodiscard]] auto keyboard_get_quicksave_mode() -> QuickSaveMode_t;
+auto keyboard_set_quicksave_mode(QuickSaveMode_t mode) -> void;
+[[nodiscard]] auto keyboard_is_quicksave_combo(uint32_t sym, uint32_t mod,
+                                               int* out_slot, bool* out_is_save)
+    -> bool;
+[[nodiscard]] auto keyboard_get_hotkeys_enabled() -> bool;
+auto keyboard_set_hotkeys_enabled(bool enabled) -> void;

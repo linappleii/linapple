@@ -1,10 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Justification: This file implements the platform-agnostic keyboard
-// translation layer, mapping host scancodes and keycodes to LinApple internal
-// keys. Functions in this file follow a C99-compatible ABI where parameter
-// types are fixed for interoperability.
-// NOLINTBEGIN(cppcoreguidelines-pro-type-union-access, bugprone-easily-swappable-parameters)
-
 #include "frontends/common/KeyboardTranslator.h"
 
 #include <algorithm>
@@ -23,20 +17,20 @@
 
 namespace keyboard_translator {
 
-static constexpr int ascii_printable_min = 32;   // ' '
-static constexpr int ascii_printable_max = 126;  // '~'
+static constexpr int k_ascii_printable_min = 32;   // ' '
+static constexpr int k_ascii_printable_max = 126;  // '~'
 
 // We currently assume SDL scancodes for all positional mapping.
-static constexpr uint32_t sdl_scancode_min = 4;   // "A" key
-static constexpr uint32_t sdl_scancode_max = 82;  // "Up Arrow" key
+static constexpr uint32_t k_sdl_scancode_min = 4;   // "A" key
+static constexpr uint32_t k_sdl_scancode_max = 82;  // "Up Arrow" key
 
-static constexpr int ascii_cr = 0x0D;
-static constexpr int ascii_esc = 0x1B;
-static constexpr int ascii_bs = 0x08;
-static constexpr int ascii_tab = 0x09;
-static constexpr int ascii_del = 0x7F;
+static constexpr int k_ascii_cr = 0x0D;
+static constexpr int k_ascii_esc = 0x1B;
+static constexpr int k_ascii_bs = 0x08;
+static constexpr int k_ascii_tab = 0x09;
+static constexpr int k_ascii_del = 0x7F;
 
-static constexpr uint32_t positional_key_base = 0x500;
+static constexpr uint32_t k_positional_key_base = 0x500;
 
 static auto trim_str(const std::string& str) -> std::string {
   size_t first = str.find_first_not_of(" \t\r\n");
@@ -58,20 +52,20 @@ auto keyboard_symbolic_to_core(int key, uint32_t mod) -> LinAppleKey_t {
 
   namespace kt = keyboard_translator;
 
-  if (key >= kt::ascii_printable_min && key <= kt::ascii_printable_max) {
+  if (key >= kt::k_ascii_printable_min && key <= kt::k_ascii_printable_max) {
     return static_cast<LinAppleKey_t>(key);
   }
 
   switch (key) {
-    case kt::ascii_cr:
+    case kt::k_ascii_cr:
       return linapple_key_return;
-    case kt::ascii_esc:
+    case kt::k_ascii_esc:
       return linapple_key_escape;
-    case kt::ascii_bs:
+    case kt::k_ascii_bs:
       return linapple_key_backspace;
-    case kt::ascii_tab:
+    case kt::k_ascii_tab:
       return linapple_key_tab;
-    case kt::ascii_del:
+    case kt::k_ascii_del:
       return linapple_key_delete;
     default:
       return linapple_key_unknown;
@@ -83,8 +77,9 @@ auto keyboard_scancode_to_positional(uint32_t scancode) -> LinAppleKey_t {
 
   // SDL Scancodes map directly to our key values
   // if we align the enum values correctly (which we did in LinAppleCore.h).
-  if (scancode >= kt::sdl_scancode_min && scancode <= kt::sdl_scancode_max) {
-    return static_cast<LinAppleKey_t>(kt::positional_key_base + scancode);
+  if (scancode >= kt::k_sdl_scancode_min &&
+      scancode <= kt::k_sdl_scancode_max) {
+    return static_cast<LinAppleKey_t>(kt::k_positional_key_base + scancode);
   }
   return linapple_key_unknown;
 }
@@ -338,5 +333,3 @@ bool keyboard_is_quicksave_combo(uint32_t sym, uint32_t mod, int* out_slot,
   }
   return false;
 }
-
-// NOLINTEND(cppcoreguidelines-pro-type-union-access, bugprone-easily-swappable-parameters)

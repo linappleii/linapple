@@ -103,8 +103,7 @@ static auto get_sorted_directory(const char* incoming_dir,
     }
 
     const char* file_name = entry->d_name;
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-    if (file_name == nullptr || strlen(file_name) < 1 || file_name[0] == '.') {
+    if (file_name == nullptr || file_name[0] == '\0' || *file_name == '.') {
       continue;
     }
 

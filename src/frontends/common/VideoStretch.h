@@ -5,9 +5,14 @@
 
 #include "frontends/common/VideoSurface.h"
 
-constexpr int font_size_x = 6;
-constexpr int font_size_y = 8;
-constexpr int chars_in_row = 45;
+constexpr int k_font_size_x = 6;
+constexpr int k_font_size_y = 8;
+constexpr int k_chars_in_row = 45;
+
+// Backward-compatibility aliases
+constexpr int font_size_x = k_font_size_x;
+constexpr int font_size_y = k_font_size_y;
+constexpr int chars_in_row = k_chars_in_row;
 
 extern VideoSurface_t* font_sfc;
 

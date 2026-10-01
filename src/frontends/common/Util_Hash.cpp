@@ -9,29 +9,27 @@
 using Uint4_t = uint32_t;
 
 // MD5 implementation follows the standard RSA Data Security, Inc. MD5
-// Message-Digest Algorithm. It inherently uses magic numbers from the
-// specification and bit-level operations.
+// Message-Digest Algorithm.
 
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-pro-type-reinterpret-cast, cppcoreguidelines-pro-bounds-pointer-arithmetic)
+namespace {
 
 // --- Constants ---
 
-static constexpr int md5_block_size = 64;
-static constexpr int md5_state_size = 4;
-static constexpr int md5_digest_size = 16;
-static constexpr int md5_hex_buffer_size = 33;
+constexpr int k_md5_block_size = 64;
+constexpr int k_md5_state_size = 4;
+constexpr int k_md5_digest_size = 16;
+constexpr int k_md5_hex_buffer_size = 33;
 
-static constexpr uint32_t md5_init_0 = 0x67452301U;
-static constexpr uint32_t md5_init_1 = 0xefcdab89U;
-static constexpr uint32_t md5_init_2 = 0x98badcfeU;
-static constexpr uint32_t md5_init_3 = 0x10325476U;
+constexpr uint32_t k_md5_init_0 = 0x67452301U;
+constexpr uint32_t k_md5_init_1 = 0xefcdab89U;
+constexpr uint32_t k_md5_init_2 = 0x98badcfeU;
+constexpr uint32_t k_md5_init_3 = 0x10325476U;
 
 // --- Internal State ---
 
-static std::array<Uint4_t, md5_state_size> state;
-static uint64_t
-    total_length;  // Total length in bytes (64-bit to prevent overflow)
-static std::array<uint8_t, md5_block_size> buffer;
+static std::array<Uint4_t, k_md5_state_size> state;
+static uint64_t total_length = 0;
+static std::array<uint8_t, k_md5_block_size> buffer;
 
 // --- Algorithmic Helpers ---
 
@@ -56,15 +54,15 @@ static inline auto rotate_left(Uint4_t x, int n) noexcept -> Uint4_t {
   return ((x << n) | (x >> (bits_in_uint4 - n)));
 }
 
-static constexpr std::array<Uint4_t, md5_state_size> md5_initstate = {
-    {md5_init_0, md5_init_1, md5_init_2, md5_init_3}};
+constexpr std::array<Uint4_t, k_md5_state_size> k_md5_initstate = {
+    {k_md5_init_0, k_md5_init_1, k_md5_init_2, k_md5_init_3}};
 
-static constexpr std::array<char, 4> s1 = {{7, 12, 17, 22}};
-static constexpr std::array<char, 4> s2 = {{5, 9, 14, 20}};
-static constexpr std::array<char, 4> s3 = {{4, 11, 16, 23}};
-static constexpr std::array<char, 4> s4 = {{6, 10, 15, 21}};
+constexpr std::array<char, 4> k_s1 = {{7, 12, 17, 22}};
+constexpr std::array<char, 4> k_s2 = {{5, 9, 14, 20}};
+constexpr std::array<char, 4> k_s3 = {{4, 11, 16, 23}};
+constexpr std::array<char, 4> k_s4 = {{6, 10, 15, 21}};
 
-static constexpr std::array<Uint4_t, md5_block_size> T = {
+constexpr std::array<Uint4_t, k_md5_block_size> k_t = {
     {0xd76aa478U, 0xe8c7b756U, 0x242070dbU, 0xc1bdceeeU, 0xf57c0fafU,
      0x4787c62aU, 0xa8304613U, 0xfd469501U, 0x698098d8U, 0x8b44f7afU,
      0xffff5bb1U, 0x895cd7beU, 0x6b901122U, 0xfd987193U, 0xa679438eU,
@@ -79,52 +77,48 @@ static constexpr std::array<Uint4_t, md5_block_size> T = {
      0x85845dd1U, 0x6fa87e4fU, 0xfe2ce6e0U, 0xa3014314U, 0x4e0811a1U,
      0xf7537e82U, 0xbd3af235U, 0x2ad7d2bbU, 0xeb86d391U}};
 
-static void md5_transform(const uint8_t block[md5_block_size]) {
-  int i = 0;
-  int j = 0;
-  Uint4_t a = 0;
-  Uint4_t b = 0;
-  Uint4_t c = 0;
-  Uint4_t d = 0;
+static auto md5_transform(const uint8_t block[k_md5_block_size]) -> void {
+  Uint4_t a = state.at(0);
+  Uint4_t b = state.at(1);
+  Uint4_t c = state.at(2);
+  Uint4_t d = state.at(3);
   Uint4_t tmp = 0;
 
   const auto* x = reinterpret_cast<const Uint4_t*>(block);
 
-  a = state.at(0);
-  b = state.at(1);
-  c = state.at(2);
-  d = state.at(3);
+  for (int i = 0; i < 16; i++) {
+    tmp = a + F(b, c, d) + x[i] + k_t.at(static_cast<size_t>(i));
+    tmp = rotate_left(tmp, k_s1.at(static_cast<size_t>(i & 3)));
+    tmp += b;
+    a = d;
+    d = c;
+    c = b;
+    b = tmp;
+  }
 
-  for (i = 0; i < 16; i++) {
-    tmp = a + F(b, c, d) + x[i] + T.at(static_cast<size_t>(i));
-    tmp = rotate_left(tmp, s1.at(static_cast<size_t>(i & 3)));
+  for (int i = 0, j = 1; i < 16; i++, j += 5) {
+    tmp = a + G(b, c, d) + x[j & 15] + k_t.at(static_cast<size_t>(i) + 16);
+    tmp = rotate_left(tmp, k_s2.at(static_cast<size_t>(i & 3)));
     tmp += b;
     a = d;
     d = c;
     c = b;
     b = tmp;
   }
-  for (i = 0, j = 1; i < 16; i++, j += 5) {
-    tmp = a + G(b, c, d) + x[j & 15] + T.at(static_cast<size_t>(i) + 16);
-    tmp = rotate_left(tmp, s2.at(static_cast<size_t>(i & 3)));
+
+  for (int i = 0, j = 5; i < 16; i++, j += 3) {
+    tmp = a + H(b, c, d) + x[j & 15] + k_t.at(static_cast<size_t>(i) + 32);
+    tmp = rotate_left(tmp, k_s3.at(static_cast<size_t>(i & 3)));
     tmp += b;
     a = d;
     d = c;
     c = b;
     b = tmp;
   }
-  for (i = 0, j = 5; i < 16; i++, j += 3) {
-    tmp = a + H(b, c, d) + x[j & 15] + T.at(static_cast<size_t>(i) + 32);
-    tmp = rotate_left(tmp, s3.at(static_cast<size_t>(i & 3)));
-    tmp += b;
-    a = d;
-    d = c;
-    c = b;
-    b = tmp;
-  }
-  for (i = 0, j = 0; i < 16; i++, j += 7) {
-    tmp = a + I(b, c, d) + x[j & 15] + T.at(static_cast<size_t>(i) + 48);
-    tmp = rotate_left(tmp, s4.at(static_cast<size_t>(i & 3)));
+
+  for (int i = 0, j = 0; i < 16; i++, j += 7) {
+    tmp = a + I(b, c, d) + x[j & 15] + k_t.at(static_cast<size_t>(i) + 48);
+    tmp = rotate_left(tmp, k_s4.at(static_cast<size_t>(i & 3)));
     tmp += b;
     a = d;
     d = c;
@@ -138,79 +132,78 @@ static void md5_transform(const uint8_t block[md5_block_size]) {
   state.at(3) += d;
 }
 
-static void md5_init() {
-  memcpy(state.data(), md5_initstate.data(), sizeof(md5_initstate));
+static auto md5_init() -> void {
   total_length = 0;
+  state = k_md5_initstate;
 }
 
-static void md5_update(const char* input, size_t inputlen) {
-  auto buflen = static_cast<size_t>(total_length & 63U);
-  total_length += static_cast<uint64_t>(inputlen);
+static auto md5_update(const char* input, size_t inputlen) -> void {
+  const auto buflen = static_cast<size_t>(total_length & 63U);
+  total_length += inputlen;
 
-  if (buflen + inputlen < md5_block_size) {
+  if (buflen + inputlen < k_md5_block_size) {
     memcpy(buffer.data() + buflen, input, inputlen);
     return;
   }
 
-  size_t first_part = md5_block_size - buflen;
+  const size_t first_part = k_md5_block_size - buflen;
   memcpy(buffer.data() + buflen, input, first_part);
   md5_transform(buffer.data());
 
   size_t i = first_part;
-  for (; i + md5_block_size <= inputlen; i += md5_block_size) {
+  for (; i + k_md5_block_size <= inputlen; i += k_md5_block_size) {
     md5_transform(reinterpret_cast<const uint8_t*>(input + i));
   }
 
   memcpy(buffer.data(), input + i, inputlen - i);
 }
 
-static auto md5_final() -> uint8_t* {
+static auto md5_final() -> const uint8_t* {
   auto buflen = static_cast<size_t>(total_length & 63U);
 
   buffer.at(buflen++) = 0x80U;
   if (buflen > 56) {
-    memset(buffer.data() + buflen, 0, md5_block_size - buflen);
+    memset(buffer.data() + buflen, 0, k_md5_block_size - buflen);
     md5_transform(buffer.data());
     memset(buffer.data(), 0, 56);
   } else {
     memset(buffer.data() + buflen, 0, 56 - buflen);
   }
 
-  // Append length in bits as 64-bit little-endian
-  uint64_t bits = total_length * 8;
+  const uint64_t bits = total_length * 8;
   memcpy(buffer.data() + 56, &bits, sizeof(bits));
   md5_transform(buffer.data());
 
-  return reinterpret_cast<uint8_t*>(state.data());
+  return reinterpret_cast<const uint8_t*>(state.data());
 }
 
-static auto md5(const char* input) -> char* {
+static auto md5(const char* input) -> const uint8_t* {
   if (input == nullptr) {
     return nullptr;
   }
   md5_init();
   md5_update(input, strlen(input));
-  return reinterpret_cast<char*>(md5_final());
+  return md5_final();
 }
 
+}  // namespace
+
 auto md5str(const char* input) -> char* {
-  static std::array<char, md5_hex_buffer_size> result;
+  static std::array<char, k_md5_hex_buffer_size> result;
   if (input == nullptr) {
     result.at(0) = '\0';
     return result.data();
   }
 
-  auto* digest = reinterpret_cast<uint8_t*>(md5(input));
+  const uint8_t* digest = md5(input);
   if (digest == nullptr) {
     result.at(0) = '\0';
     return result.data();
   }
 
-  for (size_t i = 0; i < md5_digest_size; i++) {
+  for (size_t i = 0; i < k_md5_digest_size; i++) {
     snprintf(result.data() + (2 * i), 3, "%02X", digest[i]);
   }
-  result.at(md5_hex_buffer_size - 1) = '\0';
+  result.at(k_md5_hex_buffer_size - 1) = '\0';
   return result.data();
 }
-
-// NOLINTEND(cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-pro-type-reinterpret-cast, cppcoreguidelines-pro-bounds-pointer-arithmetic)

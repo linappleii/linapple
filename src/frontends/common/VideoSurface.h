@@ -7,16 +7,21 @@
 #include <vector>
 
 struct VideoColor_t {
-  uint8_t r, g, b, a;
+  uint8_t r;
+  uint8_t g;
+  uint8_t b;
+  uint8_t a;
 };
-using VideoColor_t = VideoColor_t;
 
 struct VideoRect_t {
-  int x, y, w, h;
+  int x;
+  int y;
+  int w;
+  int h;
 };
-using VideoRect_t = VideoRect_t;
 
-constexpr size_t VIDEO_PALETTE_SIZE = 256;
+constexpr size_t k_video_palette_size = 256;
+constexpr size_t VIDEO_PALETTE_SIZE = k_video_palette_size;
 
 struct VideoSurface_t {
   std::vector<uint8_t> pixel_data{};
@@ -25,10 +30,10 @@ struct VideoSurface_t {
   int h = 0;
   int pitch = 0;
   int bpp = 0;
-  std::array<VideoColor_t, VIDEO_PALETTE_SIZE> palette{};
+  std::array<VideoColor_t, k_video_palette_size> palette{};
 };
-using VideoSurface_t = VideoSurface_t;
 
-auto video_create_surface(int w, int h, int bpp) -> VideoSurface_t*;
+[[nodiscard]] auto video_create_surface(int w, int h, int bpp)
+    -> VideoSurface_t*;
 auto video_destroy_surface(VideoSurface_t* s) -> void;
-auto video_load_xpm(const char* const* xpm) -> VideoSurface_t*;
+[[nodiscard]] auto video_load_xpm(const char* const* xpm) -> VideoSurface_t*;

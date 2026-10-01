@@ -17,9 +17,9 @@
 
 namespace {
 
-constexpr int slot_count = 7;
-constexpr uint8_t seven_bit_mask = 0x7F;
-constexpr uint8_t carriage_return = 0x0D;
+constexpr int k_slot_count = 7;
+constexpr uint8_t k_seven_bit_mask = 0x7F;
+constexpr uint8_t k_carriage_return = 0x0D;
 
 struct SlotSink_t {
   FilePtr_t file{nullptr, std::fclose};
@@ -32,16 +32,16 @@ struct SlotSink_t {
 
 PrinterFrontendSettings_t g_settings{};
 std::string g_resolved_path;
-std::array<SlotSink_t, slot_count> g_slots{};
+std::array<SlotSink_t, k_slot_count> g_slots{};
 
-auto slot_sink(int slot) -> SlotSink_t* {
-  if (slot < 1 || slot > slot_count) {
+[[nodiscard]] auto slot_sink(int slot) -> SlotSink_t* {
+  if (slot < 1 || slot > k_slot_count) {
     return nullptr;
   }
   return &g_slots.at(static_cast<size_t>(slot - 1));
 }
 
-auto expand_home(const std::string& path) -> std::string {
+[[nodiscard]] auto expand_home(const std::string& path) -> std::string {
   if (path.empty() || path.front() != '~') {
     return path;
   }
@@ -55,7 +55,8 @@ auto expand_home(const std::string& path) -> std::string {
   return std::string(home) + path.substr(1);
 }
 
-auto resolve_path(const PrinterFrontendSettings_t& settings) -> std::string {
+[[nodiscard]] auto resolve_path(const PrinterFrontendSettings_t& settings)
+    -> std::string {
   std::string path = expand_home(settings.filename);
   if (path.empty()) {
     path = "Printer.txt";
@@ -66,7 +67,8 @@ auto resolve_path(const PrinterFrontendSettings_t& settings) -> std::string {
   return path;
 }
 
-auto with_slot_suffix(const std::string& path, int slot) -> std::string {
+[[nodiscard]] auto with_slot_suffix(const std::string& path, int slot)
+    -> std::string {
   const std::string suffix = "-slot" + std::to_string(slot);
   const size_t last_separator = path.find_last_of('/');
   const size_t name_start =
@@ -82,7 +84,7 @@ auto with_slot_suffix(const std::string& path, int slot) -> std::string {
 
 // Returns 0 or the errno of the failed fopen; says nothing, so the caller
 // decides whether this attempt is worth a log line.
-auto open_file(int slot, SlotSink_t& sink) -> int {
+[[nodiscard]] auto open_file(int slot, SlotSink_t& sink) -> int {
   const std::string path = printer_frontend_output_path(slot);
   const bool truncate = !g_settings.append && !sink.truncated;
   FILE* opened = std::fopen(path.c_str(), truncate ? "wb" : "ab");
@@ -131,13 +133,14 @@ auto sink_write(void* ctx, int slot, uint8_t byte) -> void {
       return;
     }
   }
-  const uint8_t out =
-      g_settings.eight_bit ? byte : static_cast<uint8_t>(byte & seven_bit_mask);
+  const uint8_t out = g_settings.eight_bit
+                          ? byte
+                          : static_cast<uint8_t>(byte & k_seven_bit_mask);
   if (std::fwrite(&out, 1, 1, sink->file.get()) != 1) {
     fall_over(slot, *sink, "write", errno);
     return;
   }
-  if ((byte & seven_bit_mask) == carriage_return &&
+  if ((byte & k_seven_bit_mask) == k_carriage_return &&
       std::fflush(sink->file.get()) != 0) {
     fall_over(slot, *sink, "write", errno);
   }
@@ -161,12 +164,13 @@ auto sink_close(void* ctx, int slot) -> void {
 
 auto sink_tick(void* ctx) -> void {
   (void)ctx;
-  for (int slot = 1; slot <= slot_count; ++slot) {
-    SlotSink_t& sink = *slot_sink(slot);
-    if (!sink.in_use || sink.ready || open_file(slot, sink) != 0) {
+  for (int slot = 1; slot <= k_slot_count; ++slot) {
+    SlotSink_t* sink = slot_sink(slot);
+    if (sink == nullptr || !sink->in_use || sink->ready ||
+        open_file(slot, *sink) != 0) {
       continue;
     }
-    sink.ready = true;
+    sink->ready = true;
     Logger::warning(
         "printer file %s opened; the printer in slot %d is on again\n",
         printer_frontend_output_path(slot).c_str(), slot);

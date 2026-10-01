@@ -1,7 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// - POSIX pthread types defined in glibc
-// NOLINTBEGIN(misc-include-cleaner)
-// internal headers
 #include "frontends/common/SuperSerialFrontend.h"
 
 #include <fcntl.h>
@@ -10,32 +7,33 @@
 #include <unistd.h>
 
 #include <array>
+#include <atomic>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <mutex>
 #include <string>
 
-#include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
-#include "core/LinAppleCore.h"
 #include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
 
 namespace {
 
 static int g_comm_handle = -1;
-static std::string g_serial_port_path = "";
+static std::string g_serial_port_path;
 static bool g_serial_loopback = false;
 static uint32_t g_comm_inactivity = 0;
-static pthread_mutex_t g_critical_section = PTHREAD_MUTEX_INITIALIZER;
+static std::mutex g_critical_section;
 static pthread_t g_comm_thread;
-static volatile bool g_thread_running = false;
-static volatile bool g_thread_terminate = false;
+static std::atomic<bool> g_thread_running{false};
+static std::atomic<bool> g_thread_terminate{false};
 
-constexpr uint32_t DATA_BITS_5 = 5;
-constexpr uint32_t DATA_BITS_6 = 6;
-constexpr uint32_t DATA_BITS_7 = 7;
-constexpr uint32_t DATA_BITS_8 = 8;
-constexpr size_t SERIAL_RX_BUFFER_SIZE = 256;
-constexpr useconds_t SERIAL_POLL_INTERVAL_US = 1000;
+constexpr uint32_t k_data_bits_5 = 5;
+constexpr uint32_t k_data_bits_6 = 6;
+constexpr uint32_t k_data_bits_7 = 7;
+constexpr uint32_t k_data_bits_8 = 8;
+constexpr size_t k_serial_rx_buffer_size = 256;
+constexpr useconds_t k_serial_poll_interval_us = 1000;
 
 auto super_serial_frontend_update_comm_state(uint32_t baud, uint32_t bits,
                                              SuperSerialParity_t parity,
@@ -86,16 +84,16 @@ auto super_serial_frontend_update_comm_state(uint32_t baud, uint32_t bits,
   }
 
   switch (bits) {
-    case DATA_BITS_5:
+    case k_data_bits_5:
       l_databits = CS5;
       break;
-    case DATA_BITS_6:
+    case k_data_bits_6:
       l_databits = CS6;
       break;
-    case DATA_BITS_7:
+    case k_data_bits_7:
       l_databits = CS7;
       break;
-    case DATA_BITS_8:
+    case k_data_bits_8:
     default:
       l_databits = CS8;
       break;
@@ -121,33 +119,31 @@ auto super_serial_frontend_update_comm_state(uint32_t baud, uint32_t bits,
 
 auto serial_polling_thread(void* arg) -> void* {
   (void)arg;
-  std::array<uint8_t, SERIAL_RX_BUFFER_SIZE> buffer{};
+  std::array<uint8_t, k_serial_rx_buffer_size> buffer{};
 
-  while (!g_thread_terminate) {
+  while (!g_thread_terminate.load(std::memory_order_relaxed)) {
     if (g_comm_handle != -1) {
       const ssize_t n = read(g_comm_handle, buffer.data(), buffer.size());
       if (n > 0) {
-        pthread_mutex_lock(&g_critical_section);
+        std::lock_guard<std::mutex> lock(g_critical_section);
         for (ssize_t i = 0; i < n; ++i) {
           uint8_t byte = buffer.at(static_cast<size_t>(i));
           peripheral_command(super_serial_default_slot,
                              SUPER_SERIAL_CMD_PUSH_RX_BYTE, &byte,
                              sizeof(uint8_t));
         }
-        pthread_mutex_unlock(&g_critical_section);
       }
     }
-    usleep(SERIAL_POLL_INTERVAL_US);  // Poll every 1ms
+    usleep(k_serial_poll_interval_us);  // Poll every 1ms
   }
   return nullptr;
 }
 
 auto super_serial_frontend_transmit_byte(uint8_t byte) -> bool {
   if (g_serial_loopback) {
-    pthread_mutex_lock(&g_critical_section);
+    std::lock_guard<std::mutex> lock(g_critical_section);
     peripheral_command(super_serial_default_slot, SUPER_SERIAL_CMD_PUSH_RX_BYTE,
                        &byte, sizeof(uint8_t));
-    pthread_mutex_unlock(&g_critical_section);
     return true;
   }
 
@@ -168,21 +164,28 @@ auto super_serial_frontend_is_active() -> bool {
   if (g_serial_loopback) {
     return true;
   }
+  if (g_comm_handle != -1) {
+    return true;
+  }
+  if (g_serial_port_path.empty()) {
+    return false;
+  }
 
-  if ((g_comm_handle == -1) && !g_serial_port_path.empty()) {
-    g_comm_handle =
-        open(g_serial_port_path.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);
-    if (g_comm_handle != -1) {
-      if (!g_thread_running) {
-        g_thread_terminate = false;
-        if (pthread_create(&g_comm_thread, nullptr, serial_polling_thread,
-                           nullptr) == 0) {
-          g_thread_running = true;
-        }
-      }
+  g_comm_handle =
+      open(g_serial_port_path.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);
+  if (g_comm_handle == -1) {
+    return false;
+  }
+
+  if (!g_thread_running.load(std::memory_order_relaxed)) {
+    g_thread_terminate.store(false, std::memory_order_relaxed);
+    if (pthread_create(&g_comm_thread, nullptr, serial_polling_thread,
+                       nullptr) == 0) {
+      g_thread_running.store(true, std::memory_order_release);
     }
   }
-  return (g_comm_handle != -1);
+
+  return true;
 }
 
 auto super_serial_frontend_update_state(uint32_t baud, uint32_t bits,
@@ -193,10 +196,10 @@ auto super_serial_frontend_update_state(uint32_t baud, uint32_t bits,
 }
 
 auto super_serial_frontend_close() -> void {
-  if (g_thread_running) {
-    g_thread_terminate = true;
+  if (g_thread_running.load(std::memory_order_acquire)) {
+    g_thread_terminate.store(true, std::memory_order_release);
     pthread_join(g_comm_thread, nullptr);
-    g_thread_running = false;
+    g_thread_running.store(false, std::memory_order_release);
   }
 
   if (g_comm_handle != -1) {
@@ -221,5 +224,3 @@ auto super_serial_frontend_set_loopback(bool enable) -> void {
 auto super_serial_frontend_send_byte(uint8_t byte) -> void {
   super_serial_frontend_transmit_byte(byte);
 }
-
-// NOLINTEND(misc-include-cleaner)

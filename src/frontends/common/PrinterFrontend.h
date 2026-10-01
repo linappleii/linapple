@@ -22,4 +22,4 @@ auto printer_frontend_install(const PrinterFrontendSettings_t& settings)
     -> void;
 
 // The file the sink in this slot writes, after expansion and the slot rule.
-auto printer_frontend_output_path(int slot) -> std::string;
+[[nodiscard]] auto printer_frontend_output_path(int slot) -> std::string;
