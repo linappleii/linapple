@@ -37,9 +37,6 @@ constexpr uint16_t addr_keyboard_data_lo = 0xC000;
 constexpr uint16_t addr_keyboard_data_hi = 0xC00F;
 constexpr uint16_t addr_keyboard_strobe = 0xC010;
 constexpr uint16_t addr_keyboard_strobe_hi = 0xC01F;
-constexpr uint16_t addr_open_apple = 0xC061;
-constexpr uint16_t addr_closed_apple = 0xC062;
-constexpr uint16_t addr_shift_key = 0xC063;
 
 constexpr uint8_t key_up = 0x0B;
 constexpr uint8_t key_down = 0x0A;
@@ -136,43 +133,6 @@ auto keyboard_io_strobe_action(void* instance, uint16_t pc, uint16_t addr,
   return data;
 }
 
-auto keyboard_io_read_apple_keys(void* instance, uint16_t pc, uint16_t addr,
-                                 uint8_t write, uint8_t val,
-                                 uint32_t executed_cycles) -> uint8_t {
-  (void)pc;
-  (void)write;
-  (void)val;
-
-  namespace kp_const = kb;
-
-  if (instance == nullptr) {
-    return mem_read_floating_bus(executed_cycles);
-  }
-  auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
-
-  bool pressed = false;
-  switch (addr) {
-    case kb::addr_open_apple:
-      pressed = kp->logic.open_apple;
-      break;
-    case kb::addr_closed_apple:
-      pressed = kp->logic.closed_apple;
-      break;
-    case kb::addr_shift_key:
-      pressed = kp->logic.shift_key;
-      break;
-    default:
-      break;
-  }
-  uint8_t bus =
-      mem_read_floating_bus(executed_cycles) & kp_const::key_code_mask;
-  if (pressed) {
-    bus |= kp_const::key_strobe_bit;
-  }
-
-  return bus;
-}
-
 auto keyboard_abi_init(int slot, HostInterface_t* host) -> void* {
   if (host == nullptr || host->RegisterDirectIO == nullptr) {
     return nullptr;
@@ -207,12 +167,6 @@ auto keyboard_abi_init(int slot, HostInterface_t* host) -> void* {
       host->RegisterDirectIO(kp, static_cast<uint16_t>(addr), nullptr,
                              keyboard_io_strobe_action);
     }
-    host->RegisterDirectIO(kp, kp_const::addr_open_apple,
-                           keyboard_io_read_apple_keys, nullptr);
-    host->RegisterDirectIO(kp, kp_const::addr_closed_apple,
-                           keyboard_io_read_apple_keys, nullptr);
-    host->RegisterDirectIO(kp, kp_const::addr_shift_key,
-                           keyboard_io_read_apple_keys, nullptr);
   }
 
   return kp_ptr.release();
@@ -465,36 +419,7 @@ auto keyboard_abi_command(void* instance, uint32_t cmd_id, const void* data,
           kp->logic.repeat_key = 0xFFFFFFFF;
           kp->logic.repeating = false;
         }
-        if (kp->logic.has_custom_keys &&
-            ev->key >= kp_const::positional_threshold) {
-          const int idx =
-              static_cast<int>(ev->key - kp_const::positional_threshold);
-          if (idx >= 0 && idx < KEYBOARD_MAP_SIZE) {
-            if ((kp->logic.custom_flags[idx] & 2) != 0) {
-              kp->logic.open_apple = false;
-            }
-            if ((kp->logic.custom_flags[idx] & 4) != 0) {
-              kp->logic.closed_apple = false;
-            }
-          }
-        }
         return peripheral_ok;
-      }
-
-      if (kp->logic.has_custom_keys &&
-          ev->key >= kp_const::positional_threshold) {
-        const int idx =
-            static_cast<int>(ev->key - kp_const::positional_threshold);
-        if (idx >= 0 && idx < KEYBOARD_MAP_SIZE) {
-          if ((kp->logic.custom_flags[idx] & 2) != 0) {
-            kp->logic.open_apple = true;
-            return peripheral_ok;
-          }
-          if ((kp->logic.custom_flags[idx] & 4) != 0) {
-            kp->logic.closed_apple = true;
-            return peripheral_ok;
-          }
-        }
       }
 
       uint32_t key = ev->key;
@@ -543,10 +468,10 @@ auto keyboard_abi_command(void* instance, uint32_t cmd_id, const void* data,
       kp->logic.shift_key = (mods->shift != 0);
       kp->logic.ctrl_key = (mods->ctrl != 0);
 
-      // Map host modifiers to Apple II hardware keys.
-      // Standard convention: GUI maps to Open Apple, Alt maps to BOTH Open and
-      // Closed Apple.
-      kp->logic.open_apple = (mods->gui != 0) || (mods->alt != 0);
+      // Super/GUI is Open Apple and Alt is Solid Apple. The two levels live
+      // here only to answer keyboard_query_mods: the Apple keys' switch lines
+      // are the game port's, which the host feeds separately.
+      kp->logic.open_apple = (mods->gui != 0);
       kp->logic.closed_apple = (mods->alt != 0);
       return peripheral_ok;
     }

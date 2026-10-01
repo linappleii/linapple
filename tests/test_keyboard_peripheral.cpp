@@ -248,13 +248,11 @@ TEST_CASE("KBD-03: Direct I/O Registration") {
     CHECK_NE(harness.get_handler(addr).write, nullptr);
   }
 
-  // $C061, $C062, $C063 registered read-only
-  CHECK_EQ(harness.has_handler(ADDR_OPEN_APPLE), true);
-  CHECK_NE(harness.get_handler(ADDR_OPEN_APPLE).read, nullptr);
-  CHECK_EQ(harness.has_handler(ADDR_CLOSED_APPLE), true);
-  CHECK_NE(harness.get_handler(ADDR_CLOSED_APPLE).read, nullptr);
-  CHECK_EQ(harness.has_handler(ADDR_SHIFT_KEY), true);
-  CHECK_NE(harness.get_handler(ADDR_SHIFT_KEY).read, nullptr);
+  // The switch inputs at $C061-$C063 are the game port's, which reads the
+  // Apple keys as a second source on its lines; the keyboard owns none of them.
+  CHECK_FALSE(harness.has_handler(ADDR_OPEN_APPLE));
+  CHECK_FALSE(harness.has_handler(ADDR_CLOSED_APPLE));
+  CHECK_FALSE(harness.has_handler(ADDR_SHIFT_KEY));
 }
 
 TEST_CASE("KBD-04: Strobe Latch and Any-Key-Down at $C000 / $C010") {
@@ -317,29 +315,33 @@ TEST_CASE("KBD-05: Write Access to $C010-$C01F Clears Strobe") {
   CHECK_EQ(harness.read_c000() & 0x80, 0);
 }
 
-TEST_CASE("KBD-06: Modifier and Pushbutton Sensing ($C061-$C063)") {
+TEST_CASE("KBD-06: Modifier Sensing Through the Mods Query") {
   KeyboardTestHarness_t harness;
 
-  // Initially, pushbuttons report floating bus with bit 7 clear
-  CHECK_EQ(harness.read_io(ADDR_OPEN_APPLE) & 0x80, 0);
-  CHECK_EQ(harness.read_io(ADDR_CLOSED_APPLE) & 0x80, 0);
-  CHECK_EQ(harness.read_io(ADDR_SHIFT_KEY) & 0x80, 0);
+  auto mods_now = [&harness]() -> KeyboardModifiers_t {
+    KeyboardModifiers_t mods{};
+    size_t size = sizeof(mods);
+    REQUIRE_EQ(harness.query(keyboard_query_mods, &mods, &size), peripheral_ok);
+    return mods;
+  };
 
-  // Send shift and GUI (Open Apple)
+  CHECK_EQ(mods_now().shift, 0);
+  CHECK_EQ(mods_now().gui, 0);
+  CHECK_EQ(mods_now().alt, 0);
+
+  // Shift and Super/GUI (Open Apple) down
   KeyboardModifiers_t mods = {1, 0, 0, 1, 0, {0, 0, 0}};
   REQUIRE_EQ(harness.set_mods(mods), peripheral_ok);
+  CHECK_EQ(mods_now().shift, 1);
+  CHECK_EQ(mods_now().gui, 1);
+  CHECK_EQ(mods_now().alt, 0);
 
-  CHECK_EQ(harness.read_io(ADDR_OPEN_APPLE) & 0x80, 0x80);
-  CHECK_EQ(harness.read_io(ADDR_CLOSED_APPLE) & 0x80, 0);
-  CHECK_EQ(harness.read_io(ADDR_SHIFT_KEY) & 0x80, 0x80);
-
-  // Send Alt: sets both Open Apple and Closed Apple
+  // Alt alone is Solid Apple alone
   mods = {0, 0, 1, 0, 0, {0, 0, 0}};
   REQUIRE_EQ(harness.set_mods(mods), peripheral_ok);
-
-  CHECK_EQ(harness.read_io(ADDR_OPEN_APPLE) & 0x80, 0x80);
-  CHECK_EQ(harness.read_io(ADDR_CLOSED_APPLE) & 0x80, 0x80);
-  CHECK_EQ(harness.read_io(ADDR_SHIFT_KEY) & 0x80, 0);
+  CHECK_EQ(mods_now().shift, 0);
+  CHECK_EQ(mods_now().gui, 0);
+  CHECK_EQ(mods_now().alt, 1);
 }
 
 TEST_CASE("KBD-07: Caps Lock Behavior") {
@@ -411,34 +413,33 @@ TEST_CASE("KBD-09: Custom Keymap Overrides") {
   CHECK_EQ(harness.read_c000() & 0x7F, 'A');
 }
 
-TEST_CASE("KBD-10: Pushbutton Custom Keys (Open/Closed Apple)") {
+TEST_CASE("KBD-10: Custom Apple-Key Flags Are Stored, Not Interpreted") {
   KeyboardTestHarness_t harness;
 
-  // Map scancode 10 with flags=2 (Open Apple)
+  // Flag 2 marks a scancode as Open Apple and 4 as Solid Apple for the host,
+  // which drives the game port's switch lines for it; the card keeps the
+  // flags in its frame and leaves its own modifier levels alone.
   KeyboardCustomKeyPayload_t p_oa = {10, 0, 0, 0, 2};
   REQUIRE_EQ(harness.set_custom_key(p_oa), peripheral_ok);
-
-  // Key down sets Open Apple PB0
-  KeyboardEvent_t ev_oa = {0x500 + 10, 1, 0, 0, 0, 0, {0, 0}};
-  REQUIRE_EQ(harness.send_event(ev_oa), peripheral_ok);
-  CHECK_EQ(harness.read_io(ADDR_OPEN_APPLE) & 0x80, 0x80);
-
-  // Key up clears Open Apple
-  ev_oa.is_down = 0;
-  REQUIRE_EQ(harness.send_event(ev_oa), peripheral_ok);
-  CHECK_EQ(harness.read_io(ADDR_OPEN_APPLE) & 0x80, 0);
-
-  // Map scancode 11 with flags=4 (Closed Apple)
   KeyboardCustomKeyPayload_t p_ca = {11, 0, 0, 0, 4};
   REQUIRE_EQ(harness.set_custom_key(p_ca), peripheral_ok);
 
+  KeyboardEvent_t ev_oa = {0x500 + 10, 1, 0, 0, 0, 0, {0, 0}};
+  REQUIRE_EQ(harness.send_event(ev_oa), peripheral_ok);
   KeyboardEvent_t ev_ca = {0x500 + 11, 1, 0, 0, 0, 0, {0, 0}};
   REQUIRE_EQ(harness.send_event(ev_ca), peripheral_ok);
-  CHECK_EQ(harness.read_io(ADDR_CLOSED_APPLE) & 0x80, 0x80);
 
-  ev_ca.is_down = 0;
-  REQUIRE_EQ(harness.send_event(ev_ca), peripheral_ok);
-  CHECK_EQ(harness.read_io(ADDR_CLOSED_APPLE) & 0x80, 0);
+  KeyboardModifiers_t mods{};
+  size_t size = sizeof(mods);
+  REQUIRE_EQ(harness.query(keyboard_query_mods, &mods, &size), peripheral_ok);
+  CHECK_EQ(mods.gui, 0);
+  CHECK_EQ(mods.alt, 0);
+
+  KeyboardSaveState_t state{};
+  size_t state_size = sizeof(state);
+  REQUIRE_EQ(harness.save_state(&state, &state_size), peripheral_ok);
+  CHECK_EQ(state.custom_flags[10], 2);
+  CHECK_EQ(state.custom_flags[11], 4);
 }
 
 TEST_CASE("KBD-11: Pure Cycle-Driven Auto-Repeat") {

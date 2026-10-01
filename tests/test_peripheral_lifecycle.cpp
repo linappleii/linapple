@@ -558,9 +558,14 @@ TEST_CASE(
     TestFixtures::ScopedCore_t::poke(
         video_get_scanner_address(nullptr, probe_cycle), &marker, 1);
     g_cumulative_cycles = long_after_any_pulse;
+    // PB2 has no pull-down in a standard two-button controller, so its open
+    // TTL input reads high at rest (Sather, Understanding the Apple II, 7-9
+    // and 7-11); PB0, PB1 and the four expired timers read low.
+    constexpr uint16_t open_button = 0xC063;
     for (uint16_t addr = first_button; addr <= last_paddle; ++addr) {
       CAPTURE(addr);
-      CHECK(io_map_dispatch(0, addr, 0, 0, probe_cycle) == marker_masked);
+      CHECK(io_map_dispatch(0, addr, 0, 0, probe_cycle) ==
+            (addr == open_button ? marker : marker_masked));
     }
     static_cast<void>(io_map_dispatch(0, paddle_strobe, 0, 0, probe_cycle));
     for (uint16_t addr = first_paddle; addr <= last_paddle; ++addr) {

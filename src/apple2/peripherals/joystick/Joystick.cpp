@@ -42,7 +42,29 @@ constexpr size_t switch_count = 3;
 constexpr uint8_t joystick_count = 2;
 constexpr uint8_t axis_count = 2;
 constexpr uint8_t level_max = 1;
-constexpr uint8_t source_max = 1;
+constexpr uint8_t flag_max = 1;
+
+// PB0-PB2 are 74LS TTL inputs: a pressed button puts +5 V on the input and
+// the 560 ohm pull-down that takes a released one to ground sits in the
+// controller's plug, two of them in a standard paddle set (Apple II Reference
+// Manual, 1979, p. 100; Sather 7-9 and 7-11; IIe Tech Ref p. 189). An open
+// bipolar TTL input reads high (TI, Designing With Logic, SDYA009C, section
+// 3), so a line with nothing plugged into it reads 1. The //e wires the Open
+// Apple and Solid Apple keys in parallel with PB0 and PB1 (IIe Tech Ref
+// pp. 13 and 41), so a line is the OR of its connector switch and its
+// keyboard switch, over whatever pull-down is present.
+enum SwitchSource_t : uint8_t { source_connector = 0, source_keyboard = 1 };
+constexpr uint8_t source_max = source_keyboard;
+constexpr uint8_t default_pulldowns = 0x03;
+constexpr uint8_t pulldowns_max = 0x07;
+
+// The single-wire shift-key mod grounds PB2 through the shift key (IIe Tech
+// Ref p. 41; Sather 7-31), so with the jumper in a pressed shift reads 0
+// whatever the button does. Sather notes that neither the mod nor a
+// pulled-down button works when both share the line; here ground wins, so a
+// three-button game sees button 2 held while shift is down, which is why the
+// jumper is out by default, as on a stock machine.
+constexpr size_t shift_mod_line = 2;
 
 // Halfway along the pot's travel, where a centred stick rests.
 constexpr uint8_t centre_position = 127;
@@ -58,17 +80,14 @@ constexpr uint8_t centre_position = 127;
 constexpr uint64_t pulse_cycles_per_count = 11;
 constexpr uint64_t pulse_lead_in_cycles = 10;
 
-// A pressed switch is held for about 10 ms of emulated time so that a host
-// press and release delivered in the same batch of events still reach the
-// 6502 as a press (1,020,484 cycles per second, Sather 3-3).
-constexpr uint64_t button_hold_cycles = 10205;
-
 struct GamePort_t {
   std::array<uint64_t, paddle_count> trigger_cycle{};
   std::array<uint8_t, paddle_count> position{
       {centre_position, centre_position, centre_position, centre_position}};
-  std::array<bool, switch_count> buttons{};
-  std::array<uint64_t, switch_count> button_hold{};
+  std::array<bool, switch_count> connector{};
+  std::array<bool, switch_count> keyboard{};
+  uint8_t pulldowns = default_pulldowns;
+  bool shift_key_mod = false;
   HostInterface_t* host = nullptr;
   int slot = 0;
 };
@@ -92,6 +111,22 @@ auto timer_expired(const GamePort_t* port, size_t paddle, uint64_t now)
   return now - trigger >= pulse_cycles(port->position.at(paddle));
 }
 
+// Nothing between the connector pin and D7 stores state (Apple II Reference
+// Manual, 1979, p. 100; Sather 7-9): the level is what the switches are doing
+// at the instant of the read.
+auto switch_level(const GamePort_t* port, size_t line) -> bool {
+  if (line == shift_mod_line && port->shift_key_mod) {
+    return !port->keyboard.at(line);
+  }
+  if (port->connector.at(line)) {
+    return true;
+  }
+  if (line != shift_mod_line && port->keyboard.at(line)) {
+    return true;
+  }
+  return (port->pulldowns & (1U << line)) == 0;
+}
+
 auto joystick_io_read_switch(void* instance, uint16_t program_counter,
                              uint16_t memory_address, uint8_t is_write,
                              uint8_t data_value, uint32_t executed_cycles)
@@ -109,7 +144,7 @@ auto joystick_io_read_switch(void* instance, uint16_t program_counter,
   if (line >= switch_count) {
     return result;
   }
-  if (port->buttons.at(line) || port->button_hold.at(line) > 0) {
+  if (switch_level(port, line)) {
     result |= input_bit;
   }
   return result;
@@ -229,16 +264,6 @@ auto joystick_abi_shutdown(void* instance) -> void {
   std::unique_ptr<GamePort_t> port(static_cast<GamePort_t*>(instance));
 }
 
-auto joystick_abi_think(void* instance, uint32_t elapsed_cycles) -> void {
-  if (instance == nullptr) {
-    return;
-  }
-  auto* port = static_cast<GamePort_t*>(instance);
-  for (auto& hold : port->button_hold) {
-    hold = hold > elapsed_cycles ? hold - elapsed_cycles : 0;
-  }
-}
-
 auto joystick_abi_command(void* instance, uint32_t command_id,
                           const void* payload, size_t payload_size)
     -> PeripheralStatus_t {
@@ -274,11 +299,31 @@ auto joystick_abi_command(void* instance, uint32_t command_id,
           button->source > source_max) {
         return peripheral_error;
       }
-      const bool down = button->down != 0;
-      if (down && !port->buttons.at(button->button)) {
-        port->button_hold.at(button->button) = button_hold_cycles;
+      auto& source =
+          button->source == source_connector ? port->connector : port->keyboard;
+      source.at(button->button) = button->down != 0;
+      return peripheral_ok;
+    }
+    case JOYSTICK_CMD_SET_SHIFT_KEY_MOD: {
+      if (payload == nullptr || payload_size != sizeof(uint8_t)) {
+        return peripheral_error;
       }
-      port->buttons.at(button->button) = down;
+      const uint8_t jumper = *static_cast<const uint8_t*>(payload);
+      if (jumper > flag_max) {
+        return peripheral_error;
+      }
+      port->shift_key_mod = jumper != 0;
+      return peripheral_ok;
+    }
+    case JOYSTICK_CMD_SET_PULLDOWNS: {
+      if (payload == nullptr || payload_size != sizeof(uint8_t)) {
+        return peripheral_error;
+      }
+      const uint8_t mask = *static_cast<const uint8_t*>(payload);
+      if (mask > pulldowns_max) {
+        return peripheral_error;
+      }
+      port->pulldowns = mask;
       return peripheral_ok;
     }
     default:
@@ -350,7 +395,7 @@ auto joystick_abi_save_state(void* instance, void* state_buffer,
     state.y_pos[joystick] = port->position.at((joystick * axis_count) + 1);
   }
   for (size_t line = 0; line < switch_count; ++line) {
-    state.buttons[line] = port->buttons.at(line) ? 1 : 0;
+    state.buttons[line] = port->connector.at(line) ? 1 : 0;
   }
   std::memcpy(state_buffer, &state, required_size);
 
@@ -385,7 +430,7 @@ auto joystick_abi_load_state(void* instance, const void* state_buffer,
     port->position.at((joystick * axis_count) + 1) = state.y_pos[joystick];
   }
   for (size_t line = 0; line < switch_count; ++line) {
-    port->buttons.at(line) = state.buttons[line] != 0;
+    port->connector.at(line) = state.buttons[line] != 0;
   }
   return peripheral_ok;
 }
@@ -406,7 +451,7 @@ static const Peripheral_t joystick_peripheral = {
     .init = joystick_abi_init,
     .reset = joystick_abi_reset,
     .shutdown = joystick_abi_shutdown,
-    .think = joystick_abi_think,
+    .think = nullptr,
     .on_vblank = nullptr,
     .save_state = joystick_abi_save_state,
     .load_state = joystick_abi_load_state,

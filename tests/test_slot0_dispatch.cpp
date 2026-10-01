@@ -20,6 +20,11 @@
 
 namespace {
 
+constexpr uint16_t addr_switch0 = 0xC061;
+constexpr uint8_t switch_bit = 0x80;
+constexpr uint8_t source_connector = 0;
+constexpr uint8_t source_keyboard = 1;
+constexpr uint8_t all_lines_pulled_down = 0x07;
 constexpr uint8_t joy_centre = 127;
 constexpr uint8_t joy_off_centre = 200;
 constexpr uint32_t unknown_joystick_id = PERIPHERAL_SUBSYSTEM_JOYSTICK | 0x00FF;
@@ -145,9 +150,23 @@ auto keyboard_mods() -> KeyboardModifiers_t {
   return mods;
 }
 
-auto press_button(uint8_t button) -> void {
-  const JoystickButtonPayload_t payload{button, 1, 0, 0};
+// Bit 7 of a switch line through the memory map, as the 6502 would read it.
+auto switch_level(uint8_t line) -> uint8_t {
+  const uint16_t addr = static_cast<uint16_t>(addr_switch0 + line);
+  return (io_map_dispatch(0, addr, 0, 0, 0) & switch_bit) != 0 ? 1 : 0;
+}
+
+auto set_switch(uint8_t line, uint8_t source, uint8_t down) -> void {
+  const JoystickButtonPayload_t payload{line, down, source, 0};
   send(JOYSTICK_CMD_SET_BUTTON, &payload, sizeof(payload));
+}
+
+auto press_button(uint8_t button) -> void {
+  set_switch(button, source_connector, 1);
+}
+
+auto set_pulldowns(uint8_t mask) -> void {
+  send(JOYSTICK_CMD_SET_PULLDOWNS, &mask, sizeof(mask));
 }
 
 auto move_axis(uint8_t joystick, uint8_t axis, uint8_t value) -> void {
@@ -183,7 +202,7 @@ TEST_CASE("Slot 0: the rocker switch and a button under one slot") {
     CHECK(peripheral_query(0, keyboard_query_rocker, &rocker, &size) ==
           peripheral_ok);
     CHECK(rocker == 1);
-    CHECK(joystick_state().buttons[0] == 1);
+    CHECK(switch_level(0) == 1);
   }
 }
 
@@ -198,7 +217,7 @@ TEST_CASE("Slot 0: a stick move and the modifiers under one id") {
     press_button(0);
 
     CHECK(joystick_state().x_pos[0] == joy_off_centre);
-    CHECK(joystick_state().buttons[0] == 1);
+    CHECK(switch_level(0) == 1);
     CHECK(keyboard_mods().shift == 0);
     CHECK(keyboard_mods().ctrl == 0);
   }
@@ -214,13 +233,13 @@ TEST_CASE("Slot 0: flipping the rocker leaves the sticks where they are") {
     move_axis(0, 0, joy_off_centre);
     press_button(0);
     REQUIRE(joystick_state().x_pos[0] == joy_off_centre);
-    REQUIRE(joystick_state().buttons[0] == 1);
+    REQUIRE(switch_level(0) == 1);
 
     const uint8_t on = 1;
     send(keyboard_cmd_set_rocker, &on, sizeof(on));
 
     CHECK(joystick_state().x_pos[0] == joy_off_centre);
-    CHECK(joystick_state().buttons[0] == 1);
+    CHECK(switch_level(0) == 1);
     CHECK(keyboard_state().rocker_switch == 1);
   }
 }
@@ -241,7 +260,7 @@ TEST_CASE("Slot 0: a button payload does not hold down shift") {
     CHECK(after.shift == 0);
     CHECK(after.ctrl == 0);
     CHECK(after.caps == before.caps);
-    CHECK(joystick_state().buttons[1] == 1);
+    CHECK(switch_level(1) == 1);
   }
 }
 
@@ -265,7 +284,7 @@ TEST_CASE("Slot 0: setting modifiers does not move the stick") {
     CHECK(keyboard_mods().ctrl == 1);
     const JoystickSaveState_t after = joystick_state();
     CHECK(after.x_pos[0] == joy_off_centre);
-    CHECK(after.buttons[0] == 1);
+    CHECK(switch_level(0) == 1);
     CHECK(std::memcmp(&before, &after, sizeof(JoystickSaveState_t)) == 0);
   }
 }
@@ -281,10 +300,49 @@ TEST_CASE("Slot 0: a button press does not toggle caps lock") {
     send(keyboard_cmd_set_caps, &caps_off, sizeof(caps_off));
     REQUIRE(keyboard_state().caps_lock == 0);
 
+    // With nothing pulling PB2 down the line rests high, so a pull-down is
+    // installed first to make the press visible.
+    set_pulldowns(all_lines_pulled_down);
+    REQUIRE(switch_level(2) == 0);
     press_button(2);
 
     CHECK(keyboard_state().caps_lock == 0);
-    CHECK(joystick_state().buttons[2] == 1);
+    CHECK(switch_level(2) == 1);
+  }
+}
+
+TEST_CASE("Slot 0: a line reads the OR of its button and its Apple key") {
+  for (Order_t order : both_orders) {
+    CAPTURE(order);
+    Slot0_t slot0(order);
+    REQUIRE(slot0.keyboard_registered == 0);
+    REQUIRE(slot0.joystick_registered == 0);
+
+    // PB0 and PB1 rest low through the controller's pull-downs; PB2 has none
+    // and its open TTL input rests high (Sather, Understanding the Apple II,
+    // 7-9 and 7-11).
+    CHECK(switch_level(0) == 0);
+    CHECK(switch_level(1) == 0);
+    CHECK(switch_level(2) == 1);
+
+    set_switch(0, source_keyboard, 1);
+    CHECK(switch_level(0) == 1);
+    CHECK(switch_level(1) == 0);
+    set_switch(0, source_connector, 1);
+    CHECK(switch_level(0) == 1);
+    set_switch(0, source_keyboard, 0);
+    CHECK(switch_level(0) == 1);
+    set_switch(0, source_connector, 0);
+    CHECK(switch_level(0) == 0);
+
+    // The keyboard card's own modifier levels answer the debugger's query and
+    // reach no switch line.
+    KeyboardModifiers_t mods{};
+    mods.gui = 1;
+    send(keyboard_cmd_set_mods, &mods, sizeof(mods));
+    CHECK(keyboard_mods().gui == 1);
+    CHECK(switch_level(0) == 0);
+    CHECK(switch_level(1) == 0);
   }
 }
 
@@ -326,7 +384,7 @@ TEST_CASE("Slot 0: a payload of the wrong size changes nothing") {
     const KeyboardSaveState_t keyboard_after = keyboard_state();
     const JoystickSaveState_t joystick_after = joystick_state();
     CHECK(joystick_after.y_pos[0] == joy_off_centre);
-    CHECK(joystick_after.buttons[0] == 0);
+    CHECK(switch_level(0) == 0);
     CHECK(std::memcmp(&keyboard_before, &keyboard_after,
                       sizeof(KeyboardSaveState_t)) == 0);
     CHECK(std::memcmp(&joystick_before, &joystick_after,

@@ -82,7 +82,10 @@ typedef struct {
   uint8_t normal_val;
   uint8_t shift_val;
   uint8_t ctrl_val;
-  uint8_t flags; /**< 1 = active override, 2 = open_apple, 4 = closed_apple */
+  /* 1 = active override. Bits 2 (Open Apple) and 4 (Solid Apple) are stored
+   * and saved by the card and interpreted by the host, which drives the game
+   * port's switch lines for a flagged key instead of sending its key event. */
+  uint8_t flags;
 } KeyboardCustomKeyPayload_t;
 
 typedef struct {
