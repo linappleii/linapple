@@ -47,8 +47,11 @@ typedef struct {
 
 // The version-1 frame. trigger_cycle holds the cumulative cycle at which each
 // of the four NE558 timers was last triggered, 0 for a timer never triggered
-// since power-on; the fields after it keep their place so every frame ever
-// written loads.
+// since power-on, and is the port's whole state: the positions and switch
+// levels are the player's hands, which the host sends again, and trim is host
+// calibration. x_pos, y_pos, buttons, trim_x, trim_y and the reserved bytes
+// are written as zeros and read past; they keep their place so every frame
+// ever written loads.
 typedef struct {
   uint32_t version;
   uint32_t struct_size;

@@ -249,14 +249,6 @@ auto joystick_abi_init(int slot, HostInterface_t* host) -> void* {
   return port.release();
 }
 
-// RESET' reaches neither the NE558, whose RESET pin the Apple leaves unused
-// (Sather 7-11), so a pulse in progress runs out, nor a switch, which is a
-// contact. The //e monitor reads $C062 and $C061 a few dozen instructions into
-// its reset routine to choose the Solid Apple self-test or the Open Apple cold
-// start (Apple IIe Technical Reference Manual, pp. 90-91), so a reset that
-// cleared the switch levels would put both out of reach.
-auto joystick_abi_reset(void* instance) -> void { (void)instance; }
-
 auto joystick_abi_shutdown(void* instance) -> void {
   if (instance == nullptr) {
     return;
@@ -369,6 +361,10 @@ static_assert(offsetof(JoystickSaveState_t, trim_y) == 50,
 static_assert(offsetof(JoystickSaveState_t, reserved1) == 52,
               "the fields after the triggers keep their place");
 
+// Four trigger cycles are the port's whole state at an instant: the positions
+// and the switch levels are the player's hands and the host sends them again,
+// and trim is host calibration, so x_pos, y_pos, buttons, trim_x and trim_y go
+// out as zeros and are read past.
 auto joystick_abi_save_state(void* instance, void* state_buffer,
                              size_t* buffer_size) -> PeripheralStatus_t {
   if (buffer_size == nullptr) {
@@ -390,19 +386,16 @@ auto joystick_abi_save_state(void* instance, void* state_buffer,
   for (size_t paddle = 0; paddle < paddle_count; ++paddle) {
     state.trigger_cycle[paddle] = port->trigger_cycle.at(paddle);
   }
-  for (size_t joystick = 0; joystick < joystick_count; ++joystick) {
-    state.x_pos[joystick] = port->position.at(joystick * axis_count);
-    state.y_pos[joystick] = port->position.at((joystick * axis_count) + 1);
-  }
-  for (size_t line = 0; line < switch_count; ++line) {
-    state.buttons[line] = port->connector.at(line) ? 1 : 0;
-  }
   std::memcpy(state_buffer, &state, required_size);
 
   *buffer_size = required_size;
   return peripheral_ok;
 }
 
+// Any trigger loads: one ahead of the counter reads expired, as a real
+// machine's timer would be three milliseconds after anything. The shift-key
+// jumper and the pull-down mask are the machine's wiring, not its state, and
+// stay as the host set them.
 auto joystick_abi_load_state(void* instance, const void* state_buffer,
                              size_t buffer_size) -> PeripheralStatus_t {
   if (instance == nullptr || state_buffer == nullptr ||
@@ -415,22 +408,10 @@ auto joystick_abi_load_state(void* instance, const void* state_buffer,
       state.struct_size != sizeof(state)) {
     return peripheral_error;
   }
-  for (size_t line = 0; line < switch_count; ++line) {
-    if (state.buttons[line] > level_max) {
-      return peripheral_error;
-    }
-  }
 
   auto* port = static_cast<GamePort_t*>(instance);
   for (size_t paddle = 0; paddle < paddle_count; ++paddle) {
     port->trigger_cycle.at(paddle) = state.trigger_cycle[paddle];
-  }
-  for (size_t joystick = 0; joystick < joystick_count; ++joystick) {
-    port->position.at(joystick * axis_count) = state.x_pos[joystick];
-    port->position.at((joystick * axis_count) + 1) = state.y_pos[joystick];
-  }
-  for (size_t line = 0; line < switch_count; ++line) {
-    port->connector.at(line) = state.buttons[line] != 0;
   }
   return peripheral_ok;
 }
@@ -449,7 +430,14 @@ static const Peripheral_t joystick_peripheral = {
     .compatible_slots = PERIPHERAL_MASK_INTERNAL,
     .default_slot = 0,
     .init = joystick_abi_init,
-    .reset = joystick_abi_reset,
+    // RESET' reaches neither the NE558, whose RESET pin the Apple leaves
+    // unused (Sather 7-11), so a pulse in progress runs out, nor a switch,
+    // which is a contact. The //e monitor reads $C062 and $C061 a few dozen
+    // instructions into its reset routine to choose the Solid Apple self-test
+    // or the Open Apple cold start (Apple IIe Technical Reference Manual,
+    // pp. 90-91), so a reset that cleared the switch levels would put both out
+    // of reach.
+    .reset = nullptr,
     .shutdown = joystick_abi_shutdown,
     .think = nullptr,
     .on_vblank = nullptr,

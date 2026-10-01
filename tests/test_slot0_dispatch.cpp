@@ -8,6 +8,7 @@
 #include <ostream>
 
 #include "apple2/Apple2Types.h"
+#include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Audio.h"
@@ -25,8 +26,15 @@ constexpr uint8_t switch_bit = 0x80;
 constexpr uint8_t source_connector = 0;
 constexpr uint8_t source_keyboard = 1;
 constexpr uint8_t all_lines_pulled_down = 0x07;
+constexpr uint16_t addr_paddle0 = 0xC064;
+constexpr uint16_t addr_trigger = 0xC070;
 constexpr uint8_t joy_centre = 127;
 constexpr uint8_t joy_off_centre = 200;
+// A paddle at 200 holds its timer high for 11 * 200 + 10 = 2,210 cycles; at the
+// centre it would have fallen 803 cycles earlier.
+constexpr uint64_t off_centre_pulse = 2210;
+// Far past any pulse, so the first strobe finds every timer expired.
+constexpr uint64_t probe_counter = 1000000;
 constexpr uint32_t unknown_joystick_id = PERIPHERAL_SUBSYSTEM_JOYSTICK | 0x00FF;
 
 enum class Order_t : uint8_t { keyboard_first, joystick_first };
@@ -52,10 +60,15 @@ auto joystick_descriptor() -> Peripheral_t* {
 // Slot 0 fixture managing registration and teardown of keyboard and joystick.
 struct Slot0_t {
   eApple2Type saved_type{current_apple2_type};
+  // A fresh CPU context so the I/O bridge's cycle accounting starts at zero
+  // and the counter the probes set is the one the card reads.
+  CpuInstance_t* saved_cpu{cpu_get_active_context()};
+  CpuInstance_t cpu{};
   int keyboard_registered{-1};
   int joystick_registered{-1};
 
   explicit Slot0_t(Order_t order) {
+    cpu_set_active_context(&cpu);
     current_apple2_type = A2TYPE_APPLE2EENHANCED;
     REQUIRE(mem_initialize() == 0);
     peripheral_manager_init();
@@ -73,6 +86,7 @@ struct Slot0_t {
     peripheral_manager_shutdown();
     mem_destroy();
     current_apple2_type = saved_type;
+    cpu_set_active_context(saved_cpu);
   }
 
   Slot0_t(const Slot0_t&) = delete;
@@ -169,6 +183,22 @@ auto set_pulldowns(uint8_t mask) -> void {
   send(JOYSTICK_CMD_SET_PULLDOWNS, &mask, sizeof(mask));
 }
 
+// A position is visible only as the length of the pulse a strobe starts, so
+// the probe strobes at probe_counter and samples bit 7 one cycle before and at
+// the fall the position predicts.
+auto paddle_level_after(uint8_t paddle, uint64_t cycles) -> uint8_t {
+  g_cumulative_cycles = probe_counter + cycles;
+  const uint16_t addr = static_cast<uint16_t>(addr_paddle0 + paddle);
+  return (io_map_dispatch(0, addr, 0, 0, 0) & switch_bit) != 0 ? 1 : 0;
+}
+
+auto paddle_pulse_is(uint8_t paddle, uint64_t pulse) -> bool {
+  g_cumulative_cycles = probe_counter;
+  static_cast<void>(io_map_dispatch(0, addr_trigger, 0, 0, 0));
+  return paddle_level_after(paddle, pulse - 1) == 1 &&
+         paddle_level_after(paddle, pulse) == 0;
+}
+
 auto move_axis(uint8_t joystick, uint8_t axis, uint8_t value) -> void {
   const JoystickAxisPayload_t payload{joystick, axis, value, 0};
   send(JOYSTICK_CMD_SET_AXIS, &payload, sizeof(payload));
@@ -216,7 +246,7 @@ TEST_CASE("Slot 0: a stick move and the modifiers under one id") {
     move_axis(0, 0, joy_off_centre);
     press_button(0);
 
-    CHECK(joystick_state().x_pos[0] == joy_off_centre);
+    CHECK(paddle_pulse_is(0, off_centre_pulse));
     CHECK(switch_level(0) == 1);
     CHECK(keyboard_mods().shift == 0);
     CHECK(keyboard_mods().ctrl == 0);
@@ -232,13 +262,13 @@ TEST_CASE("Slot 0: flipping the rocker leaves the sticks where they are") {
 
     move_axis(0, 0, joy_off_centre);
     press_button(0);
-    REQUIRE(joystick_state().x_pos[0] == joy_off_centre);
+    REQUIRE(paddle_pulse_is(0, off_centre_pulse));
     REQUIRE(switch_level(0) == 1);
 
     const uint8_t on = 1;
     send(keyboard_cmd_set_rocker, &on, sizeof(on));
 
-    CHECK(joystick_state().x_pos[0] == joy_off_centre);
+    CHECK(paddle_pulse_is(0, off_centre_pulse));
     CHECK(switch_level(0) == 1);
     CHECK(keyboard_state().rocker_switch == 1);
   }
@@ -283,9 +313,9 @@ TEST_CASE("Slot 0: setting modifiers does not move the stick") {
     CHECK(keyboard_mods().shift == 1);
     CHECK(keyboard_mods().ctrl == 1);
     const JoystickSaveState_t after = joystick_state();
-    CHECK(after.x_pos[0] == joy_off_centre);
     CHECK(switch_level(0) == 1);
     CHECK(std::memcmp(&before, &after, sizeof(JoystickSaveState_t)) == 0);
+    CHECK(paddle_pulse_is(0, off_centre_pulse));
   }
 }
 
@@ -383,12 +413,12 @@ TEST_CASE("Slot 0: a payload of the wrong size changes nothing") {
 
     const KeyboardSaveState_t keyboard_after = keyboard_state();
     const JoystickSaveState_t joystick_after = joystick_state();
-    CHECK(joystick_after.y_pos[0] == joy_off_centre);
     CHECK(switch_level(0) == 0);
     CHECK(std::memcmp(&keyboard_before, &keyboard_after,
                       sizeof(KeyboardSaveState_t)) == 0);
     CHECK(std::memcmp(&joystick_before, &joystick_after,
                       sizeof(JoystickSaveState_t)) == 0);
+    CHECK(paddle_pulse_is(1, off_centre_pulse));
   }
 }
 

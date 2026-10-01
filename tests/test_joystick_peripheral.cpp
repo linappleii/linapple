@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -7,6 +8,7 @@
 #include <vector>
 
 #include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Internal.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/joystick/Joystick.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
@@ -550,8 +552,8 @@ TEST_CASE("Joystick Peripheral: $C068-$C06F read as $C060-$C067") {
 }
 
 TEST_CASE(
-    "Joystick Peripheral: A cold start reads every paddle expired and a reset "
-    "leaves a running pulse") {
+    "Joystick Peripheral: A cold start reads every paddle expired and the card "
+    "has no reset work") {
   JoystickHarness harness;
   void* instance = harness.create_joystick();
   REQUIRE(instance != nullptr);
@@ -565,8 +567,7 @@ TEST_CASE(
   // The centre position 127 is a 11 * 127 + 10 = 1,407-cycle pulse.
   constexpr uint64_t centre_pulse = 1407;
   harness.strobe_reset_read(instance);
-  REQUIRE(joystick_get_descriptor()->reset != nullptr);
-  joystick_get_descriptor()->reset(instance);
+  CHECK(joystick_get_descriptor()->reset == nullptr);
   harness.advance_cycles(centre_pulse - 1);
   for (uint8_t paddle = 0; paddle < 4; ++paddle) {
     CAPTURE(paddle);
@@ -577,6 +578,186 @@ TEST_CASE(
     CAPTURE(paddle);
     CHECK((harness.read_paddle(instance, paddle) & 0x80) == BUS_INACTIVE);
   }
+}
+
+// The card as the registry hands it out, which is what the machine wires in.
+auto game_port() -> Peripheral_t* {
+  Peripheral_t* descriptor = peripheral_find_internal("linapple.joystick");
+  REQUIRE(descriptor != nullptr);
+  return descriptor;
+}
+
+using Frame_t = std::array<uint8_t, sizeof(JoystickSaveState_t)>;
+
+auto save_frame(void* instance) -> Frame_t {
+  Frame_t frame{};
+  size_t size = frame.size();
+  REQUIRE(game_port()->save_state(instance, frame.data(), &size) ==
+          peripheral_ok);
+  REQUIRE(size == frame.size());
+  return frame;
+}
+
+auto set_pulldowns(void* instance, uint8_t mask) -> PeripheralStatus_t {
+  return game_port()->command(instance, JOYSTICK_CMD_SET_PULLDOWNS, &mask,
+                              sizeof(mask));
+}
+
+auto set_shift_key_mod(void* instance, uint8_t jumper) -> PeripheralStatus_t {
+  return game_port()->command(instance, JOYSTICK_CMD_SET_SHIFT_KEY_MOD, &jumper,
+                              sizeof(jumper));
+}
+
+// Header: version 1, struct_size 56 ($38). A cold start has every timer
+// expired, so one strobe at cycle 1,000,000 ($0F4240) triggers all four. The
+// positions, switch levels and trim are not the port's and go out as zeros.
+// Bytes as a little-endian host lays the frame out.
+constexpr Frame_t frame_after_one_strobe = {{
+    0x01, 0x00, 0x00, 0x00, 0x38, 0x00, 0x00, 0x00,  //
+    0x40, 0x42, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00,  //
+    0x40, 0x42, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00,  //
+    0x40, 0x42, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00,  //
+    0x40, 0x42, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00,  //
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  //
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  //
+}};
+
+// Positions 0, 10, 100 and 255 are pulses of 10, 120, 1,110 and 2,815 cycles.
+// Strobes at 1,000,000, 1,001,200, 1,001,400 and 1,001,450: the second finds
+// channels 0-2 expired (1,200 is past 10, 120 and 1,110) and channel 3 not;
+// the third finds 0 and 1 expired (200 is past 10 and 120, short of 1,110);
+// the fourth only channel 0 (50 is past 10, short of 120). So the triggers are
+// 1,001,450 ($0F47EA), 1,001,400 ($0F47B8), 1,001,200 ($0F46F0) and 1,000,000
+// ($0F4240).
+constexpr Frame_t frame_after_four_strobes = {{
+    0x01, 0x00, 0x00, 0x00, 0x38, 0x00, 0x00, 0x00,  //
+    0xEA, 0x47, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00,  //
+    0xB8, 0x47, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00,  //
+    0xF0, 0x46, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00,  //
+    0x40, 0x42, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00,  //
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  //
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  //
+}};
+
+TEST_CASE(
+    "Joystick Peripheral: The frame after one strobe from a cold start is the "
+    "literal, and after four strobes the triggers tell the channels apart") {
+  JoystickHarness harness;
+  void* instance = harness.create_joystick();
+  REQUIRE(instance != nullptr);
+
+  harness.set_cycles(INITIAL_CYCLE_COUNT);
+  REQUIRE(harness.set_button(instance, 0, true) == peripheral_ok);
+  REQUIRE(harness.set_axis(instance, 0, 0, MAX_AXIS_VALUE) == peripheral_ok);
+  harness.strobe_reset_read(instance);
+  CHECK(save_frame(instance) == frame_after_one_strobe);
+
+  JoystickHarness second;
+  void* port = second.create_joystick();
+  REQUIRE(port != nullptr);
+  REQUIRE(second.set_axis(port, 0, 0, 0) == peripheral_ok);
+  REQUIRE(second.set_axis(port, 0, 1, 10) == peripheral_ok);
+  REQUIRE(second.set_axis(port, 1, 0, 100) == peripheral_ok);
+  REQUIRE(second.set_axis(port, 1, 1, MAX_AXIS_VALUE) == peripheral_ok);
+  second.set_cycles(INITIAL_CYCLE_COUNT);
+  second.strobe_reset_read(port);
+  second.set_cycles(INITIAL_CYCLE_COUNT + 1200);
+  second.strobe_reset_read(port);
+  second.set_cycles(INITIAL_CYCLE_COUNT + 1400);
+  second.strobe_reset_read(port);
+  second.set_cycles(INITIAL_CYCLE_COUNT + 1450);
+  second.strobe_reset_read(port);
+  CHECK(save_frame(port) == frame_after_four_strobes);
+}
+
+TEST_CASE(
+    "Joystick Peripheral: A rejected load changes nothing and an accepted one "
+    "leaves the jumper and the pull-downs alone") {
+  JoystickHarness harness;
+  void* instance = harness.create_joystick();
+  REQUIRE(instance != nullptr);
+  harness.set_cycles(INITIAL_CYCLE_COUNT);
+  harness.strobe_reset_read(instance);
+  REQUIRE(save_frame(instance) == frame_after_one_strobe);
+
+  // Each rejected frame carries a different trigger so that a load that
+  // slipped through would show in the re-saved frame.
+  Frame_t short_frame = frame_after_four_strobes;
+  CHECK(game_port()->load_state(instance, short_frame.data(),
+                                short_frame.size() - 1) == peripheral_error);
+  Frame_t bad_version = frame_after_four_strobes;
+  bad_version.at(0) = 0x02;
+  CHECK(game_port()->load_state(instance, bad_version.data(),
+                                bad_version.size()) == peripheral_error);
+  Frame_t bad_struct_size = frame_after_four_strobes;
+  bad_struct_size.at(4) = 0x30;
+  CHECK(game_port()->load_state(instance, bad_struct_size.data(),
+                                bad_struct_size.size()) == peripheral_error);
+  CHECK(game_port()->load_state(instance, nullptr, short_frame.size()) ==
+        peripheral_error);
+  CHECK(save_frame(instance) == frame_after_one_strobe);
+
+  // With every line pulled down and the jumper in, PB2 reads 0 at rest and
+  // follows shift; a loaded frame carries neither and leaves both as set.
+  constexpr uint8_t every_line_pulled_down = 0x07;
+  constexpr uint8_t pb2 = 2;
+  REQUIRE(set_pulldowns(instance, every_line_pulled_down) == peripheral_ok);
+  REQUIRE(set_shift_key_mod(instance, 1) == peripheral_ok);
+  CHECK((harness.read_button(instance, pb2) & 0x80) == BUS_ACTIVE);
+  CHECK((harness.read_button(instance, 1) & 0x80) == BUS_INACTIVE);
+  CHECK(game_port()->load_state(instance, frame_after_four_strobes.data(),
+                                frame_after_four_strobes.size()) ==
+        peripheral_ok);
+  CHECK(save_frame(instance) == frame_after_four_strobes);
+  CHECK((harness.read_button(instance, pb2) & 0x80) == BUS_ACTIVE);
+  CHECK((harness.read_button(instance, 1) & 0x80) == BUS_INACTIVE);
+  const JoystickButtonPayload_t shift_down{pb2, 1, 1, 0};
+  REQUIRE(game_port()->command(instance, JOYSTICK_CMD_SET_BUTTON, &shift_down,
+                               sizeof(shift_down)) == peripheral_ok);
+  CHECK((harness.read_button(instance, pb2) & 0x80) == BUS_INACTIVE);
+
+  // Out-of-range wiring is refused: the mask has three bits, the jumper one.
+  CHECK(set_pulldowns(instance, every_line_pulled_down + 1) ==
+        peripheral_error);
+  CHECK(set_shift_key_mod(instance, 2) == peripheral_error);
+}
+
+TEST_CASE(
+    "Joystick Peripheral: A loaded trigger ahead of the counter reads expired "
+    "and any trigger value loads") {
+  JoystickHarness harness;
+  void* instance = harness.create_joystick();
+  REQUIRE(instance != nullptr);
+
+  // The frame's triggers sit at 1,000,000 and the counter at 1,000: on a real
+  // machine three milliseconds after anything every timer has fallen.
+  constexpr uint64_t counter_behind_the_triggers = 1000;
+  harness.set_cycles(counter_behind_the_triggers);
+  REQUIRE(game_port()->load_state(instance, frame_after_one_strobe.data(),
+                                  frame_after_one_strobe.size()) ==
+          peripheral_ok);
+  for (uint8_t paddle = 0; paddle < 4; ++paddle) {
+    CAPTURE(paddle);
+    CHECK((harness.read_paddle(instance, paddle) & 0x80) == BUS_INACTIVE);
+  }
+  CHECK(save_frame(instance) == frame_after_one_strobe);
+
+  // An expired channel accepts the next strobe, so the triggers move to the
+  // counter.
+  harness.strobe_reset_read(instance);
+  Frame_t frame = save_frame(instance);
+  for (size_t paddle = 0; paddle < 4; ++paddle) {
+    uint64_t trigger = 0;
+    std::memcpy(&trigger, &frame.at(8 + (paddle * 8)), sizeof(trigger));
+    CHECK(trigger == counter_behind_the_triggers);
+  }
+
+  Frame_t all_ones = frame_after_one_strobe;
+  std::fill(all_ones.begin() + 8, all_ones.begin() + 40, 0xFF);
+  CHECK(game_port()->load_state(instance, all_ones.data(), all_ones.size()) ==
+        peripheral_ok);
+  CHECK(save_frame(instance) == all_ones);
+  CHECK((harness.read_paddle(instance, 0) & 0x80) == BUS_INACTIVE);
 }
 
 }  // namespace
