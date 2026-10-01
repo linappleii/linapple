@@ -178,9 +178,12 @@ disk support, XDG compliance, and comprehensive automated test suites.
 
 | Apple II Key                       | Host Keyboard Equivalent                |
 | :--------------------------------- | :-------------------------------------- |
-| **Open Apple (Paddle 0 Button)**   | `Super` / `GUI` (Windows / Command key) |
-| **Closed Apple (Paddle 1 Button)** | `Alt` (Left or Right Alt)               |
+| **Open Apple (Paddle 0 Button)**   | `Left Alt` or `Left Super` / `GUI`      |
+| **Closed Apple (Paddle 1 Button)** | `Right Alt` or `Right Super` / `GUI`    |
 | **Reset (Ctrl + Reset)**           | `Ctrl + F10`                            |
+
+The Super (Windows / Command) key is usually claimed by the window manager
+and may never reach the emulator, so Alt is the dependable choice.
 
 ### Emulator Shortcuts
 

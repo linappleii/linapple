@@ -58,6 +58,7 @@ constexpr const char* cfg_printer_eight_bit = "Printer 8-bit output";
 
 constexpr const char* cfg_pdl_xtrim = "PDL X-Trim";
 constexpr const char* cfg_pdl_ytrim = "PDL Y-Trim";
+constexpr const char* cfg_shift_key_mod = "Shift-key mod";
 constexpr const char* cfg_scrolllock_toggle = "ScrollLock Toggle";
 constexpr const char* cfg_mouse_in_slot4 = "Mouse in slot 4";
 constexpr const char* cfg_mouse_capture = "Mouse Capture";
@@ -113,6 +114,7 @@ constexpr const char* REGVALUE_PRINTER_EIGHT_BIT = cfg_printer_eight_bit;
 
 constexpr const char* REGVALUE_PDL_XTRIM = cfg_pdl_xtrim;
 constexpr const char* REGVALUE_PDL_YTRIM = cfg_pdl_ytrim;
+constexpr const char* REGVALUE_SHIFT_KEY_MOD = cfg_shift_key_mod;
 constexpr const char* REGVALUE_SCROLLLOCK_TOGGLE = cfg_scrolllock_toggle;
 constexpr const char* REGVALUE_MOUSE_IN_SLOT4 = cfg_mouse_in_slot4;
 constexpr const char* REGVALUE_MOUSE_CAPTURE = cfg_mouse_capture;

@@ -5,7 +5,6 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
@@ -41,7 +40,7 @@ static const std::array<JoyInfoRec_t, 5> k_joy_info = {
      {DEVICE_KEYBOARD, MODE_CENTERING},
      {DEVICE_MOUSE, MODE_STANDARD}}};
 
-// Key pad [1..9]; Key pad 0,Key pad '.'; Left ALT,Right ALT
+// Key pad [1..9]; Key pad 0, Key pad '.'
 enum JoyKey_t {
   JK_DOWNLEFT = 0,
   JK_DOWN,
@@ -54,13 +53,12 @@ enum JoyKey_t {
   JK_UPRIGHT,
   JK_BUTTON0,
   JK_BUTTON1,
-  JK_OPENAPPLE,
-  JK_CLOSEDAPPLE,
   JK_MAX
 };
 
-constexpr uint32_t k_pdl_central = 127;
-constexpr uint32_t k_pdl_max = 255;
+constexpr int k_pdl_central = 127;
+constexpr int k_pdl_min = 0;
+constexpr int k_pdl_max = 255;
 
 static std::array<bool, JK_MAX> g_key_down = {false};
 constexpr int k_pdl_smax = 127;
@@ -86,8 +84,13 @@ static std::array<int, 2> g_joy_sub_y = {0, 0};
 static SdlJoystickPtr_t g_joy1;
 static SdlJoystickPtr_t g_joy2;
 
-static int g_frontend_pdl_trim_x = 0;
-static int g_frontend_pdl_trim_y = 0;
+// Trim is host calibration: one offset per axis, seeded from the two PDL
+// keys and adjusted with Right-Ctrl and the arrows, added to every position
+// of every device before it reaches the port.
+constexpr int k_trim_min = -128;
+constexpr int k_trim_max = 127;
+static int g_trim_x = 0;
+static int g_trim_y = 0;
 
 // Which host device feeds each Apple joystick and which of its axes and
 // buttons. Host input mapping is the frontend's alone; the card only ever
@@ -101,6 +104,225 @@ struct JoystickHostConfig_t {
 };
 
 static JoystickHostConfig_t g_joy_config;
+
+constexpr uint8_t k_switch_line_count = 3;
+constexpr uint8_t k_line_pb0 = 0x01;
+constexpr uint8_t k_line_pb1 = 0x02;
+constexpr uint8_t k_line_pb2 = 0x04;
+constexpr uint8_t k_two_button_pulldowns = k_line_pb0 | k_line_pb1;
+
+// A press and its release delivered in one SDL pump would reach the port
+// with no emulated cycles between them, which no program could see and no
+// hand can do. Edges on a line therefore queue: at most one send per line
+// per emulation slice, in order. The gamepad poll bypasses the queue, as it
+// writes the level it read rather than an edge.
+constexpr size_t k_switch_queue_capacity = 8;
+
+struct SwitchQueue_t {
+  std::array<bool, k_switch_queue_capacity> levels{};
+  size_t head = 0;
+  size_t count = 0;
+  // The last level accepted, whether sent or still queued.
+  bool tail_level = false;
+  // A send since the last slice holds the next edge back one slice.
+  bool sent_since_slice = false;
+};
+
+static std::array<SwitchQueue_t, k_switch_line_count> g_switch_queues;
+
+static auto device_of(size_t joy_num) -> int {
+  return k_joy_info.at(static_cast<size_t>(g_joy_config.joy_type.at(joy_num)))
+      .device;
+}
+
+// The switch lines a device's button drives. Joystick 0's first button is
+// PB0 and its second PB1, the second only while no device sits on joystick
+// 1; joystick 1's one button is PB2 and PB1 together. One connector owner per
+// line, so a device's 10 ms poll never overwrites a key the other device just
+// pressed.
+static auto device_button_lines(size_t joy_num, int button) -> uint8_t {
+  if (joy_num == 0) {
+    if (button == 0) {
+      return k_line_pb0;
+    }
+    if (button == 1 && device_of(1) == DEVICE_NONE) {
+      return k_line_pb1;
+    }
+    return 0;
+  }
+  return button == 0 ? static_cast<uint8_t>(k_line_pb2 | k_line_pb1) : 0;
+}
+
+// The 560 ohm pull-downs sit in the controller's plug, two in a standard set
+// (Sather, Understanding the Apple II, 7-9 and 7-11), and an open TTL input
+// reads high (TI, Designing With Logic, SDYA009C, section 3). PB0 and PB1
+// are always pulled down here: the //e ROM reads both inside RESET with no
+// controller plugged in (Apple IIe Technical Reference Manual, pp. 90-91),
+// which only works with the lines at rest low, and an open PB0 would turn
+// every reset into an Open-Apple cold start. PB2 is pulled down only when a
+// device drives it.
+static auto connector_pulldowns() -> uint8_t {
+  uint8_t mask = k_two_button_pulldowns;
+  for (size_t joy_num = 0; joy_num < 2; ++joy_num) {
+    if (device_of(joy_num) == DEVICE_NONE) {
+      continue;
+    }
+    mask |= device_button_lines(joy_num, 0);
+    mask |= device_button_lines(joy_num, 1);
+  }
+  return mask;
+}
+
+static auto send_connector_switch(uint8_t line, bool down) -> void {
+  const JoystickButtonPayload_t level = {
+      line, static_cast<uint8_t>(down ? 1 : 0), 0, 0};
+  peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &level, sizeof(level));
+}
+
+static auto send_connector_lines(uint8_t lines, bool down) -> void {
+  for (uint8_t line = 0; line < k_switch_line_count; ++line) {
+    if ((lines & (1U << line)) != 0) {
+      send_connector_switch(line, down);
+    }
+  }
+}
+
+static auto queue_push(SwitchQueue_t& queue, bool down) -> void {
+  if (queue.count == k_switch_queue_capacity) {
+    // Queued levels alternate, so dropping the two oldest keeps every later
+    // edge in order and the final level intact.
+    queue.head = (queue.head + 2) % k_switch_queue_capacity;
+    queue.count -= 2;
+  }
+  queue.levels.at((queue.head + queue.count) % k_switch_queue_capacity) = down;
+  ++queue.count;
+}
+
+static auto queue_pop(SwitchQueue_t& queue) -> bool {
+  const bool down = queue.levels.at(queue.head);
+  queue.head = (queue.head + 1) % k_switch_queue_capacity;
+  --queue.count;
+  return down;
+}
+
+static auto queue_connector_switch(uint8_t line, bool down) -> void {
+  SwitchQueue_t& queue = g_switch_queues.at(line);
+  if (down == queue.tail_level) {
+    return;
+  }
+  queue.tail_level = down;
+  if (queue.count == 0 && !queue.sent_since_slice) {
+    send_connector_switch(line, down);
+    queue.sent_since_slice = true;
+    return;
+  }
+  queue_push(queue, down);
+}
+
+static auto queue_connector_lines(uint8_t lines, bool down) -> void {
+  for (uint8_t line = 0; line < k_switch_line_count; ++line) {
+    if ((lines & (1U << line)) != 0) {
+      queue_connector_switch(line, down);
+    }
+  }
+}
+
+// One slice has run since the last call, so each line may send one edge.
+static auto drain_switch_queues() -> void {
+  for (uint8_t line = 0; line < k_switch_line_count; ++line) {
+    SwitchQueue_t& queue = g_switch_queues.at(line);
+    if (!queue.sent_since_slice && queue.count > 0) {
+      send_connector_switch(line, queue_pop(queue));
+    }
+    queue.sent_since_slice = false;
+  }
+}
+
+static auto flush_switch_queues() -> void {
+  for (uint8_t line = 0; line < k_switch_line_count; ++line) {
+    SwitchQueue_t& queue = g_switch_queues.at(line);
+    if (queue.count > 0) {
+      send_connector_switch(line, queue.tail_level);
+    }
+    queue = SwitchQueue_t{};
+  }
+}
+
+static auto send_axis(uint8_t joy_num, uint8_t axis, int position) -> void {
+  const int trimmed = clamp_val(position + (axis == 0 ? g_trim_x : g_trim_y),
+                                k_pdl_min, k_pdl_max);
+  const JoystickAxisPayload_t payload = {joy_num, axis,
+                                         static_cast<uint8_t>(trimmed), 0};
+  peripheral_command(0, JOYSTICK_CMD_SET_AXIS, &payload, sizeof(payload));
+}
+
+static auto keypad_joystick() -> int {
+  if (device_of(0) == DEVICE_KEYBOARD) {
+    return 0;
+  }
+  if (device_of(1) == DEVICE_KEYBOARD) {
+    return 1;
+  }
+  return -1;
+}
+
+// The keypad's position is the mean of the directions held, with a pair of
+// adjacent edges read as their corner, so that "up" plus "left" is "up-left".
+static auto send_keypad_axes(size_t joy_num) -> void {
+  int xsum = 0;
+  int ysum = 0;
+  int keydown_count = 0;
+  static constexpr std::array<int, 16> corner_convert_lookup = {
+      {-1, -1, -1, 8, -1, 6, -1, -1, -1, -1, 2, -1, 0, -1, -1, -1}};
+  int corner_idx = (static_cast<int>(0 == g_key_down.at(1))) |
+                   (static_cast<int>(0 == g_key_down.at(3)) << 1) |
+                   (static_cast<int>(0 == g_key_down.at(5)) << 2) |
+                   (static_cast<int>(0 == g_key_down.at(7)) << 3);
+  int corner_override_idx =
+      corner_convert_lookup.at(static_cast<size_t>(corner_idx));
+  if (corner_override_idx >= 0) {
+    xsum = k_key_value.at(static_cast<size_t>(corner_override_idx)).x;
+    ysum = k_key_value.at(static_cast<size_t>(corner_override_idx)).y;
+    keydown_count = 1;
+  } else {
+    for (size_t i = 0; i < 9; i++) {
+      if (g_key_down.at(i)) {
+        keydown_count++;
+        xsum += k_key_value.at(i).x;
+        ysum += k_key_value.at(i).y;
+      }
+    }
+  }
+  int x = k_pdl_central;
+  int y = k_pdl_central;
+  if (keydown_count != 0) {
+    x += xsum / keydown_count;
+    y += ysum / keydown_count;
+  }
+  send_axis(static_cast<uint8_t>(joy_num), 0, x);
+  send_axis(static_cast<uint8_t>(joy_num), 1, y);
+}
+
+static auto refresh_keypad_axes() -> void {
+  const int joy_num = keypad_joystick();
+  if (joy_num >= 0) {
+    send_keypad_axes(static_cast<size_t>(joy_num));
+  }
+}
+
+static auto clamp_trim(int trim) -> int {
+  return clamp_val(trim, k_trim_min, k_trim_max);
+}
+
+static auto load_trim(const char* key) -> int {
+  uint32_t raw = 0;
+  if (!load(key, &raw)) {
+    return 0;
+  }
+  // The registry parses through an unsigned type; a negative entry comes
+  // back as its two's complement.
+  return clamp_trim(static_cast<int32_t>(raw));
+}
 
 auto joy_frontend_initialize() -> void {
   constexpr int16_t k_axis_min = -32768; /* minimum value for axis coordinate */
@@ -128,10 +350,21 @@ auto joy_frontend_initialize() -> void {
   if (load(REGVALUE_JOY_AXIS2_0, &val)) g_joy_config.joy_axis[1][0] = val;
   if (load(REGVALUE_JOY_AXIS2_1, &val)) g_joy_config.joy_axis[1][1] = val;
 
+  g_trim_x = load_trim(REGVALUE_PDL_XTRIM);
+  g_trim_y = load_trim(REGVALUE_PDL_YTRIM);
+
+  // The jumper is soldered in or out; it is read with the configuration and
+  // never changes while the machine runs.
+  uint8_t shift_key_mod = 0;
+  if (load(REGVALUE_SHIFT_KEY_MOD, &val)) {
+    shift_key_mod = (val != 0) ? 1 : 0;
+  }
+  peripheral_command(0, JOYSTICK_CMD_SET_SHIFT_KEY_MOD, &shift_key_mod,
+                     sizeof(shift_key_mod));
+
   int number_of_joysticks = sdl_compat_num_joysticks();
 
-  if (k_joy_info.at(static_cast<size_t>(g_joy_config.joy_type[0])).device ==
-      DEVICE_JOYSTICK) {
+  if (device_of(0) == DEVICE_JOYSTICK) {
     if (number_of_joysticks > 0 &&
         static_cast<int>(g_joy_config.joy_index[0]) < number_of_joysticks) {
       g_joy1 =
@@ -155,8 +388,7 @@ auto joy_frontend_initialize() -> void {
     }
   }
 
-  if (k_joy_info.at(static_cast<size_t>(g_joy_config.joy_type[1])).device ==
-      DEVICE_JOYSTICK) {
+  if (device_of(1) == DEVICE_JOYSTICK) {
     if (number_of_joysticks > 1 &&
         static_cast<int>(g_joy_config.joy_index[1]) < number_of_joysticks) {
       g_joy2 =
@@ -179,139 +411,103 @@ auto joy_frontend_initialize() -> void {
       g_joy_config.joy_type[1] = DEVICE_NONE;
     }
   }
+
+  // The mask follows the devices actually present, so a configured second
+  // stick that is not plugged in leaves PB2 open as the hardware would.
+  const uint8_t pulldowns = connector_pulldowns();
+  peripheral_command(0, JOYSTICK_CMD_SET_PULLDOWNS, &pulldowns,
+                     sizeof(pulldowns));
+
+  // Start the queues and the port from the same released levels, whatever a
+  // previous session left held.
+  for (uint8_t line = 0; line < k_switch_line_count; ++line) {
+    g_switch_queues.at(line) = SwitchQueue_t{};
+    send_connector_switch(line, false);
+  }
+  g_key_down.fill(false);
+  refresh_keypad_axes();
 }
 
 auto joy_frontend_shutdown() -> void {
+  flush_switch_queues();
   g_joy1.reset();
   g_joy2.reset();
 }
 
+// "Square" a modern analog stick, whose circular travel would otherwise
+// never reach the corners a self-centring Apple stick reaches.
+static auto square_stick(int& x, int& y) -> void {
+  if (y < k_pdl_central / 2) {
+    if (x < k_pdl_central / 2) {
+      x = x - (k_pdl_central / 2 - y) / 2;
+      y = y - (k_pdl_central / 2 - x) / 2;
+    } else if (x > k_pdl_central + k_pdl_central / 2) {
+      x = x + (k_pdl_central / 2 - y) / 2;
+      y = y - (x - (k_pdl_central + k_pdl_central / 2)) / 2;
+    }
+  } else if (y > k_pdl_central + k_pdl_central / 2) {
+    if (x < k_pdl_central / 2) {
+      x = x - (y - (k_pdl_central + k_pdl_central / 2)) / 2;
+      y = y + (k_pdl_central / 2 - x) / 2;
+    } else if (x > k_pdl_central + k_pdl_central / 2) {
+      x = x + (y - (k_pdl_central + k_pdl_central / 2)) / 2;
+      y = y + (x - (k_pdl_central + k_pdl_central / 2)) / 2;
+    }
+  }
+}
+
+static auto poll_gamepad(size_t joy_num, SDL_Joystick* joystick) -> void {
+  sdl_compat_update_joysticks();
+
+  if (joy_num == 0) {
+    const bool b0 = sdl_compat_get_joystick_button(
+        joystick, static_cast<int>(g_joy_config.joy0_button_map[0]));
+    send_connector_lines(device_button_lines(0, 0), b0);
+    const uint8_t second_button_lines = device_button_lines(0, 1);
+    if (second_button_lines != 0) {
+      const bool b1 = sdl_compat_get_joystick_button(
+          joystick, static_cast<int>(g_joy_config.joy0_button_map[1]));
+      send_connector_lines(second_button_lines, b1);
+    }
+  } else {
+    const bool b2 = sdl_compat_get_joystick_button(
+        joystick, static_cast<int>(g_joy_config.joy1_button_map));
+    send_connector_lines(device_button_lines(1, 0), b2);
+  }
+
+  int x = (static_cast<int>(sdl_compat_get_joystick_axis(
+               joystick, static_cast<int>(g_joy_config.joy_axis[joy_num][0]))) -
+           g_joy_sub_x.at(joy_num)) >>
+          g_joy_shr_x.at(joy_num);
+  int y = (static_cast<int>(sdl_compat_get_joystick_axis(
+               joystick, static_cast<int>(g_joy_config.joy_axis[joy_num][1]))) -
+           g_joy_sub_y.at(joy_num)) >>
+          g_joy_shr_y.at(joy_num);
+  if (joy_num == 0) {
+    square_stick(x, y);
+  }
+  send_axis(static_cast<uint8_t>(joy_num), 0, x);
+  send_axis(static_cast<uint8_t>(joy_num), 1, y);
+}
+
 auto joy_frontend_update() -> void {
-  // Joystick 0
-  if (g_joy1 &&
-      k_joy_info.at(static_cast<size_t>(g_joy_config.joy_type[0])).device ==
-          DEVICE_JOYSTICK) {
+  drain_switch_queues();
+
+  if (g_joy1 && device_of(0) == DEVICE_JOYSTICK) {
     static uint32_t lastcheck = 0;
     uint32_t currtime = SDL_GetTicks();
     if (currtime - lastcheck >= 10) {
       lastcheck = currtime;
-      sdl_compat_update_joysticks();
-
-      bool b0 = sdl_compat_get_joystick_button(
-          g_joy1.get(), static_cast<int>(g_joy_config.joy0_button_map[0]));
-      bool b1 = false;
-      if (k_joy_info.at(static_cast<size_t>(g_joy_config.joy_type[1])).device ==
-          DEVICE_NONE) {
-        b1 = sdl_compat_get_joystick_button(
-            g_joy1.get(), static_cast<int>(g_joy_config.joy0_button_map[1]));
-      }
-
-      JoystickButtonPayload_t pb0 = {0, b0, 0, 0};
-      peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &pb0, sizeof(pb0));
-      JoystickButtonPayload_t pb1 = {1, b1, 0, 0};
-      peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &pb1, sizeof(pb1));
-
-      int x =
-          (static_cast<int>(sdl_compat_get_joystick_axis(
-               g_joy1.get(), static_cast<int>(g_joy_config.joy_axis[0][0]))) -
-           g_joy_sub_x.at(0)) >>
-          g_joy_shr_x.at(0);
-      int y =
-          (static_cast<int>(sdl_compat_get_joystick_axis(
-               g_joy1.get(), static_cast<int>(g_joy_config.joy_axis[0][1]))) -
-           g_joy_sub_y.at(0)) >>
-          g_joy_shr_y.at(0);
-
-      // "Square" a modern analog stick
-      if (y < static_cast<int>(k_pdl_central) / 2) {
-        if (x < static_cast<int>(k_pdl_central) / 2) {
-          x = x - (static_cast<int>(k_pdl_central) / 2 - y) / 2;
-          y = y - (static_cast<int>(k_pdl_central) / 2 - x) / 2;
-        } else if (x > static_cast<int>(k_pdl_central) +
-                           static_cast<int>(k_pdl_central) / 2) {
-          x = x + (static_cast<int>(k_pdl_central) / 2 - y) / 2;
-          y = y - (x - (static_cast<int>(k_pdl_central) +
-                        static_cast<int>(k_pdl_central) / 2)) /
-                      2;
-        }
-      } else if (y > static_cast<int>(k_pdl_central) +
-                         static_cast<int>(k_pdl_central) / 2) {
-        if (x < static_cast<int>(k_pdl_central) / 2) {
-          x = x - (y - (static_cast<int>(k_pdl_central) +
-                        static_cast<int>(k_pdl_central) / 2)) /
-                      2;
-          y = y + (static_cast<int>(k_pdl_central) / 2 - x) / 2;
-        } else if (x > static_cast<int>(k_pdl_central) +
-                           static_cast<int>(k_pdl_central) / 2) {
-          x = x + (y - (static_cast<int>(k_pdl_central) +
-                        static_cast<int>(k_pdl_central) / 2)) /
-                      2;
-          y = y + (x - (static_cast<int>(k_pdl_central) +
-                        static_cast<int>(k_pdl_central) / 2)) /
-                      2;
-        }
-      }
-      if (x < 0) x = 0;
-      if (x > 255) x = 255;
-      if (y < 0) y = 0;
-      if (y > 255) y = 255;
-
-      const auto clamped_x =
-          static_cast<uint8_t>(clamp_val(x + g_frontend_pdl_trim_x, 0, 255));
-      const auto clamped_y =
-          static_cast<uint8_t>(clamp_val(y + g_frontend_pdl_trim_y, 0, 255));
-      JoystickAxisPayload_t px = {0, 0, clamped_x, 0};
-      peripheral_command(0, JOYSTICK_CMD_SET_AXIS, &px, sizeof(px));
-      JoystickAxisPayload_t py = {0, 1, clamped_y, 0};
-      peripheral_command(0, JOYSTICK_CMD_SET_AXIS, &py, sizeof(py));
+      poll_gamepad(0, g_joy1.get());
     }
   }
 
-  // Joystick 1
-  if (g_joy2 &&
-      k_joy_info.at(static_cast<size_t>(g_joy_config.joy_type[1])).device ==
-          DEVICE_JOYSTICK) {
+  if (g_joy2 && device_of(1) == DEVICE_JOYSTICK) {
     static uint32_t lastcheck = 0;
     uint32_t currtime = SDL_GetTicks();
     if (currtime - lastcheck >= 10) {
       lastcheck = currtime;
-      sdl_compat_update_joysticks();
-
-      bool b2 = sdl_compat_get_joystick_button(
-          g_joy2.get(), static_cast<int>(g_joy_config.joy1_button_map));
-      JoystickButtonPayload_t pb2 = {2, b2, 0, 0};
-      peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &pb2, sizeof(pb2));
-      if (k_joy_info.at(static_cast<size_t>(g_joy_config.joy_type[1])).device !=
-          DEVICE_NONE) {
-        JoystickButtonPayload_t pb1 = {1, b2, 0, 0};
-        peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &pb1, sizeof(pb1));
-      }
-
-      int x =
-          (static_cast<int>(sdl_compat_get_joystick_axis(
-               g_joy2.get(), static_cast<int>(g_joy_config.joy_axis[1][0]))) -
-           g_joy_sub_x.at(1)) >>
-          g_joy_shr_x.at(1);
-      int y =
-          (static_cast<int>(sdl_compat_get_joystick_axis(
-               g_joy2.get(), static_cast<int>(g_joy_config.joy_axis[1][1]))) -
-           g_joy_sub_y.at(1)) >>
-          g_joy_shr_y.at(1);
-
-      if (x == 127 || x == 128) {
-        x += g_frontend_pdl_trim_x;
-      }
-      if (y == 127 || y == 128) {
-        y += g_frontend_pdl_trim_y;
-      }
-
-      x = clamp_val(x, 0, 255);
-      y = clamp_val(y, 0, 255);
-
-      JoystickAxisPayload_t px = {1, 0, static_cast<uint8_t>(x), 0};
-      peripheral_command(0, JOYSTICK_CMD_SET_AXIS, &px, sizeof(px));
-      JoystickAxisPayload_t py = {1, 1, static_cast<uint8_t>(y), 0};
-      peripheral_command(0, JOYSTICK_CMD_SET_AXIS, &py, sizeof(py));
+      poll_gamepad(1, g_joy2.get());
     }
   }
 }
@@ -320,48 +516,41 @@ auto joy_frontend_update_trim_via_key(SdlKeycode_t virtkey) -> void {
   switch (virtkey) {
     case SDLK_DOWN:
     case SDLK_KP_2:
-      if (g_frontend_pdl_trim_y < 64) g_frontend_pdl_trim_y++;
+      g_trim_y = clamp_trim(g_trim_y + 1);
       break;
     case SDLK_KP_4:
     case SDLK_LEFT:
-      if (g_frontend_pdl_trim_x > -64) g_frontend_pdl_trim_x--;
+      g_trim_x = clamp_trim(g_trim_x - 1);
       break;
     case SDLK_KP_6:
     case SDLK_RIGHT:
-      if (g_frontend_pdl_trim_x < 64) g_frontend_pdl_trim_x++;
+      g_trim_x = clamp_trim(g_trim_x + 1);
       break;
     case SDLK_KP_8:
     case SDLK_UP:
-      if (g_frontend_pdl_trim_y > -64) g_frontend_pdl_trim_y--;
+      g_trim_y = clamp_trim(g_trim_y - 1);
       break;
     case SDLK_KP_5:
     case SDLK_CLEAR:
-      g_frontend_pdl_trim_x = g_frontend_pdl_trim_y = 0;
+      g_trim_x = 0;
+      g_trim_y = 0;
       break;
     default:
-      break;
+      return;
   }
+  refresh_keypad_axes();
 }
 
 auto joy_frontend_process_key(SdlKeycode_t virtkey, bool extended, bool down,
                               bool autorep) -> bool {
-  int joy_num = -1;
-  if (g_joy_config.joy_type[0] < k_joy_info.size() &&
-      k_joy_info.at(static_cast<size_t>(g_joy_config.joy_type[0])).device ==
-          DEVICE_KEYBOARD) {
-    joy_num = 0;
-  } else if (g_joy_config.joy_type[1] < k_joy_info.size() &&
-             k_joy_info.at(static_cast<size_t>(g_joy_config.joy_type[1]))
-                     .device == DEVICE_KEYBOARD) {
-    joy_num = 1;
-  }
+  const int joy_num = keypad_joystick();
   if (joy_num == -1) {
     return false;
   }
-  int centering_type =
+  const int centering_type =
       k_joy_info
           .at(static_cast<size_t>(
-              g_joy_config.joy_type[static_cast<size_t>(joy_num)]))
+              g_joy_config.joy_type.at(static_cast<size_t>(joy_num))))
           .mode;
 
   bool keychange = !extended;
@@ -399,11 +588,11 @@ auto joy_frontend_process_key(SdlKeycode_t virtkey, bool extended, bool down,
           break;
         case SDLK_KP_0:
         case SDLK_INSERT:
-          g_key_down.at(9) = down;
+          g_key_down.at(JK_BUTTON0) = down;
           break;
         case SDLK_KP_PERIOD:
         case SDLK_DELETE:
-          g_key_down.at(10) = down;
+          g_key_down.at(JK_BUTTON1) = down;
           break;
         default:
           keychange = false;
@@ -412,110 +601,23 @@ auto joy_frontend_process_key(SdlKeycode_t virtkey, bool extended, bool down,
     }
   }
 
-  if (keychange) {
-    if ((virtkey == SDLK_KP_0) || (virtkey == SDLK_INSERT)) {
-      if (down) {
-        if (k_joy_info.at(static_cast<size_t>(g_joy_config.joy_type[1]))
-                .device != DEVICE_KEYBOARD) {
-          JoystickButtonPayload_t p = {0, 1, 0, 0};
-          peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &p, sizeof(p));
-        } else if (k_joy_info.at(static_cast<size_t>(g_joy_config.joy_type[1]))
-                       .device != DEVICE_NONE) {
-          JoystickButtonPayload_t p2 = {2, 1, 0, 0};
-          peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &p2, sizeof(p2));
-          JoystickButtonPayload_t p1 = {1, 1, 0, 0};
-          peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &p1, sizeof(p1));
-        }
-      } else {
-        if (k_joy_info.at(static_cast<size_t>(g_joy_config.joy_type[1]))
-                .device != DEVICE_KEYBOARD) {
-          JoystickButtonPayload_t p = {0, 0, 0, 0};
-          peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &p, sizeof(p));
-        } else if (k_joy_info.at(static_cast<size_t>(g_joy_config.joy_type[1]))
-                       .device != DEVICE_NONE) {
-          JoystickButtonPayload_t p2 = {2, 0, 0, 0};
-          peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &p2, sizeof(p2));
-          JoystickButtonPayload_t p1 = {1, 0, 0, 0};
-          peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &p1, sizeof(p1));
-        }
-      }
-    } else if ((virtkey == SDLK_KP_PERIOD) || (virtkey == SDLK_DELETE)) {
-      if (down) {
-        if (k_joy_info.at(static_cast<size_t>(g_joy_config.joy_type[1]))
-                .device != DEVICE_KEYBOARD) {
-          JoystickButtonPayload_t p = {1, 1, 0, 0};
-          peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &p, sizeof(p));
-        }
-      } else {
-        if (k_joy_info.at(static_cast<size_t>(g_joy_config.joy_type[1]))
-                .device != DEVICE_KEYBOARD) {
-          JoystickButtonPayload_t p = {1, 0, 0, 0};
-          peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &p, sizeof(p));
-        }
-      }
-    } else if ((down && !autorep) || (centering_type == MODE_CENTERING)) {
-      int xsum = 0;
-      int ysum = 0;
-      int keydown_count = 0;
-      static constexpr std::array<int, 16> corner_convert_lookup = {
-          {-1, -1, -1, 8, -1, 6, -1, -1, -1, -1, 2, -1, 0, -1, -1, -1}};
-      int corner_idx = (static_cast<int>(0 == g_key_down.at(1))) |
-                       (static_cast<int>(0 == g_key_down.at(3)) << 1) |
-                       (static_cast<int>(0 == g_key_down.at(5)) << 2) |
-                       (static_cast<int>(0 == g_key_down.at(7)) << 3);
-      int corner_override_idx =
-          corner_convert_lookup.at(static_cast<size_t>(corner_idx));
-      if (corner_override_idx >= 0) {
-        xsum = k_key_value.at(static_cast<size_t>(corner_override_idx)).x;
-        ysum = k_key_value.at(static_cast<size_t>(corner_override_idx)).y;
-        keydown_count = 1;
-      } else {
-        for (size_t i = 0; i < 9; i++) {
-          if (g_key_down.at(i)) {
-            keydown_count++;
-            xsum += k_key_value.at(i).x;
-            ysum += k_key_value.at(i).y;
-          }
-        }
-      }
-      int x = 0;
-      int y = 0;
-      if (keydown_count != 0) {
-        x = (xsum / keydown_count) + static_cast<int>(k_pdl_central) +
-            g_frontend_pdl_trim_x;
-        y = (ysum / keydown_count) + static_cast<int>(k_pdl_central) +
-            g_frontend_pdl_trim_y;
-      } else {
-        x = static_cast<int>(k_pdl_central) + g_frontend_pdl_trim_x;
-        y = static_cast<int>(k_pdl_central) + g_frontend_pdl_trim_y;
-      }
-      x = clamp_val(x, 0, 255);
-      y = clamp_val(y, 0, 255);
-      JoystickAxisPayload_t px = {static_cast<uint8_t>(joy_num), 0,
-                                  static_cast<uint8_t>(x), 0};
-      peripheral_command(0, JOYSTICK_CMD_SET_AXIS, &px, sizeof(px));
-      JoystickAxisPayload_t py = {static_cast<uint8_t>(joy_num), 1,
-                                  static_cast<uint8_t>(y), 0};
-      peripheral_command(0, JOYSTICK_CMD_SET_AXIS, &py, sizeof(py));
-    }
+  if (!keychange) {
+    return false;
   }
-  return keychange;
+
+  const auto joystick = static_cast<size_t>(joy_num);
+  if ((virtkey == SDLK_KP_0) || (virtkey == SDLK_INSERT)) {
+    queue_connector_lines(device_button_lines(joystick, 0), down);
+  } else if ((virtkey == SDLK_KP_PERIOD) || (virtkey == SDLK_DELETE)) {
+    queue_connector_lines(device_button_lines(joystick, 1), down);
+  } else if ((down && !autorep) || (centering_type == MODE_CENTERING)) {
+    send_keypad_axes(joystick);
+  }
+  return true;
 }
 
 auto joy_frontend_is_mouse_emulation_active() -> bool {
-  if (g_joy_config.joy_type[0] == 4 ||
-      (g_joy_config.joy_type[0] < k_joy_info.size() &&
-       k_joy_info.at(static_cast<size_t>(g_joy_config.joy_type[0])).device ==
-           DEVICE_MOUSE)) {
-    return true;
-  }
-  if (g_joy_config.joy_type[1] == 4 ||
-      (g_joy_config.joy_type[1] < k_joy_info.size() &&
-       k_joy_info.at(static_cast<size_t>(g_joy_config.joy_type[1])).device ==
-           DEVICE_MOUSE)) {
-    return true;
-  }
-  return false;
+  return device_of(0) == DEVICE_MOUSE || device_of(1) == DEVICE_MOUSE;
 }
 
 auto joy_frontend_process_mouse_motion(int x, int max_x, int y, int max_y)
@@ -524,45 +626,19 @@ auto joy_frontend_process_mouse_motion(int x, int max_x, int y, int max_y)
   int range_y = (max_y > 1) ? (max_y - 1) : 1;
   int joy_x = ((x * 255) + (range_x / 2)) / range_x;
   int joy_y = ((y * 255) + (range_y / 2)) / range_y;
-  if (joy_x < 0) {
-    joy_x = 0;
-  }
-  if (joy_x > 255) {
-    joy_x = 255;
-  }
-  if (joy_y < 0) {
-    joy_y = 0;
-  }
-  if (joy_y > 255) {
-    joy_y = 255;
-  }
 
   for (uint8_t joy_num = 0; joy_num < 2; ++joy_num) {
-    if (g_joy_config.joy_type[joy_num] == 4 ||
-        (g_joy_config.joy_type[joy_num] < k_joy_info.size() &&
-         k_joy_info.at(static_cast<size_t>(g_joy_config.joy_type[joy_num]))
-                 .device == DEVICE_MOUSE)) {
-      JoystickAxisPayload_t px = {joy_num, 0, static_cast<uint8_t>(joy_x), 0};
-      peripheral_command(0, JOYSTICK_CMD_SET_AXIS, &px, sizeof(px));
-      JoystickAxisPayload_t py = {joy_num, 1, static_cast<uint8_t>(joy_y), 0};
-      peripheral_command(0, JOYSTICK_CMD_SET_AXIS, &py, sizeof(py));
+    if (device_of(joy_num) == DEVICE_MOUSE) {
+      send_axis(joy_num, 0, joy_x);
+      send_axis(joy_num, 1, joy_y);
     }
   }
 }
 
 auto joy_frontend_process_mouse_button(int button, bool down) -> void {
-  for (uint8_t joy_num = 0; joy_num < 2; ++joy_num) {
-    if (g_joy_config.joy_type[joy_num] == 4 ||
-        (g_joy_config.joy_type[joy_num] < k_joy_info.size() &&
-         k_joy_info.at(static_cast<size_t>(g_joy_config.joy_type[joy_num]))
-                 .device == DEVICE_MOUSE)) {
-      if (button == 0) {
-        JoystickButtonPayload_t pb0 = {0, down, 0, 0};
-        peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &pb0, sizeof(pb0));
-      } else if (button == 1) {
-        JoystickButtonPayload_t pb1 = {1, down, 0, 0};
-        peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &pb1, sizeof(pb1));
-      }
+  for (size_t joy_num = 0; joy_num < 2; ++joy_num) {
+    if (device_of(joy_num) == DEVICE_MOUSE) {
+      queue_connector_lines(device_button_lines(joy_num, button), down);
     }
   }
 }

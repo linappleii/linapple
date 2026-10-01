@@ -9,7 +9,15 @@
 #include <SDL3/SDL_surface.h>
 #include <SDL3/SDL_video.h>
 
+#include <cstdint>
+
+#include "apple2/Apple2Types.h"
+#include "apple2/CPU.h"
+#include "apple2/Memory.h"
+#include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Internal.h"
 #include "core/Asset.h"
+#include "core/LinAppleCore.h"
 #include "core/Registry.h"
 #include "doctest.h"
 #include "frontends/common/Frontend.h"
@@ -687,3 +695,103 @@ TEST_CASE("SDL3 Frontend Joystick Config Out-of-Range Handling") {
   joy_frontend_shutdown();
   SDL_Quit();
 }
+
+#ifdef ENABLE_PERIPHERAL_JOYSTICK
+namespace {
+
+constexpr uint16_t addr_switch0 = 0xC061;
+constexpr uint8_t switch_bit = 0x80;
+
+// The game port alone in slot 0 of an Enhanced //e, read through the memory
+// map as the 6502 would read it. Commands queue until a slice boundary, so
+// the fixture settles them the way linapple_run_frame does.
+struct GamePortOnly_t {
+  Apple2Type_t saved_type{current_apple2_type};
+  CpuInstance_t* saved_cpu{cpu_get_active_context()};
+  CpuInstance_t cpu{};
+
+  GamePortOnly_t() {
+    cpu_set_active_context(&cpu);
+    current_apple2_type = A2TYPE_APPLE2EENHANCED;
+    REQUIRE(mem_initialize() == 0);
+    peripheral_manager_init();
+    Peripheral_t* joystick = peripheral_find_internal("linapple.joystick");
+    REQUIRE(joystick != nullptr);
+    REQUIRE(peripheral_register(joystick, 0) == 0);
+    peripheral_manager_reset();
+  }
+
+  ~GamePortOnly_t() {
+    peripheral_manager_shutdown();
+    mem_destroy();
+    current_apple2_type = saved_type;
+    cpu_set_active_context(saved_cpu);
+  }
+
+  GamePortOnly_t(const GamePortOnly_t&) = delete;
+  auto operator=(const GamePortOnly_t&) -> GamePortOnly_t& = delete;
+  GamePortOnly_t(GamePortOnly_t&&) = delete;
+  auto operator=(GamePortOnly_t&&) -> GamePortOnly_t& = delete;
+
+  static auto settle() -> void { peripheral_manager_think(0); }
+
+  static auto pushbutton(uint8_t line) -> int {
+    settle();
+    const auto addr = static_cast<uint16_t>(addr_switch0 + line);
+    return (io_map_dispatch(0, addr, 0, 0, 0) & switch_bit) != 0 ? 1 : 0;
+  }
+};
+
+}  // namespace
+
+TEST_CASE(
+    "A keypad tap and re-press inside one SDL pump reach the game port as "
+    "down, up, down across three slices") {
+  SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
+  REQUIRE(SDL_Init(SDL_INIT_JOYSTICK));
+
+  GamePortOnly_t machine;
+  save(REGVALUE_JOY_TYPE1, 2);
+  save(REGVALUE_JOY_TYPE2, 0);
+  joy_frontend_initialize();
+  CHECK(GamePortOnly_t::pushbutton(0) == 0);
+
+  // Three edges with no slice between them: the press goes at once, the
+  // release and the second press wait their turn.
+  CHECK(joy_frontend_process_key(SDLK_KP_0, false, true, false));
+  CHECK(joy_frontend_process_key(SDLK_KP_0, false, false, false));
+  CHECK(joy_frontend_process_key(SDLK_KP_0, false, true, false));
+  CHECK(GamePortOnly_t::pushbutton(0) == 1);
+
+  // The first slice after the press still shows it: a release the same
+  // slice as its press would be invisible to the program.
+  joy_frontend_update();
+  CHECK(GamePortOnly_t::pushbutton(0) == 1);
+
+  joy_frontend_update();
+  CHECK(GamePortOnly_t::pushbutton(0) == 0);
+
+  joy_frontend_update();
+  CHECK(GamePortOnly_t::pushbutton(0) == 1);
+
+  // Nothing queued: the level holds.
+  joy_frontend_update();
+  CHECK(GamePortOnly_t::pushbutton(0) == 1);
+
+  // A release that arrives with the queue empty and a slice behind it goes
+  // at once.
+  CHECK(joy_frontend_process_key(SDLK_KP_0, false, false, false));
+  CHECK(GamePortOnly_t::pushbutton(0) == 0);
+  joy_frontend_update();
+
+  // A release still queued at shutdown is delivered by it, so no session
+  // leaves a button held.
+  CHECK(joy_frontend_process_key(SDLK_KP_0, false, true, false));
+  CHECK(joy_frontend_process_key(SDLK_KP_0, false, false, false));
+  CHECK(GamePortOnly_t::pushbutton(0) == 1);
+  joy_frontend_shutdown();
+  CHECK(GamePortOnly_t::pushbutton(0) == 0);
+
+  SDL_Quit();
+}
+#endif

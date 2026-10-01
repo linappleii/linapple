@@ -87,16 +87,47 @@ auto frontend_to_core_key(int key, uint32_t mod) -> LinAppleKey_t {
   return keyboard_symbolic_to_core(key, mod);
 }
 
+// The host's four modifier levels. Shift and ctrl follow the SDL modifier
+// mask; the two Apple keys follow their own key edges, because the mask
+// folds both Alt keys into one bit and both GUI keys into another while the
+// //e has two distinct switches (Apple IIe Technical Reference Manual, p. 13).
+struct HostModifiers_t {
+  bool shift = false;
+  bool ctrl = false;
+  bool open_apple = false;
+  bool solid_apple = false;
+};
+
+static HostModifiers_t g_host_modifiers;
+
+static auto send_host_modifiers() -> void {
+  linapple_set_modifiers(g_host_modifiers.shift, g_host_modifiers.ctrl,
+                         g_host_modifiers.open_apple,
+                         g_host_modifiers.solid_apple);
+}
+
+static auto track_shift_and_ctrl(uint32_t mod) -> void {
+  g_host_modifiers.shift = (mod & SDL_COMPAT_KMOD_SHIFT) != 0;
+  g_host_modifiers.ctrl = (mod & SDL_COMPAT_KMOD_CTRL) != 0;
+}
+
 auto frontend_dispatch_key_event(uint32_t scancode, uint32_t keycode,
                                  uint32_t mod, bool is_down) -> void {
-  KeyboardModifiers_t mods = {
-      static_cast<uint8_t>((mod & SDL_COMPAT_KMOD_SHIFT) ? 1 : 0),
-      static_cast<uint8_t>((mod & SDL_COMPAT_KMOD_CTRL) ? 1 : 0),
-      static_cast<uint8_t>((mod & SDL_COMPAT_KMOD_ALT) ? 1 : 0),
-      static_cast<uint8_t>((mod & SDL_COMPAT_KMOD_GUI) ? 1 : 0),
-      0,
-      {0, 0, 0}};
-  peripheral_command(0, keyboard_cmd_set_mods, &mods, sizeof(mods));
+  track_shift_and_ctrl(mod);
+
+  // A custom key mapped to an Apple key is a switch on the game port and
+  // types nothing: sending its key event would latch a NUL with the strobe
+  // set.
+  const int apple_line = keyboard_custom_apple_line(scancode);
+  if (apple_line == 0) {
+    g_host_modifiers.open_apple = is_down;
+  } else if (apple_line == 1) {
+    g_host_modifiers.solid_apple = is_down;
+  }
+  send_host_modifiers();
+  if (apple_line >= 0) {
+    return;
+  }
 
   LinAppleKey_t core_key = linapple_key_unknown;
 
@@ -111,43 +142,41 @@ auto frontend_dispatch_key_event(uint32_t scancode, uint32_t keycode,
     return;
   }
 
-  KeyboardEvent_t ev = {static_cast<uint32_t>(core_key),
-                        static_cast<uint8_t>(is_down ? 1 : 0),
-                        mods.shift,
-                        mods.ctrl,
-                        mods.alt,
-                        mods.gui,
-                        {0, 0, 0}};
+  KeyboardEvent_t ev = {
+      static_cast<uint32_t>(core_key),
+      static_cast<uint8_t>(is_down ? 1 : 0),
+      static_cast<uint8_t>(g_host_modifiers.shift ? 1 : 0),
+      static_cast<uint8_t>(g_host_modifiers.ctrl ? 1 : 0),
+      static_cast<uint8_t>(g_host_modifiers.solid_apple ? 1 : 0),
+      static_cast<uint8_t>(g_host_modifiers.open_apple ? 1 : 0),
+      {0, 0, 0}};
   peripheral_command(0, keyboard_cmd_event, &ev, sizeof(ev));
 }
 
+// Left Alt or Left GUI is Open Apple and Right Alt or Right GUI is Solid
+// Apple. Alt is the key most desktops leave to applications; GUI (Super) is
+// usually the window manager's and may never arrive.
 auto frontend_handle_key_event(SdlKeycode_t key, bool is_down) -> bool {
   switch (key) {
     case SDLK_LALT:
     case SDLK_LGUI:
-      linapple_set_apple_key(0, is_down);
+      g_host_modifiers.open_apple = is_down;
+      send_host_modifiers();
       return true;
 
     case SDLK_RALT:
     case SDLK_RGUI:
-      linapple_set_apple_key(1, is_down);
+      g_host_modifiers.solid_apple = is_down;
+      send_host_modifiers();
       return true;
 
     case SDLK_LCTRL:
     case SDLK_RCTRL:
     case SDLK_LSHIFT:
-    case SDLK_RSHIFT: {
-      SdlKeymod_t mod = SDL_GetModState();
-      KeyboardModifiers_t mods = {
-          static_cast<uint8_t>((mod & SDL_COMPAT_KMOD_SHIFT) ? 1 : 0),
-          static_cast<uint8_t>((mod & SDL_COMPAT_KMOD_CTRL) ? 1 : 0),
-          static_cast<uint8_t>((mod & SDL_COMPAT_KMOD_ALT) ? 1 : 0),
-          static_cast<uint8_t>((mod & SDL_COMPAT_KMOD_GUI) ? 1 : 0),
-          0,
-          {0, 0, 0}};
-      peripheral_command(0, keyboard_cmd_set_mods, &mods, sizeof(mods));
+    case SDLK_RSHIFT:
+      track_shift_and_ctrl(static_cast<uint32_t>(SDL_GetModState()));
+      send_host_modifiers();
       return true;
-    }
 
     default:
       return false;

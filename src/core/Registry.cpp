@@ -288,6 +288,7 @@ auto Configuration_t::load_defaults() -> void {
   set_int(cfg_sec_configuration, cfg_soundcard_type, 2);
   set_int(cfg_sec_configuration, cfg_joy_type1, 2);
   set_int(cfg_sec_configuration, cfg_joy_type2, 0);
+  set_int(cfg_sec_configuration, cfg_shift_key_mod, 0);
   set_int(cfg_sec_configuration, "Emulation Speed", 10);
   set_int(cfg_sec_configuration, "Disk Turbo", 1);
   set_int(cfg_sec_configuration, "Video Emulation", 1);

@@ -27,6 +27,9 @@ enum QuickSaveMode_t : uint8_t {
                                              uint8_t* out_flags) -> uint8_t;
 auto keyboard_apply_custom_mappings() -> void;
 [[nodiscard]] auto keyboard_has_custom_mappings() -> bool;
+// The game-port switch line a [Keyboard.Custom] entry turns its host key
+// into: 0 for Open Apple, 1 for Solid Apple, -1 for a key that types.
+[[nodiscard]] auto keyboard_custom_apple_line(uint32_t scancode) -> int;
 
 [[nodiscard]] auto keyboard_get_quicksave_mode() -> QuickSaveMode_t;
 auto keyboard_set_quicksave_mode(QuickSaveMode_t mode) -> void;

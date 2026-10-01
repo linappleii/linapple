@@ -2,6 +2,7 @@
 #include "frontends/common/KeyboardTranslator.h"
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <cstddef>
 #include <cstdint>
@@ -214,8 +215,33 @@ auto keyboard_parse_apple2_val(const char* name, uint8_t* out_flags)
   return 0;
 }
 
+namespace {
+
+constexpr uint8_t k_custom_flag_open_apple = 2;
+constexpr uint8_t k_custom_flag_solid_apple = 4;
+constexpr int8_t k_no_apple_line = -1;
+
+// A host key mapped to an Apple key is a switch, not a character: the
+// dispatcher reads this table to drive the game port instead of sending the
+// key event, which would otherwise latch a NUL with the strobe set.
+std::array<int8_t, keyb_map_size> g_custom_apple_line = [] {
+  std::array<int8_t, keyb_map_size> lines{};
+  lines.fill(k_no_apple_line);
+  return lines;
+}();
+
+}  // namespace
+
+auto keyboard_custom_apple_line(uint32_t scancode) -> int {
+  if (scancode >= keyb_map_size) {
+    return k_no_apple_line;
+  }
+  return g_custom_apple_line.at(scancode);
+}
+
 void keyboard_apply_custom_mappings() {
   peripheral_command(0, keyboard_cmd_clear_custom_keys, nullptr, 0);
+  g_custom_apple_line.fill(k_no_apple_line);
 
   const auto* custom_section =
       Configuration_t::instance().get_section("Keyboard.Custom");
@@ -266,6 +292,12 @@ void keyboard_apply_custom_mappings() {
       if (payload.normal_val != 0) {
         payload.ctrl_val = payload.normal_val & 0x1F;
       }
+    }
+
+    if ((payload.flags & k_custom_flag_open_apple) != 0) {
+      g_custom_apple_line.at(scancode) = 0;
+    } else if ((payload.flags & k_custom_flag_solid_apple) != 0) {
+      g_custom_apple_line.at(scancode) = 1;
     }
 
     peripheral_command(0, keyboard_cmd_set_custom_key, &payload,
