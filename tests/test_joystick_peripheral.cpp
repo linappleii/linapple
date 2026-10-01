@@ -91,6 +91,10 @@ class JoystickHarness {
 
   auto host() -> HostInterface_t* { return &host_; }
 
+  auto has_handler(uint16_t addr) const -> bool {
+    return handlers_.find(addr) != handlers_.end();
+  }
+
   auto create_joystick(int slot = 0) -> void* {
     void* instance = joystick_get_descriptor()->init(slot, &host_);
     if (instance != nullptr) {
@@ -451,6 +455,128 @@ TEST_CASE(
   CHECK(joystick_abi_c_button_payload_size() == 4);
   CHECK(joystick_abi_c_button_payload_size() ==
         sizeof(JoystickButtonPayload_t));
+}
+
+TEST_CASE(
+    "Joystick Peripheral: A strobe during a pulse leaves the fall time alone") {
+  JoystickHarness harness;
+  void* instance = harness.create_joystick();
+  REQUIRE(instance != nullptr);
+  harness.set_cycles(INITIAL_CYCLE_COUNT);
+
+  // Paddle 0 at 100 is a 11 * 100 + 10 = 1,110-cycle pulse; paddle 1 at 0 is
+  // a 10-cycle pulse, so the second strobe finds paddle 1 expired and paddle
+  // 0 still high.
+  constexpr uint8_t long_position = 100;
+  constexpr uint64_t long_pulse = 1110;
+  constexpr uint64_t second_strobe_after = 500;
+  REQUIRE(harness.set_axis(instance, 0, 0, long_position) == peripheral_ok);
+  REQUIRE(harness.set_axis(instance, 0, 1, 0) == peripheral_ok);
+  harness.strobe_reset_read(instance);
+
+  harness.advance_cycles(second_strobe_after);
+  harness.strobe_reset_read(instance);
+  CHECK((harness.read_paddle(instance, 1) & 0x80) == BUS_ACTIVE);
+
+  harness.advance_cycles(long_pulse - second_strobe_after - 1);
+  CHECK((harness.read_paddle(instance, 0) & 0x80) == BUS_ACTIVE);
+  CHECK((harness.read_paddle(instance, 1) & 0x80) == BUS_INACTIVE);
+
+  // Had the second strobe restarted paddle 0 it would stay high until
+  // 500 + 1,110 cycles after the first.
+  harness.advance_cycles(1);
+  CHECK((harness.read_paddle(instance, 0) & 0x80) == BUS_INACTIVE);
+}
+
+TEST_CASE(
+    "Joystick Peripheral: Any access to $C070-$C07E triggers an idle timer") {
+  JoystickHarness harness;
+  void* instance = harness.create_joystick();
+  REQUIRE(instance != nullptr);
+  harness.set_cycles(INITIAL_CYCLE_COUNT);
+
+  // Position 0 is a ten-cycle pulse, so eleven cycles later the timer is idle
+  // again for the next address.
+  constexpr uint16_t first_trigger = 0xC070;
+  constexpr uint16_t last_trigger = 0xC07E;
+  constexpr uint16_t rddhires = 0xC07F;
+  REQUIRE(harness.set_axis(instance, 0, 0, 0) == peripheral_ok);
+  CHECK((harness.read_paddle(instance, 0) & 0x80) == BUS_INACTIVE);
+
+  for (uint16_t addr = first_trigger; addr <= last_trigger; ++addr) {
+    CAPTURE(addr);
+    harness.read_io(instance, addr);
+    CHECK((harness.read_paddle(instance, 0) & 0x80) == BUS_ACTIVE);
+    harness.advance_cycles(SMALL_WAIT_CYCLES);
+    CHECK((harness.read_paddle(instance, 0) & 0x80) == BUS_INACTIVE);
+
+    harness.write_io(instance, addr);
+    CHECK((harness.read_paddle(instance, 0) & 0x80) == BUS_ACTIVE);
+    harness.advance_cycles(SMALL_WAIT_CYCLES);
+    CHECK((harness.read_paddle(instance, 0) & 0x80) == BUS_INACTIVE);
+  }
+  CHECK_FALSE(harness.has_handler(rddhires));
+}
+
+TEST_CASE("Joystick Peripheral: $C068-$C06F read as $C060-$C067") {
+  JoystickHarness harness;
+  void* instance = harness.create_joystick();
+  REQUIRE(instance != nullptr);
+  harness.set_cycles(INITIAL_CYCLE_COUNT);
+
+  constexpr uint16_t cassette_in = 0xC060;
+  constexpr uint16_t cassette_in_mirror = 0xC068;
+  constexpr uint16_t switch0_mirror = 0xC069;
+  constexpr uint16_t paddle2 = 0xC066;
+  constexpr uint16_t paddle2_mirror = 0xC06E;
+  // Paddle 2 is joystick 1's x axis; at 20 its pulse is 11 * 20 + 10 = 230.
+  constexpr uint8_t paddle2_position = 20;
+  constexpr uint64_t paddle2_pulse = 230;
+
+  CHECK_FALSE(harness.has_handler(cassette_in));
+  CHECK_FALSE(harness.has_handler(cassette_in_mirror));
+
+  REQUIRE(harness.set_button(instance, 0, true) == peripheral_ok);
+  CHECK((harness.read_io(instance, switch0_mirror) & 0x80) == BUS_ACTIVE);
+  CHECK((harness.read_io(instance, addr_button0) & 0x80) == BUS_ACTIVE);
+
+  REQUIRE(harness.set_axis(instance, 1, 0, paddle2_position) == peripheral_ok);
+  harness.strobe_reset_read(instance);
+  CHECK((harness.read_io(instance, paddle2_mirror) & 0x80) == BUS_ACTIVE);
+  CHECK((harness.read_io(instance, paddle2) & 0x80) == BUS_ACTIVE);
+  harness.advance_cycles(paddle2_pulse);
+  CHECK((harness.read_io(instance, paddle2_mirror) & 0x80) == BUS_INACTIVE);
+  CHECK((harness.read_io(instance, paddle2) & 0x80) == BUS_INACTIVE);
+}
+
+TEST_CASE(
+    "Joystick Peripheral: A cold start reads every paddle expired and a reset "
+    "leaves a running pulse") {
+  JoystickHarness harness;
+  void* instance = harness.create_joystick();
+  REQUIRE(instance != nullptr);
+  harness.set_cycles(INITIAL_CYCLE_COUNT);
+
+  for (uint8_t paddle = 0; paddle < 4; ++paddle) {
+    CAPTURE(paddle);
+    CHECK((harness.read_paddle(instance, paddle) & 0x80) == BUS_INACTIVE);
+  }
+
+  // The centre position 127 is a 11 * 127 + 10 = 1,407-cycle pulse.
+  constexpr uint64_t centre_pulse = 1407;
+  harness.strobe_reset_read(instance);
+  REQUIRE(joystick_get_descriptor()->reset != nullptr);
+  joystick_get_descriptor()->reset(instance);
+  harness.advance_cycles(centre_pulse - 1);
+  for (uint8_t paddle = 0; paddle < 4; ++paddle) {
+    CAPTURE(paddle);
+    CHECK((harness.read_paddle(instance, paddle) & 0x80) == BUS_ACTIVE);
+  }
+  harness.advance_cycles(1);
+  for (uint8_t paddle = 0; paddle < 4; ++paddle) {
+    CAPTURE(paddle);
+    CHECK((harness.read_paddle(instance, paddle) & 0x80) == BUS_INACTIVE);
+  }
 }
 
 }  // namespace

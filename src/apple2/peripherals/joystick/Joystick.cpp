@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "apple2/peripherals/joystick/Joystick.h"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -16,17 +17,23 @@
 namespace {
 
 // The "6" line of the I/O selector enables a 74LS251 that puts one of eight
-// inputs on bit 7 of the data bus alone: the three pushbuttons at $C061-$C063
-// and the four NE558 timer outputs at $C064-$C067. Bits 0-6 are whatever the
-// undriven bus holds (Apple II Reference Manual, 1979, p. 99; Apple IIe
-// Technical Reference Manual, p. 41). The "7" line, any access to $C070-$C07F,
-// triggers all four timers (1979 manual p. 99; IIe Tech Ref p. 187).
-constexpr uint16_t addr_switch0 = 0xC061;
-constexpr uint16_t addr_switch2 = 0xC063;
-constexpr uint16_t addr_paddle0 = 0xC064;
-constexpr uint16_t addr_paddle3 = 0xC067;
-constexpr uint16_t addr_trigger = 0xC070;
-constexpr uint16_t paddle_select_mask = 0x03;
+// inputs on bit 7 of the data bus alone, chosen by A0-A2: input 0 is the
+// cassette input (the motherboard's, not this card's), inputs 1-3 the three
+// pushbuttons and inputs 4-7 the four NE558 timer outputs. A3 does not reach
+// the multiplexer, so $C068-$C06F read as $C060-$C067. Bits 0-6 are whatever
+// the undriven bus holds (Apple II Reference Manual, 1979, p. 99; Sather,
+// Understanding the Apple II, 7-8; Apple IIe Technical Reference Manual,
+// pp. 41 and 189). The "7" line, any access to $C070-$C07F, read or write,
+// triggers all four timers (1979 manual pp. 78-79 and 99; IIe Tech Ref pp. 29
+// and 187). $C07F is left to the motherboard: on the //e its read also answers
+// RDDHIRES, which the strobe registration would silence.
+constexpr uint16_t addr_mux_first = 0xC060;
+constexpr uint16_t addr_mux_last = 0xC06F;
+constexpr uint16_t addr_trigger_first = 0xC070;
+constexpr uint16_t addr_trigger_last = 0xC07E;
+constexpr uint16_t mux_select_mask = 0x07;
+constexpr size_t mux_switch0 = 1;
+constexpr size_t mux_paddle0 = 4;
 constexpr uint8_t bus_data_mask = 0x7F;
 constexpr uint8_t input_bit = 0x80;
 
@@ -71,6 +78,20 @@ auto pulse_cycles(uint8_t position) -> uint64_t {
          pulse_lead_in_cycles;
 }
 
+// A trigger of 0 is a timer never triggered since power-on, when the NE558's
+// output is low (NE558 datasheet, note 3); a trigger ahead of the counter is
+// one the counter was wound back past, and the real machine would have run
+// that pulse out long before. The position is read at each sample, as the
+// capacitor sees the pot it has now.
+auto timer_expired(const GamePort_t* port, size_t paddle, uint64_t now)
+    -> bool {
+  const uint64_t trigger = port->trigger_cycle.at(paddle);
+  if (trigger == 0 || trigger > now) {
+    return true;
+  }
+  return now - trigger >= pulse_cycles(port->position.at(paddle));
+}
+
 auto joystick_io_read_switch(void* instance, uint16_t program_counter,
                              uint16_t memory_address, uint8_t is_write,
                              uint8_t data_value, uint32_t executed_cycles)
@@ -84,10 +105,10 @@ auto joystick_io_read_switch(void* instance, uint16_t program_counter,
   auto* port = static_cast<GamePort_t*>(instance);
 
   uint8_t result = port->host->ReadFloatingBus(executed_cycles) & bus_data_mask;
-  if (memory_address < addr_switch0 || memory_address > addr_switch2) {
+  const size_t line = (memory_address & mux_select_mask) - mux_switch0;
+  if (line >= switch_count) {
     return result;
   }
-  const size_t line = memory_address - addr_switch0;
   if (port->buttons.at(line) || port->button_hold.at(line) > 0) {
     result |= input_bit;
   }
@@ -107,30 +128,33 @@ auto joystick_io_read_paddle(void* instance, uint16_t program_counter,
   auto* port = static_cast<GamePort_t*>(instance);
 
   uint8_t result = port->host->ReadFloatingBus(executed_cycles) & bus_data_mask;
-  const size_t paddle = memory_address & paddle_select_mask;
-  const uint64_t now = port->host->GetCycles();
-  const uint64_t trigger = port->trigger_cycle.at(paddle);
-  const uint64_t elapsed = now >= trigger ? now - trigger : 0;
-  if (elapsed < pulse_cycles(port->position.at(paddle))) {
+  const size_t paddle = (memory_address & mux_select_mask) - mux_paddle0;
+  if (paddle >= paddle_count) {
+    return result;
+  }
+  if (!timer_expired(port, paddle, port->host->GetCycles())) {
     result |= input_bit;
   }
   return result;
 }
 
-auto joystick_io_trigger(void* instance, uint16_t program_counter,
-                         uint16_t memory_address, uint8_t is_write,
-                         uint8_t data_value, uint32_t executed_cycles)
-    -> uint8_t {
-  (void)program_counter;
-  (void)memory_address;
-  (void)is_write;
-  (void)data_value;
+// Each timer is a monostable: "the timers are not retriggered by C07X if they
+// have not yet reset from the previous trigger" (Sather 7-24; the NE558
+// datasheet lists the output as independent of trigger conditions), so a
+// channel still high keeps its fall time and only an expired one starts a
+// pulse. The trigger is recorded as no earlier than cycle 1 so that a strobe
+// in cycle 0, before the counter has moved, is told from never.
+auto joystick_strobe(void* instance) -> void {
   if (instance == nullptr) {
-    return 0;
+    return;
   }
   auto* port = static_cast<GamePort_t*>(instance);
-  port->trigger_cycle.fill(port->host->GetCycles());
-  return port->host->ReadFloatingBus(executed_cycles);
+  const uint64_t now = port->host->GetCycles();
+  for (size_t paddle = 0; paddle < paddle_count; ++paddle) {
+    if (timer_expired(port, paddle, now)) {
+      port->trigger_cycle.at(paddle) = std::max<uint64_t>(now, 1);
+    }
+  }
 }
 
 // Without the I/O members the 6502 never reaches the port, without the cycle
@@ -173,28 +197,30 @@ auto joystick_abi_init(int slot, HostInterface_t* host) -> void* {
   port->host = host;
   port->slot = slot;
 
-  for (uint16_t addr = addr_switch0; addr <= addr_switch2; ++addr) {
-    host->RegisterDirectIO(port.get(), addr, joystick_io_read_switch, nullptr);
+  for (uint16_t addr = addr_mux_first; addr <= addr_mux_last; ++addr) {
+    const size_t input = addr & mux_select_mask;
+    if (input < mux_switch0) {
+      continue;
+    }
+    host->RegisterDirectIO(
+        port.get(), addr,
+        input < mux_paddle0 ? joystick_io_read_switch : joystick_io_read_paddle,
+        nullptr);
   }
-  for (uint16_t addr = addr_paddle0; addr <= addr_paddle3; ++addr) {
-    host->RegisterDirectIO(port.get(), addr, joystick_io_read_paddle, nullptr);
+  for (uint16_t addr = addr_trigger_first; addr <= addr_trigger_last; ++addr) {
+    host->RegisterDirectIOStrobe(port.get(), addr, joystick_strobe);
   }
-  host->RegisterDirectIO(port.get(), addr_trigger, joystick_io_trigger,
-                         joystick_io_trigger);
 
   return port.release();
 }
 
-auto joystick_abi_reset(void* instance) -> void {
-  if (instance == nullptr) {
-    return;
-  }
-  auto* port = static_cast<GamePort_t*>(instance);
-  port->trigger_cycle.fill(0);
-  port->position.fill(centre_position);
-  port->buttons.fill(false);
-  port->button_hold.fill(0);
-}
+// RESET' reaches neither the NE558, whose RESET pin the Apple leaves unused
+// (Sather 7-11), so a pulse in progress runs out, nor a switch, which is a
+// contact. The //e monitor reads $C062 and $C061 a few dozen instructions into
+// its reset routine to choose the Solid Apple self-test or the Open Apple cold
+// start (Apple IIe Technical Reference Manual, pp. 90-91), so a reset that
+// cleared the switch levels would put both out of reach.
+auto joystick_abi_reset(void* instance) -> void { (void)instance; }
 
 auto joystick_abi_shutdown(void* instance) -> void {
   if (instance == nullptr) {
