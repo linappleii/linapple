@@ -454,8 +454,8 @@ constexpr uint32_t cycles_per_frame = 17030;
 constexpr uint16_t probe_address = 0x0300;
 constexpr uint8_t bit7 = 0x80;
 
-// Runs one instruction at probe_address and leaves the registers as it found
-// them for the caller to read.
+// Runs one instruction at probe_address and leaves the registers as the
+// instruction left them, for the caller to read.
 auto step_one(const std::array<uint8_t, 3>& instruction) -> void {
   TestFixtures::ScopedCore_t::poke(probe_address, instruction);
   cpu_get_registers()->pc = probe_address;
@@ -515,8 +515,8 @@ TEST_CASE("Snapshot: A loaded file starts with every paddle timer expired") {
   REQUIRE(save_state_load());
   REQUIRE(cpu_get_cumulative_cycles() == saved_cycles);
 
-  // LDA $C064: paddle 0 four cycles after the counter the file restored. Had
-  // the strobe travelled with the file the timer would still be charging.
+  // LDA $C064: paddle 0 read at the counter the file restored. Had the strobe
+  // travelled with the file the timer would be charging.
   cpu_get_registers()->a = 0xFF;
   step_one({0xAD, 0x64, 0xC0});
   CHECK((cpu_get_registers()->a & bit7) == 0);

@@ -774,7 +774,6 @@ TEST_CASE(
   joy_frontend_update();
   CHECK(GamePortOnly_t::pushbutton(0) == 1);
 
-  // Nothing queued: the level holds.
   joy_frontend_update();
   CHECK(GamePortOnly_t::pushbutton(0) == 1);
 

@@ -470,8 +470,8 @@ TEST_CASE(
 
 TEST_CASE("Peripheral Manager: The built-in cards register in id order") {
   // Three internal devices share slot 0 and the first registered is the one
-  // the manifest names and the one that answers an address two of them claim.
-  // Static initialisation gives no order of its own, so the registry has to.
+  // the manifest names. Static initialisation gives no order of its own, so
+  // the registry has to.
   TestFixtures::ScopedTestConfig_t config(
       TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
   TestFixtures::ScopedCore_t core(config);

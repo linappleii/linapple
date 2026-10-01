@@ -657,8 +657,10 @@ TEST_CASE(
 
   // Position 0 is a 10-cycle pulse, so a sample 9 cycles after the strobe is
   // the last high one and a sample at 10 the first low one. LDA $C070 (4),
-  // LDA $00 (3), NOP (2) put the sample instruction's start at T0 + 9; LDA
-  // $C070 (4), NOP, NOP, NOP (6) put it at T0 + 10. Each sample is taken
+  // LDA $00 (3), NOP (2) start the sample instruction 9 cycles after the
+  // strobe instruction started; LDA $C070 (4), NOP, NOP, NOP (6) start it at
+  // 10. The bridge charges each access at its instruction's first cycle, so 9
+  // and 10 are what the card sees between the two reads. Each sample is taken
   // with LDA $C064,X (X = 0) and again with LDA $C064, so the two addressing
   // modes are charged alike. A later charge of the sample would read the
   // first low, an earlier one the second high.
@@ -1086,8 +1088,6 @@ TEST_CASE(
           0);
   }
 
-  // The frame's size is asked for with no buffer; a short buffer is refused
-  // and so is a missing instance.
   size_t size = 0;
   CHECK(game_port()->save_state(port, nullptr, &size) == peripheral_ok);
   CHECK(size == sizeof(JoystickSaveState_t));
@@ -1149,8 +1149,8 @@ TEST_CASE(
   void* port = bench.create();
   REQUIRE(port != nullptr);
 
-  // Indices 2-4 once named a trim, a reset and a host configuration; a sender
-  // built against that header is told the card does not know them.
+  // Indices 2-4 are reserved: a sender that uses them is told the card does
+  // not know them, like any unknown id.
   const std::initializer_list<uint32_t> unknown = {
       unknown_joystick_id,
       PERIPHERAL_SUBSYSTEM_JOYSTICK | 0x0002,
@@ -1266,7 +1266,8 @@ TEST_CASE("Game port: every query is incompatible") {
   REQUIRE(port != nullptr);
 
   // The port has nothing to answer: its state is read through the switches
-  // and the timers. The two retired query indices are among the ids asked.
+  // and the timers. The command indices 0 and 1 and the reserved index 2 are
+  // among the ids asked.
   const std::initializer_list<uint32_t> queries = {
       PERIPHERAL_SUBSYSTEM_JOYSTICK | 0x0000,
       PERIPHERAL_SUBSYSTEM_JOYSTICK | 0x0001,

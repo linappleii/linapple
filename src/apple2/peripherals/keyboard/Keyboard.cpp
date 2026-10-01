@@ -468,9 +468,9 @@ auto keyboard_abi_command(void* instance, uint32_t cmd_id, const void* data,
       kp->logic.shift_key = (mods->shift != 0);
       kp->logic.ctrl_key = (mods->ctrl != 0);
 
-      // Super/GUI is Open Apple and Alt is Solid Apple. The two levels live
-      // here only to answer keyboard_query_mods: the Apple keys' switch lines
-      // are the game port's, which the host feeds separately.
+      // The gui field carries Open Apple and alt Solid Apple. The two levels
+      // live here only to answer keyboard_query_mods: the Apple keys' switch
+      // lines are the game port's, which the host feeds separately.
       kp->logic.open_apple = (mods->gui != 0);
       kp->logic.closed_apple = (mods->alt != 0);
       return peripheral_ok;

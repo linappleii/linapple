@@ -15,9 +15,9 @@ extern "C" {
 
 enum { JOYSTICK_STATE_VERSION = 1 };
 
-// Indices 0x0002 to 0x0004 once named a trim, a reset and a host input
-// configuration; they are retired and never reused, so a sender built against
-// that header is answered peripheral_incompatible rather than misread.
+// Indices 0x0002 to 0x0004 are reserved and never assigned, so a sender built
+// against a header that defined them is answered peripheral_incompatible
+// rather than misread.
 typedef enum {
   JOYSTICK_CMD_SET_AXIS = PERIPHERAL_SUBSYSTEM_JOYSTICK | 0x0000,
   JOYSTICK_CMD_SET_BUTTON = PERIPHERAL_SUBSYSTEM_JOYSTICK | 0x0001,

@@ -61,9 +61,9 @@ constexpr uint8_t pulldowns_max = 0x07;
 // The single-wire shift-key mod grounds PB2 through the shift key (IIe Tech
 // Ref p. 41; Sather 7-31), so with the jumper in a pressed shift reads 0
 // whatever the button does. Sather notes that neither the mod nor a
-// pulled-down button works when both share the line; here ground wins, so a
-// three-button game sees button 2 held while shift is down, which is why the
-// jumper is out by default, as on a stock machine.
+// pulled-down button works when both share the line; here the shift key wins
+// both ways, so a three-button game sees button 2 held whenever shift is up,
+// which is why the jumper is out by default, as on a stock machine.
 constexpr size_t shift_mod_line = 2;
 
 // Halfway along the pot's travel, where a centred stick rests.

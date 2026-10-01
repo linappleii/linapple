@@ -697,8 +697,9 @@ TEST_CASE("Slot 0: the host's shift reaches PB2 only while the jumper is in") {
     CAPTURE(model);
     HostMachine_t machine(model);
     // A two-button controller's plug pulls down PB0 and PB1 and leaves PB2
-    // open, so the TTL input rests high (Sather, Understanding the Apple II,
-    // 7-9 and 7-11) and the shift key has nowhere to go.
+    // open (Sather, Understanding the Apple II, 7-9 and 7-11), so the TTL
+    // input rests high (TI, Designing With Logic, SDYA009C, section 3) and the
+    // shift key has nowhere to go.
     REQUIRE(switch_level(shift_line) == 1);
 
     hold_modifiers(true, false, false, false);
