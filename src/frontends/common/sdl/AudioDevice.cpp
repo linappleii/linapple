@@ -3,9 +3,12 @@
 
 #include <cstdint>
 
-auto audio_device_buffer_samples(int rate_hz) -> uint16_t {
-  constexpr int device_buffer_ms = 23;
-  const int wanted = (rate_hz * device_buffer_ms) / 1000;
+auto audio_device_buffer_samples(int rate_hz) noexcept -> uint16_t {
+  if (rate_hz <= 0) {
+    return 256;
+  }
+  constexpr int k_device_buffer_ms = 23;
+  const int wanted = (rate_hz * k_device_buffer_ms) / 1000;
   int samples = 256;
   while (samples * 2 < wanted) {
     samples *= 2;

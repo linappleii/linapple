@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <string>
 
-#include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
@@ -11,21 +10,23 @@
 #include "frontends/common/KeyboardTranslator.h"
 #include "frontends/common/sdl/SdlCompat.h"
 
-static int keyboard_mapping_mode = 0;
-static int keyboard_caps_mode = caps_mode_host;
+static int g_keyboard_mapping_mode = 0;
+static int g_keyboard_caps_mode = caps_mode_host;
 
-auto keyboard_get_caps_mode() -> int { return keyboard_caps_mode; }
-auto keyboard_set_caps_mode(int mode) -> void { keyboard_caps_mode = mode; }
+[[nodiscard]] auto keyboard_get_caps_mode() -> int {
+  return g_keyboard_caps_mode;
+}
+auto keyboard_set_caps_mode(int mode) -> void { g_keyboard_caps_mode = mode; }
 
 auto frontend_update_keyboard_mapping() -> void {
   uint32_t mode = 0;
   if (config_load_int("Keyboard", "Mapping Mode", &mode)) {
-    keyboard_mapping_mode = static_cast<int>(mode);
+    g_keyboard_mapping_mode = static_cast<int>(mode);
   }
 
   uint32_t caps_mode = 0;
   if (config_load_int("Keyboard", "Caps Lock Mode", &caps_mode)) {
-    keyboard_caps_mode = static_cast<int>(caps_mode);
+    g_keyboard_caps_mode = static_cast<int>(caps_mode);
   }
 
   uint32_t layout = 0;
@@ -99,7 +100,7 @@ auto frontend_dispatch_key_event(uint32_t scancode, uint32_t keycode,
 
   LinAppleKey_t core_key = linapple_key_unknown;
 
-  if (keyboard_mapping_mode == KBD_MODE_POSITIONAL ||
+  if (g_keyboard_mapping_mode == KBD_MODE_POSITIONAL ||
       keyboard_has_custom_mappings()) {
     core_key = keyboard_scancode_to_positional(scancode);
   } else {

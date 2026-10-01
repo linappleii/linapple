@@ -1,19 +1,20 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#if ENABLE_FTP
 #include <memory>
 #include <new>
+
+#include "core/services/ftp/FtpClient.h"
+#endif
 
 #include "apple2/Video.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
-#include "core/Registry.h"
-#include "core/services/ftp/FtpClient.h"
 #include "frontends/common/AppController.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/common/sdl/JoystickFrontend.h"
 #include "frontends/common/sdl/SdlCompat.h"
 
 using Logger::error;
-using Logger::info;
 
 #if ENABLE_FTP
 static std::unique_ptr<CurlGlobalGuard_t> g_curl_guard;
@@ -21,10 +22,10 @@ static std::unique_ptr<CurlGlobalGuard_t> g_curl_guard;
 
 static bool g_budget_video = false;
 
-void set_budget_video(bool b) { g_budget_video = b; }
+auto set_budget_video(bool b) -> void { g_budget_video = b; }
 auto get_budget_video() noexcept -> bool { return g_budget_video; }
 
-void single_step(bool is_reinit) {
+auto single_step(bool is_reinit) -> void {
   (void)is_reinit;
   linapple_run_frame(1);
 }
@@ -46,7 +47,7 @@ auto sys_init() -> int {
   return 0;
 }
 
-void sys_shutdown() {
+auto sys_shutdown() -> void {
   ds_shutdown();
   frame_destroy_window();
   SDL_Quit();
@@ -55,7 +56,7 @@ void sys_shutdown() {
 #endif
 }
 
-static void frontend_set_window_title(const char* title) {
+static auto frontend_set_window_title(const char* title) -> void {
   sdl_compat_set_window_title(title);
 }
 
@@ -77,7 +78,7 @@ auto session_init(AppConfig_t* config) -> int {
   return 0;
 }
 
-void session_shutdown() {
+auto session_shutdown() -> void {
   ds_shutdown();
   joy_frontend_shutdown();
   app_controller_shutdown();

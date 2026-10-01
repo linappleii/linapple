@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <cstdint>
-#include <cstdio>
 #include <cstring>
 #include <string>
 
@@ -12,64 +11,70 @@
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
+#include "frontends/common/sdl/DiskChoose_Decl.h"
+
+#if ENABLE_FTP
 #include "core/services/ftp/FtpClient.h"
 #include "core/services/ftp/FtpTypes.h"
 #include "frontends/common/FtpDialog.h"
-#include "frontends/common/sdl/DiskChoose_Decl.h"
+#endif
 
-// Note: Core hardware emulation logic moved to src/apple2/Harddisk.cpp
-// This file only contains frontend UI functions.
+namespace {
 
-constexpr uint8_t HARDDISK_SLOT = 7;
+constexpr uint8_t k_harddisk_slot = 7;
 
-void harddisk_ui_ftp_select(int drive) {
-  static size_t fileIndex = 0;
-  static size_t backdx = 0;
-  static size_t dirdx = 0;
+}  // namespace
 
-  std::string filename;
-  std::string fullPath;
-  bool isDirectory = true;
-
-  fileIndex = backdx;
-  fullPath = system_state.ftp_server_hdd.data();
-  if (fullPath.empty()) {
-    fullPath = "ftp://ftp.apple.asimov.net/pub/apple_II/images/";
+auto harddisk_ui_ftp_select(int drive) -> void {
+  if (drive < 0 || drive > 1) {
+    return;
   }
 
-  while (isDirectory) {
-    if (!choose_an_image_ftp(system_state.screen_width,
-                             system_state.screen_height, fullPath,
-                             HARDDISK_SLOT, filename, isDirectory, fileIndex)) {
+#if ENABLE_FTP
+  static size_t file_index = 0;
+  static size_t back_idx = 0;
+  static size_t dir_idx = 0;
+
+  std::string filename;
+  std::string full_path = system_state.ftp_server_hdd.data();
+  bool is_directory = true;
+
+  file_index = back_idx;
+  if (full_path.empty()) {
+    full_path = "ftp://ftp.apple.asimov.net/pub/apple_II/images/";
+  }
+
+  while (is_directory) {
+    if (!choose_an_image_ftp(
+            system_state.screen_width, system_state.screen_height, full_path,
+            k_harddisk_slot, filename, is_directory, file_index)) {
       draw_frame_window();
       return;
     }
-    if (isDirectory) {
-      if (filename == "..") {
-        auto r = fullPath.find_last_of(ftp_separator);
-        if (r == fullPath.size() - 1) {
-          r = fullPath.find_last_of(ftp_separator, r - 1);
-        }
-        if (r != std::string::npos) {
-          fullPath = fullPath.substr(0, 1 + r);
-        }
-        if (fullPath == "") {
-          fullPath = "/";
-        }
-        fileIndex = dirdx;
-      } else {
-        if (fullPath != "/") {
-          fullPath += filename + "/";
-        } else {
-          fullPath = "/" + filename + "/";
-        }
-        dirdx = fileIndex;
-        fileIndex = 0;
+    if (filename == "..") {
+      auto r = full_path.find_last_of(ftp_separator);
+      if (r == full_path.size() - 1) {
+        r = full_path.find_last_of(ftp_separator, r - 1);
       }
+      if (r != std::string::npos) {
+        full_path = full_path.substr(0, 1 + r);
+      }
+      if (full_path.empty()) {
+        full_path = "/";
+      }
+      file_index = dir_idx;
+    } else {
+      if (full_path != "/") {
+        full_path += filename + "/";
+      } else {
+        full_path = "/" + filename + "/";
+      }
+      dir_idx = file_index;
+      file_index = 0;
     }
   }
 
-  util_safe_strcpy(system_state.ftp_server_hdd.data(), fullPath.c_str(),
+  util_safe_strcpy(system_state.ftp_server_hdd.data(), full_path.c_str(),
                    system_state.ftp_server_hdd.size());
   Configuration_t::instance().set_string("Preferences", REGVALUE_FTP_HDD_DIR,
                                          system_state.ftp_server_hdd.data());
@@ -78,122 +83,110 @@ void harddisk_ui_ftp_select(int drive) {
   std::string safe_filename = Path::sanitize_filename(filename);
   if (safe_filename.empty()) {
     Logger::error("FTP: Rejected unsafe filename\n");
-    backdx = fileIndex;
+    back_idx = file_index;
     draw_frame_window();
     return;
   }
 
-  if (!fullPath.empty() && fullPath.back() == '/') {
-    fullPath += safe_filename;
+  if (!full_path.empty() && full_path.back() == '/') {
+    full_path += safe_filename;
   } else {
-    fullPath += "/" + safe_filename;
+    full_path += "/" + safe_filename;
   }
 
-#if ENABLE_FTP
   FtpClient_t client;
   const FtpStatus_t status =
-      client.download_file(fullPath, system_state.ftp_local_dir.data(),
+      client.download_file(full_path, system_state.ftp_local_dir.data(),
                            safe_filename, system_state.ftp_user_pass.data());
   if (status == FtpStatus_t::ok) {
-    const std::string localPath =
+    const std::string local_path =
         std::string(system_state.ftp_local_dir.data()) + "/" + safe_filename;
     HarddiskInsertCmd_t cmd{};
     cmd.drive = static_cast<uint8_t>(drive);
-    util_safe_strcpy(cmd.path, localPath.c_str(), sizeof(cmd.path));
+    util_safe_strcpy(cmd.path, local_path.c_str(), sizeof(cmd.path));
 
-    if (peripheral_command(HARDDISK_SLOT, harddisk_cmd_insert, &cmd,
+    if (peripheral_command(k_harddisk_slot, harddisk_cmd_insert, &cmd,
                            sizeof(cmd)) == peripheral_ok) {
-      if (drive) {
-        Configuration_t::instance().set_string(
-            "Preferences", REGVALUE_HDD_IMAGE2, localPath.c_str());
-        Configuration_t::instance().save();
-      } else {
-        Configuration_t::instance().set_string(
-            "Preferences", REGVALUE_HDD_IMAGE1, localPath.c_str());
-        Configuration_t::instance().save();
-      }
+      const char* key =
+          (drive != 0) ? REGVALUE_HDD_IMAGE2 : REGVALUE_HDD_IMAGE1;
+      Configuration_t::instance().set_string("Preferences", key,
+                                             local_path.c_str());
+      Configuration_t::instance().save();
     }
   } else {
     Logger::error(
         "FTP: Failed downloading harddisk image from %s (status %u)\n",
-        fullPath.c_str(), static_cast<unsigned>(status));
+        full_path.c_str(), static_cast<unsigned>(status));
   }
+  back_idx = file_index;
+  draw_frame_window();
 #else
-  (void)drive;
   Logger::error("FTP: FTP support is disabled in this build\n");
 #endif
-  backdx = fileIndex;
-  draw_frame_window();
 }
 
-void harddisk_ui_select(int drive) {
-  static size_t fileIndex = 0;
-  static size_t backdx = 0;
-  static size_t dirdx = 0;
+auto harddisk_ui_select(int drive) -> void {
+  if (drive < 0 || drive > 1) {
+    return;
+  }
+
+  static size_t file_index = 0;
+  static size_t back_idx = 0;
+  static size_t dir_idx = 0;
 
   std::string filename;
-  std::string fullPath;
-  bool isDirectory = false;
+  std::string full_path = system_state.hdd_dir.data();
+  bool is_directory = true;
 
-  fileIndex = backdx;
-  isDirectory = true;
-  fullPath = system_state.hdd_dir.data();
+  file_index = back_idx;
 
-  while (isDirectory) {
+  while (is_directory) {
     if (!choose_an_image(system_state.screen_width, system_state.screen_height,
-                         fullPath, HARDDISK_SLOT, filename, isDirectory,
-                         fileIndex)) {
+                         full_path, k_harddisk_slot, filename, is_directory,
+                         file_index)) {
       draw_frame_window();
       return;
     }
-    if (isDirectory) {
-      if (filename == "..") {
-        const auto last_sep_pos = fullPath.find_last_of(file_separator);
-
-        if (last_sep_pos != std::string::npos) {
-          fullPath = fullPath.substr(0, last_sep_pos);
-        }
-        if (fullPath == "") {
-          fullPath = "/";
-        }
-        fileIndex = dirdx;
-      } else {
-        if (fullPath != "/") {
-          fullPath += "/" + filename;
-        } else {
-          fullPath = "/" + filename;
-        }
-        dirdx = fileIndex;
-        fileIndex = 0;
+    if (filename == "..") {
+      const auto last_sep_pos = full_path.find_last_of(file_separator);
+      if (last_sep_pos != std::string::npos) {
+        full_path = full_path.substr(0, last_sep_pos);
       }
+      if (full_path.empty()) {
+        full_path = "/";
+      }
+      file_index = dir_idx;
+    } else {
+      if (full_path != "/") {
+        full_path += "/" + filename;
+      } else {
+        full_path = "/" + filename;
+      }
+      dir_idx = file_index;
+      file_index = 0;
     }
   }
 
-  util_safe_strcpy(system_state.hdd_dir.data(), fullPath.c_str(),
+  util_safe_strcpy(system_state.hdd_dir.data(), full_path.c_str(),
                    system_state.hdd_dir.size());
   Configuration_t::instance().set_string(
       "Preferences", REGVALUE_PREF_HDD_START_DIR, system_state.hdd_dir.data());
   Configuration_t::instance().save();
 
-  fullPath += "/" + filename;
+  full_path += "/" + filename;
 
   HarddiskInsertCmd_t cmd{};
   cmd.drive = static_cast<uint8_t>(drive);
-  util_safe_strcpy(cmd.path, fullPath.c_str(), sizeof(cmd.path));
+  util_safe_strcpy(cmd.path, full_path.c_str(), sizeof(cmd.path));
 
-  if (peripheral_command(HARDDISK_SLOT, harddisk_cmd_insert, &cmd,
+  if (peripheral_command(k_harddisk_slot, harddisk_cmd_insert, &cmd,
                          sizeof(cmd)) == peripheral_ok) {
-    if (drive) {
-      Configuration_t::instance().set_string("Preferences", REGVALUE_HDD_IMAGE2,
-                                             fullPath.c_str());
-      Configuration_t::instance().save();
-    } else {
-      Configuration_t::instance().set_string("Preferences", REGVALUE_HDD_IMAGE1,
-                                             fullPath.c_str());
-      Configuration_t::instance().save();
-    }
-    printf("HDD disk image %s inserted\n", fullPath.c_str());
+    const char* key = (drive != 0) ? REGVALUE_HDD_IMAGE2 : REGVALUE_HDD_IMAGE1;
+    Configuration_t::instance().set_string("Preferences", key,
+                                           full_path.c_str());
+    Configuration_t::instance().save();
+    Logger::info("HDD disk image %s inserted\n", full_path.c_str());
   }
-  backdx = fileIndex;
+  back_idx = file_index;
   draw_frame_window();
 }

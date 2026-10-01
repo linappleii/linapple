@@ -44,7 +44,7 @@ constexpr auto SDL_COMPAT_KMOD_CTRL = KMOD_CTRL;
 constexpr auto SDL_COMPAT_KMOD_ALT = KMOD_ALT;
 constexpr auto SDL_COMPAT_KMOD_GUI = KMOD_META;
 
-inline auto sdl_compat_get_key_from_event(const SDL_Event& event)
+[[nodiscard]] inline auto sdl_compat_get_key_from_event(const SDL_Event& event)
     -> SdlKeycode_t {
   return event.key.keysym.sym;
 }
@@ -53,21 +53,30 @@ inline auto sdl_compat_set_window_title(const char* title) -> void {
   SDL_WM_SetCaption(title, title);
 }
 
-inline auto sdl_compat_num_joysticks() -> int { return SDL_NumJoysticks(); }
+[[nodiscard]] inline auto sdl_compat_num_joysticks() -> int {
+  return SDL_NumJoysticks();
+}
 
-inline auto sdl_compat_open_joystick(int index) -> SdlJoystickPtr_t {
+[[nodiscard]] inline auto sdl_compat_open_joystick(int index)
+    -> SdlJoystickPtr_t {
   return SdlJoystickPtr_t(SDL_JoystickOpen(index));
 }
 
 inline auto sdl_compat_update_joysticks() -> void { SDL_JoystickUpdate(); }
 
-inline auto sdl_compat_get_joystick_button(SDL_Joystick* joy, int button)
-    -> bool {
+[[nodiscard]] inline auto sdl_compat_get_joystick_button(SDL_Joystick* joy,
+                                                         int button) -> bool {
+  if (joy == nullptr) {
+    return false;
+  }
   return SDL_JoystickGetButton(joy, button) != 0;
 }
 
-inline auto sdl_compat_get_joystick_axis(SDL_Joystick* joy, int axis)
-    -> int16_t {
+[[nodiscard]] inline auto sdl_compat_get_joystick_axis(SDL_Joystick* joy,
+                                                       int axis) -> int16_t {
+  if (joy == nullptr) {
+    return 0;
+  }
   return SDL_JoystickGetAxis(joy, axis);
 }
 
@@ -94,7 +103,7 @@ constexpr auto SDL_COMPAT_KMOD_GUI = KMOD_GUI;
 
 extern SdlWindowPtr_t g_window;
 
-inline auto sdl_compat_get_key_from_event(const SDL_Event& event)
+[[nodiscard]] inline auto sdl_compat_get_key_from_event(const SDL_Event& event)
     -> SdlKeycode_t {
   return event.key.keysym.sym;
 }
@@ -105,21 +114,30 @@ inline auto sdl_compat_set_window_title(const char* title) -> void {
   }
 }
 
-inline auto sdl_compat_num_joysticks() -> int { return SDL_NumJoysticks(); }
+[[nodiscard]] inline auto sdl_compat_num_joysticks() -> int {
+  return SDL_NumJoysticks();
+}
 
-inline auto sdl_compat_open_joystick(int index) -> SdlJoystickPtr_t {
+[[nodiscard]] inline auto sdl_compat_open_joystick(int index)
+    -> SdlJoystickPtr_t {
   return SdlJoystickPtr_t(SDL_JoystickOpen(index));
 }
 
 inline auto sdl_compat_update_joysticks() -> void { SDL_JoystickUpdate(); }
 
-inline auto sdl_compat_get_joystick_button(SDL_Joystick* joy, int button)
-    -> bool {
+[[nodiscard]] inline auto sdl_compat_get_joystick_button(SDL_Joystick* joy,
+                                                         int button) -> bool {
+  if (joy == nullptr) {
+    return false;
+  }
   return SDL_JoystickGetButton(joy, button) != 0;
 }
 
-inline auto sdl_compat_get_joystick_axis(SDL_Joystick* joy, int axis)
-    -> int16_t {
+[[nodiscard]] inline auto sdl_compat_get_joystick_axis(SDL_Joystick* joy,
+                                                       int axis) -> int16_t {
+  if (joy == nullptr) {
+    return 0;
+  }
   return SDL_JoystickGetAxis(joy, axis);
 }
 
@@ -155,7 +173,7 @@ constexpr auto SDL_COMPAT_KMOD_GUI = SDL_KMOD_GUI;
 
 extern SdlWindowPtr_t g_window;
 
-inline auto sdl_compat_get_key_from_event(const SDL_Event& event)
+[[nodiscard]] inline auto sdl_compat_get_key_from_event(const SDL_Event& event)
     -> SdlKeycode_t {
   return event.key.key;
 }
@@ -166,7 +184,7 @@ inline auto sdl_compat_set_window_title(const char* title) -> void {
   }
 }
 
-inline auto sdl_compat_num_joysticks() -> int {
+[[nodiscard]] inline auto sdl_compat_num_joysticks() -> int {
   int count = 0;
   SDL_JoystickID* ids = SDL_GetJoysticks(&count);
   if (ids != nullptr) {
@@ -175,7 +193,8 @@ inline auto sdl_compat_num_joysticks() -> int {
   return count;
 }
 
-inline auto sdl_compat_open_joystick(int index) -> SdlJoystickPtr_t {
+[[nodiscard]] inline auto sdl_compat_open_joystick(int index)
+    -> SdlJoystickPtr_t {
   int count = 0;
   SDL_JoystickID* ids = SDL_GetJoysticks(&count);
   if (ids == nullptr) {
@@ -191,19 +210,25 @@ inline auto sdl_compat_open_joystick(int index) -> SdlJoystickPtr_t {
 
 inline auto sdl_compat_update_joysticks() -> void { SDL_UpdateJoysticks(); }
 
-inline auto sdl_compat_get_joystick_button(SDL_Joystick* joy, int button)
-    -> bool {
+[[nodiscard]] inline auto sdl_compat_get_joystick_button(SDL_Joystick* joy,
+                                                         int button) -> bool {
+  if (joy == nullptr) {
+    return false;
+  }
   return SDL_GetJoystickButton(joy, button);
 }
 
-inline auto sdl_compat_get_joystick_axis(SDL_Joystick* joy, int axis)
-    -> int16_t {
+[[nodiscard]] inline auto sdl_compat_get_joystick_axis(SDL_Joystick* joy,
+                                                       int axis) -> int16_t {
+  if (joy == nullptr) {
+    return 0;
+  }
   return SDL_GetJoystickAxis(joy, axis);
 }
 
 #endif
 
 // Shared frame lifecycle declarations across all SDL frontends
-auto init_sdl() -> int;
-auto frame_create_window() -> int;
+[[nodiscard]] auto init_sdl() -> int;
+[[nodiscard]] auto frame_create_window() -> int;
 auto frame_destroy_window() -> void;

@@ -7,17 +7,20 @@
 #include <string>
 #include <vector>
 
+#if ENABLE_FTP
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 #include "core/services/ftp/FtpClient.h"
 #include "core/services/ftp/FtpTypes.h"
-#include "frontends/common/FileBrowser.h"
 #include "frontends/common/sdl/DiskChoose_Decl.h"
+#endif
+
+#include "frontends/common/FileBrowser.h"
 
 namespace {
 
-constexpr size_t EXT_LIST_CAP = 256;
+constexpr size_t k_ext_list_cap = 256;
 
 struct FtpGeneratorContext_t {
   std::string directory;
@@ -158,7 +161,7 @@ auto choose_an_image_ftp(int sx, int sy, const std::string& ftp_dir, int slot,
                          std::string& filename, bool& isdir, size_t& index_file)
     -> bool {
 #if ENABLE_FTP
-  char supported_exts[EXT_LIST_CAP] = {};
+  char supported_exts[k_ext_list_cap] = {};
   linapple_get_supported_disk_extensions(slot, supported_exts,
                                          sizeof(supported_exts));
 

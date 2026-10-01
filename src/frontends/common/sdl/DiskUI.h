@@ -4,7 +4,8 @@
 #include <cstddef>
 
 /* Longest title the window bar and the drive labels have room for. */
-enum { disk_ui_display_name_max = 15 };
+constexpr size_t k_disk_ui_display_name_max = 15;
+constexpr size_t disk_ui_display_name_max = k_disk_ui_display_name_max;
 
 /**
  * @brief Map disk error codes to human-readable strings for UI display.
@@ -12,7 +13,8 @@ enum { disk_ui_display_name_max = 15 };
  * @param error_code The DiskError_e code returned by commands or queries.
  * @return A static string describing the error.
  */
-auto disk_ui_get_error_message(int error_code) -> const char*;
+[[nodiscard]] auto disk_ui_get_error_message(int error_code) noexcept -> const
+    char*;
 
 /**
  * @brief Turn an image file name into the short title shown to the user.

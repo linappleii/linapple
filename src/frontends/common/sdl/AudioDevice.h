@@ -7,6 +7,5 @@
 // frames was 23 ms only at 44100. SDL prefers a power of two, so this rounds to
 // the nearest one rather than to the exact millisecond count.
 //
-// SDL1 and SDL2 only: SDL3's SDL_AudioSpec carries format, channels and freq
-// and nothing else, so the device buffer there is the library's to size.
-auto audio_device_buffer_samples(int rate_hz) -> uint16_t;
+[[nodiscard]] auto audio_device_buffer_samples(int rate_hz) noexcept
+    -> uint16_t;
