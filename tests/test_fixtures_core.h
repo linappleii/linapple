@@ -233,4 +233,48 @@ class ScopedCore_t {
   ScopedCpuContext_t cpu_;
 };
 
+/**
+ * @brief Where a stepped run begins: the registers a caller hands a routine.
+ *
+ * The stack sits at the top of page 1 and interrupts are masked, as the
+ * Monitor leaves them for a routine entered from a JSR.
+ */
+struct EntryRegisters_t {
+  uint16_t pc;
+  uint8_t a;
+  uint8_t x;
+  uint8_t y;
+};
+
+inline auto enter_at(const EntryRegisters_t& entry) -> void {
+  constexpr uint16_t stack_top = 0x01FF;
+  constexpr uint8_t status_interrupts_masked = 0x24;
+  CpuRegisters_t* regs = cpu_get_registers();
+  regs->pc = entry.pc;
+  regs->sp = stack_top;
+  regs->a = entry.a;
+  regs->x = entry.x;
+  regs->y = entry.y;
+  regs->ps = status_interrupts_masked;
+}
+
+/**
+ * @brief Steps the 6502 one instruction at a time until the program counter
+ * lands on the sentinel or the cap is spent; returns the cycles spent.
+ *
+ * One cpu_execute per instruction keeps the bridge's per-call count at zero,
+ * so an I/O handler sees the cumulative cycle count as it stood at the first
+ * cycle of the instruction that reached it, whatever the addressing mode; the
+ * difference between two such reads is then the hardware difference. The
+ * caller checks the PC afterwards: the cap is what ends a runaway.
+ */
+inline auto step_until_pc(uint16_t sentinel, uint32_t cap) -> uint32_t {
+  const CpuRegisters_t* regs = cpu_get_registers();
+  uint32_t cycles = 0;
+  while (regs->pc != sentinel && cycles < cap) {
+    cycles += cpu_execute(0);
+  }
+  return cycles;
+}
+
 }  // namespace TestFixtures
