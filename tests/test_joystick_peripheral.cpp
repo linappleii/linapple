@@ -76,7 +76,6 @@ constexpr uint16_t probe_base = 0x0380;
 constexpr uint8_t marker_low = 0x5A;
 constexpr uint8_t marker_high = 0xDA;
 
-// Switch sources (JoystickButtonPayload_t::source).
 constexpr uint8_t source_connector = 0;
 constexpr uint8_t source_keyboard = 1;
 constexpr uint8_t shift_line = 2;

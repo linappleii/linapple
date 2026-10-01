@@ -40,7 +40,7 @@ static const std::array<JoyInfoRec_t, 5> k_joy_info = {
      {DEVICE_KEYBOARD, MODE_CENTERING},
      {DEVICE_MOUSE, MODE_STANDARD}}};
 
-// Key pad [1..9]; Key pad 0, Key pad '.'
+// In keypad order so KP_1-KP_9 index directly; 0 and '.' are the buttons.
 enum JoyKey_t {
   JK_DOWNLEFT = 0,
   JK_DOWN,
@@ -325,13 +325,12 @@ static auto load_trim(const char* key) -> int {
 }
 
 auto joy_frontend_initialize() -> void {
-  constexpr int16_t k_axis_min = -32768; /* minimum value for axis coordinate */
-  constexpr int16_t k_axis_max = 32767;  /* maximum value for axis coordinate */
+  constexpr int16_t k_axis_min = -32768;
+  constexpr int16_t k_axis_max = 32767;
 
   g_joy1.reset();
   g_joy2.reset();
 
-  // Load config from registry
   g_joy_config = {};
   uint32_t val = 0;
   if (load(REGVALUE_JOY_TYPE1, &val)) {
