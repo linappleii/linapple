@@ -667,7 +667,7 @@ add_peripheral(harddisk "Harddisk (SmartPort)" "src/apple2/peripherals/harddisk/
 add_peripheral(mouse "Mouse Interface" "src/apple2/peripherals/mouse/Mouse.cpp" "" "" TRUE)
 add_peripheral(mockingboard "Mockingboard" "src/apple2/peripherals/mockingboard/Mockingboard.cpp;src/apple2/chips/AY8910.cpp;src/apple2/chips/6522.cpp" "" "" FALSE)
 add_peripheral(super_serial "Super Serial Card" "src/apple2/peripherals/super_serial_card/SuperSerial.cpp" "" "" TRUE)
-add_peripheral(joystick "Joystick" "src/apple2/peripherals/joystick/Joystick.cpp" "" "" TRUE)
+add_peripheral(joystick "game I/O port (paddles, buttons and the //e Apple-key switch inputs)" "src/apple2/peripherals/joystick/Joystick.cpp" "" "" TRUE)
 add_peripheral(printer "Parallel Printer" "src/apple2/peripherals/printer/Printer.cpp" "" "" FALSE)
 add_peripheral(clock "Clock Card" "src/apple2/peripherals/clock/ClockCard.cpp" "" "" FALSE)
 finalize_peripheral_libraries()
@@ -898,10 +898,16 @@ fi
     add_linapple_test(mockingboard-core "tests/test_main.cpp;tests/test_mockingboard_core.cpp")
     add_linapple_test(mockingboard-e2e "tests/test_main.cpp;tests/test_mockingboard_e2e.cpp")
     set_tests_properties(test-mockingboard-e2e PROPERTIES LABELS "e2e")
-    add_linapple_test(joystick-peripheral "tests/test_main.cpp;tests/test_joystick_peripheral.cpp")
+    if(ENABLE_PERIPHERAL_JOYSTICK)
+        set_source_files_properties(tests/test_joystick_abi_c.c PROPERTIES COMPILE_OPTIONS "-std=c99;-pedantic")
+        add_linapple_test(joystick-peripheral "tests/test_main.cpp;tests/HeadlessHarness.cpp;tests/test_joystick_peripheral.cpp;tests/test_joystick_abi_c.c")
+        set_tests_properties(test-joystick-peripheral PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
+        # The dispatch suite registers the game port beside the keyboard.
+        add_linapple_test(slot0-dispatch "tests/test_main.cpp;tests/test_slot0_dispatch.cpp")
+        set_tests_properties(test-slot0-dispatch PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
+    endif()
     add_linapple_test(mouse-exhaustive "tests/test_main.cpp;tests/test_mouse_exhaustive.cpp")
     add_linapple_test(peripheral-slot0 "tests/test_main.cpp;tests/test_peripheral_slot0.cpp")
-    add_linapple_test(slot0-dispatch "tests/test_main.cpp;tests/test_slot0_dispatch.cpp")
     # Every test that mounts a disk or harddisk card at run time is built only
     # with that card, so a build without one still has a green test suite and
     # proves nothing of the card's leaked into it.

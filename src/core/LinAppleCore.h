@@ -209,8 +209,6 @@ auto linapple_set_caps_lock_state(bool enabled) -> void;
 [[nodiscard]] auto linapple_get_caps_lock_state() -> bool;
 auto linapple_toggle_caps_lock_state() -> bool;
 auto linapple_set_apple_key(int key, bool down) -> void;
-auto linapple_set_joystick_axis(int axis, int value) -> void;
-auto linapple_set_joystick_button(int button, bool down) -> void;
 
 auto linapple_set_video_callback(LinappleVideoCallback_t cb) -> void;
 auto linapple_set_audio_channel_callback(FrontendAudioChannelCallback_t cb)

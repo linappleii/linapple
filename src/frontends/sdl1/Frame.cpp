@@ -28,7 +28,6 @@
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
-#include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/Asset.h"
 #include "core/LinAppleCore.h"
@@ -72,7 +71,6 @@ auto to_video_rect(const SDL_Rect& r) noexcept -> VideoRect_t {
 auto reset_machine_state() -> void {
   full_speed = false;
   linapple_reset_hard();
-  peripheral_command(0, JOY_CMD_RESET, nullptr, 0);
 }
 
 auto set_icon() -> void {
@@ -125,7 +123,6 @@ auto handle_btn_run(int mod) -> void {
 }
 
 auto handle_btn_drive(int drive_idx, int mod) -> void {
-  peripheral_command(0, JOY_CMD_RESET, nullptr, 0);
   if ((mod & KMOD_CTRL) != 0) {
     if ((mod & KMOD_SHIFT) != 0) {
       printf("HDD  Eject Drive #%d\n", drive_idx + 1);
@@ -182,7 +179,6 @@ auto handle_btn_fullscreen(int mod) -> void {
       system_state.fullscreen = true;
       set_fullscreen_mode();
     }
-    peripheral_command(0, JOY_CMD_RESET, nullptr, 0);
   }
 }
 

@@ -1,6 +1,7 @@
 // Integration tests: slot 0 command and query dispatch across keyboard and
 // joystick.
 
+#include <array>
 #include <cstdint>
 #include <cstring>
 #include <initializer_list>
@@ -10,23 +11,22 @@
 #include "apple2/Memory.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Audio.h"
+#include "apple2/peripherals/Peripheral_Internal.h"
 #include "apple2/peripherals/Peripheral_Subsystems.h"
 #include "apple2/peripherals/Peripheral_Types.h"
-#include "apple2/peripherals/joystick/Joystick.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
-#include "apple2/peripherals/keyboard/Keyboard.h"
 #include "core/LinAppleCore.h"
 #include "doctest.h"
 
 namespace {
 
 constexpr uint16_t addr_keyboard = 0xC000;
-constexpr uint16_t addr_keyboard_strobe = 0xC010;
 constexpr uint8_t key_strobe_bit = 0x80;
 constexpr uint8_t key_code_mask = 0x7F;
 constexpr uint8_t joy_centre = 127;
 constexpr uint8_t joy_off_centre = 200;
 constexpr uint32_t key_a = 'A';
+constexpr uint32_t unknown_joystick_id = PERIPHERAL_SUBSYSTEM_JOYSTICK | 0x00FF;
 
 enum class Order_t : uint8_t { keyboard_first, joystick_first };
 
@@ -34,6 +34,18 @@ enum class Order_t : uint8_t { keyboard_first, joystick_first };
 auto operator<<(std::ostream& out, Order_t order) -> std::ostream& {
   return out << (order == Order_t::keyboard_first ? "keyboard first"
                                                   : "joystick first");
+}
+
+auto keyboard_descriptor() -> Peripheral_t* {
+  Peripheral_t* descriptor = peripheral_find_internal("linapple.keyboard");
+  REQUIRE(descriptor != nullptr);
+  return descriptor;
+}
+
+auto joystick_descriptor() -> Peripheral_t* {
+  Peripheral_t* descriptor = peripheral_find_internal("linapple.joystick");
+  REQUIRE(descriptor != nullptr);
+  return descriptor;
 }
 
 // Slot 0 fixture managing registration and teardown of keyboard and joystick.
@@ -44,14 +56,14 @@ struct Slot0_t {
 
   explicit Slot0_t(Order_t order) {
     current_apple2_type = A2TYPE_APPLE2EENHANCED;
-    mem_initialize();
+    REQUIRE(mem_initialize() == 0);
     peripheral_manager_init();
     if (order == Order_t::keyboard_first) {
-      keyboard_registered = peripheral_register(keyboard_get_descriptor(), 0);
-      joystick_registered = peripheral_register(joystick_get_descriptor(), 0);
+      keyboard_registered = peripheral_register(keyboard_descriptor(), 0);
+      joystick_registered = peripheral_register(joystick_descriptor(), 0);
     } else {
-      joystick_registered = peripheral_register(joystick_get_descriptor(), 0);
-      keyboard_registered = peripheral_register(keyboard_get_descriptor(), 0);
+      joystick_registered = peripheral_register(joystick_descriptor(), 0);
+      keyboard_registered = peripheral_register(keyboard_descriptor(), 0);
     }
     peripheral_manager_reset();
   }
@@ -75,11 +87,12 @@ void bare_register_direct_io(void*, uint16_t, PeripheralIOHandler,
 void bare_register_direct_io_strobe(void*, uint16_t,
                                     PeripheralStrobeHandler_t) {}
 auto bare_get_cycles() -> uint64_t { return 0; }
+auto bare_read_floating_bus(uint32_t) -> uint8_t { return 0; }
 
 struct BareHost_t {
   HostInterface_t host{};
-  Peripheral_t* keyboard{keyboard_get_descriptor()};
-  Peripheral_t* joystick{joystick_get_descriptor()};
+  Peripheral_t* keyboard{keyboard_descriptor()};
+  Peripheral_t* joystick{joystick_descriptor()};
   void* kbd{nullptr};
   void* joy{nullptr};
 
@@ -88,6 +101,7 @@ struct BareHost_t {
     host.RegisterDirectIO = bare_register_direct_io;
     host.RegisterDirectIOStrobe = bare_register_direct_io_strobe;
     host.GetCycles = bare_get_cycles;
+    host.ReadFloatingBus = bare_read_floating_bus;
     kbd = keyboard->init(0, &host);
     joy = joystick->init(0, &host);
   }
@@ -131,14 +145,6 @@ auto joystick_state() -> JoystickSaveState_t {
   return state;
 }
 
-auto joystick_config() -> JoystickConfig_t {
-  JoystickConfig_t config{};
-  size_t size = sizeof(config);
-  REQUIRE(peripheral_query_by_id(0, "linapple.joystick", JOY_QUERY_CONFIG,
-                                 &config, &size) == peripheral_ok);
-  return config;
-}
-
 auto keyboard_mods() -> KeyboardModifiers_t {
   KeyboardModifiers_t mods{};
   size_t size = sizeof(mods);
@@ -164,15 +170,6 @@ auto move_axis(uint8_t joystick, uint8_t axis, uint8_t value) -> void {
   send(JOY_CMD_SET_AXIS, &payload, sizeof(payload));
 }
 
-auto a_config() -> JoystickConfig_t {
-  JoystickConfig_t config{};
-  config.joy_type[0] = 1;  // would land on KeyboardModifiers_t::shift
-  config.joy_type[1] = 1;  // and on ::ctrl
-  config.joy_index[0] = 5;
-  config.joy_exit_enable = 1;
-  return config;
-}
-
 const std::initializer_list<Order_t> both_orders = {Order_t::keyboard_first,
                                                     Order_t::joystick_first};
 
@@ -185,7 +182,7 @@ struct OneByteLong_t {
 
 }  // namespace
 
-TEST_CASE("Slot 0: the rocker switch and the joystick's exit event") {
+TEST_CASE("Slot 0: the rocker switch and a button under one slot") {
   for (Order_t order : both_orders) {
     CAPTURE(order);
     Slot0_t slot0(order);
@@ -194,33 +191,31 @@ TEST_CASE("Slot 0: the rocker switch and the joystick's exit event") {
 
     const uint8_t on = 1;
     send(keyboard_cmd_set_rocker, &on, sizeof(on));
+    press_button(0);
 
     uint8_t rocker = 0;
     size_t size = sizeof(rocker);
     CHECK(peripheral_query(0, keyboard_query_rocker, &rocker, &size) ==
           peripheral_ok);
     CHECK(rocker == 1);
-
-    uint8_t exiting = 0xFF;
-    size = sizeof(exiting);
-    CHECK(peripheral_query(0, JOY_QUERY_EXIT_EVENT, &exiting, &size) ==
-          peripheral_ok);
-    CHECK(exiting == 0);
+    CHECK(joystick_state().buttons[0] == 1);
   }
 }
 
-TEST_CASE("Slot 0: the modifiers and the joystick config under one id") {
+TEST_CASE("Slot 0: a stick move and the modifiers under one id") {
   for (Order_t order : both_orders) {
     CAPTURE(order);
     Slot0_t slot0(order);
     REQUIRE(slot0.keyboard_registered == 0);
     REQUIRE(slot0.joystick_registered == 0);
 
-    const JoystickConfig_t wanted = a_config();
-    send(JOY_CMD_SET_CONFIG, &wanted, sizeof(wanted));
+    move_axis(0, 0, joy_off_centre);
+    press_button(0);
 
-    CHECK(joystick_config().joy_index[0] == 5);
+    CHECK(joystick_state().x_pos[0] == joy_off_centre);
+    CHECK(joystick_state().buttons[0] == 1);
     CHECK(keyboard_mods().shift == 0);
+    CHECK(keyboard_mods().ctrl == 0);
   }
 }
 
@@ -270,7 +265,7 @@ TEST_CASE("Slot 0: resetting the joystick leaves the keyboard alone") {
   }
 }
 
-TEST_CASE("Slot 0: a joystick config does not hold down shift") {
+TEST_CASE("Slot 0: a button payload does not hold down shift") {
   for (Order_t order : both_orders) {
     CAPTURE(order);
     Slot0_t slot0(order);
@@ -278,26 +273,29 @@ TEST_CASE("Slot 0: a joystick config does not hold down shift") {
     REQUIRE(slot0.joystick_registered == 0);
 
     const KeyboardModifiers_t before = keyboard_mods();
-    const JoystickConfig_t wanted = a_config();
-    send(JOY_CMD_SET_CONFIG, &wanted, sizeof(wanted));
+    // Bytes 1, 1 would land on KeyboardModifiers_t::shift and ::ctrl.
+    const JoystickButtonPayload_t payload{1, true, {0, 0}};
+    send(JOY_CMD_SET_BUTTON, &payload, sizeof(payload));
 
     const KeyboardModifiers_t after = keyboard_mods();
     CHECK(after.shift == 0);
     CHECK(after.ctrl == 0);
     CHECK(after.caps == before.caps);
-    CHECK(joystick_config().joy_type[0] == 1);
+    CHECK(joystick_state().buttons[1] == 1);
   }
 }
 
-TEST_CASE("Slot 0: setting modifiers does not reconfigure the joystick") {
+TEST_CASE("Slot 0: setting modifiers does not move the stick") {
   for (Order_t order : both_orders) {
     CAPTURE(order);
     Slot0_t slot0(order);
     REQUIRE(slot0.keyboard_registered == 0);
     REQUIRE(slot0.joystick_registered == 0);
 
-    const JoystickConfig_t wanted = a_config();
-    send(JOY_CMD_SET_CONFIG, &wanted, sizeof(wanted));
+    move_axis(0, 0, joy_off_centre);
+    press_button(0);
+    const JoystickSaveState_t before = joystick_state();
+
     KeyboardModifiers_t mods{};
     mods.shift = 1;
     mods.ctrl = 1;
@@ -305,13 +303,14 @@ TEST_CASE("Slot 0: setting modifiers does not reconfigure the joystick") {
 
     CHECK(keyboard_mods().shift == 1);
     CHECK(keyboard_mods().ctrl == 1);
-    const JoystickConfig_t config = joystick_config();
-    CHECK(config.joy_index[0] == 5);
-    CHECK(config.joy_exit_enable == 1);
+    const JoystickSaveState_t after = joystick_state();
+    CHECK(after.x_pos[0] == joy_off_centre);
+    CHECK(after.buttons[0] == 1);
+    CHECK(std::memcmp(&before, &after, sizeof(JoystickSaveState_t)) == 0);
   }
 }
 
-TEST_CASE("Slot 0: a joystick trim does not toggle caps lock") {
+TEST_CASE("Slot 0: a button press does not toggle caps lock") {
   for (Order_t order : both_orders) {
     CAPTURE(order);
     Slot0_t slot0(order);
@@ -322,11 +321,10 @@ TEST_CASE("Slot 0: a joystick trim does not toggle caps lock") {
     send(keyboard_cmd_set_caps, &caps_off, sizeof(caps_off));
     REQUIRE(keyboard_state().caps_lock == 0);
 
-    const JoystickTrimPayload_t trim{true, 0, 40};
-    send(JOY_CMD_SET_TRIM, &trim, sizeof(trim));
+    press_button(2);
 
     CHECK(keyboard_state().caps_lock == 0);
-    CHECK(joystick_state().trim_x == 40);
+    CHECK(joystick_state().buttons[2] == 1);
   }
 }
 
@@ -343,16 +341,21 @@ TEST_CASE("Slot 0: a payload of the wrong size changes nothing") {
 
     const KeyboardSaveState_t keyboard_before = keyboard_state();
     const JoystickSaveState_t joystick_before = joystick_state();
-    const JoystickConfig_t config_before = joystick_config();
 
     // Verify dispatch rejects invalid payload lengths.
-    const OneByteLong_t<JoystickConfig_t> config{a_config(), 0};
-    REQUIRE(peripheral_command(0, JOY_CMD_SET_CONFIG, &config,
-                               sizeof(JoystickConfig_t) - 1) == peripheral_ok);
-    REQUIRE(peripheral_command(0, JOY_CMD_SET_CONFIG, &config,
-                               sizeof(JoystickConfig_t) + 1) == peripheral_ok);
-    const uint8_t trailing = 0;
-    REQUIRE(peripheral_command(0, JOY_CMD_RESET, &trailing, sizeof(trailing)) ==
+    const OneByteLong_t<JoystickAxisPayload_t> axis{{0, 1, joy_centre, 0}, 0};
+    REQUIRE(peripheral_command(0, JOY_CMD_SET_AXIS, &axis,
+                               sizeof(JoystickAxisPayload_t) - 1) ==
+            peripheral_ok);
+    REQUIRE(peripheral_command(0, JOY_CMD_SET_AXIS, &axis,
+                               sizeof(JoystickAxisPayload_t) + 1) ==
+            peripheral_ok);
+    const OneByteLong_t<JoystickButtonPayload_t> button{{0, true, {0, 0}}, 0};
+    REQUIRE(peripheral_command(0, JOY_CMD_SET_BUTTON, &button,
+                               sizeof(JoystickButtonPayload_t) - 1) ==
+            peripheral_ok);
+    REQUIRE(peripheral_command(0, JOY_CMD_SET_BUTTON, &button,
+                               sizeof(JoystickButtonPayload_t) + 1) ==
             peripheral_ok);
     KeyboardModifiers_t mods{};
     mods.shift = 1;
@@ -362,13 +365,12 @@ TEST_CASE("Slot 0: a payload of the wrong size changes nothing") {
 
     const KeyboardSaveState_t keyboard_after = keyboard_state();
     const JoystickSaveState_t joystick_after = joystick_state();
+    CHECK(joystick_after.y_pos[0] == joy_off_centre);
+    CHECK(joystick_after.buttons[0] == 0);
     CHECK(std::memcmp(&keyboard_before, &keyboard_after,
                       sizeof(KeyboardSaveState_t)) == 0);
     CHECK(std::memcmp(&joystick_before, &joystick_after,
                       sizeof(JoystickSaveState_t)) == 0);
-    const JoystickConfig_t config_after = joystick_config();
-    CHECK(std::memcmp(&config_before, &config_after,
-                      sizeof(JoystickConfig_t)) == 0);
   }
 }
 
@@ -396,18 +398,26 @@ TEST_CASE("Slot 0: a dispatcher says peripheral_error to the wrong size") {
   CHECK(keyboard->command(kbd, keyboard_cmd_clear_custom_keys, nullptr, 0) ==
         peripheral_ok);
 
-  const OneByteLong_t<JoystickConfig_t> config{a_config(), 0};
-  constexpr size_t config_size = sizeof(JoystickConfig_t);
-  CHECK(joystick->command(joy, JOY_CMD_SET_CONFIG, &config, config_size) ==
+  const OneByteLong_t<JoystickAxisPayload_t> axis{{0, 0, joy_off_centre, 0}, 0};
+  constexpr size_t axis_size = sizeof(JoystickAxisPayload_t);
+  CHECK(joystick->command(joy, JOY_CMD_SET_AXIS, &axis, axis_size) ==
         peripheral_ok);
-  CHECK(joystick->command(joy, JOY_CMD_SET_CONFIG, &config, config_size - 1) ==
+  CHECK(joystick->command(joy, JOY_CMD_SET_AXIS, &axis, axis_size - 1) ==
         peripheral_error);
-  CHECK(joystick->command(joy, JOY_CMD_SET_CONFIG, &config, config_size + 1) ==
+  CHECK(joystick->command(joy, JOY_CMD_SET_AXIS, &axis, axis_size + 1) ==
         peripheral_error);
-  CHECK(joystick->command(joy, JOY_CMD_SET_CONFIG, nullptr, config_size) ==
+  CHECK(joystick->command(joy, JOY_CMD_SET_AXIS, nullptr, axis_size) ==
         peripheral_error);
-  CHECK(joystick->command(joy, JOY_CMD_RESET, nullptr, 0) == peripheral_ok);
-  CHECK(joystick->command(joy, JOY_CMD_RESET, &byte, sizeof(byte)) ==
+
+  const OneByteLong_t<JoystickButtonPayload_t> button{{0, true, {0, 0}}, 0};
+  constexpr size_t button_size = sizeof(JoystickButtonPayload_t);
+  CHECK(joystick->command(joy, JOY_CMD_SET_BUTTON, &button, button_size) ==
+        peripheral_ok);
+  CHECK(joystick->command(joy, JOY_CMD_SET_BUTTON, &button, button_size - 1) ==
+        peripheral_error);
+  CHECK(joystick->command(joy, JOY_CMD_SET_BUTTON, &button, button_size + 1) ==
+        peripheral_error);
+  CHECK(joystick->command(joy, JOY_CMD_SET_BUTTON, nullptr, button_size) ==
         peripheral_error);
 }
 
@@ -425,7 +435,6 @@ TEST_CASE("Slot 0: an id from another subsystem is refused and changes none") {
 
     const KeyboardSaveState_t keyboard_before = keyboard_state();
     const JoystickSaveState_t joystick_before = joystick_state();
-    const JoystickConfig_t config_before = joystick_config();
 
     // Verify commands belonging to foreign subsystems are rejected.
     const std::initializer_list<uint32_t> foreign = {
@@ -434,9 +443,10 @@ TEST_CASE("Slot 0: an id from another subsystem is refused and changes none") {
         PERIPHERAL_SUBSYSTEM_MOUSE | 0x0001,
         PERIPHERAL_SUBSYSTEM_SERIAL | 0x0002,
     };
-    const JoystickConfig_t config = a_config();
+    std::array<uint8_t, 64> payload{};
+    payload.fill(1);
     for (uint32_t cmd_id : foreign) {
-      REQUIRE(peripheral_command(0, cmd_id, &config, sizeof(config)) ==
+      REQUIRE(peripheral_command(0, cmd_id, payload.data(), payload.size()) ==
               peripheral_ok);
       settle();
 
@@ -452,9 +462,6 @@ TEST_CASE("Slot 0: an id from another subsystem is refused and changes none") {
                       sizeof(KeyboardSaveState_t)) == 0);
     CHECK(std::memcmp(&joystick_before, &joystick_after,
                       sizeof(JoystickSaveState_t)) == 0);
-    const JoystickConfig_t config_after = joystick_config();
-    CHECK(std::memcmp(&config_before, &config_after,
-                      sizeof(JoystickConfig_t)) == 0);
   }
 }
 
@@ -470,15 +477,24 @@ TEST_CASE("Slot 0: a foreign id is incompatible, never an error") {
 
   uint8_t answer = 0;
   size_t size = sizeof(answer);
-  CHECK(keyboard->query(kbd, JOY_QUERY_EXIT_EVENT, &answer, &size) ==
+  CHECK(keyboard->query(kbd, unknown_joystick_id, &answer, &size) ==
         peripheral_incompatible);
   size = sizeof(answer);
   CHECK(joystick->query(joy, keyboard_query_rocker, &answer, &size) ==
         peripheral_incompatible);
-  CHECK(keyboard->command(kbd, JOY_CMD_RESET, nullptr, 0) ==
+  const JoystickButtonPayload_t button{0, true, {0, 0}};
+  CHECK(keyboard->command(kbd, JOY_CMD_SET_BUTTON, &button, sizeof(button)) ==
         peripheral_incompatible);
   CHECK(joystick->command(joy, keyboard_cmd_set_rocker, &answer,
                           sizeof(answer)) == peripheral_incompatible);
+
+  // An id inside the card's own subsystem that it does not know is
+  // incompatible too, so a neighbour in the slot still gets asked.
+  CHECK(joystick->command(joy, unknown_joystick_id, nullptr, 0) ==
+        peripheral_incompatible);
+  size = sizeof(answer);
+  CHECK(joystick->query(joy, unknown_joystick_id, &answer, &size) ==
+        peripheral_incompatible);
 
   // Generic commands bypass subsystem check and query each peripheral.
   size = sizeof(answer);

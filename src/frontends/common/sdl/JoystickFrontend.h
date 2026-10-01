@@ -5,7 +5,6 @@
 
 auto joy_frontend_initialize() -> void;
 auto joy_frontend_shutdown() -> void;
-auto joy_frontend_check_exit() -> void;
 auto joy_frontend_update() -> void;
 auto joy_frontend_update_trim_via_key(SdlKeycode_t virtkey) -> void;
 auto joy_frontend_process_key(SdlKeycode_t virtkey, bool extended, bool down,

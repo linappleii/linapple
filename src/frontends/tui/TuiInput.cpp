@@ -75,7 +75,6 @@ static auto map_key(uint8_t a2_code) -> void {
 static auto reset_machine() -> void {
   full_speed = false;
   linapple_reset_hard();
-  peripheral_command(0, JOY_CMD_RESET, nullptr, 0);
   system_state.mode = app_mode_running;
   system_state.reset_timing = true;
 }
@@ -656,10 +655,12 @@ auto tui_input_poll() -> void {
   if (g_joy_fd != -1) {
     struct js_event js{};
     while (read(g_joy_fd, &js, sizeof(js)) > 0) {
-      if ((js.type & JS_EVENT_AXIS) != 0) {
-        linapple_set_joystick_axis(js.number, js.value);
-      } else if ((js.type & JS_EVENT_BUTTON) != 0) {
-        linapple_set_joystick_button(js.number, js.value);
+      // The port has three pushbutton inputs (Apple II Reference Manual, 1979,
+      // p. 100); a device with more buttons keeps the rest to itself.
+      if ((js.type & JS_EVENT_BUTTON) != 0 && js.number < 3) {
+        const JoystickButtonPayload_t payload = {
+            js.number, js.value != 0, {0, 0}};
+        peripheral_command(0, JOY_CMD_SET_BUTTON, &payload, sizeof(payload));
       }
     }
   }

@@ -89,7 +89,18 @@ static SdlJoystickPtr_t g_joy2;
 static int g_frontend_pdl_trim_x = 0;
 static int g_frontend_pdl_trim_y = 0;
 
-static JoystickConfig_t g_joy_config;
+// Which host device feeds each Apple joystick and which of its axes and
+// buttons. Host input mapping is the frontend's alone; the card only ever
+// receives positions and switch levels.
+struct JoystickHostConfig_t {
+  std::array<uint32_t, 2> joy_type{};
+  std::array<uint32_t, 2> joy_index{};
+  std::array<uint32_t, 2> joy0_button_map{};
+  uint32_t joy1_button_map = 0;
+  std::array<std::array<uint32_t, 2>, 2> joy_axis{};
+};
+
+static JoystickHostConfig_t g_joy_config;
 
 auto joy_frontend_initialize() -> void {
   constexpr int16_t k_axis_min = -32768; /* minimum value for axis coordinate */
@@ -116,15 +127,6 @@ auto joy_frontend_initialize() -> void {
   if (load(REGVALUE_JOY_AXIS1_1, &val)) g_joy_config.joy_axis[0][1] = val;
   if (load(REGVALUE_JOY_AXIS2_0, &val)) g_joy_config.joy_axis[1][0] = val;
   if (load(REGVALUE_JOY_AXIS2_1, &val)) g_joy_config.joy_axis[1][1] = val;
-  if (load(REGVALUE_JOY_EXIT_ENABLE, &val)) g_joy_config.joy_exit_enable = val;
-  if (load(REGVALUE_JOY_EXIT_BUTTON0, &val))
-    g_joy_config.joy_exit_button[0] = val;
-  if (load(REGVALUE_JOY_EXIT_BUTTON1, &val))
-    g_joy_config.joy_exit_button[1] = val;
-
-  // Sync to peripheral
-  peripheral_command(0, JOY_CMD_SET_CONFIG, &g_joy_config,
-                     sizeof(g_joy_config));
 
   int number_of_joysticks = sdl_compat_num_joysticks();
 
@@ -182,20 +184,6 @@ auto joy_frontend_initialize() -> void {
 auto joy_frontend_shutdown() -> void {
   g_joy1.reset();
   g_joy2.reset();
-}
-
-auto joy_frontend_check_exit() -> void {
-  if (!g_joy1 || !g_joy_config.joy_exit_enable) return;
-  sdl_compat_update_joysticks();
-  bool quit =
-      sdl_compat_get_joystick_button(
-          g_joy1.get(), static_cast<int>(g_joy_config.joy_exit_button[0])) &&
-      sdl_compat_get_joystick_button(
-          g_joy1.get(), static_cast<int>(g_joy_config.joy_exit_button[1]));
-
-  if (quit) {
-    system_state.mode = app_mode_exit;
-  }
 }
 
 auto joy_frontend_update() -> void {

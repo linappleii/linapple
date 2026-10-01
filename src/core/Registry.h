@@ -51,9 +51,6 @@ constexpr const char* cfg_joy_axis1_0 = "Joystick 0 Axis 0";
 constexpr const char* cfg_joy_axis1_1 = "Joystick 0 Axis 1";
 constexpr const char* cfg_joy_axis2_0 = "Joystick 1 Axis 0";
 constexpr const char* cfg_joy_axis2_1 = "Joystick 1 Axis 1";
-constexpr const char* cfg_joy_exit_enable = "Joystick Exit Enable";
-constexpr const char* cfg_joy_exit_button0 = "Joystick Exit Button 0";
-constexpr const char* cfg_joy_exit_button1 = "Joystick Exit Button 1";
 
 constexpr const char* cfg_pprinter_filename = "Parallel Printer Filename";
 constexpr const char* cfg_printer_append = "Append to printer file";
@@ -109,9 +106,6 @@ constexpr const char* REGVALUE_JOY_AXIS1_0 = cfg_joy_axis1_0;
 constexpr const char* REGVALUE_JOY_AXIS1_1 = cfg_joy_axis1_1;
 constexpr const char* REGVALUE_JOY_AXIS2_0 = cfg_joy_axis2_0;
 constexpr const char* REGVALUE_JOY_AXIS2_1 = cfg_joy_axis2_1;
-constexpr const char* REGVALUE_JOY_EXIT_ENABLE = cfg_joy_exit_enable;
-constexpr const char* REGVALUE_JOY_EXIT_BUTTON0 = cfg_joy_exit_button0;
-constexpr const char* REGVALUE_JOY_EXIT_BUTTON1 = cfg_joy_exit_button1;
 
 constexpr const char* REGVALUE_PPRINTER_FILENAME = cfg_pprinter_filename;
 constexpr const char* REGVALUE_PRINTER_APPEND = cfg_printer_append;

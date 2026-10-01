@@ -16,7 +16,6 @@
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Internal.h"
 #include "apple2/peripherals/Peripheral_Types.h"
-#include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/Asset.h"
 #include "core/BasicLiveSync.h"
@@ -511,15 +510,4 @@ auto linapple_set_apple_key(int key, bool down) -> void {
     mods.alt = down ? 1U : 0U;
   }
   peripheral_command(0, keyboard_cmd_set_mods, &mods, sizeof(mods));
-}
-
-auto linapple_set_joystick_axis(int axis, int value) -> void {
-  JoystickTrimPayload_t payload = {axis == 0, 0, static_cast<int16_t>(value)};
-  peripheral_command(0, JOY_CMD_SET_TRIM, &payload, sizeof(payload));
-}
-
-auto linapple_set_joystick_button(int button, bool down) -> void {
-  JoystickButtonPayload_t payload = {
-      static_cast<uint8_t>(button), down, {0, 0}};
-  peripheral_command(0, JOY_CMD_SET_BUTTON, &payload, sizeof(payload));
 }

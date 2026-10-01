@@ -361,7 +361,7 @@ struct ConfigAlias_t {
   const char* legacy;
 };
 
-static constexpr std::array<ConfigAlias_t, 16> config_aliases = {{
+static constexpr std::array<ConfigAlias_t, 13> config_aliases = {{
     {"Joystick 0 Index", "Joy0Index"},
     {"Joystick 1 Index", "Joy1Index"},
     {"Joystick 0 Button 1", "Joy0Button1"},
@@ -371,9 +371,6 @@ static constexpr std::array<ConfigAlias_t, 16> config_aliases = {{
     {"Joystick 0 Axis 1", "Joy0Axis1"},
     {"Joystick 1 Axis 0", "Joy1Axis0"},
     {"Joystick 1 Axis 1", "Joy1Axis1"},
-    {"Joystick Exit Enable", "JoyExitEnable"},
-    {"Joystick Exit Button 0", "JoyExitButton0"},
-    {"Joystick Exit Button 1", "JoyExitButton1"},
     {"Mouse in slot 4", "Mouse in slot4"},
     {"Mouse Capture", "MouseCapture"},
     {"Basic Live Sync File", "BasicLiveSyncFile"},

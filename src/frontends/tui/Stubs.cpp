@@ -38,12 +38,6 @@
 
 // Video/Frontend Stubs needed for Debugger source linkage
 [[gnu::weak]] auto stretch_blt_mem_to_frame_dc() -> void {}
-[[gnu::weak]] auto joy_set_trim(int16_t, bool) -> void {}
-[[gnu::weak]] auto joy_set_button(int button, bool down) -> void {
-  (void)button;
-  (void)down;
-}
-[[gnu::weak]] auto joy_update_position(uint32_t) -> void {}
 [[gnu::weak]] auto video_update_vbl(uint32_t) -> void {}
 [[gnu::weak]] auto video_redraw_screen() -> void {}
 [[gnu::weak]] auto video_reset_state() -> void {}
