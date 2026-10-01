@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <thread>
 
 #include "TuiAudio.h"
@@ -38,7 +39,12 @@ auto audio_channel_callback(const char* peripheral_id, int slot,
                               static_cast<uint32_t>(num_samples));
 }
 
-auto title_callback(const char* title) -> void { (void)title; }
+auto title_callback(const char* title) -> void {
+  if (title != nullptr && *title != '\0') {
+    std::printf("\x1b]0;%s\x07", title);
+    std::fflush(stdout);
+  }
+}
 
 }  // namespace
 
@@ -82,10 +88,14 @@ auto main(int argc, char** argv) -> int {
 
     FramePacer_t pacer;
 
-    while (!tui_terminal_is_interrupted() && !app_controller_should_restart()) {
+    while (!tui_terminal_is_interrupted() && !app_controller_should_restart() &&
+           system_state.mode != app_mode_exit) {
       if (tui_terminal_was_resized()) {
         tui_terminal_clear_resized();
         tui_video_on_resize();
+        if (system_state.mode == app_mode_paused) {
+          tui_video_render_frame(nullptr, 0, 0, 0);
+        }
       }
 
       tui_input_poll();
@@ -116,7 +126,8 @@ auto main(int argc, char** argv) -> int {
     tui_input_shutdown();
 
     app_controller_shutdown();
-  } while (app_controller_should_restart() && !tui_terminal_is_interrupted());
+  } while (app_controller_should_restart() && !tui_terminal_is_interrupted() &&
+           system_state.mode != app_mode_exit);
 
   tui_terminal_shutdown();
 

@@ -10,6 +10,9 @@ static DiskBrowser_t s_browser{};
 }
 
 auto tui_disk_select_open(int slot, int drive) -> void {
+  if (s_browser.is_active) {
+    disk_browser_close(&s_browser);
+  }
   disk_browser_open(&s_browser, slot, drive, nullptr);
 }
 
@@ -37,28 +40,24 @@ auto tui_disk_select_get_first_visible_index() -> size_t {
   return s_browser.first_visible_index;
 }
 
-auto tui_disk_select_set_first_visible_index(size_t index) -> void {
-  s_browser.first_visible_index = index;
+auto tui_disk_select_move(int delta, size_t page_size) -> void {
+  disk_browser_move(&s_browser, delta, page_size);
 }
 
-auto tui_disk_select_move(int delta, int page_size) -> void {
-  disk_browser_move(&s_browser, delta, static_cast<size_t>(page_size));
-}
-
-auto tui_disk_select_page(int direction, int page_size) -> void {
-  disk_browser_page(&s_browser, direction, static_cast<size_t>(page_size));
+auto tui_disk_select_page(int direction, size_t page_size) -> void {
+  disk_browser_page(&s_browser, direction, page_size);
 }
 
 auto tui_disk_select_home() -> void { disk_browser_home(&s_browser); }
 
-auto tui_disk_select_end(int page_size) -> void {
-  disk_browser_end(&s_browser, static_cast<size_t>(page_size));
+auto tui_disk_select_end(size_t page_size) -> void {
+  disk_browser_end(&s_browser, page_size);
 }
 
-auto tui_disk_select_jump_char(char ch, int page_size) -> void {
-  disk_browser_jump_char(&s_browser, ch, static_cast<size_t>(page_size));
+auto tui_disk_select_jump_char(char ch, size_t page_size) -> void {
+  disk_browser_jump_char(&s_browser, ch, page_size);
 }
 
-auto tui_disk_select_confirm() -> void {
-  (void)disk_browser_confirm(&s_browser);
+auto tui_disk_select_confirm() -> bool {
+  return disk_browser_confirm(&s_browser);
 }

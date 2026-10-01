@@ -1,19 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-#include <cstddef>
-#include <cstdint>
-
 /**
  * @brief Initialize the TUI audio system.
  */
 auto tui_audio_initialize() -> void;
-
-/**
- * @brief Process audio samples from core.
- */
-auto tui_audio_process_samples(const int16_t* samples, size_t num_samples)
-    -> void;
 
 /**
  * @brief Shutdown the TUI audio system.

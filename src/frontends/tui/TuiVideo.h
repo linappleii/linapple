@@ -26,7 +26,7 @@ auto tui_video_toggle_render_mode() -> void;
 /**
  * @brief Get current TUI graphics rendering mode.
  */
-auto tui_video_get_render_mode() -> TuiRenderMode_t;
+[[nodiscard]] auto tui_video_get_render_mode() -> TuiRenderMode_t;
 
 /**
  * @brief Render the current frame to the terminal.
@@ -52,7 +52,7 @@ auto tui_video_toggle_help() -> void;
 /**
  * @brief Check if the TUI help screen is currently visible.
  */
-auto tui_video_is_help_visible() -> bool;
+[[nodiscard]] auto tui_video_is_help_visible() -> bool;
 
 /**
  * @brief Close the TUI help screen overlay.
@@ -67,7 +67,7 @@ auto tui_video_toggle_fullscreen() -> void;
 /**
  * @brief Check if TUI fullscreen mode is active.
  */
-auto tui_video_is_fullscreen() -> bool;
+[[nodiscard]] auto tui_video_is_fullscreen() -> bool;
 
 /**
  * @brief Save screenshot of current TUI screen to .ans and .txt files.

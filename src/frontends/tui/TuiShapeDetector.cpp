@@ -4,30 +4,29 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
-#include <cstring>
 
 namespace {
 
-constexpr int subgrid_dim = 8;
-constexpr int subgrid_pixels = subgrid_dim * subgrid_dim;
-constexpr int max_char_mismatch = 4;
-constexpr int max_pop_diff = 4;
-constexpr int min_contrast_threshold = 35;
-constexpr int dark_luminance_cutoff = 25;
-constexpr int inverted_fg_threshold = subgrid_pixels / 2;
-constexpr int quadrant_active_threshold = 7;
-constexpr int quad_dim = 4;
+constexpr int k_subgrid_dim = 8;
+constexpr int k_subgrid_pixels = k_subgrid_dim * k_subgrid_dim;
+constexpr int k_max_char_mismatch = 4;
+constexpr int k_max_pop_diff = 4;
+constexpr int k_min_contrast_threshold = 35;
+constexpr int k_dark_luminance_cutoff = 25;
+constexpr int k_inverted_fg_threshold = k_subgrid_pixels / 2;
+constexpr int k_quadrant_active_threshold = 7;
 
-constexpr int lum_weight_r = 299;
-constexpr int lum_weight_g = 587;
-constexpr int lum_weight_b = 114;
-constexpr int lum_weight_sum = 1000;
-constexpr uint8_t byte_mask = 0xFF;
-constexpr uint8_t max_color_val = 255;
-constexpr int max_bits = 64;
-constexpr uint32_t green_shift = 8;
-constexpr uint32_t blue_shift = 16;
+constexpr int k_lum_weight_r = 299;
+constexpr int k_lum_weight_g = 587;
+constexpr int k_lum_weight_b = 114;
+constexpr int k_lum_weight_sum = 1000;
+constexpr uint8_t k_byte_mask = 0xFF;
+constexpr uint8_t k_max_color_val = 255;
+constexpr int k_max_bits = 64;
+constexpr uint32_t k_green_shift = 8;
+constexpr uint32_t k_blue_shift = 16;
 
 struct GlyphPattern_t {
   char ch;
@@ -79,6 +78,27 @@ constexpr std::array<GlyphPattern_t, 79> k_font_patterns = {{
     {']', 0x003C30303030303CULL, 18},
 }};
 
+// 16-element lookup table for box glyphs based on (N << 3 | S << 2 | W << 1 |
+// E)
+static constexpr std::array<const char*, 16> k_box_glyphs = {{
+    nullptr,         // 0000
+    nullptr,         // 0001
+    nullptr,         // 0010
+    "\xe2\x94\x80",  // 0011 ─ (W + E)
+    nullptr,         // 0100
+    "\xe2\x94\x8c",  // 0101 ┌ (S + E)
+    "\xe2\x94\x90",  // 0110 ┐ (S + W)
+    "\xe2\x94\xac",  // 0111 ┬ (S + W + E)
+    nullptr,         // 1000
+    "\xe2\x94\x94",  // 1001 └ (N + E)
+    "\xe2\x94\x98",  // 1010 ┘ (N + W)
+    "\xe2\x94\xb4",  // 1011 ┴ (N + W + E)
+    "\xe2\x94\x82",  // 1100 │ (N + S)
+    "\xe2\x94\x9c",  // 1101 ├ (N + S + E)
+    "\xe2\x94\xa4",  // 1110 ┤ (N + S + W)
+    "\xe2\x94\xbc",  // 1111 ┼ (N + S + W + E)
+}};
+
 static constexpr std::array<const char*, 16> k_quadrant_glyphs = {{
     " ",             // 0000
     "\xe2\x96\x97",  // 0001 ▗
@@ -122,27 +142,27 @@ auto tui_shape_detect_cell(const uint32_t* pixels, int pitch, int x_start,
   const int w_span = x_end - x_start;
   const int h_span = y_end - y_start;
 
-  std::array<std::array<uint8_t, subgrid_dim>, subgrid_dim> lum_grid{};
-  std::array<std::array<TuiPixel_t, subgrid_dim>, subgrid_dim> col_grid{};
+  std::array<std::array<uint8_t, k_subgrid_dim>, k_subgrid_dim> lum_grid{};
+  std::array<std::array<TuiPixel_t, k_subgrid_dim>, k_subgrid_dim> col_grid{};
 
-  int min_lum = max_color_val;
+  int min_lum = k_max_color_val;
   int max_lum = 0;
   int total_lum = 0;
   int total_r = 0;
   int total_g = 0;
   int total_b = 0;
 
-  for (int v = 0; v < subgrid_dim; ++v) {
-    int py = y_start + ((2 * v + 1) * h_span) / (2 * subgrid_dim);
-    for (int u = 0; u < subgrid_dim; ++u) {
-      int px = x_start + ((2 * u + 1) * w_span) / (2 * subgrid_dim);
+  for (int v = 0; v < k_subgrid_dim; ++v) {
+    int py = y_start + ((2 * v + 1) * h_span) / (2 * k_subgrid_dim);
+    for (int u = 0; u < k_subgrid_dim; ++u) {
+      int px = x_start + ((2 * u + 1) * w_span) / (2 * k_subgrid_dim);
       uint32_t pixel_val = pixels[static_cast<size_t>(py * stride + px)];
-      auto r = static_cast<uint8_t>(pixel_val & byte_mask);
-      auto g = static_cast<uint8_t>((pixel_val >> green_shift) & byte_mask);
-      auto b = static_cast<uint8_t>((pixel_val >> blue_shift) & byte_mask);
+      auto r = static_cast<uint8_t>(pixel_val & k_byte_mask);
+      auto g = static_cast<uint8_t>((pixel_val >> k_green_shift) & k_byte_mask);
+      auto b = static_cast<uint8_t>((pixel_val >> k_blue_shift) & k_byte_mask);
 
-      int lum = (r * lum_weight_r + g * lum_weight_g + b * lum_weight_b) /
-                lum_weight_sum;
+      int lum = (r * k_lum_weight_r + g * k_lum_weight_g + b * k_lum_weight_b) /
+                k_lum_weight_sum;
       lum_grid.at(static_cast<size_t>(v)).at(static_cast<size_t>(u)) =
           static_cast<uint8_t>(lum);
       col_grid.at(static_cast<size_t>(v)).at(static_cast<size_t>(u)) = {r, g,
@@ -157,15 +177,15 @@ auto tui_shape_detect_cell(const uint32_t* pixels, int pitch, int x_start,
     }
   }
 
-  const int avg_lum = total_lum / subgrid_pixels;
+  const int avg_lum = total_lum / k_subgrid_pixels;
   const auto avg_cell_color =
-      TuiPixel_t{static_cast<uint8_t>(total_r / subgrid_pixels),
-                 static_cast<uint8_t>(total_g / subgrid_pixels),
-                 static_cast<uint8_t>(total_b / subgrid_pixels)};
+      TuiPixel_t{static_cast<uint8_t>(total_r / k_subgrid_pixels),
+                 static_cast<uint8_t>(total_g / k_subgrid_pixels),
+                 static_cast<uint8_t>(total_b / k_subgrid_pixels)};
 
   // Uniform solid or dark cell
-  if (max_lum - min_lum < min_contrast_threshold) {
-    if (avg_lum < dark_luminance_cutoff) {
+  if (max_lum - min_lum < k_min_contrast_threshold) {
+    if (avg_lum < k_dark_luminance_cutoff) {
       set_utf8_glyph(out_cell, " ");
       out_cell->fg = avg_cell_color;
       out_cell->bg = avg_cell_color;
@@ -181,16 +201,20 @@ auto tui_shape_detect_cell(const uint32_t* pixels, int pitch, int x_start,
   uint64_t cell_bits = 0;
   int fg_count = 0;
   int bg_count = 0;
-  int fg_r = 0, fg_g = 0, fg_b = 0;
-  int bg_r = 0, bg_g = 0, bg_b = 0;
+  int fg_r = 0;
+  int fg_g = 0;
+  int fg_b = 0;
+  int bg_r = 0;
+  int bg_g = 0;
+  int bg_b = 0;
 
-  for (int v = 0; v < subgrid_dim; ++v) {
-    for (int u = 0; u < subgrid_dim; ++u) {
+  for (int v = 0; v < k_subgrid_dim; ++v) {
+    for (int u = 0; u < k_subgrid_dim; ++u) {
       const auto& pix =
           col_grid.at(static_cast<size_t>(v)).at(static_cast<size_t>(u));
       if (lum_grid.at(static_cast<size_t>(v)).at(static_cast<size_t>(u)) >=
           threshold) {
-        cell_bits |= (1ULL << (v * subgrid_dim + u));
+        cell_bits |= (1ULL << (v * k_subgrid_dim + u));
         fg_count++;
         fg_r += pix.r;
         fg_g += pix.g;
@@ -205,26 +229,26 @@ auto tui_shape_detect_cell(const uint32_t* pixels, int pitch, int x_start,
   }
 
   auto fg_color = TuiPixel_t{
-      static_cast<uint8_t>(fg_count > 0 ? (fg_r / fg_count) : max_color_val),
-      static_cast<uint8_t>(fg_count > 0 ? (fg_g / fg_count) : max_color_val),
-      static_cast<uint8_t>(fg_count > 0 ? (fg_b / fg_count) : max_color_val)};
+      static_cast<uint8_t>(fg_count > 0 ? (fg_r / fg_count) : k_max_color_val),
+      static_cast<uint8_t>(fg_count > 0 ? (fg_g / fg_count) : k_max_color_val),
+      static_cast<uint8_t>(fg_count > 0 ? (fg_b / fg_count) : k_max_color_val)};
   auto bg_color =
       TuiPixel_t{static_cast<uint8_t>(bg_count > 0 ? (bg_r / bg_count) : 0),
                  static_cast<uint8_t>(bg_count > 0 ? (bg_g / bg_count) : 0),
                  static_cast<uint8_t>(bg_count > 0 ? (bg_b / bg_count) : 0)};
 
   // Handle inverse presentation (light background, dark text)
-  if (fg_count > inverted_fg_threshold) {
+  if (fg_count > k_inverted_fg_threshold) {
     cell_bits = ~cell_bits;
     std::swap(fg_color, bg_color);
   }
 
   const int pop = __builtin_popcountll(cell_bits);
 
-  std::array<uint8_t, subgrid_dim> rows{};
-  for (int v = 0; v < subgrid_dim; ++v) {
+  std::array<uint8_t, k_subgrid_dim> rows{};
+  for (int v = 0; v < k_subgrid_dim; ++v) {
     rows.at(static_cast<size_t>(v)) =
-        static_cast<uint8_t>((cell_bits >> (v * subgrid_dim)) & byte_mask);
+        static_cast<uint8_t>((cell_bits >> (v * k_subgrid_dim)) & k_byte_mask);
   }
 
   constexpr uint8_t center_mask = 0x3C;
@@ -274,68 +298,11 @@ auto tui_shape_detect_cell(const uint32_t* pixels, int pitch, int x_start,
       (has_n ? 1 : 0) + (has_s ? 1 : 0) + (has_w ? 1 : 0) + (has_e ? 1 : 0);
 
   if (has_c && corner_count == 0 && branch_count >= 2) {
-    if (has_w && has_e && !has_n && !has_s) {
-      set_utf8_glyph(out_cell, "\xe2\x94\x80");  // ─
-      out_cell->fg = fg_color;
-      out_cell->bg = bg_color;
-      return;
-    }
-    if (has_n && has_s && !has_w && !has_e) {
-      set_utf8_glyph(out_cell, "\xe2\x94\x82");  // │
-      out_cell->fg = fg_color;
-      out_cell->bg = bg_color;
-      return;
-    }
-    if (has_s && has_e && !has_n && !has_w) {
-      set_utf8_glyph(out_cell, "\xe2\x94\x8c");  // ┌
-      out_cell->fg = fg_color;
-      out_cell->bg = bg_color;
-      return;
-    }
-    if (has_s && has_w && !has_n && !has_e) {
-      set_utf8_glyph(out_cell, "\xe2\x94\x90");  // ┐
-      out_cell->fg = fg_color;
-      out_cell->bg = bg_color;
-      return;
-    }
-    if (has_n && has_e && !has_s && !has_w) {
-      set_utf8_glyph(out_cell, "\xe2\x94\x94");  // └
-      out_cell->fg = fg_color;
-      out_cell->bg = bg_color;
-      return;
-    }
-    if (has_n && has_w && !has_s && !has_e) {
-      set_utf8_glyph(out_cell, "\xe2\x94\x98");  // ┘
-      out_cell->fg = fg_color;
-      out_cell->bg = bg_color;
-      return;
-    }
-    if (has_n && has_s && has_e && !has_w) {
-      set_utf8_glyph(out_cell, "\xe2\x94\x9c");  // ├
-      out_cell->fg = fg_color;
-      out_cell->bg = bg_color;
-      return;
-    }
-    if (has_n && has_s && has_w && !has_e) {
-      set_utf8_glyph(out_cell, "\xe2\x94\xa4");  // ┤
-      out_cell->fg = fg_color;
-      out_cell->bg = bg_color;
-      return;
-    }
-    if (has_s && has_e && has_w && !has_n) {
-      set_utf8_glyph(out_cell, "\xe2\x94\xac");  // ┬
-      out_cell->fg = fg_color;
-      out_cell->bg = bg_color;
-      return;
-    }
-    if (has_n && has_e && has_w && !has_s) {
-      set_utf8_glyph(out_cell, "\xe2\x94\xb4");  // ┴
-      out_cell->fg = fg_color;
-      out_cell->bg = bg_color;
-      return;
-    }
-    if (has_n && has_s && has_e && has_w) {
-      set_utf8_glyph(out_cell, "\xe2\x94\xbc");  // ┼
+    const size_t branch_key = static_cast<size_t>(
+        (has_n ? 8 : 0) | (has_s ? 4 : 0) | (has_w ? 2 : 0) | (has_e ? 1 : 0));
+    const char* glyph = k_box_glyphs.at(branch_key);
+    if (glyph != nullptr) {
+      set_utf8_glyph(out_cell, glyph);
       out_cell->fg = fg_color;
       out_cell->bg = bg_color;
       return;
@@ -343,9 +310,9 @@ auto tui_shape_detect_cell(const uint32_t* pixels, int pitch, int x_start,
   }
 
   // --- Tier 2: Apple II Font OCR Matching ---
-  int min_distance = max_bits;
+  int min_distance = k_max_bits;
   char best_char = '\0';
-  int best_pop_diff = max_bits;
+  int best_pop_diff = k_max_bits;
 
   for (const auto& pat : k_font_patterns) {
     const int dist = __builtin_popcountll(cell_bits ^ pat.mask);
@@ -357,7 +324,7 @@ auto tui_shape_detect_cell(const uint32_t* pixels, int pitch, int x_start,
     }
   }
 
-  if (min_distance <= max_char_mismatch && best_pop_diff <= max_pop_diff) {
+  if (min_distance <= k_max_char_mismatch && best_pop_diff <= k_max_pop_diff) {
     out_cell->glyph.fill(0);
     out_cell->glyph.at(0) = static_cast<uint8_t>(best_char);
     out_cell->fg = fg_color;
@@ -366,28 +333,22 @@ auto tui_shape_detect_cell(const uint32_t* pixels, int pitch, int x_start,
   }
 
   // --- Tier 3: 2x2 Quadrant High-Resolution Block Fallback ---
-  int q_tl = 0, q_tr = 0, q_bl = 0, q_br = 0;
-  for (int v = 0; v < subgrid_dim; ++v) {
-    for (int u = 0; u < subgrid_dim; ++u) {
-      const bool is_set = (cell_bits & (1ULL << (v * subgrid_dim + u))) != 0;
-      if (!is_set) continue;
-      if (v < quad_dim && u < quad_dim) {
-        q_tl++;
-      } else if (v < quad_dim && u >= quad_dim) {
-        q_tr++;
-      } else if (v >= quad_dim && u < quad_dim) {
-        q_bl++;
-      } else {
-        q_br++;
-      }
-    }
-  }
+  // Subgrid is 8x8. Cell bits row v (0..7) and col u (0..7) is bit (v * 8 + u).
+  constexpr uint64_t k_quad_tl_mask = 0x000000000F0F0F0FULL;
+  constexpr uint64_t k_quad_tr_mask = 0x00000000F0F0F0F0ULL;
+  constexpr uint64_t k_quad_bl_mask = 0x0F0F0F0F00000000ULL;
+  constexpr uint64_t k_quad_br_mask = 0xF0F0F0F000000000ULL;
 
-  const auto quad_mask =
-      static_cast<uint8_t>(((q_tl >= quadrant_active_threshold ? 1 : 0) << 3) |
-                           ((q_tr >= quadrant_active_threshold ? 1 : 0) << 2) |
-                           ((q_bl >= quadrant_active_threshold ? 1 : 0) << 1) |
-                           (q_br >= quadrant_active_threshold ? 1 : 0));
+  const int q_tl = __builtin_popcountll(cell_bits & k_quad_tl_mask);
+  const int q_tr = __builtin_popcountll(cell_bits & k_quad_tr_mask);
+  const int q_bl = __builtin_popcountll(cell_bits & k_quad_bl_mask);
+  const int q_br = __builtin_popcountll(cell_bits & k_quad_br_mask);
+
+  const auto quad_mask = static_cast<uint8_t>(
+      ((q_tl >= k_quadrant_active_threshold ? 1 : 0) << 3) |
+      ((q_tr >= k_quadrant_active_threshold ? 1 : 0) << 2) |
+      ((q_bl >= k_quadrant_active_threshold ? 1 : 0) << 1) |
+      (q_br >= k_quadrant_active_threshold ? 1 : 0));
 
   set_utf8_glyph(out_cell, k_quadrant_glyphs.at(quad_mask));
   out_cell->fg = fg_color;

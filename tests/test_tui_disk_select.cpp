@@ -29,7 +29,7 @@ struct ScopedMemoryContext_t {
 
   ScopedMemoryContext_t() {
     current_apple2_type = A2TYPE_APPLE2EENHANCED;
-    mem_initialize();
+    (void)mem_initialize();
   }
 
   ~ScopedMemoryContext_t() {

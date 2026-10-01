@@ -9,10 +9,12 @@ struct TuiPixel_t {
   uint8_t g;
   uint8_t b;
 
-  auto operator==(const TuiPixel_t& other) const -> bool {
+  [[nodiscard]] constexpr auto operator==(
+      const TuiPixel_t& other) const noexcept -> bool {
     return r == other.r && g == other.g && b == other.b;
   }
-  auto operator!=(const TuiPixel_t& other) const -> bool {
+  [[nodiscard]] constexpr auto operator!=(
+      const TuiPixel_t& other) const noexcept -> bool {
     return !(*this == other);
   }
 };
@@ -22,10 +24,12 @@ struct TuiState_t {
   TuiPixel_t fg;
   TuiPixel_t bg;
 
-  auto operator==(const TuiState_t& other) const -> bool {
+  [[nodiscard]] auto operator==(const TuiState_t& other) const noexcept
+      -> bool {
     return glyph == other.glyph && fg == other.fg && bg == other.bg;
   }
-  auto operator!=(const TuiState_t& other) const -> bool {
+  [[nodiscard]] auto operator!=(const TuiState_t& other) const noexcept
+      -> bool {
     return !(*this == other);
   }
 };

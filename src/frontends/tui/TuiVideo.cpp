@@ -2,12 +2,13 @@
 #include "TuiVideo.h"
 
 #include <asm-generic/ioctls.h>
-#include <sys/ioctl.h>
+#include <sys/ioctl.h>  // IWYU pragma: keep
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 
 #include <array>
+#include <cerrno>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -28,6 +29,8 @@
 #include "frontends/common/HelpText.h"
 #include "frontends/common/VideoSurface.h"
 
+namespace {
+
 static int g_term_width = 0;
 static int g_term_height = 0;
 static std::vector<TuiState_t> g_back_buffer;
@@ -35,25 +38,26 @@ static std::vector<TuiState_t> g_next_buffer;
 static std::vector<char> g_output_buffer;
 static uint32_t g_frame_count = 0;
 
-static constexpr int default_term_width = 80;
-static constexpr int default_term_height = 24;
-static constexpr int utf8_glyph_size = 4;
-static constexpr int output_reserve_factor = 64;
-static constexpr int flash_divisor = 15;
-static constexpr int a2_page1_addr = 0x400;
-static constexpr int a2_page2_offset = 0x400;
-static constexpr int a2_zero_page_offset = 0x00;
-static constexpr int a2_cursor_x_addr = 0x24;
-static constexpr int a2_cursor_y_addr = 0x25;
-static constexpr int a2_cols_80 = 80;
-static constexpr int a2_cols_40 = 40;
-static constexpr int min_term_height_status = 24;
-static constexpr int a2_text_rows = 24;
-static constexpr int mixed_mode_text_start = 20;
-static constexpr int refresh_full_divisor = 60;
+static constexpr int k_default_term_width = 80;
+static constexpr int k_default_term_height = 24;
+static constexpr int k_output_reserve_factor = 64;
+static constexpr int k_flash_divisor = 15;
+static constexpr int k_a2_page1_addr = 0x400;
+static constexpr int k_a2_page2_offset = 0x400;
+static constexpr int k_a2_cursor_x_addr = 0x24;
+static constexpr int k_a2_cursor_y_addr = 0x25;
+static constexpr int k_a2_cols_80 = 80;
+static constexpr int k_a2_cols_40 = 40;
+static constexpr int k_min_term_height_status = 24;
+static constexpr int k_a2_text_rows = 24;
+static constexpr int k_mixed_mode_text_start = 20;
+static constexpr int k_refresh_full_divisor = 60;
 
 static TuiRenderMode_t g_render_mode = TUI_RENDER_SMART;
 static bool g_show_help = false;
+static bool g_fullscreen = false;
+
+}  // namespace
 
 auto tui_video_set_render_mode(TuiRenderMode_t mode) -> void {
   g_render_mode = mode;
@@ -65,8 +69,6 @@ auto tui_video_toggle_render_mode() -> void {
 }
 
 auto tui_video_get_render_mode() -> TuiRenderMode_t { return g_render_mode; }
-
-static bool g_fullscreen = false;
 
 auto tui_video_toggle_help() -> void { g_show_help = !g_show_help; }
 
@@ -615,13 +617,13 @@ auto tui_video_shutdown() -> void {
 }
 
 auto tui_video_on_resize() -> void {
-  struct winsize w;
+  struct winsize w{};
   if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == 0) {
     g_term_width = w.ws_col;
     g_term_height = w.ws_row;
   } else {
-    g_term_width = default_term_width;
-    g_term_height = default_term_height;
+    g_term_width = k_default_term_width;
+    g_term_height = k_default_term_height;
   }
   TuiState_t empty_cell{};
   empty_cell.glyph.fill(0);
@@ -634,11 +636,11 @@ auto tui_video_on_resize() -> void {
   g_next_buffer.assign(static_cast<size_t>(g_term_width * g_term_height),
                        empty_cell);
   g_output_buffer.reserve(static_cast<size_t>(g_term_width * g_term_height *
-                                              output_reserve_factor));
+                                              k_output_reserve_factor));
 }
 
 static auto get_text_addr(int row, int col) -> uint16_t {
-  static const std::array<uint16_t, a2_text_rows> row_offsets = {
+  static const std::array<uint16_t, k_a2_text_rows> row_offsets = {
       0x000, 0x080, 0x100, 0x180, 0x200, 0x280, 0x300, 0x380,
       0x028, 0x0A8, 0x128, 0x1A8, 0x228, 0x2A8, 0x328, 0x3A8,
       0x050, 0x0D0, 0x150, 0x1D0, 0x250, 0x2D0, 0x350, 0x3D0};
@@ -675,14 +677,14 @@ static auto render_text_cell(int r, int c, bool is_80col, uint16_t page_offset,
   if (is_80col) {
     if (c % 2 == 0) {
       code = *mem_get_aux_ptr(static_cast<uint16_t>(
-          a2_page1_addr + page_offset + get_text_addr(r, c / 2)));
+          k_a2_page1_addr + page_offset + get_text_addr(r, c / 2)));
     } else {
       code = *mem_get_main_ptr(static_cast<uint16_t>(
-          a2_page1_addr + page_offset + get_text_addr(r, c / 2)));
+          k_a2_page1_addr + page_offset + get_text_addr(r, c / 2)));
     }
   } else {
-    code = *mem_get_main_ptr(static_cast<uint16_t>(a2_page1_addr + page_offset +
-                                                   get_text_addr(r, c)));
+    code = *mem_get_main_ptr(static_cast<uint16_t>(
+        k_a2_page1_addr + page_offset + get_text_addr(r, c)));
   }
 
   uint8_t ascii = 0;
@@ -741,14 +743,18 @@ static auto render_gfx_cell(const uint32_t* pixels, int pitch, int width,
     tui_shape_detect_cell(pixels, pitch, x_start, y_start, x_end, y_end, &cell);
   } else {
     int sx = (gfx_w > 0) ? (x * width / gfx_w) : 0;
-    int sy = (gfx_h > 0) ? (y * sample_height / gfx_h) : 0;
-    set_glyph(cell, "\xe2\x96\x80");
+    int sy_top = (gfx_h > 0) ? (y * sample_height / gfx_h) : 0;
+    int sy_bot = (gfx_h > 0) ? ((2 * y + 1) * sample_height / (2 * gfx_h)) : 0;
+    set_glyph(cell, "\xe2\x96\x80");  // ▀ Upper half block
     const int stride = pitch / static_cast<int>(sizeof(uint32_t));
-    uint32_t p = pixels[static_cast<size_t>(sy * stride + sx)];
-    cell.fg = {static_cast<uint8_t>(p & 0xFF),
-               static_cast<uint8_t>((p >> 8) & 0xFF),
-               static_cast<uint8_t>((p >> 16) & 0xFF)};
-    cell.bg = {0, 0, 0};
+    uint32_t p_top = pixels[static_cast<size_t>(sy_top * stride + sx)];
+    uint32_t p_bot = pixels[static_cast<size_t>(sy_bot * stride + sx)];
+    cell.fg = {static_cast<uint8_t>(p_top & 0xFF),
+               static_cast<uint8_t>((p_top >> 8) & 0xFF),
+               static_cast<uint8_t>((p_top >> 16) & 0xFF)};
+    cell.bg = {static_cast<uint8_t>(p_bot & 0xFF),
+               static_cast<uint8_t>((p_bot >> 8) & 0xFF),
+               static_cast<uint8_t>((p_bot >> 16) & 0xFF)};
   }
 }
 
@@ -761,7 +767,7 @@ static auto render_debugger_text_screen() -> void {
   constexpr int prompt_row = 39;
 
   int avail_rows = g_term_height;
-  if (avail_rows > min_term_height_status && !g_fullscreen) {
+  if (avail_rows > k_min_term_height_status && !g_fullscreen) {
     avail_rows = g_term_height - 1;
   }
 
@@ -843,7 +849,7 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
     return;
   }
   g_frame_count++;
-  bool flash_on = (g_frame_count / flash_divisor) % 2 == 0;
+  bool flash_on = (g_frame_count / k_flash_divisor) % 2 == 0;
 
   bool is_debug_mode = (system_state.mode == app_mode_debug);
   bool is_text_mode = !is_debug_mode && video_get_sw_text();
@@ -851,14 +857,16 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
   bool is_80col = video_get_sw_80col();
   bool is_page2 = video_get_sw_page2();
   bool alt_charset = video_get_sw_alt_charset();
-  uint16_t page_offset = is_page2 ? a2_page2_offset : 0x000;
+  const bool text_page2 = is_page2 && !video_get_sw_80store();
+  uint16_t page_offset = text_page2 ? k_a2_page2_offset : 0x000;
 
-  int hw_cursor_x = *mem_get_main_ptr(a2_cursor_x_addr);
-  int hw_cursor_y = *mem_get_main_ptr(a2_cursor_y_addr);
+  int hw_cursor_x = *mem_get_main_ptr(k_a2_cursor_x_addr);
+  int hw_cursor_y = *mem_get_main_ptr(k_a2_cursor_y_addr);
 
-  int a2_w_cols = is_80col ? a2_cols_80 : a2_cols_40;
+  int a2_w_cols = is_80col ? k_a2_cols_80 : k_a2_cols_40;
   int avail_rows = g_term_height;
-  bool show_status = (g_term_height > min_term_height_status && !g_fullscreen);
+  bool show_status =
+      (g_term_height > k_min_term_height_status && !g_fullscreen);
   if (show_status) {
     avail_rows = g_term_height - 1;
   }
@@ -878,7 +886,7 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
     render_debugger_text_screen();
 #endif
   } else if (is_text_mode) {
-    int display_h = a2_text_rows;
+    int display_h = k_a2_text_rows;
     int display_w = a2_w_cols;
     int off_x = (g_term_width - display_w) / 2;
     int off_y = (avail_rows - display_h) / 2;
@@ -891,6 +899,7 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
       for (int c = 0; c < display_w; ++c) {
         int tx = off_x + c;
         if (tx >= g_term_width) break;
+
         TuiState_t& cell =
             g_next_buffer.at(static_cast<size_t>(ty * g_term_width + tx));
         render_text_cell(r, c, is_80col, page_offset, alt_charset, flash_on,
@@ -933,7 +942,7 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
     }
 
     for (int i = 0; i < mixed_text_lines; ++i) {
-      int r = mixed_mode_text_start + i;
+      int r = k_mixed_mode_text_start + i;
       int ty = off_y + gfx_h + i;
       if (ty >= avail_rows) break;
       for (int c = 0; c < a2_w_cols; ++c) {
@@ -981,7 +990,8 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
   g_output_buffer.push_back('\x1b');
   g_output_buffer.push_back('[');
   g_output_buffer.push_back('H');
-  TuiPixel_t curr_fg = {1, 1, 1}, curr_bg = {1, 1, 1};
+  TuiPixel_t curr_fg = {1, 1, 1};
+  TuiPixel_t curr_bg = {1, 1, 1};
 
   for (int y = 0; y < g_term_height; ++y) {
     if (y == g_term_height - 1 && show_status) {
@@ -1001,11 +1011,7 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
       continue;
     }
 
-    std::array<char, 32> move_to{};
-    int mlen = snprintf(move_to.data(), move_to.size(), "\x1b[%d;1H", y + 1);
-    for (int i = 0; i < mlen; ++i) {
-      g_output_buffer.push_back(move_to.at(static_cast<size_t>(i)));
-    }
+    int cursor_x = -1;
 
     for (int x = 0; x < g_term_width; ++x) {
       if (y == g_term_height - 1 && x == g_term_width - 1) {
@@ -1016,8 +1022,19 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
       TuiState_t& prev =
           g_back_buffer.at(static_cast<size_t>(y * g_term_width + x));
 
-      if (next != prev || g_frame_count % refresh_full_divisor == 0) {
+      if (next != prev || g_frame_count % k_refresh_full_divisor == 0) {
         prev = next;
+
+        if (cursor_x != x) {
+          std::array<char, 32> pos_buf{};
+          int plen = snprintf(pos_buf.data(), pos_buf.size(), "\x1b[%d;%dH",
+                              y + 1, x + 1);
+          for (int i = 0; i < plen; ++i) {
+            g_output_buffer.push_back(pos_buf.at(static_cast<size_t>(i)));
+          }
+        }
+        cursor_x = x + 1;
+
         if (next.fg != curr_fg) {
           std::array<char, 32> buf{};
           int l = snprintf(buf.data(), buf.size(), "\x1b[38;2;%d;%d;%dm",
@@ -1040,10 +1057,6 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
              ++i) {
           g_output_buffer.push_back(static_cast<char>(next.glyph.at(i)));
         }
-      } else {
-        g_output_buffer.push_back('\x1b');
-        g_output_buffer.push_back('[');
-        g_output_buffer.push_back('C');
       }
     }
   }
@@ -1052,9 +1065,19 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
   g_output_buffer.push_back('0');
   g_output_buffer.push_back('m');
   if (isatty(STDOUT_FILENO) != 0) {
-    const ssize_t written =
-        write(STDOUT_FILENO, g_output_buffer.data(), g_output_buffer.size());
-    (void)written;
+    const char* ptr = g_output_buffer.data();
+    size_t remaining = g_output_buffer.size();
+    while (remaining > 0) {
+      ssize_t written = write(STDOUT_FILENO, ptr, remaining);
+      if (written < 0) {
+        if (errno == EINTR) {
+          continue;
+        }
+        break;
+      }
+      ptr += written;
+      remaining -= static_cast<size_t>(written);
+    }
   }
 }
 
@@ -1063,7 +1086,8 @@ auto tui_video_save_screenshot() -> void {
     return;
   }
 
-  bool show_status = (g_term_height > min_term_height_status && !g_fullscreen);
+  bool show_status =
+      (g_term_height > k_min_term_height_status && !g_fullscreen);
 
   // Find next available sequence number
   struct stat st{};

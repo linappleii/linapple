@@ -6,20 +6,29 @@
 #include <unistd.h>
 
 #include <atomic>
-#include <csignal>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+
+namespace {
 
 static struct termios g_orig_termios;
 static volatile sig_atomic_t g_terminal_initialized = 0;
 static std::atomic<bool> g_resized(false);
 static std::atomic<bool> g_interrupted(false);
+static bool s_atexit_registered = false;
 
-static void signal_handler(int sig) {
+static constexpr const char* k_enter_alt_screen_hide_cursor =
+    "\x1b[?1049h\x1b[?25l";
+static constexpr const char* k_exit_alt_screen_show_cursor =
+    "\x1b[?25h\x1b[?1049l";
+
+static auto signal_handler(int sig) -> void {
   switch (sig) {
     case SIGINT:
     case SIGTERM:
+    case SIGHUP:
+    case SIGQUIT:
       g_interrupted = true;
       break;
     case SIGWINCH:
@@ -30,7 +39,7 @@ static void signal_handler(int sig) {
   }
 }
 
-static void restore_terminal_signal_safe() {
+static auto restore_terminal_signal_safe() -> void {
   if (!g_terminal_initialized) {
     return;
   }
@@ -41,7 +50,7 @@ static void restore_terminal_signal_safe() {
   g_terminal_initialized = 0;
 }
 
-static void fatal_signal_handler(int sig) {
+static auto fatal_signal_handler(int sig) -> void {
   restore_terminal_signal_safe();
   struct sigaction sa;
   memset(&sa, 0, sizeof(sa));
@@ -51,9 +60,15 @@ static void fatal_signal_handler(int sig) {
   raise(sig);
 }
 
-int tui_terminal_initialize() {
-  if (g_terminal_initialized) {
+}  // namespace
+
+auto tui_terminal_initialize() -> int {
+  if (g_terminal_initialized != 0) {
     return 0;
+  }
+
+  if (isatty(STDIN_FILENO) == 0) {
+    return 1;
   }
 
   // Save current terminal state
@@ -77,7 +92,7 @@ int tui_terminal_initialize() {
   }
 
   // Enter alternate buffer and hide cursor
-  printf("\x1b[?1049h\x1b[?25l");
+  fputs(k_enter_alt_screen_hide_cursor, stdout);
   fflush(stdout);
 
   // Set up signal handlers
@@ -88,6 +103,8 @@ int tui_terminal_initialize() {
 
   sigaction(SIGINT, &sa, nullptr);
   sigaction(SIGTERM, &sa, nullptr);
+  sigaction(SIGHUP, &sa, nullptr);
+  sigaction(SIGQUIT, &sa, nullptr);
   sigaction(SIGWINCH, &sa, nullptr);
 
   struct sigaction sa_fatal;
@@ -101,19 +118,22 @@ int tui_terminal_initialize() {
   sigaction(SIGFPE, &sa_fatal, nullptr);
   sigaction(SIGILL, &sa_fatal, nullptr);
 
-  atexit(tui_terminal_shutdown);
+  if (!s_atexit_registered) {
+    atexit(tui_terminal_shutdown);
+    s_atexit_registered = true;
+  }
 
   g_terminal_initialized = 1;
   return 0;
 }
 
-void tui_terminal_shutdown() {
-  if (!g_terminal_initialized) {
+auto tui_terminal_shutdown() -> void {
+  if (g_terminal_initialized == 0) {
     return;
   }
 
   // Show cursor and exit alternate buffer
-  printf("\x1b[?25h\x1b[?1049l");
+  fputs(k_exit_alt_screen_show_cursor, stdout);
   fflush(stdout);
 
   // Restore original terminal state
@@ -122,8 +142,8 @@ void tui_terminal_shutdown() {
   g_terminal_initialized = 0;
 }
 
-bool tui_terminal_was_resized() { return g_resized.load(); }
+auto tui_terminal_was_resized() -> bool { return g_resized.load(); }
 
-void tui_terminal_clear_resized() { g_resized = false; }
+auto tui_terminal_clear_resized() -> void { g_resized = false; }
 
-bool tui_terminal_is_interrupted() { return g_interrupted.load(); }
+auto tui_terminal_is_interrupted() -> bool { return g_interrupted.load(); }

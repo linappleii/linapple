@@ -15,13 +15,14 @@
 #include <string>
 #include <vector>
 
+#if ENABLE_DEBUGGER
 #include "Debugger/Debug.h"
+#endif
 #include "TuiDiskSelect.h"
 #include "TuiVideo.h"
 #include "apple2/Apple2Types.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/Peripheral_Types.h"
-#include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
@@ -29,49 +30,42 @@
 #include "frontends/common/AudioMixer.h"
 #include "frontends/common/SaveStateManager.h"
 
+namespace {
+
 static int g_joy_fd = -1;
 static std::vector<uint8_t> g_input_queue;
 
-static constexpr uint8_t a2_key_up = 0x0B;
-static constexpr uint8_t a2_key_down = 0x0A;
-static constexpr uint8_t a2_key_left = 0x08;
-static constexpr uint8_t a2_key_right = 0x15;
-static constexpr uint8_t a2_key_esc = 0x1B;
-static constexpr uint8_t a2_key_enter = 0x0D;
-static constexpr uint8_t a2_key_backspace = 0x08;
-static constexpr uint8_t a2_key_delete = 0x7F;
-static constexpr uint8_t a2_key_ctrl_c = 0x03;
+static constexpr uint8_t k_a2_key_up = 0x0B;
+static constexpr uint8_t k_a2_key_down = 0x0A;
+static constexpr uint8_t k_a2_key_left = 0x08;
+static constexpr uint8_t k_a2_key_right = 0x15;
+static constexpr uint8_t k_a2_key_esc = 0x1B;
+static constexpr uint8_t k_a2_key_enter = 0x0D;
+static constexpr uint8_t k_a2_key_backspace = 0x08;
+static constexpr uint8_t k_a2_key_delete = 0x7F;
+static constexpr uint8_t k_a2_key_ctrl_c = 0x03;
 
-static constexpr int f1_vt_code = 11;
-static constexpr int f2_vt_code = 12;
-static constexpr int f3_vt_code = 13;
-static constexpr int f4_vt_code = 14;
-static constexpr int f5_vt_code = 15;
-static constexpr int f6_vt_code = 17;
-static constexpr int f7_vt_code = 18;
-static constexpr int f8_vt_code = 19;
-static constexpr int f9_vt_code = 20;
-static constexpr int f10_vt_code = 21;
-static constexpr int f11_vt_code = 23;
-static constexpr int f12_code = 24;
-static constexpr int disk_select_page_size = 14;
+static constexpr int k_f1_vt_code = 11;
+static constexpr int k_f2_vt_code = 12;
+static constexpr int k_f3_vt_code = 13;
+static constexpr int k_f4_vt_code = 14;
+static constexpr int k_f5_vt_code = 15;
+static constexpr int k_f6_vt_code = 17;
+static constexpr int k_f7_vt_code = 18;
+static constexpr int k_f8_vt_code = 19;
+static constexpr int k_f9_vt_code = 20;
+static constexpr int k_f10_vt_code = 21;
+static constexpr int k_f11_vt_code = 23;
+static constexpr int k_f12_code = 24;
+static constexpr size_t k_disk_select_page_size = 14;
 
-auto tui_input_initialize() -> void {
-  // Enable Mouse Tracking (Any Event + SGR)
-  printf("\x1b[?1003h\x1b[?1006h");
-  fflush(stdout);
-  g_joy_fd = open("/dev/input/js0", O_RDONLY | O_NONBLOCK);
-}
-
-auto tui_input_shutdown() -> void {
-  // Disable Mouse Tracking
-  printf("\x1b[?1006l\x1b[?1003l");
-  fflush(stdout);
-  if (g_joy_fd != -1) {
-    close(g_joy_fd);
-    g_joy_fd = -1;
-  }
-}
+static constexpr uint8_t k_ansi_final_byte_min = 0x40;
+static constexpr uint8_t k_ansi_final_byte_max = 0x7E;
+static constexpr uint8_t k_ascii_printable_min = 32;
+static constexpr uint8_t k_ascii_printable_max = 127;
+static constexpr size_t k_input_buffer_size = 256;
+static constexpr size_t k_max_escape_length = 32;
+static constexpr int k_esc_poll_timeout_ms = 3;
 
 static auto map_key(uint8_t a2_code) -> void {
   linapple_set_key_state(a2_code, true);
@@ -116,6 +110,7 @@ static auto toggle_keyboard_rocker() -> void {
 }
 
 static auto toggle_debugger() -> void {
+#if ENABLE_DEBUGGER
   if (system_state.disable_debugger) {
     return;
   }
@@ -124,6 +119,7 @@ static auto toggle_debugger() -> void {
   } else {
     debug_end();
   }
+#endif
 }
 
 static auto save_configuration() -> void {
@@ -183,14 +179,14 @@ constexpr size_t INPUT_BUFFER_SIZE = 256;
 static auto process_sequences() -> void {
   size_t i = 0;
   while (i < g_input_queue.size()) {
-    if (g_input_queue.at(i) == a2_key_esc) {
+    if (g_input_queue.at(i) == k_a2_key_esc) {
       if (i + 1 >= g_input_queue.size()) {
         struct pollfd pfd{};
         pfd.fd = STDIN_FILENO;
         pfd.events = POLLIN;
-        int pr = poll(&pfd, 1, 25);
+        int pr = poll(&pfd, 1, k_esc_poll_timeout_ms);
         if (pr > 0 && (pfd.revents & POLLIN) != 0) {
-          std::array<uint8_t, INPUT_BUFFER_SIZE> extra_buf{};
+          std::array<uint8_t, k_input_buffer_size> extra_buf{};
           ssize_t extra_n =
               read(STDIN_FILENO, extra_buf.data(), extra_buf.size());
           if (extra_n > 0) {
@@ -207,7 +203,7 @@ static auto process_sequences() -> void {
         } else if (tui_video_is_help_visible()) {
           tui_video_close_help();
         } else {
-          map_key(a2_key_esc);
+          map_key(k_a2_key_esc);
         }
         i++;
         continue;
@@ -238,11 +234,59 @@ static auto process_sequences() -> void {
           tui_video_save_screenshot();
         } else if (ss3_cmd == 'X') {  // F9
           cycle_video_mode();
+        } else if (ss3_cmd == 'A') {  // Cursor Up (SS3)
+          if (tui_disk_select_is_active()) {
+            tui_disk_select_move(-1, k_disk_select_page_size);
+          } else if (tui_video_is_help_visible()) {
+            tui_video_close_help();
+#if ENABLE_DEBUGGER
+          } else if (system_state.mode == app_mode_debug) {
+            debugger_process_key(linapple_key_up);
+#endif
+          } else {
+            map_key(k_a2_key_up);
+          }
+        } else if (ss3_cmd == 'B') {  // Cursor Down (SS3)
+          if (tui_disk_select_is_active()) {
+            tui_disk_select_move(1, k_disk_select_page_size);
+          } else if (tui_video_is_help_visible()) {
+            tui_video_close_help();
+#if ENABLE_DEBUGGER
+          } else if (system_state.mode == app_mode_debug) {
+            debugger_process_key(linapple_key_down);
+#endif
+          } else {
+            map_key(k_a2_key_down);
+          }
+        } else if (ss3_cmd == 'C') {  // Cursor Right (SS3)
+          if (tui_disk_select_is_active()) {
+            tui_disk_select_move(1, k_disk_select_page_size);
+          } else if (tui_video_is_help_visible()) {
+            tui_video_close_help();
+#if ENABLE_DEBUGGER
+          } else if (system_state.mode == app_mode_debug) {
+            debugger_process_key(linapple_key_right);
+#endif
+          } else {
+            map_key(k_a2_key_right);
+          }
+        } else if (ss3_cmd == 'D') {  // Cursor Left (SS3)
+          if (tui_disk_select_is_active()) {
+            tui_disk_select_move(-1, k_disk_select_page_size);
+          } else if (tui_video_is_help_visible()) {
+            tui_video_close_help();
+#if ENABLE_DEBUGGER
+          } else if (system_state.mode == app_mode_debug) {
+            debugger_process_key(linapple_key_left);
+#endif
+          } else {
+            map_key(k_a2_key_left);
+          }
         } else if (ss3_cmd == 'H') {  // Home
           if (tui_disk_select_is_active()) tui_disk_select_home();
         } else if (ss3_cmd == 'F') {  // End
           if (tui_disk_select_is_active())
-            tui_disk_select_end(disk_select_page_size);
+            tui_disk_select_end(k_disk_select_page_size);
         } else if (tui_video_is_help_visible()) {
           tui_video_close_help();
         }
@@ -277,6 +321,8 @@ static auto process_sequences() -> void {
               save_state_load();
             } else if (g_input_queue.at(i + 3) == 'K') {  // Linux Console F11
               save_state_save();
+            } else if (g_input_queue.at(i + 3) == 'L') {  // Linux Console F12
+              raise(SIGINT);
             } else if (tui_video_is_help_visible()) {
               tui_video_close_help();
             }
@@ -287,13 +333,15 @@ static auto process_sequences() -> void {
         }
 
         size_t end = i + 2;
-        while (end < g_input_queue.size() &&
-               (g_input_queue.at(end) < ANSI_FINAL_BYTE_MIN ||
-                g_input_queue.at(end) > ANSI_FINAL_BYTE_MAX)) {
+        while (end < g_input_queue.size() && (end - i) < k_max_escape_length &&
+               (g_input_queue.at(end) < k_ansi_final_byte_min ||
+                g_input_queue.at(end) > k_ansi_final_byte_max)) {
           end++;
         }
 
-        if (end < g_input_queue.size()) {
+        if (end < g_input_queue.size() &&
+            g_input_queue.at(end) >= k_ansi_final_byte_min &&
+            g_input_queue.at(end) <= k_ansi_final_byte_max) {
           uint8_t cmd = g_input_queue.at(end);
 
           if (g_input_queue.at(i + 2) == '<') {
@@ -353,7 +401,7 @@ static auto process_sequences() -> void {
             if (tui_disk_select_is_active()) tui_disk_select_home();
           } else if (cmd == 'F') {  // End (\x1b[F)
             if (tui_disk_select_is_active())
-              tui_disk_select_end(disk_select_page_size);
+              tui_disk_select_end(k_disk_select_page_size);
           } else if (cmd == '^') {  // rxvt Ctrl modifier
             const std::string token(
                 g_input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
@@ -409,43 +457,45 @@ static auto process_sequences() -> void {
                 save_state_save();
               } else if (token == "5") {  // Page Up (\x1b[5~)
                 if (tui_disk_select_is_active())
-                  tui_disk_select_page(-1, disk_select_page_size);
+                  tui_disk_select_page(-1, k_disk_select_page_size);
               } else if (token == "6") {  // Page Down (\x1b[6~)
                 if (tui_disk_select_is_active())
-                  tui_disk_select_page(1, disk_select_page_size);
+                  tui_disk_select_page(1, k_disk_select_page_size);
               } else if (token == "1" || token == "7") {  // Home (\x1b[1~)
                 if (tui_disk_select_is_active()) tui_disk_select_home();
               } else if (token == "4" || token == "8") {  // End (\x1b[4~)
                 if (tui_disk_select_is_active())
-                  tui_disk_select_end(disk_select_page_size);
+                  tui_disk_select_end(k_disk_select_page_size);
+              } else if (token.find(';') != std::string::npos) {
+                // Unhandled modified function key - ignore
               } else {
                 try {
                   int val = std::stoi(token);
-                  if (val == f1_vt_code) {
+                  if (val == k_f1_vt_code) {
                     tui_video_toggle_help();
-                  } else if (val == f2_vt_code) {
+                  } else if (val == k_f2_vt_code) {
                     reset_machine();
-                  } else if (val == f3_vt_code) {
+                  } else if (val == k_f3_vt_code) {
                     tui_video_close_help();
                     tui_disk_select_open(6, 0);
-                  } else if (val == f4_vt_code) {
+                  } else if (val == k_f4_vt_code) {
                     tui_video_close_help();
                     tui_disk_select_open(6, 1);
-                  } else if (val == f5_vt_code) {
+                  } else if (val == k_f5_vt_code) {
                     swap_drives();
-                  } else if (val == f6_vt_code) {
+                  } else if (val == k_f6_vt_code) {
                     tui_video_toggle_fullscreen();
-                  } else if (val == f7_vt_code) {
+                  } else if (val == k_f7_vt_code) {
                     toggle_debugger();
-                  } else if (val == f8_vt_code) {
+                  } else if (val == k_f8_vt_code) {
                     tui_video_save_screenshot();
-                  } else if (val == f9_vt_code) {
+                  } else if (val == k_f9_vt_code) {
                     cycle_video_mode();
-                  } else if (val == f10_vt_code) {
+                  } else if (val == k_f10_vt_code) {
                     save_state_load();
-                  } else if (val == f11_vt_code) {
+                  } else if (val == k_f11_vt_code) {
                     save_state_save();
-                  } else if (val == f12_code) {
+                  } else if (val == k_f12_code) {
                     raise(SIGINT);
                   } else if (tui_video_is_help_visible()) {
                     tui_video_close_help();
@@ -456,47 +506,61 @@ static auto process_sequences() -> void {
             }
           } else if (cmd == 'A') {
             if (tui_disk_select_is_active()) {
-              tui_disk_select_move(-1, disk_select_page_size);
+              tui_disk_select_move(-1, k_disk_select_page_size);
             } else if (tui_video_is_help_visible()) {
               tui_video_close_help();
+#if ENABLE_DEBUGGER
             } else if (system_state.mode == app_mode_debug) {
               debugger_process_key(linapple_key_up);
+#endif
             } else {
-              map_key(a2_key_up);
+              map_key(k_a2_key_up);
             }
           } else if (cmd == 'B') {
             if (tui_disk_select_is_active()) {
-              tui_disk_select_move(1, disk_select_page_size);
+              tui_disk_select_move(1, k_disk_select_page_size);
             } else if (tui_video_is_help_visible()) {
               tui_video_close_help();
+#if ENABLE_DEBUGGER
             } else if (system_state.mode == app_mode_debug) {
               debugger_process_key(linapple_key_down);
+#endif
             } else {
-              map_key(a2_key_down);
+              map_key(k_a2_key_down);
             }
           } else if (cmd == 'D') {
             if (tui_disk_select_is_active()) {
-              tui_disk_select_move(-1, disk_select_page_size);
+              tui_disk_select_move(-1, k_disk_select_page_size);
             } else if (tui_video_is_help_visible()) {
               tui_video_close_help();
+#if ENABLE_DEBUGGER
             } else if (system_state.mode == app_mode_debug) {
               debugger_process_key(linapple_key_left);
+#endif
             } else {
-              map_key(a2_key_left);
+              map_key(k_a2_key_left);
             }
           } else if (cmd == 'C') {
             if (tui_disk_select_is_active()) {
-              tui_disk_select_move(1, disk_select_page_size);
+              tui_disk_select_move(1, k_disk_select_page_size);
             } else if (tui_video_is_help_visible()) {
               tui_video_close_help();
+#if ENABLE_DEBUGGER
             } else if (system_state.mode == app_mode_debug) {
               debugger_process_key(linapple_key_right);
+#endif
             } else {
-              map_key(a2_key_right);
+              map_key(k_a2_key_right);
             }
           }
 
           i = end + 1;
+          continue;
+        }
+
+        if (end - i >= k_max_escape_length) {
+          // Discard runaway unclosed sequence
+          i++;
           continue;
         }
 
@@ -507,44 +571,49 @@ static auto process_sequences() -> void {
         tui_disk_select_close();
       } else if (tui_video_is_help_visible()) {
         tui_video_close_help();
+#if ENABLE_DEBUGGER
       } else if (system_state.mode == app_mode_debug) {
         debugger_process_key(linapple_key_escape);
+#endif
       } else {
-        map_key(a2_key_esc);
+        map_key(k_a2_key_esc);
       }
       i++;
       continue;
     }
 
     uint8_t b = g_input_queue.at(i);
-    if (b == a2_key_ctrl_c) {
+    if (b == k_a2_key_ctrl_c) {
       raise(SIGINT);
     } else if (tui_disk_select_is_active()) {
-      if (b == a2_key_enter || b == '\n') {
-        tui_disk_select_confirm();
-      } else if (b == a2_key_esc) {
+      if (b == k_a2_key_enter || b == '\n') {
+        (void)tui_disk_select_confirm();
+      } else if (b == k_a2_key_esc) {
         tui_disk_select_close();
-      } else if (b >= ASCII_PRINTABLE_MIN && b < ASCII_PRINTABLE_MAX) {
-        tui_disk_select_jump_char(static_cast<char>(b), disk_select_page_size);
+      } else if (b >= k_ascii_printable_min && b < k_ascii_printable_max) {
+        tui_disk_select_jump_char(static_cast<char>(b),
+                                  k_disk_select_page_size);
       }
     } else if (tui_video_is_help_visible()) {
       tui_video_close_help();
+#if ENABLE_DEBUGGER
     } else if (system_state.mode == app_mode_debug) {
-      if (b == a2_key_enter || b == '\n') {
+      if (b == k_a2_key_enter || b == '\n') {
         debugger_process_key(linapple_key_return);
-      } else if (b == a2_key_backspace || b == a2_key_delete) {
+      } else if (b == k_a2_key_backspace || b == k_a2_key_delete) {
         debugger_process_key(linapple_key_backspace);
-      } else if (b == a2_key_esc) {
+      } else if (b == k_a2_key_esc) {
         debugger_process_key(linapple_key_escape);
-      } else if (b >= ASCII_PRINTABLE_MIN && b < ASCII_PRINTABLE_MAX) {
+      } else if (b >= k_ascii_printable_min && b < k_ascii_printable_max) {
         debugger_process_key(static_cast<int>(b));
       }
-    } else if (b >= ASCII_PRINTABLE_MIN && b < ASCII_PRINTABLE_MAX) {
+#endif
+    } else if (b >= k_ascii_printable_min && b < k_ascii_printable_max) {
       map_key(b);
-    } else if (b == a2_key_enter) {
-      map_key(a2_key_enter);
-    } else if (b == a2_key_backspace || b == a2_key_delete) {
-      map_key(a2_key_backspace);
+    } else if (b == k_a2_key_enter) {
+      map_key(k_a2_key_enter);
+    } else if (b == k_a2_key_backspace || b == k_a2_key_delete) {
+      map_key(k_a2_key_backspace);
     }
 
     i++;
@@ -553,8 +622,29 @@ static auto process_sequences() -> void {
                       g_input_queue.begin() + static_cast<std::ptrdiff_t>(i));
 }
 
+}  // namespace
+
+auto tui_input_initialize() -> void {
+  // Enable Mouse Tracking (Any Event + SGR)
+  fputs("\x1b[?1003h\x1b[?1006h", stdout);
+  fflush(stdout);
+  g_joy_fd = open("/dev/input/js0", O_RDONLY | O_NONBLOCK);
+}
+
+auto tui_input_shutdown() -> void {
+  // Disable Mouse Tracking
+  fputs("\x1b[?1006l\x1b[?1003l", stdout);
+  fflush(stdout);
+  if (g_joy_fd != -1) {
+    close(g_joy_fd);
+    g_joy_fd = -1;
+  }
+  g_input_queue.clear();
+  g_input_queue.shrink_to_fit();
+}
+
 auto tui_input_poll() -> void {
-  std::array<uint8_t, INPUT_BUFFER_SIZE> buf{};
+  std::array<uint8_t, k_input_buffer_size> buf{};
   ssize_t n = read(STDIN_FILENO, buf.data(), buf.size());
   if (n > 0) {
     for (ssize_t j = 0; j < n; ++j) {
