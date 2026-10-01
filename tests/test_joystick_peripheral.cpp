@@ -800,6 +800,38 @@ TEST_CASE("Game port: a position changed mid-pulse moves that channel's fall") {
 }
 
 TEST_CASE(
+    "Game port: a pot moved after its pulse ended does not revive the pulse") {
+  GamePortMachine_t machine;
+
+  // One PREAD per position with nothing between them but the caller's own
+  // instructions. The pulse at 1 is 21 cycles and is over before PREAD
+  // returns; the next strobe, some forty cycles on, finds the timer idle and
+  // starts the 1,407-cycle pulse for 127, so Y is 127 and then 254, each in
+  // 11p + 23 cycles. The output falls when the capacitor reaches the
+  // threshold and the timer is idle whatever the pot does afterwards (NE558
+  // datasheet; Sather 7-11): a timer that measured the finished 21-cycle
+  // pulse against the pot's new position would take it for a running
+  // 1,407-cycle one, refuse the strobe and count the remainder, 124.
+  struct Golden_t {
+    uint8_t position;
+    uint32_t cycles;
+  };
+  const std::array<Golden_t, 3> goldens = {{
+      {1, 34},
+      {127, 1420},
+      {254, 2817},
+  }};
+  for (const Golden_t& golden : goldens) {
+    CAPTURE(golden.position);
+    GamePortMachine_t::set_paddle(0, golden.position);
+    const GamePortMachine_t::Pread_t result = machine.pread(0);
+    REQUIRE(result.returned);
+    CHECK(result.y == golden.position);
+    CHECK(result.cycles == golden.cycles);
+  }
+}
+
+TEST_CASE(
     "Game port: bits 0-6 are the floating bus and bit 7 the timer or the "
     "switch, on a paddle and on a button") {
   GamePortMachine_t machine;

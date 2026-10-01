@@ -84,6 +84,9 @@ struct GamePort_t {
   std::array<uint64_t, paddle_count> trigger_cycle{};
   std::array<uint8_t, paddle_count> position{
       {centre_position, centre_position, centre_position, centre_position}};
+  // The position each running pulse is measured against: the pot as it stood
+  // at the accepted strobe, moved with the pot only while the output is high.
+  std::array<uint8_t, paddle_count> pulse_position{};
   std::array<bool, switch_count> connector{};
   std::array<bool, switch_count> keyboard{};
   uint8_t pulldowns = default_pulldowns;
@@ -100,15 +103,18 @@ auto pulse_cycles(uint8_t position) -> uint64_t {
 // A trigger of 0 is a timer never triggered since power-on, when the NE558's
 // output is low (NE558 datasheet, note 3); a trigger ahead of the counter is
 // one the counter was wound back past, and the real machine would have run
-// that pulse out long before. The position is read at each sample, as the
-// capacitor sees the pot it has now.
+// that pulse out long before. The pulse is measured against the position
+// latched for it, not the pot's current one: the output falls when the
+// capacitor reaches the threshold and the timer is then idle whatever the pot
+// does afterwards (NE558 datasheet; Sather 7-11), so a pot moved up after the
+// fall must not stretch a finished pulse back into a running one.
 auto timer_expired(const GamePort_t* port, size_t paddle, uint64_t now)
     -> bool {
   const uint64_t trigger = port->trigger_cycle.at(paddle);
   if (trigger == 0 || trigger > now) {
     return true;
   }
-  return now - trigger >= pulse_cycles(port->position.at(paddle));
+  return now - trigger >= pulse_cycles(port->pulse_position.at(paddle));
 }
 
 // Nothing between the connector pin and D7 stores state (Apple II Reference
@@ -188,6 +194,7 @@ auto joystick_strobe(void* instance) -> void {
   for (size_t paddle = 0; paddle < paddle_count; ++paddle) {
     if (timer_expired(port, paddle, now)) {
       port->trigger_cycle.at(paddle) = std::max<uint64_t>(now, 1);
+      port->pulse_position.at(paddle) = port->position.at(paddle);
     }
   }
 }
@@ -278,7 +285,15 @@ auto joystick_abi_command(void* instance, uint32_t command_id,
       }
       const size_t paddle =
           (static_cast<size_t>(axis->joystick) * axis_count) + axis->axis;
+      // The capacitor charges through the pot it has now, so a pot moved while
+      // the output is high moves that fall; one moved after the fall meets an
+      // idle timer and changes nothing until the next strobe.
+      const bool running =
+          !timer_expired(port, paddle, port->host->GetCycles());
       port->position.at(paddle) = axis->value;
+      if (running) {
+        port->pulse_position.at(paddle) = axis->value;
+      }
       return peripheral_ok;
     }
     case JOYSTICK_CMD_SET_BUTTON: {
@@ -393,7 +408,10 @@ auto joystick_abi_save_state(void* instance, void* state_buffer,
 }
 
 // Any trigger loads: one ahead of the counter reads expired, as a real
-// machine's timer would be three milliseconds after anything. The shift-key
+// machine's timer would be three milliseconds after anything. The frame
+// carries no positions, so a loaded pulse is measured against the pot as the
+// host holds it now; the host re-sends positions within one slice and a
+// pulse is under three milliseconds, so the two seldom differ. The shift-key
 // jumper and the pull-down mask are the machine's wiring, not its state, and
 // stay as the host set them.
 auto joystick_abi_load_state(void* instance, const void* state_buffer,
@@ -412,6 +430,7 @@ auto joystick_abi_load_state(void* instance, const void* state_buffer,
   auto* port = static_cast<GamePort_t*>(instance);
   for (size_t paddle = 0; paddle < paddle_count; ++paddle) {
     port->trigger_cycle.at(paddle) = state.trigger_cycle[paddle];
+    port->pulse_position.at(paddle) = port->position.at(paddle);
   }
   return peripheral_ok;
 }
