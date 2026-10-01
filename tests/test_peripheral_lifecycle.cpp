@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -463,4 +464,41 @@ TEST_CASE(
 
     dlclose(self_handle);
   }
+}
+
+TEST_CASE("Peripheral Manager: The built-in cards register in id order") {
+  // Three internal devices share slot 0 and the first registered is the one
+  // the manifest names and the one that answers an address two of them claim.
+  // Static initialisation gives no order of its own, so the registry has to.
+  TestFixtures::ScopedTestConfig_t config(
+      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  TestFixtures::ScopedCore_t core(config);
+
+  const std::vector<Peripheral_t*>& registry =
+      peripheral_get_builtin_registry();
+  REQUIRE(registry.size() >= 2);
+  for (size_t i = 1; i < registry.size(); ++i) {
+    REQUIRE(registry[i - 1] != nullptr);
+    REQUIRE(registry[i] != nullptr);
+    CAPTURE(registry[i - 1]->id);
+    CAPTURE(registry[i]->id);
+    CHECK(std::strcmp(registry[i - 1]->id, registry[i]->id) < 0);
+  }
+
+  const Peripheral_t* front = nullptr;
+  for (const Peripheral_t* p : registry) {
+    if (p->default_slot == 0) {
+      front = p;
+      break;
+    }
+  }
+  REQUIRE(front != nullptr);
+
+  SS_PERIPHERAL_MANIFEST manifest;
+  peripheral_get_manifest(&manifest);
+  CHECK(std::string(manifest.peripherals[0].name) == front->name);
+#ifdef ENABLE_PERIPHERAL_JOYSTICK
+  CHECK(std::string(front->id) == "linapple.joystick");
+  CHECK(std::string(manifest.peripherals[0].name) == "Joystick");
+#endif
 }

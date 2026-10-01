@@ -34,10 +34,25 @@ auto peripheral_get_builtin_registry() -> std::vector<Peripheral_t*>& {
   return registry;
 }
 
+static auto builtin_id(const Peripheral_t* p) -> const char* {
+  return (p != nullptr && p->id != nullptr) ? p->id : "";
+}
+
 auto peripheral_register_builtin(Peripheral_t* p) -> void {
-  if (p != nullptr) {
-    peripheral_get_builtin_registry().push_back(p);
+  if (p == nullptr) {
+    return;
   }
+  // Static initialisers fill this registry in an order the language leaves
+  // unspecified, and the first card to register an address is the one that
+  // answers it. Sorting by id where the registry is filled gives every walk of
+  // it, and so every machine built from it, the same order.
+  auto& registry = peripheral_get_builtin_registry();
+  const auto position =
+      std::lower_bound(registry.begin(), registry.end(), p,
+                       [](const Peripheral_t* a, const Peripheral_t* b) {
+                         return strcmp(builtin_id(a), builtin_id(b)) < 0;
+                       });
+  registry.insert(position, p);
 }
 
 // --- Internal Types ---

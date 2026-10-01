@@ -27,8 +27,6 @@ struct LoadedPlugin_t {
 static std::vector<LoadedPlugin_t> g_loaded_plugins;
 static bool g_plugins_initialized = false;
 
-extern auto peripheral_get_builtin_registry() -> std::vector<Peripheral_t*>&;
-
 auto peripheral_find_internal(const char* name) -> Peripheral_t* {
   if (name == nullptr) {
     return nullptr;
