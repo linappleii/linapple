@@ -134,6 +134,10 @@ inline auto get_data_search_paths() -> std::vector<std::string> {
     paths.emplace_back(join(exec_dir, subpath));
   }
 
+#ifdef SOURCE_RES_DIR
+  paths.emplace_back(join(SOURCE_RES_DIR, "/"));
+#endif
+
   paths.emplace_back("/usr/local/share/linapple/");
   paths.emplace_back("/usr/share/linapple/");
 
