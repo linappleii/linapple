@@ -7,7 +7,7 @@ struct Peripheral_t;
 extern "C" {
 #endif
 
-auto joystick_get_descriptor() -> Peripheral_t*;
+struct Peripheral_t* joystick_get_descriptor(void);
 
 #ifdef __cplusplus
 }

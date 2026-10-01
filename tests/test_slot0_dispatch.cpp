@@ -20,12 +20,8 @@
 
 namespace {
 
-constexpr uint16_t addr_keyboard = 0xC000;
-constexpr uint8_t key_strobe_bit = 0x80;
-constexpr uint8_t key_code_mask = 0x7F;
 constexpr uint8_t joy_centre = 127;
 constexpr uint8_t joy_off_centre = 200;
-constexpr uint32_t key_a = 'A';
 constexpr uint32_t unknown_joystick_id = PERIPHERAL_SUBSYSTEM_JOYSTICK | 0x00FF;
 
 enum class Order_t : uint8_t { keyboard_first, joystick_first };
@@ -125,10 +121,6 @@ auto send(uint32_t cmd_id, const void* data, size_t size) -> void {
   settle();
 }
 
-auto read_io(uint16_t addr) -> uint8_t {
-  return io_map_dispatch(0, addr, 0, 0, 0);
-}
-
 auto keyboard_state() -> KeyboardSaveState_t {
   KeyboardSaveState_t state{};
   size_t size = sizeof(state);
@@ -153,21 +145,14 @@ auto keyboard_mods() -> KeyboardModifiers_t {
   return mods;
 }
 
-auto press_key(uint32_t key) -> void {
-  KeyboardEvent_t event{};
-  event.key = key;
-  event.is_down = 1;
-  send(keyboard_cmd_event, &event, sizeof(event));
-}
-
 auto press_button(uint8_t button) -> void {
-  const JoystickButtonPayload_t payload{button, true, {0, 0}};
-  send(JOY_CMD_SET_BUTTON, &payload, sizeof(payload));
+  const JoystickButtonPayload_t payload{button, 1, 0, 0};
+  send(JOYSTICK_CMD_SET_BUTTON, &payload, sizeof(payload));
 }
 
 auto move_axis(uint8_t joystick, uint8_t axis, uint8_t value) -> void {
   const JoystickAxisPayload_t payload{joystick, axis, value, 0};
-  send(JOY_CMD_SET_AXIS, &payload, sizeof(payload));
+  send(JOYSTICK_CMD_SET_AXIS, &payload, sizeof(payload));
 }
 
 const std::initializer_list<Order_t> both_orders = {Order_t::keyboard_first,
@@ -240,31 +225,6 @@ TEST_CASE("Slot 0: flipping the rocker leaves the sticks where they are") {
   }
 }
 
-TEST_CASE("Slot 0: resetting the joystick leaves the keyboard alone") {
-  for (Order_t order : both_orders) {
-    CAPTURE(order);
-    Slot0_t slot0(order);
-    REQUIRE(slot0.keyboard_registered == 0);
-    REQUIRE(slot0.joystick_registered == 0);
-
-    const uint8_t on = 1;
-    send(keyboard_cmd_set_rocker, &on, sizeof(on));
-    press_key(key_a);
-    move_axis(0, 0, joy_off_centre);
-    press_button(1);
-    REQUIRE((read_io(addr_keyboard) & key_strobe_bit) != 0);
-
-    send(JOY_CMD_RESET, nullptr, 0);
-
-    CHECK(joystick_state().x_pos[0] == joy_centre);
-    CHECK(joystick_state().buttons[1] == 0);
-    CHECK(keyboard_state().rocker_switch == 1);
-    // The key the machine has not read yet is still waiting at $C000.
-    CHECK((read_io(addr_keyboard) & key_strobe_bit) != 0);
-    CHECK((read_io(addr_keyboard) & key_code_mask) == key_a);
-  }
-}
-
 TEST_CASE("Slot 0: a button payload does not hold down shift") {
   for (Order_t order : both_orders) {
     CAPTURE(order);
@@ -274,8 +234,8 @@ TEST_CASE("Slot 0: a button payload does not hold down shift") {
 
     const KeyboardModifiers_t before = keyboard_mods();
     // Bytes 1, 1 would land on KeyboardModifiers_t::shift and ::ctrl.
-    const JoystickButtonPayload_t payload{1, true, {0, 0}};
-    send(JOY_CMD_SET_BUTTON, &payload, sizeof(payload));
+    const JoystickButtonPayload_t payload{1, 1, 0, 0};
+    send(JOYSTICK_CMD_SET_BUTTON, &payload, sizeof(payload));
 
     const KeyboardModifiers_t after = keyboard_mods();
     CHECK(after.shift == 0);
@@ -344,17 +304,17 @@ TEST_CASE("Slot 0: a payload of the wrong size changes nothing") {
 
     // Verify dispatch rejects invalid payload lengths.
     const OneByteLong_t<JoystickAxisPayload_t> axis{{0, 1, joy_centre, 0}, 0};
-    REQUIRE(peripheral_command(0, JOY_CMD_SET_AXIS, &axis,
+    REQUIRE(peripheral_command(0, JOYSTICK_CMD_SET_AXIS, &axis,
                                sizeof(JoystickAxisPayload_t) - 1) ==
             peripheral_ok);
-    REQUIRE(peripheral_command(0, JOY_CMD_SET_AXIS, &axis,
+    REQUIRE(peripheral_command(0, JOYSTICK_CMD_SET_AXIS, &axis,
                                sizeof(JoystickAxisPayload_t) + 1) ==
             peripheral_ok);
-    const OneByteLong_t<JoystickButtonPayload_t> button{{0, true, {0, 0}}, 0};
-    REQUIRE(peripheral_command(0, JOY_CMD_SET_BUTTON, &button,
+    const OneByteLong_t<JoystickButtonPayload_t> button{{0, 1, 0, 0}, 0};
+    REQUIRE(peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &button,
                                sizeof(JoystickButtonPayload_t) - 1) ==
             peripheral_ok);
-    REQUIRE(peripheral_command(0, JOY_CMD_SET_BUTTON, &button,
+    REQUIRE(peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &button,
                                sizeof(JoystickButtonPayload_t) + 1) ==
             peripheral_ok);
     KeyboardModifiers_t mods{};
@@ -400,24 +360,24 @@ TEST_CASE("Slot 0: a dispatcher says peripheral_error to the wrong size") {
 
   const OneByteLong_t<JoystickAxisPayload_t> axis{{0, 0, joy_off_centre, 0}, 0};
   constexpr size_t axis_size = sizeof(JoystickAxisPayload_t);
-  CHECK(joystick->command(joy, JOY_CMD_SET_AXIS, &axis, axis_size) ==
+  CHECK(joystick->command(joy, JOYSTICK_CMD_SET_AXIS, &axis, axis_size) ==
         peripheral_ok);
-  CHECK(joystick->command(joy, JOY_CMD_SET_AXIS, &axis, axis_size - 1) ==
+  CHECK(joystick->command(joy, JOYSTICK_CMD_SET_AXIS, &axis, axis_size - 1) ==
         peripheral_error);
-  CHECK(joystick->command(joy, JOY_CMD_SET_AXIS, &axis, axis_size + 1) ==
+  CHECK(joystick->command(joy, JOYSTICK_CMD_SET_AXIS, &axis, axis_size + 1) ==
         peripheral_error);
-  CHECK(joystick->command(joy, JOY_CMD_SET_AXIS, nullptr, axis_size) ==
+  CHECK(joystick->command(joy, JOYSTICK_CMD_SET_AXIS, nullptr, axis_size) ==
         peripheral_error);
 
-  const OneByteLong_t<JoystickButtonPayload_t> button{{0, true, {0, 0}}, 0};
+  const OneByteLong_t<JoystickButtonPayload_t> button{{0, 1, 0, 0}, 0};
   constexpr size_t button_size = sizeof(JoystickButtonPayload_t);
-  CHECK(joystick->command(joy, JOY_CMD_SET_BUTTON, &button, button_size) ==
+  CHECK(joystick->command(joy, JOYSTICK_CMD_SET_BUTTON, &button, button_size) ==
         peripheral_ok);
-  CHECK(joystick->command(joy, JOY_CMD_SET_BUTTON, &button, button_size - 1) ==
-        peripheral_error);
-  CHECK(joystick->command(joy, JOY_CMD_SET_BUTTON, &button, button_size + 1) ==
-        peripheral_error);
-  CHECK(joystick->command(joy, JOY_CMD_SET_BUTTON, nullptr, button_size) ==
+  CHECK(joystick->command(joy, JOYSTICK_CMD_SET_BUTTON, &button,
+                          button_size - 1) == peripheral_error);
+  CHECK(joystick->command(joy, JOYSTICK_CMD_SET_BUTTON, &button,
+                          button_size + 1) == peripheral_error);
+  CHECK(joystick->command(joy, JOYSTICK_CMD_SET_BUTTON, nullptr, button_size) ==
         peripheral_error);
 }
 
@@ -482,9 +442,9 @@ TEST_CASE("Slot 0: a foreign id is incompatible, never an error") {
   size = sizeof(answer);
   CHECK(joystick->query(joy, keyboard_query_rocker, &answer, &size) ==
         peripheral_incompatible);
-  const JoystickButtonPayload_t button{0, true, {0, 0}};
-  CHECK(keyboard->command(kbd, JOY_CMD_SET_BUTTON, &button, sizeof(button)) ==
-        peripheral_incompatible);
+  const JoystickButtonPayload_t button{0, 1, 0, 0};
+  CHECK(keyboard->command(kbd, JOYSTICK_CMD_SET_BUTTON, &button,
+                          sizeof(button)) == peripheral_incompatible);
   CHECK(joystick->command(joy, keyboard_cmd_set_rocker, &answer,
                           sizeof(answer)) == peripheral_incompatible);
 

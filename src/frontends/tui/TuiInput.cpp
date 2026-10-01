@@ -659,8 +659,9 @@ auto tui_input_poll() -> void {
       // p. 100); a device with more buttons keeps the rest to itself.
       if ((js.type & JS_EVENT_BUTTON) != 0 && js.number < 3) {
         const JoystickButtonPayload_t payload = {
-            js.number, js.value != 0, {0, 0}};
-        peripheral_command(0, JOY_CMD_SET_BUTTON, &payload, sizeof(payload));
+            js.number, static_cast<uint8_t>(js.value != 0), 0, 0};
+        peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &payload,
+                           sizeof(payload));
       }
     }
   }

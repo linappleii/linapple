@@ -14,9 +14,10 @@
 
 auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
 
+extern "C" auto joystick_abi_c_descriptor() -> Peripheral_t*;
 extern "C" auto joystick_abi_c_state_size() -> size_t;
-extern "C" auto joystick_abi_c_reset_cycle_offset() -> size_t;
-extern "C" auto joystick_abi_c_button_latches_offset() -> size_t;
+extern "C" auto joystick_abi_c_trigger_cycle_offset() -> size_t;
+extern "C" auto joystick_abi_c_trigger_cycle_size() -> size_t;
 extern "C" auto joystick_abi_c_x_pos_offset() -> size_t;
 extern "C" auto joystick_abi_c_y_pos_offset() -> size_t;
 extern "C" auto joystick_abi_c_buttons_offset() -> size_t;
@@ -151,14 +152,15 @@ class JoystickHarness {
   auto set_axis(void* instance, uint8_t joystick, uint8_t axis, uint8_t value)
       -> PeripheralStatus_t {
     JoystickAxisPayload_t payload{joystick, axis, value, 0};
-    return joystick_get_descriptor()->command(instance, JOY_CMD_SET_AXIS,
+    return joystick_get_descriptor()->command(instance, JOYSTICK_CMD_SET_AXIS,
                                               &payload, sizeof(payload));
   }
 
   auto set_button(void* instance, uint8_t button, bool down)
       -> PeripheralStatus_t {
-    JoystickButtonPayload_t payload{button, down, {0, 0}};
-    return joystick_get_descriptor()->command(instance, JOY_CMD_SET_BUTTON,
+    JoystickButtonPayload_t payload{button, static_cast<uint8_t>(down ? 1 : 0),
+                                    0, 0};
+    return joystick_get_descriptor()->command(instance, JOYSTICK_CMD_SET_BUTTON,
                                               &payload, sizeof(payload));
   }
 
@@ -323,26 +325,32 @@ TEST_CASE("Joystick Peripheral: Command ABI Protocol") {
 
   // Set axis
   JoystickAxisPayload_t axis_payload{0, 0, 200, 0};
-  CHECK(descriptor->command(instance, JOY_CMD_SET_AXIS, &axis_payload,
+  CHECK(descriptor->command(instance, JOYSTICK_CMD_SET_AXIS, &axis_payload,
                             sizeof(axis_payload)) == peripheral_ok);
 
   // Invalid joystick index
   JoystickAxisPayload_t bad_joy{5, 0, 200, 0};
-  CHECK(descriptor->command(instance, JOY_CMD_SET_AXIS, &bad_joy,
+  CHECK(descriptor->command(instance, JOYSTICK_CMD_SET_AXIS, &bad_joy,
                             sizeof(bad_joy)) == peripheral_error);
 
   // Invalid axis index
   JoystickAxisPayload_t bad_axis{0, 2, 200, 0};
-  CHECK(descriptor->command(instance, JOY_CMD_SET_AXIS, &bad_axis,
+  CHECK(descriptor->command(instance, JOYSTICK_CMD_SET_AXIS, &bad_axis,
                             sizeof(bad_axis)) == peripheral_error);
 
-  // Invalid button index
-  JoystickButtonPayload_t bad_btn{7, true, {0, 0}};
-  CHECK(descriptor->command(instance, JOY_CMD_SET_BUTTON, &bad_btn,
+  // Invalid button index, level and source
+  JoystickButtonPayload_t bad_btn{7, 1, 0, 0};
+  CHECK(descriptor->command(instance, JOYSTICK_CMD_SET_BUTTON, &bad_btn,
                             sizeof(bad_btn)) == peripheral_error);
+  JoystickButtonPayload_t bad_level{0, 2, 0, 0};
+  CHECK(descriptor->command(instance, JOYSTICK_CMD_SET_BUTTON, &bad_level,
+                            sizeof(bad_level)) == peripheral_error);
+  JoystickButtonPayload_t bad_source{0, 1, 2, 0};
+  CHECK(descriptor->command(instance, JOYSTICK_CMD_SET_BUTTON, &bad_source,
+                            sizeof(bad_source)) == peripheral_error);
 
   // Null data pointer
-  CHECK(descriptor->command(instance, JOY_CMD_SET_AXIS, nullptr,
+  CHECK(descriptor->command(instance, JOYSTICK_CMD_SET_AXIS, nullptr,
                             sizeof(axis_payload)) == peripheral_error);
 
   // Unhandled command ID
@@ -396,7 +404,8 @@ TEST_CASE("Joystick Peripheral: Host Boundary and Lifecycle Robustness") {
   CHECK(joystick_get_descriptor()->load_state(nullptr, dummy_buf.data(),
                                               dummy_size) == peripheral_error);
   const JoystickAxisPayload_t axis{0, 0, 0, 0};
-  CHECK(joystick_get_descriptor()->command(nullptr, JOY_CMD_SET_AXIS, &axis,
+  CHECK(joystick_get_descriptor()->command(nullptr, JOYSTICK_CMD_SET_AXIS,
+                                           &axis,
                                            sizeof(axis)) == peripheral_error);
 
   if (joystick_get_descriptor()->reset != nullptr) {
@@ -410,18 +419,19 @@ TEST_CASE("Joystick Peripheral: Host Boundary and Lifecycle Robustness") {
 
 TEST_CASE(
     "Joystick Peripheral: The C99 view of the frame matches the C++ one") {
+  CHECK(joystick_abi_c_descriptor() == joystick_get_descriptor());
   static_assert(sizeof(JoystickSaveState_t) == 56,
                 "the version-1 frame is 56 bytes");
   CHECK(joystick_abi_c_state_size() == 56);
   CHECK(joystick_abi_c_state_size() == sizeof(JoystickSaveState_t));
   CHECK(joystick_abi_c_state_version() == JOYSTICK_STATE_VERSION);
 
-  CHECK(joystick_abi_c_reset_cycle_offset() == 8);
-  CHECK(joystick_abi_c_reset_cycle_offset() ==
-        offsetof(JoystickSaveState_t, reset_cycle));
-  CHECK(joystick_abi_c_button_latches_offset() == 16);
-  CHECK(joystick_abi_c_button_latches_offset() ==
-        offsetof(JoystickSaveState_t, button_latches));
+  CHECK(joystick_abi_c_trigger_cycle_offset() == 8);
+  CHECK(joystick_abi_c_trigger_cycle_offset() ==
+        offsetof(JoystickSaveState_t, trigger_cycle));
+  CHECK(joystick_abi_c_trigger_cycle_size() == 32);
+  CHECK(joystick_abi_c_trigger_cycle_size() ==
+        sizeof(JoystickSaveState_t::trigger_cycle));
   CHECK(joystick_abi_c_x_pos_offset() == 40);
   CHECK(joystick_abi_c_x_pos_offset() == offsetof(JoystickSaveState_t, x_pos));
   CHECK(joystick_abi_c_y_pos_offset() == 42);

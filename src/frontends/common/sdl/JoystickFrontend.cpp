@@ -206,10 +206,10 @@ auto joy_frontend_update() -> void {
             g_joy1.get(), static_cast<int>(g_joy_config.joy0_button_map[1]));
       }
 
-      JoystickButtonPayload_t pb0 = {0, b0, {0, 0}};
-      peripheral_command(0, JOY_CMD_SET_BUTTON, &pb0, sizeof(pb0));
-      JoystickButtonPayload_t pb1 = {1, b1, {0, 0}};
-      peripheral_command(0, JOY_CMD_SET_BUTTON, &pb1, sizeof(pb1));
+      JoystickButtonPayload_t pb0 = {0, b0, 0, 0};
+      peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &pb0, sizeof(pb0));
+      JoystickButtonPayload_t pb1 = {1, b1, 0, 0};
+      peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &pb1, sizeof(pb1));
 
       int x =
           (static_cast<int>(sdl_compat_get_joystick_axis(
@@ -261,9 +261,9 @@ auto joy_frontend_update() -> void {
       const auto clamped_y =
           static_cast<uint8_t>(clamp_val(y + g_frontend_pdl_trim_y, 0, 255));
       JoystickAxisPayload_t px = {0, 0, clamped_x, 0};
-      peripheral_command(0, JOY_CMD_SET_AXIS, &px, sizeof(px));
+      peripheral_command(0, JOYSTICK_CMD_SET_AXIS, &px, sizeof(px));
       JoystickAxisPayload_t py = {0, 1, clamped_y, 0};
-      peripheral_command(0, JOY_CMD_SET_AXIS, &py, sizeof(py));
+      peripheral_command(0, JOYSTICK_CMD_SET_AXIS, &py, sizeof(py));
     }
   }
 
@@ -279,12 +279,12 @@ auto joy_frontend_update() -> void {
 
       bool b2 = sdl_compat_get_joystick_button(
           g_joy2.get(), static_cast<int>(g_joy_config.joy1_button_map));
-      JoystickButtonPayload_t pb2 = {2, b2, {0, 0}};
-      peripheral_command(0, JOY_CMD_SET_BUTTON, &pb2, sizeof(pb2));
+      JoystickButtonPayload_t pb2 = {2, b2, 0, 0};
+      peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &pb2, sizeof(pb2));
       if (k_joy_info.at(static_cast<size_t>(g_joy_config.joy_type[1])).device !=
           DEVICE_NONE) {
-        JoystickButtonPayload_t pb1 = {1, b2, {0, 0}};
-        peripheral_command(0, JOY_CMD_SET_BUTTON, &pb1, sizeof(pb1));
+        JoystickButtonPayload_t pb1 = {1, b2, 0, 0};
+        peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &pb1, sizeof(pb1));
       }
 
       int x =
@@ -309,9 +309,9 @@ auto joy_frontend_update() -> void {
       y = clamp_val(y, 0, 255);
 
       JoystickAxisPayload_t px = {1, 0, static_cast<uint8_t>(x), 0};
-      peripheral_command(0, JOY_CMD_SET_AXIS, &px, sizeof(px));
+      peripheral_command(0, JOYSTICK_CMD_SET_AXIS, &px, sizeof(px));
       JoystickAxisPayload_t py = {1, 1, static_cast<uint8_t>(y), 0};
-      peripheral_command(0, JOY_CMD_SET_AXIS, &py, sizeof(py));
+      peripheral_command(0, JOYSTICK_CMD_SET_AXIS, &py, sizeof(py));
     }
   }
 }
@@ -417,40 +417,40 @@ auto joy_frontend_process_key(SdlKeycode_t virtkey, bool extended, bool down,
       if (down) {
         if (k_joy_info.at(static_cast<size_t>(g_joy_config.joy_type[1]))
                 .device != DEVICE_KEYBOARD) {
-          JoystickButtonPayload_t p = {0, true, {0, 0}};
-          peripheral_command(0, JOY_CMD_SET_BUTTON, &p, sizeof(p));
+          JoystickButtonPayload_t p = {0, 1, 0, 0};
+          peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &p, sizeof(p));
         } else if (k_joy_info.at(static_cast<size_t>(g_joy_config.joy_type[1]))
                        .device != DEVICE_NONE) {
-          JoystickButtonPayload_t p2 = {2, true, {0, 0}};
-          peripheral_command(0, JOY_CMD_SET_BUTTON, &p2, sizeof(p2));
-          JoystickButtonPayload_t p1 = {1, true, {0, 0}};
-          peripheral_command(0, JOY_CMD_SET_BUTTON, &p1, sizeof(p1));
+          JoystickButtonPayload_t p2 = {2, 1, 0, 0};
+          peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &p2, sizeof(p2));
+          JoystickButtonPayload_t p1 = {1, 1, 0, 0};
+          peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &p1, sizeof(p1));
         }
       } else {
         if (k_joy_info.at(static_cast<size_t>(g_joy_config.joy_type[1]))
                 .device != DEVICE_KEYBOARD) {
-          JoystickButtonPayload_t p = {0, false, {0, 0}};
-          peripheral_command(0, JOY_CMD_SET_BUTTON, &p, sizeof(p));
+          JoystickButtonPayload_t p = {0, 0, 0, 0};
+          peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &p, sizeof(p));
         } else if (k_joy_info.at(static_cast<size_t>(g_joy_config.joy_type[1]))
                        .device != DEVICE_NONE) {
-          JoystickButtonPayload_t p2 = {2, false, {0, 0}};
-          peripheral_command(0, JOY_CMD_SET_BUTTON, &p2, sizeof(p2));
-          JoystickButtonPayload_t p1 = {1, false, {0, 0}};
-          peripheral_command(0, JOY_CMD_SET_BUTTON, &p1, sizeof(p1));
+          JoystickButtonPayload_t p2 = {2, 0, 0, 0};
+          peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &p2, sizeof(p2));
+          JoystickButtonPayload_t p1 = {1, 0, 0, 0};
+          peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &p1, sizeof(p1));
         }
       }
     } else if ((virtkey == SDLK_KP_PERIOD) || (virtkey == SDLK_DELETE)) {
       if (down) {
         if (k_joy_info.at(static_cast<size_t>(g_joy_config.joy_type[1]))
                 .device != DEVICE_KEYBOARD) {
-          JoystickButtonPayload_t p = {1, true, {0, 0}};
-          peripheral_command(0, JOY_CMD_SET_BUTTON, &p, sizeof(p));
+          JoystickButtonPayload_t p = {1, 1, 0, 0};
+          peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &p, sizeof(p));
         }
       } else {
         if (k_joy_info.at(static_cast<size_t>(g_joy_config.joy_type[1]))
                 .device != DEVICE_KEYBOARD) {
-          JoystickButtonPayload_t p = {1, false, {0, 0}};
-          peripheral_command(0, JOY_CMD_SET_BUTTON, &p, sizeof(p));
+          JoystickButtonPayload_t p = {1, 0, 0, 0};
+          peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &p, sizeof(p));
         }
       }
     } else if ((down && !autorep) || (centering_type == MODE_CENTERING)) {
@@ -493,10 +493,10 @@ auto joy_frontend_process_key(SdlKeycode_t virtkey, bool extended, bool down,
       y = clamp_val(y, 0, 255);
       JoystickAxisPayload_t px = {static_cast<uint8_t>(joy_num), 0,
                                   static_cast<uint8_t>(x), 0};
-      peripheral_command(0, JOY_CMD_SET_AXIS, &px, sizeof(px));
+      peripheral_command(0, JOYSTICK_CMD_SET_AXIS, &px, sizeof(px));
       JoystickAxisPayload_t py = {static_cast<uint8_t>(joy_num), 1,
                                   static_cast<uint8_t>(y), 0};
-      peripheral_command(0, JOY_CMD_SET_AXIS, &py, sizeof(py));
+      peripheral_command(0, JOYSTICK_CMD_SET_AXIS, &py, sizeof(py));
     }
   }
   return keychange;
@@ -543,9 +543,9 @@ auto joy_frontend_process_mouse_motion(int x, int max_x, int y, int max_y)
          k_joy_info.at(static_cast<size_t>(g_joy_config.joy_type[joy_num]))
                  .device == DEVICE_MOUSE)) {
       JoystickAxisPayload_t px = {joy_num, 0, static_cast<uint8_t>(joy_x), 0};
-      peripheral_command(0, JOY_CMD_SET_AXIS, &px, sizeof(px));
+      peripheral_command(0, JOYSTICK_CMD_SET_AXIS, &px, sizeof(px));
       JoystickAxisPayload_t py = {joy_num, 1, static_cast<uint8_t>(joy_y), 0};
-      peripheral_command(0, JOY_CMD_SET_AXIS, &py, sizeof(py));
+      peripheral_command(0, JOYSTICK_CMD_SET_AXIS, &py, sizeof(py));
     }
   }
 }
@@ -557,11 +557,11 @@ auto joy_frontend_process_mouse_button(int button, bool down) -> void {
          k_joy_info.at(static_cast<size_t>(g_joy_config.joy_type[joy_num]))
                  .device == DEVICE_MOUSE)) {
       if (button == 0) {
-        JoystickButtonPayload_t pb0 = {0, down, {0, 0}};
-        peripheral_command(0, JOY_CMD_SET_BUTTON, &pb0, sizeof(pb0));
+        JoystickButtonPayload_t pb0 = {0, down, 0, 0};
+        peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &pb0, sizeof(pb0));
       } else if (button == 1) {
-        JoystickButtonPayload_t pb1 = {1, down, {0, 0}};
-        peripheral_command(0, JOY_CMD_SET_BUTTON, &pb1, sizeof(pb1));
+        JoystickButtonPayload_t pb1 = {1, down, 0, 0};
+        peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &pb1, sizeof(pb1));
       }
     }
   }

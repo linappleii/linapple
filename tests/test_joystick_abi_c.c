@@ -1,9 +1,14 @@
-/* C99 view of the game port's command header: the state frame's layout and
- * the payload sizes as a C consumer sees them. */
+/* C99 view of the game port's public headers: the descriptor accessor, the
+ * state frame's layout and the payload sizes as a C consumer sees them. */
 #include <stddef.h>
 #include <stdint.h>
 
+#include "apple2/peripherals/joystick/Joystick.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
+
+struct Peripheral_t* joystick_abi_c_descriptor(void) {
+  return joystick_get_descriptor();
+}
 
 size_t joystick_abi_c_state_size(void) {
   JoystickSaveState_t state;
@@ -12,12 +17,13 @@ size_t joystick_abi_c_state_size(void) {
   return sizeof(state);
 }
 
-size_t joystick_abi_c_reset_cycle_offset(void) {
-  return offsetof(JoystickSaveState_t, reset_cycle);
+size_t joystick_abi_c_trigger_cycle_offset(void) {
+  return offsetof(JoystickSaveState_t, trigger_cycle);
 }
 
-size_t joystick_abi_c_button_latches_offset(void) {
-  return offsetof(JoystickSaveState_t, button_latches);
+size_t joystick_abi_c_trigger_cycle_size(void) {
+  JoystickSaveState_t state;
+  return sizeof(state.trigger_cycle);
 }
 
 size_t joystick_abi_c_x_pos_offset(void) {
