@@ -3,9 +3,9 @@
 
 #include <unistd.h>
 
+#include <array>
 #include <cstdint>
 #include <cstdio>
-#include <cstring>
 #include <memory>
 #include <string>
 
@@ -14,25 +14,36 @@
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
 #include "core/Util_Path.h"
+#include "core/Util_Text.h"
 
-constexpr const char* default_snapshot_name = "SaveState.aws";
+static constexpr const char* k_default_snapshot_name = "SaveState.aws";
 
 bool g_save_state_on_exit = false;
 
-static char g_save_state_filename[path_max_len] = {0};
+static std::array<char, path_max_len> s_save_state_filename{};
 
-auto save_state_get_filename() -> char* { return g_save_state_filename; }
-
-auto save_state_set_filename(const char* filename) -> void {
-  if (filename && *filename) {
-    snprintf(g_save_state_filename, sizeof(g_save_state_filename), "%s",
-             filename);
-  } else {
-    g_save_state_filename[0] = '\0';
+static auto resolve_snapshot_filename() -> const char* {
+  if (s_save_state_filename[0] != '\0') {
+    return s_save_state_filename.data();
   }
+  return k_default_snapshot_name;
 }
 
-// Differentiate snapshot format with slot trailer by file length.
+auto save_state_get_filename() -> const char* {
+  return s_save_state_filename.data();
+}
+
+auto save_state_set_filename(const char* filename) -> void {
+  if (filename == nullptr || *filename == '\0') {
+    s_save_state_filename[0] = '\0';
+    return;
+  }
+  util_safe_strcpy(s_save_state_filename.data(), filename,
+                   s_save_state_filename.size());
+}
+
+// Legacy snapshots omit the peripheral slot trailer; accept both sizes for
+// backward compatibility.
 static auto snapshot_layout_size(size_t file_size) -> size_t {
   if (file_size == snapshot_size_fixed_body ||
       file_size == sizeof(Snapshot_t)) {
@@ -43,11 +54,7 @@ static auto snapshot_layout_size(size_t file_size) -> size_t {
 
 auto save_state_load() -> bool {
   auto snapshot = std::unique_ptr<Snapshot_t>(new Snapshot_t());
-
-  const char* filename = g_save_state_filename;
-  if (*filename == '\0') {
-    filename = default_snapshot_name;
-  }
+  const char* filename = resolve_snapshot_filename();
 
   FilePtr_t file{fopen(filename, "rb"), fclose};
   if (!file) {
@@ -100,14 +107,9 @@ auto save_state_load() -> bool {
 
 auto save_state_save() -> void {
   auto snapshot = std::unique_ptr<Snapshot_t>(new Snapshot_t());
-
   snapshot_serialize(snapshot.get());
 
-  const char* filename = g_save_state_filename;
-  if (*filename == '\0') {
-    filename = default_snapshot_name;
-  }
-
+  const char* filename = resolve_snapshot_filename();
   const std::string temp_filename = std::string(filename) + ".tmp";
 
   FilePtr_t file{fopen(temp_filename.c_str(), "wb"), fclose};
@@ -142,24 +144,28 @@ auto save_state_save() -> void {
 
 auto save_state_startup() -> void {
   static bool done = false;
-  if (done) return;
+  if (done) {
+    return;
+  }
+  done = true;
 
-  if (g_save_state_filename[0] != '\0') {
+  if (s_save_state_filename[0] != '\0') {
     save_state_load();
-  } else if (g_save_state_on_exit) {
-    if (access(default_snapshot_name, F_OK) == 0) {
-      save_state_set_filename(default_snapshot_name);
-      save_state_load();
-    }
+    return;
   }
 
-  done = true;
+  if (g_save_state_on_exit && access(k_default_snapshot_name, F_OK) == 0) {
+    save_state_set_filename(k_default_snapshot_name);
+    save_state_load();
+  }
 }
 
 auto save_state_shutdown() -> void {
   static bool done = false;
-  if (!g_save_state_on_exit || done) return;
+  if (done || !g_save_state_on_exit) {
+    return;
+  }
+  done = true;
 
   save_state_save();
-  done = true;
 }
