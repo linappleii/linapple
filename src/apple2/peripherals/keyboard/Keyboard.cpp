@@ -638,7 +638,7 @@ auto keyboard_abi_query(void* instance, uint32_t cmd_id, void* out,
       mods->shift = kp->logic.shift_key ? 1U : 0U;
       mods->ctrl = kp->logic.ctrl_key ? 1U : 0U;
       mods->alt = kp->logic.closed_apple ? 1U : 0U;
-      mods->gui = (kp->logic.open_apple && !kp->logic.closed_apple) ? 1U : 0U;
+      mods->gui = kp->logic.open_apple ? 1U : 0U;
       mods->caps = kp->logic.caps_lock ? 1U : 0U;
       *out_size = sizeof(KeyboardModifiers_t);
       return peripheral_ok;

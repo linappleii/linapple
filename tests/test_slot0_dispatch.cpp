@@ -18,6 +18,8 @@
 #include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "core/LinAppleCore.h"
 #include "doctest.h"
+#include "test_fixtures.h"
+#include "test_fixtures_core.h"
 
 namespace {
 
@@ -36,6 +38,12 @@ constexpr uint64_t off_centre_pulse = 2210;
 // Far past any pulse, so the first strobe finds every timer expired.
 constexpr uint64_t probe_counter = 1000000;
 constexpr uint32_t unknown_joystick_id = PERIPHERAL_SUBSYSTEM_JOYSTICK | 0x00FF;
+constexpr uint16_t addr_keyboard_data = 0xC000;
+constexpr uint8_t shift_line = 2;
+constexpr uint8_t jumper_in = 1;
+// The ASCII A is $41; the keyboard latch carries it under the strobe in
+// bit 7, so a read of $C000 gives $C1.
+constexpr uint8_t latched_a = 0xC1;
 
 enum class Order_t : uint8_t { keyboard_first, joystick_first };
 
@@ -206,6 +214,61 @@ auto move_axis(uint8_t joystick, uint8_t axis, uint8_t value) -> void {
 
 const std::initializer_list<Order_t> both_orders = {Order_t::keyboard_first,
                                                     Order_t::joystick_first};
+
+enum class Model_t : uint8_t { enhanced_2e, ii_plus };
+
+auto operator<<(std::ostream& out, Model_t model) -> std::ostream& {
+  return out << (model == Model_t::enhanced_2e ? "Enhanced //e" : "II Plus");
+}
+
+const std::initializer_list<Model_t> both_models = {Model_t::enhanced_2e,
+                                                    Model_t::ii_plus};
+
+auto describe(Model_t model)
+    -> TestFixtures::ScopedTestConfig_t::Description_t {
+  using Config_t = TestFixtures::ScopedTestConfig_t;
+  Config_t::Description_t description = Config_t::enhanced_2e_only();
+  if (model == Model_t::ii_plus) {
+    description.machine_type = Config_t::machine_apple2_plus;
+  }
+  return description;
+}
+
+// The machine as a frontend brings it up: linapple_init takes the internal
+// slot-0 cards from the registry, so a host call reaches the cards the shipped
+// emulator wires in rather than ones a case registered by hand. The game port
+// knows no model, which is what running on a II Plus as well shows.
+struct HostMachine_t {
+  TestFixtures::ScopedTestConfig_t config;
+  TestFixtures::ScopedCore_t core;
+
+  explicit HostMachine_t(Model_t model)
+      : config(describe(model)), core(config) {
+    linapple_reset_hard();
+  }
+};
+
+// The host's four modifier booleans, settled by the one think a running
+// machine gives the queue each frame.
+auto hold_modifiers(bool shift, bool ctrl, bool open_apple, bool solid_apple)
+    -> void {
+  linapple_set_modifiers(shift, ctrl, open_apple, solid_apple);
+  settle();
+}
+
+auto release_modifiers() -> void { hold_modifiers(false, false, false, false); }
+
+auto press_key(uint32_t key) -> void {
+  KeyboardEvent_t event{};
+  event.key = key;
+  event.is_down = 1;
+  send(keyboard_cmd_event, &event, sizeof(event));
+}
+
+// $C000 through the memory map: the key code in bits 0-6 under the strobe.
+auto keyboard_data() -> uint8_t {
+  return io_map_dispatch(0, addr_keyboard_data, 0, 0, 0);
+}
 
 // Allocate oversized buffer to test payload bounds handling safely.
 template <typename T>
@@ -589,5 +652,88 @@ TEST_CASE("Slot 0: a command can name the peripheral it is for") {
     size_t size = sizeof(rocker);
     CHECK(peripheral_query_by_id(0, "linapple.joystick", keyboard_query_rocker,
                                  &rocker, &size) == peripheral_incompatible);
+  }
+}
+
+TEST_CASE(
+    "Slot 0: Open Apple from the host reaches PB0 on a //e and a II Plus") {
+  for (Model_t model : both_models) {
+    CAPTURE(model);
+    HostMachine_t machine(model);
+    REQUIRE(switch_level(0) == 0);
+    REQUIRE(switch_level(1) == 0);
+
+    hold_modifiers(false, false, true, false);
+    CHECK(switch_level(0) == 1);
+    CHECK(switch_level(1) == 0);
+    CHECK(keyboard_mods().gui == 1);
+    CHECK(keyboard_mods().alt == 0);
+
+    release_modifiers();
+    CHECK(switch_level(0) == 0);
+    CHECK(switch_level(1) == 0);
+    CHECK(keyboard_mods().gui == 0);
+  }
+}
+
+TEST_CASE("Slot 0: Solid Apple from the host reaches PB1 and the key arrives") {
+  for (Model_t model : both_models) {
+    CAPTURE(model);
+    HostMachine_t machine(model);
+    REQUIRE(keyboard_data() == 0);
+
+    hold_modifiers(false, false, false, true);
+    press_key('A');
+    CHECK(switch_level(0) == 0);
+    CHECK(switch_level(1) == 1);
+    CHECK(keyboard_mods().alt == 1);
+    CHECK(keyboard_mods().gui == 0);
+    CHECK(keyboard_data() == latched_a);
+  }
+}
+
+TEST_CASE("Slot 0: the host's shift reaches PB2 only while the jumper is in") {
+  for (Model_t model : both_models) {
+    CAPTURE(model);
+    HostMachine_t machine(model);
+    // A two-button controller's plug pulls down PB0 and PB1 and leaves PB2
+    // open, so the TTL input rests high (Sather, Understanding the Apple II,
+    // 7-9 and 7-11) and the shift key has nowhere to go.
+    REQUIRE(switch_level(shift_line) == 1);
+
+    hold_modifiers(true, false, false, false);
+    CHECK(switch_level(shift_line) == 1);
+    CHECK(switch_level(0) == 0);
+    CHECK(switch_level(1) == 0);
+    CHECK(keyboard_mods().shift == 1);
+    release_modifiers();
+
+    send(JOYSTICK_CMD_SET_SHIFT_KEY_MOD, &jumper_in, sizeof(jumper_in));
+    CHECK(switch_level(shift_line) == 1);
+    hold_modifiers(true, false, false, false);
+    CHECK(switch_level(shift_line) == 0);
+    CHECK(keyboard_mods().shift == 1);
+    release_modifiers();
+    CHECK(switch_level(shift_line) == 1);
+    CHECK(keyboard_mods().shift == 0);
+  }
+}
+
+TEST_CASE("Slot 0: both Apple keys held read on both lines and in the query") {
+  for (Model_t model : both_models) {
+    CAPTURE(model);
+    HostMachine_t machine(model);
+
+    hold_modifiers(false, false, true, true);
+    CHECK(switch_level(0) == 1);
+    CHECK(switch_level(1) == 1);
+    CHECK(keyboard_mods().gui == 1);
+    CHECK(keyboard_mods().alt == 1);
+
+    hold_modifiers(false, false, false, true);
+    CHECK(switch_level(0) == 0);
+    CHECK(switch_level(1) == 1);
+    CHECK(keyboard_mods().gui == 0);
+    CHECK(keyboard_mods().alt == 1);
   }
 }
