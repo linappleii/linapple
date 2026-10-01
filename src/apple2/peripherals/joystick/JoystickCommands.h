@@ -15,9 +15,7 @@ extern "C" {
 
 enum { JOYSTICK_STATE_VERSION = 1 };
 
-// Indices 0x0002 to 0x0004 are reserved and never assigned, so a sender built
-// against a header that defined them is answered peripheral_incompatible
-// rather than misread.
+// 0x0002-0x0004 stay unassigned: senders built against older headers emit them.
 typedef enum {
   JOYSTICK_CMD_SET_AXIS = PERIPHERAL_SUBSYSTEM_JOYSTICK | 0x0000,
   JOYSTICK_CMD_SET_BUTTON = PERIPHERAL_SUBSYSTEM_JOYSTICK | 0x0001,
@@ -25,7 +23,6 @@ typedef enum {
   JOYSTICK_CMD_SET_PULLDOWNS = PERIPHERAL_SUBSYSTEM_JOYSTICK | 0x0006
 } JoystickCommand_t;
 
-// joystick 0 or 1, axis 0 (x) or 1 (y); paddle 2j + axis of joystick j.
 typedef struct {
   uint8_t joystick;
   uint8_t axis;
@@ -33,11 +30,7 @@ typedef struct {
   uint8_t padding;
 } JoystickAxisPayload_t;
 
-// One of the three pushbutton lines, PB0 to PB2, and the level a source
-// drives it to: source 0 is the switch on the game connector, source 1 the
-// switch the //e wires in parallel with it on the keyboard (Open Apple on
-// PB0, Solid Apple on PB1, the shift key through the shift-key mod on PB2;
-// Apple IIe Technical Reference Manual, pp. 13 and 41).
+// source 0 is the game connector's switch, 1 the keyboard's wired in parallel.
 typedef struct {
   uint8_t button;
   uint8_t down;
@@ -45,13 +38,11 @@ typedef struct {
   uint8_t padding;
 } JoystickButtonPayload_t;
 
-// The version-1 frame. trigger_cycle holds the cumulative cycle at which each
-// of the four NE558 timers was last triggered, 0 for a timer never triggered
-// since power-on, and is the port's whole state: the positions and switch
-// levels are the player's hands, which the host sends again, and trim is host
-// calibration. x_pos, y_pos, buttons, trim_x, trim_y and the reserved bytes
-// are written as zeros and read past; they keep their place so every frame
-// ever written loads.
+// The positions, switch levels and trim are the player's hands and the host's
+// calibration, not the port's state: x_pos, y_pos, buttons, trim_x, trim_y
+// and the reserved bytes are written as zeros and read past, and keep their
+// place so every frame ever written loads. A trigger_cycle of 0 is a timer
+// never triggered.
 typedef struct {
   uint32_t version;
   uint32_t struct_size;
