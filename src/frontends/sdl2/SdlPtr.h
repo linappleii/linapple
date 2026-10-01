@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-#include <SDL2/SDL.h>
+#include <SDL2/SDL_joystick.h>
+#include <SDL2/SDL_render.h>
+#include <SDL2/SDL_surface.h>
+#include <SDL2/SDL_video.h>
 
 #include <memory>
 
 struct SdlWindowDeleter_t {
-  void operator()(SDL_Window* ptr) const noexcept {
+  auto operator()(SDL_Window* ptr) const noexcept -> void {
     if (ptr != nullptr) {
       SDL_DestroyWindow(ptr);
     }
@@ -14,7 +17,7 @@ struct SdlWindowDeleter_t {
 };
 
 struct SdlRendererDeleter_t {
-  void operator()(SDL_Renderer* ptr) const noexcept {
+  auto operator()(SDL_Renderer* ptr) const noexcept -> void {
     if (ptr != nullptr) {
       SDL_DestroyRenderer(ptr);
     }
@@ -22,7 +25,7 @@ struct SdlRendererDeleter_t {
 };
 
 struct SdlTextureDeleter_t {
-  void operator()(SDL_Texture* ptr) const noexcept {
+  auto operator()(SDL_Texture* ptr) const noexcept -> void {
     if (ptr != nullptr) {
       SDL_DestroyTexture(ptr);
     }
@@ -30,7 +33,7 @@ struct SdlTextureDeleter_t {
 };
 
 struct SdlSurfaceDeleter_t {
-  void operator()(SDL_Surface* ptr) const noexcept {
+  auto operator()(SDL_Surface* ptr) const noexcept -> void {
     if (ptr != nullptr) {
       SDL_FreeSurface(ptr);
     }
@@ -38,7 +41,7 @@ struct SdlSurfaceDeleter_t {
 };
 
 struct SdlJoystickDeleter_t {
-  void operator()(SDL_Joystick* ptr) const noexcept {
+  auto operator()(SDL_Joystick* ptr) const noexcept -> void {
     if (ptr != nullptr) {
       SDL_JoystickClose(ptr);
     }

@@ -1,16 +1,18 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <SDL_events.h>
-#include <SDL_keyboard.h>
-#include <SDL_keycode.h>
-#include <SDL_mouse.h>
-#include <SDL_scancode.h>
-#include <SDL_video.h>
+#include <SDL2/SDL_events.h>
+#include <SDL2/SDL_keyboard.h>
+#include <SDL2/SDL_keycode.h>
+#include <SDL2/SDL_mouse.h>
+#include <SDL2/SDL_scancode.h>
+#include <SDL2/SDL_video.h>
 
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
 
+#if ENABLE_DEBUGGER
 #include "Debugger/Debug.h"
+#endif
 #include "apple2/Video.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Types.h"
@@ -23,43 +25,77 @@
 #include "frontends/common/sdl/JoystickFrontend.h"
 #include "frontends/sdl2/Frame.h"
 
-// Forward declarations for functions still in Frame.cpp
-extern void process_button_click(int button, int mod);
-extern void frame_quick_state(int state, int mod);
-extern auto is_modifier_key(SDL_Keycode key) -> bool;
-extern void set_using_cursor(bool);
-extern void draw_status_area(int);
-extern int g_buttondown;
-extern bool g_usingcursor;
-extern int x, y;
+namespace {
 
-void sdl_handle_event(SDL_Event* e) {
-  int x_local = 0;
-  int y_local = 0;
+constexpr int k_user_event_reboot = 1;
 
-  switch (e->type) {
+[[nodiscard]] constexpr auto is_extended_scancode(
+    SDL_Scancode scancode) noexcept -> bool {
+  return (scancode >= SDL_SCANCODE_INSERT && scancode <= SDL_SCANCODE_UP) ||
+         (scancode == SDL_SCANCODE_DELETE);
+}
+
+auto dispatch_mouse_button(int button_index, bool is_down) -> void {
+  uint8_t mouse_active = 0;
+  size_t qsize = 1;
+  peripheral_query(mouse_default_slot, mouse_query_is_active, &mouse_active,
+                   &qsize);
+  if (mouse_active != 0) {
+    MouseButtonPayload_t payload{
+        static_cast<uint8_t>(button_index), is_down, {0, 0}};
+    peripheral_command(mouse_default_slot, mouse_cmd_set_button, &payload,
+                       sizeof(payload));
+  }
+  if (joy_frontend_is_mouse_emulation_active()) {
+    joy_frontend_process_mouse_button(button_index, is_down);
+  }
+}
+
+auto dispatch_mouse_motion(int x, int y) -> void {
+  uint8_t mouse_active = 0;
+  size_t qsize = 1;
+  peripheral_query(mouse_default_slot, mouse_query_is_active, &mouse_active,
+                   &qsize);
+  if (mouse_active != 0) {
+    MousePosPayload_t payload{x, VIEWPORTCX, y, VIEWPORTCY};
+    peripheral_command(mouse_default_slot, mouse_cmd_set_pos, &payload,
+                       sizeof(payload));
+  }
+  if (joy_frontend_is_mouse_emulation_active()) {
+    joy_frontend_process_mouse_motion(x, VIEWPORTCX, y, VIEWPORTCY);
+  }
+}
+
+}  // namespace
+
+auto sdl_handle_event(SDL_Event* event) -> void {
+  if (event == nullptr) {
+    return;
+  }
+
+  switch (event->type) {
     case SDL_QUIT:
       system_state.mode = app_mode_exit;
       break;
 
     case SDL_WINDOWEVENT:
-      switch (e->window.event) {
+      switch (event->window.event) {
         case SDL_WINDOWEVENT_CLOSE:
           system_state.mode = app_mode_exit;
           break;
         case SDL_WINDOWEVENT_RESIZED:
-          frame_on_resize(e->window.data1, e->window.data2);
+          frame_on_resize(event->window.data1, event->window.data2);
           break;
-
         case SDL_WINDOWEVENT_EXPOSED:
           frame_on_expose();
           break;
-
         case SDL_WINDOWEVENT_FOCUS_GAINED:
           frame_on_focus(true);
           break;
         case SDL_WINDOWEVENT_FOCUS_LOST:
           frame_on_focus(false);
+          g_buttondown = -1;
+          set_using_cursor(false);
           break;
         default:
           break;
@@ -67,158 +103,150 @@ void sdl_handle_event(SDL_Event* e) {
       break;
 
     case SDL_KEYDOWN: {
-      SDL_Keycode mysym = e->key.keysym.sym;
-      auto mymod = static_cast<SDL_Keymod>(e->key.keysym.mod);
-      SDL_Scancode myscancode = e->key.keysym.scancode;
+      const SDL_Keycode key_sym = event->key.keysym.sym;
+      const auto key_mod = static_cast<SDL_Keymod>(event->key.keysym.mod);
+      const SDL_Scancode scancode = event->key.keysym.scancode;
 
-      if (e->key.repeat == 0) {
-        if (frontend_handle_key_event(mysym, true)) {
-          break;
-        }
+      if (event->key.repeat != 0) {
+        break;
+      }
 
-        int qs_slot = 0;
-        bool qs_is_save = false;
-        if (keyboard_is_quicksave_combo(mysym, mymod, &qs_slot, &qs_is_save)) {
-          frame_quick_state(qs_slot, qs_is_save ? KMOD_SHIFT : 0);
-          break;
-        }
+      if (frontend_handle_key_event(key_sym, true)) {
+        break;
+      }
 
-        if (keyboard_get_hotkeys_enabled() && (mysym >= SDLK_F1) &&
-            (mysym <= SDLK_F12) && (g_buttondown == -1)) {
-          set_using_cursor(false);
-          g_buttondown = mysym - SDLK_F1;
-        } else if (mysym == SDLK_KP_PLUS) {
-          uint32_t speed = linapple_speed_increase();
-          printf("Now speed=%u\n", speed);
-        } else if (mysym == SDLK_KP_MINUS) {
-          uint32_t speed = linapple_speed_decrease();
-          printf("Now speed=%u\n", speed);
-        } else if (mysym == SDLK_KP_MULTIPLY) {
-          uint32_t speed = linapple_speed_reset();
-          printf("Now speed=%u\n", speed);
-        } else if (mysym == SDLK_CAPSLOCK) {
-          if (keyboard_get_caps_mode() == caps_mode_host) {
-            uint8_t caps = ((mymod & KMOD_CAPS) != 0) ? 1 : 0;
-            peripheral_command(0, keyboard_cmd_set_caps, &caps, 1);
-          } else {
-            linapple_toggle_caps_lock_state();
-          }
-        } else if (mysym == SDLK_PAUSE) {
-          set_using_cursor(false);
-          switch (system_state.mode) {
-            case app_mode_running:
-              system_state.mode = app_mode_paused;
-              audio_mixer_set_fade(fade_out);
-              break;
-            case app_mode_paused:
-              system_state.mode = app_mode_running;
-              audio_mixer_set_fade(fade_in);
-              break;
-            case app_mode_stepping:
-#if ENABLE_DEBUGGER
-              debugger_input_console_char(DEBUG_EXIT_KEY);
-#endif
-              break;
-            case app_mode_logo:
-            case app_mode_debug:
-            default:
-              break;
-          }
-          draw_status_area(draw_title);
-          if ((system_state.mode != app_mode_logo) &&
-              (system_state.mode != app_mode_debug)) {
-            video_redraw_screen();
-          }
-          system_state.reset_timing = true;
-        } else if (mysym == SDLK_SCROLLLOCK) {
-          bool turbo = linapple_toggle_turbo();
-          printf("Turbo mode: %s\n", turbo ? "ON" : "OFF");
-        } else if ((system_state.mode == app_mode_running) ||
-                   (system_state.mode == app_mode_logo) ||
-                   (system_state.mode == app_mode_stepping)) {
-#if ENABLE_DEBUGGER
-          g_debugger_eat_key = false;
-#endif
-          bool extended = (myscancode >= SDL_SCANCODE_INSERT &&
-                           myscancode <= SDL_SCANCODE_UP) ||
-                          (myscancode == SDL_SCANCODE_DELETE);
-          if ((mymod & KMOD_RCTRL) != 0) {
-            joy_frontend_update_trim_via_key(mysym);
-          } else {
-            if (!joy_frontend_process_key(mysym, extended, true, false)) {
-              frontend_dispatch_key_event(myscancode, mysym, mymod, true);
-            }
-          }
-#if ENABLE_DEBUGGER
-        } else if (system_state.mode == app_mode_debug) {
-          LinAppleKey_t core_key = frontend_to_core_key(mysym, mymod);
-          if (core_key != linapple_key_unknown) {
-            debugger_process_key(core_key);
-          }
-#endif
+      int qs_slot = 0;
+      bool qs_is_save = false;
+      if (keyboard_is_quicksave_combo(key_sym, key_mod, &qs_slot,
+                                      &qs_is_save)) {
+        frame_quick_state(qs_slot, qs_is_save ? KMOD_SHIFT : 0);
+        break;
+      }
+
+      if (keyboard_get_hotkeys_enabled() && (key_sym >= SDLK_F1) &&
+          (key_sym <= SDLK_F12) && (g_buttondown == -1)) {
+        set_using_cursor(false);
+        g_buttondown = key_sym - SDLK_F1;
+      } else if (key_sym == SDLK_KP_PLUS) {
+        const uint32_t speed = linapple_speed_increase();
+        std::printf("Now speed=%u\n", speed);
+      } else if (key_sym == SDLK_KP_MINUS) {
+        const uint32_t speed = linapple_speed_decrease();
+        std::printf("Now speed=%u\n", speed);
+      } else if (key_sym == SDLK_KP_MULTIPLY) {
+        const uint32_t speed = linapple_speed_reset();
+        std::printf("Now speed=%u\n", speed);
+      } else if (key_sym == SDLK_CAPSLOCK) {
+        if (keyboard_get_caps_mode() == caps_mode_host) {
+          const uint8_t caps = ((key_mod & KMOD_CAPS) != 0) ? 1 : 0;
+          peripheral_command(0, keyboard_cmd_set_caps, &caps, 1);
+        } else {
+          linapple_toggle_caps_lock_state();
         }
+      } else if (key_sym == SDLK_PAUSE) {
+        set_using_cursor(false);
+        switch (system_state.mode) {
+          case app_mode_running:
+            system_state.mode = app_mode_paused;
+            audio_mixer_set_fade(fade_out);
+            break;
+          case app_mode_paused:
+            system_state.mode = app_mode_running;
+            audio_mixer_set_fade(fade_in);
+            break;
+          case app_mode_stepping:
+#if ENABLE_DEBUGGER
+            debugger_input_console_char(DEBUG_EXIT_KEY);
+#endif
+            break;
+          case app_mode_logo:
+          case app_mode_debug:
+          default:
+            break;
+        }
+        draw_status_area(draw_title);
+        if (system_state.mode != app_mode_logo &&
+            system_state.mode != app_mode_debug) {
+          video_redraw_screen();
+        }
+        system_state.reset_timing = true;
+      } else if (key_sym == SDLK_SCROLLLOCK) {
+        const bool turbo = linapple_toggle_turbo();
+        std::printf("Turbo mode: %s\n", turbo ? "ON" : "OFF");
+      } else if (system_state.mode == app_mode_running ||
+                 system_state.mode == app_mode_logo ||
+                 system_state.mode == app_mode_stepping) {
+#if ENABLE_DEBUGGER
+        g_debugger_eat_key = false;
+#endif
+        const bool extended = is_extended_scancode(scancode);
+        if ((key_mod & KMOD_RCTRL) != 0) {
+          joy_frontend_update_trim_via_key(key_sym);
+        } else {
+          if (!joy_frontend_process_key(key_sym, extended, true, false)) {
+            frontend_dispatch_key_event(scancode, key_sym, key_mod, true);
+          }
+        }
+#if ENABLE_DEBUGGER
+      } else if (system_state.mode == app_mode_debug) {
+        const LinAppleKey_t core_key = frontend_to_core_key(key_sym, key_mod);
+        if (core_key != linapple_key_unknown) {
+          debugger_process_key(core_key);
+        }
+#endif
       }
       break;
     }
 
     case SDL_KEYUP: {
-      SDL_Keycode mysym = e->key.keysym.sym;
-      auto mymod = static_cast<SDL_Keymod>(e->key.keysym.mod);
-      SDL_Scancode myscancode = e->key.keysym.scancode;
+      const SDL_Keycode key_sym = event->key.keysym.sym;
+      const auto key_mod = static_cast<SDL_Keymod>(event->key.keysym.mod);
+      const SDL_Scancode scancode = event->key.keysym.scancode;
 
-      if ((mysym >= SDLK_F1) && (mysym <= SDLK_F12) &&
-          (static_cast<SDL_Keycode>(g_buttondown) == mysym - SDLK_F1)) {
+      if ((key_sym >= SDLK_F1) && (key_sym <= SDLK_F12) &&
+          (g_buttondown == key_sym - SDLK_F1)) {
         g_buttondown = -1;
-        process_button_click(mysym - SDLK_F1, mymod);
-      } else if (frontend_handle_key_event(mysym, false)) {
+        process_button_click(key_sym - SDLK_F1, key_mod);
+      } else if (frontend_handle_key_event(key_sym, false)) {
         break;
-      } else if (mysym == SDLK_CAPSLOCK) {
+      } else if (key_sym == SDLK_CAPSLOCK) {
         if (keyboard_get_caps_mode() == caps_mode_host) {
-          uint8_t caps = ((mymod & KMOD_CAPS) != 0) ? 1 : 0;
+          const uint8_t caps = ((key_mod & KMOD_CAPS) != 0) ? 1 : 0;
           peripheral_command(0, keyboard_cmd_set_caps, &caps, 1);
         }
       } else {
-        bool extended = (myscancode >= SDL_SCANCODE_INSERT &&
-                         myscancode <= SDL_SCANCODE_UP) ||
-                        (myscancode == SDL_SCANCODE_DELETE);
-        if (!joy_frontend_process_key(mysym, extended, false, false)) {
-          frontend_dispatch_key_event(myscancode, mysym, mymod, false);
+        const bool extended = is_extended_scancode(scancode);
+        if (!joy_frontend_process_key(key_sym, extended, false, false)) {
+          frontend_dispatch_key_event(scancode, key_sym, key_mod, false);
         }
       }
       break;
     }
 
     case SDL_MOUSEBUTTONDOWN: {
-      SDL_Keymod mymod = SDL_GetModState();
-      if (e->button.button == SDL_BUTTON_MIDDLE) {
+      const auto key_mod = static_cast<SDL_Keymod>(SDL_GetModState());
+      if (event->button.button == SDL_BUTTON_MIDDLE) {
         set_using_cursor(!g_usingcursor);
         break;
       }
-      if (e->button.button == SDL_BUTTON_LEFT) {
-        if (g_buttondown == -1) {
-          x_local = static_cast<int>(e->button.x);
-          y_local = static_cast<int>(e->button.y);
+
+      if (event->button.button == SDL_BUTTON_LEFT) {
+        if (g_buttondown != -1) {
+          process_button_click(g_buttondown, key_mod);
+          g_buttondown = -1;
+        } else {
+          const int x_local = static_cast<int>(event->button.x);
+          const int y_local = static_cast<int>(event->button.y);
 #if ENABLE_DEBUGGER
           if (system_state.mode == app_mode_debug) {
             debugger_mouse_click(x_local, y_local);
           } else
 #endif
               if (g_usingcursor) {
-            if ((mymod & (KMOD_SHIFT | KMOD_CTRL)) != 0) {
+            if ((key_mod & (KMOD_SHIFT | KMOD_CTRL)) != 0) {
               set_using_cursor(false);
             } else {
-              uint8_t mouse_active = 0;
-              size_t qsize = 1;
-              peripheral_query(mouse_default_slot, mouse_query_is_active,
-                               &mouse_active, &qsize);
-              if (mouse_active != 0) {
-                MouseButtonPayload_t payload = {0, true, {0, 0}};
-                peripheral_command(mouse_default_slot, mouse_cmd_set_button,
-                                   &payload, sizeof(payload));
-              }
-              if (joy_frontend_is_mouse_emulation_active()) {
-                joy_frontend_process_mouse_button(0, true);
-              }
+              dispatch_mouse_button(0, true);
             }
           } else {
             bool mouse_capture_cfg = true;
@@ -229,93 +257,51 @@ void sdl_handle_event(SDL_Event* e) {
               size_t qsize = 1;
               peripheral_query(mouse_default_slot, mouse_query_is_active,
                                &mouse_active, &qsize);
-              bool mouse_in_use = (mouse_active != 0) ||
-                                  joy_frontend_is_mouse_emulation_active();
-              if (mouse_in_use && ((system_state.mode == app_mode_running) ||
-                                   (system_state.mode == app_mode_stepping))) {
+              const bool mouse_in_use =
+                  (mouse_active != 0) ||
+                  joy_frontend_is_mouse_emulation_active();
+              if (mouse_in_use && (system_state.mode == app_mode_running ||
+                                   system_state.mode == app_mode_stepping)) {
                 set_using_cursor(true);
               }
             }
           }
         }
-      } else if (e->button.button == SDL_BUTTON_RIGHT) {
+      } else if (event->button.button == SDL_BUTTON_RIGHT) {
         if (g_usingcursor) {
-          uint8_t mouse_active = 0;
-          size_t qsize = 1;
-          peripheral_query(mouse_default_slot, mouse_query_is_active,
-                           &mouse_active, &qsize);
-          if (mouse_active != 0) {
-            MouseButtonPayload_t payload = {1, true, {0, 0}};
-            peripheral_command(mouse_default_slot, mouse_cmd_set_button,
-                               &payload, sizeof(payload));
-          }
-          if (joy_frontend_is_mouse_emulation_active()) {
-            joy_frontend_process_mouse_button(1, true);
-          }
+          dispatch_mouse_button(1, true);
         }
       }
-
       break;
     }
 
     case SDL_MOUSEBUTTONUP:
-      if (e->button.button == SDL_BUTTON_LEFT) {
+      if (event->button.button == SDL_BUTTON_LEFT) {
         if (g_usingcursor) {
-          uint8_t mouse_active = 0;
-          size_t qsize = 1;
-          peripheral_query(mouse_default_slot, mouse_query_is_active,
-                           &mouse_active, &qsize);
-          if (mouse_active != 0) {
-            MouseButtonPayload_t payload = {0, false, {0, 0}};
-            peripheral_command(mouse_default_slot, mouse_cmd_set_button,
-                               &payload, sizeof(payload));
-          }
-          if (joy_frontend_is_mouse_emulation_active()) {
-            joy_frontend_process_mouse_button(0, false);
-          }
+          dispatch_mouse_button(0, false);
         }
-      } else if (e->button.button == SDL_BUTTON_RIGHT) {
+      } else if (event->button.button == SDL_BUTTON_RIGHT) {
         if (g_usingcursor) {
-          uint8_t mouse_active = 0;
-          size_t qsize = 1;
-          peripheral_query(mouse_default_slot, mouse_query_is_active,
-                           &mouse_active, &qsize);
-          if (mouse_active != 0) {
-            MouseButtonPayload_t payload = {1, false, {0, 0}};
-            peripheral_command(mouse_default_slot, mouse_cmd_set_button,
-                               &payload, sizeof(payload));
-          }
-          if (joy_frontend_is_mouse_emulation_active()) {
-            joy_frontend_process_mouse_button(1, false);
-          }
+          dispatch_mouse_button(1, false);
         }
       }
       break;
 
     case SDL_MOUSEMOTION:
-      x_local = static_cast<int>(e->motion.x);
-      y_local = static_cast<int>(e->motion.y);
       if (g_usingcursor) {
-        uint8_t mouse_active = 0;
-        size_t qsize = 1;
-        peripheral_query(mouse_default_slot, mouse_query_is_active,
-                         &mouse_active, &qsize);
-        if (mouse_active != 0) {
-          MousePosPayload_t payload = {x_local, VIEWPORTCX, y_local,
-                                       VIEWPORTCY};
-          peripheral_command(mouse_default_slot, mouse_cmd_set_pos, &payload,
-                             sizeof(payload));
-        }
-        if (joy_frontend_is_mouse_emulation_active()) {
-          joy_frontend_process_mouse_motion(x_local, VIEWPORTCX, y_local,
-                                            VIEWPORTCY);
-        }
+        dispatch_mouse_motion(static_cast<int>(event->motion.x),
+                              static_cast<int>(event->motion.y));
       }
       break;
 
+    case SDL_JOYDEVICEADDED:
+    case SDL_JOYDEVICEREMOVED:
+      joy_frontend_initialize();
+      break;
+
     case SDL_USEREVENT:
-      if (e->user.code == 1) {
-        process_button_click(btn_run, KMOD_LCTRL);
+      if (event->user.code == k_user_event_reboot) {
+        process_button_click(k_btn_run, KMOD_LCTRL);
       }
       break;
 

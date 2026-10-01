@@ -1,16 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <SDL_audio.h>
-#include <SDL_error.h>
-#include <SDL_events.h>
-#include <SDL_platform.h>
+#include <SDL2/SDL_audio.h>
+#include <SDL2/SDL_error.h>
+#include <SDL2/SDL_events.h>
+#include <SDL2/SDL_timer.h>
+#include <SDL2/SDL_version.h>
 #include <SDL_stdinc.h>
-#include <SDL_timer.h>
-#include <SDL_version.h>
 
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
-#include <cstdlib>
 #include <string>
 
 #include "apple2/Video.h"
@@ -27,39 +25,40 @@
 #include "frontends/common/sdl/JoystickFrontend.h"
 #include "frontends/sdl2/Frame.h"
 
-// SDL Audio Device for Frontend
-bool g_ds_available = false;
-SDL_AudioDeviceID g_audioDevice = 0;
-static std::string g_audio_dump_file;
-static AudioDumper_t g_audio_dumper;
+namespace {
 
-static auto SDLCALL sdl2AudioCallback(void* userdata, Uint8* stream, int len)
-    -> void {
+SDL_AudioDeviceID g_audio_device = 0;
+std::string g_audio_dump_file;
+AudioDumper_t g_audio_dumper;
+
+auto sdl2_audio_callback(void* userdata, Uint8* stream, int len) -> void {
   (void)userdata;
   if (len <= 0) {
     return;
   }
 
   auto* temp_buf = reinterpret_cast<int16_t*>(stream);
-  int num_samples = len / (static_cast<int>(sizeof(int16_t)));
+  const int num_samples = len / (static_cast<int>(sizeof(int16_t)));
   audio_mixer_get_samples(temp_buf, static_cast<size_t>(num_samples));
 
-  if (g_audio_dumper.is_active()) {
+  if (audio_dumper_is_active(&g_audio_dumper)) {
     audio_dumper_put_samples(&g_audio_dumper, temp_buf,
                              static_cast<uint32_t>(num_samples));
   }
 }
 
+}  // namespace
+
 auto ds_init() -> bool {
-  if (g_audioDevice != 0u) {
+  if (g_audio_device != 0U) {
     return true;
   }
 
   // Opening the device at its own rate is what removes the OS-side resample:
   // the mixer's is then the only one in the chain. 44100 is the fallback for a
   // failed query, not a target.
-  constexpr int fallback_rate_hz = 44100;
-  int requested_rate = fallback_rate_hz;
+  constexpr int k_fallback_rate_hz = 44100;
+  int requested_rate = k_fallback_rate_hz;
 #if SDL_VERSION_ATLEAST(2, 0, 15)
   SDL_AudioSpec native;
   SDL_zero(native);
@@ -75,12 +74,12 @@ auto ds_init() -> bool {
   desired.channels = 2;
   desired.format = AUDIO_S16SYS;
   desired.samples = audio_device_buffer_samples(requested_rate);
-  desired.callback = sdl2AudioCallback;
+  desired.callback = sdl2_audio_callback;
   desired.userdata = nullptr;
 
-  g_audioDevice = SDL_OpenAudioDevice(nullptr, 0, &desired, &obtained, 0);
-  if (g_audioDevice == 0) {
-    printf("Unable to open SDL audio: %s\n", SDL_GetError());
+  g_audio_device = SDL_OpenAudioDevice(nullptr, 0, &desired, &obtained, 0);
+  if (g_audio_device == 0) {
+    std::printf("Unable to open SDL audio: %s\n", SDL_GetError());
     return false;
   }
 
@@ -91,8 +90,7 @@ auto ds_init() -> bool {
                             device_rate_hz, 2);
   }
 
-  SDL_PauseAudioDevice(g_audioDevice, 0);
-  g_ds_available = true;
+  SDL_PauseAudioDevice(g_audio_device, 0);
 
   audio_mixer_initialize(device_rate_hz);
 
@@ -120,22 +118,21 @@ auto ds_shutdown() -> void {
   linapple_set_audio_source_register_callback(nullptr);
   linapple_set_audio_source_unregister_callback(nullptr);
 
-  if (g_audioDevice != 0u) {
-    SDL_CloseAudioDevice(g_audioDevice);
-    g_audioDevice = 0;
+  if (g_audio_device != 0U) {
+    SDL_PauseAudioDevice(g_audio_device, 1);
+    SDL_CloseAudioDevice(g_audio_device);
+    g_audio_device = 0;
   }
 
   audio_mixer_destroy();
 
-  if (g_audio_dumper.is_active()) {
+  if (audio_dumper_is_active(&g_audio_dumper)) {
     audio_dumper_finalize(&g_audio_dumper);
   }
 }
 
-extern void sdl_handle_event(SDL_Event* e);
-
 auto sys_input() -> void {
-  SDL_Event event;
+  SDL_Event event{};
   while (SDL_PollEvent(&event) != 0) {
     sdl_handle_event(&event);
   }
@@ -145,9 +142,17 @@ auto enter_message_loop() -> void {
   FramePacer_t pacer;
   while (system_state.mode != app_mode_exit) {
     sys_input();
+    if (system_state.mode == app_mode_exit) {
+      break;
+    }
     joy_frontend_update();
 
-    uint32_t cycles = linapple_get_frame_cycles();
+    if (system_state.reset_timing) {
+      pacer.resync();
+      system_state.reset_timing = false;
+    }
+
+    const uint32_t cycles = linapple_get_frame_cycles();
     linapple_run_frame(cycles);
     draw_frame_window();
 
@@ -170,10 +175,6 @@ auto main(int argc, char** argv) -> int {
     return 0;
   }
 
-  // Store the audio dump file name explicitly since AppConfig_t only holds it
-  // in a buffer and ds_init needs it later. Alternatively we could access
-  // config.audio_dump_path directly but it's cleaner to keep the frontend's
-  // specific state separate if it uses a heap string.
   if (config.audio_dump_path.at(0) != '\0') {
     g_audio_dump_file = config.audio_dump_path.data();
   }
@@ -182,7 +183,7 @@ auto main(int argc, char** argv) -> int {
     return 1;
   }
 
-  while (true) {
+  do {
     app_controller_set_restart(false);
 
     if (session_init(&config) != 0) {
@@ -201,10 +202,7 @@ auto main(int argc, char** argv) -> int {
     }
 
     session_shutdown();
-    if (!app_controller_should_restart()) {
-      break;
-    }
-  }
+  } while (app_controller_should_restart());
 
   sys_shutdown();
   return 0;
