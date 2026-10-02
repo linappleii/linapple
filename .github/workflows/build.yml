@@ -58,22 +58,19 @@ jobs:
       - name: Report Test Failures
         if: failure()
         run: |
-          for f in build/Testing/Temporary/LastTestsFailed.log; do
-            if [ -f "$f" ]; then
-              echo "### Failed Tests ($f):" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              cat "$f" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-            fi
+          for f in $(find build -name "LastTestsFailed.log" 2>/dev/null); do
+            failed_tests=$(cat "$f" | tr '\n' ', ')
+            echo "::error title=Failed Tests ($f)::$failed_tests"
+            echo "### Failed Tests ($f):" >> $GITHUB_STEP_SUMMARY
+            cat "$f" >> $GITHUB_STEP_SUMMARY
           done
-          for f in build/Testing/Temporary/LastTest.log; do
-            if [ -f "$f" ]; then
-              echo "### Failures in $f:" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              grep -E -C 10 '(FAIL|Failed|ERROR:|failed \()' "$f" | head -n 150 >> $GITHUB_STEP_SUMMARY || true
-              tail -n 60 "$f" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
+          for f in $(find build -name "LastTest.log" 2>/dev/null); do
+            details=$(grep -E -C 3 '(FAIL|Failed|ERROR:|values:)' "$f" | head -n 40 | tr '\n' ' ')
+            if [ -n "$details" ]; then
+              echo "::warning title=Failure Details ($f)::$details"
             fi
+            echo "### Failures in $f:" >> $GITHUB_STEP_SUMMARY
+            grep -E -C 3 '(FAIL|Failed|ERROR:|values:)' "$f" | head -n 60 >> $GITHUB_STEP_SUMMARY || true
           done
       - name: Install
         run: sudo cmake --install build
@@ -145,22 +142,19 @@ jobs:
       - name: Report Test Failures
         if: failure()
         run: |
-          for f in build/Testing/Temporary/LastTestsFailed.log; do
-            if [ -f "$f" ]; then
-              echo "### Failed Tests ($f):" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              cat "$f" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-            fi
+          for f in $(find build -name "LastTestsFailed.log" 2>/dev/null); do
+            failed_tests=$(cat "$f" | tr '\n' ', ')
+            echo "::error title=Failed Tests ($f)::$failed_tests"
+            echo "### Failed Tests ($f):" >> $GITHUB_STEP_SUMMARY
+            cat "$f" >> $GITHUB_STEP_SUMMARY
           done
-          for f in build/Testing/Temporary/LastTest.log; do
-            if [ -f "$f" ]; then
-              echo "### Failures in $f:" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              grep -E -C 10 '(FAIL|Failed|ERROR:|failed \()' "$f" | head -n 150 >> $GITHUB_STEP_SUMMARY || true
-              tail -n 60 "$f" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
+          for f in $(find build -name "LastTest.log" 2>/dev/null); do
+            details=$(grep -E -C 3 '(FAIL|Failed|ERROR:|values:)' "$f" | head -n 40 | tr '\n' ' ')
+            if [ -n "$details" ]; then
+              echo "::warning title=Failure Details ($f)::$details"
             fi
+            echo "### Failures in $f:" >> $GITHUB_STEP_SUMMARY
+            grep -E -C 3 '(FAIL|Failed|ERROR:|values:)' "$f" | head -n 60 >> $GITHUB_STEP_SUMMARY || true
           done
       - name: Install
         run: cmake --install build
@@ -251,6 +245,23 @@ jobs:
           SDL_AUDIODRIVER: dummy
           SDL_AUDIO_DRIVER: dummy
         run: ctest --test-dir build -j$(nproc) --output-on-failure
+      - name: Report Test Failures
+        if: failure()
+        run: |
+          for f in $(find build -name "LastTestsFailed.log" 2>/dev/null); do
+            failed_tests=$(cat "$f" | tr '\n' ', ')
+            echo "::error title=Failed Tests ($f)::$failed_tests"
+            echo "### Failed Tests ($f):" >> $GITHUB_STEP_SUMMARY
+            cat "$f" >> $GITHUB_STEP_SUMMARY
+          done
+          for f in $(find build -name "LastTest.log" 2>/dev/null); do
+            details=$(grep -E -C 3 '(FAIL|Failed|ERROR:|values:)' "$f" | head -n 40 | tr '\n' ' ')
+            if [ -n "$details" ]; then
+              echo "::warning title=Failure Details ($f)::$details"
+            fi
+            echo "### Failures in $f:" >> $GITHUB_STEP_SUMMARY
+            grep -E -C 3 '(FAIL|Failed|ERROR:|values:)' "$f" | head -n 60 >> $GITHUB_STEP_SUMMARY || true
+          done
 
   # 5. Static Analysis (clang-tidy)
   clang-tidy-check:
@@ -327,6 +338,23 @@ jobs:
       - name: Run Fuzz Tests
         run: |
           ctest --test-dir build-fuzz -L fuzz --output-on-failure
+      - name: Report Test Failures
+        if: failure()
+        run: |
+          for f in $(find build-fuzz -name "LastTestsFailed.log" 2>/dev/null); do
+            failed_tests=$(cat "$f" | tr '\n' ', ')
+            echo "::error title=Failed Tests ($f)::$failed_tests"
+            echo "### Failed Tests ($f):" >> $GITHUB_STEP_SUMMARY
+            cat "$f" >> $GITHUB_STEP_SUMMARY
+          done
+          for f in $(find build-fuzz -name "LastTest.log" 2>/dev/null); do
+            details=$(grep -E -C 3 '(FAIL|Failed|ERROR:|values:)' "$f" | head -n 40 | tr '\n' ' ')
+            if [ -n "$details" ]; then
+              echo "::warning title=Failure Details ($f)::$details"
+            fi
+            echo "### Failures in $f:" >> $GITHUB_STEP_SUMMARY
+            grep -E -C 3 '(FAIL|Failed|ERROR:|values:)' "$f" | head -n 60 >> $GITHUB_STEP_SUMMARY || true
+          done
       - name: Minimize Corpus
         if: always()
         run: |
@@ -367,6 +395,23 @@ jobs:
         run: cmake --build build-shared -j$(nproc)
       - name: Test
         run: ctest --test-dir build-shared -j$(nproc) --output-on-failure
+      - name: Report Test Failures
+        if: failure()
+        run: |
+          for f in $(find build-shared -name "LastTestsFailed.log" 2>/dev/null); do
+            failed_tests=$(cat "$f" | tr '\n' ', ')
+            echo "::error title=Failed Tests ($f)::$failed_tests"
+            echo "### Failed Tests ($f):" >> $GITHUB_STEP_SUMMARY
+            cat "$f" >> $GITHUB_STEP_SUMMARY
+          done
+          for f in $(find build-shared -name "LastTest.log" 2>/dev/null); do
+            details=$(grep -E -C 3 '(FAIL|Failed|ERROR:|values:)' "$f" | head -n 40 | tr '\n' ' ')
+            if [ -n "$details" ]; then
+              echo "::warning title=Failure Details ($f)::$details"
+            fi
+            echo "### Failures in $f:" >> $GITHUB_STEP_SUMMARY
+            grep -E -C 3 '(FAIL|Failed|ERROR:|values:)' "$f" | head -n 60 >> $GITHUB_STEP_SUMMARY || true
+          done
       - name: Assert Hardware Count
         run: |
           count=$(./build-shared/linapple --list-hardware | grep -c '^- ')
@@ -414,22 +459,19 @@ jobs:
       - name: Report Test Failures
         if: failure()
         run: |
-          for f in build-nodisk/Testing/Temporary/LastTestsFailed.log; do
-            if [ -f "$f" ]; then
-              echo "### Failed Tests ($f):" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              cat "$f" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-            fi
+          for f in $(find build-nodisk -name "LastTestsFailed.log" 2>/dev/null); do
+            failed_tests=$(cat "$f" | tr '\n' ', ')
+            echo "::error title=Failed Tests ($f)::$failed_tests"
+            echo "### Failed Tests ($f):" >> $GITHUB_STEP_SUMMARY
+            cat "$f" >> $GITHUB_STEP_SUMMARY
           done
-          for f in build-nodisk/Testing/Temporary/LastTest.log; do
-            if [ -f "$f" ]; then
-              echo "### Failures in $f:" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              grep -E -C 10 '(FAIL|Failed|ERROR:|failed \()' "$f" | head -n 150 >> $GITHUB_STEP_SUMMARY || true
-              tail -n 60 "$f" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
+          for f in $(find build-nodisk -name "LastTest.log" 2>/dev/null); do
+            details=$(grep -E -C 3 '(FAIL|Failed|ERROR:|values:)' "$f" | head -n 40 | tr '\n' ' ')
+            if [ -n "$details" ]; then
+              echo "::warning title=Failure Details ($f)::$details"
             fi
+            echo "### Failures in $f:" >> $GITHUB_STEP_SUMMARY
+            grep -E -C 3 '(FAIL|Failed|ERROR:|values:)' "$f" | head -n 60 >> $GITHUB_STEP_SUMMARY || true
           done
       - name: Assert No Compression Is Configured or Linked
         run: |
