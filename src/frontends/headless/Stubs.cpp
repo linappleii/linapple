@@ -58,7 +58,7 @@
 }
 [[gnu::weak]] auto register_io_handler(uint32_t, iofunction, iofunction,
                                        iofunction, iofunction, void*,
-                                       uint8_t*) noexcept -> void {}
+                                       const uint8_t*) noexcept -> void {}
 [[gnu::weak]] auto register_direct_io_handler(uint16_t, iofunction, iofunction,
                                               void*) noexcept -> void {}
 

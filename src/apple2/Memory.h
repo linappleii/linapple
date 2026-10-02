@@ -196,7 +196,7 @@ struct MemoryInstance_t {
   uint32_t peripheral_rom_slot = 0;
   uint8_t io_select = 0;
   uint8_t io_select_internal_rom = 0;
-  uint8_t* expansion_rom[NUM_SLOTS]{};
+  const uint8_t* expansion_rom[NUM_SLOTS]{};
 
   MemoryInstance_t() = default;
   ~MemoryInstance_t();
@@ -220,7 +220,7 @@ extern uint8_t* memdirty;
 auto register_io_handler(uint32_t slot, IoFunction_t io_read_c0,
                          IoFunction_t io_write_c0, IoFunction_t io_read_cx,
                          IoFunction_t io_write_cx, void* slot_parameter,
-                         uint8_t* expansion_rom) noexcept -> void;
+                         const uint8_t* expansion_rom) noexcept -> void;
 
 auto register_direct_io_handler(uint16_t addr, IoFunction_t read,
                                 IoFunction_t write, void* instance) noexcept

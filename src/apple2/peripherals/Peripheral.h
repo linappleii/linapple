@@ -57,9 +57,11 @@ typedef struct {
   // The host copies the page out, so a card hands over its ROM image as the
   // constant it is. It may be called again at any time: a card whose PROM
   // presents different bytes while it waits registers the other image, and
-  // the 6502 sees it on its next fetch from the page.
+  // the 6502 sees it on its next fetch from the page. The expansion ROM is
+  // the 2 KiB the card presents at $C800-$CFFF while its slot has selected
+  // it; the host only ever reads from it, so it is a constant too.
   void (*RegisterCxROM)(int slot, const uint8_t* rom_ptr);
-  void (*RegisterExpansionROM)(int slot, uint8_t* rom_ptr);
+  void (*RegisterExpansionROM)(int slot, const uint8_t* rom_ptr);
   void (*RegisterDirectIO)(void* instance, uint16_t addr,
                            PeripheralIOHandler read, PeripheralIOHandler write);
   void (*RegisterDirectIOStrobe)(void* instance, uint16_t addr,
@@ -75,9 +77,11 @@ typedef struct {
   void (*AudioPushChannels)(void* instance, const float* const* channel_buffers,
                             size_t num_channels, size_t num_samples);
   void (*ResetSystem)(void* instance);
-  // The host fills both with NULL; the printer card streams through SinkWrite.
-  // They keep their place so every later member keeps the offset a prebuilt
-  // plugin expects.
+  // The host fills all four with NULL: a printer card streams through
+  // SinkWrite, and a serial card through the sink members too, SinkRead and
+  // SinkSetLine carrying what the two serial members once did. They keep
+  // their place so every later member keeps the offset a prebuilt plugin
+  // expects.
   void (*PrinterPutChar)(void* instance, uint8_t c);
   uint8_t (*PrinterGetStatus)(void* instance);
   void (*SerialTransmitByte)(void* instance, uint8_t byte);
@@ -109,6 +113,22 @@ typedef struct {
   void (*SinkWrite)(void* sink, uint8_t byte);
   bool (*SinkReady)(void* sink);
   void (*SinkClose)(void* sink);
+  // A serial line flows both ways and carries a format, so a serial token
+  // also receives. SinkRead is a pull: it hands over the next received byte
+  // if one is waiting and returns true, and a card asks only when its
+  // receiver can take one, so the host never has to decide what an overrun
+  // is. SinkSetLine tells the host the programmed format and the output
+  // levels whenever the card changes them; the host remembers the last one
+  // and replays it to a device attached later. SinkGetLines writes the modem
+  // inputs as a mask, bit 0 CTS, bit 1 DSR, bit 2 DCD, 1 = asserted, and
+  // returns true; it returns false and writes nothing when there is nothing
+  // to ask, and what an unconnected line reads is then the card's to say,
+  // because the pull-ups are on the card. A NULL token, no sink attached, or
+  // a sink without the member reads as no byte, ignored, false. On a serial
+  // token SinkReady means the device is open.
+  bool (*SinkRead)(void* sink, uint8_t* byte);
+  void (*SinkSetLine)(void* sink, const PeripheralSerialLine_t* line);
+  bool (*SinkGetLines)(void* sink, uint8_t* lines);
 } HostInterface_t;
 
 // Forward declaration

@@ -38,13 +38,19 @@ auto linapple_set_local_time_provider(LocalTimeProvider_t provider, void* ctx)
 // false. tick runs once per batch of emulated cycles, before any card's think,
 // and is where a sink that fell over retries; it may be NULL. A missing member
 // otherwise reads as a sink that is not there for that call: the write is
-// dropped and the slot is not ready.
+// dropped, the slot is not ready, read has no byte, set_line is ignored and
+// get_lines is false. The bridge keeps the last line format each slot sent
+// and hands it to set_line right after open, so a format sent before the
+// sink was installed still reaches it.
 typedef struct {
   void (*open)(void* ctx, int slot, PeripheralSinkKind_t kind);
   void (*write)(void* ctx, int slot, uint8_t byte);
   bool (*ready)(void* ctx, int slot);
   void (*close)(void* ctx, int slot);
   void (*tick)(void* ctx);
+  bool (*read)(void* ctx, int slot, uint8_t* byte);
+  void (*set_line)(void* ctx, int slot, const PeripheralSerialLine_t* line);
+  bool (*get_lines)(void* ctx, int slot, uint8_t* lines);
 } ByteSink_t;
 
 // A vtable and the context it was installed with, returned together so that a

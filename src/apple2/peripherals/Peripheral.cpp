@@ -70,7 +70,7 @@ struct ActivePeripheral_t {
   PeripheralIOHandler writeC0;
   PeripheralIOHandler readCx;
   PeripheralIOHandler writeCx;
-  uint8_t* expansionRom;
+  const uint8_t* expansionRom;
 };
 
 struct DirectIoHandler_t {
@@ -327,7 +327,8 @@ static auto host_register_cx_rom(int slot, const uint8_t* rom_ptr) -> void {
   }
 }
 
-static auto host_register_expansion_rom(int slot, uint8_t* rom_ptr) -> void {
+static auto host_register_expansion_rom(int slot, const uint8_t* rom_ptr)
+    -> void {
   if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) return;
   auto& slot_peripherals = g_active_peripherals.at(static_cast<size_t>(slot));
   if (slot_peripherals.empty()) return;
@@ -495,27 +496,6 @@ static auto host_reset_system(void* instance) -> void {
   peripheral_manager_reset();
 }
 
-extern void super_serial_frontend_send_byte(uint8_t byte);
-extern void super_serial_frontend_update_state(uint32_t baud, uint32_t bits,
-                                               int parity, int stop);
-extern auto super_serial_frontend_is_active() -> bool;
-
-static auto host_serial_transmit_byte(void* instance, uint8_t byte) -> void {
-  (void)instance;
-  if (super_serial_frontend_is_active()) {
-    super_serial_frontend_send_byte(byte);
-  }
-}
-
-static auto host_serial_update_state(void* instance, uint32_t baud,
-                                     uint32_t bits, int parity, int stop)
-    -> void {
-  (void)instance;
-  if (super_serial_frontend_is_active()) {
-    super_serial_frontend_update_state(baud, bits, parity, stop);
-  }
-}
-
 // mem_read_floating_bus is overloaded on an added high-bit argument, so the
 // table needs a single-signature thunk to take the address of.
 static auto host_read_floating_bus(uint32_t executed_cycles) -> uint8_t {
@@ -582,6 +562,11 @@ struct SinkRecord_t {
   int slot;
   PeripheralSinkKind_t kind;
   bool opened;
+  // Cards are initialised before the frontend installs its sink, and the
+  // installer closes every record, so a format sent before either would be
+  // lost unless the bridge keeps it to replay at the next open.
+  bool line_sent;
+  PeripheralSerialLine_t line;
 };
 
 static constexpr size_t sink_slot_count = 7;
@@ -624,6 +609,9 @@ static auto sink_attach(SinkRecord_t& record) -> bool {
       g_byte_sink->open(g_byte_sink_ctx, record.slot, record.kind);
     }
     record.opened = true;
+    if (record.line_sent && g_byte_sink->set_line != nullptr) {
+      g_byte_sink->set_line(g_byte_sink_ctx, record.slot, &record.line);
+    }
   }
   return true;
 }
@@ -672,7 +660,45 @@ static auto host_sink_close(void* token) -> void {
   SinkRecord_t* record = sink_record(token);
   if (record != nullptr) {
     sink_close_record(*record);
+    // The card that programmed the line is leaving; the next card in the
+    // slot states its own format.
+    record->line_sent = false;
   }
+}
+
+static auto host_sink_read(void* token, uint8_t* byte) -> bool {
+  SinkRecord_t* record = sink_record(token);
+  if (record == nullptr || byte == nullptr || !sink_attach(*record) ||
+      g_byte_sink->read == nullptr) {
+    return false;
+  }
+  return g_byte_sink->read(g_byte_sink_ctx, record->slot, byte);
+}
+
+static auto host_sink_set_line(void* token, const PeripheralSerialLine_t* line)
+    -> void {
+  SinkRecord_t* record = sink_record(token);
+  if (record == nullptr || line == nullptr) {
+    return;
+  }
+  record->line = *line;
+  record->line_sent = true;
+  // Opening the slot replays the record, so the format is sent once either
+  // way.
+  const bool was_open = record->opened;
+  if (!sink_attach(*record) || !was_open || g_byte_sink->set_line == nullptr) {
+    return;
+  }
+  g_byte_sink->set_line(g_byte_sink_ctx, record->slot, &record->line);
+}
+
+static auto host_sink_get_lines(void* token, uint8_t* lines) -> bool {
+  SinkRecord_t* record = sink_record(token);
+  if (record == nullptr || lines == nullptr || !sink_attach(*record) ||
+      g_byte_sink->get_lines == nullptr) {
+    return false;
+  }
+  return g_byte_sink->get_lines(g_byte_sink_ctx, record->slot, lines);
 }
 
 // Whatever the outgoing sink opened is its own to close; the records then
@@ -714,14 +740,17 @@ static const HostInterface_t g_host_interface = {
     .ResetSystem = host_reset_system,
     .PrinterPutChar = nullptr,
     .PrinterGetStatus = nullptr,
-    .SerialTransmitByte = host_serial_transmit_byte,
-    .SerialUpdateState = host_serial_update_state,
+    .SerialTransmitByte = nullptr,
+    .SerialUpdateState = nullptr,
     .ReadFloatingBus = host_read_floating_bus,
     .GetLocalTime = host_get_local_time,
     .SinkOpen = host_sink_open,
     .SinkWrite = host_sink_write,
     .SinkReady = host_sink_ready,
-    .SinkClose = host_sink_close};
+    .SinkClose = host_sink_close,
+    .SinkRead = host_sink_read,
+    .SinkSetLine = host_sink_set_line,
+    .SinkGetLines = host_sink_get_lines};
 
 // --- Command Queue ---
 
@@ -790,6 +819,7 @@ static auto clear_all_peripherals() -> void {
   // destination past its own life.
   for (auto& record : g_sink_records) {
     sink_close_record(record);
+    record.line_sent = false;
   }
 }
 

@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 
 typedef struct {
   int slot;
@@ -115,10 +116,34 @@ typedef char sink_close_is_member_25[offsetof(HostInterface_t, SinkClose) ==
                                              25 * sizeof(void (*)(void))
                                          ? 1
                                          : -1];
-typedef char host_interface_has_26_members
-    [sizeof(HostInterface_t) == 26 * sizeof(void (*)(void)) ? 1 : -1];
+typedef char sink_read_is_member_26[offsetof(HostInterface_t, SinkRead) ==
+                                            26 * sizeof(void (*)(void))
+                                        ? 1
+                                        : -1];
+typedef char
+    sink_set_line_is_member_27[offsetof(HostInterface_t, SinkSetLine) ==
+                                       27 * sizeof(void (*)(void))
+                                   ? 1
+                                   : -1];
+typedef char
+    sink_get_lines_is_member_28[offsetof(HostInterface_t, SinkGetLines) ==
+                                        28 * sizeof(void (*)(void))
+                                    ? 1
+                                    : -1];
+typedef char host_interface_has_29_members
+    [sizeof(HostInterface_t) == 29 * sizeof(void (*)(void)) ? 1 : -1];
 typedef char sink_kinds_are_pinned
     [peripheral_sink_printer == 1 && peripheral_sink_serial == 2 ? 1 : -1];
+typedef char
+    serial_line_is_12_bytes[sizeof(PeripheralSerialLine_t) == 12 ? 1 : -1];
+typedef char
+    serial_parity_is_pinned[peripheral_serial_parity_none == 0 &&
+                                    peripheral_serial_parity_odd == 1 &&
+                                    peripheral_serial_parity_even == 2 &&
+                                    peripheral_serial_parity_mark == 3 &&
+                                    peripheral_serial_parity_space == 4
+                                ? 1
+                                : -1];
 
 /* Returns -1 when the host offers no sink or refuses the slot, otherwise
  * writes the byte and reports whether the sink was ready to take it. */

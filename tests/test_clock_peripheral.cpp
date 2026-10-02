@@ -381,7 +381,8 @@ class ClockHarness_t {
     }
   }
 
-  static auto mock_register_expansion_rom(int slot, uint8_t* rom_ptr) -> void {
+  static auto mock_register_expansion_rom(int slot, const uint8_t* rom_ptr)
+      -> void {
     (void)slot;
     (void)rom_ptr;
   }

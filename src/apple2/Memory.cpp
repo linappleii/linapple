@@ -592,7 +592,7 @@ static auto init_io_handlers() -> void {
 auto register_io_handler(uint32_t slot, IoFunction_t io_read_c0,
                          IoFunction_t io_write_c0, IoFunction_t io_read_cx,
                          IoFunction_t io_write_cx, void* slot_parameter,
-                         uint8_t* expansion_rom) noexcept -> void {
+                         const uint8_t* expansion_rom) noexcept -> void {
   if (slot >= NUM_SLOTS) {
     return;
   }

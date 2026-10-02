@@ -60,8 +60,13 @@ class ScopedLocalTimeProvider_t {
  * previous sink back, context included, on destruction. It records every byte
  * with the slot it came from, counts the writes it refused while not ready,
  * the readiness polls, opens, closes and ticks, and starts ready so a case
- * that never touches readiness sees every byte. The sink is a process global,
- * so the guard is neither copyable nor movable.
+ * that never touches readiness sees every byte. For a line that also
+ * receives it holds one receive queue per slot, so a byte queued for one card
+ * is never read through another's token, counts the reads each slot made,
+ * keeps the last line format a card sent and how many were sent, and answers
+ * the modem inputs with a mask that starts with every line asserted, which is
+ * what a card with no cable reads. The sink is a process global, so the guard
+ * is neither copyable nor movable.
  */
 class ScopedByteSink_t {
  public:
@@ -69,6 +74,9 @@ class ScopedByteSink_t {
     int slot;
     uint8_t byte;
   };
+
+  static constexpr uint8_t all_lines_asserted = 0x07;
+  static constexpr size_t slot_count = 8;
 
   ScopedByteSink_t() : previous_(linapple_set_byte_sink(&vtable_, this)) {}
 
@@ -90,6 +98,22 @@ class ScopedByteSink_t {
   auto last_open_kind() const -> PeripheralSinkKind_t { return last_kind_; }
   auto ready() const -> bool { return ready_; }
   auto set_ready(bool ready) -> void { ready_ = ready; }
+
+  auto push_rx(int slot, uint8_t byte) -> void {
+    if (slot >= 0 && static_cast<size_t>(slot) < slot_count) {
+      rx_[static_cast<size_t>(slot)].push_back(byte);
+    }
+  }
+  auto reads(int slot) const -> unsigned {
+    if (slot < 0 || static_cast<size_t>(slot) >= slot_count) {
+      return 0;
+    }
+    return reads_[static_cast<size_t>(slot)];
+  }
+  auto set_lines(uint8_t mask) -> void { lines_ = mask; }
+  auto lines() const -> uint8_t { return lines_; }
+  auto last_line() const -> const PeripheralSerialLine_t& { return last_line_; }
+  auto line_sets() const -> unsigned { return line_sets_; }
 
  private:
   static auto self(void* ctx) -> ScopedByteSink_t* {
@@ -137,15 +161,55 @@ class ScopedByteSink_t {
     }
   }
 
-  const ByteSink_t vtable_ = {open, write, ready, close, tick};
+  static auto read(void* ctx, int slot, uint8_t* byte) -> bool {
+    if (self(ctx) == nullptr || byte == nullptr || slot < 0 ||
+        static_cast<size_t>(slot) >= slot_count) {
+      return false;
+    }
+    ++self(ctx)->reads_[static_cast<size_t>(slot)];
+    std::vector<uint8_t>& queue = self(ctx)->rx_[static_cast<size_t>(slot)];
+    if (queue.empty()) {
+      return false;
+    }
+    *byte = queue.front();
+    queue.erase(queue.begin());
+    return true;
+  }
+
+  static auto set_line(void* ctx, int slot, const PeripheralSerialLine_t* line)
+      -> void {
+    (void)slot;
+    if (self(ctx) == nullptr || line == nullptr) {
+      return;
+    }
+    self(ctx)->last_line_ = *line;
+    ++self(ctx)->line_sets_;
+  }
+
+  static auto get_lines(void* ctx, int slot, uint8_t* lines) -> bool {
+    (void)slot;
+    if (self(ctx) == nullptr || lines == nullptr) {
+      return false;
+    }
+    *lines = self(ctx)->lines_;
+    return true;
+  }
+
+  const ByteSink_t vtable_ = {open, write, ready,    close,
+                              tick, read,  set_line, get_lines};
   ByteSinkBinding_t previous_;
   std::vector<Byte_t> bytes_;
+  std::array<std::vector<uint8_t>, slot_count> rx_{};
+  std::array<unsigned, slot_count> reads_{};
   unsigned dropped_ = 0;
   unsigned ready_polls_ = 0;
   unsigned opens_ = 0;
   unsigned closes_ = 0;
   unsigned ticks_ = 0;
+  unsigned line_sets_ = 0;
   PeripheralSinkKind_t last_kind_ = peripheral_sink_printer;
+  PeripheralSerialLine_t last_line_{};
+  uint8_t lines_ = all_lines_asserted;
   bool ready_ = true;
 };
 

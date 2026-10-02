@@ -466,7 +466,8 @@ class BenchHost_t {
     (void)rom;
   }
 
-  static auto bench_register_expansion_rom(int slot, uint8_t* rom) -> void {
+  static auto bench_register_expansion_rom(int slot, const uint8_t* rom)
+      -> void {
     (void)slot;
     (void)rom;
   }

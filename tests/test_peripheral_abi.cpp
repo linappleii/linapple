@@ -6,6 +6,7 @@
 
 #include "apple2/Memory.h"
 #include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
 #include "doctest.h"
@@ -255,10 +256,24 @@ static_assert(offsetof(HostInterface_t, SinkReady) == 24 * host_member_size,
               "SinkReady moved");
 static_assert(offsetof(HostInterface_t, SinkClose) == 25 * host_member_size,
               "SinkClose moved");
-static_assert(sizeof(HostInterface_t) == 26 * host_member_size,
-              "HostInterface_t grew past the sink members");
+static_assert(offsetof(HostInterface_t, SinkRead) == 26 * host_member_size,
+              "SinkRead is not the first member after SinkClose");
+static_assert(offsetof(HostInterface_t, SinkSetLine) == 27 * host_member_size,
+              "SinkSetLine moved");
+static_assert(offsetof(HostInterface_t, SinkGetLines) == 28 * host_member_size,
+              "SinkGetLines moved");
+static_assert(sizeof(HostInterface_t) == 29 * host_member_size,
+              "HostInterface_t grew past the serial sink members");
 static_assert(peripheral_sink_printer == 1 && peripheral_sink_serial == 2,
               "PeripheralSinkKind_t values are part of the plugin ABI");
+static_assert(sizeof(PeripheralSerialLine_t) == 12,
+              "PeripheralSerialLine_t crosses the plugin ABI");
+static_assert(peripheral_serial_parity_none == 0 &&
+                  peripheral_serial_parity_odd == 1 &&
+                  peripheral_serial_parity_even == 2 &&
+                  peripheral_serial_parity_mark == 3 &&
+                  peripheral_serial_parity_space == 4,
+              "PeripheralSerialParity_t values are part of the plugin ABI");
 
 // A card that opens its sink at init and, when asked, records what the
 // manager had done for the sink by the time its own hooks ran.
@@ -353,7 +368,9 @@ TEST_CASE(
     "Peripheral ABI: The sink members follow GetLocalTime at pinned offsets") {
   CHECK(offsetof(HostInterface_t, SinkOpen) ==
         offsetof(HostInterface_t, GetLocalTime) + host_member_size);
-  CHECK(offsetof(HostInterface_t, SinkClose) + host_member_size ==
+  CHECK(offsetof(HostInterface_t, SinkRead) ==
+        offsetof(HostInterface_t, SinkClose) + host_member_size);
+  CHECK(offsetof(HostInterface_t, SinkGetLines) + host_member_size ==
         sizeof(HostInterface_t));
 
   peripheral_manager_init();
@@ -364,10 +381,15 @@ TEST_CASE(
   CHECK(g_captured_host->SinkWrite != nullptr);
   CHECK(g_captured_host->SinkReady != nullptr);
   CHECK(g_captured_host->SinkClose != nullptr);
-  // PrinterPutChar and PrinterGetStatus keep their place in the layout with
+  CHECK(g_captured_host->SinkRead != nullptr);
+  CHECK(g_captured_host->SinkSetLine != nullptr);
+  CHECK(g_captured_host->SinkGetLines != nullptr);
+  // The printer and serial members keep their place in the layout with
   // nothing behind them.
   CHECK(g_captured_host->PrinterPutChar == nullptr);
   CHECK(g_captured_host->PrinterGetStatus == nullptr);
+  CHECK(g_captured_host->SerialTransmitByte == nullptr);
+  CHECK(g_captured_host->SerialUpdateState == nullptr);
   peripheral_manager_shutdown();
 }
 
@@ -639,7 +661,9 @@ TEST_CASE("Peripheral ABI: A sink without a tick is left alone") {
   static unsigned writes_seen = 0;
   writes_seen = 0;
   static const ByteSink_t tickless = {
-      nullptr, [](void*, int, uint8_t) -> void { ++writes_seen; }, nullptr,
+      nullptr, [](void*, int, uint8_t) -> void { ++writes_seen; },
+      nullptr, nullptr,
+      nullptr, nullptr,
       nullptr, nullptr};
   const ByteSinkBinding_t previous = linapple_set_byte_sink(&tickless, nullptr);
 
@@ -653,6 +677,200 @@ TEST_CASE("Peripheral ABI: A sink without a tick is left alone") {
   host->SinkClose(g_sink_probe.token);
 
   linapple_set_byte_sink(previous.vtable, previous.ctx);
+  peripheral_manager_shutdown();
+}
+
+namespace {
+
+// The same probe on a serial token: the line it opens receives as well.
+auto serial_probe_init(int slot, HostInterface_t* host) -> void* {
+  g_sink_probe = SinkProbe_t();
+  g_sink_probe.host = host;
+  g_sink_probe.slot = slot;
+  g_sink_probe.token =
+      host->SinkOpen(&g_sink_probe, slot, peripheral_sink_serial);
+  return &g_sink_probe;
+}
+
+Peripheral_t g_serial_probe_peripheral = {LINAPPLE_ABI_VERSION,
+                                          "test.serial_probe",
+                                          "SerialProbe",
+                                          "Opens a serial sink at init",
+                                          "LinApple Contributors",
+                                          "1.0.0",
+                                          PERIPHERAL_MASK_EXPANSION,
+                                          -1,
+                                          serial_probe_init,
+                                          nullptr,
+                                          sink_probe_shutdown,
+                                          nullptr,
+                                          nullptr,
+                                          nullptr,
+                                          nullptr,
+                                          nullptr,
+                                          nullptr};
+
+constexpr PeripheralSerialLine_t line_9600_8n1 = {
+    9600, 8, peripheral_serial_parity_none, 2, 1, 1, 0, {0, 0}};
+constexpr PeripheralSerialLine_t line_300_7e2 = {
+    300, 7, peripheral_serial_parity_even, 4, 1, 0, 0, {0, 0}};
+
+auto same_line(const PeripheralSerialLine_t& a, const PeripheralSerialLine_t& b)
+    -> bool {
+  return a.baud == b.baud && a.data_bits == b.data_bits &&
+         a.parity == b.parity && a.stop_half_bits == b.stop_half_bits &&
+         a.dtr == b.dtr && a.rts == b.rts && a.brk == b.brk;
+}
+
+}  // namespace
+
+TEST_CASE(
+    "Peripheral ABI: SinkRead pulls a queued byte once, by slot, and leaves "
+    "the byte alone when nothing waits") {
+  TestFixtures::ScopedByteSink_t sink;
+  peripheral_manager_init();
+  REQUIRE(peripheral_register(&g_serial_probe_peripheral, probe_slot) == 0);
+  HostInterface_t* host = g_sink_probe.host;
+  void* token = g_sink_probe.token;
+  REQUIRE(token != nullptr);
+  void* other = host->SinkOpen(&g_sink_probe, 1, peripheral_sink_serial);
+  REQUIRE(other != nullptr);
+
+  uint8_t byte = 0x55;
+  CHECK(host->SinkRead(token, &byte) == false);
+  CHECK(byte == 0x55);
+  CHECK(host->SinkRead(nullptr, &byte) == false);
+  CHECK(host->SinkRead(token, nullptr) == false);
+  CHECK(byte == 0x55);
+
+  sink.push_rx(probe_slot, 0xC8);
+  sink.push_rx(1, 0xC1);
+  CHECK(host->SinkRead(token, &byte));
+  CHECK(byte == 0xC8);
+  CHECK(host->SinkRead(token, &byte) == false);
+  CHECK(byte == 0xC8);
+
+  CHECK(host->SinkRead(other, &byte));
+  CHECK(byte == 0xC1);
+  CHECK(host->SinkRead(other, &byte) == false);
+
+  CHECK(sink.reads(probe_slot) == 3);
+  CHECK(sink.reads(1) == 2);
+
+  peripheral_manager_shutdown();
+}
+
+TEST_CASE(
+    "Peripheral ABI: SinkRead on a slot never written opens it as a serial "
+    "line") {
+  TestFixtures::ScopedByteSink_t sink;
+  peripheral_manager_init();
+  REQUIRE(peripheral_register(&g_serial_probe_peripheral, probe_slot) == 0);
+  HostInterface_t* host = g_sink_probe.host;
+  CHECK(sink.opens() == 0);
+
+  uint8_t byte = 0;
+  CHECK(host->SinkRead(g_sink_probe.token, &byte) == false);
+  CHECK(sink.opens() == 1);
+  CHECK(sink.last_open_kind() == peripheral_sink_serial);
+  CHECK(host->SinkRead(g_sink_probe.token, &byte) == false);
+  CHECK(sink.opens() == 1);
+
+  peripheral_manager_shutdown();
+  CHECK(sink.closes() == 1);
+}
+
+TEST_CASE(
+    "Peripheral ABI: SinkGetLines says false and writes nothing with no sink "
+    "or no get_lines, and hands over the fixture's mask otherwise") {
+  ScopedNoByteSink_t nothing_installed;
+  peripheral_manager_init();
+  REQUIRE(peripheral_register(&g_serial_probe_peripheral, probe_slot) == 0);
+  HostInterface_t* host = g_sink_probe.host;
+  void* token = g_sink_probe.token;
+
+  uint8_t lines = 0xA5;
+  CHECK(host->SinkGetLines(token, &lines) == false);
+  CHECK(lines == 0xA5);
+  CHECK(host->SinkGetLines(nullptr, &lines) == false);
+  CHECK(host->SinkGetLines(token, nullptr) == false);
+
+  {
+    static const ByteSink_t lineless = {nullptr, nullptr, nullptr, nullptr,
+                                        nullptr, nullptr, nullptr, nullptr};
+    const ByteSinkBinding_t previous =
+        linapple_set_byte_sink(&lineless, nullptr);
+    CHECK(host->SinkGetLines(token, &lines) == false);
+    CHECK(lines == 0xA5);
+    linapple_set_byte_sink(previous.vtable, previous.ctx);
+  }
+
+  {
+    TestFixtures::ScopedByteSink_t sink;
+    // Every line asserted, as a card with no cable reads its pull-ups.
+    CHECK(host->SinkGetLines(token, &lines));
+    CHECK(lines == 0x07);
+    CHECK(sink.opens() == 1);
+    sink.set_lines(0x05);
+    CHECK(host->SinkGetLines(token, &lines));
+    CHECK(lines == 0x05);
+  }
+
+  CHECK(host->SinkGetLines(token, &lines) == false);
+  CHECK(lines == 0x05);
+
+  peripheral_manager_shutdown();
+}
+
+TEST_CASE(
+    "Peripheral ABI: SinkSetLine ignores a NULL token and a format sent before "
+    "a sink exists reaches set_line at the slot's first open") {
+  ScopedNoByteSink_t nothing_installed;
+  peripheral_manager_init();
+  REQUIRE(peripheral_register(&g_serial_probe_peripheral, probe_slot) == 0);
+  HostInterface_t* host = g_sink_probe.host;
+  void* token = g_sink_probe.token;
+
+  host->SinkSetLine(nullptr, &line_9600_8n1);
+  host->SinkSetLine(token, nullptr);
+  host->SinkSetLine(token, &line_9600_8n1);
+
+  {
+    TestFixtures::ScopedByteSink_t late;
+    CHECK(late.opens() == 0);
+    CHECK(late.line_sets() == 0);
+    host->SinkWrite(token, 0xC8);
+    CHECK(late.opens() == 1);
+    CHECK(late.line_sets() == 1);
+    CHECK(same_line(late.last_line(), line_9600_8n1));
+
+    // With the slot open the format goes straight through, once.
+    host->SinkSetLine(token, &line_300_7e2);
+    CHECK(late.line_sets() == 2);
+    CHECK(same_line(late.last_line(), line_300_7e2));
+    CHECK(late.opens() == 1);
+  }
+
+  // A sink installed afterwards is told the latest format at its first open,
+  // whichever member opened the slot.
+  {
+    TestFixtures::ScopedByteSink_t again;
+    uint8_t byte = 0;
+    CHECK(host->SinkRead(token, &byte) == false);
+    CHECK(again.opens() == 1);
+    CHECK(again.line_sets() == 1);
+    CHECK(same_line(again.last_line(), line_300_7e2));
+  }
+
+  // Once the card closes its token the format goes with it.
+  host->SinkClose(token);
+  {
+    TestFixtures::ScopedByteSink_t after_close;
+    host->SinkWrite(token, 0xC8);
+    CHECK(after_close.opens() == 1);
+    CHECK(after_close.line_sets() == 0);
+  }
+
   peripheral_manager_shutdown();
 }
 
