@@ -1115,16 +1115,18 @@ auto peripheral_save_state(int slot, void* buffer, size_t* size) -> void {
   }
 }
 
-auto peripheral_load_state(int slot, const void* buffer, size_t size) -> void {
+auto peripheral_load_state(int slot, const void* buffer, size_t size)
+    -> PeripheralStatus_t {
   if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS) || buffer == nullptr)
-    return;
+    return peripheral_error;
   auto& slot_peripherals = g_active_peripherals.at(static_cast<size_t>(slot));
-  if (slot_peripherals.empty()) return;
+  if (slot_peripherals.empty()) return peripheral_incompatible;
 
   auto& ap = slot_peripherals.front();
-  if (ap.api != nullptr && ap.api->load_state != nullptr) {
-    ap.api->load_state(ap.instance, buffer, size);
+  if (ap.api == nullptr || ap.api->load_state == nullptr) {
+    return peripheral_incompatible;
   }
+  return ap.api->load_state(ap.instance, buffer, size);
 }
 
 auto peripheral_save_state_by_name(int slot, const char* name, void* buffer,

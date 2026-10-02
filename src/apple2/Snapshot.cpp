@@ -11,6 +11,7 @@
 #include "apple2/SnapshotTypes.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
 
@@ -22,7 +23,10 @@ struct SlotRegionDesc_t {
   const char* name;
 };
 
-// Fixed-body snapshot regions for slots 0 through 7.
+// Fixed-body snapshot regions for slots 0 through 7. Each is the size the
+// AppleWin layout gave that slot, which a card's frame may well exceed: such
+// a frame is refused here by the card itself and rides the slot trailer,
+// which every file written since the trailer exists carries.
 constexpr std::array<SlotRegionDesc_t, NUM_SLOTS> k_slot_region_descriptors{{
     {offsetof(Snapshot_t, apple2_unit.speaker),
      sizeof(Snapshot_t::apple2_unit.speaker), "Speaker"},
@@ -210,8 +214,18 @@ auto snapshot_deserialize(const Snapshot_t* snapshot) -> bool {
         reinterpret_cast<const uint8_t*>(snapshot) + desc->offset;
     if (desc->name != nullptr) {
       peripheral_load_state_by_name(i, desc->name, state, desc->size);
-    } else {
-      peripheral_load_state(i, state, desc->size);
+      continue;
+    }
+    // A card whose frame is larger than its region refuses it, and a file
+    // with no trailer entry for the slot never carried that card, so it stays
+    // at reset. Said once, because a silent refusal looks like a load. The
+    // manifest was verified against the active cards above, so its name for
+    // the slot is the card that refused.
+    if (peripheral_load_state(i, state, desc->size) == peripheral_error) {
+      Logger::info(
+          "Slot %d: %s refused the %zu-byte fixed-body region and stays at "
+          "reset\n",
+          i, snapshot->manifest.peripherals[i].name, desc->size);
     }
   }
 

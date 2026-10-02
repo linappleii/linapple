@@ -10,8 +10,10 @@
 #include <cstdio>
 #include <cstring>
 #include <fstream>
+#include <ios>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
@@ -20,6 +22,7 @@
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Internal.h"
 #include "core/LinAppleCore.h"
+#include "core/Log.h"
 #include "doctest.h"
 #include "frontends/common/SaveStateManager.h"
 #include "test_fixtures.h"
@@ -347,6 +350,118 @@ TEST_CASE("Snapshot: A fixed-body file loads with its slots intact") {
   CHECK(manifest.peripherals[5].name[0] == '\0');
   CHECK(manifest.peripherals[6].name[0] == '\0');
   CHECK(manifest.peripherals[7].name[0] == '\0');
+}
+
+namespace {
+
+struct LogLines_t {
+  std::vector<std::string> lines;
+};
+
+auto collect_log_line(LogLevel_t level, const char* message, void* user_data)
+    -> void {
+  (void)level;
+  auto* lines = static_cast<LogLines_t*>(user_data);
+  if (lines != nullptr && message != nullptr) {
+    lines->lines.emplace_back(message);
+  }
+}
+
+// Captures every log line while in scope and puts the logger back as found.
+class ScopedLogCapture_t {
+ public:
+  ScopedLogCapture_t() : verbosity_(Logger::get_verbosity()) {
+    Logger::set_verbosity(LogLevel_t::info);
+    Logger::set_callback_with_context(collect_log_line, &lines_);
+  }
+  ~ScopedLogCapture_t() {
+    Logger::set_callback_with_context(nullptr, nullptr);
+    Logger::set_verbosity(verbosity_);
+  }
+  ScopedLogCapture_t(const ScopedLogCapture_t&) = delete;
+  auto operator=(const ScopedLogCapture_t&) -> ScopedLogCapture_t& = delete;
+  ScopedLogCapture_t(ScopedLogCapture_t&&) = delete;
+  auto operator=(ScopedLogCapture_t&&) -> ScopedLogCapture_t& = delete;
+
+  auto lines() const -> const std::vector<std::string>& { return lines_.lines; }
+  auto count_containing(const std::string& needle) const -> size_t {
+    size_t count = 0;
+    for (const std::string& line : lines_.lines) {
+      if (line.find(needle) != std::string::npos) {
+        ++count;
+      }
+    }
+    return count;
+  }
+
+ private:
+  LogLevel_t verbosity_;
+  LogLines_t lines_;
+};
+
+constexpr size_t serial_frame_size = 56;
+constexpr size_t serial_frame_control = 12;
+constexpr size_t serial_frame_command = 13;
+constexpr size_t comms_region_offset = 40;
+constexpr size_t comms_region_size = 32;
+
+}  // namespace
+
+TEST_CASE(
+    "Snapshot: A fixed-body file leaves the serial card at reset and says so "
+    "once") {
+  TestConfig_t::Description_t description;
+  description.slots[0] = "Parallel Printer";
+  description.slots[1] = "Super Serial Card";
+  description.slots[3] = "Mockingboard";
+  TestConfig_t config(description);
+  TestFixtures::ScopedCore_t core(config);
+
+  const std::string path = TestFixtures::get_fixture_path("minimal.aws");
+  REQUIRE(access(path.c_str(), R_OK) == 0);
+  save_state_set_filename(path.c_str());
+  {
+    ScopedLogCapture_t log;
+    REQUIRE(save_state_load());
+    CHECK(log.count_containing("Slot 2: Super Serial Card refused") == 1);
+    CHECK(log.count_containing("Slot 2:") == 1);
+    // An empty slot has nobody to refuse the region and says nothing.
+    CHECK(log.count_containing("Slot 3:") == 0);
+    CHECK(log.count_containing("Slot 5:") == 0);
+    CHECK(log.count_containing("Slot 7:") == 0);
+  }
+
+  // The card is at its reset registers: control and command both zero.
+  std::array<uint8_t, snapshot_slot_state_capacity> frame{};
+  frame.fill(0xFF);
+  size_t frame_size = frame.size();
+  peripheral_save_state(2, frame.data(), &frame_size);
+  REQUIRE(frame_size == serial_frame_size);
+  CHECK(frame[serial_frame_control] == 0);
+  CHECK(frame[serial_frame_command] == 0);
+
+  // What the real writer puts on disk keeps the fixed-body region at zero
+  // and carries the card's frame in the trailer.
+  TestFixtures::ScopedTempFile_t written(".aws");
+  save_state_set_filename(written.c_str());
+  save_state_save();
+  std::ifstream in(written.path(), std::ios::binary);
+  REQUIRE(in.good());
+  std::array<char, comms_region_size> region{};
+  in.seekg(static_cast<std::streamoff>(comms_region_offset));
+  in.read(region.data(), static_cast<std::streamsize>(region.size()));
+  REQUIRE(in.good());
+  for (char byte : region) {
+    CHECK(byte == 0);
+  }
+  const std::streamoff trailer_slot_2 =
+      static_cast<std::streamoff>(offsetof(Snapshot_t, slot_trailer.slots)) +
+      static_cast<std::streamoff>(sizeof(SsSlotState_t));
+  in.seekg(trailer_slot_2);
+  uint32_t length = 0;
+  in.read(reinterpret_cast<char*>(&length), sizeof(length));
+  REQUIRE(in.good());
+  CHECK(length == serial_frame_size);
 }
 
 TEST_CASE("Snapshot: The file's length says whether a trailer follows") {

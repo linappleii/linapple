@@ -10,7 +10,6 @@
 #include "apple2/chips/SSI263.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "apple2/peripherals/speaker/Speaker.h"
-#include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
 #include "core/LinAppleCore.h"
 
 constexpr uint32_t k_byte3_shift = 24;
@@ -46,6 +45,10 @@ struct SsCpu6502_t {
   uint64_t cumulative_cycles;
 };
 
+// The 32 bytes an AppleWin .aws file spends on the serial card. The region is
+// layout only: no code writes or reads its fields, the card's own frame does
+// not fit in it and rides the slot trailer instead, and every written file
+// carries it as zeros.
 struct SsIoComms_t {
   uint32_t baud_rate;
   uint8_t byte_size;
@@ -53,10 +56,12 @@ struct SsIoComms_t {
   uint32_t comm_inactivity;
   uint8_t control_byte;
   uint8_t parity;
-  uint8_t recv_buffer[SUPER_SERIAL_FIFO_SIZE];
+  uint8_t recv_buffer[9];
   uint32_t recv_bytes;
   uint8_t stop_bits;
 };
+static_assert(sizeof(SsIoComms_t) == 32,
+              "SsIoComms_t is an .aws wire format and must stay 32 bytes");
 
 // Eight zero bytes that nothing reads. They keep the fixed body at its length;
 // the game port lives in slot 0, which has no entry in the trailer and no

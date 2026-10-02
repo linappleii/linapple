@@ -210,7 +210,11 @@ PeripheralStatus_t peripheral_query_by_id(int slot, const char* peripheral_id,
                                           uint32_t cmd_id, void* out,
                                           size_t* out_size);
 void peripheral_save_state(int slot, void* buffer, size_t* size);
-void peripheral_load_state(int slot, const void* buffer, size_t size);
+// Returns the card's own verdict on the frame; peripheral_incompatible for an
+// empty slot or a card that keeps no state, so a refused frame is told apart
+// from one nobody was there to take.
+PeripheralStatus_t peripheral_load_state(int slot, const void* buffer,
+                                         size_t size);
 void peripheral_save_state_by_name(int slot, const char* name, void* buffer,
                                    size_t* size);
 void peripheral_load_state_by_name(int slot, const char* name,
