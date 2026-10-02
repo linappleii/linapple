@@ -393,6 +393,7 @@ set(SOURCES_CORE
     src/frontends/common/VideoStretch.cpp
     src/frontends/common/SuperSerialFrontend.cpp
     src/frontends/common/PrinterFrontend.cpp
+    src/frontends/common/HostSink.cpp
     src/core/services/ftp/FtpParser.cpp
 )
 
@@ -819,8 +820,6 @@ if(BUILD_TESTING)
     add_linapple_test(cpu-context tests/test_cpu_context.cpp)
     add_linapple_test(memory-context tests/test_memory_context.cpp)
 
-    add_linapple_test(superserial-peripheral "tests/test_main.cpp;tests/test_superserial_peripheral.cpp")
-
     add_linapple_test(abi tests/test_abi.cpp)
     # Verifies ABI headers compile cleanly as pure C99.
     set_source_files_properties(tests/test_peripheral_abi_c.c PROPERTIES COMPILE_OPTIONS "-std=c99;-pedantic")
@@ -882,6 +881,19 @@ fi
             "echo 'c75c751589cbcc1ad4ab4f63676af7abadd86f5b  res/roms/Parallel.rom' | sha1sum -c --quiet"
             WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
         set_tests_properties(test-printer-rom-pinned PROPERTIES TIMEOUT 5)
+    endif()
+    if(ENABLE_PERIPHERAL_SUPER_SERIAL)
+        set_source_files_properties(tests/test_superserial_abi_c.c PROPERTIES COMPILE_OPTIONS "-std=c99;-pedantic")
+        add_linapple_test(superserial-peripheral "tests/test_main.cpp;tests/HeadlessHarness.cpp;tests/test_superserial_peripheral.cpp;tests/test_superserial_abi_c.c")
+        set_tests_properties(test-superserial-peripheral PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
+        add_linapple_test(superserial-frontend "tests/HeadlessHarness.cpp;tests/test_superserial_frontend.cpp")
+        set_tests_properties(test-superserial-frontend PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
+        # The card's firmware is this file; the reference is pinned so the
+        # bytes the suite is written against cannot drift.
+        add_test(NAME test-ssc-rom-pinned COMMAND sh -c
+            "echo '6dab633470c6bc4cb3e81d09fda46597caf8ee57  res/roms/SSC.rom' | sha1sum -c --quiet"
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+        set_tests_properties(test-ssc-rom-pinned PROPERTIES TIMEOUT 5)
     endif()
     add_executable(test-via6522 tests/test_via6522.cpp src/apple2/chips/6522.cpp)
     target_include_directories(test-via6522 PRIVATE src ${DOCTEST_INCLUDE_DIR})

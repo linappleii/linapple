@@ -189,10 +189,6 @@ const ByteSink_t g_printer_sink = {.open = sink_open,
 
 auto printer_frontend_install(const PrinterFrontendSettings_t& settings)
     -> void {
-  // The bridge closes every open slot through the outgoing sink, which on a
-  // re-initialisation is this one, so the files of the previous run are
-  // flushed and closed before the new run's settings replace them.
-  linapple_set_byte_sink(&g_printer_sink, nullptr);
   g_settings = settings;
   g_resolved_path = resolve_path(settings);
   for (auto& sink : g_slots) {
@@ -202,6 +198,8 @@ auto printer_frontend_install(const PrinterFrontendSettings_t& settings)
     sink.truncated = false;
   }
 }
+
+auto printer_frontend_sink() -> const ByteSink_t& { return g_printer_sink; }
 
 auto printer_frontend_output_path(int slot) -> std::string {
   if (g_settings.primary_slot == 0 || slot == g_settings.primary_slot) {

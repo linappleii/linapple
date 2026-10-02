@@ -21,19 +21,6 @@
 
 [[gnu::weak]] auto frame_refresh_status(int /*drawflags*/) -> void {}
 
-[[gnu::weak]] auto super_serial_frontend_initialize(const char* /*p*/) -> bool {
-  return false;
-}
-[[gnu::weak]] auto super_serial_frontend_close() -> void {}
-[[gnu::weak]] auto super_serial_frontend_is_active() -> bool { return false; }
-[[gnu::weak]] auto super_serial_frontend_update_state(uint32_t /*b*/,
-                                                      uint32_t /*d*/, int /*p*/,
-                                                      int /*s*/) -> void {}
-[[gnu::weak]] auto super_serial_frontend_send_byte(uint8_t /*c*/) -> void {}
-[[gnu::weak]] auto super_serial_frontend_set_serial_port_path(const char* /*p*/)
-    -> void {}
-[[gnu::weak]] auto super_serial_frontend_set_loopback(bool /*e*/) -> void {}
-
 // Video/Frontend Stubs needed for Debugger source linkage
 [[gnu::weak]] auto stretch_blt_mem_to_frame_dc() -> void {}
 [[gnu::weak]] auto video_update_vbl(uint32_t) -> void {}

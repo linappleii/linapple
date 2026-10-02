@@ -1,217 +1,91 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "frontends/common/SuperSerialFrontend.h"
 
-#include <fcntl.h>
-#include <termios.h>
-#include <unistd.h>
-
 #include <array>
-#include <atomic>
+#include <cstddef>
 #include <cstdint>
-#include <cstdio>
-#include <cstring>
-#include <mutex>
-#include <string>
-#include <thread>
 
-#include "apple2/peripherals/Peripheral.h"
-#include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
+#include "apple2/peripherals/Peripheral_Internal.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 
 namespace {
 
-static int g_comm_handle = -1;
-static std::string g_serial_port_path;
-static bool g_serial_loopback = false;
-static uint32_t g_comm_inactivity = 0;
-static std::mutex g_critical_section;
-static std::thread g_comm_thread;
-static std::atomic<bool> g_thread_running{false};
-static std::atomic<bool> g_thread_terminate{false};
+constexpr int k_slot_count = 7;
 
-constexpr uint32_t k_data_bits_5 = 5;
-constexpr uint32_t k_data_bits_6 = 6;
-constexpr uint32_t k_data_bits_7 = 7;
-constexpr uint32_t k_data_bits_8 = 8;
-constexpr size_t k_serial_rx_buffer_size = 256;
-constexpr useconds_t k_serial_poll_interval_us = 1000;
+struct SlotLine_t {
+  bool in_use = false;
+};
 
-auto super_serial_frontend_update_comm_state(uint32_t baud, uint32_t bits,
-                                             SuperSerialParity_t parity,
-                                             SuperSerialStopBits_t stop)
+std::array<SlotLine_t, k_slot_count> g_slots{};
+
+auto slot_line(int slot) -> SlotLine_t* {
+  if (slot < 1 || slot > k_slot_count) {
+    return nullptr;
+  }
+  return &g_slots.at(static_cast<size_t>(slot - 1));
+}
+
+auto sink_open(void* ctx, int slot, PeripheralSinkKind_t kind) -> void {
+  (void)ctx;
+  SlotLine_t* line = slot_line(slot);
+  if (line != nullptr) {
+    line->in_use = kind == peripheral_sink_serial;
+  }
+}
+
+auto sink_write(void* ctx, int slot, uint8_t byte) -> void {
+  (void)ctx;
+  (void)slot;
+  (void)byte;
+}
+
+// On a serial line "ready" is "the device is open"; there is none yet.
+auto sink_ready(void* ctx, int slot) -> bool {
+  (void)ctx;
+  (void)slot;
+  return false;
+}
+
+auto sink_close(void* ctx, int slot) -> void {
+  (void)ctx;
+  SlotLine_t* line = slot_line(slot);
+  if (line != nullptr) {
+    line->in_use = false;
+  }
+}
+
+auto sink_tick(void* ctx) -> void { (void)ctx; }
+
+auto sink_read(void* ctx, int slot, uint8_t* byte) -> bool {
+  (void)ctx;
+  (void)slot;
+  (void)byte;
+  return false;
+}
+
+auto sink_set_line(void* ctx, int slot, const PeripheralSerialLine_t* line)
     -> void {
-  if (g_comm_handle == -1) {
-    return;
-  }
-
-  struct termios dcb{};
-  int l_databits = CS8;
-  tcgetattr(g_comm_handle, &dcb);
-
-  cfsetispeed(&dcb, baud);
-  cfsetospeed(&dcb, baud);
-  dcb.c_cflag |= (CLOCAL | CREAD);
-
-  switch (parity) {
-    case SUPER_SERIAL_PARITY_NONE:
-      dcb.c_cflag &= ~PARENB;
-      break;
-    case SUPER_SERIAL_PARITY_EVEN:
-      dcb.c_cflag |= PARENB;
-      dcb.c_cflag &= ~PARODD;
-      break;
-    case SUPER_SERIAL_PARITY_ODD:
-      dcb.c_cflag |= (PARENB | PARODD);
-      break;
-    case SUPER_SERIAL_PARITY_MARK:
-      dcb.c_cflag |= (PARENB | CMSPAR | PARODD);
-      break;
-    case SUPER_SERIAL_PARITY_SPACE:
-      dcb.c_cflag |= (PARENB | CMSPAR);
-      dcb.c_cflag &= ~PARODD;
-      break;
-    default:
-      break;
-  }
-
-  switch (bits) {
-    case k_data_bits_5:
-      l_databits = CS5;
-      break;
-    case k_data_bits_6:
-      l_databits = CS6;
-      break;
-    case k_data_bits_7:
-      l_databits = CS7;
-      break;
-    case k_data_bits_8:
-    default:
-      l_databits = CS8;
-      break;
-  }
-  dcb.c_cflag &= ~CSIZE;
-  dcb.c_cflag |= l_databits;
-
-  switch (stop) {
-    case SUPER_SERIAL_STOP_BITS_1_5:
-    case SUPER_SERIAL_STOP_BITS_1:
-      dcb.c_cflag &= ~CSTOPB;
-      break;
-    case SUPER_SERIAL_STOP_BITS_2:
-      dcb.c_cflag |= CSTOPB;
-      break;
-    default:
-      break;
-  }
-  dcb.c_cflag &= ~CRTSCTS;
-  dcb.c_lflag &= ~(ICANON | ECHO | ISIG);
-  tcsetattr(g_comm_handle, TCSANOW, &dcb);
+  (void)ctx;
+  (void)slot;
+  (void)line;
 }
 
-auto serial_polling_thread() -> void {
-  std::array<uint8_t, k_serial_rx_buffer_size> buffer{};
-
-  while (!g_thread_terminate.load(std::memory_order_relaxed)) {
-    if (g_comm_handle == -1) {
-      usleep(k_serial_poll_interval_us);
-      continue;
-    }
-
-    const ssize_t n = read(g_comm_handle, buffer.data(), buffer.size());
-    if (n > 0) {
-      std::lock_guard<std::mutex> lock(g_critical_section);
-      for (ssize_t i = 0; i < n; ++i) {
-        uint8_t byte = buffer.at(static_cast<size_t>(i));
-        peripheral_command(super_serial_default_slot,
-                           SUPER_SERIAL_CMD_PUSH_RX_BYTE, &byte,
-                           sizeof(uint8_t));
-      }
-    }
-    usleep(k_serial_poll_interval_us);
-  }
+auto sink_get_lines(void* ctx, int slot, uint8_t* lines) -> bool {
+  (void)ctx;
+  (void)slot;
+  (void)lines;
+  return false;
 }
 
-auto super_serial_frontend_transmit_byte(uint8_t byte) -> bool {
-  if (g_serial_loopback) {
-    std::lock_guard<std::mutex> lock(g_critical_section);
-    peripheral_command(super_serial_default_slot, SUPER_SERIAL_CMD_PUSH_RX_BYTE,
-                       &byte, sizeof(uint8_t));
-    return true;
-  }
-
-  if (!super_serial_frontend_is_active()) {
-    return false;
-  }
-  return write(g_comm_handle, &byte, 1) == 1;
-}
+const ByteSink_t g_serial_sink = {.open = sink_open,
+                                  .write = sink_write,
+                                  .ready = sink_ready,
+                                  .close = sink_close,
+                                  .tick = sink_tick,
+                                  .read = sink_read,
+                                  .set_line = sink_set_line,
+                                  .get_lines = sink_get_lines};
 
 }  // namespace
 
-auto super_serial_frontend_initialize(const char* serial_port_path) -> bool {
-  super_serial_frontend_set_serial_port_path(serial_port_path);
-  return super_serial_frontend_is_active();
-}
-
-auto super_serial_frontend_is_active() -> bool {
-  if (g_serial_loopback) {
-    return true;
-  }
-  if (g_comm_handle != -1) {
-    return true;
-  }
-  if (g_serial_port_path.empty()) {
-    return false;
-  }
-
-  g_comm_handle =
-      open(g_serial_port_path.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);
-  if (g_comm_handle == -1) {
-    return false;
-  }
-
-  if (!g_thread_running.load(std::memory_order_relaxed)) {
-    g_thread_terminate.store(false, std::memory_order_relaxed);
-    g_thread_running.store(true, std::memory_order_release);
-    g_comm_thread = std::thread(serial_polling_thread);
-  }
-
-  return true;
-}
-
-auto super_serial_frontend_update_state(uint32_t baud, uint32_t bits,
-                                        int parity, int stop) -> void {
-  super_serial_frontend_update_comm_state(
-      baud, bits, static_cast<SuperSerialParity_t>(parity),
-      static_cast<SuperSerialStopBits_t>(stop));
-}
-
-auto super_serial_frontend_close() -> void {
-  if (g_thread_running.load(std::memory_order_acquire)) {
-    g_thread_terminate.store(true, std::memory_order_release);
-    if (g_comm_thread.joinable()) {
-      g_comm_thread.join();
-    }
-    g_thread_running.store(false, std::memory_order_release);
-  }
-
-  if (g_comm_handle != -1) {
-    close(g_comm_handle);
-  }
-  g_comm_handle = -1;
-  g_comm_inactivity = 0;
-}
-
-auto super_serial_frontend_set_serial_port_path(const char* path) -> void {
-  if (g_comm_handle == -1) {
-    g_serial_port_path = path ? path : "";
-  } else {
-    fprintf(stderr, "You cannot change the serial port while it is in use!\n");
-  }
-}
-
-auto super_serial_frontend_set_loopback(bool enable) -> void {
-  g_serial_loopback = enable;
-}
-
-auto super_serial_frontend_send_byte(uint8_t byte) -> void {
-  super_serial_frontend_transmit_byte(byte);
-}
+auto super_serial_frontend_sink() -> const ByteSink_t& { return g_serial_sink; }

@@ -30,6 +30,7 @@
 #include "frontends/common/AppArgs.h"
 #include "frontends/common/AppEnvironment.h"
 #include "frontends/common/Frontend.h"
+#include "frontends/common/HostSink.h"
 #include "frontends/common/PrinterFrontend.h"
 #include "frontends/common/SaveStateManager.h"
 
@@ -62,10 +63,10 @@ static auto lowest_configured_printer_slot() -> int {
   return 0;
 }
 
-// The sink is installed once the save-state directory is known, because the
-// first byte printed is what opens the file, and a relative filename resolves
-// against that directory.
-static auto install_printer_sink() -> void {
+// The printer is told its settings once the save-state directory is known,
+// because the first byte printed is what opens the file, and a relative
+// filename resolves against that directory.
+static auto configure_printer_sink() -> void {
   PrinterFrontendSettings_t settings{};
   settings.filename = "Printer.txt";
   config_load_string("Configuration", REGVALUE_PPRINTER_FILENAME,
@@ -79,6 +80,14 @@ static auto install_printer_sink() -> void {
   settings.base_dir = system_state.save_state_dir.data();
   settings.primary_slot = lowest_configured_printer_slot();
   printer_frontend_install(settings);
+}
+
+// The host sink goes in before any device is configured, so that on a
+// re-initialisation the previous run's devices are closed through it before
+// their settings change under them.
+static auto install_host_sink() -> void {
+  host_sink_install();
+  configure_printer_sink();
 }
 
 static auto initialize_directory(const char* reg_key, char* target_buffer,
@@ -272,7 +281,7 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   initialize_directory(REGVALUE_FTP_LOCAL_DIR, &system_state.ftp_local_dir[0],
                        sizeof(system_state.ftp_local_dir));
 
-  install_printer_sink();
+  install_host_sink();
 
   std::string ftp_server = Configuration_t::instance().get_string(
       "Preferences", REGVALUE_FTP_DIR,

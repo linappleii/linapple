@@ -1,14 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-#include <cstdint>
+#include "apple2/peripherals/Peripheral_Internal.h"
 
-auto super_serial_frontend_initialize(const char* serial_port_path) -> bool;
-auto super_serial_frontend_close() -> void;
-auto super_serial_frontend_send_byte(uint8_t byte) -> void;
-auto super_serial_frontend_set_serial_port_path(const char* serial_port_path)
-    -> void;
-auto super_serial_frontend_set_loopback(bool enable) -> void;
-auto super_serial_frontend_is_active() -> bool;
-auto super_serial_frontend_update_state(uint32_t baud, uint32_t bits,
-                                        int parity, int stop) -> void;
+// The serial side of the frontend's byte sink: the RS-232 line behind a
+// Super Serial Card's token, forwarded here by the host sink for every slot
+// opened as a serial line. With no device attached the line drops what it is
+// given, has no byte to hand back and reports no modem inputs, leaving the
+// card to read its own pull-ups.
+auto super_serial_frontend_sink() -> const ByteSink_t&;
