@@ -2,11 +2,9 @@
 #pragma once
 
 // NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
-// Justification:
-// This header defines a language-neutral C ABI. C system headers, typedefs, and
-// C-style arrays are required for compatibility with C-based consumers.
+// Justification: This header defines the C99-compatible public ABI for the
+// Super Serial Card.
 
-#include <stdbool.h>
 #include <stdint.h>
 
 #include "apple2/peripherals/Peripheral_Subsystems.h"
@@ -15,62 +13,31 @@
 extern "C" {
 #endif
 
-enum {
-  SUPER_SERIAL_STATE_VERSION = 1,
-  SUPER_SERIAL_FIFO_SIZE = 9,
-  super_serial_default_slot = 2
-};
+enum { SUPER_SERIAL_STATE_VERSION = 1 };
 
-typedef enum {
-  SUPER_SERIAL_BAUD_110 = 110,
-  SUPER_SERIAL_BAUD_300 = 300,
-  SUPER_SERIAL_BAUD_600 = 600,
-  SUPER_SERIAL_BAUD_1200 = 1200,
-  SUPER_SERIAL_BAUD_2400 = 2400,
-  SUPER_SERIAL_BAUD_4800 = 4800,
-  SUPER_SERIAL_BAUD_9600 = 9600,
-  SUPER_SERIAL_BAUD_19200 = 19200
-} SuperSerialBaudRate_t;
-
-typedef enum {
-  SUPER_SERIAL_BITS_5 = 5,
-  SUPER_SERIAL_BITS_6 = 6,
-  SUPER_SERIAL_BITS_7 = 7,
-  SUPER_SERIAL_BITS_8 = 8
-} SuperSerialByteSize_t;
-
-typedef enum {
-  SUPER_SERIAL_FIRMWARE_CIC = 0,
-  SUPER_SERIAL_FIRMWARE_SIC_P8,
-  SUPER_SERIAL_FIRMWARE_PPC,
-  SUPER_SERIAL_FIRMWARE_SIC_P8A
-} SuperSerialFirmwareMode_t;
-
-typedef enum {
-  SUPER_SERIAL_PARITY_NONE = 0,
-  SUPER_SERIAL_PARITY_ODD = 1,
-  SUPER_SERIAL_PARITY_EVEN = 2,
-  SUPER_SERIAL_PARITY_MARK = 3,
-  SUPER_SERIAL_PARITY_SPACE = 4
-} SuperSerialParity_t;
-
-typedef enum {
-  SUPER_SERIAL_STOP_BITS_1 = 0,
-  SUPER_SERIAL_STOP_BITS_1_5 = 1,
-  SUPER_SERIAL_STOP_BITS_2 = 2
-} SuperSerialStopBits_t;
-
+// The two blocks of seven rocker switches as the owner set them for the
+// device cabled to the card (1981 manual pp. 6-8, 22-24): bit k of each byte
+// is switch k + 1, 1 = ON, and bit 7 is no switch and must be 0. The card
+// composes the $C0n1 and $C0n2 bytes from this image on every read.
 typedef struct {
-  SuperSerialBaudRate_t baud_rate;
-  SuperSerialFirmwareMode_t firmware_mode;
-  SuperSerialStopBits_t stop_bits;
-  SuperSerialByteSize_t byte_size;
-  SuperSerialParity_t parity;
-  bool linefeed;
-  bool interrupts;
-  uint8_t padding[2];
-} SuperSerialDipSwConfig_t;
+  uint8_t sw1;
+  uint8_t sw2;
+} SuperSerialSwitches_t;
 
+// Command ids 0x0001 (a received byte pushed by the host) and 0x0002 (a
+// parsed host configuration) and query ids 0x0001 and 0x0002 were retired
+// with the host path that used them; the values are never reused.
+typedef enum {
+  SUPER_SERIAL_CMD_SET_SWITCHES = PERIPHERAL_SUBSYSTEM_SERIAL | 0x0003
+} SuperSerialCmd_t;
+
+// The card's state frame. It has ridden the slot trailer of every default
+// .aws since the trailer existed, so the fields named before status_latches
+// keep their offsets and bytes 28 to 51 keep their name. status_latches
+// holds bit 0 PE, 1 FE, 2 OVRN, 3 RDRF, 4 TDR full, 5 transmit shifter
+// busy, 6 receive shifter busy; bit 7 must be 0, so the all-zero byte every
+// older frame carries is an idle chip with TDRE set. shift_data is the byte
+// in the receive shifter.
 typedef struct {
   uint32_t version;
   uint32_t struct_size;
@@ -81,21 +48,14 @@ typedef struct {
   uint8_t is_rx_irq_enabled;
   uint8_t is_tx_irq_enabled;
   uint8_t was_tx_written;
-  uint8_t rx_buffer[SUPER_SERIAL_FIFO_SIZE];
-  uint8_t reserved0;
-  SuperSerialDipSwConfig_t config;
-  uint8_t reserved1[4];
+  uint8_t rx_buffer[9];
+  uint8_t status_latches;
+  uint8_t config[24];
+  uint8_t receive_data;
+  uint8_t transmit_data;
+  uint8_t shift_data;
+  uint8_t reserved1;
 } SuperSerialSaveState_t;
-
-typedef enum {
-  SUPER_SERIAL_CMD_PUSH_RX_BYTE = PERIPHERAL_SUBSYSTEM_SERIAL | 0x0001,
-  SUPER_SERIAL_CMD_SET_CONFIG = PERIPHERAL_SUBSYSTEM_SERIAL | 0x0002
-} SuperSerialCmd_t;
-
-typedef enum {
-  SUPER_SERIAL_QUERY_CONFIG = PERIPHERAL_SUBSYSTEM_SERIAL | 0x0001,
-  SUPER_SERIAL_QUERY_RX_READY = PERIPHERAL_SUBSYSTEM_SERIAL | 0x0002
-} SuperSerialQuery_t;
 
 #ifdef __cplusplus
 }

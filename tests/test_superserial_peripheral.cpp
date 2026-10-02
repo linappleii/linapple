@@ -8,12 +8,15 @@
 #include "apple2/peripherals/Peripheral_Internal.h"
 #include "apple2/peripherals/Peripheral_Subsystems.h"
 #include "apple2/peripherals/Peripheral_Types.h"
+#include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
 #include "doctest.h"
 #include "test_fixtures.h"
 #include "test_fixtures_core.h"
 
 extern "C" unsigned superserial_abi_c_frame_size(void);
 extern "C" unsigned superserial_abi_c_state_version(void);
+extern "C" unsigned superserial_abi_c_switches_size(void);
+extern "C" uint32_t superserial_abi_c_set_switches_id(void);
 
 namespace {
 
@@ -47,6 +50,7 @@ class BenchHost_t {
     host_.SinkRead = bench_sink_read;
     host_.SinkSetLine = bench_sink_set_line;
     host_.SinkGetLines = bench_sink_get_lines;
+    host_.ScheduleEvent = bench_schedule_event;
   }
 
   auto host() -> HostInterface_t* { return &host_; }
@@ -117,6 +121,10 @@ class BenchHost_t {
     (void)sink;
     (void)lines;
     return false;
+  }
+  static auto bench_schedule_event(void* instance, uint64_t at_cycle) -> void {
+    (void)instance;
+    (void)at_cycle;
   }
 
   static int s_token;
@@ -235,4 +243,108 @@ TEST_CASE(
   size = too_small.size();
   CHECK(card->save_state(bench.instance(), too_small.data(), &size) ==
         peripheral_error);
+}
+
+namespace {
+
+// Every member the card requires, nulled one at a time: the card names the
+// first missing one and builds nothing.
+struct RequiredMember_t {
+  const char* name;
+  void (*clear)(HostInterface_t*);
+};
+
+const std::array<RequiredMember_t, 14> required_members = {{
+    {"AssertIrq", [](HostInterface_t* h) { h->AssertIrq = nullptr; }},
+    {"RegisterIO", [](HostInterface_t* h) { h->RegisterIO = nullptr; }},
+    {"RegisterCxROM", [](HostInterface_t* h) { h->RegisterCxROM = nullptr; }},
+    {"RegisterExpansionROM",
+     [](HostInterface_t* h) { h->RegisterExpansionROM = nullptr; }},
+    {"GetCycles", [](HostInterface_t* h) { h->GetCycles = nullptr; }},
+    {"GetClockHz", [](HostInterface_t* h) { h->GetClockHz = nullptr; }},
+    {"ReadFloatingBus",
+     [](HostInterface_t* h) { h->ReadFloatingBus = nullptr; }},
+    {"SinkOpen", [](HostInterface_t* h) { h->SinkOpen = nullptr; }},
+    {"SinkWrite", [](HostInterface_t* h) { h->SinkWrite = nullptr; }},
+    {"SinkClose", [](HostInterface_t* h) { h->SinkClose = nullptr; }},
+    {"SinkRead", [](HostInterface_t* h) { h->SinkRead = nullptr; }},
+    {"SinkSetLine", [](HostInterface_t* h) { h->SinkSetLine = nullptr; }},
+    {"SinkGetLines", [](HostInterface_t* h) { h->SinkGetLines = nullptr; }},
+    {"ScheduleEvent", [](HostInterface_t* h) { h->ScheduleEvent = nullptr; }},
+}};
+
+}  // namespace
+
+TEST_CASE(
+    "Super Serial Card: init refuses a host lacking any member it needs, a "
+    "mute host, and a slot outside 1 to 7") {
+  TestFixtures::ScopedTestConfig_t config(
+      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  TestFixtures::ScopedCore_t core(config);
+  Peripheral_t* card = serial_descriptor();
+  REQUIRE(card != nullptr);
+  BenchHost_t bench;
+
+  for (const RequiredMember_t& member : required_members) {
+    CAPTURE(member.name);
+    HostInterface_t partial = *bench.host();
+    member.clear(&partial);
+    CHECK(card->init(test_slot, &partial) == nullptr);
+  }
+
+  HostInterface_t mute = *bench.host();
+  mute.Log = nullptr;
+  CHECK(card->init(test_slot, &mute) == nullptr);
+
+  CHECK(card->init(0, bench.host()) == nullptr);
+  CHECK(card->init(8, bench.host()) == nullptr);
+  void* instance = card->init(7, bench.host());
+  REQUIRE(instance != nullptr);
+  card->shutdown(instance);
+}
+
+TEST_CASE(
+    "Super Serial Card: the switch command takes exactly two bytes with bit 7 "
+    "clear, and no query is answered") {
+  TestFixtures::ScopedTestConfig_t config(
+      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  TestFixtures::ScopedCore_t core(config);
+  Peripheral_t* card = serial_descriptor();
+  REQUIRE(card != nullptr);
+  BenchCard_t bench;
+  REQUIRE(bench.instance() != nullptr);
+
+  CHECK(superserial_abi_c_switches_size() == sizeof(SuperSerialSwitches_t));
+  CHECK(superserial_abi_c_set_switches_id() == SUPER_SERIAL_CMD_SET_SWITCHES);
+
+  SuperSerialSwitches_t switches{0x68, 0x0B};
+  CHECK(card->command(bench.instance(), SUPER_SERIAL_CMD_SET_SWITCHES,
+                      &switches, sizeof(switches)) == peripheral_ok);
+  CHECK(card->command(bench.instance(), SUPER_SERIAL_CMD_SET_SWITCHES,
+                      &switches, 1) == peripheral_error);
+  CHECK(card->command(bench.instance(), SUPER_SERIAL_CMD_SET_SWITCHES,
+                      &switches, 3) == peripheral_error);
+  CHECK(card->command(bench.instance(), SUPER_SERIAL_CMD_SET_SWITCHES, nullptr,
+                      sizeof(switches)) == peripheral_error);
+  switches.sw1 = 0x80;
+  CHECK(card->command(bench.instance(), SUPER_SERIAL_CMD_SET_SWITCHES,
+                      &switches, sizeof(switches)) == peripheral_error);
+  switches = {0x00, 0x80};
+  CHECK(card->command(bench.instance(), SUPER_SERIAL_CMD_SET_SWITCHES,
+                      &switches, sizeof(switches)) == peripheral_error);
+
+  CHECK(card->command(bench.instance(), PERIPHERAL_SUBSYSTEM_SERIAL | 0x0001,
+                      &switches, 1) == peripheral_incompatible);
+  CHECK(card->command(bench.instance(), PERIPHERAL_SUBSYSTEM_SERIAL | 0x0002,
+                      &switches, sizeof(switches)) == peripheral_incompatible);
+  CHECK(card->command(nullptr, SUPER_SERIAL_CMD_SET_SWITCHES, &switches,
+                      sizeof(switches)) == peripheral_error);
+
+  size_t size = sizeof(switches);
+  CHECK(card->query(bench.instance(), PERIPHERAL_SUBSYSTEM_SERIAL | 0x0001,
+                    &switches, &size) == peripheral_incompatible);
+  CHECK(card->query(bench.instance(), PERIPHERAL_SUBSYSTEM_SERIAL | 0x0002,
+                    nullptr, &size) == peripheral_incompatible);
+  CHECK(card->query(bench.instance(), PERIPHERAL_SUBSYSTEM_SERIAL | 0x0003,
+                    &switches, nullptr) == peripheral_error);
 }
