@@ -660,7 +660,7 @@ add_peripheral(disk "Disk II" "src/apple2/peripherals/disk/Disk.cpp;src/apple2/p
 add_peripheral(harddisk "Harddisk (SmartPort)" "src/apple2/peripherals/harddisk/Harddisk.cpp;src/apple2/peripherals/harddisk/HarddiskLoader.cpp;src/apple2/peripherals/harddisk/formats/RawHdDriver.cpp;src/apple2/peripherals/harddisk/formats/TwoImgDriver.cpp;src/apple2/peripherals/harddisk/formats/BlockDiskImage.cpp" "" "image-container" TRUE)
 add_peripheral(mouse "Mouse Interface" "src/apple2/peripherals/mouse/Mouse.cpp" "" "" TRUE)
 add_peripheral(mockingboard "Mockingboard" "src/apple2/peripherals/mockingboard/Mockingboard.cpp;src/apple2/chips/AY8910.cpp;src/apple2/chips/6522.cpp" "" "" FALSE)
-add_peripheral(super_serial "Super Serial Card" "src/apple2/peripherals/super_serial_card/SuperSerial.cpp" "" "" FALSE)
+add_peripheral(super_serial "Super Serial Card" "src/apple2/peripherals/super_serial_card/SuperSerial.cpp;src/apple2/chips/6551.cpp" "" "" FALSE)
 add_peripheral(joystick "game I/O port (paddles, buttons and the //e Apple-key switch inputs)" "src/apple2/peripherals/joystick/Joystick.cpp" "" "" TRUE)
 add_peripheral(printer "Parallel Printer" "src/apple2/peripherals/printer/Printer.cpp" "" "" FALSE)
 add_peripheral(clock "Clock Card" "src/apple2/peripherals/clock/ClockCard.cpp" "" "" FALSE)
@@ -898,6 +898,11 @@ fi
     add_executable(test-6821 tests/test_6821.cpp src/apple2/chips/6821.cpp)
     target_include_directories(test-6821 PRIVATE src ${DOCTEST_INCLUDE_DIR})
     add_test(NAME test-6821 COMMAND test-6821)
+
+    add_executable(test-acia6551 tests/test_acia6551.cpp src/apple2/chips/6551.cpp)
+    target_include_directories(test-acia6551 PRIVATE src ${DOCTEST_INCLUDE_DIR})
+    add_test(NAME test-acia6551 COMMAND test-acia6551)
+    set_tests_properties(test-acia6551 PROPERTIES TIMEOUT 5)
 
     add_linapple_test(mockingboard-peripheral "tests/test_main.cpp;tests/test_mockingboard_peripheral.cpp")
     add_linapple_test(mockingboard-core "tests/test_main.cpp;tests/test_mockingboard_core.cpp")

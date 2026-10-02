@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <fstream>
 #include <string>
+#include <vector>
 
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
@@ -380,7 +381,9 @@ auto read_rom_file() -> Rom_t {
 }
 
 // An Enhanced //e with the card in one slot, built the way the frontend
-// builds it, so the pages the 6502 sees are the ones the card registered.
+// builds it, so the pages the 6502 sees are the ones the card registered. The
+// sink is the first member so that it is installed before the core builds the
+// card and still there when the card's shutdown closes it.
 struct SerialMachine_t {
   static auto describe(int slot)
       -> TestFixtures::ScopedTestConfig_t::Description_t {
@@ -389,6 +392,7 @@ struct SerialMachine_t {
     return description;
   }
 
+  TestFixtures::ScopedByteSink_t sink;
   TestFixtures::ScopedTestConfig_t config;
   TestFixtures::ScopedCore_t core;
   int slot;
@@ -490,4 +494,123 @@ TEST_CASE(
     }
   }
   CHECK(expansion_mismatches == 0);
+}
+
+namespace {
+
+constexpr uint64_t char_9600_8n1 = 1063;
+constexpr uint32_t cycle_cap = 20000;
+constexpr uint16_t status_sequence_sentinel = 0x0328;
+constexpr uint16_t tdre_sentinel = 0x0325;
+constexpr uint16_t tdre_first_write = 0x030C;
+constexpr uint16_t tdre_poll = 0x031E;
+
+// Control $1E and command $09 (receiver interrupt on), a 1,279-cycle delay
+// for the byte to complete, then three status reads, the data read and one
+// more status read, each stored in zero page.
+auto poke_status_sequence(int slot) -> void {
+  const auto hi = static_cast<uint8_t>(0xC0);
+  const auto status = static_cast<uint8_t>(0x89 + (slot << 4));
+  const auto data = static_cast<uint8_t>(0x88 + (slot << 4));
+  const auto command = static_cast<uint8_t>(0x8A + (slot << 4));
+  const auto control = static_cast<uint8_t>(0x8B + (slot << 4));
+  const std::array<uint8_t, 43> program = {
+      0xA9, 0x1E,   0x8D, control, hi,    // LDA #$1E / STA $C0nB
+      0xA9, 0x09,   0x8D, command, hi,    // LDA #$09 / STA $C0nA
+      0xA2, 0x00,                         // LDX #$00
+      0xCA,                               // DEX
+      0xD0, 0xFD,                         // BNE DEX
+      0xAD, status, hi,   0x85,    0x10,  // LDA $C0n9 / STA $10
+      0xAD, status, hi,   0x85,    0x11,  // LDA $C0n9 / STA $11
+      0xAD, status, hi,   0x85,    0x12,  // LDA $C0n9 / STA $12
+      0xAD, data,   hi,   0x85,    0x13,  // LDA $C0n8 / STA $13
+      0xAD, status, hi,   0x85,    0x14,  // LDA $C0n9 / STA $14
+      0x4C, 0x28,   0x03};                // JMP spin
+  TestFixtures::ScopedCore_t::poke(program_start, program);
+}
+
+// Control $1E and command $0B, a byte written and the status stored, a
+// second byte written and the status stored, then a 9-cycle poll of bit 4.
+auto poke_tdre_sequence(int slot) -> void {
+  const auto hi = static_cast<uint8_t>(0xC0);
+  const auto status = static_cast<uint8_t>(0x89 + (slot << 4));
+  const auto data = static_cast<uint8_t>(0x88 + (slot << 4));
+  const auto command = static_cast<uint8_t>(0x8A + (slot << 4));
+  const auto control = static_cast<uint8_t>(0x8B + (slot << 4));
+  const std::array<uint8_t, 42> program = {
+      0xA9, 0x1E,   0x8D, control, hi,    // LDA #$1E / STA $C0nB
+      0xA9, 0x0B,   0x8D, command, hi,    // LDA #$0B / STA $C0nA
+      0xA9, 0xC1,   0x8D, data,    hi,    // LDA #$C1 / STA $C0n8 (at $030C)
+      0xAD, status, hi,   0x85,    0x10,  // LDA $C0n9 / STA $10
+      0xA9, 0xC2,   0x8D, data,    hi,    // LDA #$C2 / STA $C0n8
+      0xAD, status, hi,   0x85,    0x11,  // LDA $C0n9 / STA $11
+      0xAD, status, hi,                   // LDA $C0n9 (at $031E)
+      0x29, 0x10,                         // AND #$10
+      0xF0, 0xF9,                         // BEQ $031E
+      0x4C, 0x25,   0x03};                // JMP spin
+  TestFixtures::ScopedCore_t::poke(program_start, program);
+}
+
+}  // namespace
+
+TEST_CASE(
+    "Super Serial Card: on the 6502 a received byte reads $98, $18, $18, the "
+    "byte, then $10, the status read releasing the slot's interrupt line") {
+  SerialMachine_t machine;
+  machine.sink.push_rx(machine.slot, 0xC1);
+  poke_status_sequence(machine.slot);
+  machine.run_until(program_start, status_sequence_sentinel, cycle_cap);
+  REQUIRE(cpu_get_registers()->pc == status_sequence_sentinel);
+
+  CHECK(mem[0x10] == 0x98);
+  CHECK(mem[0x11] == 0x18);
+  CHECK(mem[0x12] == 0x18);
+  CHECK(mem[0x13] == 0xC1);
+  CHECK(mem[0x14] == 0x10);
+  CHECK(machine.sink.reads(machine.slot) >= 1);
+  CHECK(machine.sink.bytes().empty());
+}
+
+TEST_CASE(
+    "Super Serial Card: on the 6502 TDRE is set at once after a write to an "
+    "idle transmitter and 1,063 cycles after it for a byte written behind") {
+  SerialMachine_t machine;
+  poke_tdre_sequence(machine.slot);
+
+  CpuRegisters_t* regs = cpu_get_registers();
+  regs->pc = program_start;
+  regs->ps = status_interrupts_masked;
+  uint64_t first_write_at = 0;
+  std::vector<uint64_t> polls;
+  uint32_t cycles = 0;
+  while (regs->pc != tdre_sentinel && cycles < cycle_cap) {
+    if (regs->pc == tdre_first_write) {
+      first_write_at = cpu_get_cumulative_cycles();
+    }
+    if (regs->pc == tdre_poll) {
+      polls.push_back(cpu_get_cumulative_cycles());
+    }
+    cycles += cpu_execute(0);
+  }
+  REQUIRE(regs->pc == tdre_sentinel);
+
+  CHECK((mem[0x10] & 0x10) == 0x10);
+  CHECK((mem[0x11] & 0x10) == 0x00);
+  REQUIRE(polls.size() >= 2);
+  const uint64_t boundary = first_write_at + char_9600_8n1;
+  CHECK(polls.back() >= boundary);
+  CHECK(polls.back() < boundary + 9);
+  CHECK(polls.at(polls.size() - 2) < boundary);
+
+  REQUIRE(machine.sink.bytes().size() == 2);
+  CHECK(machine.sink.bytes().at(0).slot == machine.slot);
+  CHECK(machine.sink.bytes().at(0).byte == 0xC1);
+  CHECK(machine.sink.bytes().at(1).slot == machine.slot);
+  CHECK(machine.sink.bytes().at(1).byte == 0xC2);
+  CHECK(machine.sink.line_sets() >= 1);
+  CHECK(machine.sink.last_line().baud == 9600);
+  CHECK(machine.sink.last_line().data_bits == 8);
+  CHECK(machine.sink.last_line().stop_half_bits == 2);
+  CHECK(machine.sink.last_line().dtr == 1);
+  CHECK(machine.sink.last_line().rts == 1);
 }

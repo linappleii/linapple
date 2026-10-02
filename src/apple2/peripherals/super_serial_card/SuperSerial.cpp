@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "apple2/peripherals/super_serial_card/SuperSerial.h"
 
-#include <algorithm>
-#include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <memory>
 #include <new>
 
+#include "apple2/chips/6551.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Subsystems.h"
 #include "apple2/peripherals/Peripheral_Types.h"
@@ -19,8 +19,12 @@ namespace {
 
 constexpr int min_slot = 1;
 constexpr int max_slot = 7;
-constexpr size_t fifo_size = 9;
 constexpr uint16_t io_register_mask = 0x0F;
+// The 6551 is selected by A3 = 1, A2 = 0 and A1-A0 pick the register (1981
+// manual p. 47), so it answers $C0n8-$C0nB alone.
+constexpr uint16_t acia_select_mask = 0x0C;
+constexpr uint16_t acia_selected = 0x08;
+constexpr double millihertz_per_hertz = 1000.0;
 
 // SW1 OFF OFF OFF ON ON ON ON and SW2 ON ON ON ON OFF ON OFF: communications
 // mode at 9600 baud, 8 data bits, no parity, one stop bit, no line feed after
@@ -30,6 +34,9 @@ constexpr uint16_t io_register_mask = 0x0F;
 constexpr uint8_t default_switches_1 = 0x78;
 constexpr uint8_t default_switches_2 = 0x2F;
 constexpr uint8_t switch_bit_7 = 0x80;
+// SW2-6 ON connects the ACIA's IRQ to the slot's interrupt line; OFF leaves
+// the status bit alone in the card (1981 manual p. 47).
+constexpr uint8_t switch_2_6 = 0x20;
 
 static_assert(sizeof(SuperSerialSaveState_t) == 56,
               "the serial card's state frame is part of the plugin ABI");
@@ -71,66 +78,106 @@ static_assert(
 static_assert(offsetof(SuperSerialSaveState_t, reserved1) == 55,
               "one reserved byte remains");
 
-// SY6551 control register bits 3-0 (SY6551 Fig. 6, p. 3-175). Code 0 is the
-// 16x external clock, which the card does not provide (1981 manual p. 54).
-constexpr std::array<uint32_t, 16> baud_table = {{0, 50, 75, 110, 135, 150, 300,
-                                                  600, 1200, 1800, 2400, 3600,
-                                                  4800, 7200, 9600, 19200}};
-
 struct SuperSerialCard_t {
   HostInterface_t* host = nullptr;
+  void* sink = nullptr;
   int slot = 0;
   SuperSerialSwitches_t switches{default_switches_1, default_switches_2};
-
-  uint8_t control_byte = 0;
-  uint8_t command_byte = 0;
-
-  std::array<uint8_t, fifo_size> rx_buffer{};
-  uint32_t rx_count = 0;
-
-  bool is_tx_irq_enabled = false;
-  bool is_rx_irq_enabled = false;
-  bool was_tx_written = false;
-  bool is_irq_pending = false;
+  Acia6551_t acia;
+  AciaLine_t line_sent;
+  bool slot_irq = false;
 };
 
-auto release_irq(SuperSerialCard_t* card) -> void {
-  if (!card->is_irq_pending) {
-    return;
+// With no cable the three receiver inputs read asserted through the card's
+// 15 kOhm pull-ups (1981 manual p. 48), so a host with nothing to say about
+// them is read that way.
+auto host_lines(SuperSerialCard_t* card) -> uint8_t {
+  uint8_t mask = 0;
+  if (card->host->SinkGetLines(card->sink, &mask)) {
+    return mask & acia_line::all_asserted;
   }
-  card->is_irq_pending = false;
-  card->host->AssertIrq(card->slot, false);
+  return acia_line::all_asserted;
 }
 
-auto notify_host_state(SuperSerialCard_t* card) -> void {
-  if (card->host->SerialUpdateState == nullptr) {
-    return;
+auto send_bytes(SuperSerialCard_t* card, uint64_t now) -> void {
+  uint8_t byte = 0;
+  while (acia_step(&card->acia, now, &byte)) {
+    card->host->SinkWrite(card->sink, byte);
   }
-  const uint32_t baud = baud_table.at(card->control_byte & 0x0F);
-  const uint32_t bits = 8 - ((card->control_byte >> 5) & 0x03);
-
-  int stop = 0;
-  if ((card->control_byte & 0x80) != 0) {
-    stop = (bits == 5 && (card->command_byte & 0x20) == 0) ? 1 : 2;
-  }
-
-  int parity = 0;
-  if ((card->command_byte & 0x20) != 0) {
-    parity = 1 + ((card->command_byte >> 6) & 0x03);
-  }
-
-  card->host->SerialUpdateState(card, baud, bits, parity, stop);
 }
 
-auto reset_registers(SuperSerialCard_t* card) -> void {
-  release_irq(card);
-  card->control_byte = 0;
-  card->command_byte = 0;
-  card->rx_count = 0;
-  card->is_tx_irq_enabled = false;
-  card->is_rx_irq_enabled = false;
-  card->was_tx_written = false;
-  card->rx_buffer.fill(0);
+// The emulated line is flow-controlled: the far end honours RTS, so the next
+// byte is taken from the host only once the receiver can hold it. A
+// terminal program that reads promptly sees the hardware's rate; one that
+// does not sees the bytes wait, never an overrun. With the receiver disabled
+// the hardware loses what arrives; here it waits in the host's ring and
+// arrives once the receiver is enabled again.
+auto pull_byte(SuperSerialCard_t* card, uint64_t now) -> void {
+  if (!acia_rx_ready(&card->acia)) {
+    return;
+  }
+  uint8_t byte = 0;
+  if (card->host->SinkRead(card->sink, &byte)) {
+    acia_rx_start(&card->acia, byte, 0, now);
+  }
+}
+
+auto send_line(SuperSerialCard_t* card) -> void {
+  acia_line_view(&card->acia, &card->line_sent);
+  PeripheralSerialLine_t line{};
+  line.baud = card->line_sent.baud;
+  line.data_bits = card->line_sent.data_bits;
+  line.parity = card->line_sent.parity;
+  line.stop_half_bits = card->line_sent.stop_half_bits;
+  line.dtr = card->line_sent.dtr;
+  line.rts = card->line_sent.rts;
+  line.brk = card->line_sent.brk;
+  card->host->SinkSetLine(card->sink, &line);
+}
+
+auto follow_line(SuperSerialCard_t* card) -> void {
+  AciaLine_t line;
+  acia_line_view(&card->acia, &line);
+  const AciaLine_t& sent = card->line_sent;
+  if (line.baud == sent.baud && line.data_bits == sent.data_bits &&
+      line.parity == sent.parity &&
+      line.stop_half_bits == sent.stop_half_bits && line.dtr == sent.dtr &&
+      line.rts == sent.rts && line.brk == sent.brk) {
+    return;
+  }
+  send_line(card);
+}
+
+auto follow_irq(SuperSerialCard_t* card) -> void {
+  const bool level =
+      acia_irq(&card->acia) && (card->switches.sw2 & switch_2_6) != 0;
+  if (level == card->slot_irq) {
+    return;
+  }
+  card->slot_irq = level;
+  card->host->AssertIrq(card->slot, level);
+}
+
+// Brings the chip up to the present: the inputs as the host reports them,
+// then every character boundary that has passed, each at its own cycle.
+auto sync(SuperSerialCard_t* card) -> uint64_t {
+  const uint64_t now = card->host->GetCycles();
+  acia_set_lines(&card->acia, host_lines(card), now);
+  send_bytes(card, now);
+  return now;
+}
+
+// What follows every access, wake and think: bytes that left, the next byte
+// from the line if the receiver is free, the format and the interrupt line,
+// and a wake at the next cycle the chip does something no access brings
+// about, so TDRE, RDRF and the receiver's free point land within one
+// instruction of their cycle. An idle chip asks for nothing.
+auto settle(SuperSerialCard_t* card, uint64_t now) -> void {
+  send_bytes(card, now);
+  pull_byte(card, now);
+  follow_line(card);
+  follow_irq(card);
+  card->host->ScheduleEvent(card, acia_next_event(&card->acia));
 }
 
 auto super_serial_io_read(void* instance, uint16_t program_counter,
@@ -144,38 +191,20 @@ auto super_serial_io_read(void* instance, uint16_t program_counter,
     return 0;
   }
   auto* card = static_cast<SuperSerialCard_t*>(instance);
-
-  switch (memory_address & io_register_mask) {
-    case 8: {
-      uint8_t byte = 0;
-      if (card->rx_count > 0) {
-        byte = card->rx_buffer.at(0);
-        std::copy(card->rx_buffer.begin() + 1, card->rx_buffer.end(),
-                  card->rx_buffer.begin());
-        card->rx_count--;
-      }
-      release_irq(card);
-      return byte;
-    }
-    case 9: {
-      uint8_t status = 0x10;
-      if (card->rx_count > 0) {
-        status |= 0x08;
-      }
-      if (card->is_irq_pending) {
-        status |= 0x80;
-      }
-      return status;
-    }
-    case 10:
-      return card->command_byte;
-    case 11:
-      return card->control_byte;
-    default:
-      break;
+  const uint64_t now = sync(card);
+  const uint16_t offset = memory_address & io_register_mask;
+  uint8_t value = 0;
+  if ((offset & acia_select_mask) == acia_selected) {
+    value = acia_read(&card->acia, static_cast<uint8_t>(offset), now);
+  } else {
+    // Whether an undecoded address returns the floating bus or $FF from the
+    // data-bus pull-ups depends on when the card's LS245 is enabled, which
+    // the legible part of the schematic does not settle (1981 manual
+    // p. 48); the floating bus is kept until it does.
+    value = card->host->ReadFloatingBus(executed_cycles);
   }
-
-  return card->host->ReadFloatingBus(executed_cycles);
+  settle(card, now);
+  return value;
 }
 
 auto super_serial_io_write(void* instance, uint16_t program_counter,
@@ -189,42 +218,26 @@ auto super_serial_io_write(void* instance, uint16_t program_counter,
     return 0;
   }
   auto* card = static_cast<SuperSerialCard_t*>(instance);
-
-  switch (memory_address & io_register_mask) {
-    case 8:
-      if (card->host->SerialTransmitByte != nullptr) {
-        card->host->SerialTransmitByte(card, data_value);
-      }
-      card->was_tx_written = true;
-      break;
-    case 9:
-      reset_registers(card);
-      break;
-    case 10:
-      card->command_byte = data_value;
-      card->is_rx_irq_enabled = ((data_value & 0x02) == 0);
-      card->is_tx_irq_enabled = ((data_value & 0x0C) == 0x04);
-      if (!card->is_rx_irq_enabled) {
-        release_irq(card);
-      }
-      notify_host_state(card);
-      break;
-    case 11:
-      card->control_byte = data_value;
-      notify_host_state(card);
-      break;
-    default:
-      break;
+  const uint64_t now = sync(card);
+  const uint16_t offset = memory_address & io_register_mask;
+  if ((offset & acia_select_mask) == acia_selected) {
+    uint8_t byte = 0;
+    if (acia_write(&card->acia, static_cast<uint8_t>(offset), data_value, now,
+                   &byte)) {
+      card->host->SinkWrite(card->sink, byte);
+    }
   }
+  settle(card, now);
   return 0;
 }
 
 // Without the slot line the firmware's interrupt switch has nothing to
 // forward, without the ROMs PR#n never reaches the firmware, without the bus
 // and the clock the ACIA cannot answer an undecoded read or pace a character,
-// and without the sink the line has no far end: better no card than a
-// phantom one, and the log says which member was missing. Log itself is the
-// one refusal nothing can report.
+// without the sink the line has no far end and without a wake-up a character
+// boundary no program polls would wait for the frame's end: better no card
+// than a phantom one, and the log says which member was missing. Log itself
+// is the one refusal nothing can report.
 auto missing_host_member(const HostInterface_t* host) -> const char* {
   if (host->AssertIrq == nullptr) {
     return "AssertIrq";
@@ -297,21 +310,49 @@ auto super_serial_abi_init(int slot, HostInterface_t* host) -> void* {
   }
   card->host = host;
   card->slot = slot;
+  card->sink = host->SinkOpen(card.get(), slot, peripheral_sink_serial);
+  if (card->sink == nullptr) {
+    host->Log(nullptr, log_error,
+              "Super Serial Card in slot %d: the host has no serial line for "
+              "the slot\n",
+              slot);
+    return nullptr;
+  }
+
+  // The ACIA runs from the card's own 1.8432 MHz crystal (1981 manual p. 45),
+  // so its character times are fixed in seconds and vary in 6502 cycles with
+  // the machine's clock.
+  acia_set_clock_mhz(&card->acia,
+                     static_cast<uint64_t>(std::llround(host->GetClockHz() *
+                                                        millihertz_per_hertz)));
+  const uint64_t now = host->GetCycles();
+  acia_reset(&card->acia, now);
+  acia_set_lines(&card->acia, host_lines(card.get()), now);
 
   host->RegisterCxROM(slot,
                       super_serial_rom.data() + super_serial_rom_slot_page);
   host->RegisterExpansionROM(slot, super_serial_rom.data());
   host->RegisterIO(slot, super_serial_io_read, super_serial_io_write, nullptr,
                    nullptr);
+  send_line(card.get());
 
   return card.release();
 }
 
+// RESET reaches the ACIA (inferred: the schematic's trace is not legible,
+// 1981 manual p. 100) and clears control and command, so Ctrl-Reset drops
+// DTR and RTS; the switches are soldered configuration and survive.
 auto super_serial_abi_reset(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
-  reset_registers(static_cast<SuperSerialCard_t*>(instance));
+  auto* card = static_cast<SuperSerialCard_t*>(instance);
+  const uint64_t now = card->host->GetCycles();
+  acia_reset(&card->acia, now);
+  acia_set_lines(&card->acia, host_lines(card), now);
+  send_line(card);
+  follow_irq(card);
+  card->host->ScheduleEvent(card, 0);
 }
 
 auto super_serial_abi_shutdown(void* instance) -> void {
@@ -320,7 +361,20 @@ auto super_serial_abi_shutdown(void* instance) -> void {
   }
   std::unique_ptr<SuperSerialCard_t> card(
       static_cast<SuperSerialCard_t*>(instance));
-  release_irq(card.get());
+  if (card->slot_irq) {
+    card->host->AssertIrq(card->slot, false);
+  }
+  card->host->SinkClose(card->sink);
+}
+
+auto super_serial_abi_think(void* instance, uint32_t elapsed_cycles) -> void {
+  (void)elapsed_cycles;
+  if (instance == nullptr) {
+    return;
+  }
+  auto* card = static_cast<SuperSerialCard_t*>(instance);
+  const uint64_t now = sync(card);
+  settle(card, now);
 }
 
 auto super_serial_abi_command(void* instance, uint32_t command_id,
@@ -346,6 +400,7 @@ auto super_serial_abi_command(void* instance, uint32_t command_id,
   }
   auto* card = static_cast<SuperSerialCard_t*>(instance);
   card->switches = switches;
+  follow_irq(card);
   return peripheral_ok;
 }
 
@@ -380,14 +435,9 @@ auto super_serial_abi_save_state(void* instance, void* state_buffer,
   SuperSerialSaveState_t state{};
   state.version = SUPER_SERIAL_STATE_VERSION;
   state.struct_size = static_cast<uint32_t>(required_size);
-  state.rx_count = card->rx_count;
-  state.control_byte = card->control_byte;
-  state.command_byte = card->command_byte;
-  state.is_irq_pending = card->is_irq_pending ? 1 : 0;
-  state.is_rx_irq_enabled = card->is_rx_irq_enabled ? 1 : 0;
-  state.is_tx_irq_enabled = card->is_tx_irq_enabled ? 1 : 0;
-  state.was_tx_written = card->was_tx_written ? 1 : 0;
-  std::copy(card->rx_buffer.begin(), card->rx_buffer.end(), state.rx_buffer);
+  state.control_byte = card->acia.control;
+  state.command_byte = card->acia.command;
+  state.is_irq_pending = card->acia.irq ? 1 : 0;
   std::memcpy(state_buffer, &state, required_size);
 
   *buffer_size = required_size;
@@ -409,17 +459,15 @@ auto super_serial_abi_load_state(void* instance, const void* state_buffer,
   }
 
   auto* card = static_cast<SuperSerialCard_t*>(instance);
-  card->control_byte = state.control_byte;
-  card->command_byte = state.command_byte;
-  card->rx_count = std::min(state.rx_count, static_cast<uint32_t>(fifo_size));
-  card->is_irq_pending = (state.is_irq_pending != 0);
-  card->is_rx_irq_enabled = (state.is_rx_irq_enabled != 0);
-  card->is_tx_irq_enabled = (state.is_tx_irq_enabled != 0);
-  card->was_tx_written = (state.was_tx_written != 0);
-  std::copy_n(state.rx_buffer, fifo_size, card->rx_buffer.begin());
-
-  card->host->AssertIrq(card->slot, card->is_irq_pending);
-  notify_host_state(card);
+  const uint64_t now = card->host->GetCycles();
+  acia_reset(&card->acia, now);
+  card->acia.control = state.control_byte;
+  card->acia.command = state.command_byte;
+  card->acia.irq = state.is_irq_pending != 0;
+  acia_set_lines(&card->acia, host_lines(card), now);
+  send_line(card);
+  follow_irq(card);
+  card->host->ScheduleEvent(card, acia_next_event(&card->acia));
   return peripheral_ok;
 }
 
@@ -438,7 +486,7 @@ static const Peripheral_t super_serial_peripheral = {
     .init = super_serial_abi_init,
     .reset = super_serial_abi_reset,
     .shutdown = super_serial_abi_shutdown,
-    .think = nullptr,
+    .think = super_serial_abi_think,
     .on_vblank = nullptr,
     .save_state = super_serial_abi_save_state,
     .load_state = super_serial_abi_load_state,
