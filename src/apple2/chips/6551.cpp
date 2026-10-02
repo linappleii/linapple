@@ -189,11 +189,13 @@ auto on_tx_boundary(Acia6551_t* a, uint64_t at) noexcept -> void {
 // note 2).
 auto on_rx_rdrf(Acia6551_t* a) noexcept -> void {
   a->rx_completed = true;
+  const uint8_t byte = a->shift_data;
+  a->shift_data = 0;
   if (latch(a, acia_latch::rdrf)) {
     set_latch(a, acia_status::overrun, true);
     return;
   }
-  a->receive_data = a->shift_data;
+  a->receive_data = byte;
   set_latch(a, acia_latch::rdrf, true);
   if (a->shift_errors == 0) {
     set_latch(a, acia_latch::error_mask, false);
@@ -208,7 +210,7 @@ auto on_rx_rdrf(Acia6551_t* a) noexcept -> void {
   if ((a->command & acia_command::echo) != 0 &&
       tic(a) == acia_command::tic_off && has_clock(a) &&
       (a->lines & acia_line::cts) != 0) {
-    emit(a, a->shift_data);
+    emit(a, byte);
   }
 }
 
@@ -341,6 +343,34 @@ auto acia_programmed_reset(Acia6551_t* a, uint64_t now) noexcept -> void {
   }
   if (was_break) {
     a->break_level = false;
+  }
+}
+
+auto acia_restart(Acia6551_t* a, uint64_t now) noexcept -> void {
+  if (a == nullptr) {
+    return;
+  }
+  a->status_latches &= static_cast<uint8_t>(~acia_latch::reserved);
+  if (!has_clock(a)) {
+    a->status_latches &=
+        static_cast<uint8_t>(~(acia_latch::tx_busy | acia_latch::rx_busy));
+  }
+  a->irq_from_lines = false;
+  a->break_level = tic(a) == acia_command::tic_break;
+  a->rx_completed = false;
+  a->shift_errors = 0;
+  a->synced = now;
+  a->previous_synced = now;
+  a->tx_anchor = now;
+  a->rx_freed_cycle = now;
+  a->rdr_emptied_cycle = now;
+  a->has_pending_out = false;
+  if (latch(a, acia_latch::tx_busy)) {
+    a->tx_busy_until = now + frame_cycles(a);
+  }
+  if (latch(a, acia_latch::rx_busy)) {
+    a->rx_rdrf_at = now + acia_cycles_for(a, acia_rdrf_sixteenths(a));
+    a->rx_free_at = now + frame_cycles(a);
   }
 }
 

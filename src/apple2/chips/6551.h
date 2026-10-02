@@ -153,6 +153,12 @@ auto acia_reset(Acia6551_t* a, uint64_t now) noexcept -> void;
 // A write to the status register: command bits 4-0 and the overrun bit
 // cleared, nothing else (R6551 p. 3; W65C51S pp. 14, 23).
 auto acia_programmed_reset(Acia6551_t* a, uint64_t now) noexcept -> void;
+// After the registers, latches and data bytes have been put back from a
+// saved state, which carries no cycles: the clock is anchored at now and a
+// character in flight restarts from its first bit, so TDRE or RDRF arrives
+// up to one character time later than it would have and no byte is lost or
+// doubled. A shifter marked busy with no clock selected is made idle.
+auto acia_restart(Acia6551_t* a, uint64_t now) noexcept -> void;
 // Advances the chip to now. Returns true and the byte when one left the
 // transmitter during the advance, or was left over from an earlier one; the
 // caller steps until it returns false.

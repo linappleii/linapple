@@ -484,23 +484,39 @@ auto super_serial_abi_save_state(void* instance, void* state_buffer,
   state.control_byte = card->acia.control;
   state.command_byte = card->acia.command;
   state.is_irq_pending = card->acia.irq ? 1 : 0;
+  state.status_latches = card->acia.status_latches;
+  state.receive_data = card->acia.receive_data;
+  state.transmit_data = card->acia.transmit_data;
+  state.shift_data = card->acia.shift_data;
   std::memcpy(state_buffer, &state, required_size);
 
   *buffer_size = required_size;
   return peripheral_ok;
 }
 
+// A slot's snapshot buffer may be larger than the frame (the layer sizes it
+// for the biggest card), so the frame's own struct_size says how much to
+// read. Nothing changes until the frame has passed every check. The switches
+// are not in the frame and keep what the frontend set; the inputs are read
+// from the host again; the host's rings are the wire's and keep what was
+// in flight.
 auto super_serial_abi_load_state(void* instance, const void* state_buffer,
                                  size_t buffer_size) -> PeripheralStatus_t {
-  constexpr size_t required_size = sizeof(SuperSerialSaveState_t);
+  constexpr size_t header_size = offsetof(SuperSerialSaveState_t, rx_count);
   if (instance == nullptr || state_buffer == nullptr ||
-      buffer_size != required_size) {
+      buffer_size < header_size) {
     return peripheral_error;
   }
   SuperSerialSaveState_t state{};
-  std::memcpy(&state, state_buffer, required_size);
-  if (state.version != SUPER_SERIAL_STATE_VERSION ||
-      state.struct_size != required_size) {
+  std::memcpy(&state, state_buffer, header_size);
+  if (state.struct_size != sizeof(state) || buffer_size < state.struct_size) {
+    return peripheral_error;
+  }
+  if (state.version != SUPER_SERIAL_STATE_VERSION) {
+    return peripheral_error;
+  }
+  std::memcpy(&state, state_buffer, state.struct_size);
+  if ((state.status_latches & acia_latch::reserved) != 0) {
     return peripheral_error;
   }
 
@@ -510,6 +526,11 @@ auto super_serial_abi_load_state(void* instance, const void* state_buffer,
   card->acia.control = state.control_byte;
   card->acia.command = state.command_byte;
   card->acia.irq = state.is_irq_pending != 0;
+  card->acia.status_latches = state.status_latches;
+  card->acia.receive_data = state.receive_data;
+  card->acia.transmit_data = state.transmit_data;
+  card->acia.shift_data = state.shift_data;
+  acia_restart(&card->acia, now);
   acia_set_lines(&card->acia, host_lines(card), now);
   send_line(card);
   follow_irq(card);

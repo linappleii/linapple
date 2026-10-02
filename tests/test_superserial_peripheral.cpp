@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -685,4 +686,236 @@ TEST_CASE("Super Serial Card: the switch image survives a hardware reset") {
   read_switches(machine);
   CHECK(mem[0x10] == 0xEE);
   CHECK(mem[0x11] == 0x5A);
+}
+
+namespace {
+
+using Frame_t = std::array<uint8_t, frame_size>;
+constexpr uint16_t register_read_sentinel = 0x0314;
+constexpr size_t frame_control = 12;
+constexpr size_t frame_command = 13;
+constexpr size_t frame_irq = 14;
+constexpr size_t frame_latches = 27;
+constexpr size_t frame_receive_data = 52;
+constexpr size_t frame_transmit_data = 53;
+constexpr size_t frame_shift_data = 54;
+
+// Control $1E, command $09, then a 1,279-cycle delay so a queued byte
+// completes into the RDR with the interrupt latched.
+auto poke_receive_one_byte(int slot) -> void {
+  const auto hi = static_cast<uint8_t>(0xC0);
+  const auto command = static_cast<uint8_t>(0x8A + (slot << 4));
+  const auto control = static_cast<uint8_t>(0x8B + (slot << 4));
+  const std::array<uint8_t, 18> program = {
+      0xA9, 0x1E, 0x8D, control, hi,  // LDA #$1E / STA $C0nB
+      0xA9, 0x09, 0x8D, command, hi,  // LDA #$09 / STA $C0nA
+      0xA2, 0x00,                     // LDX #$00
+      0xCA,                           // DEX
+      0xD0, 0xFD,                     // BNE DEX
+      0x4C, 0x0F, 0x03};              // JMP spin
+  TestFixtures::ScopedCore_t::poke(program_start, program);
+}
+
+// Status, control, command and data read into $10-$13, then spin.
+auto poke_register_reads(int slot) -> void {
+  const auto hi = static_cast<uint8_t>(0xC0);
+  const auto status = static_cast<uint8_t>(0x89 + (slot << 4));
+  const auto data = static_cast<uint8_t>(0x88 + (slot << 4));
+  const auto command = static_cast<uint8_t>(0x8A + (slot << 4));
+  const auto control = static_cast<uint8_t>(0x8B + (slot << 4));
+  const std::array<uint8_t, 23> program = {
+      0xAD, status,  hi,  0x85, 0x10,  // LDA $C0n9 / STA $10
+      0xAD, control, hi,  0x85, 0x11,  // LDA $C0nB / STA $11
+      0xAD, command, hi,  0x85, 0x12,  // LDA $C0nA / STA $12
+      0xAD, data,    hi,  0x85, 0x13,  // LDA $C0n8 / STA $13
+      0x4C, 0x14,    0x03};            // JMP spin
+  TestFixtures::ScopedCore_t::poke(program_start, program);
+}
+
+constexpr uint16_t switch_read_spin = 0x0303;
+constexpr uint16_t delay_spin = 0x0308;
+
+// LDA $C0n1, a switch read with no effect on the ACIA, which brings the chip
+// up to date; then a spin.
+auto poke_switch_read_then_spin(int slot) -> void {
+  const auto hi = static_cast<uint8_t>(0xC0);
+  const auto sw1 = static_cast<uint8_t>(0x81 + (slot << 4));
+  const std::array<uint8_t, 6> program = {0xAD, sw1,  hi,     // LDA $C0n1
+                                          0x4C, 0x03, 0x03};  // JMP spin
+  TestFixtures::ScopedCore_t::poke(program_start, program);
+}
+
+// A 1,279-cycle delay, one character time and more at 9600 baud, then the
+// same switch read and spin.
+auto poke_delay_then_switch_read(int slot) -> void {
+  const auto hi = static_cast<uint8_t>(0xC0);
+  const auto sw1 = static_cast<uint8_t>(0x81 + (slot << 4));
+  const std::array<uint8_t, 11> program = {
+      0xA2, 0x00,        // LDX #$00
+      0xCA,              // DEX
+      0xD0, 0xFD,        // BNE DEX
+      0xAD, sw1,  hi,    // LDA $C0n1
+      0x4C, 0x08, 0x03,  // JMP spin
+  };
+  TestFixtures::ScopedCore_t::poke(program_start, program);
+}
+
+auto save_frame(int slot) -> Frame_t {
+  Frame_t frame{};
+  size_t size = frame.size();
+  peripheral_save_state(slot, frame.data(), &size);
+  REQUIRE(size == frame.size());
+  return frame;
+}
+
+auto read_registers(SerialMachine_t& machine) -> void {
+  poke_register_reads(machine.slot);
+  machine.run_until(program_start, register_read_sentinel, cycle_cap);
+  REQUIRE(cpu_get_registers()->pc == register_read_sentinel);
+}
+
+}  // namespace
+
+TEST_CASE(
+    "Super Serial Card: the frame carries the registers, the latch byte and "
+    "the data bytes, comes back through the ABI with the interrupt, and a "
+    "byte in the receive shifter completes one character time after a load") {
+  SerialMachine_t machine;
+  machine.sink.push_rx(machine.slot, 0xC1);
+  poke_receive_one_byte(machine.slot);
+  machine.run_until(program_start, 0x030F, cycle_cap);
+  REQUIRE(cpu_get_registers()->pc == 0x030F);
+
+  // Nothing has touched the card since the byte was pulled, so the chip has
+  // not been advanced: the byte is still in the shifter.
+  const Frame_t in_flight = save_frame(machine.slot);
+  CHECK(in_flight.at(frame_control) == 0x1E);
+  CHECK(in_flight.at(frame_command) == 0x09);
+  CHECK(in_flight.at(frame_irq) == 0x00);
+  CHECK(in_flight.at(frame_latches) == 0x40);
+  CHECK(in_flight.at(frame_receive_data) == 0x00);
+  CHECK(in_flight.at(frame_shift_data) == 0xC1);
+
+  poke_switch_read_then_spin(machine.slot);
+  machine.run_until(program_start, switch_read_spin, cycle_cap);
+  REQUIRE(cpu_get_registers()->pc == switch_read_spin);
+  const Frame_t received = save_frame(machine.slot);
+  CHECK(received.at(0) == 0x01);
+  CHECK(received.at(4) == 0x38);
+  CHECK(received.at(frame_control) == 0x1E);
+  CHECK(received.at(frame_command) == 0x09);
+  CHECK(received.at(frame_irq) == 0x01);
+  CHECK(received.at(frame_latches) == 0x08);
+  CHECK(received.at(frame_receive_data) == 0xC1);
+  CHECK(received.at(frame_transmit_data) == 0x00);
+  CHECK(received.at(frame_shift_data) == 0x00);
+  size_t zero_elsewhere = 0;
+  for (size_t i = 8; i < frame_size; ++i) {
+    if (i == frame_control || i == frame_command || i == frame_irq ||
+        i == frame_latches || i == frame_receive_data) {
+      continue;
+    }
+    zero_elsewhere += received.at(i) == 0 ? 1 : 0;
+  }
+  CHECK(zero_elsewhere == frame_size - 8 - 5);
+
+  linapple_reset_hard();
+  read_registers(machine);
+  CHECK(mem[0x10] == 0x10);
+  CHECK(mem[0x11] == 0x00);
+  CHECK(mem[0x12] == 0x00);
+
+  REQUIRE(peripheral_load_state(machine.slot, received.data(),
+                                received.size()) == peripheral_ok);
+  read_registers(machine);
+  CHECK(mem[0x10] == 0x98);
+  CHECK(mem[0x11] == 0x1E);
+  CHECK(mem[0x12] == 0x09);
+  CHECK(mem[0x13] == 0xC1);
+
+  linapple_reset_hard();
+  REQUIRE(peripheral_load_state(machine.slot, in_flight.data(),
+                                in_flight.size()) == peripheral_ok);
+  read_registers(machine);
+  CHECK(mem[0x10] == 0x10);
+  poke_delay_then_switch_read(machine.slot);
+  machine.run_until(program_start, delay_spin, cycle_cap);
+  REQUIRE(cpu_get_registers()->pc == delay_spin);
+  read_registers(machine);
+  CHECK(mem[0x10] == 0x98);
+  CHECK(mem[0x13] == 0xC1);
+}
+
+TEST_CASE(
+    "Super Serial Card: a legacy frame with a queue, flags and a "
+    "configuration loads as an idle card at its registers") {
+  SerialMachine_t machine;
+  Frame_t legacy{};
+  legacy.at(0) = 0x01;
+  legacy.at(4) = 0x38;
+  legacy.at(8) = 0x03;
+  legacy.at(frame_control) = 0x1E;
+  legacy.at(frame_command) = 0x0B;
+  legacy.at(15) = 0x01;
+  legacy.at(16) = 0x01;
+  legacy.at(17) = 0x01;
+  for (size_t i = 18; i < 27; ++i) {
+    legacy.at(i) = static_cast<uint8_t>(0xA0 + i);
+  }
+  for (size_t i = 28; i < 52; ++i) {
+    legacy.at(i) = 0x5A;
+  }
+  REQUIRE(peripheral_load_state(machine.slot, legacy.data(), legacy.size()) ==
+          peripheral_ok);
+  read_registers(machine);
+  CHECK(mem[0x10] == 0x10);
+  CHECK(mem[0x11] == 0x1E);
+  CHECK(mem[0x12] == 0x0B);
+  CHECK(machine.sink.last_line().baud == 9600);
+  CHECK(machine.sink.last_line().dtr == 1);
+}
+
+TEST_CASE(
+    "Super Serial Card: load_state refuses the wrong version, a wrong size, "
+    "a short buffer and a set bit 7 of the latch byte, changing nothing") {
+  SerialMachine_t machine;
+  Frame_t good{};
+  good.at(0) = 0x01;
+  good.at(4) = 0x38;
+  good.at(frame_control) = 0x1E;
+  good.at(frame_command) = 0x0B;
+  REQUIRE(peripheral_load_state(machine.slot, good.data(), good.size()) ==
+          peripheral_ok);
+
+  Frame_t bad = good;
+  bad.at(frame_control) = 0x16;
+  bad.at(0) = 0x02;
+  CHECK(peripheral_load_state(machine.slot, bad.data(), bad.size()) ==
+        peripheral_error);
+  bad = good;
+  bad.at(frame_control) = 0x16;
+  bad.at(4) = 0x37;
+  CHECK(peripheral_load_state(machine.slot, bad.data(), bad.size()) ==
+        peripheral_error);
+  bad = good;
+  bad.at(frame_control) = 0x16;
+  CHECK(peripheral_load_state(machine.slot, bad.data(), bad.size() - 1) ==
+        peripheral_error);
+  bad = good;
+  bad.at(frame_control) = 0x16;
+  bad.at(frame_latches) = 0x80;
+  CHECK(peripheral_load_state(machine.slot, bad.data(), bad.size()) ==
+        peripheral_error);
+
+  read_registers(machine);
+  CHECK(mem[0x11] == 0x1E);
+  CHECK(mem[0x12] == 0x0B);
+
+  std::array<uint8_t, frame_size + 8> larger{};
+  std::copy(good.begin(), good.end(), larger.begin());
+  larger.at(frame_control) = 0x16;
+  CHECK(peripheral_load_state(machine.slot, larger.data(), larger.size()) ==
+        peripheral_ok);
+  read_registers(machine);
+  CHECK(mem[0x11] == 0x16);
 }

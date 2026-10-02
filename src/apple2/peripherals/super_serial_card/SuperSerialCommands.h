@@ -33,11 +33,14 @@ typedef enum {
 
 // The card's state frame. It has ridden the slot trailer of every default
 // .aws since the trailer existed, so the fields named before status_latches
-// keep their offsets and bytes 28 to 51 keep their name. status_latches
-// holds bit 0 PE, 1 FE, 2 OVRN, 3 RDRF, 4 TDR full, 5 transmit shifter
-// busy, 6 receive shifter busy; bit 7 must be 0, so the all-zero byte every
-// older frame carries is an idle chip with TDRE set. shift_data is the byte
-// in the receive shifter.
+// keep their offsets and bytes 28 to 51 keep their name; rx_count, the three
+// flag bytes, rx_buffer and config describe a receive queue and a host
+// configuration the card does not have, are written as zeros and are read
+// past. status_latches holds bit 0 PE, 1 FE, 2 OVRN, 3 RDRF, 4 TDR full, 5
+// transmit shifter busy, 6 receive shifter busy; bit 7 must be 0, so the
+// all-zero byte every older frame carries is an idle chip with TDRE set.
+// shift_data is the byte in the receive shifter. The frame carries no
+// cycles: a character in flight restarts from its first bit on load.
 typedef struct {
   uint32_t version;
   uint32_t struct_size;
