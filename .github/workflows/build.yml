@@ -30,7 +30,7 @@ jobs:
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
-          key: ${{ runner.os }}-ubuntu-all
+          key: ccache-portable-${{ runner.os }}-ubuntu-all
       - name: Setup SDL3
         uses: libsdl-org/setup-sdl@main
         id: sdl
@@ -44,6 +44,7 @@ jobs:
             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
             -DFRONTEND=all \
+            -DENABLE_NATIVE=OFF \
             -DCMAKE_PREFIX_PATH="${{ steps.sdl.outputs.prefix }}" \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5
       - name: Build
@@ -216,7 +217,7 @@ jobs:
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
-          key: ${{ runner.os }}-sanitizers
+          key: ccache-portable-${{ runner.os }}-sanitizers
       - name: Setup SDL3
         uses: libsdl-org/setup-sdl@main
         id: sdl
@@ -232,6 +233,7 @@ jobs:
             -DFRONTEND=all \
             -DENABLE_ASAN=ON \
             -DENABLE_UBSAN=ON \
+            -DENABLE_NATIVE=OFF \
             -DCMAKE_PREFIX_PATH="${{ steps.sdl.outputs.prefix }}" \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5
       - name: Build
@@ -315,7 +317,7 @@ jobs:
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
-          key: ${{ runner.os }}-fuzz
+          key: ccache-portable-${{ runner.os }}-fuzz
       - name: Restore Fuzzing Corpus Cache
         uses: actions/cache@v4
         with:
@@ -332,6 +334,7 @@ jobs:
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
             -DFRONTEND=headless \
             -DENABLE_FUZZING=ON \
+            -DENABLE_NATIVE=OFF \
             -DBUILD_TESTING=ON \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5
           cmake --build build-fuzz -j$(nproc)
@@ -381,7 +384,7 @@ jobs:
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
-          key: ${{ runner.os }}-shared-peripherals
+          key: ccache-portable-${{ runner.os }}-shared-peripherals
       - name: Configure
         run: |
           cmake -B build-shared -G Ninja \
@@ -389,6 +392,7 @@ jobs:
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
             -DFRONTEND=headless \
             -DBUILD_SHARED_PERIPHERALS=ON \
+            -DENABLE_NATIVE=OFF \
             -DBUILD_TESTING=ON \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5
       - name: Build
@@ -441,7 +445,7 @@ jobs:
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
-          key: ${{ runner.os }}-no-disk-peripherals
+          key: ccache-portable-${{ runner.os }}-no-disk-peripherals
       - name: Configure
         run: |
           cmake -B build-nodisk -G Ninja \
@@ -450,6 +454,7 @@ jobs:
             -DFRONTEND=headless \
             -DENABLE_PERIPHERAL_DISK=OFF \
             -DENABLE_PERIPHERAL_HARDDISK=OFF \
+            -DENABLE_NATIVE=OFF \
             -DBUILD_TESTING=ON \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5
       - name: Build
