@@ -55,6 +55,26 @@ jobs:
           SDL_AUDIODRIVER: dummy
           SDL_AUDIO_DRIVER: dummy
         run: ctest --test-dir build -j$(nproc) --output-on-failure
+      - name: Report Test Failures
+        if: failure()
+        run: |
+          for f in build/Testing/Temporary/LastTestsFailed.log; do
+            if [ -f "$f" ]; then
+              echo "### Failed Tests ($f):" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              cat "$f" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+          for f in build/Testing/Temporary/LastTest.log; do
+            if [ -f "$f" ]; then
+              echo "### Failures in $f:" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              grep -E -C 10 '(FAIL|Failed|ERROR:|failed \()' "$f" | head -n 150 >> $GITHUB_STEP_SUMMARY || true
+              tail -n 60 "$f" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+            fi
+          done
       - name: Install
         run: sudo cmake --install build
 
@@ -122,6 +142,26 @@ jobs:
           SDL_AUDIODRIVER: dummy
           SDL_AUDIO_DRIVER: dummy
         run: ctest --test-dir build -j$(nproc) --output-on-failure
+      - name: Report Test Failures
+        if: failure()
+        run: |
+          for f in build/Testing/Temporary/LastTestsFailed.log; do
+            if [ -f "$f" ]; then
+              echo "### Failed Tests ($f):" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              cat "$f" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+          for f in build/Testing/Temporary/LastTest.log; do
+            if [ -f "$f" ]; then
+              echo "### Failures in $f:" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              grep -E -C 10 '(FAIL|Failed|ERROR:|failed \()' "$f" | head -n 150 >> $GITHUB_STEP_SUMMARY || true
+              tail -n 60 "$f" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+            fi
+          done
       - name: Install
         run: cmake --install build
 
@@ -371,6 +411,26 @@ jobs:
         run: cmake --build build-nodisk -j$(nproc)
       - name: Test
         run: ctest --test-dir build-nodisk -j$(nproc) --output-on-failure
+      - name: Report Test Failures
+        if: failure()
+        run: |
+          for f in build-nodisk/Testing/Temporary/LastTestsFailed.log; do
+            if [ -f "$f" ]; then
+              echo "### Failed Tests ($f):" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              cat "$f" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+          for f in build-nodisk/Testing/Temporary/LastTest.log; do
+            if [ -f "$f" ]; then
+              echo "### Failures in $f:" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              grep -E -C 10 '(FAIL|Failed|ERROR:|failed \()' "$f" | head -n 150 >> $GITHUB_STEP_SUMMARY || true
+              tail -n 60 "$f" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+            fi
+          done
       - name: Assert No Compression Is Configured or Linked
         run: |
           ! grep -E '^(ZLIB_|LIBZIP_|pkgcfg_lib_LIBZIP)' build-nodisk/CMakeCache.txt
