@@ -341,9 +341,6 @@ auto app_args_print_help() -> void {
 #if ENABLE_ROM_DISK2
   printf("  - Disk II (16-sector & 13-sector)\n");
 #endif
-#if ENABLE_ROM_SSC
-  printf("  - Super Serial Card (SSC)\n");
-#endif
 #if ENABLE_ROM_MOUSE
   printf("  - Apple II Mouse Interface\n");
 #endif

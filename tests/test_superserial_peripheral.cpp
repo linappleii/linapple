@@ -2,13 +2,17 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <fstream>
 #include <string>
 
+#include "apple2/CPU.h"
+#include "apple2/Memory.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Internal.h"
 #include "apple2/peripherals/Peripheral_Subsystems.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
+#include "core/LinAppleCore.h"
 #include "doctest.h"
 #include "test_fixtures.h"
 #include "test_fixtures_core.h"
@@ -347,4 +351,143 @@ TEST_CASE(
                     nullptr, &size) == peripheral_incompatible);
   CHECK(card->query(bench.instance(), PERIPHERAL_SUBSYSTEM_SERIAL | 0x0003,
                     &switches, nullptr) == peripheral_error);
+}
+
+namespace {
+
+constexpr size_t rom_size = 2048;
+constexpr size_t rom_slot_page = 0x700;
+constexpr uint16_t program_start = 0x0300;
+constexpr uint16_t copy_sentinel = 0x032E;
+constexpr uint16_t slot_page_copy = 0x2000;
+constexpr uint16_t expansion_copy = 0x2100;
+constexpr size_t expansion_pages = 7;
+constexpr uint32_t copy_cycle_cap = 60000;
+constexpr uint8_t status_interrupts_masked = 0x24;
+
+using Rom_t = std::array<uint8_t, rom_size>;
+
+auto read_rom_file() -> Rom_t {
+  Rom_t rom{};
+  std::ifstream in(TestFixtures::get_fixture_path("roms/SSC.rom"),
+                   std::ios::binary);
+  REQUIRE(in.is_open());
+  in.read(reinterpret_cast<char*>(rom.data()),
+          static_cast<std::streamsize>(rom.size()));
+  REQUIRE(in.gcount() == static_cast<std::streamsize>(rom.size()));
+  CHECK(in.peek() == std::ifstream::traits_type::eof());
+  return rom;
+}
+
+// An Enhanced //e with the card in one slot, built the way the frontend
+// builds it, so the pages the 6502 sees are the ones the card registered.
+struct SerialMachine_t {
+  static auto describe(int slot)
+      -> TestFixtures::ScopedTestConfig_t::Description_t {
+    TestFixtures::ScopedTestConfig_t::Description_t description;
+    description.slots.at(static_cast<size_t>(slot - 1)) = "Super Serial Card";
+    return description;
+  }
+
+  TestFixtures::ScopedTestConfig_t config;
+  TestFixtures::ScopedCore_t core;
+  int slot;
+
+  explicit SerialMachine_t(int in_slot = test_slot)
+      : config(describe(in_slot)), core(config), slot(in_slot) {
+    peripheral_manager_init();
+    linapple_register_peripherals();
+    linapple_reset_hard();
+  }
+
+  // Steps the 6502 one instruction at a time until it reaches the sentinel
+  // or spends the cap, interrupts masked, so no handler runs between steps.
+  auto run_until(uint16_t entry, uint16_t sentinel, uint32_t cap) -> uint32_t {
+    CpuRegisters_t* regs = cpu_get_registers();
+    regs->pc = entry;
+    regs->ps = status_interrupts_masked;
+    uint32_t cycles = 0;
+    while (regs->pc != sentinel && cycles < cap) {
+      cycles += cpu_execute(0);
+    }
+    return cycles;
+  }
+};
+
+// Copies the slot page to $2000 and, having fetched from $Cnxx, the seven
+// expansion pages $C800-$CEFF to $2100-$27FF through a zero-page pointer,
+// then spins. $CF00 is never touched: a read there would reset the latch.
+auto poke_rom_copier(int slot) -> void {
+  const auto slot_page = static_cast<uint8_t>(0xC0 + slot);
+  const std::array<uint8_t, 49> program = {
+      0xA2, 0x00,                   // LDX #$00
+      0xBD, 0x00, slot_page,        // LDA $Cn00,X
+      0x9D, 0x00, 0x20,             // STA $2000,X
+      0xE8,                         // INX
+      0xD0, 0xF7,                   // BNE $0302
+      0xA9, 0x00, 0x85,      0x06,  // LDA #$00 / STA $06
+      0xA9, 0xC8, 0x85,      0x07,  // LDA #$C8 / STA $07
+      0xA9, 0x00, 0x85,      0x08,  // LDA #$00 / STA $08
+      0xA9, 0x21, 0x85,      0x09,  // LDA #$21 / STA $09
+      0xA0, 0x00,                   // LDY #$00
+      0xB1, 0x06,                   // LDA ($06),Y
+      0x91, 0x08,                   // STA ($08),Y
+      0xC8,                         // INY
+      0xD0, 0xF9,                   // BNE $031D
+      0xE6, 0x07,                   // INC $07
+      0xE6, 0x09,                   // INC $09
+      0xA5, 0x07,                   // LDA $07
+      0xC9, 0xCF,                   // CMP #$CF
+      0xD0, 0xEF,                   // BNE $031D
+      0x4C, 0x2E, 0x03              // JMP $032E
+  };
+  TestFixtures::ScopedCore_t::poke(program_start, program);
+}
+
+}  // namespace
+
+TEST_CASE(
+    "Super Serial Card: the slot page is the ROM's last page, the expansion "
+    "ROM is the whole image, and both match res/roms/SSC.rom byte for byte") {
+  const Rom_t rom = read_rom_file();
+  SerialMachine_t machine;
+  poke_rom_copier(machine.slot);
+  const uint32_t cycles =
+      machine.run_until(program_start, copy_sentinel, copy_cycle_cap);
+  REQUIRE(cpu_get_registers()->pc == copy_sentinel);
+  CHECK(cycles < copy_cycle_cap);
+
+  // The $Cn00 entry (BIT $FF58 / BVS), the Pascal signature bytes, the
+  // Pascal 1.1 init offset and the revision byte (1981 manual pp. 55-57).
+  CHECK(mem[slot_page_copy + 0x00] == 0x2C);
+  CHECK(mem[slot_page_copy + 0x01] == 0x58);
+  CHECK(mem[slot_page_copy + 0x02] == 0xFF);
+  CHECK(mem[slot_page_copy + 0x03] == 0x70);
+  CHECK(mem[slot_page_copy + 0x04] == 0x0C);
+  CHECK(mem[slot_page_copy + 0x05] == 0x38);
+  CHECK(mem[slot_page_copy + 0x07] == 0x18);
+  CHECK(mem[slot_page_copy + 0x0B] == 0x01);
+  CHECK(mem[slot_page_copy + 0x0C] == 0x31);
+  CHECK(mem[slot_page_copy + 0x0D] == 0x8E);
+  CHECK(mem[slot_page_copy + 0xFF] == 0x08);
+  // The $C800 initialisation entry, JSR $C99B.
+  CHECK(mem[expansion_copy + 0x00] == 0x20);
+  CHECK(mem[expansion_copy + 0x01] == 0x9B);
+  CHECK(mem[expansion_copy + 0x02] == 0xC9);
+
+  size_t slot_page_mismatches = 0;
+  for (size_t i = 0; i < 0x100; ++i) {
+    if (mem[slot_page_copy + i] != rom.at(rom_slot_page + i)) {
+      ++slot_page_mismatches;
+    }
+  }
+  CHECK(slot_page_mismatches == 0);
+
+  size_t expansion_mismatches = 0;
+  for (size_t i = 0; i < expansion_pages * 0x100; ++i) {
+    if (mem[expansion_copy + i] != rom.at(i)) {
+      ++expansion_mismatches;
+    }
+  }
+  CHECK(expansion_mismatches == 0);
 }

@@ -58,11 +58,6 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
     CHECK(g_rom_disk2[0] == 0xA2);
     CHECK(g_rom_disk2[1] == 0x20);
 #endif
-#if ENABLE_ROM_SSC
-    CHECK(g_rom_ssc_size == 2048);
-    CHECK(g_rom_ssc[0x00] == 0x20);
-    CHECK(g_rom_ssc[0x05] == 0x48);
-#endif
 #if ENABLE_ROM_MOUSE
     CHECK(g_rom_mouse_interface_size == 2048);
     CHECK(g_rom_mouse_interface[0] == 0x2C);

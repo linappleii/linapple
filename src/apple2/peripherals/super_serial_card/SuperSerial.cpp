@@ -9,11 +9,11 @@
 #include <memory>
 #include <new>
 
-#include "EmbeddedRoms.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Subsystems.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
+#include "apple2/peripherals/super_serial_card/SuperSerialRom.h"
 
 namespace {
 
@@ -298,9 +298,9 @@ auto super_serial_abi_init(int slot, HostInterface_t* host) -> void* {
   card->host = host;
   card->slot = slot;
 
-#if ENABLE_ROM_SSC
-  host->RegisterCxROM(slot, g_rom_ssc);
-#endif
+  host->RegisterCxROM(slot,
+                      super_serial_rom.data() + super_serial_rom_slot_page);
+  host->RegisterExpansionROM(slot, super_serial_rom.data());
   host->RegisterIO(slot, super_serial_io_read, super_serial_io_write, nullptr,
                    nullptr);
 
