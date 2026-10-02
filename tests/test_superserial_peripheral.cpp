@@ -614,3 +614,75 @@ TEST_CASE(
   CHECK(machine.sink.last_line().dtr == 1);
   CHECK(machine.sink.last_line().rts == 1);
 }
+
+namespace {
+
+constexpr uint16_t switch_read_sentinel = 0x0317;
+constexpr SuperSerialSwitches_t printer_mode_switches = {0x68, 0x0B};
+
+// A write to each switch register, which the card ignores, then LDA $C0n1 /
+// STA $10, LDA $C0n2 / STA $11, LDA $C0n0 / STA $12, and a spin.
+auto poke_switch_reads(int slot) -> void {
+  const auto hi = static_cast<uint8_t>(0xC0);
+  const auto sw1 = static_cast<uint8_t>(0x81 + (slot << 4));
+  const auto sw2 = static_cast<uint8_t>(0x82 + (slot << 4));
+  const auto undecoded = static_cast<uint8_t>(0x80 + (slot << 4));
+  const std::array<uint8_t, 26> program = {
+      0xA9, 0xFF,                        // LDA #$FF
+      0x8D, sw1,       hi,               // STA $C0n1
+      0x8D, sw2,       hi,               // STA $C0n2
+      0xAD, sw1,       hi,  0x85, 0x10,  // LDA $C0n1 / STA $10
+      0xAD, sw2,       hi,  0x85, 0x11,  // LDA $C0n2 / STA $11
+      0xAD, undecoded, hi,  0x85, 0x12,  // LDA $C0n0 / STA $12
+      0x4C, 0x17,      0x03};            // JMP spin
+  TestFixtures::ScopedCore_t::poke(program_start, program);
+}
+
+auto read_switches(SerialMachine_t& machine) -> void {
+  poke_switch_reads(machine.slot);
+  machine.run_until(program_start, switch_read_sentinel, cycle_cap);
+  REQUIRE(cpu_get_registers()->pc == switch_read_sentinel);
+}
+
+auto set_switches(SerialMachine_t& machine,
+                  const SuperSerialSwitches_t& switches) -> void {
+  REQUIRE(peripheral_command(machine.slot, SUPER_SERIAL_CMD_SET_SWITCHES,
+                             &switches, sizeof(switches)) == peripheral_ok);
+  peripheral_manager_think(0);
+}
+
+}  // namespace
+
+TEST_CASE(
+    "Super Serial Card: $C0n1 and $C0n2 read the switch blocks with the "
+    "undriven bits set and CTS in bit 0, $EC and $52 under the default") {
+  SerialMachine_t machine;
+  read_switches(machine);
+  CHECK(mem[0x10] == 0xEC);
+  CHECK(mem[0x11] == 0x52);
+
+  set_switches(machine, printer_mode_switches);
+  read_switches(machine);
+  CHECK(mem[0x10] == 0xEE);
+  CHECK(mem[0x11] == 0x5A);
+
+  machine.sink.set_lines(TestFixtures::ScopedByteSink_t::all_lines_asserted &
+                         ~uint8_t{0x01});
+  read_switches(machine);
+  CHECK(mem[0x10] == 0xEE);
+  CHECK(mem[0x11] == 0x5B);
+
+  set_switches(machine, {0x78, 0x2F});
+  read_switches(machine);
+  CHECK(mem[0x11] == 0x53);
+  machine.sink.set_lines(TestFixtures::ScopedByteSink_t::all_lines_asserted);
+}
+
+TEST_CASE("Super Serial Card: the switch image survives a hardware reset") {
+  SerialMachine_t machine;
+  set_switches(machine, printer_mode_switches);
+  linapple_reset_hard();
+  read_switches(machine);
+  CHECK(mem[0x10] == 0xEE);
+  CHECK(mem[0x11] == 0x5A);
+}

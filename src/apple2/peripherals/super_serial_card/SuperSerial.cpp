@@ -37,6 +37,18 @@ constexpr uint8_t switch_bit_7 = 0x80;
 // SW2-6 ON connects the ACIA's IRQ to the slot's interrupt line; OFF leaves
 // the status bit alone in the card (1981 manual p. 47).
 constexpr uint8_t switch_2_6 = 0x20;
+constexpr uint16_t switches_1_offset = 1;
+constexpr uint16_t switches_2_offset = 2;
+// Two 74LS365 buffers present the switches at $C0n1 and $C0n2 (1981 manual
+// p. 47; p. 54, Table A-7): SW1-1..4 in bits 7-4 and SW1-5..6 in bits 1-0 of
+// $C0n1, SW2-1 in bit 7, SW2-2 in bit 5, SW2-3..5 in bits 3-1 and CTS in
+// bit 0 of $C0n2; a closed switch reads 0, as does an asserted CTS. The four
+// bits no buffer drives read 1 through the data-bus pull-ups (p. 48;
+// inferred: the manual places the pull-ups but does not say what the
+// firmware, which masks these bits off, would see).
+constexpr uint8_t switches_1_undriven = 0x0C;
+constexpr uint8_t switches_2_undriven = 0x50;
+constexpr uint8_t cts_deasserted = 0x01;
 
 static_assert(sizeof(SuperSerialSaveState_t) == 56,
               "the serial card's state frame is part of the plugin ABI");
@@ -91,6 +103,36 @@ struct SuperSerialCard_t {
 // With no cable the three receiver inputs read asserted through the card's
 // 15 kOhm pull-ups (1981 manual p. 48), so a host with nothing to say about
 // them is read that way.
+// Bit k of the image is switch k + 1 and 1 means ON; the register bit a
+// switch drives reads 0 when the switch is ON.
+auto switch_reads_0(uint8_t image, int number) -> bool {
+  return (image & static_cast<uint8_t>(1U << (number - 1))) != 0;
+}
+
+auto switches_1_byte(const SuperSerialCard_t* card) -> uint8_t {
+  const uint8_t image = card->switches.sw1;
+  uint8_t byte = switches_1_undriven;
+  byte |= switch_reads_0(image, 1) ? 0 : 0x80;
+  byte |= switch_reads_0(image, 2) ? 0 : 0x40;
+  byte |= switch_reads_0(image, 3) ? 0 : 0x20;
+  byte |= switch_reads_0(image, 4) ? 0 : 0x10;
+  byte |= switch_reads_0(image, 5) ? 0 : 0x02;
+  byte |= switch_reads_0(image, 6) ? 0 : 0x01;
+  return byte;
+}
+
+auto switches_2_byte(const SuperSerialCard_t* card) -> uint8_t {
+  const uint8_t image = card->switches.sw2;
+  uint8_t byte = switches_2_undriven;
+  byte |= switch_reads_0(image, 1) ? 0 : 0x80;
+  byte |= switch_reads_0(image, 2) ? 0 : 0x20;
+  byte |= switch_reads_0(image, 3) ? 0 : 0x08;
+  byte |= switch_reads_0(image, 4) ? 0 : 0x04;
+  byte |= switch_reads_0(image, 5) ? 0 : 0x02;
+  byte |= (card->acia.lines & acia_line::cts) != 0 ? 0 : cts_deasserted;
+  return byte;
+}
+
 auto host_lines(SuperSerialCard_t* card) -> uint8_t {
   uint8_t mask = 0;
   if (card->host->SinkGetLines(card->sink, &mask)) {
@@ -196,6 +238,10 @@ auto super_serial_io_read(void* instance, uint16_t program_counter,
   uint8_t value = 0;
   if ((offset & acia_select_mask) == acia_selected) {
     value = acia_read(&card->acia, static_cast<uint8_t>(offset), now);
+  } else if (offset == switches_1_offset) {
+    value = switches_1_byte(card);
+  } else if (offset == switches_2_offset) {
+    value = switches_2_byte(card);
   } else {
     // Whether an undecoded address returns the floating bus or $FF from the
     // data-bus pull-ups depends on when the card's LS245 is enabled, which
