@@ -62,6 +62,10 @@ auto peripheral_register_builtin(Peripheral_t* p) -> void {
 
 // --- Internal Types ---
 
+// No event pending. The ABI's 0 cancels and maps to this, so cycle 0 itself
+// can never be scheduled.
+static constexpr uint64_t no_event = UINT64_MAX;
+
 struct ActivePeripheral_t {
   Peripheral_t* api;
   void* instance;
@@ -71,6 +75,7 @@ struct ActivePeripheral_t {
   PeripheralIOHandler readCx;
   PeripheralIOHandler writeCx;
   const uint8_t* expansionRom;
+  uint64_t event_cycle = no_event;
 };
 
 struct DirectIoHandler_t {
@@ -86,6 +91,9 @@ struct DirectIoHandler_t {
 static std::array<std::vector<ActivePeripheral_t>, NUM_SLOTS>
     g_active_peripherals;
 static std::array<bool, NUM_SLOTS> g_peripheral_activity_state;
+// The earliest pending event, so the frame loop compares one number per
+// slice instead of walking the slots.
+static uint64_t g_next_event_cycle = no_event;
 
 // Room for every address the motherboard devices and the shipped cards claim,
 // with headroom: a registration past the end is dropped with one log line and
@@ -496,6 +504,75 @@ static auto host_reset_system(void* instance) -> void {
   peripheral_manager_reset();
 }
 
+// --- Device events ---
+
+static auto recompute_next_event_cycle() -> void {
+  uint64_t next = no_event;
+  for (const auto& slot_peripherals : g_active_peripherals) {
+    for (const auto& ap : slot_peripherals) {
+      next = std::min(next, ap.event_cycle);
+    }
+  }
+  g_next_event_cycle = next;
+}
+
+static auto clear_all_events() -> void {
+  for (auto& slot_peripherals : g_active_peripherals) {
+    for (auto& ap : slot_peripherals) {
+      ap.event_cycle = no_event;
+    }
+  }
+  g_next_event_cycle = no_event;
+}
+
+static auto host_schedule_event(void* instance, uint64_t at_cycle) -> void {
+  if (instance == nullptr) {
+    return;
+  }
+  for (auto& slot_peripherals : g_active_peripherals) {
+    for (auto& ap : slot_peripherals) {
+      if (ap.instance != instance) {
+        continue;
+      }
+      ap.event_cycle = at_cycle == 0 ? no_event : at_cycle;
+      recompute_next_event_cycle();
+      // Acts only while a slice is running, so a schedule from a register
+      // access ends the slice at the event and every other caller merely
+      // leaves the event for the next slice boundary.
+      cpu_limit_cycles(g_next_event_cycle);
+      return;
+    }
+  }
+}
+
+auto peripheral_next_event_cycle() -> uint64_t { return g_next_event_cycle; }
+
+auto peripheral_service_events(uint64_t now) -> void {
+  if (g_next_event_cycle > now) {
+    return;
+  }
+  // The due events are collected and cleared before any card runs, so one
+  // a woken think re-schedules at or before now waits for the next
+  // boundary, one instruction on: a card can cost the frame one wake per
+  // instruction at worst and the frame still completes.
+  static std::vector<ActivePeripheral_t*> due;
+  due.clear();
+  for (auto& slot_peripherals : g_active_peripherals) {
+    for (auto& ap : slot_peripherals) {
+      if (ap.event_cycle <= now) {
+        ap.event_cycle = no_event;
+        due.push_back(&ap);
+      }
+    }
+  }
+  for (ActivePeripheral_t* ap : due) {
+    if (ap->api != nullptr && ap->api->think != nullptr) {
+      ap->api->think(ap->instance, 0);
+    }
+  }
+  recompute_next_event_cycle();
+}
+
 // mem_read_floating_bus is overloaded on an added high-bit argument, so the
 // table needs a single-signature thunk to take the address of.
 static auto host_read_floating_bus(uint32_t executed_cycles) -> uint8_t {
@@ -750,7 +827,8 @@ static const HostInterface_t g_host_interface = {
     .SinkClose = host_sink_close,
     .SinkRead = host_sink_read,
     .SinkSetLine = host_sink_set_line,
-    .SinkGetLines = host_sink_get_lines};
+    .SinkGetLines = host_sink_get_lines,
+    .ScheduleEvent = host_schedule_event};
 
 // --- Command Queue ---
 
@@ -815,6 +893,7 @@ static auto clear_all_peripherals() -> void {
     }
     g_active_peripherals.at(i).clear();
   }
+  g_next_event_cycle = no_event;
   // A card that left its token open would otherwise hold the frontend's
   // destination past its own life.
   for (auto& record : g_sink_records) {
@@ -834,6 +913,9 @@ auto peripheral_manager_init() -> void {
 }
 
 auto peripheral_manager_reset() -> void {
+  // Cleared before the cards' reset entries run, so a reset that schedules
+  // keeps its event and nothing from before the reset survives it.
+  clear_all_events();
   for (size_t i = 0; i < NUM_SLOTS; ++i) {
     for (auto& ap : g_active_peripherals.at(i)) {
       if (ap.api != nullptr && ap.api->reset != nullptr) {
@@ -962,6 +1044,7 @@ auto peripheral_unregister(int slot) -> int {
     }
   }
   slot_peripherals.clear();
+  recompute_next_event_cycle();
   register_io_handler(static_cast<uint32_t>(slot), nullptr, nullptr, nullptr,
                       nullptr, nullptr, nullptr);
   return 0;

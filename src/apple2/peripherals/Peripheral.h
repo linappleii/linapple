@@ -129,6 +129,25 @@ typedef struct {
   bool (*SinkRead)(void* sink, uint8_t* byte);
   void (*SinkSetLine)(void* sink, const PeripheralSerialLine_t* line);
   bool (*SinkGetLines)(void* sink, uint8_t* lines);
+  // A card whose silicon does something at a cycle no program touches, a
+  // character boundary on a serial line for instance, asks to be woken there:
+  // its think is called with cycles 0 within one instruction of at_cycle,
+  // an absolute cycle as GetCycles counts it (7 cycles, the longest 6502
+  // instruction, or 14 when an interrupt is taken at that boundary). One
+  // event is pending per instance; a later call replaces it, and 0 cancels
+  // it, because cumulative cycle 0 is the power-on cycle and a card asks for
+  // now plus something. Valid from the moment init has returned until
+  // shutdown is entered: a call from inside init is dropped, since the host
+  // stores the instance only after init returns and cannot match it. A woken
+  // think may schedule, assert or release the IRQ, queue a command and call
+  // ResetSystem, and may not call peripheral_unregister; it cannot tell a
+  // wake from the think(instance, 0) a command drain delivers, so a card that
+  // schedules keeps time by GetCycles, never by think's cycles argument. An
+  // event due inside a frame's last slice is serviced at the next frame's
+  // first pass, after that frame's per-frame work and before any
+  // instruction. The debugger's single step services nothing; the first
+  // frame after the user resumes does.
+  void (*ScheduleEvent)(void* instance, uint64_t at_cycle);
 } HostInterface_t;
 
 // Forward declaration

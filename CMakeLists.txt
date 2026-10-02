@@ -921,6 +921,14 @@ fi
     endif()
     add_linapple_test(mouse-exhaustive "tests/test_main.cpp;tests/test_mouse_exhaustive.cpp")
     add_linapple_test(peripheral-slot0 "tests/test_main.cpp;tests/test_peripheral_slot0.cpp")
+    add_linapple_test(device-events "tests/test_main.cpp;tests/HeadlessHarness.cpp;tests/test_device_events.cpp")
+    set_tests_properties(test-device-events PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
+    # add_peripheral defines a card's macro only when the card is built in,
+    # and the Mockingboard is a plugin in a shared build; the test loads the
+    # plugin, so its Mockingboard case has to be compiled in either way.
+    if(ENABLE_PERIPHERAL_MOCKINGBOARD)
+        target_compile_definitions(test-device-events PRIVATE ENABLE_PERIPHERAL_MOCKINGBOARD)
+    endif()
     # Every test that mounts a disk or harddisk card at run time is built only
     # with that card, so a build without one still has a green test suite and
     # proves nothing of the card's leaked into it.

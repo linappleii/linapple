@@ -130,8 +130,13 @@ typedef char
                                         28 * sizeof(void (*)(void))
                                     ? 1
                                     : -1];
-typedef char host_interface_has_29_members
-    [sizeof(HostInterface_t) == 29 * sizeof(void (*)(void)) ? 1 : -1];
+typedef char
+    schedule_event_is_member_29[offsetof(HostInterface_t, ScheduleEvent) ==
+                                        29 * sizeof(void (*)(void))
+                                    ? 1
+                                    : -1];
+typedef char host_interface_has_30_members
+    [sizeof(HostInterface_t) == 30 * sizeof(void (*)(void)) ? 1 : -1];
 typedef char sink_kinds_are_pinned
     [peripheral_sink_printer == 1 && peripheral_sink_serial == 2 ? 1 : -1];
 typedef char

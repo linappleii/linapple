@@ -188,6 +188,11 @@ auto peripheral_manager_init() -> void;
 auto peripheral_manager_reset() -> void;
 auto peripheral_manager_shutdown() -> void;
 auto peripheral_manager_think(uint32_t cycles) -> void;
+// The earliest cycle a card asked to be woken at, UINT64_MAX when none, and
+// the pass that wakes every card whose cycle has come, once each in slot
+// order; the frame loop runs the pass at every slice boundary.
+auto peripheral_next_event_cycle() -> uint64_t;
+auto peripheral_service_events(uint64_t now) -> void;
 auto peripheral_manager_on_vblank(bool vblank) -> void;
 auto peripheral_is_any_active() -> bool;
 

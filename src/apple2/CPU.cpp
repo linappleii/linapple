@@ -39,6 +39,11 @@ CpuRegisters_t regs;
 uint64_t g_cumulative_cycles = 0;
 static uint32_t g_cycles_submitted;
 static uint32_t g_cycles_executed;
+// The execute loop's bound, frame-relative like g_cycles_executed. A direct
+// cpu_execute sets it to its own count; a slice sets it and may have it
+// lowered from inside a handler while g_in_slice is true.
+static uint32_t g_cycles_limit;
+static bool g_in_slice = false;
 static std::atomic<uint32_t> g_bm_irq{0};
 static std::atomic<uint32_t> g_bm_nmi{0};
 static std::atomic<bool> g_nmi_flank{
@@ -2981,9 +2986,12 @@ static const OpcodeDesc_t s_opcodes_cmos[256] = {
     /* 0xFF */ {op_nop, 2},  // nop
 };
 
+// Runs from start_cycles to the first instruction boundary at or after
+// g_cycles_limit, which a handler may lower while the loop runs.
 template <bool is_cmos>
-static auto cpu_execute_loop(uint32_t total_cycles) -> uint32_t {
+static auto cpu_execute_loop(uint32_t start_cycles) -> uint32_t {
   CpuLoopContext_t ctx;
+  ctx.executed_cycles = start_cycles;
   ctx.unpack_ps();
 
   const auto& table = is_cmos ? s_opcodes_cmos : s_opcodes_nmos;
@@ -3000,19 +3008,30 @@ static auto cpu_execute_loop(uint32_t total_cycles) -> uint32_t {
     ctx.pack_ps();
     ctx.check_nmi<is_cmos>();
     ctx.check_irq<is_cmos>();
-  } while (ctx.executed_cycles < total_cycles);
+  } while (ctx.executed_cycles < g_cycles_limit);
 
   return ctx.executed_cycles;
 }
 
-static auto internal_cpu_execute(uint32_t total_cycles) -> uint32_t {
+static auto internal_cpu_execute(uint32_t start_cycles) -> uint32_t {
   if (is_apple2() || (current_apple2_type == A2TYPE_APPLE2E)) {
     return cpu_execute_loop<false>(
-        total_cycles);  // Apple ][, ][+, //e (NMOS 6502)
+        start_cycles);  // Apple ][, ][+, //e (NMOS 6502)
   }
   return cpu_execute_loop<true>(
-      total_cycles);  // Enhanced Apple //e (CMOS 65C02)
+      start_cycles);  // Enhanced Apple //e (CMOS 65C02)
 }
+
+// Whatever ends the slice, an exception out of a handler included, the limit
+// goes back to meaning nothing.
+struct SliceGuard_t {
+  SliceGuard_t() noexcept { g_in_slice = true; }
+  ~SliceGuard_t() { g_in_slice = false; }
+  SliceGuard_t(const SliceGuard_t&) = delete;
+  auto operator=(const SliceGuard_t&) -> SliceGuard_t& = delete;
+  SliceGuard_t(SliceGuard_t&&) = delete;
+  auto operator=(SliceGuard_t&&) -> SliceGuard_t& = delete;
+};
 
 // Modern API implementation
 
@@ -3032,11 +3051,49 @@ auto cpu_get_cycles_this_frame(uint32_t executed_cycles) noexcept -> uint32_t {
 auto cpu_execute(uint32_t total_cycles) -> uint32_t {
   g_cycles_submitted = total_cycles;
   g_cycles_executed = 0;
+  g_cycles_limit = total_cycles;
 
-  uint32_t executed_cycles = internal_cpu_execute(total_cycles);
+  uint32_t executed_cycles = internal_cpu_execute(0);
 
   uint32_t remaining_cycles = executed_cycles - g_cycles_executed;
   g_cumulative_cycles += remaining_cycles;
+
+  return executed_cycles;
+}
+
+auto cpu_begin_frame(uint32_t frame_cycles) noexcept -> void {
+  g_cycles_submitted = frame_cycles;
+  g_cycles_executed = 0;
+}
+
+auto cpu_limit_cycles(uint64_t at_cumulative) noexcept -> void {
+  if (!g_in_slice || at_cumulative == UINT64_MAX) {
+    return;
+  }
+  // Inside a handler both counts already stand at the first cycle of the
+  // running instruction, so the frame-relative offset of the target is
+  // exact; a target at or behind now bounds the slice at the current count,
+  // and the do-while then ends it at the next instruction boundary.
+  uint64_t bound = g_cycles_executed;
+  if (at_cumulative > g_cumulative_cycles) {
+    bound += at_cumulative - g_cumulative_cycles;
+  }
+  if (bound < g_cycles_limit) {
+    g_cycles_limit = static_cast<uint32_t>(bound);
+  }
+}
+
+auto cpu_execute_slice(uint32_t frame_cycles, uint64_t until_cycle)
+    -> uint32_t {
+  const SliceGuard_t slice;
+  g_cycles_limit = frame_cycles;
+  cpu_limit_cycles(until_cycle);
+
+  uint32_t executed_cycles = internal_cpu_execute(g_cycles_executed);
+
+  uint32_t remaining_cycles = executed_cycles - g_cycles_executed;
+  g_cumulative_cycles += remaining_cycles;
+  g_cycles_executed = executed_cycles;
 
   return executed_cycles;
 }

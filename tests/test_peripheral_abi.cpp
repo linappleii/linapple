@@ -262,8 +262,10 @@ static_assert(offsetof(HostInterface_t, SinkSetLine) == 27 * host_member_size,
               "SinkSetLine moved");
 static_assert(offsetof(HostInterface_t, SinkGetLines) == 28 * host_member_size,
               "SinkGetLines moved");
-static_assert(sizeof(HostInterface_t) == 29 * host_member_size,
-              "HostInterface_t grew past the serial sink members");
+static_assert(offsetof(HostInterface_t, ScheduleEvent) == 29 * host_member_size,
+              "ScheduleEvent is not the first member after SinkGetLines");
+static_assert(sizeof(HostInterface_t) == 30 * host_member_size,
+              "HostInterface_t grew past ScheduleEvent");
 static_assert(peripheral_sink_printer == 1 && peripheral_sink_serial == 2,
               "PeripheralSinkKind_t values are part of the plugin ABI");
 static_assert(sizeof(PeripheralSerialLine_t) == 12,
@@ -370,7 +372,7 @@ TEST_CASE(
         offsetof(HostInterface_t, GetLocalTime) + host_member_size);
   CHECK(offsetof(HostInterface_t, SinkRead) ==
         offsetof(HostInterface_t, SinkClose) + host_member_size);
-  CHECK(offsetof(HostInterface_t, SinkGetLines) + host_member_size ==
+  CHECK(offsetof(HostInterface_t, ScheduleEvent) + host_member_size ==
         sizeof(HostInterface_t));
 
   peripheral_manager_init();
@@ -384,6 +386,7 @@ TEST_CASE(
   CHECK(g_captured_host->SinkRead != nullptr);
   CHECK(g_captured_host->SinkSetLine != nullptr);
   CHECK(g_captured_host->SinkGetLines != nullptr);
+  CHECK(g_captured_host->ScheduleEvent != nullptr);
   // The printer and serial members keep their place in the layout with
   // nothing behind them.
   CHECK(g_captured_host->PrinterPutChar == nullptr);
