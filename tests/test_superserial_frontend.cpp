@@ -1,17 +1,20 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <fcntl.h>
-#include <poll.h>
+#include <sys/poll.h>
 #include <termios.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <array>
 #include <cerrno>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <fstream>
+#include <ios>
 #include <iterator>
 #include <string>
 #include <vector>
@@ -135,6 +138,11 @@ class Peer_t {
     return write(fd_, &byte, 1) == 1;
   }
 
+  auto write_text(const std::string& text) const -> bool {
+    return write(fd_, text.data(), text.size()) ==
+           static_cast<ssize_t>(text.size());
+  }
+
   // Returns the next byte, or -1 if none arrives within the wait; the
   // kernel moves a byte across a pseudo-terminal at once, so the wait only
   // turns a hang into a failure.
@@ -152,6 +160,36 @@ class Peer_t {
     return byte;
   }
 
+  // Returns what arrived, up to count bytes, within one wait overall, so a
+  // stream that stops short fails on its contents rather than on time.
+  auto read_bytes(size_t count) const -> std::vector<uint8_t> {
+    using Clock_t = std::chrono::steady_clock;
+    const auto deadline =
+        Clock_t::now() + std::chrono::milliseconds(peer_wait_ms);
+    std::vector<uint8_t> out;
+    while (out.size() < count) {
+      const auto left = std::chrono::duration_cast<std::chrono::milliseconds>(
+          deadline - Clock_t::now());
+      if (left.count() <= 0) {
+        break;
+      }
+      pollfd request{};
+      request.fd = fd_;
+      request.events = POLLIN;
+      if (poll(&request, 1, static_cast<int>(left.count())) <= 0) {
+        break;
+      }
+      std::array<uint8_t, 64> chunk{};
+      const size_t want = std::min(chunk.size(), count - out.size());
+      const ssize_t got = read(fd_, chunk.data(), want);
+      if (got <= 0) {
+        break;
+      }
+      out.insert(out.end(), chunk.begin(), chunk.begin() + got);
+    }
+    return out;
+  }
+
   auto has_byte() const -> bool {
     pollfd request{};
     request.fd = fd_;
@@ -164,10 +202,7 @@ class Peer_t {
   int error_;
 };
 
-auto file_bytes_hex(const std::string& path) -> std::string {
-  std::ifstream in(path, std::ios::binary);
-  const std::vector<uint8_t> bytes((std::istreambuf_iterator<char>(in)),
-                                   std::istreambuf_iterator<char>());
+auto hex(const std::vector<uint8_t>& bytes) -> std::string {
   std::string out;
   std::array<char, 4> cell{};
   for (uint8_t byte : bytes) {
@@ -178,6 +213,12 @@ auto file_bytes_hex(const std::string& path) -> std::string {
     out += cell.data();
   }
   return out;
+}
+
+auto file_bytes_hex(const std::string& path) -> std::string {
+  std::ifstream in(path, std::ios::binary);
+  return hex(std::vector<uint8_t>((std::istreambuf_iterator<char>(in)),
+                                  std::istreambuf_iterator<char>()));
 }
 
 auto write_file(const std::string& path, const std::string& text) -> void {
@@ -647,4 +688,172 @@ TEST_CASE(
   }
   CHECK(log.count_containing("serial port") == 0);
   CHECK(log.count_containing("Super Serial Card") == 0);
+}
+
+namespace {
+
+constexpr uint32_t prompt_frame_cap = 300;
+constexpr uint32_t session_frame_cap = 60;
+
+auto screen_has_row(const HeadlessHarness_t& harness, const std::string& text)
+    -> bool {
+  for (int row = 0; row < 24; ++row) {
+    if (harness.get_text_row(row) == text) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// No disk controller, so the Autostart scan falls through to Applesoft.
+auto boot_to_prompt(HeadlessHarness_t& harness) -> void {
+  harness.boot();
+  uint32_t frames = 0;
+  while (!screen_has_row(harness, "]") && frames < prompt_frame_cap) {
+    harness.run_frames(1);
+    ++frames;
+  }
+  CAPTURE(frames);
+  REQUIRE(screen_has_row(harness, "]"));
+}
+
+// Runs one frame at a time until the condition holds or the cap is reached;
+// the cap turns a byte that never arrives into a failed check, not a hang.
+template <typename Condition_t>
+auto run_frames_until(HeadlessHarness_t& harness, Condition_t condition)
+    -> uint32_t {
+  uint32_t frames = 0;
+  while (!condition() && frames < session_frame_cap) {
+    harness.run_frames(1);
+    ++frames;
+  }
+  return frames;
+}
+
+// GETLN's buffer, zeroed through the write page as well as the image so a
+// stale byte from the prompt's own line cannot stand in for a received one.
+auto clear_input_buffer() -> void {
+  for (uint16_t address = 0x0200; address < 0x0210; ++address) {
+    mem[address] = 0;
+    uint8_t* page = memwrite[address >> 8];
+    if (page != nullptr) {
+      page[address & 0xFF] = 0;
+    }
+  }
+}
+
+// Opens the pseudo-terminal's peer end, or fails with the frontend's own
+// account of why there is none.
+auto open_peer(const ScopedLogCapture_t& log) -> std::string {
+  REQUIRE(super_serial_frontend_primary_slot() == card_slot);
+  const std::string path = super_serial_frontend_device_path(card_slot);
+  REQUIRE_MESSAGE(!path.empty(),
+                  "the pseudo-terminal could not be created: " << log.joined());
+  return path;
+}
+
+// Typed at the Applesoft prompt of an Enhanced //e with no disk: PR#2 hooks
+// CSW, Applesoft's CRDO and the prompt go to the card; GETLN echoes
+// PRINT "HELLO" and its Return, the statement prints HELLO, CRDO and the
+// prompt follow; GETLN echoes PR#0 and its Return, then PR#0 restores CSW so
+// nothing more arrives. In communications mode under the default switches
+// the firmware sends each COUT byte unchanged, bit 7 intact, and appends no
+// line feed (SW2-5 OFF).
+const std::vector<uint8_t> applesoft_session_stream = {
+    0x8D, 0xDD, 0xD0, 0xD2, 0xC9, 0xCE, 0xD4, 0xA0, 0xA2, 0xC8,
+    0xC5, 0xCC, 0xCC, 0xCF, 0xA2, 0x8D, 0xC8, 0xC5, 0xCC, 0xCC,
+    0xCF, 0x8D, 0x8D, 0xDD, 0xD0, 0xD2, 0xA3, 0xB0, 0x8D};
+
+}  // namespace
+
+// The firmware ORs $80 into every received byte and hands it to GETLN, which
+// stores it at $0200 with no echo to the line; the card pulls the bytes one
+// character time apart, so the peer writes the whole word at once.
+TEST_CASE(
+    "Serial Frontend: IN#2 at the Applesoft prompt takes HELLO written to the "
+    "pseudo-terminal's peer into the input buffer, and the next line the peer "
+    "writes is executed") {
+  ScopedTestConfig_t config(serial_in_slot_2("pty"));
+  ScopedLogCapture_t log;
+  HeadlessHarness_t harness(config);
+  Peer_t peer(open_peer(log));
+  REQUIRE_MESSAGE(peer.fd() >= 0, peer.error_text());
+  boot_to_prompt(harness);
+
+  harness.type_string("IN#2\r", 2);
+  harness.run_frames(4);
+  // IN#2 hooks KSW to the slot page's input entry ($Cn05, which sets carry).
+  CHECK(mem[0x38] == 0x05);
+  CHECK(mem[0x39] == 0xC0 + card_slot);
+
+  clear_input_buffer();
+  REQUIRE(peer.write_text("HELLO"));
+  const uint32_t frames =
+      run_frames_until(harness, [] { return mem[0x0204] != 0; });
+  CAPTURE(frames);
+  CHECK(mem[0x0200] == 0xC8);
+  CHECK(mem[0x0201] == 0xC5);
+  CHECK(mem[0x0202] == 0xCC);
+  CHECK(mem[0x0203] == 0xCC);
+  CHECK(mem[0x0204] == 0xCF);
+  CHECK(mem[0x0205] == 0x00);
+  CHECK(peer.has_byte() == false);
+
+  // The Return ends HELLO, a syntax error; the next line prints 42. Both the
+  // error and the result stay on the 24-row screen.
+  REQUIRE(peer.write_text("\r"));
+  harness.run_frames(6);
+  REQUIRE(peer.write_text("PRINT 7*6\r"));
+  run_frames_until(harness, [&] { return screen_has_row(harness, "42"); });
+  CHECK(screen_has_row(harness, "?SYNTAX ERROR"));
+  CHECK(screen_has_row(harness, "42"));
+}
+
+TEST_CASE(
+    "Serial Frontend: PR#2 at the Applesoft prompt programs the line the peer "
+    "sees to 9600 baud and streams the session to the pseudo-terminal's peer "
+    "with bit 7 set and no line feeds") {
+  ScopedTestConfig_t config(serial_in_slot_2("pty"));
+  ScopedLogCapture_t log;
+  HeadlessHarness_t harness(config);
+  Peer_t peer(open_peer(log));
+  REQUIRE_MESSAGE(peer.fd() >= 0, peer.error_text());
+  boot_to_prompt(harness);
+  CHECK(peer.has_byte() == false);
+
+  harness.type_string("PR#2\r", 2);
+  harness.run_frames(4);
+  CHECK(mem[0x36] == 0x07);
+  CHECK(mem[0x37] == 0xC0 + card_slot);
+  termios settings{};
+  REQUIRE(tcgetattr(peer.fd(), &settings) == 0);
+  CHECK(cfgetospeed(&settings) == B9600);
+
+  harness.type_string("PRINT \"HELLO\"\r", 2);
+  harness.run_frames(4);
+  harness.type_string("PR#0\r", 2);
+  harness.run_frames(4);
+  CHECK(hex(peer.read_bytes(applesoft_session_stream.size())) ==
+        hex(applesoft_session_stream));
+  CHECK(peer.has_byte() == false);
+  CHECK(screen_has_row(harness, "HELLO"));
+}
+
+TEST_CASE(
+    "Serial Frontend: the switch keys set to the manual's printer-mode rows "
+    "reach the card before the first frame, so $C0A1 reads $EE and $C0A2 "
+    "reads $5A with no think between") {
+  ScopedTestConfig_t config(serial_in_slot_2(
+      "pty",
+      {{"Configuration", "Serial Switches 1", "OFF OFF OFF ON OFF ON ON"},
+       {"Configuration", "Serial Switches 2", "ON ON OFF ON OFF OFF OFF"}}));
+  ScopedLogCapture_t log;
+  HeadlessHarness_t harness(config);
+  open_peer(log);
+  // The switch command's queue is drained inside configure itself, which
+  // app_controller_initialize has already run, so no frame or think stands
+  // between the constructor and these reads.
+  CHECK(read_switch_register(card_slot, 1) == 0xEE);
+  CHECK(read_switch_register(card_slot, 2) == 0x5A);
+  CHECK(log.count_containing("Serial Switches") == 0);
 }
