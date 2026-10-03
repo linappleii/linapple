@@ -7,12 +7,10 @@
 
 #include "frontends/sdl1/SdlPtr.h"
 
-// Frontend-specific keyboard helpers
 [[nodiscard]] auto frontend_translate_key(SDLKey key, SDLMod mod) -> uint8_t;
 [[nodiscard]] auto frontend_handle_key_event(SDLKey key, bool is_down) -> bool;
 auto sdl_handle_event(SDL_Event* event) -> void;
 
-// Function Keys F1 - F12
 constexpr int k_btn_help = 0;
 constexpr int k_btn_run = 1;
 constexpr int k_btn_drive1 = 2;

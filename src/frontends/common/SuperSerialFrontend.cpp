@@ -121,19 +121,22 @@ auto serial_polling_thread() -> void {
   std::array<uint8_t, k_serial_rx_buffer_size> buffer{};
 
   while (!g_thread_terminate.load(std::memory_order_relaxed)) {
-    if (g_comm_handle != -1) {
-      const ssize_t n = read(g_comm_handle, buffer.data(), buffer.size());
-      if (n > 0) {
-        std::lock_guard<std::mutex> lock(g_critical_section);
-        for (ssize_t i = 0; i < n; ++i) {
-          uint8_t byte = buffer.at(static_cast<size_t>(i));
-          peripheral_command(super_serial_default_slot,
-                             SUPER_SERIAL_CMD_PUSH_RX_BYTE, &byte,
-                             sizeof(uint8_t));
-        }
+    if (g_comm_handle == -1) {
+      usleep(k_serial_poll_interval_us);
+      continue;
+    }
+
+    const ssize_t n = read(g_comm_handle, buffer.data(), buffer.size());
+    if (n > 0) {
+      std::lock_guard<std::mutex> lock(g_critical_section);
+      for (ssize_t i = 0; i < n; ++i) {
+        uint8_t byte = buffer.at(static_cast<size_t>(i));
+        peripheral_command(super_serial_default_slot,
+                           SUPER_SERIAL_CMD_PUSH_RX_BYTE, &byte,
+                           sizeof(uint8_t));
       }
     }
-    usleep(k_serial_poll_interval_us);  // Poll every 1ms
+    usleep(k_serial_poll_interval_us);
   }
 }
 

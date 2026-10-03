@@ -142,7 +142,6 @@ auto AudioDumper_t::finalize_unlocked() -> void {
     return;
   }
 
-  // Update total size in RIFF chunk header
   if (total_bytes_written_ >= (total_offset_ + 4)) {
     const uint32_t riff_size = total_bytes_written_ - (total_offset_ + 4);
     if (fseek(file_.get(), static_cast<long>(total_offset_), SEEK_SET) == 0) {
@@ -150,7 +149,6 @@ auto AudioDumper_t::finalize_unlocked() -> void {
     }
   }
 
-  // Update data chunk size in data subchunk header
   if (total_bytes_written_ >= (data_offset_ + 4)) {
     const uint32_t data_size = total_bytes_written_ - (data_offset_ + 4);
     if (fseek(file_.get(), static_cast<long>(data_offset_), SEEK_SET) == 0) {
@@ -175,23 +173,31 @@ auto AudioDumper_t::is_active() const -> bool {
 auto audio_dumper_initialize(AudioDumper_t* dumper, const char* filename,
                              uint32_t sample_rate, uint32_t num_channels)
     -> int {
-  if (dumper == nullptr) return 1;
+  if (dumper == nullptr) {
+    return 1;
+  }
   return dumper->initialize(filename, sample_rate, num_channels) ? 0 : 1;
 }
 
 auto audio_dumper_put_samples(AudioDumper_t* dumper, const int16_t* buf,
                               uint32_t num_samples) -> int {
-  if (dumper == nullptr) return 1;
+  if (dumper == nullptr) {
+    return 1;
+  }
   return dumper->put_samples(buf, num_samples) ? 0 : 1;
 }
 
 auto audio_dumper_finalize(AudioDumper_t* dumper) -> int {
-  if (dumper == nullptr) return 1;
+  if (dumper == nullptr) {
+    return 1;
+  }
   dumper->finalize();
   return 0;
 }
 
 auto audio_dumper_is_active(const AudioDumper_t* dumper) -> bool {
-  if (dumper == nullptr) return false;
+  if (dumper == nullptr) {
+    return false;
+  }
   return dumper->is_active();
 }

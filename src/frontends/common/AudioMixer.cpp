@@ -20,13 +20,9 @@ constexpr size_t k_max_audio_slots = 8;
 constexpr size_t k_max_channels_per_slot = 16;
 constexpr size_t k_mix_accumulator_samples = 4096;
 
-// Latency belongs in time, not in samples. 16384 and 6144 interleaved samples
-// were a fixed backlog only at 44100; at 192000 they would be a quarter of
-// the intended latency and at 22050 twice it.
-//
-// These are milliseconds of audio. The ring holds interleaved stereo pairs,
-// so a millisecond of audio is two samples, and the conversion below doubles
-// deliberately.
+// Latency is defined in milliseconds so buffer duration is independent of
+// sample rate. The ring buffer holds interleaved stereo pairs, requiring two
+// samples per millisecond of audio.
 constexpr size_t k_mixer_capacity_ms = 185;
 constexpr size_t k_mixer_cushion_ms = 70;
 
@@ -41,7 +37,7 @@ static size_t g_cushion_samples = 0;
 
 // Symmetric rails: -1.0 and +1.0 map to -32767 and +32767, so a full-scale
 // signal stays symmetric instead of gaining a half-LSB bias from -32768.
-[[nodiscard]] static auto float_to_pcm16(float v) noexcept -> int16_t {
+static auto float_to_pcm16(float v) noexcept -> int16_t {
   const long scaled = std::lroundf(v * 32767.0f);
   if (scaled > 32767) {
     return 32767;
@@ -56,7 +52,7 @@ static size_t g_cushion_samples = 0;
 // is dramatically slower on some CPUs. Nothing audible lives this far down.
 constexpr float k_denormal_floor = 1e-20f;
 
-[[nodiscard]] static auto flush_denormal(float v) noexcept -> float {
+static auto flush_denormal(float v) noexcept -> float {
   return (v > -k_denormal_floor && v < k_denormal_floor) ? 0.0f : v;
 }
 
@@ -64,8 +60,7 @@ constexpr float k_denormal_floor = 1e-20f;
 // PCM scale).
 constexpr float k_fade_step = 800.0f / 32767.0f;
 
-[[nodiscard]] static inline auto decay_sample(float val, float step) noexcept
-    -> float {
+static inline auto decay_sample(float val, float step) noexcept -> float {
   if (val > 0.0f) {
     return (val > step) ? (val - step) : 0.0f;
   }
@@ -116,9 +111,10 @@ static auto sample_buffer_check_flush(SampleBuffer_t* sb) -> void {
   sb->last_right = 0.0f;
 }
 
-[[nodiscard]] static auto sample_buffer_get_filled(const SampleBuffer_t* sb)
-    -> size_t {
-  if (sb == nullptr || sb->buffer.empty()) return 0;
+static auto sample_buffer_get_filled(const SampleBuffer_t* sb) -> size_t {
+  if (sb == nullptr || sb->buffer.empty()) {
+    return 0;
+  }
   const size_t r = sb->read_index.load(std::memory_order_relaxed);
   const size_t w = sb->write_index.load(std::memory_order_acquire);
   if (r <= w) {
@@ -127,9 +123,10 @@ static auto sample_buffer_check_flush(SampleBuffer_t* sb) -> void {
   return sb->buffer.size() + w - r;
 }
 
-[[nodiscard]] static auto sample_buffer_get_free(const SampleBuffer_t* sb)
-    -> size_t {
-  if (sb == nullptr || sb->buffer.empty()) return 0;
+static auto sample_buffer_get_free(const SampleBuffer_t* sb) -> size_t {
+  if (sb == nullptr || sb->buffer.empty()) {
+    return 0;
+  }
   const size_t filled = sample_buffer_get_filled(sb);
   if (filled >= sb->buffer.size() - 1) {
     return 0;
@@ -214,7 +211,6 @@ static auto sample_buffer_drain_to(SampleBuffer_t* sb, float* dest, size_t len,
     sb->last_right = sb->buffer[last_r_idx];
   }
 
-  // Smoothly fade out residual DC offset if audio underruns occur
   if (num < len) {
     if (mix) {
       for (size_t i = num; i < len; i += 2) {
@@ -268,10 +264,7 @@ struct AudioSourceSlot_t {
 static std::array<AudioSourceSlot_t, k_max_audio_slots> g_slots;
 static AudioChannelTapCallback_t g_channel_tap_cb = nullptr;
 
-// current_clk_6502 is the core's public API and the mixer is a frontend
-// consuming it.
-[[nodiscard]] static auto source_rate_hz(const PeripheralAudioInfo_t& info)
-    -> double {
+static auto source_rate_hz(const PeripheralAudioInfo_t& info) -> double {
   if (info.time_base == peripheral_audio_cpu_clocked) {
     const uint32_t divisor = (info.cycle_divisor == 0) ? 1 : info.cycle_divisor;
     return current_clk_6502 / static_cast<double>(divisor);
@@ -287,8 +280,7 @@ static AudioChannelTapCallback_t g_channel_tap_cb = nullptr;
 // spend the music on the clip rail. The floor of one keeps a source that pans
 // a single channel part-way from being amplified instead. The speaker's one
 // channel at (1, 1) leaves its 1/2.0 untouched.
-[[nodiscard]] static auto default_source_gain(const PeripheralAudioInfo_t& info)
-    -> float {
+static auto default_source_gain(const PeripheralAudioInfo_t& info) -> float {
   if (info.peak_magnitude <= 0.0f) {
     return 1.0f;
   }
@@ -304,7 +296,6 @@ static AudioChannelTapCallback_t g_channel_tap_cb = nullptr;
   return 1.0f / (info.peak_magnitude * fan_in);
 }
 
-// Box-integration downsampling (step >= 1.0).
 static auto resample_downsample(ResamplerState_t& state, double step,
                                 const float* in, size_t in_count, float* out,
                                 size_t out_capacity) -> size_t {
@@ -327,7 +318,6 @@ static auto resample_downsample(ResamplerState_t& state, double step,
   return produced;
 }
 
-// Linear-interpolation upsampling (step < 1.0).
 static auto resample_upsample(ResamplerState_t& state, double step,
                               const float* in, size_t in_count, float* out,
                               size_t out_capacity) -> size_t {

@@ -82,13 +82,12 @@ auto ftp_gen_generate(FileListGenerator_t* self) -> FileList_t* {
       ui_entry.type = FILE_ENTRY_DIR;
       ui_entry.size = 0;
       file_browser_append_entry(list, &ui_entry);
-    } else if (entry.type == FtpEntryType_t::file) {
-      if (file_browser_is_extension_supported(safe_name.c_str(),
-                                              ctx->filter_extensions.c_str())) {
-        ui_entry.type = FILE_ENTRY_FILE;
-        ui_entry.size = static_cast<std::uintmax_t>(entry.size);
-        file_browser_append_entry(list, &ui_entry);
-      }
+    } else if (entry.type == FtpEntryType_t::file &&
+               file_browser_is_extension_supported(
+                   safe_name.c_str(), ctx->filter_extensions.c_str())) {
+      ui_entry.type = FILE_ENTRY_FILE;
+      ui_entry.size = static_cast<std::uintmax_t>(entry.size);
+      file_browser_append_entry(list, &ui_entry);
     }
   }
 

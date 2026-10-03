@@ -7,10 +7,6 @@
 constexpr size_t k_file_browser_path_max = 260;
 constexpr size_t k_file_browser_cache_max = 32;
 
-// Backward-compatibility aliases for frontends
-constexpr size_t FILE_BROWSER_PATH_MAX = k_file_browser_path_max;
-constexpr size_t FILE_BROWSER_CACHE_MAX = k_file_browser_cache_max;
-
 enum FileEntryType_t : uint8_t {
   FILE_ENTRY_UP = 0,
   FILE_ENTRY_DIR,
@@ -38,7 +34,7 @@ struct FileListGenerator_t {
       char* = nullptr;
   auto (*get_failure_message)(FileListGenerator_t* self) -> const
       char* = nullptr;
-  void (*destroy)(FileListGenerator_t* self) = nullptr;
+  auto (*destroy)(FileListGenerator_t* self) -> void = nullptr;
 };
 
 [[nodiscard]] auto file_browser_is_extension_supported(
@@ -89,4 +85,4 @@ auto disk_browser_end(DiskBrowser_t* b, size_t page_size) -> void;
 auto disk_browser_jump_char(DiskBrowser_t* b, char ch, size_t page_size)
     -> void;
 auto disk_browser_confirm(DiskBrowser_t* b) -> bool;
-[[nodiscard]] auto disk_browser_get_title(int slot) -> const char*;
+auto disk_browser_get_title(int slot) noexcept -> const char*;

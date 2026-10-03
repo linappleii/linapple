@@ -44,24 +44,6 @@ auto ensure_selection_visible(DiskChooseState_t& state,
     state.first_file = state.act_file - files_per_page + 1;
   }
 }
-
-auto get_slot_title(int slot) noexcept -> const char* {
-  switch (slot) {
-    case 6:
-      return "Choose image for floppy 140KB drive";
-    case 7:
-      return "Choose image for Hard Disk";
-    case 5:
-      return "Choose image for floppy 800KB drive";
-    case 1:
-      return "Select file name for saving snapshot";
-    case 0:
-      return "Select snapshot file name for loading";
-    default:
-      return "";
-  }
-}
-
 }  // namespace
 
 DiskChooseState_t g_diskChooseState;
@@ -202,7 +184,7 @@ auto disk_choose_draw() -> void {
       g_diskChooseState.current_dir.substr(0, k_normal_length).c_str(),
       &vs_screen, 1.5f * facx_f, 1.3f * facy_f);
 
-  const char* title = get_slot_title(g_diskChooseState.slot);
+  const char* title = disk_browser_get_title(g_diskChooseState.slot);
   if (title[0] != '\0') {
     font_print_centered(sx / 2, static_cast<int>(20 * facy), title, &vs_screen,
                         1.0f * facx_f, 1.0f * facy_f);
@@ -316,10 +298,8 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
       sdl_surface_to_video_surface(g_diskChooseState.bg_screen.get());
   VideoSurface_t vs_actual_screen = sdl_surface_to_video_surface(g_screen);
 
-  // Capture original background
   video_soft_stretch(temp_surface, nullptr, &vs_bg, nullptr);
 
-  // Downscale / upscale blur
   const int blur_w = std::max(1, temp_surface->w / 16);
   const int blur_h = std::max(1, temp_surface->h / 16);
   SdlSurfacePtr_t blur_temp(SDL_CreateRGBSurface(
@@ -330,7 +310,6 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
     video_soft_stretch(&vs_blur, nullptr, &vs_bg, nullptr);
   }
 
-  // Dim background with 160 alpha
   SdlSurfacePtr_t dim_surface(
       SDL_CreateRGBSurface(0, temp_surface->w, temp_surface->h, 32, 0x00FF0000,
                            0x0000FF00, 0x000000FF, 0));

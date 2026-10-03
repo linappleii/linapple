@@ -43,24 +43,6 @@ auto ensure_selection_visible(DiskChooseState_t& state,
     state.first_file = state.act_file - files_per_page + 1;
   }
 }
-
-auto get_slot_title(int slot) noexcept -> const char* {
-  switch (slot) {
-    case 6:
-      return "Choose image for floppy 140KB drive";
-    case 7:
-      return "Choose image for Hard Disk";
-    case 5:
-      return "Choose image for floppy 800KB drive";
-    case 1:
-      return "Select file name for saving snapshot";
-    case 0:
-      return "Select snapshot file name for loading";
-    default:
-      return "";
-  }
-}
-
 }  // namespace
 
 DiskChooseState_t g_diskChooseState;
@@ -200,7 +182,7 @@ auto disk_choose_draw() -> void {
       g_diskChooseState.current_dir.substr(0, k_normal_length).c_str(),
       &vs_screen, 1.5f * facx_f, 1.3f * facy_f);
 
-  const char* slot_title = get_slot_title(g_diskChooseState.slot);
+  const char* slot_title = disk_browser_get_title(g_diskChooseState.slot);
   if (slot_title[0] != '\0') {
     font_print_centered(screen_w / 2, static_cast<int>(20 * facy), slot_title,
                         &vs_screen, 1.0f * facx_f, 1.0f * facy_f);
@@ -230,20 +212,14 @@ auto disk_choose_draw() -> void {
     const std::string file_name = file_entry->name;
 
     if (i == g_diskChooseState.act_file) {
-      SDL_Rect r;
+      SDL_Rect r{};
       r.x = 2;
       r.y = static_cast<int>(static_cast<double>(top_y) +
                              static_cast<double>(j) * 15.0 * facy - 1.0);
-      if (file_name.size() > k_max_filename) {
-        r.w = static_cast<int>(static_cast<double>(k_max_filename) *
-                               static_cast<double>(font_size_x) * 1.0 *
-                               static_cast<double>(facx_f));
-      } else {
-        r.w = static_cast<int>(static_cast<double>(file_name.size()) *
-                               static_cast<double>(font_size_x) * 1.0 *
-                               static_cast<double>(facx_f));
-      }
-      r.h = static_cast<int>(9.0 * 1.0 * facy);
+      const auto display_len = std::min(file_name.size(), k_max_filename);
+      r.w = static_cast<int>(static_cast<double>(display_len * k_font_size_x) *
+                             facx_f);
+      r.h = static_cast<int>(9.0 * facy);
       SDL_FillSurfaceRect(
           g_screen.get(), &r,
           SDL_MapRGB(SDL_GetPixelFormatDetails(g_screen->format),

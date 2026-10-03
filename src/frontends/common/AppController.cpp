@@ -367,29 +367,31 @@ auto app_controller_handle_diagnostic_commands(const AppConfig_t* config)
   if (config->hardware_info_name.at(0) != '\0') {
     const Peripheral_t* card =
         peripheral_find_internal(config->hardware_info_name.data());
-    if (card != nullptr) {
-      printf("Hardware info: %s\n", card->name);
-      printf("ABI Version: %d\n", card->abi_version);
-      printf("Compatible Slots: ");
-      bool first = true;
-      for (int i = 0; i < NUM_SLOTS; ++i) {
-        if ((card->compatible_slots & (1U << static_cast<uint32_t>(i))) != 0) {
-          if (!first) {
-            printf(", ");
-          }
-          printf("%d", i);
-          first = false;
-        }
-      }
-      printf("\n");
-      const char* path =
-          peripheral_get_plugin_path(config->hardware_info_name.data());
-      if (path != nullptr) {
-        printf("Plugin Path: %s\n", path);
-      }
-    } else {
+    if (card == nullptr) {
       fprintf(stderr, "error: Unknown hardware '%s'\n",
               config->hardware_info_name.data());
+      return true;
+    }
+
+    printf("Hardware info: %s\n", card->name);
+    printf("ABI Version: %d\n", card->abi_version);
+    printf("Compatible Slots: ");
+    bool first = true;
+    for (int i = 0; i < NUM_SLOTS; ++i) {
+      if ((card->compatible_slots & (1U << static_cast<uint32_t>(i))) == 0) {
+        continue;
+      }
+      if (!first) {
+        printf(", ");
+      }
+      printf("%d", i);
+      first = false;
+    }
+    printf("\n");
+    const char* path =
+        peripheral_get_plugin_path(config->hardware_info_name.data());
+    if (path != nullptr) {
+      printf("Plugin Path: %s\n", path);
     }
     return true;
   }

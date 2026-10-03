@@ -9,13 +9,11 @@
 
 #include "frontends/sdl3/SdlPtr.h"
 
-// Frontend-specific keyboard helpers
 [[nodiscard]] auto frontend_translate_key(SDL_Keycode key, SDL_Keymod mod)
     -> uint8_t;
 [[nodiscard]] auto frontend_handle_event(SDL_Keycode key, bool is_down) -> bool;
 auto sdl_handle_event(SDL_Event* event) -> void;
 
-// Function Keys F1 - F12
 constexpr int k_btn_help = 0;
 constexpr int k_btn_run = 1;
 constexpr int k_btn_drive1 = 2;
@@ -29,21 +27,7 @@ constexpr int k_btn_loadst = 9;
 constexpr int k_btn_savest = 10;
 constexpr int k_btn_quit = 11;
 
-constexpr int btn_help = k_btn_help;
-constexpr int btn_run = k_btn_run;
-constexpr int btn_drive1 = k_btn_drive1;
-constexpr int btn_drive2 = k_btn_drive2;
-constexpr int btn_driveswap = k_btn_driveswap;
-constexpr int btn_fullscr = k_btn_fullscr;
-constexpr int btn_debug = k_btn_debug;
-constexpr int btn_setup = k_btn_setup;
-constexpr int btn_cycle = k_btn_cycle;
-constexpr int btn_loadst = k_btn_loadst;
-constexpr int btn_savest = k_btn_savest;
-constexpr int btn_quit = k_btn_quit;
-
 constexpr int k_screen_bpp = 8;
-constexpr int screen_bpp = k_screen_bpp;
 
 extern SdlSurfacePtr_t g_screen;
 extern SdlWindowPtr_t g_window;
@@ -51,7 +35,6 @@ extern SdlRendererPtr_t g_renderer;
 extern SdlTexturePtr_t g_texture;
 
 constexpr int k_show_cycles = 15;
-constexpr int show_cycles = k_show_cycles;
 
 extern bool g_window_resized;
 extern bool g_usingcursor;

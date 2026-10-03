@@ -9,7 +9,6 @@
 
 #include "apple2/Apple2Types.h"
 #include "core/LinAppleCore.h"
-#include "core/Log.h"
 #include "core/Registry.h"
 #include "core/Util_Text.h"
 #include "frontends/common/AppConfig.h"
@@ -194,7 +193,6 @@ auto apply_option(OptId_t id, const char* val, AppConfig_t* config) -> int {
       break;
     case k_opt_verbose:
       config->is_verbose = true;
-      Logger::set_verbosity(LogLevel_t::perf);
       break;
     case k_opt_test_cpu:
       util_safe_strcpy(config->test_cpu_file.data(), val, path_max_len);

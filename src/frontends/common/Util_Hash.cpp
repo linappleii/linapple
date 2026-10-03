@@ -13,8 +13,6 @@ using Uint4_t = uint32_t;
 
 namespace {
 
-// --- Constants ---
-
 constexpr int k_md5_block_size = 64;
 constexpr int k_md5_state_size = 4;
 constexpr int k_md5_digest_size = 16;
@@ -25,13 +23,9 @@ constexpr uint32_t k_md5_init_1 = 0xefcdab89U;
 constexpr uint32_t k_md5_init_2 = 0x98badcfeU;
 constexpr uint32_t k_md5_init_3 = 0x10325476U;
 
-// --- Internal State ---
-
 static std::array<Uint4_t, k_md5_state_size> state;
 static uint64_t total_length = 0;
 static std::array<uint8_t, k_md5_block_size> buffer;
-
-// --- Algorithmic Helpers ---
 
 static inline auto F(Uint4_t x, Uint4_t y, Uint4_t z) noexcept -> Uint4_t {
   return ((x & y) | ((~x) & z));

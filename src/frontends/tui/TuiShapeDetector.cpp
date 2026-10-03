@@ -183,7 +183,6 @@ auto tui_shape_detect_cell(const uint32_t* pixels, int pitch, int x_start,
                  static_cast<uint8_t>(total_g / k_subgrid_pixels),
                  static_cast<uint8_t>(total_b / k_subgrid_pixels)};
 
-  // Uniform solid or dark cell
   if (max_lum - min_lum < k_min_contrast_threshold) {
     if (avg_lum < k_dark_luminance_cutoff) {
       set_utf8_glyph(out_cell, " ");
@@ -309,7 +308,6 @@ auto tui_shape_detect_cell(const uint32_t* pixels, int pitch, int x_start,
     }
   }
 
-  // --- Tier 2: Apple II Font OCR Matching ---
   int min_distance = k_max_bits;
   char best_char = '\0';
   int best_pop_diff = k_max_bits;
@@ -332,7 +330,6 @@ auto tui_shape_detect_cell(const uint32_t* pixels, int pitch, int x_start,
     return;
   }
 
-  // --- Tier 3: 2x2 Quadrant High-Resolution Block Fallback ---
   // Subgrid is 8x8. Cell bits row v (0..7) and col u (0..7) is bit (v * 8 + u).
   constexpr uint64_t k_quad_tl_mask = 0x000000000F0F0F0FULL;
   constexpr uint64_t k_quad_tr_mask = 0x00000000F0F0F0F0ULL;

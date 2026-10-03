@@ -3,7 +3,6 @@
 
 #include <cstdint>
 
-// Opaque host side interface for the Super Serial Card
 [[nodiscard]] auto super_serial_frontend_initialize(
     const char* serial_port_path) -> bool;
 auto super_serial_frontend_close() -> void;

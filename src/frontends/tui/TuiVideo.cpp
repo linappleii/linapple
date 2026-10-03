@@ -137,7 +137,6 @@ static auto render_help_overlay() -> void {
   const TuiPixel_t body_fg = {240, 240, 240};      // Soft White text
   const TuiPixel_t modal_bg = {10, 15, 25};  // Dimmed Blue-Black background
 
-  // Draw Header Box (Top Border)
   {
     auto& tl =
         g_next_buffer.at(static_cast<size_t>(start_y * g_term_width + start_x));
@@ -160,7 +159,6 @@ static auto render_help_overlay() -> void {
     tr.bg = modal_bg;
   }
 
-  // Draw Header Lines (centered, Yellow)
   for (size_t row_idx = 0; row_idx < HELP_HEADER_STRINGS.size(); ++row_idx) {
     int cur_y = start_y + 1 + static_cast<int>(row_idx);
     if (cur_y >= g_term_height) break;
@@ -196,7 +194,6 @@ static auto render_help_overlay() -> void {
     right_border.bg = modal_bg;
   }
 
-  // Draw Divider (between Header and Body)
   {
     int div_y = start_y + 1 + static_cast<int>(HELP_HEADER_STRINGS.size());
     if (div_y < g_term_height) {
@@ -222,7 +219,6 @@ static auto render_help_overlay() -> void {
     }
   }
 
-  // Draw Body Lines (White text, left aligned with margin)
   for (size_t row_idx = 0; row_idx < visible_body_lines.size(); ++row_idx) {
     int cur_y =
         start_y + 2 + static_cast<int>(HELP_HEADER_STRINGS.size() + row_idx);
@@ -257,7 +253,6 @@ static auto render_help_overlay() -> void {
     right_border.bg = modal_bg;
   }
 
-  // Draw Bottom Border
   {
     int bot_y = start_y + box_h - 1;
     if (bot_y < g_term_height) {
@@ -328,7 +323,6 @@ static auto render_disk_select_overlay() -> void {
   const TuiPixel_t modal_bg = {10, 15, 25};       // Dimmed dark background
   const TuiPixel_t size_fg = {180, 180, 180};     // Gray size info
 
-  // 1. Draw Top Border: ┌───┐
   {
     auto& tl =
         g_next_buffer.at(static_cast<size_t>(start_y * g_term_width + start_x));
@@ -351,11 +345,12 @@ static auto render_disk_select_overlay() -> void {
     tr.bg = modal_bg;
   }
 
-  // 2. Draw Header Lines
   std::array<std::string, 3> header_lines;
   header_lines[0] = cur_dir;
-  header_lines[1] = std::string(disk_browser_get_title(slot)) +
-                    (drive == 0 ? " [Drive 1]" : " [Drive 2]");
+  header_lines[1] = disk_browser_get_title(slot);
+  if (slot != 0 && slot != 1) {
+    header_lines[1] += (drive == 0 ? " [Drive 1]" : " [Drive 2]");
+  }
   header_lines[2] = "Press ENTER to choose, or ESC to cancel";
 
   for (size_t row_idx = 0; row_idx < 3; ++row_idx) {
@@ -394,7 +389,6 @@ static auto render_disk_select_overlay() -> void {
     rb.bg = modal_bg;
   }
 
-  // 3. Top Divider: ├───┤
   {
     int div_y = start_y + 4;
     auto& div_l =
@@ -425,7 +419,6 @@ static auto render_disk_select_overlay() -> void {
     div_r.bg = modal_bg;
   }
 
-  // 4. Draw File List Rows
   for (int row = 0; row < max_visible_rows; ++row) {
     int cur_y = start_y + 5 + row;
     if (cur_y >= g_term_height) break;
@@ -496,7 +489,6 @@ static auto render_disk_select_overlay() -> void {
     rb.bg = modal_bg;
   }
 
-  // 5. Bottom Divider: ├───┤
   {
     int div_y = start_y + 5 + max_visible_rows;
     auto& div_l =
@@ -528,7 +520,6 @@ static auto render_disk_select_overlay() -> void {
     div_r.bg = modal_bg;
   }
 
-  // 6. Footer Line
   {
     int cur_y = start_y + 6 + max_visible_rows;
     if (cur_y < g_term_height) {
@@ -567,7 +558,6 @@ static auto render_disk_select_overlay() -> void {
     }
   }
 
-  // 7. Bottom Border: └───┘
   {
     int bot_y = start_y + box_h - 1;
     if (bot_y < g_term_height) {
@@ -873,7 +863,6 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
 
   TuiPixel_t bg_letterbox = {10, 10, 10};
 
-  // Reset next buffer with letterbox color
   for (auto& cell : g_next_buffer) {
     cell.glyph.fill(0);
     cell.glyph.at(0) = ' ';
@@ -1089,7 +1078,6 @@ auto tui_video_save_screenshot() -> void {
   bool show_status =
       (g_term_height > k_min_term_height_status && !g_fullscreen);
 
-  // Find next available sequence number
   struct stat st{};
   static int seq = 1;
   std::array<char, 64> ans_name{};
@@ -1104,7 +1092,6 @@ auto tui_video_save_screenshot() -> void {
     seq++;
   }
 
-  // Create copy of full screen buffer
   std::vector<TuiState_t> screen_buf = g_next_buffer;
   if (show_status && g_term_height > 0) {
     int status_y = g_term_height - 1;
@@ -1124,7 +1111,6 @@ auto tui_video_save_screenshot() -> void {
     }
   }
 
-  // 1. Write ANSI (.ans) file
   FilePtr_t fp_ans{fopen(ans_name.data(), "wb"), fclose};
   if (fp_ans != nullptr) {
     bool ans_ok = true;
@@ -1170,7 +1156,6 @@ auto tui_video_save_screenshot() -> void {
     }
   }
 
-  // 2. Write Plain Text (.txt) file
   FilePtr_t fp_txt{fopen(txt_name.data(), "wb"), fclose};
   if (fp_txt != nullptr) {
     bool txt_ok = true;

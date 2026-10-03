@@ -158,21 +158,24 @@ auto disk_ftp_select_image(int drive) -> void {
       client.download_file(full_path, system_state.ftp_local_dir.data(),
                            safe_filename, system_state.ftp_user_pass.data());
 
-  if (status == FtpStatus_t::ok) {
-    const std::string local_path =
-        std::string(system_state.ftp_local_dir.data()) + "/" + safe_filename;
-    DiskInsertCmd_t cmd{};
-    cmd.drive = static_cast<uint8_t>(drive);
-    util_safe_strcpy(cmd.path, local_path.c_str(), sizeof(cmd.path));
-    cmd.write_protected = 0;
-
-    if (peripheral_command(disk_default_slot, disk_cmd_insert, &cmd,
-                           sizeof(cmd)) == peripheral_ok) {
-      app_controller_save_disk_config(drive);
-    }
-  } else {
+  if (status != FtpStatus_t::ok) {
     Logger::error("FTP: Failed downloading floppy image from %s (status %u)\n",
                   full_path.c_str(), static_cast<unsigned>(status));
+    back_idx = file_index;
+    draw_frame_window();
+    return;
+  }
+
+  const std::string local_path =
+      std::string(system_state.ftp_local_dir.data()) + "/" + safe_filename;
+  DiskInsertCmd_t cmd{};
+  cmd.drive = static_cast<uint8_t>(drive);
+  util_safe_strcpy(cmd.path, local_path.c_str(), sizeof(cmd.path));
+  cmd.write_protected = 0;
+
+  if (peripheral_command(disk_default_slot, disk_cmd_insert, &cmd,
+                         sizeof(cmd)) == peripheral_ok) {
+    app_controller_save_disk_config(drive);
   }
 
   back_idx = file_index;

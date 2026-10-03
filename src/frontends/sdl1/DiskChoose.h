@@ -19,16 +19,13 @@ struct DiskChooseState_t {
   size_t first_file = 0;
   bool active = false;
 
-  // Surface for background
   SdlSurfacePtr_t bg_screen;
 
-  // Callback or storage for result
   std::string result_filename;
   bool result_isdir = false;
   bool finished = false;
   bool cancelled = false;
 
-  // For returning results to the original caller
   size_t* index_file_out = nullptr;
 };
 

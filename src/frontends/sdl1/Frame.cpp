@@ -838,7 +838,7 @@ auto frame_refresh_status(int drawflags) -> void {
 
       std::array<char, 512> title_buf{};
       if (s_last_disk_status.drive0_loaded != 0) {
-        std::array<char, disk_ui_display_name_max + 1> display_name{};
+        std::array<char, k_disk_ui_display_name_max + 1> display_name{};
         disk_ui_format_display_name(s_last_disk_status.drive0_name,
                                     display_name.data(), display_name.size());
         snprintf(title_buf.data(), title_buf.size(), "%s - %s", app_title,

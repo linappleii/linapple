@@ -344,7 +344,6 @@ static auto process_sequences() -> void {
           uint8_t cmd = g_input_queue.at(end);
 
           if (g_input_queue.at(i + 2) == '<') {
-            // Consume mouse, no action yet
           } else if (cmd == 'P') {  // Pause key (\x1b[P); F1 is \x1bOP (SS3)
             toggle_pause();
           } else if (cmd == 'Q') {  // xterm F2 / Shift+F2 / Ctrl+F2
@@ -458,15 +457,18 @@ static auto process_sequences() -> void {
                 if (tui_disk_select_is_active())
                   tui_disk_select_page(-1, k_disk_select_page_size);
               } else if (token == "6") {  // Page Down (\x1b[6~)
-                if (tui_disk_select_is_active())
+                if (tui_disk_select_is_active()) {
                   tui_disk_select_page(1, k_disk_select_page_size);
+                }
               } else if (token == "1" || token == "7") {  // Home (\x1b[1~)
-                if (tui_disk_select_is_active()) tui_disk_select_home();
+                if (tui_disk_select_is_active()) {
+                  tui_disk_select_home();
+                }
               } else if (token == "4" || token == "8") {  // End (\x1b[4~)
-                if (tui_disk_select_is_active())
+                if (tui_disk_select_is_active()) {
                   tui_disk_select_end(k_disk_select_page_size);
+                }
               } else if (token.find(';') != std::string::npos) {
-                // Unhandled modified function key - ignore
               } else {
                 try {
                   int val = std::stoi(token);
@@ -558,7 +560,6 @@ static auto process_sequences() -> void {
         }
 
         if (end - i >= k_max_escape_length) {
-          // Discard runaway unclosed sequence
           i++;
           continue;
         }

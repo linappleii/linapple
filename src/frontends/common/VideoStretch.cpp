@@ -514,8 +514,10 @@ auto font_print(int x, int y, const char* text, VideoSurface_t* surface,
   int i = 0, c = 0;
   VideoRect_t s{}, d{};
 
-  if (!font_sfc || !text || !surface || !surface->pixels) return;
-  if (y >= surface->h) return;
+  if (font_sfc == nullptr || text == nullptr || surface == nullptr ||
+      surface->pixels == nullptr || y >= surface->h) {
+    return;
+  }
 
   for (i = 0; text[i] != 0; i++) {
     int row = 0;
@@ -525,14 +527,14 @@ auto font_print(int x, int y, const char* text, VideoSurface_t* surface,
       c = '?';
     }
 
-    row = c / chars_in_row;
+    row = c / k_chars_in_row;
 
-    s.x = (c - (row * chars_in_row)) * (font_size_x + 1) + 1;
-    s.y = (row) * (font_size_y + 1) + 1;
-    s.h = font_size_y;
-    s.w = font_size_x;
+    s.x = (c - (row * k_chars_in_row)) * (k_font_size_x + 1) + 1;
+    s.y = (row) * (k_font_size_y + 1) + 1;
+    s.h = k_font_size_y;
+    s.w = k_font_size_x;
 
-    d.x = static_cast<int>(x + i * font_size_x * kx);
+    d.x = static_cast<int>(x + i * k_font_size_x * kx);
     d.y = y;
     d.w = static_cast<int>(s.w * kx);
     d.h = static_cast<int>(s.h * ky);
@@ -548,10 +550,12 @@ auto font_print_right(int x, int y, const char* text, VideoSurface_t* surface,
   int i = 0, c = 0;
   VideoRect_t s{}, d{};
 
-  if (!font_sfc || !text || !surface || !surface->pixels) return;
-  if (y >= surface->h) return;
+  if (font_sfc == nullptr || text == nullptr || surface == nullptr ||
+      surface->pixels == nullptr || y >= surface->h) {
+    return;
+  }
 
-  x -= static_cast<int>(strlen(text) * font_size_x * kx);
+  x -= static_cast<int>(strlen(text) * k_font_size_x * kx);
 
   for (i = 0; text[i] != 0; i++) {
     int row = 0;
@@ -560,13 +564,13 @@ auto font_print_right(int x, int y, const char* text, VideoSurface_t* surface,
       c = '?';
     }
 
-    row = c / chars_in_row;
-    s.x = (c - (row * chars_in_row)) * (font_size_x + 1) + 1;
-    s.y = (row) * (font_size_y + 1) + 1;
-    s.h = font_size_y;
-    s.w = font_size_x;
+    row = c / k_chars_in_row;
+    s.x = (c - (row * k_chars_in_row)) * (k_font_size_x + 1) + 1;
+    s.y = (row) * (k_font_size_y + 1) + 1;
+    s.h = k_font_size_y;
+    s.w = k_font_size_x;
 
-    d.x = static_cast<int>(x + i * font_size_x * kx);
+    d.x = static_cast<int>(x + i * k_font_size_x * kx);
     d.y = y;
     d.w = static_cast<int>(s.w * kx);
     d.h = static_cast<int>(s.h * ky);
@@ -583,10 +587,12 @@ auto font_print_centered(int x, int y, const char* text,
   int i = 0, c = 0;
   VideoRect_t s{}, d{};
 
-  if (!font_sfc || !text || !surface || !surface->pixels) return;
-  if (y >= surface->h) return;
+  if (font_sfc == nullptr || text == nullptr || surface == nullptr ||
+      surface->pixels == nullptr || y >= surface->h) {
+    return;
+  }
 
-  x -= static_cast<int>(strlen(text) * font_size_x * kx / 2);
+  x -= static_cast<int>(strlen(text) * k_font_size_x * kx / 2);
 
   for (i = 0; text[i] != 0; i++) {
     int row = 0;
@@ -595,13 +601,13 @@ auto font_print_centered(int x, int y, const char* text,
       c = '?';
     }
 
-    row = c / chars_in_row;
-    s.x = (c - (row * chars_in_row)) * (font_size_x + 1) + 1;
-    s.y = (row) * (font_size_y + 1) + 1;
-    s.h = font_size_y;
-    s.w = font_size_x;
+    row = c / k_chars_in_row;
+    s.x = (c - (row * k_chars_in_row)) * (k_font_size_x + 1) + 1;
+    s.y = (row) * (k_font_size_y + 1) + 1;
+    s.h = k_font_size_y;
+    s.w = k_font_size_x;
 
-    d.x = static_cast<int>(x + i * font_size_x * kx);
+    d.x = static_cast<int>(x + i * k_font_size_x * kx);
     d.y = y;
     d.w = static_cast<int>(s.w * kx);
     d.h = static_cast<int>(s.h * ky);
@@ -657,7 +663,9 @@ auto putpixel(VideoSurface_t* surface, int x, int y, uint32_t pixel) -> void {
 
 auto rectangle(VideoSurface_t* surface, int x, int y, int w, int h,
                uint32_t pixel) -> void {
-  if (!surface) return;
+  if (surface == nullptr) {
+    return;
+  }
   int i = 0;
 
   for (i = 0; i < w; i++) {

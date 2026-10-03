@@ -98,25 +98,27 @@ auto harddisk_ui_ftp_select(int drive) -> void {
   const FtpStatus_t status =
       client.download_file(full_path, system_state.ftp_local_dir.data(),
                            safe_filename, system_state.ftp_user_pass.data());
-  if (status == FtpStatus_t::ok) {
-    const std::string local_path =
-        std::string(system_state.ftp_local_dir.data()) + "/" + safe_filename;
-    HarddiskInsertCmd_t cmd{};
-    cmd.drive = static_cast<uint8_t>(drive);
-    util_safe_strcpy(cmd.path, local_path.c_str(), sizeof(cmd.path));
-
-    if (peripheral_command(k_harddisk_slot, harddisk_cmd_insert, &cmd,
-                           sizeof(cmd)) == peripheral_ok) {
-      const char* key =
-          (drive != 0) ? REGVALUE_HDD_IMAGE2 : REGVALUE_HDD_IMAGE1;
-      Configuration_t::instance().set_string("Preferences", key,
-                                             local_path.c_str());
-      Configuration_t::instance().save();
-    }
-  } else {
+  if (status != FtpStatus_t::ok) {
     Logger::error(
         "FTP: Failed downloading harddisk image from %s (status %u)\n",
         full_path.c_str(), static_cast<unsigned>(status));
+    back_idx = file_index;
+    draw_frame_window();
+    return;
+  }
+
+  const std::string local_path =
+      std::string(system_state.ftp_local_dir.data()) + "/" + safe_filename;
+  HarddiskInsertCmd_t cmd{};
+  cmd.drive = static_cast<uint8_t>(drive);
+  util_safe_strcpy(cmd.path, local_path.c_str(), sizeof(cmd.path));
+
+  if (peripheral_command(k_harddisk_slot, harddisk_cmd_insert, &cmd,
+                         sizeof(cmd)) == peripheral_ok) {
+    const char* key = (drive != 0) ? REGVALUE_HDD_IMAGE2 : REGVALUE_HDD_IMAGE1;
+    Configuration_t::instance().set_string("Preferences", key,
+                                           local_path.c_str());
+    Configuration_t::instance().save();
   }
   back_idx = file_index;
   draw_frame_window();

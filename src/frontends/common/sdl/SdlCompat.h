@@ -228,7 +228,6 @@ inline auto sdl_compat_update_joysticks() -> void { SDL_UpdateJoysticks(); }
 
 #endif
 
-// Shared frame lifecycle declarations across all SDL frontends
 [[nodiscard]] auto init_sdl() -> int;
 [[nodiscard]] auto frame_create_window() -> int;
 auto frame_destroy_window() -> void;

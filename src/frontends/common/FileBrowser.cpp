@@ -43,8 +43,6 @@ struct LocalGeneratorContext_t {
   std::string failure_message;
 };
 
-// --- Helper Functions ---
-
 static auto getstat(const char* catalog, const char* fname, uintmax_t* size)
     -> int {
   if (catalog == nullptr || fname == nullptr) {
@@ -68,11 +66,9 @@ static auto getstat(const char* catalog, const char* fname, uintmax_t* size)
   }
   if (S_ISREG(info.st_mode)) {
     if (size != nullptr) {
-      if (info.st_size < 0) {
-        *size = 0;
-      } else {
-        *size = static_cast<uintmax_t>(info.st_size) / size_block;
-      }
+      *size = (info.st_size < 0)
+                  ? 0
+                  : static_cast<uintmax_t>(info.st_size) / size_block;
     }
     return 2;
   }
@@ -118,12 +114,11 @@ static auto get_sorted_directory(const char* incoming_dir,
       new_entry.type = FILE_ENTRY_DIR;
       new_entry.size = 0;
       file_list.push_back(new_entry);
-    } else if (what == 2) {
-      if (file_browser_is_extension_supported(file_name, filter_extensions)) {
-        new_entry.type = FILE_ENTRY_FILE;
-        new_entry.size = static_cast<uint64_t>(fsize) * size_block;
-        file_list.push_back(new_entry);
-      }
+    } else if (what == 2 && file_browser_is_extension_supported(
+                                file_name, filter_extensions)) {
+      new_entry.type = FILE_ENTRY_FILE;
+      new_entry.size = static_cast<uint64_t>(fsize) * size_block;
+      file_list.push_back(new_entry);
     }
   }
   closedir(dp);
@@ -188,14 +183,12 @@ static auto local_gen_get_fail_msg(FileListGenerator_t* self) -> const char* {
   return ctx->failure_message.c_str();
 }
 
-static void local_gen_destroy(FileListGenerator_t* self) {
+static auto local_gen_destroy(FileListGenerator_t* self) -> void {
   if (self != nullptr) {
     delete static_cast<LocalGeneratorContext_t*>(self->context);
     delete self;
   }
 }
-
-// --- Public C ABI ---
 
 auto file_entry_is_dir_type(const FileEntry_t* entry) -> bool {
   if (entry == nullptr) {
@@ -204,8 +197,8 @@ auto file_entry_is_dir_type(const FileEntry_t* entry) -> bool {
   return entry->type == FILE_ENTRY_UP || entry->type == FILE_ENTRY_DIR;
 }
 
-void file_entry_format_type_or_size(const FileEntry_t* entry, char* out_str,
-                                    size_t max_len) {
+auto file_entry_format_type_or_size(const FileEntry_t* entry, char* out_str,
+                                    size_t max_len) -> void {
   if (entry == nullptr || out_str == nullptr || max_len == 0) {
     return;
   }
@@ -241,25 +234,27 @@ void file_entry_format_type_or_size(const FileEntry_t* entry, char* out_str,
   }
 }
 
-void file_browser_free_list(FileList_t* list) { delete list; }
+auto file_browser_free_list(FileList_t* list) -> void { delete list; }
 
 auto file_browser_create_list(void) -> FileList_t* {
   return new (std::nothrow) FileList_t();
 }
 
-void file_browser_append_entry(FileList_t* list, const FileEntry_t* entry) {
+auto file_browser_append_entry(FileList_t* list, const FileEntry_t* entry)
+    -> void {
   if (list != nullptr && entry != nullptr) {
     list->entries.push_back(*entry);
   }
 }
 
-void file_browser_set_failure_message(FileList_t* list, const char* msg) {
+auto file_browser_set_failure_message(FileList_t* list, const char* msg)
+    -> void {
   if (list != nullptr && msg != nullptr) {
     list->failure_message = msg;
   }
 }
 
-void file_browser_sort_list(FileList_t* list) {
+auto file_browser_sort_list(FileList_t* list) -> void {
   if (list != nullptr) {
     std::sort(list->entries.begin(), list->entries.end(),
               [](const FileEntry_t& a, const FileEntry_t& b) -> bool {
@@ -382,7 +377,6 @@ auto disk_browser_open(DiskBrowser_t* b, int slot, int drive,
     util_safe_strcpy(b->current_dir, ".", sizeof(b->current_dir));
   }
 
-  // Strip trailing slashes (except root "/")
   size_t dlen = strlen(b->current_dir);
   while (dlen > 1 && b->current_dir[dlen - 1] == '/') {
     b->current_dir[dlen - 1] = '\0';
@@ -393,8 +387,10 @@ auto disk_browser_open(DiskBrowser_t* b, int slot, int drive,
   return true;
 }
 
-void disk_browser_close(DiskBrowser_t* b) {
-  if (b == nullptr) return;
+auto disk_browser_close(DiskBrowser_t* b) -> void {
+  if (b == nullptr) {
+    return;
+  }
   b->is_active = false;
   if (b->list_handle != nullptr) {
     file_browser_free_list(b->list_handle);
@@ -406,8 +402,10 @@ void disk_browser_close(DiskBrowser_t* b) {
   }
 }
 
-void disk_browser_refresh(DiskBrowser_t* b) {
-  if (b == nullptr) return;
+auto disk_browser_refresh(DiskBrowser_t* b) -> void {
+  if (b == nullptr) {
+    return;
+  }
   if (b->list_handle != nullptr) {
     file_browser_free_list(b->list_handle);
     b->list_handle = nullptr;
@@ -430,65 +428,76 @@ void disk_browser_refresh(DiskBrowser_t* b) {
   b->first_visible_index = 0;
 }
 
-void disk_browser_move(DiskBrowser_t* b, int delta, size_t page_size) {
-  if (b == nullptr || !b->is_active || b->list_handle == nullptr) return;
-  size_t count = file_browser_get_count(b->list_handle);
-  if (count == 0) return;
+auto disk_browser_move(DiskBrowser_t* b, int delta, size_t page_size) -> void {
+  if (b == nullptr || !b->is_active || b->list_handle == nullptr ||
+      delta == 0 || page_size == 0) {
+    return;
+  }
+  const size_t count = file_browser_get_count(b->list_handle);
+  if (count == 0) {
+    return;
+  }
 
   if (delta < 0) {
     if (b->selected_index > 0) {
       b->selected_index--;
+      if (b->selected_index < b->first_visible_index) {
+        b->first_visible_index = b->selected_index;
+      }
     }
-    if (b->selected_index < b->first_visible_index) {
-      b->first_visible_index = b->selected_index;
-    }
-  } else if (delta > 0) {
-    if (b->selected_index + 1 < count) {
-      b->selected_index++;
-    }
+    return;
+  }
+
+  if (b->selected_index + 1 < count) {
+    b->selected_index++;
     if (b->selected_index >= b->first_visible_index + page_size) {
       b->first_visible_index = b->selected_index - page_size + 1;
     }
   }
 }
 
-void disk_browser_page(DiskBrowser_t* b, int direction, size_t page_size) {
+auto disk_browser_page(DiskBrowser_t* b, int direction, size_t page_size)
+    -> void {
   if (b == nullptr || !b->is_active || b->list_handle == nullptr ||
-      page_size == 0)
+      page_size == 0 || direction == 0) {
     return;
-  size_t count = file_browser_get_count(b->list_handle);
-  if (count == 0) return;
+  }
+  const size_t count = file_browser_get_count(b->list_handle);
+  if (count == 0) {
+    return;
+  }
 
   if (direction < 0) {
-    if (b->selected_index <= page_size) {
-      b->selected_index = 0;
-    } else {
-      b->selected_index -= page_size;
-    }
+    b->selected_index =
+        (b->selected_index <= page_size) ? 0 : (b->selected_index - page_size);
     if (b->selected_index < b->first_visible_index) {
       b->first_visible_index = b->selected_index;
     }
-  } else {
-    b->selected_index += page_size;
-    if (b->selected_index >= count) {
-      b->selected_index = count - 1;
-    }
-    if (b->selected_index >= b->first_visible_index + page_size) {
-      b->first_visible_index = b->selected_index - page_size + 1;
-    }
+    return;
+  }
+
+  b->selected_index = std::min(b->selected_index + page_size, count - 1);
+  if (b->selected_index >= b->first_visible_index + page_size) {
+    b->first_visible_index = b->selected_index - page_size + 1;
   }
 }
 
-void disk_browser_home(DiskBrowser_t* b) {
-  if (b == nullptr) return;
+auto disk_browser_home(DiskBrowser_t* b) -> void {
+  if (b == nullptr) {
+    return;
+  }
   b->selected_index = 0;
   b->first_visible_index = 0;
 }
 
-void disk_browser_end(DiskBrowser_t* b, size_t page_size) {
-  if (b == nullptr || !b->is_active || b->list_handle == nullptr) return;
-  size_t count = file_browser_get_count(b->list_handle);
-  if (count == 0) return;
+auto disk_browser_end(DiskBrowser_t* b, size_t page_size) -> void {
+  if (b == nullptr || !b->is_active || b->list_handle == nullptr) {
+    return;
+  }
+  const size_t count = file_browser_get_count(b->list_handle);
+  if (count == 0) {
+    return;
+  }
   b->selected_index = count - 1;
   if (b->selected_index <= page_size - 1) {
     b->first_visible_index = 0;
@@ -497,38 +506,51 @@ void disk_browser_end(DiskBrowser_t* b, size_t page_size) {
   }
 }
 
-void disk_browser_jump_char(DiskBrowser_t* b, char ch, size_t page_size) {
+auto disk_browser_jump_char(DiskBrowser_t* b, char ch, size_t page_size)
+    -> void {
   if (b == nullptr || !b->is_active || b->list_handle == nullptr ||
-      page_size == 0)
+      page_size == 0) {
     return;
-  size_t count = file_browser_get_count(b->list_handle);
-  if (count == 0) return;
+  }
+  const size_t count = file_browser_get_count(b->list_handle);
+  if (count == 0) {
+    return;
+  }
 
   for (size_t i = 0; i < count; ++i) {
     const FileEntry_t* entry = file_browser_get_entry(b->list_handle, i);
-    if (entry != nullptr && entry->name[0] != '\0') {
-      if (std::toupper(static_cast<unsigned char>(entry->name[0])) ==
-          std::toupper(static_cast<unsigned char>(ch))) {
-        b->selected_index = i;
-        if (b->selected_index < b->first_visible_index) {
-          b->first_visible_index = b->selected_index;
-        } else if (b->selected_index >= b->first_visible_index + page_size) {
-          b->first_visible_index = b->selected_index - page_size + 1;
-        }
-        break;
-      }
+    if (entry == nullptr || entry->name[0] == '\0') {
+      continue;
     }
+    if (std::toupper(static_cast<unsigned char>(entry->name[0])) !=
+        std::toupper(static_cast<unsigned char>(ch))) {
+      continue;
+    }
+
+    b->selected_index = i;
+    if (b->selected_index < b->first_visible_index) {
+      b->first_visible_index = b->selected_index;
+    } else if (b->selected_index >= b->first_visible_index + page_size) {
+      b->first_visible_index = b->selected_index - page_size + 1;
+    }
+    break;
   }
 }
 
 auto disk_browser_confirm(DiskBrowser_t* b) -> bool {
-  if (b == nullptr || !b->is_active || b->list_handle == nullptr) return false;
-  size_t count = file_browser_get_count(b->list_handle);
-  if (b->selected_index >= count) return false;
+  if (b == nullptr || !b->is_active || b->list_handle == nullptr) {
+    return false;
+  }
+  const size_t count = file_browser_get_count(b->list_handle);
+  if (b->selected_index >= count) {
+    return false;
+  }
 
   const FileEntry_t* entry =
       file_browser_get_entry(b->list_handle, b->selected_index);
-  if (entry == nullptr) return false;
+  if (entry == nullptr) {
+    return false;
+  }
 
   if (entry->type == FILE_ENTRY_UP || strcmp(entry->name, "..") == 0) {
     std::string dir = b->current_dir;
@@ -539,31 +561,28 @@ auto disk_browser_confirm(DiskBrowser_t* b) -> bool {
     if (last_sep != std::string::npos) {
       dir = dir.substr(0, last_sep);
     }
-    if (dir.empty()) dir = "/";
-    util_safe_strcpy(b->current_dir, dir.c_str(), sizeof(b->current_dir));
-    disk_browser_refresh(b);
-    return false;
-  }
-
-  if (file_entry_is_dir_type(entry)) {
-    std::string dir = b->current_dir;
-    if (dir != "/") {
-      dir += "/" + std::string(entry->name);
-    } else {
-      dir = "/" + std::string(entry->name);
+    if (dir.empty()) {
+      dir = "/";
     }
     util_safe_strcpy(b->current_dir, dir.c_str(), sizeof(b->current_dir));
     disk_browser_refresh(b);
     return false;
   }
 
-  // File entry selected - build full path
-  std::string full_path = b->current_dir;
-  if (full_path != "/") {
-    full_path += "/" + std::string(entry->name);
-  } else {
-    full_path = "/" + std::string(entry->name);
+  if (file_entry_is_dir_type(entry)) {
+    const std::string dir =
+        (std::string(b->current_dir) != "/")
+            ? (std::string(b->current_dir) + "/" + entry->name)
+            : ("/" + std::string(entry->name));
+    util_safe_strcpy(b->current_dir, dir.c_str(), sizeof(b->current_dir));
+    disk_browser_refresh(b);
+    return false;
   }
+
+  const std::string full_path =
+      (std::string(b->current_dir) != "/")
+          ? (std::string(b->current_dir) + "/" + entry->name)
+          : ("/" + std::string(entry->name));
 
   if (b->slot == 7) {
     util_safe_strcpy(system_state.hdd_dir.data(), b->current_dir,
@@ -578,13 +597,10 @@ auto disk_browser_confirm(DiskBrowser_t* b) -> bool {
     util_safe_strcpy(hcmd.path, full_path.c_str(), sizeof(hcmd.path));
     if (peripheral_command(harddisk_default_slot, harddisk_cmd_insert, &hcmd,
                            sizeof(hcmd)) == peripheral_ok) {
-      if (b->drive != 0) {
-        Configuration_t::instance().set_string(
-            "Preferences", REGVALUE_HDD_IMAGE2, full_path.c_str());
-      } else {
-        Configuration_t::instance().set_string(
-            "Preferences", REGVALUE_HDD_IMAGE1, full_path.c_str());
-      }
+      const char* key =
+          (b->drive != 0) ? REGVALUE_HDD_IMAGE2 : REGVALUE_HDD_IMAGE1;
+      Configuration_t::instance().set_string("Preferences", key,
+                                             full_path.c_str());
       Configuration_t::instance().save();
     }
 
@@ -592,14 +608,12 @@ auto disk_browser_confirm(DiskBrowser_t* b) -> bool {
     return true;
   }
 
-  // Update current_dir and save to Preferences
   util_safe_strcpy(system_state.current_dir.data(), b->current_dir,
                    system_state.current_dir.size());
   Configuration_t::instance().set_string("Preferences", REGVALUE_PREF_START_DIR,
                                          system_state.current_dir.data());
   Configuration_t::instance().save();
 
-  // Mount image into hardware
   DiskInsertCmd_t cmd{};
   cmd.drive = static_cast<uint8_t>(b->drive);
   util_safe_strcpy(cmd.path, full_path.c_str(), sizeof(cmd.path));
@@ -615,21 +629,19 @@ auto disk_browser_confirm(DiskBrowser_t* b) -> bool {
   return true;
 }
 
-auto disk_browser_get_title(int slot) -> const char* {
-  if (slot == 6) {
-    return "Choose image for floppy 140KB drive";
+auto disk_browser_get_title(int slot) noexcept -> const char* {
+  switch (slot) {
+    case 6:
+      return "Choose image for floppy 140KB drive";
+    case 7:
+      return "Choose image for Hard Disk";
+    case 5:
+      return "Choose image for floppy 800KB drive";
+    case 1:
+      return "Select file name for saving snapshot";
+    case 0:
+      return "Select snapshot file name for loading";
+    default:
+      return "Choose disk image";
   }
-  if (slot == 7) {
-    return "Choose image for Hard Disk";
-  }
-  if (slot == 5) {
-    return "Choose image for floppy 800KB drive";
-  }
-  if (slot == 1) {
-    return "Select file name for saving snapshot";
-  }
-  if (slot == 0) {
-    return "Select snapshot file name for loading";
-  }
-  return "Choose disk image";
 }

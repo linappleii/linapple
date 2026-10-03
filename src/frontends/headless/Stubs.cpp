@@ -7,7 +7,6 @@
 #include "core/LinAppleCore.h"
 #include "frontends/common/Frontend.h"
 
-// Stubs for headless/test environments
 [[gnu::weak]] auto frontend_update_keyboard_mapping() -> void {}
 [[gnu::weak]] auto keyboard_get_caps_mode() -> int { return 0; }
 [[gnu::weak]] auto keyboard_set_caps_mode(int /*mode*/) -> void {}
@@ -22,7 +21,6 @@
 
 [[gnu::weak]] auto frame_refresh_status(int /*drawflags*/) -> void {}
 
-// SSC Stubs
 [[gnu::weak]] auto super_serial_frontend_initialize(const char* /*p*/) -> bool {
   return false;
 }

@@ -65,8 +65,8 @@ auto disk_ui_format_display_name(const char* file_name, char* out,
     title.erase(dot);
   }
 
-  if (title.length() > disk_ui_display_name_max) {
-    title.resize(disk_ui_display_name_max);
+  if (title.length() > k_disk_ui_display_name_max) {
+    title.resize(k_disk_ui_display_name_max);
   }
 
   const size_t copy_length = std::min(title.length(), out_size - 1);

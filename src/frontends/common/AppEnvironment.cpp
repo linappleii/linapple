@@ -39,13 +39,10 @@ auto app_env_resolve_paths(AppConfig_t* config) -> void {
     }
   }
 
-  // Fallback: if nothing loaded, use XDG path even if it doesn't exist yet
   if (final_path.empty()) {
     Path::ensure_dir_exists(user_config_dir);
     final_path = Path::join(user_config_dir, k_config_file_name);
     config->set_path(final_path);
-    // We don't call load() again here as we know it's not there or failed,
-    // we just want to set the path where it *should* be saved later.
     util_safe_strcpy(config->config_path.data(), final_path.c_str(),
                      path_max_len);
   }
@@ -61,7 +58,6 @@ auto app_env_resolve_paths(AppConfig_t* config) -> void {
   } else if (config->is_log) {
     Logger::set_verbosity(LogLevel_t::info);
   } else {
-    // Default to errors and warnings only to keep console clean for normal use
     Logger::set_verbosity(LogLevel_t::warning);
   }
 }

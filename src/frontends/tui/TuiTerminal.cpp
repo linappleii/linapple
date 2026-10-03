@@ -71,13 +71,11 @@ auto tui_terminal_initialize() -> int {
     return 1;
   }
 
-  // Save current terminal state
   if (tcgetattr(STDIN_FILENO, &g_orig_termios) == -1) {
     perror("tcgetattr");
     return 1;
   }
 
-  // Set up raw mode
   struct termios raw = g_orig_termios;
   raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
   raw.c_oflag &= ~(OPOST);
@@ -91,11 +89,9 @@ auto tui_terminal_initialize() -> int {
     return 1;
   }
 
-  // Enter alternate buffer and hide cursor
   fputs(k_enter_alt_screen_hide_cursor, stdout);
   fflush(stdout);
 
-  // Set up signal handlers
   struct sigaction sa;
   memset(&sa, 0, sizeof(sa));
   sa.sa_handler = signal_handler;
@@ -132,11 +128,9 @@ auto tui_terminal_shutdown() -> void {
     return;
   }
 
-  // Show cursor and exit alternate buffer
   fputs(k_exit_alt_screen_show_cursor, stdout);
   fflush(stdout);
 
-  // Restore original terminal state
   tcsetattr(STDIN_FILENO, TCSAFLUSH, &g_orig_termios);
 
   g_terminal_initialized = 0;

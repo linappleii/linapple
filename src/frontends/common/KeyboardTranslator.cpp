@@ -305,7 +305,7 @@ auto keyboard_apply_custom_mappings() -> void {
   }
 }
 
-bool keyboard_has_custom_mappings() {
+auto keyboard_has_custom_mappings() -> bool {
   const auto* custom_section =
       Configuration_t::instance().get_section("Keyboard.Custom");
   return (custom_section != nullptr && !custom_section->empty());
@@ -314,18 +314,22 @@ bool keyboard_has_custom_mappings() {
 static QuickSaveMode_t g_quicksave_mode = QUICKSAVE_MODE_ALT;
 static bool g_hotkeys_enabled = true;
 
-QuickSaveMode_t keyboard_get_quicksave_mode(void) { return g_quicksave_mode; }
+auto keyboard_get_quicksave_mode() -> QuickSaveMode_t {
+  return g_quicksave_mode;
+}
 
-void keyboard_set_quicksave_mode(QuickSaveMode_t mode) {
+auto keyboard_set_quicksave_mode(QuickSaveMode_t mode) -> void {
   g_quicksave_mode = mode;
 }
 
-bool keyboard_get_hotkeys_enabled(void) { return g_hotkeys_enabled; }
+auto keyboard_get_hotkeys_enabled() -> bool { return g_hotkeys_enabled; }
 
-void keyboard_set_hotkeys_enabled(bool enabled) { g_hotkeys_enabled = enabled; }
+auto keyboard_set_hotkeys_enabled(bool enabled) -> void {
+  g_hotkeys_enabled = enabled;
+}
 
-bool keyboard_is_quicksave_combo(uint32_t sym, uint32_t mod, int* out_slot,
-                                 bool* out_is_save) {
+auto keyboard_is_quicksave_combo(uint32_t sym, uint32_t mod, int* out_slot,
+                                 bool* out_is_save) -> bool {
   if (sym < '0' || sym > '9') {
     return false;
   }

@@ -20,6 +20,7 @@
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
 #include "doctest.h"
+#include "frontends/common/AppConfig.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/common/sdl/JoystickFrontend.h"
 #include "frontends/sdl3/DiskChoose.h"
