@@ -60,24 +60,14 @@ auto super_serial_frontend_update_comm_state(uint32_t baud, uint32_t bits,
       dcb.c_cflag &= ~PARODD;
       break;
     case SUPER_SERIAL_PARITY_ODD:
-      dcb.c_cflag |= PARENB;
-      dcb.c_cflag &= ~PARODD;
+      dcb.c_cflag |= (PARENB | PARODD);
       break;
     case SUPER_SERIAL_PARITY_MARK:
-#ifdef CMSPAR
       dcb.c_cflag |= (PARENB | CMSPAR | PARODD);
-#else
-      dcb.c_cflag |= (PARENB | PARODD);
-#endif
       break;
     case SUPER_SERIAL_PARITY_SPACE:
-#ifdef CMSPAR
       dcb.c_cflag |= (PARENB | CMSPAR);
       dcb.c_cflag &= ~PARODD;
-#else
-      dcb.c_cflag |= PARENB;
-      dcb.c_cflag &= ~PARODD;
-#endif
       break;
     default:
       break;

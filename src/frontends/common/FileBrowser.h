@@ -19,7 +19,7 @@ struct FileEntry_t {
   uint64_t size;
 };
 
-[[nodiscard]] auto file_entry_is_dir_type(const FileEntry_t* entry) -> bool;
+auto file_entry_is_dir_type(const FileEntry_t* entry) -> bool;
 
 auto file_entry_format_type_or_size(const FileEntry_t* entry, char* out_str,
                                     size_t max_len) -> void;
@@ -37,18 +37,19 @@ struct FileListGenerator_t {
   auto (*destroy)(FileListGenerator_t* self) -> void = nullptr;
 };
 
-[[nodiscard]] auto file_browser_is_extension_supported(
-    const char* filename, const char* allowed_extensions) -> bool;
+auto file_browser_is_extension_supported(const char* filename,
+                                         const char* allowed_extensions)
+    -> bool;
 
-[[nodiscard]] auto file_browser_create_local_generator(
-    const char* directory, const char* filter_extensions)
+auto file_browser_create_local_generator(const char* directory,
+                                         const char* filter_extensions)
     -> FileListGenerator_t*;
 
-[[nodiscard]] auto file_browser_create_ftp_generator(
-    const char* directory, const char* filter_extensions)
+auto file_browser_create_ftp_generator(const char* directory,
+                                       const char* filter_extensions)
     -> FileListGenerator_t*;
 
-[[nodiscard]] auto file_browser_create_list() -> FileList_t*;
+auto file_browser_create_list() -> FileList_t*;
 auto file_browser_free_list(FileList_t* list) -> void;
 auto file_browser_append_entry(FileList_t* list, const FileEntry_t* entry)
     -> void;
@@ -56,11 +57,10 @@ auto file_browser_set_failure_message(FileList_t* list, const char* msg)
     -> void;
 auto file_browser_sort_list(FileList_t* list) -> void;
 
-[[nodiscard]] auto file_browser_get_count(const FileList_t* list) -> size_t;
-[[nodiscard]] auto file_browser_get_entry(const FileList_t* list, size_t index)
+auto file_browser_get_count(const FileList_t* list) -> size_t;
+auto file_browser_get_entry(const FileList_t* list, size_t index)
     -> const FileEntry_t*;
-[[nodiscard]] auto file_browser_get_failure_message(const FileList_t* list)
-    -> const char*;
+auto file_browser_get_failure_message(const FileList_t* list) -> const char*;
 
 struct DiskBrowser_t {
   int slot = 0;

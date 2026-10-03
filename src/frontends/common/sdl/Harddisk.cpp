@@ -51,6 +51,9 @@ auto harddisk_ui_ftp_select(int drive) -> void {
       draw_frame_window();
       return;
     }
+    if (!is_directory) {
+      break;
+    }
     if (filename == "..") {
       auto r = full_path.find_last_of(ftp_separator);
       if (r == full_path.size() - 1) {
@@ -63,15 +66,16 @@ auto harddisk_ui_ftp_select(int drive) -> void {
         full_path = "/";
       }
       file_index = dir_idx;
-    } else {
-      if (full_path != "/") {
-        full_path += filename + "/";
-      } else {
-        full_path = "/" + filename + "/";
-      }
-      dir_idx = file_index;
-      file_index = 0;
+      continue;
     }
+
+    if (full_path != "/") {
+      full_path += filename + "/";
+    } else {
+      full_path = "/" + filename + "/";
+    }
+    dir_idx = file_index;
+    file_index = 0;
   }
 
   util_safe_strcpy(system_state.ftp_server_hdd.data(), full_path.c_str(),
@@ -149,6 +153,9 @@ auto harddisk_ui_select(int drive) -> void {
       draw_frame_window();
       return;
     }
+    if (!is_directory) {
+      break;
+    }
     if (filename == "..") {
       const auto last_sep_pos = full_path.find_last_of(file_separator);
       if (last_sep_pos != std::string::npos) {
@@ -158,15 +165,13 @@ auto harddisk_ui_select(int drive) -> void {
         full_path = "/";
       }
       file_index = dir_idx;
-    } else {
-      if (full_path != "/") {
-        full_path += "/" + filename;
-      } else {
-        full_path = "/" + filename;
-      }
-      dir_idx = file_index;
-      file_index = 0;
+      continue;
     }
+
+    full_path =
+        (full_path == "/") ? ("/" + filename) : (full_path + "/" + filename);
+    dir_idx = file_index;
+    file_index = 0;
   }
 
   util_safe_strcpy(system_state.hdd_dir.data(), full_path.c_str(),
@@ -175,19 +180,20 @@ auto harddisk_ui_select(int drive) -> void {
       "Preferences", REGVALUE_PREF_HDD_START_DIR, system_state.hdd_dir.data());
   Configuration_t::instance().save();
 
-  full_path += "/" + filename;
+  const std::string file_path =
+      (full_path == "/") ? ("/" + filename) : (full_path + "/" + filename);
 
   HarddiskInsertCmd_t cmd{};
   cmd.drive = static_cast<uint8_t>(drive);
-  util_safe_strcpy(cmd.path, full_path.c_str(), sizeof(cmd.path));
+  util_safe_strcpy(cmd.path, file_path.c_str(), sizeof(cmd.path));
 
   if (peripheral_command(k_harddisk_slot, harddisk_cmd_insert, &cmd,
                          sizeof(cmd)) == peripheral_ok) {
     const char* key = (drive != 0) ? REGVALUE_HDD_IMAGE2 : REGVALUE_HDD_IMAGE1;
     Configuration_t::instance().set_string("Preferences", key,
-                                           full_path.c_str());
+                                           file_path.c_str());
     Configuration_t::instance().save();
-    Logger::info("HDD disk image %s inserted\n", full_path.c_str());
+    Logger::info("HDD disk image %s inserted\n", file_path.c_str());
   }
   back_idx = file_index;
   draw_frame_window();

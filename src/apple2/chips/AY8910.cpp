@@ -23,8 +23,7 @@ constexpr std::array<float, 16> k_vol_table = {
      6163.0F / k_vol_full_scale, 8934.0F / k_vol_full_scale,
      12952.0F / k_vol_full_scale, 18776.0F / k_vol_full_scale}};
 
-[[nodiscard]] constexpr auto tone_period(uint8_t fine, uint8_t coarse) noexcept
-    -> uint16_t {
+constexpr auto tone_period(uint8_t fine, uint8_t coarse) noexcept -> uint16_t {
   return static_cast<uint16_t>(fine | ((coarse & 0x0F) << 8));
 }
 
@@ -96,9 +95,8 @@ auto step_envelope(Ay8910_t* p, bool cont, bool alt, bool hold) noexcept
   refresh_envelope_vol(p);
 }
 
-[[nodiscard]] auto voice_level(const Ay8910_t* p, uint8_t tone_out,
-                               bool tone_off, bool noise_off,
-                               uint8_t amplitude) noexcept -> float {
+auto voice_level(const Ay8910_t* p, uint8_t tone_out, bool tone_off,
+                 bool noise_off, uint8_t amplitude) noexcept -> float {
   if (p == nullptr) {
     return 0.0F;
   }

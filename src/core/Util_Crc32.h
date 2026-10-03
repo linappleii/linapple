@@ -32,12 +32,12 @@ inline auto table() -> const Table_t& {
 }
 }  // namespace crc32_detail
 
-[[nodiscard]] inline auto crc32_init() noexcept -> uint32_t {
+inline auto crc32_init() noexcept -> uint32_t {
   return crc32_detail::k_initial_state;
 }
 
-[[nodiscard]] inline auto crc32_update(uint32_t state, const void* data,
-                                       size_t len) noexcept -> uint32_t {
+inline auto crc32_update(uint32_t state, const void* data, size_t len) noexcept
+    -> uint32_t {
   if (data == nullptr || len == 0) {
     return state;
   }
@@ -49,11 +49,10 @@ inline auto table() -> const Table_t& {
   return state;
 }
 
-[[nodiscard]] inline auto crc32_final(uint32_t state) noexcept -> uint32_t {
+inline auto crc32_final(uint32_t state) noexcept -> uint32_t {
   return state ^ crc32_detail::k_initial_state;
 }
 
-[[nodiscard]] inline auto crc32_compute(const void* data, size_t len) noexcept
-    -> uint32_t {
+inline auto crc32_compute(const void* data, size_t len) noexcept -> uint32_t {
   return crc32_final(crc32_update(crc32_init(), data, len));
 }

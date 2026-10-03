@@ -9,10 +9,8 @@
 
 #include "frontends/sdl2/SdlPtr.h"
 
-[[nodiscard]] auto frontend_translate_key(SDL_Keycode key, SDL_Keymod mod)
-    -> uint8_t;
-[[nodiscard]] auto frontend_handle_key_event(SDL_Keycode key, bool is_down)
-    -> bool;
+auto frontend_translate_key(SDL_Keycode key, SDL_Keymod mod) -> uint8_t;
+auto frontend_handle_key_event(SDL_Keycode key, bool is_down) -> bool;
 
 constexpr int k_btn_help = 0;
 constexpr int k_btn_run = 1;
@@ -41,9 +39,9 @@ extern SDL_Rect g_new_rect;
 extern int g_buttondown;
 extern bool g_usingcursor;
 
-[[nodiscard]] auto init_sdl() -> int;
+auto init_sdl() -> int;
 
-[[nodiscard]] auto frame_create_window() -> int;
+auto frame_create_window() -> int;
 auto frame_destroy_window() -> void;
 
 auto frame_refresh() -> void;
@@ -52,7 +50,7 @@ auto draw_status_area(int drawflags) -> void;
 auto process_button_click(int button, int mod) -> void;
 auto frame_quick_state(int state, int mod) -> void;
 auto sdl_handle_event(SDL_Event* event) -> void;
-[[nodiscard]] auto is_modifier_key(SDL_Keycode key) noexcept -> bool;
+auto is_modifier_key(SDL_Keycode key) noexcept -> bool;
 
 auto draw_apple_content() -> void;
 auto draw_frame_window() -> void;

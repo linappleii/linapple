@@ -38,8 +38,7 @@ constexpr uint16_t crc16_polynomial = 0x1021;
 constexpr uint16_t crc16_msb = 0x8000;
 constexpr int bits_per_byte = 8;
 
-[[nodiscard]] auto crc16_xmodem(const uint8_t* data, size_t length) noexcept
-    -> uint16_t {
+auto crc16_xmodem(const uint8_t* data, size_t length) noexcept -> uint16_t {
   if (data == nullptr || length == 0) {
     return 0;
   }
@@ -67,7 +66,7 @@ constexpr const char* macosx_sidecar_dir = "__MACOSX/";
 constexpr const char* appledouble_prefix = "._";
 constexpr const char* temp_template_suffix = "/linapple_XXXXXX";
 
-[[nodiscard]] auto copy_whole(char* dest, const char* src, size_t size) noexcept
+auto copy_whole(char* dest, const char* src, size_t size) noexcept
     -> ImageContainerError_e {
   if (dest == nullptr || src == nullptr || size == 0) {
     return image_container_invalid_argument;
@@ -80,8 +79,7 @@ constexpr const char* temp_template_suffix = "/linapple_XXXXXX";
   return image_container_ok;
 }
 
-[[nodiscard]] auto has_extension(const char* path,
-                                 const char* extension) noexcept -> bool {
+auto has_extension(const char* path, const char* extension) noexcept -> bool {
   if (path == nullptr || extension == nullptr) {
     return false;
   }
@@ -91,7 +89,7 @@ constexpr const char* temp_template_suffix = "/linapple_XXXXXX";
          strcasecmp(path + name_len - suffix_len + 1, extension) == 0;
 }
 
-[[nodiscard]] auto get_file_size(const char* path) noexcept -> size_t {
+auto get_file_size(const char* path) noexcept -> size_t {
   if (path == nullptr) {
     return 0;
   }
@@ -102,16 +100,16 @@ constexpr const char* temp_template_suffix = "/linapple_XXXXXX";
   return static_cast<size_t>(st.st_size);
 }
 
-[[nodiscard]] constexpr auto output_exceeds_bound(
-    size_t total_written, size_t compressed_size,
-    size_t uncompressed_threshold) noexcept -> bool {
+constexpr auto output_exceeds_bound(size_t total_written,
+                                    size_t compressed_size,
+                                    size_t uncompressed_threshold) noexcept
+    -> bool {
   return total_written > uncompressed_threshold &&
          (compressed_size == 0 ||
           total_written > compressed_size * image_container_ratio_limit);
 }
 
-[[nodiscard]] auto map_zip_error_code(int zip_err) noexcept
-    -> ImageContainerError_e {
+auto map_zip_error_code(int zip_err) noexcept -> ImageContainerError_e {
   switch (zip_err) {
     case ZIP_ER_NOENT:
       return image_container_not_found;
@@ -126,15 +124,14 @@ constexpr const char* temp_template_suffix = "/linapple_XXXXXX";
   }
 }
 
-[[nodiscard]] auto map_zip_error(const zip_error_t* error) noexcept
-    -> ImageContainerError_e {
+auto map_zip_error(const zip_error_t* error) noexcept -> ImageContainerError_e {
   if (error == nullptr) {
     return image_container_io;
   }
   return map_zip_error_code(zip_error_code_zip(error));
 }
 
-[[nodiscard]] auto open_zip(const char* path, zip** out_archive) noexcept
+auto open_zip(const char* path, zip** out_archive) noexcept
     -> ImageContainerError_e {
   if (path == nullptr || out_archive == nullptr) {
     return image_container_invalid_argument;
@@ -149,9 +146,8 @@ constexpr const char* temp_template_suffix = "/linapple_XXXXXX";
   return map_zip_error_code(code);
 }
 
-[[nodiscard]] auto decompress_gzip(const char* compressed_path,
-                                   FILE* output_file,
-                                   size_t uncompressed_threshold) noexcept
+auto decompress_gzip(const char* compressed_path, FILE* output_file,
+                     size_t uncompressed_threshold) noexcept
     -> ImageContainerError_e {
   if (compressed_path == nullptr || output_file == nullptr) {
     return image_container_invalid_argument;
@@ -196,7 +192,7 @@ constexpr const char* temp_template_suffix = "/linapple_XXXXXX";
   return zlib_status == Z_ERRNO ? image_container_io : image_container_corrupt;
 }
 
-[[nodiscard]] auto first_payload_entry(zip* archive) noexcept -> int64_t {
+auto first_payload_entry(zip* archive) noexcept -> int64_t {
   if (archive == nullptr) {
     return -1;
   }
@@ -221,9 +217,8 @@ constexpr const char* temp_template_suffix = "/linapple_XXXXXX";
   return -1;
 }
 
-[[nodiscard]] auto decompress_zip(const char* compressed_path,
-                                  FILE* output_file,
-                                  size_t uncompressed_threshold) noexcept
+auto decompress_zip(const char* compressed_path, FILE* output_file,
+                    size_t uncompressed_threshold) noexcept
     -> ImageContainerError_e {
   if (compressed_path == nullptr || output_file == nullptr) {
     return image_container_invalid_argument;
@@ -280,8 +275,8 @@ constexpr const char* temp_template_suffix = "/linapple_XXXXXX";
   return map_zip_error(zip_file_get_error(file_in_zip));
 }
 
-[[nodiscard]] auto payload_name_from_zip(const char* image_path, char* out_name,
-                                         size_t max_name_len) noexcept
+auto payload_name_from_zip(const char* image_path, char* out_name,
+                           size_t max_name_len) noexcept
     -> ImageContainerError_e {
   zip* archive = nullptr;
   const ImageContainerError_e opened = open_zip(image_path, &archive);
@@ -304,8 +299,8 @@ constexpr const char* temp_template_suffix = "/linapple_XXXXXX";
                     max_name_len);
 }
 
-[[nodiscard]] auto payload_name_from_gzip(const char* basename, char* out_name,
-                                          size_t max_name_len) noexcept
+auto payload_name_from_gzip(const char* basename, char* out_name,
+                            size_t max_name_len) noexcept
     -> ImageContainerError_e {
   const size_t suffix_len = strlen(gzip_extension) + 1;
   const size_t stripped_len = strlen(basename) - suffix_len;

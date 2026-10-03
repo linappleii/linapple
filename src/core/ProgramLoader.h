@@ -46,14 +46,13 @@ constexpr auto operator!=(ProgramLoadResult_t lhs, int rhs) noexcept -> bool {
   return !(lhs == rhs);
 }
 
-[[nodiscard]] auto program_loader_inspect(FILE* f,
-                                          ProgramInfo_t* out_info) noexcept
+auto program_loader_inspect(FILE* f, ProgramInfo_t* out_info) noexcept
     -> ProgramLoadResult_t;
 
-[[nodiscard]] auto program_loader_try_load(
-    const char* path, ProgramInfo_t* out_info = nullptr) noexcept
+auto program_loader_try_load(const char* path,
+                             ProgramInfo_t* out_info = nullptr) noexcept
     -> ProgramLoadResult_t;
 
-[[nodiscard]] auto program_loader_load_raw(
-    const char* path, uint16_t load_addr = 0x0800,
-    ProgramInfo_t* out_info = nullptr) noexcept -> ProgramLoadResult_t;
+auto program_loader_load_raw(const char* path, uint16_t load_addr = 0x0800,
+                             ProgramInfo_t* out_info = nullptr) noexcept
+    -> ProgramLoadResult_t;

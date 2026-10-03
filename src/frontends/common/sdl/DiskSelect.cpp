@@ -42,6 +42,9 @@ auto disk_select(int drive) -> void {
       draw_frame_window();
       return;
     }
+    if (!is_dir) {
+      break;
+    }
     if (filename == "..") {
       const auto last_sep_pos = full_path.find_last_of(file_separator);
       if (last_sep_pos != std::string::npos) {
@@ -51,15 +54,13 @@ auto disk_select(int drive) -> void {
         full_path = "/";
       }
       file_index = dir_idx;
-    } else {
-      if (full_path != "/") {
-        full_path += "/" + filename;
-      } else {
-        full_path = "/" + filename;
-      }
-      dir_idx = file_index;
-      file_index = 0;
+      continue;
     }
+
+    full_path =
+        (full_path == "/") ? ("/" + filename) : (full_path + "/" + filename);
+    dir_idx = file_index;
+    file_index = 0;
   }
 
   util_safe_strcpy(system_state.current_dir.data(), full_path.c_str(),
@@ -68,11 +69,12 @@ auto disk_select(int drive) -> void {
                                          system_state.current_dir.data());
   Configuration_t::instance().save();
 
-  full_path += "/" + filename;
+  const std::string file_path =
+      (full_path == "/") ? ("/" + filename) : (full_path + "/" + filename);
 
   DiskInsertCmd_t cmd{};
   cmd.drive = static_cast<uint8_t>(drive);
-  util_safe_strcpy(cmd.path, full_path.c_str(), sizeof(cmd.path));
+  util_safe_strcpy(cmd.path, file_path.c_str(), sizeof(cmd.path));
   cmd.write_protected = 0;
 
   if (peripheral_command(disk_default_slot, disk_cmd_insert, &cmd,
@@ -110,6 +112,9 @@ auto disk_ftp_select_image(int drive) -> void {
       draw_frame_window();
       return;
     }
+    if (!is_directory) {
+      break;
+    }
     if (filename == "..") {
       auto r = full_path.find_last_of(ftp_separator);
       if (r == full_path.size() - 1) {
@@ -122,15 +127,16 @@ auto disk_ftp_select_image(int drive) -> void {
         full_path = "/";
       }
       file_index = dir_idx;
-    } else {
-      if (full_path != "/") {
-        full_path += filename + "/";
-      } else {
-        full_path = "/" + filename + "/";
-      }
-      dir_idx = file_index;
-      file_index = 0;
+      continue;
     }
+
+    if (full_path != "/") {
+      full_path += filename + "/";
+    } else {
+      full_path = "/" + filename + "/";
+    }
+    dir_idx = file_index;
+    file_index = 0;
   }
 
   util_safe_strcpy(system_state.ftp_server.data(), full_path.c_str(),

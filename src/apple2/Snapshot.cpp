@@ -37,8 +37,7 @@ constexpr std::array<SlotRegionDesc_t, NUM_SLOTS> k_slot_region_descriptors{{
     {offsetof(Snapshot_t, empty7), sizeof(SsCardEmpty_t), nullptr},
 }};
 
-[[nodiscard]] auto fixed_slot_desc(int slot) noexcept
-    -> const SlotRegionDesc_t* {
+auto fixed_slot_desc(int slot) noexcept -> const SlotRegionDesc_t* {
   if (slot < 0 || slot >= NUM_SLOTS) {
     return nullptr;
   }
@@ -52,8 +51,7 @@ constexpr std::array<SlotRegionDesc_t, NUM_SLOTS> k_slot_region_descriptors{{
 // Disk II persists state to mounted image; omitted from snapshot trailer.
 constexpr int k_skipped_slot = 6;
 
-[[nodiscard]] auto trailer_entry(Snapshot_t* snapshot, int slot) noexcept
-    -> SsSlotState_t* {
+auto trailer_entry(Snapshot_t* snapshot, int slot) noexcept -> SsSlotState_t* {
   if (snapshot == nullptr || slot < 1 ||
       slot > static_cast<int>(snapshot_trailer_slots) ||
       slot == k_skipped_slot) {
@@ -62,7 +60,7 @@ constexpr int k_skipped_slot = 6;
   return &snapshot->slot_trailer.slots[slot - 1];
 }
 
-[[nodiscard]] auto trailer_entry(const Snapshot_t* snapshot, int slot) noexcept
+auto trailer_entry(const Snapshot_t* snapshot, int slot) noexcept
     -> const SsSlotState_t* {
   if (snapshot == nullptr || slot < 1 ||
       slot > static_cast<int>(snapshot_trailer_slots) ||
@@ -95,8 +93,7 @@ auto save_slot_to_trailer(int slot, SsSlotState_t* entry) noexcept -> void {
   entry->length = static_cast<uint32_t>(needed);
 }
 
-[[nodiscard]] auto trailer_is_sane(const Snapshot_t* snapshot) noexcept
-    -> bool {
+auto trailer_is_sane(const Snapshot_t* snapshot) noexcept -> bool {
   if (snapshot == nullptr) {
     return false;
   }

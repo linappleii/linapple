@@ -6,15 +6,13 @@
 
 struct FileListGenerator_t;
 
-[[nodiscard]] auto choose_an_image(int sx, int sy,
-                                   const std::string& incoming_dir, int slot,
-                                   std::string& filename, bool& isdir,
-                                   size_t& index_file) -> bool;
+auto choose_an_image(int sx, int sy, const std::string& incoming_dir, int slot,
+                     std::string& filename, bool& isdir, size_t& index_file)
+    -> bool;
 
-[[nodiscard]] auto choose_image_dialog(int sx, int sy, const std::string& dir,
-                                       int slot,
-                                       FileListGenerator_t* file_list_generator,
-                                       std::string& filename, bool& isdir,
-                                       size_t& index_file) -> bool;
+auto choose_image_dialog(int sx, int sy, const std::string& dir, int slot,
+                         FileListGenerator_t* file_list_generator,
+                         std::string& filename, bool& isdir, size_t& index_file)
+    -> bool;
 
 auto draw_frame_window() -> void;

@@ -42,6 +42,6 @@ using eApple2Language = Apple2Language_t;
 extern Apple2Type_t current_apple2_type;
 extern Apple2Language_t current_language;
 
-[[nodiscard]] inline auto is_apple2() noexcept -> bool {
+inline auto is_apple2() noexcept -> bool {
   return (current_apple2_type & APPLE2E_MASK) == 0;
 }

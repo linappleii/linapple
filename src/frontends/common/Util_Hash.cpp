@@ -8,9 +8,6 @@
 
 using Uint4_t = uint32_t;
 
-// MD5 implementation follows the standard RSA Data Security, Inc. MD5
-// Message-Digest Algorithm.
-
 namespace {
 
 constexpr int k_md5_block_size = 64;
@@ -23,9 +20,14 @@ constexpr uint32_t k_md5_init_1 = 0xefcdab89U;
 constexpr uint32_t k_md5_init_2 = 0x98badcfeU;
 constexpr uint32_t k_md5_init_3 = 0x10325476U;
 
-static std::array<Uint4_t, k_md5_state_size> state;
-static uint64_t total_length = 0;
-static std::array<uint8_t, k_md5_block_size> buffer;
+constexpr std::array<Uint4_t, k_md5_state_size> k_md5_initstate = {
+    {k_md5_init_0, k_md5_init_1, k_md5_init_2, k_md5_init_3}};
+
+struct Md5Context_t {
+  std::array<Uint4_t, k_md5_state_size> state = k_md5_initstate;
+  uint64_t total_length = 0;
+  std::array<uint8_t, k_md5_block_size> buffer{};
+};
 
 static inline auto F(Uint4_t x, Uint4_t y, Uint4_t z) noexcept -> Uint4_t {
   return ((x & y) | ((~x) & z));
@@ -48,9 +50,6 @@ static inline auto rotate_left(Uint4_t x, int n) noexcept -> Uint4_t {
   return ((x << n) | (x >> (bits_in_uint4 - n)));
 }
 
-constexpr std::array<Uint4_t, k_md5_state_size> k_md5_initstate = {
-    {k_md5_init_0, k_md5_init_1, k_md5_init_2, k_md5_init_3}};
-
 constexpr std::array<char, 4> k_s1 = {{7, 12, 17, 22}};
 constexpr std::array<char, 4> k_s2 = {{5, 9, 14, 20}};
 constexpr std::array<char, 4> k_s3 = {{4, 11, 16, 23}};
@@ -71,11 +70,12 @@ constexpr std::array<Uint4_t, k_md5_block_size> k_t = {
      0x85845dd1U, 0x6fa87e4fU, 0xfe2ce6e0U, 0xa3014314U, 0x4e0811a1U,
      0xf7537e82U, 0xbd3af235U, 0x2ad7d2bbU, 0xeb86d391U}};
 
-static auto md5_transform(const uint8_t block[k_md5_block_size]) -> void {
-  Uint4_t a = state.at(0);
-  Uint4_t b = state.at(1);
-  Uint4_t c = state.at(2);
-  Uint4_t d = state.at(3);
+static auto md5_transform(Md5Context_t* ctx,
+                          const uint8_t block[k_md5_block_size]) -> void {
+  Uint4_t a = ctx->state.at(0);
+  Uint4_t b = ctx->state.at(1);
+  Uint4_t c = ctx->state.at(2);
+  Uint4_t d = ctx->state.at(3);
   Uint4_t tmp = 0;
 
   const auto* x = reinterpret_cast<const Uint4_t*>(block);
@@ -120,84 +120,71 @@ static auto md5_transform(const uint8_t block[k_md5_block_size]) -> void {
     b = tmp;
   }
 
-  state.at(0) += a;
-  state.at(1) += b;
-  state.at(2) += c;
-  state.at(3) += d;
+  ctx->state.at(0) += a;
+  ctx->state.at(1) += b;
+  ctx->state.at(2) += c;
+  ctx->state.at(3) += d;
 }
 
-static auto md5_init() -> void {
-  total_length = 0;
-  state = k_md5_initstate;
-}
-
-static auto md5_update(const char* input, size_t inputlen) -> void {
-  const auto buflen = static_cast<size_t>(total_length & 63U);
-  total_length += inputlen;
+static auto md5_update(Md5Context_t* ctx, const char* input, size_t inputlen)
+    -> void {
+  const auto buflen = static_cast<size_t>(ctx->total_length & 63U);
+  ctx->total_length += inputlen;
 
   if (buflen + inputlen < k_md5_block_size) {
-    memcpy(buffer.data() + buflen, input, inputlen);
+    memcpy(ctx->buffer.data() + buflen, input, inputlen);
     return;
   }
 
   const size_t first_part = k_md5_block_size - buflen;
-  memcpy(buffer.data() + buflen, input, first_part);
-  md5_transform(buffer.data());
+  memcpy(ctx->buffer.data() + buflen, input, first_part);
+  md5_transform(ctx, ctx->buffer.data());
 
   size_t i = first_part;
   for (; i + k_md5_block_size <= inputlen; i += k_md5_block_size) {
-    md5_transform(reinterpret_cast<const uint8_t*>(input + i));
+    md5_transform(ctx, reinterpret_cast<const uint8_t*>(input + i));
   }
 
-  memcpy(buffer.data(), input + i, inputlen - i);
+  memcpy(ctx->buffer.data(), input + i, inputlen - i);
 }
 
-static auto md5_final() -> const uint8_t* {
-  auto buflen = static_cast<size_t>(total_length & 63U);
+static auto md5_final(Md5Context_t* ctx,
+                      std::array<uint8_t, k_md5_digest_size>& digest_out)
+    -> void {
+  auto buflen = static_cast<size_t>(ctx->total_length & 63U);
 
-  buffer.at(buflen++) = 0x80U;
+  ctx->buffer.at(buflen++) = 0x80U;
   if (buflen > 56) {
-    memset(buffer.data() + buflen, 0, k_md5_block_size - buflen);
-    md5_transform(buffer.data());
-    memset(buffer.data(), 0, 56);
+    memset(ctx->buffer.data() + buflen, 0, k_md5_block_size - buflen);
+    md5_transform(ctx, ctx->buffer.data());
+    memset(ctx->buffer.data(), 0, 56);
   } else {
-    memset(buffer.data() + buflen, 0, 56 - buflen);
+    memset(ctx->buffer.data() + buflen, 0, 56 - buflen);
   }
 
-  const uint64_t bits = total_length * 8;
-  memcpy(buffer.data() + 56, &bits, sizeof(bits));
-  md5_transform(buffer.data());
+  const uint64_t bits = ctx->total_length * 8;
+  memcpy(ctx->buffer.data() + 56, &bits, sizeof(bits));
+  md5_transform(ctx, ctx->buffer.data());
 
-  return reinterpret_cast<const uint8_t*>(state.data());
-}
-
-static auto md5(const char* input) -> const uint8_t* {
-  if (input == nullptr) {
-    return nullptr;
-  }
-  md5_init();
-  md5_update(input, strlen(input));
-  return md5_final();
+  memcpy(digest_out.data(), ctx->state.data(), digest_out.size());
 }
 
 }  // namespace
 
-auto md5str(const char* input) -> char* {
-  static std::array<char, k_md5_hex_buffer_size> result;
+auto md5str(const char* input) -> std::string {
   if (input == nullptr) {
-    result.at(0) = '\0';
-    return result.data();
+    return {};
   }
 
-  const uint8_t* digest = md5(input);
-  if (digest == nullptr) {
-    result.at(0) = '\0';
-    return result.data();
-  }
+  Md5Context_t ctx{};
+  md5_update(&ctx, input, strlen(input));
 
+  std::array<uint8_t, k_md5_digest_size> digest{};
+  md5_final(&ctx, digest);
+
+  std::array<char, k_md5_hex_buffer_size> hex_str{};
   for (size_t i = 0; i < k_md5_digest_size; i++) {
-    snprintf(result.data() + (2 * i), 3, "%02X", digest[i]);
+    snprintf(hex_str.data() + (2 * i), 3, "%02X", digest.at(i));
   }
-  result.at(k_md5_hex_buffer_size - 1) = '\0';
-  return result.data();
+  return std::string(hex_str.data(), k_md5_hex_buffer_size - 1);
 }

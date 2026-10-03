@@ -454,6 +454,7 @@ set(SOURCES_FE_COMMON_SDL
     src/frontends/common/sdl/MainSession.cpp
     src/frontends/common/sdl/Keyboard.cpp
     src/frontends/common/sdl/JoystickFrontend.cpp
+    src/frontends/common/sdl/MouseFrontend.cpp
     src/core/services/ftp/FtpClient.cpp
 )
 
@@ -693,11 +694,11 @@ function(add_linapple_executable TARGET_NAME FE_NAME FE_SOURCES DBG_SOURCES EXTR
     target_include_directories(${TARGET_NAME} PRIVATE ${LINAPPLE_INCLUDES} ${EXTRA_INCLUDES})
     target_link_libraries(${TARGET_NAME} PRIVATE ${COMMON_LIBS} ${EXTRA_LIBS} ${MEDIA_TARGETS})
     if(FE_NAME STREQUAL "sdl1")
-        list(APPEND EXTRA_DEFS LINAPPLE_SDL_VERSION=1)
+        target_include_directories(${TARGET_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/sdl1")
     elseif(FE_NAME STREQUAL "sdl2")
-        list(APPEND EXTRA_DEFS LINAPPLE_SDL_VERSION=2)
+        target_include_directories(${TARGET_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/sdl2")
     elseif(FE_NAME STREQUAL "sdl3")
-        list(APPEND EXTRA_DEFS LINAPPLE_SDL_VERSION=3)
+        target_include_directories(${TARGET_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/sdl3")
     endif()
     target_compile_definitions(${TARGET_NAME} PRIVATE
         ASSET_DIR="${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/linapple"
@@ -1183,8 +1184,8 @@ fi
         list(REMOVE_ITEM TEST_SOURCES_FE_SDL1 src/frontends/sdl1/Main.cpp)
         add_executable(test-frontend-sdl1 tests/test_main.cpp tests/test_frontend_sdl1.cpp ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} ${TEST_SOURCES_FE_SDL1})
         add_dependencies(test-frontend-sdl1 generate_xpms generate_embedded_roms)
-        target_include_directories(test-frontend-sdl1 PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} ${SDL_INCLUDE_DIR} tests src)
-        target_compile_definitions(test-frontend-sdl1 PRIVATE LINAPPLE_SDL_VERSION=1 ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
+        target_include_directories(test-frontend-sdl1 PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} ${SDL_INCLUDE_DIR} tests src "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/sdl1")
+        target_compile_definitions(test-frontend-sdl1 PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
         target_link_libraries(test-frontend-sdl1 PRIVATE ${SDL_LIBRARY} ${SDL_IMAGE_LIBRARIES} ${FTP_LIBRARIES} ${COMMON_LIBS} ${MEDIA_TARGETS})
         add_test(NAME test-frontend-sdl1 COMMAND test-frontend-sdl1)
         linapple_test_home(test-frontend-sdl1 frontend-sdl1)
@@ -1195,8 +1196,8 @@ fi
         list(REMOVE_ITEM TEST_SOURCES_FE_SDL2 src/frontends/sdl2/Main.cpp)
         add_executable(test-frontend-sdl2 tests/test_main.cpp tests/test_frontend_sdl2.cpp ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} ${TEST_SOURCES_FE_SDL2})
         add_dependencies(test-frontend-sdl2 generate_xpms generate_embedded_roms)
-        target_include_directories(test-frontend-sdl2 PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} tests src)
-        target_compile_definitions(test-frontend-sdl2 PRIVATE LINAPPLE_SDL_VERSION=2 ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
+        target_include_directories(test-frontend-sdl2 PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} tests src "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/sdl2")
+        target_compile_definitions(test-frontend-sdl2 PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
         target_link_libraries(test-frontend-sdl2 PRIVATE SDL2::SDL2 ${FTP_LIBRARIES} ${COMMON_LIBS} ${MEDIA_TARGETS})
         add_test(NAME test-frontend-sdl2 COMMAND test-frontend-sdl2)
         linapple_test_home(test-frontend-sdl2 frontend-sdl2)
@@ -1207,8 +1208,8 @@ fi
         list(REMOVE_ITEM TEST_SOURCES_FE_SDL3 src/frontends/sdl3/Main.cpp)
         add_executable(test-frontend-sdl3 tests/test_main.cpp tests/test_frontend_sdl3.cpp ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} ${TEST_SOURCES_FE_SDL3})
         add_dependencies(test-frontend-sdl3 generate_xpms generate_embedded_roms)
-        target_include_directories(test-frontend-sdl3 PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} tests src)
-        target_compile_definitions(test-frontend-sdl3 PRIVATE LINAPPLE_SDL_VERSION=3 ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
+        target_include_directories(test-frontend-sdl3 PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} tests src "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/sdl3")
+        target_compile_definitions(test-frontend-sdl3 PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
         target_link_libraries(test-frontend-sdl3 PRIVATE SDL3::SDL3 SDL3_image::SDL3_image ${FTP_LIBRARIES} ${COMMON_LIBS} ${MEDIA_TARGETS})
         add_test(NAME test-frontend-sdl3 COMMAND test-frontend-sdl3)
         linapple_test_home(test-frontend-sdl3 frontend-sdl3)

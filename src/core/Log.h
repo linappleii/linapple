@@ -26,7 +26,7 @@ auto initialize() -> void;
 auto destroy() -> void;
 
 auto set_verbosity(LogLevel_t level) noexcept -> void;
-[[nodiscard]] auto get_verbosity() noexcept -> LogLevel_t;
+auto get_verbosity() noexcept -> LogLevel_t;
 
 auto set_callback(LogCallback_t callback) -> void;
 auto set_callback_with_context(LogCallbackWithContext_t callback,
@@ -34,7 +34,7 @@ auto set_callback_with_context(LogCallbackWithContext_t callback,
 
 auto set_log_path(const char* path) -> void;
 auto enable_file_logging(bool enable) noexcept -> void;
-[[nodiscard]] auto is_file_logging_enabled() noexcept -> bool;
+auto is_file_logging_enabled() noexcept -> bool;
 
 [[gnu::format(printf, 1, 2)]] auto error(const char* format, ...) -> void;
 [[gnu::format(printf, 1, 2)]] auto warning(const char* format, ...) -> void;
@@ -45,6 +45,6 @@ auto enable_file_logging(bool enable) noexcept -> void;
 [[gnu::format(printf, 2, 0)]] auto log_message_v(LogLevel_t level,
                                                  const char* format,
                                                  va_list args) -> void;
-[[nodiscard]] auto log_level_to_string(LogLevel_t) noexcept -> const char*;
+auto log_level_to_string(LogLevel_t) noexcept -> const char*;
 
 }  // namespace Logger

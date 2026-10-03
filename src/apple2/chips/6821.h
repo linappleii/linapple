@@ -51,8 +51,7 @@ static_assert(std::is_standard_layout<Pia6821_t>::value,
 
 // Interface
 auto pia_6821_reset(Pia6821_t* p) noexcept -> void;
-[[nodiscard]] auto pia_6821_read(Pia6821_t* p, uint8_t addr) noexcept
-    -> uint8_t;
+auto pia_6821_read(Pia6821_t* p, uint8_t addr) noexcept -> uint8_t;
 auto pia_6821_write(Pia6821_t* p, uint8_t addr, uint8_t val) noexcept -> void;
 
 // Signal Injection
@@ -64,8 +63,8 @@ auto pia_6821_set_cb1(Pia6821_t* p, bool level) noexcept -> void;
 auto pia_6821_set_cb2(Pia6821_t* p, bool level) noexcept -> void;
 
 // Data Retrieval
-[[nodiscard]] auto pia_6821_get_port_a(const Pia6821_t* p) noexcept -> uint8_t;
-[[nodiscard]] auto pia_6821_get_port_b(const Pia6821_t* p) noexcept -> uint8_t;
+auto pia_6821_get_port_a(const Pia6821_t* p) noexcept -> uint8_t;
+auto pia_6821_get_port_b(const Pia6821_t* p) noexcept -> uint8_t;
 
 // Configuration
 auto pia_6821_set_listener_a(Pia6821_t* p, void* obj_to,

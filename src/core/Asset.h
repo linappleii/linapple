@@ -14,6 +14,6 @@ extern Assets_t* assets;
 using AssetFreeIconFn_t = void (*)();
 auto asset_set_free_icon_callback(AssetFreeIconFn_t cb) noexcept -> void;
 
-[[nodiscard]] auto asset_init() -> bool;
+auto asset_init() -> bool;
 auto asset_quit() noexcept -> void;
-[[nodiscard]] auto asset_insert_master_disk() -> int;
+auto asset_insert_master_disk() -> int;

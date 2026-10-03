@@ -20,16 +20,14 @@ auto basic_sync_init(const char* file_path, BasicLineMode_t mode) -> void;
 auto basic_sync_shutdown() noexcept -> void;
 auto basic_sync_update() -> void;
 
-[[nodiscard]] auto basic_sync_is_active() noexcept -> bool;
-[[nodiscard]] auto basic_sync_get_config() noexcept -> const BasicSyncConfig_t&;
+auto basic_sync_is_active() noexcept -> bool;
+auto basic_sync_get_config() noexcept -> const BasicSyncConfig_t&;
 
-[[nodiscard]] auto basic_sync_export_to_string(BasicLineMode_t mode)
-    -> std::string;
-[[nodiscard]] auto basic_sync_import_from_string(const std::string& text,
-                                                 BasicLineMode_t mode) -> bool;
-[[nodiscard]] auto basic_sync_import_from_string(const char* text,
-                                                 size_t length,
-                                                 BasicLineMode_t mode) -> bool;
+auto basic_sync_export_to_string(BasicLineMode_t mode) -> std::string;
+auto basic_sync_import_from_string(const std::string& text,
+                                   BasicLineMode_t mode) -> bool;
+auto basic_sync_import_from_string(const char* text, size_t length,
+                                   BasicLineMode_t mode) -> bool;
 
-[[nodiscard]] auto basic_sync_export_file() -> bool;
-[[nodiscard]] auto basic_sync_import_file() -> bool;
+auto basic_sync_export_file() -> bool;
+auto basic_sync_import_file() -> bool;

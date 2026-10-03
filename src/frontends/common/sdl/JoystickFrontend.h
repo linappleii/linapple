@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-#include "frontends/common/sdl/SdlCompat.h"
+#include "SdlBackend.h"
 
 auto joy_frontend_initialize() -> void;
 auto joy_frontend_shutdown() -> void;

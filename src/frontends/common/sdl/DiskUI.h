@@ -6,8 +6,7 @@
 // Longest title the window bar and the drive labels have room for.
 constexpr size_t k_disk_ui_display_name_max = 15;
 
-[[nodiscard]] auto disk_ui_get_error_message(int error_code) noexcept -> const
-    char*;
+auto disk_ui_get_error_message(int error_code) noexcept -> const char*;
 
 // Strips extension, lower-cases shouty names, and truncates to
 // k_disk_ui_display_name_max characters.

@@ -34,14 +34,14 @@ PrinterFrontendSettings_t g_settings{};
 std::string g_resolved_path;
 std::array<SlotSink_t, k_slot_count> g_slots{};
 
-[[nodiscard]] auto slot_sink(int slot) -> SlotSink_t* {
+auto slot_sink(int slot) -> SlotSink_t* {
   if (slot < 1 || slot > k_slot_count) {
     return nullptr;
   }
   return &g_slots.at(static_cast<size_t>(slot - 1));
 }
 
-[[nodiscard]] auto expand_home(const std::string& path) -> std::string {
+auto expand_home(const std::string& path) -> std::string {
   if (path.empty() || path.front() != '~') {
     return path;
   }
@@ -55,8 +55,7 @@ std::array<SlotSink_t, k_slot_count> g_slots{};
   return std::string(home) + path.substr(1);
 }
 
-[[nodiscard]] auto resolve_path(const PrinterFrontendSettings_t& settings)
-    -> std::string {
+auto resolve_path(const PrinterFrontendSettings_t& settings) -> std::string {
   std::string path = expand_home(settings.filename);
   if (path.empty()) {
     path = "Printer.txt";
@@ -67,8 +66,7 @@ std::array<SlotSink_t, k_slot_count> g_slots{};
   return path;
 }
 
-[[nodiscard]] auto with_slot_suffix(const std::string& path, int slot)
-    -> std::string {
+auto with_slot_suffix(const std::string& path, int slot) -> std::string {
   const std::string suffix = "-slot" + std::to_string(slot);
   const size_t last_separator = path.find_last_of('/');
   const size_t name_start =
@@ -84,7 +82,7 @@ std::array<SlotSink_t, k_slot_count> g_slots{};
 
 // Returns 0 or the errno of the failed fopen; says nothing, so the caller
 // decides whether this attempt is worth a log line.
-[[nodiscard]] auto open_file(int slot, SlotSink_t& sink) -> int {
+auto open_file(int slot, SlotSink_t& sink) -> int {
   const std::string path = printer_frontend_output_path(slot);
   const bool truncate = !g_settings.append && !sink.truncated;
   FILE* opened = std::fopen(path.c_str(), truncate ? "wb" : "ab");

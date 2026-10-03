@@ -12,7 +12,8 @@
 #include "frontends/common/AppController.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/common/sdl/JoystickFrontend.h"
-#include "frontends/common/sdl/SdlCompat.h"
+#include "Frame.h"
+#include "SdlBackend.h"
 
 using Logger::error;
 

@@ -8,7 +8,6 @@
 #include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
-#include "frontends/common/sdl/SdlCompat.h"
 
 enum {
   DEVICE_NONE = 0,
@@ -141,16 +140,16 @@ static auto device_of(size_t joy_num) -> int {
 // line, so a device's 10 ms poll never overwrites a key the other device just
 // pressed.
 static auto device_button_lines(size_t joy_num, int button) -> uint8_t {
-  if (joy_num == 0) {
-    if (button == 0) {
-      return k_line_pb0;
-    }
-    if (button == 1 && device_of(1) == DEVICE_NONE) {
-      return k_line_pb1;
-    }
-    return 0;
+  if (joy_num != 0) {
+    return button == 0 ? static_cast<uint8_t>(k_line_pb2 | k_line_pb1) : 0;
   }
-  return button == 0 ? static_cast<uint8_t>(k_line_pb2 | k_line_pb1) : 0;
+  if (button == 0) {
+    return k_line_pb0;
+  }
+  if (button == 1 && device_of(1) == DEVICE_NONE) {
+    return k_line_pb1;
+  }
+  return 0;
 }
 
 // The 560 ohm pull-downs sit in the controller's plug, two in a standard set
@@ -361,55 +360,38 @@ auto joy_frontend_initialize() -> void {
   peripheral_command(0, JOYSTICK_CMD_SET_SHIFT_KEY_MOD, &shift_key_mod,
                      sizeof(shift_key_mod));
 
-  int number_of_joysticks = sdl_compat_num_joysticks();
+  const int number_of_joysticks = sdl_compat_num_joysticks();
 
-  if (device_of(0) == DEVICE_JOYSTICK) {
-    if (number_of_joysticks > 0 &&
-        static_cast<int>(g_joy_config.joy_index[0]) < number_of_joysticks) {
-      g_joy1 =
-          sdl_compat_open_joystick(static_cast<int>(g_joy_config.joy_index[0]));
-      g_joy_shr_x.at(0) = 0;
-      g_joy_shr_y.at(0) = 0;
-      g_joy_sub_x.at(0) = k_axis_min;
-      g_joy_sub_y.at(0) = k_axis_min;
+  auto open_device = [&](size_t joy_id, SdlJoystickPtr_t& joy_ptr,
+                         uint32_t fallback_type) {
+    if (device_of(joy_id) != DEVICE_JOYSTICK) {
+      return;
+    }
+    const auto joy_idx = static_cast<int>(g_joy_config.joy_index.at(joy_id));
+    if (number_of_joysticks > static_cast<int>(joy_id) &&
+        joy_idx < number_of_joysticks) {
+      joy_ptr = sdl_compat_open_joystick(joy_idx);
+      g_joy_shr_x.at(joy_id) = 0;
+      g_joy_shr_y.at(joy_id) = 0;
+      g_joy_sub_x.at(joy_id) = k_axis_min;
+      g_joy_sub_y.at(joy_id) = k_axis_min;
       uint32_t xrange = k_axis_max - k_axis_min;
       uint32_t yrange = k_axis_max - k_axis_min;
       while (xrange > 256) {
         xrange >>= 1;
-        ++g_joy_shr_x.at(0);
+        ++g_joy_shr_x.at(joy_id);
       }
       while (yrange > 256) {
         yrange >>= 1;
-        ++g_joy_shr_y.at(0);
+        ++g_joy_shr_y.at(joy_id);
       }
-    } else {
-      g_joy_config.joy_type[0] = 4;
+      return;
     }
-  }
+    g_joy_config.joy_type.at(joy_id) = fallback_type;
+  };
 
-  if (device_of(1) == DEVICE_JOYSTICK) {
-    if (number_of_joysticks > 1 &&
-        static_cast<int>(g_joy_config.joy_index[1]) < number_of_joysticks) {
-      g_joy2 =
-          sdl_compat_open_joystick(static_cast<int>(g_joy_config.joy_index[1]));
-      g_joy_shr_x.at(1) = 0;
-      g_joy_shr_y.at(1) = 0;
-      g_joy_sub_x.at(1) = k_axis_min;
-      g_joy_sub_y.at(1) = k_axis_min;
-      uint32_t xrange = k_axis_max - k_axis_min;
-      uint32_t yrange = k_axis_max - k_axis_min;
-      while (xrange > 256) {
-        xrange >>= 1;
-        ++g_joy_shr_x.at(1);
-      }
-      while (yrange > 256) {
-        yrange >>= 1;
-        ++g_joy_shr_y.at(1);
-      }
-    } else {
-      g_joy_config.joy_type[1] = DEVICE_NONE;
-    }
-  }
+  open_device(0, g_joy1, 4);
+  open_device(1, g_joy2, DEVICE_NONE);
 
   // The mask follows the devices actually present, so a configured second
   // stick that is not plugged in leaves PB2 open as the hardware would.
@@ -436,22 +418,21 @@ auto joy_frontend_shutdown() -> void {
 // "Square" a modern analog stick, whose circular travel would otherwise
 // never reach the corners a self-centring Apple stick reaches.
 static auto square_stick(int& x, int& y) -> void {
-  if (y < k_pdl_central / 2) {
-    if (x < k_pdl_central / 2) {
-      x = x - (k_pdl_central / 2 - y) / 2;
-      y = y - (k_pdl_central / 2 - x) / 2;
-    } else if (x > k_pdl_central + k_pdl_central / 2) {
-      x = x + (k_pdl_central / 2 - y) / 2;
-      y = y - (x - (k_pdl_central + k_pdl_central / 2)) / 2;
-    }
-  } else if (y > k_pdl_central + k_pdl_central / 2) {
-    if (x < k_pdl_central / 2) {
-      x = x - (y - (k_pdl_central + k_pdl_central / 2)) / 2;
-      y = y + (k_pdl_central / 2 - x) / 2;
-    } else if (x > k_pdl_central + k_pdl_central / 2) {
-      x = x + (y - (k_pdl_central + k_pdl_central / 2)) / 2;
-      y = y + (x - (k_pdl_central + k_pdl_central / 2)) / 2;
-    }
+  const int low_threshold = k_pdl_central / 2;
+  const int high_threshold = k_pdl_central + (k_pdl_central / 2);
+
+  if (y < low_threshold && x < low_threshold) {
+    x -= (low_threshold - y) / 2;
+    y -= (low_threshold - x) / 2;
+  } else if (y < low_threshold && x > high_threshold) {
+    x += (low_threshold - y) / 2;
+    y -= (x - high_threshold) / 2;
+  } else if (y > high_threshold && x < low_threshold) {
+    x -= (y - high_threshold) / 2;
+    y += (low_threshold - x) / 2;
+  } else if (y > high_threshold && x > high_threshold) {
+    x += (y - high_threshold) / 2;
+    y += (x - high_threshold) / 2;
   }
 }
 
@@ -492,23 +473,23 @@ static auto poll_gamepad(size_t joy_num, SDL_Joystick* joystick) -> void {
 auto joy_frontend_update() -> void {
   drain_switch_queues();
 
-  if (g_joy1 && device_of(0) == DEVICE_JOYSTICK) {
-    static uint32_t lastcheck = 0;
-    uint32_t currtime = SDL_GetTicks();
-    if (currtime - lastcheck >= 10) {
-      lastcheck = currtime;
-      poll_gamepad(0, g_joy1.get());
+  auto poll_if_due = [](size_t joy_id, SdlJoystickPtr_t& joy_ptr,
+                        uint32_t& last_check) {
+    if (!joy_ptr || device_of(joy_id) != DEVICE_JOYSTICK) {
+      return;
     }
-  }
+    const uint32_t curr_time = SDL_GetTicks();
+    if (curr_time - last_check < 10) {
+      return;
+    }
+    last_check = curr_time;
+    poll_gamepad(joy_id, joy_ptr.get());
+  };
 
-  if (g_joy2 && device_of(1) == DEVICE_JOYSTICK) {
-    static uint32_t lastcheck = 0;
-    uint32_t currtime = SDL_GetTicks();
-    if (currtime - lastcheck >= 10) {
-      lastcheck = currtime;
-      poll_gamepad(1, g_joy2.get());
-    }
-  }
+  static uint32_t last_check1 = 0;
+  static uint32_t last_check2 = 0;
+  poll_if_due(0, g_joy1, last_check1);
+  poll_if_due(1, g_joy2, last_check2);
 }
 
 auto joy_frontend_update_trim_via_key(SdlKeycode_t virtkey) -> void {
@@ -543,65 +524,58 @@ auto joy_frontend_update_trim_via_key(SdlKeycode_t virtkey) -> void {
 auto joy_frontend_process_key(SdlKeycode_t virtkey, bool extended, bool down,
                               bool autorep) -> bool {
   const int joy_num = keypad_joystick();
-  if (joy_num == -1) {
+  if (joy_num == -1 || extended) {
     return false;
   }
+
   const int centering_type =
       k_joy_info
           .at(static_cast<size_t>(
               g_joy_config.joy_type.at(static_cast<size_t>(joy_num))))
           .mode;
 
-  bool keychange = !extended;
-  if (!extended) {
-    if ((virtkey >= SDLK_KP_1) && (virtkey <= SDLK_KP_9)) {
-      g_key_down.at(static_cast<size_t>(virtkey - SDLK_KP_1)) = down;
-    } else {
-      switch (virtkey) {
-        case SDLK_END:
-          g_key_down.at(0) = down;
-          break;
-        case SDLK_DOWN:
-          g_key_down.at(1) = down;
-          break;
-        case SDLK_PAGEDOWN:
-          g_key_down.at(2) = down;
-          break;
-        case SDLK_LEFT:
-          g_key_down.at(3) = down;
-          break;
-        case SDLK_CLEAR:
-          g_key_down.at(4) = down;
-          break;
-        case SDLK_RIGHT:
-          g_key_down.at(5) = down;
-          break;
-        case SDLK_HOME:
-          g_key_down.at(6) = down;
-          break;
-        case SDLK_UP:
-          g_key_down.at(7) = down;
-          break;
-        case SDLK_PAGEUP:
-          g_key_down.at(8) = down;
-          break;
-        case SDLK_KP_0:
-        case SDLK_INSERT:
-          g_key_down.at(JK_BUTTON0) = down;
-          break;
-        case SDLK_KP_PERIOD:
-        case SDLK_DELETE:
-          g_key_down.at(JK_BUTTON1) = down;
-          break;
-        default:
-          keychange = false;
-          break;
-      }
+  if ((virtkey >= SDLK_KP_1) && (virtkey <= SDLK_KP_9)) {
+    g_key_down.at(static_cast<size_t>(virtkey - SDLK_KP_1)) = down;
+  } else {
+    switch (virtkey) {
+      case SDLK_END:
+        g_key_down.at(0) = down;
+        break;
+      case SDLK_DOWN:
+        g_key_down.at(1) = down;
+        break;
+      case SDLK_PAGEDOWN:
+        g_key_down.at(2) = down;
+        break;
+      case SDLK_LEFT:
+        g_key_down.at(3) = down;
+        break;
+      case SDLK_CLEAR:
+        g_key_down.at(4) = down;
+        break;
+      case SDLK_RIGHT:
+        g_key_down.at(5) = down;
+        break;
+      case SDLK_HOME:
+        g_key_down.at(6) = down;
+        break;
+      case SDLK_UP:
+        g_key_down.at(7) = down;
+        break;
+      case SDLK_PAGEUP:
+        g_key_down.at(8) = down;
+        break;
+      case SDLK_KP_0:
+      case SDLK_INSERT:
+        g_key_down.at(JK_BUTTON0) = down;
+        break;
+      case SDLK_KP_PERIOD:
+      case SDLK_DELETE:
+        g_key_down.at(JK_BUTTON1) = down;
+        break;
+      default:
+        return false;
     }
-  }
-
-  if (!keychange) {
-    return false;
   }
 
   const auto joystick = static_cast<size_t>(joy_num);

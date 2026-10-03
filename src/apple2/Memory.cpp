@@ -24,48 +24,37 @@
 // Unavoidable hardware architectural constraints for Apple II memory management
 // unit and page table multiplexer
 // NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-no-malloc, cppcoreguidelines-owning-memory, cppcoreguidelines-pro-type-reinterpret-cast, bugprone-easily-swappable-parameters, bugprone-branch-clone, cppcoreguidelines-macro-usage, modernize-use-auto, cppcoreguidelines-init-variables, cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
-[[nodiscard]] static inline auto sw_80store(
-    const MemoryInstance_t* ctx) noexcept -> bool {
+static inline auto sw_80store(const MemoryInstance_t* ctx) noexcept -> bool {
   return (ctx->mem_mode & MF_80STORE) != 0;
 }
-[[nodiscard]] static inline auto sw_altzp(const MemoryInstance_t* ctx) noexcept
-    -> bool {
+static inline auto sw_altzp(const MemoryInstance_t* ctx) noexcept -> bool {
   return (ctx->mem_mode & MF_ALTZP) != 0;
 }
-[[nodiscard]] static inline auto sw_auxread(
-    const MemoryInstance_t* ctx) noexcept -> bool {
+static inline auto sw_auxread(const MemoryInstance_t* ctx) noexcept -> bool {
   return (ctx->mem_mode & MF_AUXREAD) != 0;
 }
-[[nodiscard]] static inline auto sw_auxwrite(
-    const MemoryInstance_t* ctx) noexcept -> bool {
+static inline auto sw_auxwrite(const MemoryInstance_t* ctx) noexcept -> bool {
   return (ctx->mem_mode & MF_AUXWRITE) != 0;
 }
-[[nodiscard]] static inline auto sw_hram_bank2(
-    const MemoryInstance_t* ctx) noexcept -> bool {
+static inline auto sw_hram_bank2(const MemoryInstance_t* ctx) noexcept -> bool {
   return (ctx->mem_mode & MF_HRAM_BANK2) != 0;
 }
-[[nodiscard]] static inline auto sw_highram(
-    const MemoryInstance_t* ctx) noexcept -> bool {
+static inline auto sw_highram(const MemoryInstance_t* ctx) noexcept -> bool {
   return (ctx->mem_mode & MF_HIGHRAM) != 0;
 }
-[[nodiscard]] static inline auto sw_hires(const MemoryInstance_t* ctx) noexcept
-    -> bool {
+static inline auto sw_hires(const MemoryInstance_t* ctx) noexcept -> bool {
   return (ctx->mem_mode & MF_HIRES) != 0;
 }
-[[nodiscard]] static inline auto sw_page2(const MemoryInstance_t* ctx) noexcept
-    -> bool {
+static inline auto sw_page2(const MemoryInstance_t* ctx) noexcept -> bool {
   return (ctx->mem_mode & MF_PAGE2) != 0;
 }
-[[nodiscard]] static inline auto sw_slotc3rom(
-    const MemoryInstance_t* ctx) noexcept -> bool {
+static inline auto sw_slotc3rom(const MemoryInstance_t* ctx) noexcept -> bool {
   return (ctx->mem_mode & MF_SLOTC3ROM) != 0;
 }
-[[nodiscard]] static inline auto sw_slotcxrom(
-    const MemoryInstance_t* ctx) noexcept -> bool {
+static inline auto sw_slotcxrom(const MemoryInstance_t* ctx) noexcept -> bool {
   return (ctx->mem_mode & MF_SLOTCXROM) != 0;
 }
-[[nodiscard]] static inline auto sw_hram_write(
-    const MemoryInstance_t* ctx) noexcept -> bool {
+static inline auto sw_hram_write(const MemoryInstance_t* ctx) noexcept -> bool {
   return (ctx->mem_mode & MF_HRAM_WRITE) != 0;
 }
 

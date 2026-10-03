@@ -15,7 +15,7 @@ namespace {
 SdlSurfacePtr_t s_icon_surface;
 }  // namespace
 
-[[nodiscard]] auto sdl_asset_load_bmp(const char* filename) -> SdlSurfacePtr_t {
+auto sdl_asset_load_bmp(const char* filename) -> SdlSurfacePtr_t {
   if (filename == nullptr) {
     return nullptr;
   }
@@ -40,7 +40,7 @@ SdlSurfacePtr_t s_icon_surface;
   return surf;
 }
 
-[[nodiscard]] auto asset_load_bmp(const char* filename) -> SdlSurfacePtr_t {
+auto asset_load_bmp(const char* filename) -> SdlSurfacePtr_t {
   return sdl_asset_load_bmp(filename);
 }
 

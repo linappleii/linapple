@@ -1078,7 +1078,7 @@ auto video_create_color_mix_map() -> void {
   }
 }
 
-[[nodiscard]] static inline auto clamp_mix(int idx) noexcept -> int {
+static inline auto clamp_mix(int idx) noexcept -> int {
   return (idx >= 0 && idx < 6) ? idx : 0;
 }
 

@@ -156,32 +156,32 @@ auto linapple_init() -> int;
 auto linapple_register_peripherals() -> void;
 auto linapple_shutdown() -> void;
 auto linapple_cpu_test(const char* test_file, uint16_t trap_addr) -> void;
-[[nodiscard]] auto linapple_get_ticks() noexcept -> uint32_t;
+auto linapple_get_ticks() noexcept -> uint32_t;
 auto linapple_load_program(const char* path) -> int;
 auto linapple_get_supported_disk_extensions(int slot, char* out_buffer,
                                             size_t buffer_size) -> size_t;
-[[nodiscard]] auto linapple_is_supported_disk_image(const char* path) -> bool;
+auto linapple_is_supported_disk_image(const char* path) -> bool;
 auto linapple_list_hardware() -> void;
 auto linapple_run_frame(uint32_t cycles) -> uint32_t;
 auto linapple_reset_hard() -> void;
 auto linapple_reset_soft() -> void;
 
-[[nodiscard]] auto linapple_get_speed() noexcept -> uint32_t;
+auto linapple_get_speed() noexcept -> uint32_t;
 auto linapple_set_speed(uint32_t speed) noexcept -> void;
 auto linapple_speed_increase() noexcept -> uint32_t;
 auto linapple_speed_decrease() noexcept -> uint32_t;
 auto linapple_speed_reset() noexcept -> uint32_t;
-[[nodiscard]] auto linapple_get_frame_cycles() noexcept -> uint32_t;
+auto linapple_get_frame_cycles() noexcept -> uint32_t;
 
-[[nodiscard]] auto linapple_get_turbo() noexcept -> bool;
+auto linapple_get_turbo() noexcept -> bool;
 auto linapple_set_turbo(bool turbo) noexcept -> void;
 auto linapple_toggle_turbo() noexcept -> bool;
-[[nodiscard]] auto linapple_is_full_speed() noexcept -> bool;
-[[nodiscard]] auto linapple_get_app_title() noexcept -> const char*;
-[[nodiscard]] auto linapple_get_clock_hz() noexcept -> double;
-[[nodiscard]] auto linapple_get_apple2_type() noexcept -> Apple2Type_t;
+auto linapple_is_full_speed() noexcept -> bool;
+auto linapple_get_app_title() noexcept -> const char*;
+auto linapple_get_clock_hz() noexcept -> double;
+auto linapple_get_apple2_type() noexcept -> Apple2Type_t;
 auto linapple_set_apple2_type(Apple2Type_t type) noexcept -> void;
-[[nodiscard]] auto linapple_get_language() noexcept -> Apple2Language_t;
+auto linapple_get_language() noexcept -> Apple2Language_t;
 auto linapple_set_language(Apple2Language_t lang) noexcept -> void;
 
 auto peripheral_manager_init() -> void;
@@ -189,7 +189,7 @@ auto peripheral_manager_reset() -> void;
 auto peripheral_manager_shutdown() -> void;
 auto peripheral_manager_think(uint32_t cycles) -> void;
 auto peripheral_manager_on_vblank(bool vblank) -> void;
-[[nodiscard]] auto peripheral_is_any_active() -> bool;
+auto peripheral_is_any_active() -> bool;
 
 auto peripheral_announce_audio_sources() -> void;
 
@@ -206,7 +206,7 @@ auto peripheral_query_by_id(int slot, const char* peripheral_id,
 
 auto linapple_set_key_state(uint8_t apple_code, bool down) -> void;
 auto linapple_set_caps_lock_state(bool enabled) -> void;
-[[nodiscard]] auto linapple_get_caps_lock_state() -> bool;
+auto linapple_get_caps_lock_state() -> bool;
 auto linapple_toggle_caps_lock_state() -> bool;
 auto linapple_set_modifiers(bool shift, bool ctrl, bool open_apple,
                             bool solid_apple) -> void;
@@ -221,10 +221,10 @@ auto linapple_set_audio_source_unregister_callback(
 auto linapple_set_title_callback(LinappleTitleCallback_t cb) -> void;
 auto linapple_update_title(const char* title) -> void;
 
-[[nodiscard]] auto get_title_apple_2() noexcept -> const char*;
-[[nodiscard]] auto get_title_apple_2_plus() noexcept -> const char*;
-[[nodiscard]] auto get_title_apple_2e() noexcept -> const char*;
-[[nodiscard]] auto get_title_apple_2e_enhanced() noexcept -> const char*;
+auto get_title_apple_2() noexcept -> const char*;
+auto get_title_apple_2_plus() noexcept -> const char*;
+auto get_title_apple_2e() noexcept -> const char*;
+auto get_title_apple_2e_enhanced() noexcept -> const char*;
 
 #ifdef __cplusplus
 }

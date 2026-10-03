@@ -33,7 +33,6 @@ struct VideoSurface_t {
   std::array<VideoColor_t, k_video_palette_size> palette{};
 };
 
-[[nodiscard]] auto video_create_surface(int w, int h, int bpp)
-    -> VideoSurface_t*;
+auto video_create_surface(int w, int h, int bpp) -> VideoSurface_t*;
 auto video_destroy_surface(VideoSurface_t* s) -> void;
-[[nodiscard]] auto video_load_xpm(const char* const* xpm) -> VideoSurface_t*;
+auto video_load_xpm(const char* const* xpm) -> VideoSurface_t*;

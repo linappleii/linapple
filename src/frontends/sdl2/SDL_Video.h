@@ -7,5 +7,4 @@
 
 auto stretch_blt_mem_to_frame_dc() -> void;
 
-[[nodiscard]] auto sdl_surface_to_video_surface(SDL_Surface* surface)
-    -> VideoSurface_t;
+auto sdl_surface_to_video_surface(SDL_Surface* surface) -> VideoSurface_t;

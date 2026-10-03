@@ -17,24 +17,20 @@ enum QuickSaveMode_t : uint8_t {
   QUICKSAVE_MODE_DISABLED = 3
 };
 
-[[nodiscard]] auto keyboard_symbolic_to_core(int key, uint32_t mod)
-    -> LinAppleKey_t;
-[[nodiscard]] auto keyboard_scancode_to_positional(uint32_t scancode)
-    -> LinAppleKey_t;
+auto keyboard_symbolic_to_core(int key, uint32_t mod) -> LinAppleKey_t;
+auto keyboard_scancode_to_positional(uint32_t scancode) -> LinAppleKey_t;
 
-[[nodiscard]] auto keyboard_parse_host_key(const char* name) -> uint32_t;
-[[nodiscard]] auto keyboard_parse_apple2_val(const char* name,
-                                             uint8_t* out_flags) -> uint8_t;
+auto keyboard_parse_host_key(const char* name) -> uint32_t;
+auto keyboard_parse_apple2_val(const char* name, uint8_t* out_flags) -> uint8_t;
 auto keyboard_apply_custom_mappings() -> void;
-[[nodiscard]] auto keyboard_has_custom_mappings() -> bool;
+auto keyboard_has_custom_mappings() -> bool;
 // The game-port switch line a [Keyboard.Custom] entry turns its host key
 // into: 0 for Open Apple, 1 for Solid Apple, -1 for a key that types.
-[[nodiscard]] auto keyboard_custom_apple_line(uint32_t scancode) -> int;
+auto keyboard_custom_apple_line(uint32_t scancode) -> int;
 
-[[nodiscard]] auto keyboard_get_quicksave_mode() -> QuickSaveMode_t;
+auto keyboard_get_quicksave_mode() -> QuickSaveMode_t;
 auto keyboard_set_quicksave_mode(QuickSaveMode_t mode) -> void;
-[[nodiscard]] auto keyboard_is_quicksave_combo(uint32_t sym, uint32_t mod,
-                                               int* out_slot, bool* out_is_save)
-    -> bool;
-[[nodiscard]] auto keyboard_get_hotkeys_enabled() -> bool;
+auto keyboard_is_quicksave_combo(uint32_t sym, uint32_t mod, int* out_slot,
+                                 bool* out_is_save) -> bool;
+auto keyboard_get_hotkeys_enabled() -> bool;
 auto keyboard_set_hotkeys_enabled(bool enabled) -> void;

@@ -19,8 +19,7 @@ auto stretch_blt_mem_to_frame_dc() -> void {
   video_set_frame_ready(true);
 }
 
-[[nodiscard]] auto sdl_surface_to_video_surface(SDL_Surface* surface)
-    -> VideoSurface_t {
+auto sdl_surface_to_video_surface(SDL_Surface* surface) -> VideoSurface_t {
   constexpr int k_default_bpp = 4;
 
   VideoSurface_t video_surface{};

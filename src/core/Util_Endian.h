@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-[[nodiscard]] inline auto read_u16_le(const uint8_t* ptr) noexcept -> uint16_t {
+inline auto read_u16_le(const uint8_t* ptr) noexcept -> uint16_t {
   if (ptr == nullptr) {
     return 0;
   }
@@ -11,7 +11,7 @@
                                (static_cast<uint32_t>(ptr[1]) << 8));
 }
 
-[[nodiscard]] inline auto read_u32_le(const uint8_t* ptr) noexcept -> uint32_t {
+inline auto read_u32_le(const uint8_t* ptr) noexcept -> uint32_t {
   if (ptr == nullptr) {
     return 0;
   }
@@ -38,7 +38,6 @@ inline auto write_u32_le(uint8_t* ptr, uint32_t val) noexcept -> void {
   ptr[3] = static_cast<uint8_t>((val >> 24) & 0xFF);
 }
 
-[[nodiscard]] inline auto read_u16_unaligned(const uint8_t* ptr) noexcept
-    -> uint16_t {
+inline auto read_u16_unaligned(const uint8_t* ptr) noexcept -> uint16_t {
   return read_u16_le(ptr);
 }

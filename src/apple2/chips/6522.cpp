@@ -5,11 +5,11 @@
 
 namespace {
 
-[[nodiscard]] constexpr auto lo(uint16_t w) noexcept -> uint8_t {
+constexpr auto lo(uint16_t w) noexcept -> uint8_t {
   return static_cast<uint8_t>(w & 0xFF);
 }
 
-[[nodiscard]] constexpr auto hi(uint16_t w) noexcept -> uint8_t {
+constexpr auto hi(uint16_t w) noexcept -> uint8_t {
   return static_cast<uint8_t>(w >> 8);
 }
 
@@ -30,10 +30,8 @@ auto set_hi(uint16_t* w, uint8_t v) noexcept -> void {
 // Phi2 ticks from now until the counter's 0x0000 -> 0xFFFF transition. A
 // counter at c wraps c + 1 ticks from now, and each pending phase tick costs
 // one more.
-[[nodiscard]] constexpr auto ticks_to_underflow(uint16_t counter,
-                                                uint16_t latch,
-                                                ViaTimerPhase_t phase) noexcept
-    -> uint32_t {
+constexpr auto ticks_to_underflow(uint16_t counter, uint16_t latch,
+                                  ViaTimerPhase_t phase) noexcept -> uint32_t {
   return (phase == ViaTimerPhase_t::load_delay)
              ? static_cast<uint32_t>(counter) + 2U
          : (phase == ViaTimerPhase_t::reload_pending)

@@ -17,8 +17,8 @@ constexpr uint32_t k_byte3_shift = 24;
 constexpr uint32_t k_byte2_shift = 16;
 constexpr uint32_t k_byte1_shift = 8;
 
-[[nodiscard]] constexpr auto make_version(uint32_t a, uint32_t b, uint32_t c,
-                                          uint32_t d) noexcept -> uint32_t {
+constexpr auto make_version(uint32_t a, uint32_t b, uint32_t c,
+                            uint32_t d) noexcept -> uint32_t {
   return (a << k_byte3_shift) | (b << k_byte2_shift) | (c << k_byte1_shift) | d;
 }
 

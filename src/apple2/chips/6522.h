@@ -82,4 +82,4 @@ auto via_reset(Via6522_t* v) noexcept -> void;
 auto via_write(Via6522_t* v, uint8_t reg, uint8_t val) noexcept -> void;
 auto via_read(Via6522_t* v, uint8_t reg) noexcept -> uint8_t;
 auto via_step(Via6522_t* v, uint32_t cycles) noexcept -> bool;
-[[nodiscard]] auto via_irq(const Via6522_t* v) noexcept -> bool;
+auto via_irq(const Via6522_t* v) noexcept -> bool;

@@ -3,7 +3,7 @@
 
 #include <cstddef>
 #include <cstdint>
-[[nodiscard]] inline auto hex_char_to_val(char c) noexcept -> uint8_t {
+inline auto hex_char_to_val(char c) noexcept -> uint8_t {
   if (c >= '0' && c <= '9') {
     return static_cast<uint8_t>(c - '0');
   }
@@ -16,8 +16,7 @@
   return 0;
 }
 
-[[nodiscard]] inline auto text_convert_2_chars_to_byte(
-    const char* text) noexcept -> uint8_t {
+inline auto text_convert_2_chars_to_byte(const char* text) noexcept -> uint8_t {
   if (text == nullptr || text[0] == '\0' || text[1] == '\0') {
     return 0;
   }
@@ -25,20 +24,19 @@
                               hex_char_to_val(text[1]));
 }
 
-[[nodiscard]] inline auto text_is_hex_char(char ch) noexcept -> bool {
+inline auto text_is_hex_char(char ch) noexcept -> bool {
   return ((ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'F') ||
           (ch >= 'a' && ch <= 'f'));
 }
 
-[[nodiscard]] inline auto text_is_hex_byte(const char* text) noexcept -> bool {
+inline auto text_is_hex_byte(const char* text) noexcept -> bool {
   if (text == nullptr) {
     return false;
   }
   return text_is_hex_char(text[0]) && text_is_hex_char(text[1]);
 }
 
-[[nodiscard]] inline auto text_is_hex_string(const char* text) noexcept
-    -> bool {
+inline auto text_is_hex_string(const char* text) noexcept -> bool {
   if (text == nullptr || *text == '\0') {
     return false;
   }

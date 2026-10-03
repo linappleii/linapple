@@ -8,14 +8,12 @@
 #include "core/Registry.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/common/KeyboardTranslator.h"
-#include "frontends/common/sdl/SdlCompat.h"
+#include "SdlBackend.h"
 
 static int g_keyboard_mapping_mode = 0;
 static int g_keyboard_caps_mode = caps_mode_host;
 
-[[nodiscard]] auto keyboard_get_caps_mode() -> int {
-  return g_keyboard_caps_mode;
-}
+auto keyboard_get_caps_mode() -> int { return g_keyboard_caps_mode; }
 auto keyboard_set_caps_mode(int mode) -> void { g_keyboard_caps_mode = mode; }
 
 auto frontend_update_keyboard_mapping() -> void {
