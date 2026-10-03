@@ -9,6 +9,11 @@
 #include "apple2/peripherals/super_serial_card/SuperSerial.h"
 #include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
 
+/* The descriptor accessor is part of the C ABI; its prototype is compiled
+ * here but it is never referenced, because in a plugin build the function
+ * lives inside the shared object and the test binary does not link it. */
+struct Peripheral_t* super_serial_get_descriptor(void);
+
 /* C99 has no static_assert; an array of negative size fails the same way.
  * The frame has been written by the slot trailer of every default .aws, so
  * its size and the offsets of its named bytes are pinned here as C sees

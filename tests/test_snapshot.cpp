@@ -642,3 +642,109 @@ TEST_CASE("Snapshot: A loaded file starts with every paddle timer expired") {
   step_one({0xAD, 0x64, 0xC0});
   CHECK((cpu_get_registers()->a & bit7) == 0);
 }
+
+namespace {
+
+constexpr size_t ssc_frame_size = 56;
+constexpr size_t ssc_control = 12;
+constexpr size_t ssc_command = 13;
+constexpr size_t ssc_irq = 14;
+constexpr size_t ssc_latches = 27;
+constexpr size_t ssc_receive_data = 52;
+constexpr uint8_t ssc_control_9600_8n1 = 0x1E;
+constexpr uint8_t ssc_command_rx_irq = 0x09;
+constexpr uint8_t ssc_latch_rdrf = 0x08;
+
+using SscFrame_t = std::array<uint8_t, ssc_frame_size>;
+
+// A card holding a received byte with the receive interrupt latched: control
+// $1E, command $09, the IRQ byte set, RDRF in the latch byte and $C1 in the
+// receive data register. The dead fields stay zero.
+auto ssc_frame_with_interrupt() -> SscFrame_t {
+  SscFrame_t frame{};
+  frame.at(0) = 0x01;
+  frame.at(4) = static_cast<uint8_t>(ssc_frame_size);
+  frame.at(ssc_control) = ssc_control_9600_8n1;
+  frame.at(ssc_command) = ssc_command_rx_irq;
+  frame.at(ssc_irq) = 0x01;
+  frame.at(ssc_latches) = ssc_latch_rdrf;
+  frame.at(ssc_receive_data) = 0xC1;
+  return frame;
+}
+
+auto ssc_saved_frame(int slot) -> SscFrame_t {
+  SscFrame_t frame{};
+  frame.fill(0xFF);
+  size_t size = frame.size();
+  peripheral_save_state(slot, frame.data(), &size);
+  REQUIRE(size == ssc_frame_size);
+  return frame;
+}
+
+// The card is placed by the configuration and its state is set the way a
+// running machine would leave it, the file goes through the frontend's own
+// writer and reader, and after the load a CLI loop proves the restored
+// interrupt reaches the slot line: snapshot_deserialize restores the CPU
+// before the slots load, so the card's AssertIrq during load_state sticks.
+auto ssc_survives_the_file(int slot) -> void {
+  TestFixtures::ScopedByteSink_t sink;
+  TestFixtures::ScopedTestConfig_t::Description_t description;
+  description.slots.at(static_cast<size_t>(slot - 1)) = "Super Serial Card";
+  TestFixtures::ScopedTestConfig_t config(description);
+  TestFixtures::ScopedCore_t core(config);
+  peripheral_manager_init();
+  linapple_register_peripherals();
+  linapple_reset_hard();
+
+  const SscFrame_t saved = ssc_frame_with_interrupt();
+  REQUIRE(peripheral_load_state(slot, saved.data(), saved.size()) ==
+          peripheral_ok);
+  CHECK(ssc_saved_frame(slot) == saved);
+
+  TestFixtures::ScopedTempFile_t file(".aws");
+  save_state_set_filename(file.c_str());
+  save_state_save();
+
+  // Reset the card to a different state, so the load has to put it back.
+  linapple_reset_hard();
+  CHECK(ssc_saved_frame(slot).at(ssc_control) == 0x00);
+
+  REQUIRE(save_state_load());
+  CHECK(ssc_saved_frame(slot) == saved);
+
+  // The loaded card re-asserted the slot's interrupt line: a handler that
+  // reads the status register (releasing the line) runs once under a CLI.
+  const auto hi = static_cast<uint8_t>(0xC0 + slot);
+  const auto status = static_cast<uint8_t>(0x89 + (slot << 4));
+  const std::array<uint8_t, 4> handler = {0xE6, 0x06, 0xAD, status};
+  TestFixtures::ScopedCore_t::poke(0x0380, handler);
+  const std::array<uint8_t, 2> handler_tail = {0x40, 0x00};
+  TestFixtures::ScopedCore_t::poke(0x0384, handler_tail);
+  const std::array<uint8_t, 2> vector = {0x80, 0x03};
+  TestFixtures::ScopedCore_t::poke(0xFFFE, vector);
+  // CLI, then a loop reading $C0n1 (no effect on the ACIA) so the asserted
+  // line is taken within an instruction.
+  const std::array<uint8_t, 7> main_loop = {0x58,            // CLI
+                                            0xAD, 0x81, hi,  // LDA $C0n1
+                                            0x4C, 0x01, 0x03};
+  TestFixtures::ScopedCore_t::poke(0x0300, main_loop);
+  mem[0x06] = 0;
+  CpuRegisters_t* regs = cpu_get_registers();
+  regs->pc = 0x0300;
+  regs->ps |= 0x04;
+  uint32_t ran = 0;
+  while (ran < 300) {
+    ran += cpu_execute(0);
+  }
+  CHECK(mem[0x06] >= 1);
+}
+
+}  // namespace
+
+TEST_CASE(
+    "Snapshot: An .aws gives the serial card back its registers, latch byte "
+    "and interrupt in any slot") {
+  SUBCASE("slot 1") { ssc_survives_the_file(1); }
+  SUBCASE("slot 2") { ssc_survives_the_file(2); }
+  SUBCASE("slot 7") { ssc_survives_the_file(7); }
+}
