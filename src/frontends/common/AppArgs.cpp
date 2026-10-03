@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "frontends/common/AppArgs.h"
 
-// NOLINTNEXTLINE(misc-include-cleaner) Justification: glibc forwards getopt declarations from internal bits headers
-#include <getopt.h>
-
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -16,56 +14,86 @@
 #include "core/Util_Text.h"
 #include "frontends/common/AppConfig.h"
 
-enum OptId_t : int {
-  k_opt_list_hardware = 0x100,
-  k_opt_hardware_info = 0x101,
-  k_opt_no_debugger = 0x102,
-  k_opt_hd1 = 0x103,
-  k_opt_hd2 = 0x104,
-  k_opt_basic_sync = 0x105,
-  k_opt_basic_line_mode = 0x106,
-  k_opt_caps_mode = 0x107,
-  k_opt_tui_render = 0x108,
+namespace {
+
+enum class ArgType_t {
+  no_arg,
+  req_arg,
 };
 
-// NOLINTBEGIN(misc-include-cleaner) Justification: GNU glibc forwards getopt declarations from internal bits headers
-static constexpr struct option k_option_table[] = {
-    {"d1", required_argument, nullptr, '1'},
-    {"d2", required_argument, nullptr, '2'},
-    {"hd1", required_argument, nullptr, k_opt_hd1},
-    {"hd2", required_argument, nullptr, k_opt_hd2},
-    {"autoboot", no_argument, nullptr, 'a'},
-    {"boot", no_argument, nullptr, 'b'},
-    {"config", required_argument, nullptr, 'c'},
-    {"fullscreen", no_argument, nullptr, 'f'},
-    {"help", no_argument, nullptr, 'h'},
-    {"log", no_argument, nullptr, 'l'},
-    {"benchmark", no_argument, nullptr, 'm'},
-    {"pal", no_argument, nullptr, 'p'},
-    {"program", required_argument, nullptr, 'P'},
-    {"rom", required_argument, nullptr, 'R'},
-    {"snapshot", required_argument, nullptr, 's'},
-    {"script", required_argument, nullptr, 'x'},
-    {"test-cpu", required_argument, nullptr, 'T'},
-    {"test-trap", required_argument, nullptr, 'X'},
-    {"test-6502", no_argument, nullptr, '6'},
-    {"test-65c02", no_argument, nullptr, 'C'},
-    {"verbose", no_argument, nullptr, 'v'},
-    {"audio-dump", required_argument, nullptr, 'A'},
-    {"list-hardware", no_argument, nullptr, k_opt_list_hardware},
-    {"hardware-info", required_argument, nullptr, k_opt_hardware_info},
-    {"no-debugger", no_argument, nullptr, k_opt_no_debugger},
-    {"basic-sync", required_argument, nullptr, k_opt_basic_sync},
-    {"basic-line-mode", required_argument, nullptr, k_opt_basic_line_mode},
-    {"caps-mode", required_argument, nullptr, k_opt_caps_mode},
-    {"tui-render", required_argument, nullptr, k_opt_tui_render},
-    {nullptr, 0, nullptr, 0}};
-// NOLINTEND(misc-include-cleaner)
+enum OptId_t : int {
+  k_opt_unknown = 0,
+  k_opt_d1,
+  k_opt_d2,
+  k_opt_hd1,
+  k_opt_hd2,
+  k_opt_autoboot,
+  k_opt_boot,
+  k_opt_config,
+  k_opt_fullscreen,
+  k_opt_help,
+  k_opt_log,
+  k_opt_benchmark,
+  k_opt_pal,
+  k_opt_program,
+  k_opt_rom,
+  k_opt_snapshot,
+  k_opt_script,
+  k_opt_test_cpu,
+  k_opt_test_trap,
+  k_opt_test_6502,
+  k_opt_test_65c02,
+  k_opt_verbose,
+  k_opt_audio_dump,
+  k_opt_list_hardware,
+  k_opt_hardware_info,
+  k_opt_no_debugger,
+  k_opt_basic_sync,
+  k_opt_basic_line_mode,
+  k_opt_caps_mode,
+  k_opt_tui_render,
+};
 
-static const char* const k_opt_string = ":1:2:abc:fhlmpP:R:s:vx:T:X:6CA:";
+struct OptionDef_t {
+  const char* long_name;
+  char short_name;
+  ArgType_t arg_type;
+  OptId_t id;
+};
 
-static auto parse_tui_render_mode(const char* arg, TuiRenderMode_t* out_mode)
-    -> bool {
+constexpr OptionDef_t k_options[] = {
+    {"d1", '1', ArgType_t::req_arg, k_opt_d1},
+    {"d2", '2', ArgType_t::req_arg, k_opt_d2},
+    {"hd1", '\0', ArgType_t::req_arg, k_opt_hd1},
+    {"hd2", '\0', ArgType_t::req_arg, k_opt_hd2},
+    {"autoboot", 'a', ArgType_t::no_arg, k_opt_autoboot},
+    {"boot", 'b', ArgType_t::no_arg, k_opt_boot},
+    {"config", 'c', ArgType_t::req_arg, k_opt_config},
+    {"fullscreen", 'f', ArgType_t::no_arg, k_opt_fullscreen},
+    {"help", 'h', ArgType_t::no_arg, k_opt_help},
+    {"log", 'l', ArgType_t::no_arg, k_opt_log},
+    {"benchmark", 'm', ArgType_t::no_arg, k_opt_benchmark},
+    {"pal", 'p', ArgType_t::no_arg, k_opt_pal},
+    {"program", 'P', ArgType_t::req_arg, k_opt_program},
+    {"rom", 'R', ArgType_t::req_arg, k_opt_rom},
+    {"snapshot", 's', ArgType_t::req_arg, k_opt_snapshot},
+    {"script", 'x', ArgType_t::req_arg, k_opt_script},
+    {"test-cpu", 'T', ArgType_t::req_arg, k_opt_test_cpu},
+    {"test-trap", 'X', ArgType_t::req_arg, k_opt_test_trap},
+    {"test-6502", '6', ArgType_t::no_arg, k_opt_test_6502},
+    {"test-65c02", 'C', ArgType_t::no_arg, k_opt_test_65c02},
+    {"verbose", 'v', ArgType_t::no_arg, k_opt_verbose},
+    {"audio-dump", 'A', ArgType_t::req_arg, k_opt_audio_dump},
+    {"list-hardware", '\0', ArgType_t::no_arg, k_opt_list_hardware},
+    {"hardware-info", '\0', ArgType_t::req_arg, k_opt_hardware_info},
+    {"no-debugger", '\0', ArgType_t::no_arg, k_opt_no_debugger},
+    {"basic-sync", '\0', ArgType_t::req_arg, k_opt_basic_sync},
+    {"basic-line-mode", '\0', ArgType_t::req_arg, k_opt_basic_line_mode},
+    {"caps-mode", '\0', ArgType_t::req_arg, k_opt_caps_mode},
+    {"tui-render", '\0', ArgType_t::req_arg, k_opt_tui_render},
+};
+
+auto parse_tui_render_mode(const char* arg, TuiRenderMode_t* out_mode) -> bool {
   if (arg == nullptr || out_mode == nullptr) {
     return false;
   }
@@ -80,7 +108,7 @@ static auto parse_tui_render_mode(const char* arg, TuiRenderMode_t* out_mode)
   return false;
 }
 
-static auto append_extra_arg(AppConfig_t* config, const char* arg) -> void {
+auto append_extra_arg(AppConfig_t* config, const char* arg) -> void {
   if (config == nullptr || arg == nullptr) {
     return;
   }
@@ -89,6 +117,151 @@ static auto append_extra_arg(AppConfig_t* config, const char* arg) -> void {
     config->argc_extra++;
   }
 }
+
+auto find_option_by_long_name(const char* name, size_t len)
+    -> const OptionDef_t* {
+  for (const auto& opt : k_options) {
+    if (std::strncmp(opt.long_name, name, len) == 0 &&
+        opt.long_name[len] == '\0') {
+      return &opt;
+    }
+  }
+  return nullptr;
+}
+
+auto find_option_by_short_name(char c) -> const OptionDef_t* {
+  if (c == '\0') {
+    return nullptr;
+  }
+  for (const auto& opt : k_options) {
+    if (opt.short_name == c) {
+      return &opt;
+    }
+  }
+  return nullptr;
+}
+
+auto apply_option(OptId_t id, const char* val, AppConfig_t* config) -> int {
+  switch (id) {
+    case k_opt_d1:
+      util_safe_strcpy(config->disk_path.at(0).data(), val, path_max_len);
+      break;
+    case k_opt_d2:
+      util_safe_strcpy(config->disk_path.at(1).data(), val, path_max_len);
+      break;
+    case k_opt_hd1:
+      util_safe_strcpy(config->harddisk_path.at(0).data(), val, path_max_len);
+      break;
+    case k_opt_hd2:
+      util_safe_strcpy(config->harddisk_path.at(1).data(), val, path_max_len);
+      break;
+    case k_opt_autoboot:
+    case k_opt_boot:
+      config->is_boot = true;
+      break;
+    case k_opt_config:
+      util_safe_strcpy(config->config_path.data(), val, path_max_len);
+      break;
+    case k_opt_fullscreen:
+      config->is_fullscreen = true;
+      config->is_fullscreen_explicit = true;
+      break;
+    case k_opt_help:
+      config->intent = INTENT_HELP;
+      return 1;
+    case k_opt_log:
+      config->is_log = true;
+      break;
+    case k_opt_benchmark:
+      config->is_benchmark = true;
+      config->intent = INTENT_DIAGNOSTIC;
+      break;
+    case k_opt_pal:
+      config->is_pal = true;
+      config->is_pal_explicit = true;
+      break;
+    case k_opt_program:
+      util_safe_strcpy(config->program_path.data(), val, path_max_len);
+      break;
+    case k_opt_rom:
+      util_safe_strcpy(config->rom_path.data(), val, path_max_len);
+      break;
+    case k_opt_snapshot:
+      util_safe_strcpy(config->snapshot_path.data(), val, path_max_len);
+      break;
+    case k_opt_script:
+      util_safe_strcpy(config->debugger_script.data(), val, path_max_len);
+      break;
+    case k_opt_verbose:
+      config->is_verbose = true;
+      Logger::set_verbosity(LogLevel_t::perf);
+      break;
+    case k_opt_test_cpu:
+      util_safe_strcpy(config->test_cpu_file.data(), val, path_max_len);
+      config->intent = INTENT_DIAGNOSTIC;
+      break;
+    case k_opt_test_trap:
+      config->test_cpu_trap =
+          static_cast<uint16_t>(std::strtol(val, nullptr, 0));
+      break;
+    case k_opt_test_6502:
+      config->apple2_type = A2TYPE_APPLE2PLUS;
+      config->apple2_type_explicit = true;
+      break;
+    case k_opt_test_65c02:
+      config->apple2_type = A2TYPE_APPLE2EENHANCED;
+      config->apple2_type_explicit = true;
+      break;
+    case k_opt_audio_dump:
+      util_safe_strcpy(config->audio_dump_path.data(), val, path_max_len);
+      break;
+    case k_opt_list_hardware:
+      config->is_list_hardware = true;
+      config->intent = INTENT_DIAGNOSTIC;
+      break;
+    case k_opt_hardware_info:
+      util_safe_strcpy(config->hardware_info_name.data(), val, path_max_len);
+      config->intent = INTENT_DIAGNOSTIC;
+      break;
+    case k_opt_no_debugger:
+      config->disable_debugger = true;
+      break;
+    case k_opt_basic_sync:
+      util_safe_strcpy(config->basic_sync_file.data(), val, path_max_len);
+      break;
+    case k_opt_basic_line_mode:
+      config->basic_line_mode =
+          (val != nullptr &&
+           (std::strcmp(val, "positional") == 0 || std::strcmp(val, "1") == 0))
+              ? 1
+              : 0;
+      break;
+    case k_opt_caps_mode:
+      config->caps_lock_mode =
+          (val != nullptr &&
+           (std::strcmp(val, "emulated") == 0 || std::strcmp(val, "1") == 0))
+              ? caps_mode_emulated
+              : caps_mode_host;
+      break;
+    case k_opt_tui_render:
+      if (!parse_tui_render_mode(val, &config->tui_render_mode)) {
+        fprintf(stderr,
+                "error: Invalid --tui-render mode '%s'. Expected 'smart' or "
+                "'block'.\n",
+                val != nullptr ? val : "");
+        config->intent = INTENT_ERROR;
+        return -1;
+      }
+      config->tui_render_mode_explicit = true;
+      break;
+    case k_opt_unknown:
+    default:
+      break;
+  }
+  return 0;
+}
+
+}  // namespace
 
 auto app_args_print_help() -> void {
 #ifdef LINAPPLE_FRONTEND_NAME
@@ -178,156 +351,107 @@ auto app_args_print_help() -> void {
 #endif
 }
 
-// NOLINTBEGIN(misc-include-cleaner) Justification: GNU glibc forwards getopt declarations from internal bits headers
 auto app_args_parse(int argc, char** argv, AppConfig_t* config) -> int {
   if (config == nullptr || argv == nullptr || argc < 1) {
     return -1;
   }
   app_config_default(config);
 
-  int opt = -1;
-  int opt_idx = -1;
-  opterr = 0;
-  optind = 1;
+  for (int i = 1; i < argc; ++i) {
+    const char* arg = argv[i];
+    if (arg == nullptr) {
+      continue;
+    }
 
-  while ((opt = getopt_long(argc, argv, k_opt_string, k_option_table,
-                            &opt_idx)) != -1) {
-    switch (opt) {
-      case '1':
-        util_safe_strcpy(config->disk_path.at(0).data(), optarg, path_max_len);
+    if (arg[0] == '-' && arg[1] == '-') {
+      if (arg[2] == '\0') {
+        for (int j = i + 1; j < argc; ++j) {
+          append_extra_arg(config, argv[j]);
+        }
         break;
-      case '2':
-        util_safe_strcpy(config->disk_path.at(1).data(), optarg, path_max_len);
-        break;
-      case 'a':
-      case 'b':
-        config->is_boot = true;
-        break;
-      case 'c':
-        util_safe_strcpy(config->config_path.data(), optarg, path_max_len);
-        break;
-      case 'f':
-        config->is_fullscreen = true;
-        config->is_fullscreen_explicit = true;
-        break;
-      case 'l':
-        config->is_log = true;
-        break;
-      case 'm':
-        config->is_benchmark = true;
-        config->intent = INTENT_DIAGNOSTIC;
-        break;
-      case 'p':
-        config->is_pal = true;
-        config->is_pal_explicit = true;
-        break;
-      case 'P':
-        util_safe_strcpy(config->program_path.data(), optarg, path_max_len);
-        break;
-      case 'R':
-        util_safe_strcpy(config->rom_path.data(), optarg, path_max_len);
-        break;
-      case 's':
-        util_safe_strcpy(config->snapshot_path.data(), optarg, path_max_len);
-        break;
-      case 'v':
-        config->is_verbose = true;
-        Logger::set_verbosity(LogLevel_t::perf);
-        break;
-      case 'x':
-        util_safe_strcpy(config->debugger_script.data(), optarg, path_max_len);
-        break;
-      case 'T':
-        util_safe_strcpy(config->test_cpu_file.data(), optarg, path_max_len);
-        config->intent = INTENT_DIAGNOSTIC;
-        break;
-      case 'X':
-        config->test_cpu_trap =
-            static_cast<uint16_t>(strtol(optarg, nullptr, 0));
-        break;
-      case '6':
-        config->apple2_type = A2TYPE_APPLE2PLUS;
-        config->apple2_type_explicit = true;
-        break;
-      case 'C':
-        config->apple2_type = A2TYPE_APPLE2EENHANCED;
-        config->apple2_type_explicit = true;
-        break;
-      case 'A':
-        util_safe_strcpy(config->audio_dump_path.data(), optarg, path_max_len);
-        break;
-      case k_opt_list_hardware:
-        config->is_list_hardware = true;
-        config->intent = INTENT_DIAGNOSTIC;
-        break;
-      case k_opt_hardware_info:
-        util_safe_strcpy(config->hardware_info_name.data(), optarg,
-                         path_max_len);
-        config->intent = INTENT_DIAGNOSTIC;
-        break;
-      case k_opt_no_debugger:
-        config->disable_debugger = true;
-        break;
-      case k_opt_hd1:
-        util_safe_strcpy(config->harddisk_path.at(0).data(), optarg,
-                         path_max_len);
-        break;
-      case k_opt_hd2:
-        util_safe_strcpy(config->harddisk_path.at(1).data(), optarg,
-                         path_max_len);
-        break;
-      case k_opt_basic_sync:
-        util_safe_strcpy(config->basic_sync_file.data(), optarg, path_max_len);
-        break;
-      case k_opt_basic_line_mode:
-        config->basic_line_mode =
-            (optarg != nullptr && (std::strcmp(optarg, "positional") == 0 ||
-                                   std::strcmp(optarg, "1") == 0))
-                ? 1
-                : 0;
-        break;
-      case k_opt_caps_mode:
-        config->caps_lock_mode =
-            (optarg != nullptr && (std::strcmp(optarg, "emulated") == 0 ||
-                                   std::strcmp(optarg, "1") == 0))
-                ? caps_mode_emulated
-                : caps_mode_host;
-        break;
-      case k_opt_tui_render:
-        if (!parse_tui_render_mode(optarg, &config->tui_render_mode)) {
-          fprintf(stderr,
-                  "error: Invalid --tui-render mode '%s'. Expected 'smart' or "
-                  "'block'.\n",
-                  optarg != nullptr ? optarg : "");
+      }
+
+      const char* opt_name = arg + 2;
+      const char* eq = std::strchr(opt_name, '=');
+      size_t name_len = (eq != nullptr) ? static_cast<size_t>(eq - opt_name)
+                                        : std::strlen(opt_name);
+      const OptionDef_t* opt = find_option_by_long_name(opt_name, name_len);
+      if (opt == nullptr) {
+        append_extra_arg(config, arg);
+        continue;
+      }
+
+      const char* val = nullptr;
+      if (opt->arg_type == ArgType_t::req_arg) {
+        if (eq != nullptr) {
+          val = eq + 1;
+        } else if (i + 1 < argc) {
+          val = argv[++i];
+        } else {
+          fprintf(stderr, "error: Option requires an argument.\n");
           config->intent = INTENT_ERROR;
           return -1;
         }
-        config->tui_render_mode_explicit = true;
-        break;
-      case 'h':
-        config->intent = INTENT_HELP;
-        return 0;
-      case ':':
-        fprintf(stderr, "error: Option requires an argument.\n");
-        config->intent = INTENT_ERROR;
-        return -1;
-      case '?':
-        if (optind > 0 && optind <= argc) {
-          // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic) Justification: argv is an unmanaged array passed from main()
-          append_extra_arg(config, argv[optind - 1]);
-        }
-        break;
-      default:
-        break;
-    }
-  }
+      }
 
-  while (optind < argc) {
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic) Justification: argv is an unmanaged array passed from main()
-    append_extra_arg(config, argv[optind]);
-    optind++;
+      int res = apply_option(opt->id, val, config);
+      if (res < 0) {
+        return -1;
+      }
+      if (res == 1) {
+        return 0;
+      }
+      continue;
+    }
+
+    if (arg[0] == '-' && arg[1] != '\0') {
+      bool handled = false;
+      for (size_t c = 1; arg[c] != '\0'; ++c) {
+        const OptionDef_t* opt = find_option_by_short_name(arg[c]);
+        if (opt == nullptr) {
+          append_extra_arg(config, arg);
+          handled = true;
+          break;
+        }
+
+        const char* val = nullptr;
+        if (opt->arg_type == ArgType_t::req_arg) {
+          if (arg[c + 1] != '\0') {
+            val = &arg[c + 1];
+          } else if (i + 1 < argc) {
+            val = argv[++i];
+          } else {
+            fprintf(stderr, "error: Option requires an argument.\n");
+            config->intent = INTENT_ERROR;
+            return -1;
+          }
+          int res = apply_option(opt->id, val, config);
+          if (res < 0) {
+            return -1;
+          }
+          if (res == 1) {
+            return 0;
+          }
+          handled = true;
+          break;
+        }
+
+        int res = apply_option(opt->id, nullptr, config);
+        if (res < 0) {
+          return -1;
+        }
+        if (res == 1) {
+          return 0;
+        }
+      }
+      if (!handled) {
+        continue;
+      }
+      continue;
+    }
+
+    append_extra_arg(config, arg);
   }
 
   return 0;
 }
-// NOLINTEND(misc-include-cleaner)

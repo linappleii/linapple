@@ -3,7 +3,6 @@
 
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_surface.h>
-#include <SDL3_image/SDL_image.h>
 
 #include <cstdio>
 #include <string>
@@ -11,7 +10,6 @@
 #include "core/Asset.h"
 #include "core/Util_Path.h"
 #include "frontends/sdl3/SdlPtr.h"
-#include "icon.xpm"
 
 namespace {
 SdlSurfacePtr_t s_icon_surface;
@@ -61,15 +59,11 @@ auto sdl_asset_load_icon() -> void {
 
   sdl_asset_free_icon();
   asset_set_free_icon_callback(sdl_asset_free_icon);
-  // NOLINTBEGIN(cppcoreguidelines-pro-type-const-cast)
-  // Justification: SDL3_image IMG_ReadXPMFromArray requires non-const char**
-  // parameter.
-  s_icon_surface.reset(IMG_ReadXPMFromArray(const_cast<char**>(icon_xpm)));
-  // NOLINTEND(cppcoreguidelines-pro-type-const-cast)
+  s_icon_surface = sdl_asset_load_bmp("icon.bmp");
   if (s_icon_surface == nullptr) {
     std::fprintf(stderr, "sdl_asset_load_icon: Failed to load icon: %s\n",
                  SDL_GetError());
     return;
   }
-  assets->icon = s_icon_surface.get();
+  assets->icon = static_cast<void*>(s_icon_surface.get());
 }
