@@ -239,7 +239,7 @@ auto keyboard_custom_apple_line(uint32_t scancode) -> int {
   return g_custom_apple_line.at(scancode);
 }
 
-void keyboard_apply_custom_mappings() {
+auto keyboard_apply_custom_mappings() -> void {
   peripheral_command(0, keyboard_cmd_clear_custom_keys, nullptr, 0);
   g_custom_apple_line.fill(k_no_apple_line);
 
