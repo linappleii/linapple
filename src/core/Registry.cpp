@@ -296,6 +296,11 @@ auto Configuration_t::load_defaults() -> void {
   set_int(cfg_sec_configuration, cfg_mouse_in_slot4, 0);
   set_int(cfg_sec_configuration, cfg_printer_append, 1);
   set_int(cfg_sec_configuration, cfg_printer_eight_bit, 0);
+  set_string(cfg_sec_configuration, cfg_serial_port, "");
+  set_string(cfg_sec_configuration, cfg_serial_switches_1,
+             "OFF OFF OFF ON ON ON ON");
+  set_string(cfg_sec_configuration, cfg_serial_switches_2,
+             "ON ON ON ON OFF ON OFF");
   set_int(cfg_sec_configuration, cfg_hdd_enabled, 0);
   set_int(cfg_sec_configuration, cfg_save_state_on_exit, 0);
   set_int(cfg_sec_configuration, "Fullscreen", 0);

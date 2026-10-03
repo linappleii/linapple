@@ -33,6 +33,7 @@
 #include "frontends/common/HostSink.h"
 #include "frontends/common/PrinterFrontend.h"
 #include "frontends/common/SaveStateManager.h"
+#include "frontends/common/SuperSerialFrontend.h"
 
 static bool s_initialized = false;
 
@@ -82,12 +83,27 @@ static auto configure_printer_sink() -> void {
   printer_frontend_install(settings);
 }
 
+// The serial port is told its settings after the cards exist, because the
+// switch rows reach a card through its command queue and the slot the device
+// sits behind is whichever slot took them.
+static auto configure_serial_port() -> void {
+  SuperSerialFrontendSettings_t settings{};
+  config_load_string(cfg_sec_configuration, cfg_serial_port, &settings.port);
+  config_load_string(cfg_sec_configuration, cfg_serial_switches_1,
+                     &settings.switches_1);
+  config_load_string(cfg_sec_configuration, cfg_serial_switches_2,
+                     &settings.switches_2);
+  settings.base_dir = system_state.save_state_dir.data();
+  super_serial_frontend_configure(settings);
+}
+
 // The host sink goes in before any device is configured, so that on a
 // re-initialisation the previous run's devices are closed through it before
 // their settings change under them.
 static auto install_host_sink() -> void {
   host_sink_install();
   configure_printer_sink();
+  configure_serial_port();
 }
 
 static auto initialize_directory(const char* reg_key, char* target_buffer,

@@ -114,8 +114,11 @@ cmake --build build -j$(nproc)
 * **Authentic Hardware Emulation:**
   * MOS 6502 and 65C02 CPUs with cycle-accurate timing.
   * 128K memory, 80-column text card, and auxiliary RAM bank-switching.
-  * Apple Mouse Card, Mockingboard / Phasor multi-channel sound, Super Serial
-    Card (SSC), and a ThunderClock-compatible ProDOS clock card.
+  * Apple Mouse Card, Mockingboard / Phasor multi-channel sound, and a
+    ThunderClock-compatible ProDOS clock card.
+  * Super Serial Card (SSC) running Apple's firmware, its RS-232 line cabled
+    to a host serial port, a pseudo-terminal (`pty`) for terminal programs
+    and `tcpser`, a loopback plug, or a file.
   * Native analog & USB joystick support with paddle calibration.
 
 * **Modern Multi-Frontend Architecture:**

@@ -55,6 +55,9 @@ constexpr const char* cfg_joy_axis2_1 = "Joystick 1 Axis 1";
 constexpr const char* cfg_pprinter_filename = "Parallel Printer Filename";
 constexpr const char* cfg_printer_append = "Append to printer file";
 constexpr const char* cfg_printer_eight_bit = "Printer 8-bit output";
+constexpr const char* cfg_serial_port = "Serial Port";
+constexpr const char* cfg_serial_switches_1 = "Serial Switches 1";
+constexpr const char* cfg_serial_switches_2 = "Serial Switches 2";
 
 constexpr const char* cfg_pdl_xtrim = "PDL X-Trim";
 constexpr const char* cfg_pdl_ytrim = "PDL Y-Trim";
