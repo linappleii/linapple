@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "SdlBackend.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
