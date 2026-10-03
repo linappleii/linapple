@@ -34,8 +34,6 @@ struct Out_t {
   uint8_t byte;
 };
 
-// A chip with the NTSC clock, reset at cycle 0, that records every byte it
-// sends with the cycle the step that carried it was made at.
 struct Bench_t {
   Acia6551_t acia;
   std::vector<Out_t> sent;

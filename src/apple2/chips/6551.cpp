@@ -6,10 +6,9 @@
 
 namespace {
 
-// The baud-rate generator divides the 1.8432 MHz crystal by 16 and by this
-// divisor (SY6551 Fig. 6, p. 3-175; p. 3-174); code 0 selects the 16x
-// external clock, which the Super Serial Card does not supply (1981 manual
-// p. 54), so with it nothing moves.
+// The 1.8432 MHz crystal divided by 16 and by this (SY6551 Fig. 6, p. 3-175);
+// code 0 is the 16x external clock, which the SSC does not supply (1981
+// manual p. 54), so with it nothing moves.
 constexpr std::array<uint32_t, 16> divisors = {
     {0, 2304, 1536, 1048, 856, 768, 384, 192, 96, 64, 48, 32, 24, 16, 12, 6}};
 constexpr std::array<uint32_t, 16> bauds = {{0, 50, 75, 110, 135, 150, 300, 600,
@@ -18,9 +17,9 @@ constexpr std::array<uint32_t, 16> bauds = {{0, 50, 75, 110, 135, 150, 300, 600,
 constexpr uint64_t crystal_millihertz = 1843200000;
 constexpr uint32_t sixteenths_per_bit = 16;
 constexpr uint32_t sixteenths_per_half_bit = 8;
-// RDRF and its interrupt are set "at about the 9/16 point through the Stop
-// Bit" (W65C51S p. 16); with 1.5 stop bits "halfway through the trailing
-// half-Stop Bit" (p. 21), the same 9 sixteenths from the stop bit's start.
+// RDRF is set "at about the 9/16 point through the Stop Bit" (W65C51S p. 16);
+// with 1.5 stop bits "halfway through the trailing half-Stop Bit" (p. 21),
+// the same 9 sixteenths.
 constexpr uint32_t rdrf_sixteenths_into_stop = 9;
 constexpr uint8_t parity_none = 0;
 constexpr uint8_t parity_odd = 1;
@@ -53,9 +52,8 @@ auto parity_of(const Acia6551_t* a) noexcept -> uint8_t {
                                acia_command::parity_mode_shift));
 }
 
-// Two stop bits when bit 7 is set, except one with 8 data bits and parity
-// and 1.5 with 5 data bits and no parity (SY6551 Fig. 6; IIc Tech Ref
-// p. 262).
+// Bit 7 set means two stop bits, except one with 8 data bits and parity and
+// 1.5 with 5 data bits and no parity (SY6551 Fig. 6; IIc Tech Ref p. 262).
 auto stop_half_bits(const Acia6551_t* a) noexcept -> uint8_t {
   if ((a->control & acia_control::two_stop_bits) == 0) {
     return 2;
@@ -90,8 +88,8 @@ auto set_latch(Acia6551_t* a, uint8_t bit, bool on) noexcept -> void {
   }
 }
 
-// The transmitter is disabled while CTS is deasserted (SY6551 p. 3-174) and
-// with TIC 00 (Fig. 7); a break holds the line, so nothing leaves then either.
+// CTS deasserted disables the transmitter (SY6551 p. 3-174), as does TIC 00
+// (Fig. 7); a break holds the line.
 auto transmitter_sends(const Acia6551_t* a) noexcept -> bool {
   return has_clock(a) && tic(a) != acia_command::tic_off &&
          tic(a) != acia_command::tic_break && (a->lines & acia_line::cts) != 0;
@@ -115,10 +113,8 @@ auto emit(Acia6551_t* a, uint8_t byte) noexcept -> void {
   a->has_pending_out = true;
 }
 
-// The TDR moves into the shift register and a start bit begins at once
-// (W65C51S p. 17, "a Start Bit immediately occurs"); TDRE returns to 1 and,
-// with TIC 01 and DTR, the interrupt is raised "at the beginning of the
-// Start Bit" (p. 16).
+// "A Start Bit immediately occurs" (W65C51S p. 17); with TIC 01 the interrupt
+// is raised "at the beginning of the Start Bit" (p. 16).
 auto start_transmit(Acia6551_t* a, uint64_t at) noexcept -> void {
   emit(a, a->transmit_data);
   set_latch(a, acia_latch::tdr_full, false);
@@ -137,11 +133,9 @@ auto try_start_transmit(Acia6551_t* a, uint64_t at) noexcept -> void {
   }
 }
 
-// Whether the transmitter's character clock has a boundary worth computing:
-// a character ending, an interrupt to repeat with TIC 01 and nothing loaded
-// (W65C51S p. 17: "IRQB interrupts continue to occur at the same rate as
-// previously, yet no data is transmitted"), or a break waiting for the next
-// character boundary to begin (p. 21).
+// With TIC 01 and nothing loaded "IRQB interrupts continue to occur at the
+// same rate as previously, yet no data is transmitted" (W65C51S p. 17); a
+// break begins at the next character boundary (p. 21).
 auto tx_boundary_armed(const Acia6551_t* a) noexcept -> bool {
   if (!has_clock(a) || frame_cycles(a) == 0) {
     return false;
@@ -181,12 +175,10 @@ auto on_tx_boundary(Acia6551_t* a, uint64_t at) noexcept -> void {
   }
 }
 
-// A byte completing while RDRF is still set sets the overrun bit, leaves
-// the RDR holding the earlier byte and is itself lost (W65C51S p. 18). The
-// three error bits clear together on the first error-free byte after a data
-// read (SY6551 Fig. 8; W65C51S p. 20). DTR gates the interrupt, not the
-// completion: a character already being received completes (W65C51S p. 23,
-// note 2).
+// A byte completing into a full RDR sets overrun and is lost; the RDR keeps
+// the earlier byte (W65C51S p. 18). The error bits clear together on the
+// next clean byte (SY6551 Fig. 8; W65C51S p. 20). DTR gates the interrupt,
+// not the completion (W65C51S p. 23, note 2).
 auto on_rx_rdrf(Acia6551_t* a) noexcept -> void {
   a->rx_completed = true;
   const uint8_t byte = a->shift_data;
@@ -205,8 +197,7 @@ auto on_rx_rdrf(Acia6551_t* a) noexcept -> void {
   if (dtr(a) && (a->command & acia_command::rx_irq_disable) == 0) {
     raise_irq(a, false);
   }
-  // Echo mode: the transmitter repeats each received byte (SY6551 Fig. 7,
-  // "bits 2 and 3 must be 0"), modelled as the byte leaving again.
+  // Echo mode requires TIC 00 (SY6551 Fig. 7, "bits 2 and 3 must be 0").
   if ((a->command & acia_command::echo) != 0 &&
       tic(a) == acia_command::tic_off && has_clock(a) &&
       (a->lines & acia_line::cts) != 0) {
@@ -219,9 +210,8 @@ auto on_rx_free(Acia6551_t* a, uint64_t at) noexcept -> void {
   a->rx_freed_cycle = at;
 }
 
-// Time went backwards (a snapshot restored a smaller counter, a test swapped
-// CPU contexts): nothing elapsed, and whatever was in flight keeps the time
-// it had left.
+// Time went backwards (a restored snapshot, a swapped CPU context): nothing
+// elapsed, and whatever was in flight keeps the time it had left.
 auto rebase(Acia6551_t* a, uint64_t now) noexcept -> void {
   const uint64_t back = a->synced - now;
   a->synced = now;
@@ -235,7 +225,6 @@ auto rebase(Acia6551_t* a, uint64_t now) noexcept -> void {
       a->rdr_emptied_cycle >= back ? a->rdr_emptied_cycle - back : 0;
 }
 
-// Runs every event between synced and now at its own cycle, in time order.
 auto advance(Acia6551_t* a, uint64_t now) noexcept -> void {
   if (now < a->synced) {
     rebase(a, now);
@@ -250,9 +239,8 @@ auto advance(Acia6551_t* a, uint64_t now) noexcept -> void {
     if (next == 0 || next > now) {
       break;
     }
-    // Every event due at this cycle runs, the transmitter's boundary last,
-    // so a boundary that coincides with a receive event is not skipped when
-    // the clock is re-anchored at the cycle just reached.
+    // Decided before the receive events run: they re-anchor the clock at
+    // this cycle, which would hide a transmit boundary coinciding with them.
     const bool tx_due = tx_boundary_armed(a) && next_tx_boundary(a) == next;
     a->synced = next;
     if (latch(a, acia_latch::rx_busy) && !a->rx_completed &&
@@ -276,10 +264,8 @@ auto acia_cycles_for(const Acia6551_t* a, uint32_t sixteenths) noexcept
   if (a == nullptr || !has_clock(a)) {
     return 0;
   }
-  // A bit is 16 x divisor crystal periods, so sixteenths of a bit at a host
-  // clock of clock_mhz / 1000 Hz is clock_mhz x divisor x sixteenths /
-  // 1,843,200,000 cycles, rounded to the nearest; the largest product (50
-  // baud, an 11-bit frame) is below 2^50.
+  // A bit is 16 x divisor crystal periods; the largest product (50 baud, an
+  // 11-bit frame) is below 2^50.
   const uint64_t numerator = a->clock_mhz * divisor_of(a) * sixteenths;
   return (numerator * 2 + crystal_millihertz) / (2 * crystal_millihertz);
 }
@@ -403,19 +389,17 @@ auto acia_read(Acia6551_t* a, uint8_t reg, uint64_t now) noexcept -> uint8_t {
   advance(a, now);
   switch (reg & acia_reg::mask) {
     case acia_reg::data:
-      // Reading the RDR clears RDRF and nothing else (SY6551 Fig. 8). With
-      // RDRF clear the register still holds the last byte received
-      // (inferred from W65C51S p. 18, "will contain the last valid data
-      // word received"; the sheets do not say outright).
+      // Clears RDRF alone (SY6551 Fig. 8); the register "will contain the
+      // last valid data word received" (W65C51S p. 18, inferred for a read
+      // with RDRF clear).
       if (latch(a, acia_latch::rdrf)) {
         set_latch(a, acia_latch::rdrf, false);
         a->rdr_emptied_cycle = now;
       }
       return a->receive_data;
     case acia_reg::status: {
-      // DSR and DCD report the pin, 1 meaning the line is not asserted;
-      // reading the status register clears the IRQ latch and releases the
-      // line (SY6551 Fig. 8; W65C51S p. 8).
+      // DSR and DCD read 1 when the line is not asserted; the read clears
+      // the IRQ latch (SY6551 Fig. 8; W65C51S p. 8).
       uint8_t status =
           a->status_latches & (acia_latch::error_mask | acia_latch::rdrf);
       if (!latch(a, acia_latch::tdr_full)) {
@@ -450,8 +434,7 @@ auto acia_write(Acia6551_t* a, uint8_t reg, uint8_t value, uint64_t now,
   advance(a, now);
   switch (reg & acia_reg::mask) {
     case acia_reg::data:
-      // A byte written while the TDR is full replaces it: no sheet offers
-      // any protection.
+      // A write to a full TDR replaces it: no sheet offers any protection.
       a->transmit_data = value;
       set_latch(a, acia_latch::tdr_full, true);
       try_start_transmit(a, now);
@@ -463,10 +446,8 @@ auto acia_write(Acia6551_t* a, uint8_t reg, uint8_t value, uint64_t now,
       const bool was_break = tic(a) == acia_command::tic_break;
       a->command = value;
       // Leaving break mode "generates an immediate Stop Bit" (W65C51S
-      // p. 21). Disabling an interrupt source stops new assertions and
-      // leaves a set latch, by analogy with the programmed reset, which
-      // leaves an RDRF or TDRE interrupt asserted (p. 23); the sheets do
-      // not say so outright.
+      // p. 21). Disabling an interrupt source leaves a set latch, by analogy
+      // with the programmed reset (p. 23); the sheets do not say so outright.
       if (was_break && tic(a) != acia_command::tic_break) {
         a->break_level = false;
       }
@@ -477,9 +458,8 @@ auto acia_write(Acia6551_t* a, uint8_t reg, uint8_t value, uint64_t now,
     default: {
       const bool had_clock = has_clock(a);
       a->control = value;
-      // The character clock has nothing to run from until a rate is
-      // selected; whether it then runs from reset or from the first
-      // character is not stated (inferred: from the moment it exists).
+      // Whether the character clock runs from reset or from the rate being
+      // selected is not stated (inferred: from the moment it exists).
       if (!had_clock && has_clock(a)) {
         a->tx_anchor = now;
       }
@@ -509,8 +489,8 @@ auto acia_rx_ready(const Acia6551_t* a) noexcept -> bool {
   if (a == nullptr) {
     return false;
   }
-  // DCD "must be low for the Receiver to operate" (SY6551 p. 3-174) and
-  // DTR deasserted disables it (Fig. 7).
+  // DCD "must be low for the Receiver to operate" (SY6551 p. 3-174); DTR
+  // deasserted disables it (Fig. 7).
   return has_clock(a) && dtr(a) && (a->lines & acia_line::dcd) != 0 &&
          !latch(a, acia_latch::rx_busy) && !latch(a, acia_latch::rdrf);
 }
@@ -524,11 +504,9 @@ auto acia_rx_start(Acia6551_t* a, uint8_t byte, uint8_t errors,
   if (latch(a, acia_latch::rx_busy)) {
     return;
   }
-  // The byte begins when the receiver became ready, if that was inside the
-  // interval just advanced through, otherwise now: a byte pulled at the
-  // first opportunity starts at the free point or the data read that made
-  // room for it, and one that arrived while the receiver sat idle starts
-  // when it is noticed.
+  // A byte pulled at the first opportunity starts where the receiver became
+  // ready, if that was inside the interval just advanced through; one that
+  // found the receiver idle starts when it is noticed.
   const uint64_t ready_since = a->rx_freed_cycle > a->rdr_emptied_cycle
                                    ? a->rx_freed_cycle
                                    : a->rdr_emptied_cycle;
@@ -554,8 +532,7 @@ auto acia_line_view(const Acia6551_t* a, AciaLine_t* out) noexcept -> void {
   out->parity = parity_of(a);
   out->stop_half_bits = stop_half_bits(a);
   out->dtr = dtr(a) ? 1 : 0;
-  // RTS is asserted whenever the transmitter is on (SY6551 Fig. 7, TIC 01,
-  // 10 and 11).
+  // RTS follows the transmitter being on (SY6551 Fig. 7, TIC 01, 10 and 11).
   out->rts = tic(a) != acia_command::tic_off ? 1 : 0;
   out->brk = a->break_level ? 1 : 0;
 }

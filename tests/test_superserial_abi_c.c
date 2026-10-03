@@ -1,23 +1,16 @@
 // SPDX-License-Identifier: GPL-2.0-only
-/* C99 compilation smoke test: a plugin written in C must be able to include
- * the serial card's ABI headers and lay out its state frame and its switch
- * payload the way the card does. The descriptor accessor is declared but not
- * called, because in a plugin build it lives inside the shared object. */
+/* A plugin written in C must see the same frame and switch payload. */
 #include <stddef.h>
 #include <stdint.h>
 
 #include "apple2/peripherals/super_serial_card/SuperSerial.h"
 #include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
 
-/* The descriptor accessor is part of the C ABI; its prototype is compiled
- * here but it is never referenced, because in a plugin build the function
- * lives inside the shared object and the test binary does not link it. */
+/* Declared, never called: in a plugin build it lives inside the shared
+ * object. */
 struct Peripheral_t* super_serial_get_descriptor(void);
 
-/* C99 has no static_assert; an array of negative size fails the same way.
- * The frame has been written by the slot trailer of every default .aws, so
- * its size and the offsets of its named bytes are pinned here as C sees
- * them. */
+/* C99 has no static_assert; an array of negative size fails the same way. */
 typedef char superserial_frame_is_56_bytes[sizeof(SuperSerialSaveState_t) == 56
                                                ? 1
                                                : -1];

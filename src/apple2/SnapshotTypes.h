@@ -45,10 +45,8 @@ struct SsCpu6502_t {
   uint64_t cumulative_cycles;
 };
 
-// The 32 bytes an AppleWin .aws file spends on the serial card. The region is
-// layout only: no code writes or reads its fields, the card's own frame does
-// not fit in it and rides the slot trailer instead, and every written file
-// carries it as zeros.
+// The 32 bytes an AppleWin .aws spends on the serial card: layout only, kept
+// as zeros, since the card's own frame rides the slot trailer.
 struct SsIoComms_t {
   uint32_t baud_rate;
   uint8_t byte_size;

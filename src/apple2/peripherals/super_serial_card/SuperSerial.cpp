@@ -20,32 +20,27 @@ namespace {
 constexpr int min_slot = 1;
 constexpr int max_slot = 7;
 constexpr uint16_t io_register_mask = 0x0F;
-// The 6551 is selected by A3 = 1, A2 = 0 and A1-A0 pick the register (1981
-// manual p. 47), so it answers $C0n8-$C0nB alone.
+// A3 = 1, A2 = 0 selects the 6551, A1-A0 the register (1981 manual p. 47).
 constexpr uint16_t acia_select_mask = 0x0C;
 constexpr uint16_t acia_selected = 0x08;
 constexpr double millihertz_per_hertz = 1000.0;
 
-// SW1 OFF OFF OFF ON ON ON ON and SW2 ON ON ON ON OFF ON OFF: communications
-// mode at 9600 baud, 8 data bits, no parity, one stop bit, no line feed after
-// a carriage return, DCD from DB-25 pin 8 and the ACIA's interrupt line
-// reaching the slot. Neither manual states a factory setting; this is the
-// 1981 manual's communications example (Table 3-1) at the card's top rate.
+// SW1 OFF OFF OFF ON ON ON ON, SW2 ON ON ON ON OFF ON OFF: communications
+// mode, 9600 8N1, no LF after CR, interrupts to the slot. Neither manual
+// states a factory setting; this is the 1981 manual's communications example
+// (Table 3-1) at the card's top rate.
 constexpr uint8_t default_switches_1 = 0x78;
 constexpr uint8_t default_switches_2 = 0x2F;
 constexpr uint8_t switch_bit_7 = 0x80;
-// SW2-6 ON connects the ACIA's IRQ to the slot's interrupt line; OFF leaves
-// the status bit alone in the card (1981 manual p. 47).
+// SW2-6 ON connects the ACIA's IRQ to the slot (1981 manual p. 47).
 constexpr uint8_t switch_2_6 = 0x20;
 constexpr uint16_t switches_1_offset = 1;
 constexpr uint16_t switches_2_offset = 2;
-// Two 74LS365 buffers present the switches at $C0n1 and $C0n2 (1981 manual
-// p. 47; p. 54, Table A-7): SW1-1..4 in bits 7-4 and SW1-5..6 in bits 1-0 of
-// $C0n1, SW2-1 in bit 7, SW2-2 in bit 5, SW2-3..5 in bits 3-1 and CTS in
-// bit 0 of $C0n2; a closed switch reads 0, as does an asserted CTS. The four
-// bits no buffer drives read 1 through the data-bus pull-ups (p. 48;
-// inferred: the manual places the pull-ups but does not say what the
-// firmware, which masks these bits off, would see).
+// Two 74LS365 buffers (1981 manual p. 47; Table A-7 p. 54): $C0n1 holds
+// SW1-1..4 in bits 7-4 and SW1-5..6 in bits 1-0; $C0n2 holds SW2-1 in bit 7,
+// SW2-2 in bit 5, SW2-3..5 in bits 3-1 and CTS in bit 0. A closed switch and
+// an asserted CTS read 0. The undriven bits read 1 through the data-bus
+// pull-ups (p. 48; inferred, the firmware masks them off).
 constexpr uint8_t switches_1_undriven = 0x0C;
 constexpr uint8_t switches_2_undriven = 0x50;
 constexpr uint8_t cts_deasserted = 0x01;
@@ -100,11 +95,6 @@ struct SuperSerialCard_t {
   bool slot_irq = false;
 };
 
-// With no cable the three receiver inputs read asserted through the card's
-// 15 kOhm pull-ups (1981 manual p. 48), so a host with nothing to say about
-// them is read that way.
-// Bit k of the image is switch k + 1 and 1 means ON; the register bit a
-// switch drives reads 0 when the switch is ON.
 auto switch_reads_0(uint8_t image, int number) -> bool {
   return (image & static_cast<uint8_t>(1U << (number - 1))) != 0;
 }
@@ -133,6 +123,8 @@ auto switches_2_byte(const SuperSerialCard_t* card) -> uint8_t {
   return byte;
 }
 
+// A host with nothing to say reads as no cable: the card's 15 kOhm pull-ups
+// assert all three inputs (1981 manual p. 48).
 auto host_lines(SuperSerialCard_t* card) -> uint8_t {
   uint8_t mask = 0;
   if (card->host->SinkGetLines(card->sink, &mask)) {
@@ -148,12 +140,10 @@ auto send_bytes(SuperSerialCard_t* card, uint64_t now) -> void {
   }
 }
 
-// The emulated line is flow-controlled: the far end honours RTS, so the next
-// byte is taken from the host only once the receiver can hold it. A
-// terminal program that reads promptly sees the hardware's rate; one that
-// does not sees the bytes wait, never an overrun. With the receiver disabled
-// the hardware loses what arrives; here it waits in the host's ring and
-// arrives once the receiver is enabled again.
+// The far end is taken to honour RTS: a byte leaves the host only once the
+// receiver can hold it, so a slow reader sees bytes wait rather than an
+// overrun, and a disabled receiver's bytes wait instead of being lost as on
+// hardware.
 auto pull_byte(SuperSerialCard_t* card, uint64_t now) -> void {
   if (!acia_rx_ready(&card->acia)) {
     return;
@@ -200,8 +190,6 @@ auto follow_irq(SuperSerialCard_t* card) -> void {
   card->host->AssertIrq(card->slot, level);
 }
 
-// Brings the chip up to the present: the inputs as the host reports them,
-// then every character boundary that has passed, each at its own cycle.
 auto sync(SuperSerialCard_t* card) -> uint64_t {
   const uint64_t now = card->host->GetCycles();
   acia_set_lines(&card->acia, host_lines(card), now);
@@ -209,11 +197,8 @@ auto sync(SuperSerialCard_t* card) -> uint64_t {
   return now;
 }
 
-// What follows every access, wake and think: bytes that left, the next byte
-// from the line if the receiver is free, the format and the interrupt line,
-// and a wake at the next cycle the chip does something no access brings
-// about, so TDRE, RDRF and the receiver's free point land within one
-// instruction of their cycle. An idle chip asks for nothing.
+// The wake lands TDRE, RDRF and the receiver's free point within one
+// instruction of their cycle; an idle chip's 0 cancels it.
 auto settle(SuperSerialCard_t* card, uint64_t now) -> void {
   send_bytes(card, now);
   pull_byte(card, now);
@@ -243,10 +228,9 @@ auto super_serial_io_read(void* instance, uint16_t program_counter,
   } else if (offset == switches_2_offset) {
     value = switches_2_byte(card);
   } else {
-    // Whether an undecoded address returns the floating bus or $FF from the
-    // data-bus pull-ups depends on when the card's LS245 is enabled, which
-    // the legible part of the schematic does not settle (1981 manual
-    // p. 48); the floating bus is kept until it does.
+    // Floating bus or $FF from the pull-ups depends on when the card's LS245
+    // is enabled, which the legible part of the schematic does not settle
+    // (1981 manual p. 48).
     value = card->host->ReadFloatingBus(executed_cycles);
   }
   settle(card, now);
@@ -277,13 +261,8 @@ auto super_serial_io_write(void* instance, uint16_t program_counter,
   return 0;
 }
 
-// Without the slot line the firmware's interrupt switch has nothing to
-// forward, without the ROMs PR#n never reaches the firmware, without the bus
-// and the clock the ACIA cannot answer an undecoded read or pace a character,
-// without the sink the line has no far end and without a wake-up a character
-// boundary no program polls would wait for the frame's end: better no card
-// than a phantom one, and the log says which member was missing. Log itself
-// is the one refusal nothing can report.
+// Better no card than a phantom one; the log names the member. Log itself is
+// the one refusal nothing can report.
 auto missing_host_member(const HostInterface_t* host) -> const char* {
   if (host->AssertIrq == nullptr) {
     return "AssertIrq";
@@ -366,8 +345,7 @@ auto super_serial_abi_init(int slot, HostInterface_t* host) -> void* {
   }
 
   // The ACIA runs from the card's own 1.8432 MHz crystal (1981 manual p. 45),
-  // so its character times are fixed in seconds and vary in 6502 cycles with
-  // the machine's clock.
+  // so a character time in 6502 cycles varies with the machine's clock.
   acia_set_clock_mhz(&card->acia,
                      static_cast<uint64_t>(std::llround(host->GetClockHz() *
                                                         millihertz_per_hertz)));
@@ -385,9 +363,8 @@ auto super_serial_abi_init(int slot, HostInterface_t* host) -> void* {
   return card.release();
 }
 
-// RESET reaches the ACIA (inferred: the schematic's trace is not legible,
-// 1981 manual p. 100) and clears control and command, so Ctrl-Reset drops
-// DTR and RTS; the switches are soldered configuration and survive.
+// RESET reaches the ACIA (inferred; the schematic's trace is not legible,
+// 1981 manual p. 100), so Ctrl-Reset drops DTR and RTS. The switches survive.
 auto super_serial_abi_reset(void* instance) -> void {
   if (instance == nullptr) {
     return;
@@ -450,8 +427,6 @@ auto super_serial_abi_command(void* instance, uint32_t command_id,
   return peripheral_ok;
 }
 
-// The card answers no query: its switches are the frontend's to know and its
-// registers are read at $C0n8-$C0nB.
 auto super_serial_abi_query(void* instance, uint32_t query_id, void* output,
                             size_t* output_size) -> PeripheralStatus_t {
   (void)instance;
@@ -494,12 +469,9 @@ auto super_serial_abi_save_state(void* instance, void* state_buffer,
   return peripheral_ok;
 }
 
-// A slot's snapshot buffer may be larger than the frame (the layer sizes it
-// for the biggest card), so the frame's own struct_size says how much to
-// read. Nothing changes until the frame has passed every check. The switches
-// are not in the frame and keep what the frontend set; the inputs are read
-// from the host again; the host's rings are the wire's and keep what was
-// in flight.
+// The slot buffer is sized for the biggest card, so the frame's own
+// struct_size says how much to read. The switches are not in the frame and
+// keep what the frontend set.
 auto super_serial_abi_load_state(void* instance, const void* state_buffer,
                                  size_t buffer_size) -> PeripheralStatus_t {
   constexpr size_t header_size = offsetof(SuperSerialSaveState_t, rx_count);

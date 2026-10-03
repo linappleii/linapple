@@ -27,8 +27,8 @@ struct CpuRegisters_t {
   bool is_jammed = false;  // CPU has crashed on illegal instruction (NMOS 6502)
 };
 
-// The slice bound and its flag are not saved here: a context switch never
-// happens inside cpu_execute_slice, so there is nothing to carry across one.
+// The slice bound and flag are not here: no context switch happens inside
+// cpu_execute_slice.
 struct CpuInstance_t {
   CpuRegisters_t cpu_regs{};
   uint64_t cumulative_cycles = 0;
@@ -49,27 +49,19 @@ auto cpu_set_active_context(CpuInstance_t* context) noexcept -> void;
 
 auto cpu_destroy() noexcept -> void;
 auto cpu_calc_cycles(uint32_t executed_cycles) noexcept -> void;
-// Runs at least total_cycles from a fresh frame-relative count and tops up
-// the cumulative count at exit. One call is one batch: every I/O handler
-// sees executed_cycles as its offset into this batch.
+// One call is one batch: every I/O handler sees executed_cycles as its offset
+// into it.
 auto cpu_execute(uint32_t total_cycles) -> uint32_t;
-// A frame run as a sequence of slices is still one batch. cpu_begin_frame
-// starts the frame-relative count; each cpu_execute_slice continues it to
-// the first instruction boundary at or after the lesser of frame_cycles and
-// the frame-relative offset of until_cycle (an absolute cycle as
-// cpu_get_cumulative_cycles counts them; UINT64_MAX means no bound beyond
-// the frame's; a cycle at or behind now runs exactly one instruction), tops
-// up the cumulative count and returns the frame-relative total so far. A
-// handler sees the same executed_cycles it would see in one batch.
+// A frame run as slices is still one batch: cpu_begin_frame starts the
+// frame-relative count and each slice continues it to the first instruction
+// boundary at or after the lesser of frame_cycles and until_cycle (absolute;
+// UINT64_MAX for no bound; at or behind now runs one instruction), returning
+// the frame-relative total so far.
 auto cpu_begin_frame(uint32_t frame_cycles) noexcept -> void;
 auto cpu_execute_slice(uint32_t frame_cycles, uint64_t until_cycle) -> uint32_t;
-// Lowers the running slice's bound to the given absolute cycle, never raises
-// it, so an event scheduled from inside a register access ends the slice
-// within one instruction instead of at the frame's end. It means something
-// only while cpu_execute_slice is running: from a direct cpu_execute, a
-// think or a load it is a no-op, because a frame-relative bound computed
-// outside a slice would be nonsense and no direct cpu_execute may return
-// early.
+// Lowers the running slice's bound, never raises it. A no-op outside
+// cpu_execute_slice: a frame-relative bound computed there would be nonsense,
+// and no direct cpu_execute may return early.
 auto cpu_limit_cycles(uint64_t at_cumulative) noexcept -> void;
 auto cpu_get_cycles_this_frame(uint32_t executed_cycles) noexcept -> uint32_t;
 auto cpu_initialize() noexcept -> void;

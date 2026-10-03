@@ -5,15 +5,11 @@
 #include <cstddef>
 #include <cstdint>
 
-// The 2316 firmware ROM of Apple's Super Serial Card, part 341-0065, "Apple
-// II SSC firmware by Larry Kenyon, January 1981" (1981 manual p. 58, the
-// listing header), transcribed from res/roms/SSC.rom, whose SHA-1 the build
-// pins and which the suite compares against the image the 6502 sees. The
-// card's address decoder presents the last page, offsets $700-$7FF, at
-// $Cn00-$CnFF and the whole image at $C800-$CFFF (1981 manual p. 46,
-// Table 4-4), so offset $000 is the $C800 initialisation entry, JSR $C99B,
-// and offset $700 the $Cn00 entry; the last byte, $08 at $7FF, is the
-// firmware revision level the manual says $CnFF holds (p. 57, Table A-12).
+// Super Serial Card firmware, part 341-0065, "Apple II SSC firmware by Larry
+// Kenyon, January 1981" (1981 manual p. 58), transcribed from
+// res/roms/SSC.rom, whose SHA-1 the build pins. The last page, $700-$7FF, is
+// $Cn00-$CnFF and the whole image $C800-$CFFF (1981 manual p. 46, Table 4-4);
+// $7FF holds the revision level, $08 (p. 57, Table A-12).
 constexpr size_t super_serial_rom_size = 2048;
 constexpr size_t super_serial_rom_slot_page = 0x700;
 

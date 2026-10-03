@@ -175,7 +175,6 @@ auto sink_tick(void* ctx) -> void {
   }
 }
 
-// A printer only takes bytes: the receive side of the vtable stays empty.
 const ByteSink_t g_printer_sink = {.open = sink_open,
                                    .write = sink_write,
                                    .ready = sink_ready,

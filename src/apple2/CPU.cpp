@@ -39,9 +39,8 @@ CpuRegisters_t regs;
 uint64_t g_cumulative_cycles = 0;
 static uint32_t g_cycles_submitted;
 static uint32_t g_cycles_executed;
-// The execute loop's bound, frame-relative like g_cycles_executed. A direct
-// cpu_execute sets it to its own count; a slice sets it and may have it
-// lowered from inside a handler while g_in_slice is true.
+// Frame-relative like g_cycles_executed; a handler may lower it while
+// g_in_slice is true.
 static uint32_t g_cycles_limit;
 static bool g_in_slice = false;
 static std::atomic<uint32_t> g_bm_irq{0};
@@ -2986,8 +2985,7 @@ static const OpcodeDesc_t s_opcodes_cmos[256] = {
     /* 0xFF */ {op_nop, 2},  // nop
 };
 
-// Runs from start_cycles to the first instruction boundary at or after
-// g_cycles_limit, which a handler may lower while the loop runs.
+// g_cycles_limit is re-read each turn because a handler may lower it.
 template <bool is_cmos>
 static auto cpu_execute_loop(uint32_t start_cycles) -> uint32_t {
   CpuLoopContext_t ctx;
@@ -3022,8 +3020,7 @@ static auto internal_cpu_execute(uint32_t start_cycles) -> uint32_t {
       start_cycles);  // Enhanced Apple //e (CMOS 65C02)
 }
 
-// Whatever ends the slice, an exception out of a handler included, the limit
-// goes back to meaning nothing.
+// An exception out of a handler must not leave the slice flag set.
 struct SliceGuard_t {
   SliceGuard_t() noexcept { g_in_slice = true; }
   ~SliceGuard_t() { g_in_slice = false; }
@@ -3070,10 +3067,9 @@ auto cpu_limit_cycles(uint64_t at_cumulative) noexcept -> void {
   if (!g_in_slice || at_cumulative == UINT64_MAX) {
     return;
   }
-  // Inside a handler both counts already stand at the first cycle of the
-  // running instruction, so the frame-relative offset of the target is
-  // exact; a target at or behind now bounds the slice at the current count,
-  // and the do-while then ends it at the next instruction boundary.
+  // Inside a handler both counts stand at the running instruction's first
+  // cycle, so the offset is exact; a target at or behind now ends the slice
+  // at the next instruction boundary.
   uint64_t bound = g_cycles_executed;
   if (at_cumulative > g_cumulative_cycles) {
     bound += at_cumulative - g_cumulative_cycles;

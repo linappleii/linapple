@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// The one byte sink the frontend installs behind the host interface. The
-// bridge opens each slot with a kind, and the dispatcher forwards every call
-// for that slot to the printer's or the serial port's implementation, so a
-// card never learns which device the frontend put behind its token.
+// The one byte sink behind the host interface: calls for a slot go to the
+// printer's or the serial port's implementation by the kind it was opened as.
 auto host_sink_install() -> void;

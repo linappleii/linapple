@@ -38,12 +38,9 @@ typedef enum {
   peripheral_serial_parity_space
 } PeripheralSerialParity_t;
 
-// The format a serial card has programmed and the outputs it drives, handed
-// to the host whenever either changes. baud is in bits per second, 0 meaning
-// the card has selected no clock and nothing moves; stop_half_bits is 2, 3 or
-// 4, so 1.5 stop bits are exact. For dtr, rts and brk, 1 = asserted, the
-// RS-232 line at its active level; the host maps dtr and rts to the kernel's
-// TIOCM_DTR and TIOCM_RTS, which are also 1 = asserted.
+// baud 0 means the card has selected no clock; stop_half_bits is 2, 3 or 4 so
+// 1.5 stop bits are exact; dtr, rts and brk are 1 = asserted, as the kernel's
+// TIOCM_DTR and TIOCM_RTS are.
 typedef struct {
   uint32_t baud;
   uint8_t data_bits;

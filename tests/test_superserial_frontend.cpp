@@ -39,8 +39,6 @@ constexpr int card_slot = 2;
 constexpr int second_card_slot = 4;
 constexpr int peer_wait_ms = 2000;
 
-// A machine with the card in slot 2 and the given port, plus any further
-// [Configuration] keys a case needs.
 auto serial_in_slot_2(
     const std::string& port,
     const std::vector<ScopedTestConfig_t::Entry_t>& extras = {})
@@ -56,8 +54,6 @@ auto serial_in_slot_2(
 
 auto sink() -> const ByteSink_t& { return super_serial_frontend_sink(); }
 
-// The card composes $C0n1 and $C0n2 from its switch image on every read, so
-// the register says what the frontend sent.
 auto read_switch_register(int slot, int offset) -> uint8_t {
   const auto address = static_cast<uint16_t>(0xC080 + (slot * 0x10) + offset);
   return io_map_dispatch(0, address, 0, 0, 0);
@@ -76,7 +72,6 @@ auto collect_log_line(LogLevel_t level, const char* message, void* user_data)
   }
 }
 
-// Captures every log line while in scope and puts the logger back as found.
 class ScopedLogCapture_t {
  public:
   ScopedLogCapture_t() : verbosity_(Logger::get_verbosity()) {
@@ -115,7 +110,6 @@ class ScopedLogCapture_t {
   LogLines_t lines_;
 };
 
-// The far end of the pseudo-terminal, as a terminal program would hold it.
 class Peer_t {
  public:
   explicit Peer_t(const std::string& path)
@@ -143,8 +137,7 @@ class Peer_t {
            static_cast<ssize_t>(text.size());
   }
 
-  // Returns the next byte, or -1 if none arrives within the wait; the
-  // kernel moves a byte across a pseudo-terminal at once, so the wait only
+  // The kernel moves a byte across a pseudo-terminal at once; the wait only
   // turns a hang into a failure.
   auto read_byte() const -> int {
     pollfd request{};
@@ -160,8 +153,8 @@ class Peer_t {
     return byte;
   }
 
-  // Returns what arrived, up to count bytes, within one wait overall, so a
-  // stream that stops short fails on its contents rather than on time.
+  // One wait overall, so a stream that stops short fails on its contents
+  // rather than on time.
   auto read_bytes(size_t count) const -> std::vector<uint8_t> {
     using Clock_t = std::chrono::steady_clock;
     const auto deadline =
@@ -226,9 +219,6 @@ auto write_file(const std::string& path, const std::string& text) -> void {
   out << text;
 }
 
-// A bench card that opens the kind of token it is told to and keeps the host
-// it was handed, so a case can drive the frontend's sink through the same
-// members a real card uses.
 struct TokenProbe_t {
   HostInterface_t* host = nullptr;
   void* token = nullptr;
@@ -313,11 +303,10 @@ TEST_CASE(
   REQUIRE(g_printer_probe.token != nullptr);
   HostInterface_t* host = g_serial_probe.host;
 
-  // The printer side of the installed sink is live: a printer slot is ready
-  // the moment it is opened, so the dispatcher is in and forwarding by kind.
+  // A printer slot is ready the moment it is opened, which proves the
+  // dispatcher is in and forwarding by kind.
   CHECK(host->SinkReady(g_printer_probe.token));
 
-  // The serial side has no device behind it.
   uint8_t byte = 0x5A;
   CHECK(host->SinkRead(g_serial_probe.token, &byte) == false);
   CHECK(byte == 0x5A);
@@ -366,8 +355,7 @@ TEST_CASE(
   CHECK(byte == 0x41);
   CHECK(sink().read(nullptr, card_slot, &byte) == false);
 
-  // Raw mode is the master's, so the peer gets the card's bytes unechoed and
-  // untranslated: 0x8D is not turned into CR LF and never comes back.
+  // Raw mode: 0x8D is neither expanded to CR LF nor echoed back.
   sink().write(nullptr, card_slot, 0x8D);
   CHECK(peer.read_byte() == 0x8D);
   CHECK(peer.has_byte() == false);
@@ -395,7 +383,7 @@ TEST_CASE(
     CHECK(byte == 0x31);
   }
 
-  // No peer: the master reports hang-up and EIO, which is the line idle.
+  // With no peer the master reports hang-up and EIO: the line idle.
   for (int i = 0; i < 5; ++i) {
     sink().tick(nullptr);
   }
@@ -481,7 +469,6 @@ TEST_CASE(
   CHECK(sink().get_lines(nullptr, card_slot, &lines));
   CHECK(lines == 0x06);
 
-  // The file exists from now on; only the sixtieth tick looks again.
   write_file(path, "");
   for (int tick = 1; tick < 60; ++tick) {
     sink().tick(nullptr);
@@ -578,10 +565,8 @@ TEST_CASE(
   CHECK((settings.c_lflag & ICANON) == 0);
   CHECK((settings.c_oflag & OPOST) == 0);
 
-  // The kernel's pseudo-terminal driver forces CS8 and clears PARENB on
-  // every change (a pseudo-terminal has no word length or parity), so of
-  // the parity bits only PARODD can be read back here; the word length and
-  // the parity enable are observable on a real port alone.
+  // The kernel's pty driver forces CS8 and clears PARENB on every change, so
+  // only PARODD can be read back here.
   line.parity = peripheral_serial_parity_odd;
   sink().set_line(nullptr, card_slot, &line);
   REQUIRE(tcgetattr(peer.fd(), &settings) == 0);
@@ -653,7 +638,6 @@ TEST_CASE(
   REQUIRE(super_serial_frontend_primary_slot() == card_slot);
   CHECK(super_serial_frontend_device_path(second_card_slot).empty());
 
-  // Both cards took the switches.
   CHECK(read_switch_register(card_slot, 1) == 0xEC);
   CHECK(read_switch_register(second_card_slot, 1) == 0xEC);
 
@@ -717,8 +701,7 @@ auto boot_to_prompt(HeadlessHarness_t& harness) -> void {
   REQUIRE(screen_has_row(harness, "]"));
 }
 
-// Runs one frame at a time until the condition holds or the cap is reached;
-// the cap turns a byte that never arrives into a failed check, not a hang.
+// The cap turns a byte that never arrives into a failed check, not a hang.
 template <typename Condition_t>
 auto run_frames_until(HeadlessHarness_t& harness, Condition_t condition)
     -> uint32_t {
@@ -730,8 +713,8 @@ auto run_frames_until(HeadlessHarness_t& harness, Condition_t condition)
   return frames;
 }
 
-// GETLN's buffer, zeroed through the write page as well as the image so a
-// stale byte from the prompt's own line cannot stand in for a received one.
+// Zeroed through the write page as well, so a stale byte from the prompt's
+// own line cannot stand in for a received one.
 auto clear_input_buffer() -> void {
   for (uint16_t address = 0x0200; address < 0x0210; ++address) {
     mem[address] = 0;
@@ -742,8 +725,6 @@ auto clear_input_buffer() -> void {
   }
 }
 
-// Opens the pseudo-terminal's peer end, or fails with the frontend's own
-// account of why there is none.
 auto open_peer(const ScopedLogCapture_t& log) -> std::string {
   REQUIRE(super_serial_frontend_primary_slot() == card_slot);
   const std::string path = super_serial_frontend_device_path(card_slot);
@@ -752,13 +733,10 @@ auto open_peer(const ScopedLogCapture_t& log) -> std::string {
   return path;
 }
 
-// Typed at the Applesoft prompt of an Enhanced //e with no disk: PR#2 hooks
-// CSW, Applesoft's CRDO and the prompt go to the card; GETLN echoes
-// PRINT "HELLO" and its Return, the statement prints HELLO, CRDO and the
-// prompt follow; GETLN echoes PR#0 and its Return, then PR#0 restores CSW so
-// nothing more arrives. In communications mode under the default switches
-// the firmware sends each COUT byte unchanged, bit 7 intact, and appends no
-// line feed (SW2-5 OFF).
+// After PR#2 hooks CSW: CRDO and the prompt, GETLN's echo of PRINT "HELLO"
+// and its Return, HELLO, CRDO and the prompt, GETLN's echo of PR#0 and its
+// Return. In communications mode the firmware sends each COUT byte with bit 7
+// intact and no line feed (SW2-5 OFF).
 const std::vector<uint8_t> applesoft_session_stream = {
     0x8D, 0xDD, 0xD0, 0xD2, 0xC9, 0xCE, 0xD4, 0xA0, 0xA2, 0xC8,
     0xC5, 0xCC, 0xCC, 0xCF, 0xA2, 0x8D, 0xC8, 0xC5, 0xCC, 0xCC,
@@ -766,9 +744,8 @@ const std::vector<uint8_t> applesoft_session_stream = {
 
 }  // namespace
 
-// The firmware ORs $80 into every received byte and hands it to GETLN, which
-// stores it at $0200 with no echo to the line; the card pulls the bytes one
-// character time apart, so the peer writes the whole word at once.
+// The firmware ORs $80 into each received byte for GETLN, which stores it at
+// $0200 with no echo to the line.
 TEST_CASE(
     "Serial Frontend: IN#2 at the Applesoft prompt takes HELLO written to the "
     "pseudo-terminal's peer into the input buffer, and the next line the peer "
@@ -782,7 +759,7 @@ TEST_CASE(
 
   harness.type_string("IN#2\r", 2);
   harness.run_frames(4);
-  // IN#2 hooks KSW to the slot page's input entry ($Cn05, which sets carry).
+  // KSW points at the slot page's input entry, $Cn05.
   CHECK(mem[0x38] == 0x05);
   CHECK(mem[0x39] == 0xC0 + card_slot);
 
@@ -799,8 +776,7 @@ TEST_CASE(
   CHECK(mem[0x0205] == 0x00);
   CHECK(peer.has_byte() == false);
 
-  // The Return ends HELLO, a syntax error; the next line prints 42. Both the
-  // error and the result stay on the 24-row screen.
+  // HELLO alone is a syntax error; both it and the 42 stay on the screen.
   REQUIRE(peer.write_text("\r"));
   harness.run_frames(6);
   REQUIRE(peer.write_text("PRINT 7*6\r"));
@@ -850,9 +826,8 @@ TEST_CASE(
   ScopedLogCapture_t log;
   HeadlessHarness_t harness(config);
   open_peer(log);
-  // The switch command's queue is drained inside configure itself, which
-  // app_controller_initialize has already run, so no frame or think stands
-  // between the constructor and these reads.
+  // No frame or think has run since the constructor: configure itself
+  // drained the switch command.
   CHECK(read_switch_register(card_slot, 1) == 0xEE);
   CHECK(read_switch_register(card_slot, 2) == 0x5A);
   CHECK(log.count_containing("Serial Switches") == 0);

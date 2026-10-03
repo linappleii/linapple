@@ -60,13 +60,11 @@ class ScopedLocalTimeProvider_t {
  * previous sink back, context included, on destruction. It records every byte
  * with the slot it came from, counts the writes it refused while not ready,
  * the readiness polls, opens, closes and ticks, and starts ready so a case
- * that never touches readiness sees every byte. For a line that also
- * receives it holds one receive queue per slot, so a byte queued for one card
- * is never read through another's token, counts the reads each slot made,
- * keeps the last line format a card sent and how many were sent, and answers
- * the modem inputs with a mask that starts with every line asserted, which is
- * what a card with no cable reads. The sink is a process global, so the guard
- * is neither copyable nor movable.
+ * that never touches readiness sees every byte. One receive queue per slot
+ * keeps a byte queued for one card from being read through another's token;
+ * the modem inputs start with every line asserted, as a card with no cable
+ * reads. The sink is a process global, so the guard is neither copyable nor
+ * movable.
  */
 class ScopedByteSink_t {
  public:

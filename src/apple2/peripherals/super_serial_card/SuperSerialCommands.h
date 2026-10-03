@@ -2,8 +2,7 @@
 #pragma once
 
 // NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
-// Justification: This header defines the C99-compatible public ABI for the
-// Super Serial Card.
+// Justification: C99-compatible public ABI of the Super Serial Card.
 
 #include <stdint.h>
 
@@ -15,32 +14,26 @@ extern "C" {
 
 enum { SUPER_SERIAL_STATE_VERSION = 1 };
 
-// The two blocks of seven rocker switches as the owner set them for the
-// device cabled to the card (1981 manual pp. 6-8, 22-24): bit k of each byte
-// is switch k + 1, 1 = ON, and bit 7 is no switch and must be 0. The card
-// composes the $C0n1 and $C0n2 bytes from this image on every read.
+// The two blocks of seven rocker switches (1981 manual pp. 6-8, 22-24): bit k
+// is switch k + 1, 1 = ON; bit 7 is no switch and must be 0.
 typedef struct {
   uint8_t sw1;
   uint8_t sw2;
 } SuperSerialSwitches_t;
 
-// Command ids 0x0001 (a received byte pushed by the host) and 0x0002 (a
-// parsed host configuration) and query ids 0x0001 and 0x0002 were retired
-// with the host path that used them; the values are never reused.
+// Command and query ids 0x0001 and 0x0002 belonged to a retired host path
+// and are never reused.
 typedef enum {
   SUPER_SERIAL_CMD_SET_SWITCHES = PERIPHERAL_SUBSYSTEM_SERIAL | 0x0003
 } SuperSerialCmd_t;
 
-// The card's state frame. It has ridden the slot trailer of every default
-// .aws since the trailer existed, so the fields named before status_latches
-// keep their offsets and bytes 28 to 51 keep their name; rx_count, the three
-// flag bytes, rx_buffer and config describe a receive queue and a host
-// configuration the card does not have, are written as zeros and are read
-// past. status_latches holds bit 0 PE, 1 FE, 2 OVRN, 3 RDRF, 4 TDR full, 5
-// transmit shifter busy, 6 receive shifter busy; bit 7 must be 0, so the
-// all-zero byte every older frame carries is an idle chip with TDRE set.
-// shift_data is the byte in the receive shifter. The frame carries no
-// cycles: a character in flight restarts from its first bit on load.
+// The frame has ridden the slot trailer of every default .aws, so the fields
+// before status_latches keep their offsets; rx_count, the three flag bytes,
+// rx_buffer and config are dead, written as zeros and read past.
+// status_latches: bit 0 PE, 1 FE, 2 OVRN, 3 RDRF, 4 TDR full, 5 transmit
+// shifter busy, 6 receive shifter busy; bit 7 must be 0, so an older frame's
+// all-zero byte is an idle chip with TDRE set. No cycles are carried: a
+// character in flight restarts from its first bit on load.
 typedef struct {
   uint32_t version;
   uint32_t struct_size;

@@ -880,8 +880,7 @@ fi
         set_tests_properties(test-superserial-peripheral PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
         add_linapple_test(superserial-frontend "tests/HeadlessHarness.cpp;tests/test_superserial_frontend.cpp")
         set_tests_properties(test-superserial-frontend PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
-        # The card's firmware is this file; the reference is pinned so the
-        # bytes the suite is written against cannot drift.
+        # Pinned so the bytes the suite is written against cannot drift.
         add_test(NAME test-ssc-rom-pinned COMMAND sh -c
             "echo '6dab633470c6bc4cb3e81d09fda46597caf8ee57  res/roms/SSC.rom' | sha1sum -c --quiet"
             WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -920,9 +919,8 @@ fi
     add_linapple_test(peripheral-slot0 "tests/test_main.cpp;tests/test_peripheral_slot0.cpp")
     add_linapple_test(device-events "tests/test_main.cpp;tests/HeadlessHarness.cpp;tests/test_device_events.cpp")
     set_tests_properties(test-device-events PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
-    # add_peripheral defines a card's macro only when the card is built in,
-    # and the Mockingboard is a plugin in a shared build; the test loads the
-    # plugin, so its Mockingboard case has to be compiled in either way.
+    # add_peripheral defines the macro only for a built-in card, but the test
+    # loads the Mockingboard plugin too, so its case is compiled in either way.
     if(ENABLE_PERIPHERAL_MOCKINGBOARD)
         target_compile_definitions(test-device-events PRIVATE ENABLE_PERIPHERAL_MOCKINGBOARD)
     endif()

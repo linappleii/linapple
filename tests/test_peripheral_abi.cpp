@@ -685,7 +685,6 @@ TEST_CASE("Peripheral ABI: A sink without a tick is left alone") {
 
 namespace {
 
-// The same probe on a serial token: the line it opens receives as well.
 auto serial_probe_init(int slot, HostInterface_t* host) -> void* {
   g_sink_probe = SinkProbe_t();
   g_sink_probe.host = host;
@@ -810,7 +809,7 @@ TEST_CASE(
 
   {
     TestFixtures::ScopedByteSink_t sink;
-    // Every line asserted, as a card with no cable reads its pull-ups.
+    // Every line asserted: what a card with no cable reads.
     CHECK(host->SinkGetLines(token, &lines));
     CHECK(lines == 0x07);
     CHECK(sink.opens() == 1);
@@ -847,15 +846,13 @@ TEST_CASE(
     CHECK(late.line_sets() == 1);
     CHECK(same_line(late.last_line(), line_9600_8n1));
 
-    // With the slot open the format goes straight through, once.
     host->SinkSetLine(token, &line_300_7e2);
     CHECK(late.line_sets() == 2);
     CHECK(same_line(late.last_line(), line_300_7e2));
     CHECK(late.opens() == 1);
   }
 
-  // A sink installed afterwards is told the latest format at its first open,
-  // whichever member opened the slot.
+  // A read opens the slot too, and the replay follows any member's open.
   {
     TestFixtures::ScopedByteSink_t again;
     uint8_t byte = 0;
@@ -865,7 +862,7 @@ TEST_CASE(
     CHECK(same_line(again.last_line(), line_300_7e2));
   }
 
-  // Once the card closes its token the format goes with it.
+  // Closing the token forgets the format.
   host->SinkClose(token);
   {
     TestFixtures::ScopedByteSink_t after_close;

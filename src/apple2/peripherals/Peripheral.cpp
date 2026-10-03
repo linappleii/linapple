@@ -62,8 +62,7 @@ auto peripheral_register_builtin(Peripheral_t* p) -> void {
 
 // --- Internal Types ---
 
-// No event pending. The ABI's 0 cancels and maps to this, so cycle 0 itself
-// can never be scheduled.
+// The ABI's 0 cancels and maps to this, so cycle 0 itself is never scheduled.
 static constexpr uint64_t no_event = UINT64_MAX;
 
 struct ActivePeripheral_t {
@@ -91,8 +90,7 @@ struct DirectIoHandler_t {
 static std::array<std::vector<ActivePeripheral_t>, NUM_SLOTS>
     g_active_peripherals;
 static std::array<bool, NUM_SLOTS> g_peripheral_activity_state;
-// The earliest pending event, so the frame loop compares one number per
-// slice instead of walking the slots.
+// Cached so the frame loop compares one number per slice.
 static uint64_t g_next_event_cycle = no_event;
 
 // Room for every address the motherboard devices and the shipped cards claim,
@@ -536,9 +534,8 @@ static auto host_schedule_event(void* instance, uint64_t at_cycle) -> void {
       }
       ap.event_cycle = at_cycle == 0 ? no_event : at_cycle;
       recompute_next_event_cycle();
-      // Acts only while a slice is running, so a schedule from a register
-      // access ends the slice at the event and every other caller merely
-      // leaves the event for the next slice boundary.
+      // A no-op outside a slice: only a schedule from a register access ends
+      // the running slice early.
       cpu_limit_cycles(g_next_event_cycle);
       return;
     }
@@ -551,10 +548,9 @@ auto peripheral_service_events(uint64_t now) -> void {
   if (g_next_event_cycle > now) {
     return;
   }
-  // The due events are collected and cleared before any card runs, so one
-  // a woken think re-schedules at or before now waits for the next
-  // boundary, one instruction on: a card can cost the frame one wake per
-  // instruction at worst and the frame still completes.
+  // Collected and cleared before any card runs, so a think that re-schedules
+  // at or before now waits for the next boundary and the frame completes: one
+  // wake per instruction at worst.
   static std::vector<ActivePeripheral_t*> due;
   due.clear();
   for (auto& slot_peripherals : g_active_peripherals) {
@@ -639,9 +635,8 @@ struct SinkRecord_t {
   int slot;
   PeripheralSinkKind_t kind;
   bool opened;
-  // Cards are initialised before the frontend installs its sink, and the
-  // installer closes every record, so a format sent before either would be
-  // lost unless the bridge keeps it to replay at the next open.
+  // Cards are initialised before the frontend installs its sink, so a format
+  // sent before then is kept to replay at the next open.
   bool line_sent;
   PeripheralSerialLine_t line;
 };
@@ -737,8 +732,7 @@ static auto host_sink_close(void* token) -> void {
   SinkRecord_t* record = sink_record(token);
   if (record != nullptr) {
     sink_close_record(*record);
-    // The card that programmed the line is leaving; the next card in the
-    // slot states its own format.
+    // The next card in the slot states its own format.
     record->line_sent = false;
   }
 }
@@ -760,8 +754,7 @@ static auto host_sink_set_line(void* token, const PeripheralSerialLine_t* line)
   }
   record->line = *line;
   record->line_sent = true;
-  // Opening the slot replays the record, so the format is sent once either
-  // way.
+  // Opening the slot replays the record, so the format is sent once.
   const bool was_open = record->opened;
   if (!sink_attach(*record) || !was_open || g_byte_sink->set_line == nullptr) {
     return;
@@ -913,8 +906,8 @@ auto peripheral_manager_init() -> void {
 }
 
 auto peripheral_manager_reset() -> void {
-  // Cleared before the cards' reset entries run, so a reset that schedules
-  // keeps its event and nothing from before the reset survives it.
+  // Before the cards' reset entries, so a reset that schedules keeps its
+  // event.
   clear_all_events();
   for (size_t i = 0; i < NUM_SLOTS; ++i) {
     for (auto& ap : g_active_peripherals.at(i)) {

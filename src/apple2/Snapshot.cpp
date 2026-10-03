@@ -23,10 +23,9 @@ struct SlotRegionDesc_t {
   const char* name;
 };
 
-// Fixed-body snapshot regions for slots 0 through 7. Each is the size the
-// AppleWin layout gave that slot, which a card's frame may well exceed: such
-// a frame is refused here by the card itself and rides the slot trailer,
-// which every file written since the trailer exists carries.
+// Fixed-body snapshot regions for slots 0 through 7, sized as the AppleWin
+// layout has them; a card whose frame is larger refuses the region and rides
+// the slot trailer.
 constexpr std::array<SlotRegionDesc_t, NUM_SLOTS> k_slot_region_descriptors{{
     {offsetof(Snapshot_t, apple2_unit.speaker),
      sizeof(Snapshot_t::apple2_unit.speaker), "Speaker"},
@@ -216,11 +215,8 @@ auto snapshot_deserialize(const Snapshot_t* snapshot) -> bool {
       peripheral_load_state_by_name(i, desc->name, state, desc->size);
       continue;
     }
-    // A card whose frame is larger than its region refuses it, and a file
-    // with no trailer entry for the slot never carried that card, so it stays
-    // at reset. Said once, because a silent refusal looks like a load. The
-    // manifest was verified against the active cards above, so its name for
-    // the slot is the card that refused.
+    // A silent refusal would look like a load. The manifest was verified
+    // against the active cards above, so its name is the card that refused.
     if (peripheral_load_state(i, state, desc->size) == peripheral_error) {
       Logger::info(
           "Slot %d: %s refused the %zu-byte fixed-body region and stays at "

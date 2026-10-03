@@ -30,9 +30,8 @@ namespace {
 
 constexpr int k_slot_count = 7;
 constexpr size_t k_switch_count = 7;
-// 9600 baud, communications mode, DCD from DB-25 pin 8; 1 stop bit, 8 data
-// bits, no parity, no LF after CR, interrupts forwarded (1981 manual pp. 6-8,
-// 22-24, Table A-7 p. 54).
+// Communications mode, 9600 8N1, no LF after CR, interrupts forwarded (1981
+// manual Table A-7 p. 54); the card's own default.
 constexpr uint8_t k_default_switches_1 = 0x78;
 constexpr uint8_t k_default_switches_2 = 0x2F;
 
@@ -41,22 +40,19 @@ constexpr uint8_t k_dsr = 0x02;
 constexpr uint8_t k_dcd = 0x04;
 constexpr uint8_t k_all_lines = k_cts | k_dsr | k_dcd;
 
-// The kernel buffers a few KiB behind this ring, so RTS can drop at the
-// high-water mark and a far end that honours it still has room to stop.
+// RTS drops at the high-water mark so a far end that honours it has room to
+// stop before the ring fills.
 constexpr size_t k_receive_ring_size = 4096;
 constexpr size_t k_receive_high_water = 3072;
-// A byte parks here only when the kernel refuses it. The card sees CTS drop
-// once the ring is full and keeps its next byte in its own register, so the
-// ring never has to be large.
+// Holds only what the kernel refused; a full ring drops CTS and the card
+// keeps its next byte in its own register.
 constexpr size_t k_transmit_ring_size = 64;
-// Ticks come once per frame, so sixty is a second of emulated time between
-// attempts on a path that could not be opened.
+// One tick per frame: a second between attempts to open the path.
 constexpr uint32_t k_open_retry_ticks = 60;
 constexpr size_t k_read_chunk = 256;
 
-// <sys/ioctl.h> carries these on every Linux architecture, but the include
-// cleaner attributes them to the kernel header behind it, which differs by
-// architecture and so is not named here.
+// The include cleaner attributes these to the kernel header behind
+// <sys/ioctl.h>, which differs by architecture.
 // NOLINTBEGIN(misc-include-cleaner)
 constexpr unsigned long k_modem_get = TIOCMGET;
 constexpr unsigned long k_modem_set = TIOCMBIS;
@@ -64,13 +60,9 @@ constexpr unsigned long k_modem_clear = TIOCMBIC;
 // NOLINTEND(misc-include-cleaner)
 
 enum class DeviceKind_t : uint8_t { none, pty, loopback, path };
-// Decided from stat and isatty at open: a tty gets termios and the modem
-// ioctls, a regular file is appended to and never read, anything else is a
-// plain read-write stream.
 enum class PathKind_t : uint8_t { tty, file, stream };
 
-// Each kind of failure is logged once, so a port that is wrong at every tick
-// does not write a line per frame.
+// Logged once per kind, or a port wrong at every tick writes a line per frame.
 enum LoggedFailure_t : uint32_t {
   logged_open = 1U << 0,
   logged_termios = 1U << 1,
@@ -116,11 +108,10 @@ struct Ring_t {
 struct Device_t {
   DeviceKind_t kind = DeviceKind_t::none;
   PathKind_t path_kind = PathKind_t::stream;
-  // The pseudo-terminal's peer path, or the resolved device path.
   std::string path;
   int fd = -1;
-  // A tty that answers TIOCMGET. A pseudo-terminal slave given as a path
-  // answers ENOTTY and is driven as a three-wire line instead.
+  // A pseudo-terminal slave given as a path answers TIOCMGET with ENOTTY and
+  // is driven as a three-wire line.
   bool has_modem_lines = false;
   bool outputs_applied = false;
   bool dtr_out = false;
@@ -136,8 +127,8 @@ struct Device_t {
   Ring_t<k_transmit_ring_size> transmit;
 };
 
-// The master is opened once per process: reopening would mint another
-// /dev/pts/N and strand the path that was logged.
+// Opened once per process: reopening would mint another /dev/pts/N and
+// strand the path that was logged.
 struct PtyMaster_t {
   bool attempted = false;
   int fd = -1;
@@ -149,8 +140,8 @@ struct Speed_t {
   speed_t constant;
 };
 
-// 109.92 and 134.58 baud arrive rounded from the card; 3600 and 7200 have no
-// POSIX constant and leave the speed as it was.
+// The card's 109.92 and 134.58 baud arrive rounded; 3600 and 7200 have no
+// POSIX constant.
 constexpr std::array<Speed_t, 13> k_speeds = {{{50, B50},
                                                {75, B75},
                                                {110, B110},
@@ -283,11 +274,10 @@ auto apply_format(termios* settings) -> void {
   clear |= CMSPAR;
 #endif
   tcflag_t set = parity_flags(line.parity);
-  // A pseudo-terminal has no word length or parity: the kernel's driver
-  // forces CS8 and clears PARENB on every change, and glibc's tcsetattr
-  // reports EINVAL when a value it asked for did not take. So those two are
-  // not asked of a pseudo-terminal; PARODD and CMSPAR are set all the same,
-  // so a peer reading the slave's settings still learns the card's parity.
+  // The kernel's pty driver forces CS8 and clears PARENB on every change, and
+  // glibc's tcsetattr returns EINVAL when a value did not take, so neither is
+  // asked of a pseudo-terminal. PARODD and CMSPAR still tell a peer the
+  // card's parity.
   if (g_device.kind == DeviceKind_t::pty) {
     set &= ~static_cast<tcflag_t>(PARENB);
   } else {
@@ -297,15 +287,14 @@ auto apply_format(termios* settings) -> void {
   settings->c_cflag &= ~clear;
   settings->c_cflag |= set;
 
-  // POSIX has no 1.5-stop-bit flag. The 6551 produces 1.5 only with a 5-bit
-  // word (SY6551 Fig. 6), and with a 5-bit word CSTOPB is 1.5 stop bits on
-  // UARTs that follow the 8250's convention.
+  // POSIX has no 1.5-stop-bit flag, but the 6551 produces 1.5 only with a
+  // 5-bit word (SY6551 Fig. 6), where CSTOPB means 1.5 on UARTs following the
+  // 8250's convention.
   if (line.stop_half_bits > 2) {
     settings->c_cflag |= CSTOPB;
   }
 
-  // Baud 0 is the card selecting no clock, not a request to hang up, so the
-  // speed is left alone.
+  // Baud 0 is the card selecting no clock, not a hang-up request.
   if (line.baud == 0) {
     return;
   }
@@ -335,9 +324,8 @@ auto apply_termios() -> void {
     return;
   }
   cfmakeraw(&settings);
-  // The modem lines are the card's to read through TIOCMGET, not the
-  // kernel's to act on, and closing the port at shutdown must not hang up a
-  // modem the user means to keep.
+  // The modem lines are the card's to read, not the kernel's to act on, and
+  // closing the port must not hang up a modem the user means to keep.
   settings.c_cflag |= CLOCAL | CREAD;
   settings.c_cflag &= ~static_cast<tcflag_t>(HUPCL);
   if (g_device.line_known) {
@@ -361,9 +349,8 @@ auto apply_outputs() -> void {
     return;
   }
   const bool dtr = g_device.line_known && g_device.line.dtr != 0;
-  // RTS also tells the far end to stop when the ring is nearly full: a far
-  // end that ignores it overflows the kernel's buffer with no overrun
-  // anywhere in the machine.
+  // RTS also stops the far end when the ring is nearly full; one that ignores
+  // it overflows the kernel's buffer, never the machine.
   const bool rts = g_device.line_known && g_device.line.rts != 0 &&
                    g_device.receive.count < k_receive_high_water;
   int set = 0;
@@ -389,9 +376,8 @@ auto apply_outputs() -> void {
     return;
   }
   g_device.break_out = brk;
-  // The break lasts exactly as long as the card holds its command bits at
-  // break, as on hardware; tcsendbreak would instead block the emulation
-  // thread for a fixed fraction of a second.
+  // A level, as long as the card holds its command bits at break;
+  // tcsendbreak would block the emulation thread for a fixed time.
 #if defined(TIOCSBRK) && defined(TIOCCBRK)
   if (ioctl(g_device.fd, brk ? TIOCSBRK : TIOCCBRK) != 0) {
     fail_once(logged_break, brk ? "start a break" : "end a break", errno);
@@ -453,12 +439,11 @@ auto open_path_device() -> void {
       fail_once(logged_modem, "read the modem lines", errno);
     }
     // The kernel asserts DTR on open; the card does not until a program
-    // writes its command register, so the line starts where the card has it.
+    // writes its command register.
     apply_outputs();
   }
-  // At warning level, as the printer's recovery line is: the frontend's
-  // default verbosity shows nothing below it, and a port that failed and
-  // then opened is something the user asked about.
+  // Warning level, like the printer's recovery line: the default verbosity
+  // shows nothing below it.
   if (g_device.announce_open) {
     g_device.announce_open = false;
     g_device.logged &= ~static_cast<uint32_t>(logged_open);
@@ -467,8 +452,6 @@ auto open_path_device() -> void {
   }
 }
 
-// A path device whose descriptor reports an error has gone away; the retry
-// that serves a path that could not be opened reopens it.
 auto lose_device() -> void {
   warn_once(logged_read, "serial port %s: the device went away\n",
             g_device.path.c_str());
@@ -504,16 +487,16 @@ auto open_pty_master() -> void {
   }
   g_pty.fd = fd;
   g_pty.path = name;
-  // The path is the one thing a user who chose "pty" needs, and the
-  // frontend's default verbosity shows nothing below warning.
+  // Warning level: the default verbosity shows nothing below it, and the
+  // path is the one thing a user who chose "pty" needs.
   Logger::warning(
       "Super Serial Card in slot %d: the line is pseudo-terminal %s; connect "
       "a terminal program to it\n",
       g_primary_slot, name);
 }
 
-// Returns false when the kernel would block. Any other failure is logged
-// once and the byte is lost, as it is on a cable with nothing at the far end.
+// False only when the kernel would block; any other failure loses the byte,
+// as a cable with nothing at the far end does.
 auto write_now(uint8_t byte) -> bool {
   for (;;) {
     const ssize_t written = write(g_device.fd, &byte, 1);
@@ -583,8 +566,8 @@ auto poll_input() -> void {
     return;
   }
   if ((request.revents & POLLIN) == 0) {
-    // A pseudo-terminal with no peer reports POLLHUP until one opens; that
-    // is the line idle, not a fault.
+    // A pseudo-terminal with no peer reports POLLHUP: the line idle, not a
+    // fault.
     if (g_device.kind == DeviceKind_t::path &&
         (request.revents & (POLLERR | POLLHUP | POLLNVAL)) != 0) {
       lose_device();
@@ -645,9 +628,8 @@ auto select_device(const SuperSerialFrontendSettings_t& settings) -> void {
     if (g_device.fd < 0) {
       return;
     }
-    // Raw mode is set on the master and so inherited by every peer that
-    // opens the slave: the kernel's default line discipline would echo the
-    // card's bytes back to it and turn its LF into CR LF.
+    // Raw mode on the master is inherited by every peer of the slave; the
+    // default line discipline would echo the card's bytes and expand LF.
     apply_termios();
     if (tcflush(g_device.fd, TCIOFLUSH) != 0) {
       fail_once(logged_pty, "flush the pseudo-terminal", errno);
@@ -670,8 +652,6 @@ auto is_separator(char c) -> bool {
   return std::isspace(static_cast<unsigned char>(c)) != 0 || c == ',';
 }
 
-// Seven ON or OFF tokens in the manual's order, switch 1 first; bit k of the
-// image is switch k + 1 and 1 means ON.
 auto parse_switch_row(const std::string& row, uint8_t* image) -> bool {
   uint8_t bits = 0;
   size_t count = 0;
@@ -755,7 +735,6 @@ auto sink_write(void* ctx, int slot, uint8_t byte) -> void {
   }
 }
 
-// On a serial line "ready" is "the device is open".
 auto sink_ready(void* ctx, int slot) -> bool {
   (void)ctx;
   return is_primary(slot) && device_is_open();
@@ -767,10 +746,8 @@ auto sink_close(void* ctx, int slot) -> void {
     return;
   }
   g_in_use.at(static_cast<size_t>(slot - 1)) = false;
-  // The device sits behind the primary slot's token. The token is closed at
-  // the card's shutdown and when the bridge's sink is installed anew, and in
-  // both cases the next run configures the port again, so nothing is left
-  // behind for the next run's cards to open before it does.
+  // Released here so nothing is left for the next run's cards to open before
+  // it is configured again.
   if (slot == g_primary_slot) {
     release_device();
     g_primary_slot = 0;
@@ -821,9 +798,8 @@ auto sink_get_lines(void* ctx, int slot, uint8_t* lines) -> bool {
       g_device.kind == DeviceKind_t::none) {
     return false;
   }
-  // A device that is not open yet reads CTS deasserted, so the card holds
-  // its byte in the transmit register instead of losing it; DSR and DCD stay
-  // asserted so the firmware's wait for them does not park PR#2 for good.
+  // CTS deasserted makes the card hold its byte instead of losing it; DSR
+  // and DCD asserted keep the firmware's wait for them from parking PR#n.
   if (!device_is_open()) {
     *lines = k_dsr | k_dcd;
     return true;
@@ -858,8 +834,8 @@ auto super_serial_frontend_configure(
   switches.sw2 = switch_image(settings.switches_2, "Serial Switches 2",
                               k_default_switches_2);
 
-  // One call is both the presence probe and the send: the bridge refuses at
-  // once for a slot holding no card of that id and queues otherwise.
+  // The send doubles as the presence probe: the bridge refuses a slot
+  // holding no card of that id.
   bool sent = false;
   for (int slot = 1; slot <= k_slot_count; ++slot) {
     if (peripheral_command_by_id(slot, "linapple.ssc",
@@ -875,8 +851,8 @@ auto super_serial_frontend_configure(
   if (g_primary_slot != 0) {
     select_device(settings);
   }
-  // The queue drains only in think, and a program that touches the card in
-  // its first frame must already see the configured switches.
+  // The queue drains only in think, and the first frame must already see the
+  // switches.
   if (sent) {
     peripheral_manager_think(0);
   }

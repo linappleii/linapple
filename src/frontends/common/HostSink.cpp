@@ -14,9 +14,6 @@ namespace {
 
 constexpr int k_slot_count = 7;
 
-// What each slot was opened as; a slot not open has no kind and every call
-// for it is dropped, which is what the bridge promises a card for a sink
-// that is not there.
 std::array<PeripheralSinkKind_t, k_slot_count> g_kinds{};
 
 auto slot_index(int slot) -> size_t { return static_cast<size_t>(slot - 1); }
@@ -72,8 +69,7 @@ auto dispatch_close(void* ctx, int slot) -> void {
   }
 }
 
-// Both devices get the batch tick, open slots or not: it is where a device
-// that fell over retries, and a retry is not tied to any one slot.
+// Open slots or not: the tick is where a device that fell over retries.
 auto dispatch_tick(void* ctx) -> void {
   if (printer_frontend_sink().tick != nullptr) {
     printer_frontend_sink().tick(ctx);
@@ -115,9 +111,9 @@ const ByteSink_t g_host_sink = {.open = dispatch_open,
 }  // namespace
 
 auto host_sink_install() -> void {
-  // The bridge closes every open slot through the outgoing sink, which on a
-  // re-initialisation is this one, so the devices of the previous run are
-  // closed before the new run's settings replace them.
+  // The bridge closes every open slot through the outgoing sink, so on a
+  // re-initialisation the previous run's devices close before their settings
+  // change.
   linapple_set_byte_sink(&g_host_sink, nullptr);
   g_kinds.fill(static_cast<PeripheralSinkKind_t>(0));
 }

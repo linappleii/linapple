@@ -367,7 +367,6 @@ auto collect_log_line(LogLevel_t level, const char* message, void* user_data)
   }
 }
 
-// Captures every log line while in scope and puts the logger back as found.
 class ScopedLogCapture_t {
  public:
   ScopedLogCapture_t() : verbosity_(Logger::get_verbosity()) {
@@ -425,13 +424,12 @@ TEST_CASE(
     REQUIRE(save_state_load());
     CHECK(log.count_containing("Slot 2: Super Serial Card refused") == 1);
     CHECK(log.count_containing("Slot 2:") == 1);
-    // An empty slot has nobody to refuse the region and says nothing.
+    // An empty slot has nobody to refuse the region.
     CHECK(log.count_containing("Slot 3:") == 0);
     CHECK(log.count_containing("Slot 5:") == 0);
     CHECK(log.count_containing("Slot 7:") == 0);
   }
 
-  // The card is at its reset registers: control and command both zero.
   std::array<uint8_t, snapshot_slot_state_capacity> frame{};
   frame.fill(0xFF);
   size_t frame_size = frame.size();
@@ -440,8 +438,6 @@ TEST_CASE(
   CHECK(frame[serial_frame_control] == 0);
   CHECK(frame[serial_frame_command] == 0);
 
-  // What the real writer puts on disk keeps the fixed-body region at zero
-  // and carries the card's frame in the trailer.
   TestFixtures::ScopedTempFile_t written(".aws");
   save_state_set_filename(written.c_str());
   save_state_save();
@@ -657,9 +653,7 @@ constexpr uint8_t ssc_latch_rdrf = 0x08;
 
 using SscFrame_t = std::array<uint8_t, ssc_frame_size>;
 
-// A card holding a received byte with the receive interrupt latched: control
-// $1E, command $09, the IRQ byte set, RDRF in the latch byte and $C1 in the
-// receive data register. The dead fields stay zero.
+// A received byte with the receive interrupt latched.
 auto ssc_frame_with_interrupt() -> SscFrame_t {
   SscFrame_t frame{};
   frame.at(0) = 0x01;
@@ -681,11 +675,8 @@ auto ssc_saved_frame(int slot) -> SscFrame_t {
   return frame;
 }
 
-// The card is placed by the configuration and its state is set the way a
-// running machine would leave it, the file goes through the frontend's own
-// writer and reader, and after the load a CLI loop proves the restored
-// interrupt reaches the slot line: snapshot_deserialize restores the CPU
-// before the slots load, so the card's AssertIrq during load_state sticks.
+// snapshot_deserialize restores the CPU before the slots load, so the card's
+// AssertIrq during load_state sticks and a CLI loop afterwards can prove it.
 auto ssc_survives_the_file(int slot) -> void {
   TestFixtures::ScopedByteSink_t sink;
   TestFixtures::ScopedTestConfig_t::Description_t description;
@@ -705,15 +696,13 @@ auto ssc_survives_the_file(int slot) -> void {
   save_state_set_filename(file.c_str());
   save_state_save();
 
-  // Reset the card to a different state, so the load has to put it back.
   linapple_reset_hard();
   CHECK(ssc_saved_frame(slot).at(ssc_control) == 0x00);
 
   REQUIRE(save_state_load());
   CHECK(ssc_saved_frame(slot) == saved);
 
-  // The loaded card re-asserted the slot's interrupt line: a handler that
-  // reads the status register (releasing the line) runs once under a CLI.
+  // The handler's status read releases the line, so it runs once.
   const auto hi = static_cast<uint8_t>(0xC0 + slot);
   const auto status = static_cast<uint8_t>(0x89 + (slot << 4));
   const std::array<uint8_t, 4> handler = {0xE6, 0x06, 0xAD, status};
@@ -722,8 +711,7 @@ auto ssc_survives_the_file(int slot) -> void {
   TestFixtures::ScopedCore_t::poke(0x0384, handler_tail);
   const std::array<uint8_t, 2> vector = {0x80, 0x03};
   TestFixtures::ScopedCore_t::poke(0xFFFE, vector);
-  // CLI, then a loop reading $C0n1 (no effect on the ACIA) so the asserted
-  // line is taken within an instruction.
+  // $C0n1 advances the card without touching the ACIA.
   const std::array<uint8_t, 7> main_loop = {0x58,            // CLI
                                             0xAD, 0x81, hi,  // LDA $C0n1
                                             0x4C, 0x01, 0x03};

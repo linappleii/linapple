@@ -57,9 +57,8 @@ typedef struct {
   // The host copies the page out, so a card hands over its ROM image as the
   // constant it is. It may be called again at any time: a card whose PROM
   // presents different bytes while it waits registers the other image, and
-  // the 6502 sees it on its next fetch from the page. The expansion ROM is
-  // the 2 KiB the card presents at $C800-$CFFF while its slot has selected
-  // it; the host only ever reads from it, so it is a constant too.
+  // the 6502 sees it on its next fetch from the page. The expansion ROM, the
+  // 2 KiB at $C800-$CFFF, is only ever read by the host and so constant too.
   void (*RegisterCxROM)(int slot, const uint8_t* rom_ptr);
   void (*RegisterExpansionROM)(int slot, const uint8_t* rom_ptr);
   void (*RegisterDirectIO)(void* instance, uint16_t addr,
@@ -77,11 +76,9 @@ typedef struct {
   void (*AudioPushChannels)(void* instance, const float* const* channel_buffers,
                             size_t num_channels, size_t num_samples);
   void (*ResetSystem)(void* instance);
-  // The host fills all four with NULL: a printer card streams through
-  // SinkWrite, and a serial card through the sink members too, SinkRead and
-  // SinkSetLine carrying what the two serial members once did. They keep
-  // their place so every later member keeps the offset a prebuilt plugin
-  // expects.
+  // The host fills all four with NULL; printer and serial cards stream
+  // through the sink members. They keep their place so every later member
+  // keeps the offset a prebuilt plugin expects.
   void (*PrinterPutChar)(void* instance, uint8_t c);
   uint8_t (*PrinterGetStatus)(void* instance);
   void (*SerialTransmitByte)(void* instance, uint8_t byte);
@@ -113,40 +110,28 @@ typedef struct {
   void (*SinkWrite)(void* sink, uint8_t byte);
   bool (*SinkReady)(void* sink);
   void (*SinkClose)(void* sink);
-  // A serial line flows both ways and carries a format, so a serial token
-  // also receives. SinkRead is a pull: it hands over the next received byte
-  // if one is waiting and returns true, and a card asks only when its
-  // receiver can take one, so the host never has to decide what an overrun
-  // is. SinkSetLine tells the host the programmed format and the output
-  // levels whenever the card changes them; the host remembers the last one
-  // and replays it to a device attached later. SinkGetLines writes the modem
-  // inputs as a mask, bit 0 CTS, bit 1 DSR, bit 2 DCD, 1 = asserted, and
-  // returns true; it returns false and writes nothing when there is nothing
-  // to ask, and what an unconnected line reads is then the card's to say,
-  // because the pull-ups are on the card. A NULL token, no sink attached, or
-  // a sink without the member reads as no byte, ignored, false. On a serial
-  // token SinkReady means the device is open.
+  // SinkRead is a pull, true with the next received byte; a card asks only
+  // when its receiver can take one, so the host never decides what an overrun
+  // is. SinkSetLine's last format is replayed to a device attached later.
+  // SinkGetLines fills bit 0 CTS, bit 1 DSR, bit 2 DCD, 1 = asserted; false
+  // with nothing written when there is nothing to ask, and what an
+  // unconnected line reads is then the card's to say, since the pull-ups are
+  // on the card. A NULL token, no sink or a sink without the member reads as
+  // no byte, ignored, false. On a serial token SinkReady means the device is
+  // open.
   bool (*SinkRead)(void* sink, uint8_t* byte);
   void (*SinkSetLine)(void* sink, const PeripheralSerialLine_t* line);
   bool (*SinkGetLines)(void* sink, uint8_t* lines);
-  // A card whose silicon does something at a cycle no program touches, a
-  // character boundary on a serial line for instance, asks to be woken there:
-  // its think is called with cycles 0 within one instruction of at_cycle,
-  // an absolute cycle as GetCycles counts it (7 cycles, the longest 6502
-  // instruction, or 14 when an interrupt is taken at that boundary). One
-  // event is pending per instance; a later call replaces it, and 0 cancels
-  // it, because cumulative cycle 0 is the power-on cycle and a card asks for
-  // now plus something. Valid from the moment init has returned until
-  // shutdown is entered: a call from inside init is dropped, since the host
-  // stores the instance only after init returns and cannot match it. A woken
-  // think may schedule, assert or release the IRQ, queue a command and call
-  // ResetSystem, and may not call peripheral_unregister; it cannot tell a
-  // wake from the think(instance, 0) a command drain delivers, so a card that
-  // schedules keeps time by GetCycles, never by think's cycles argument. An
-  // event due inside a frame's last slice is serviced at the next frame's
-  // first pass, after that frame's per-frame work and before any
-  // instruction. The debugger's single step services nothing; the first
-  // frame after the user resumes does.
+  // think(instance, 0) is called within one instruction of at_cycle, as
+  // GetCycles counts it (7 cycles, or 14 when an interrupt is taken at that
+  // boundary). One event per instance; a later call replaces it and 0
+  // cancels, cycle 0 being the power-on cycle. Valid once init has returned,
+  // since the host stores the instance only then and cannot match an earlier
+  // call. A woken think cannot tell a wake from a command drain's think, so a
+  // card keeps time by GetCycles, never by think's argument; it may not call
+  // peripheral_unregister. An event due inside a frame's last slice is
+  // serviced at the next frame's first pass; the debugger's single step
+  // services nothing.
   void (*ScheduleEvent)(void* instance, uint64_t at_cycle);
 } HostInterface_t;
 
@@ -229,9 +214,8 @@ PeripheralStatus_t peripheral_query_by_id(int slot, const char* peripheral_id,
                                           uint32_t cmd_id, void* out,
                                           size_t* out_size);
 void peripheral_save_state(int slot, void* buffer, size_t* size);
-// Returns the card's own verdict on the frame; peripheral_incompatible for an
-// empty slot or a card that keeps no state, so a refused frame is told apart
-// from one nobody was there to take.
+// peripheral_incompatible for an empty slot or a card that keeps no state,
+// so a refused frame is told apart from one nobody was there to take.
 PeripheralStatus_t peripheral_load_state(int slot, const void* buffer,
                                          size_t size);
 void peripheral_save_state_by_name(int slot, const char* name, void* buffer,

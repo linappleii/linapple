@@ -26,9 +26,8 @@ using TestFixtures::ScopedCore_t;
 using TestFixtures::ScopedTestConfig_t;
 
 constexpr uint32_t frame_cycles = 17030;
-// The longest 6502 instruction; an event is serviced at the first instruction
-// boundary at or after its cycle, so this is the latest it may land when no
-// interrupt is taken at that boundary.
+// The longest 6502 instruction: the latest an event lands past its cycle when
+// no interrupt is taken at that boundary.
 constexpr uint64_t one_instruction = 7;
 constexpr uint16_t program_start = 0x0300;
 constexpr uint16_t spin_at = 0x030B;
@@ -44,8 +43,6 @@ struct Read_t {
   uint8_t bus;
 };
 
-// A card with nothing but a clock: it records when it is thought of and when
-// its one register is read, and schedules whatever a case told it to.
 struct Bench_t {
   HostInterface_t* host = nullptr;
   int slot = 0;
@@ -175,10 +172,8 @@ auto c0_address(int slot) -> uint8_t {
   return static_cast<uint8_t>(0x80 + (slot << 4));
 }
 
-// LDA $C0n0 as the frame's first instruction (the handler sees offset 0),
-// LDX #0, a 256-turn INX/BNE delay (2 + 255 x 3 + 256 x 2 - 1 = 1,279
-// cycles, the last BNE not taken), a second LDA $C0n0 whose first cycle is
-// offset 4 + 2 + 1,279 = 1,285, then a spin.
+// LDA $C0n0 (4) and LDX #0 (2), then 256 turns of INX/BNE: 256 x 2 + 255 x 3
+// taken + 2 for the last BNE, 1,279. The second LDA's first cycle is 1,285.
 constexpr uint32_t second_read_offset = 1285;
 
 auto poke_two_reads_then_spin(int slot) -> void {
@@ -199,7 +194,7 @@ auto poke_spin() -> void {
   ScopedCore_t::poke(program_start, program);
 }
 
-// Interrupts masked, so no boundary carries the 7-cycle interrupt entry.
+// Interrupts masked: no boundary carries the 7-cycle interrupt entry.
 auto enter(uint16_t pc) -> void {
   CpuRegisters_t* regs = cpu_get_registers();
   regs->pc = pc;
@@ -322,7 +317,7 @@ TEST_CASE(
   harness.boot();
   poke_two_reads_then_spin(slot);
   enter(program_start);
-  // One frame first, so that a cycle 100 behind now exists.
+  // One frame first, so a cycle 100 behind now exists.
   harness.run_frames(1);
   REQUIRE(bench.reads.size() == 2);
   bench.reads.clear();
@@ -533,10 +528,8 @@ struct BootRecord_t {
   bool drive_error = false;
 };
 
-// Boots DOS 3.3 from the master disk with a bench card in slot 1 that wakes
-// every 1,000 cycles when asked to, and records the frame at which the
-// prompt appears and the screen at that frame. The Disk II never schedules,
-// so with the bench quiet the frame runs as one slice.
+// The Disk II never schedules, so with the bench quiet each frame is one
+// slice.
 auto boot_master_disk(bool bench_schedules) -> BootRecord_t {
   ScopedTestConfig_t::Description_t description;
   description.slots[5] = "Disk II";
@@ -592,10 +585,8 @@ namespace {
 
 constexpr uint16_t t1_table = 0x0600;
 
-// Sets the 6522's T1 free-running from $FFFF and copies T1C-L into a table
-// every 64 loop turns: the counter is the value the card's sync advances by
-// the batch's executed count, so a slice that restarted the count would show
-// as a wrong entry.
+// T1 is advanced by the batch's executed count, so a slice that restarted the
+// count would show as a wrong table entry.
 auto poke_t1_sampler() -> void {
   const std::array<uint8_t, 32> program = {
       0xA9, 0x40,        // LDA #$40

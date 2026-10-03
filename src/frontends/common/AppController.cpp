@@ -83,9 +83,8 @@ static auto configure_printer_sink() -> void {
   printer_frontend_install(settings);
 }
 
-// The serial port is told its settings after the cards exist, because the
-// switch rows reach a card through its command queue and the slot the device
-// sits behind is whichever slot took them.
+// After the cards exist: the switch rows go through a card's command queue,
+// and the device sits behind whichever slot took them.
 static auto configure_serial_port() -> void {
   SuperSerialFrontendSettings_t settings{};
   config_load_string(cfg_sec_configuration, cfg_serial_port, &settings.port);
@@ -97,9 +96,8 @@ static auto configure_serial_port() -> void {
   super_serial_frontend_configure(settings);
 }
 
-// The host sink goes in before any device is configured, so that on a
-// re-initialisation the previous run's devices are closed through it before
-// their settings change under them.
+// The sink goes in first so a re-initialisation closes the previous run's
+// devices through it before their settings change.
 static auto install_host_sink() -> void {
   host_sink_install();
   configure_printer_sink();

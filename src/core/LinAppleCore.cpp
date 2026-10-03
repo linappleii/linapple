@@ -355,11 +355,9 @@ auto linapple_load_program(const char* path) -> int {
   return static_cast<int>(raw_res);
 }
 
-// The frame is one CPU batch cut at the cycles cards asked to be woken at.
-// The Disk II and the Mockingboard keep their intra-frame mark against the
-// batch's executed count and reset it once per frame, so the slices continue
-// one frame-relative count and the per-frame work runs once, with the total
-// the last slice returned, exactly as a frame run in one call would.
+// One batch cut at the cycles cards asked to be woken at: the Disk II and the
+// Mockingboard keep an intra-frame mark against the batch's executed count,
+// so the slices must continue one frame-relative count.
 static auto internal_run_cycles(uint32_t cycles) -> uint32_t {
   if (cycles == 0) {
     return 0;

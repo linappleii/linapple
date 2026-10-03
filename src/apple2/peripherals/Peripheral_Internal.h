@@ -39,9 +39,8 @@ auto linapple_set_local_time_provider(LocalTimeProvider_t provider, void* ctx)
 // and is where a sink that fell over retries; it may be NULL. A missing member
 // otherwise reads as a sink that is not there for that call: the write is
 // dropped, the slot is not ready, read has no byte, set_line is ignored and
-// get_lines is false. The bridge keeps the last line format each slot sent
-// and hands it to set_line right after open, so a format sent before the
-// sink was installed still reaches it.
+// get_lines is false. The last line format a slot sent is replayed to
+// set_line right after open, so one sent before the sink existed reaches it.
 typedef struct {
   void (*open)(void* ctx, int slot, PeripheralSinkKind_t kind);
   void (*write)(void* ctx, int slot, uint8_t byte);
