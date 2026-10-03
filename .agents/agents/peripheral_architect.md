@@ -119,7 +119,11 @@ A peripheral must never execute side-effects that escape the Apple II bus or byp
 
 - **Audio Generation**: All synthesized audio (e.g., PSG waveforms, DAC outputs, speaker toggles) must be pushed as PCM chunks via `host->AudioPushSamples(instance, buffer, count)`. A peripheral must never open host audio devices.
 - **External Data Egress (Cables)**:
-  - Serial data out: `host->SerialTransmitByte(instance, byte)`.
+  - Serial data out: `host->SinkWrite(sink, byte)` on the token
+    `host->SinkOpen(instance, slot, peripheral_sink_serial)` returned. The
+    line also pulls received bytes through `host->SinkRead(sink, &byte)`,
+    sets its format through `host->SinkSetLine(sink, &line)` and reads its
+    modem inputs through `host->SinkGetLines(sink, &lines)`.
   - Printer data out: `host->PrinterPutChar(instance, character)`.
   - Network packets: Handled via private background worker threads communicating strictly through lock-free ring buffers (SPSC) with atomic barriers, without blocking the emulation loop.
 - **Interrupts**: Asserting or clearing the physical `/IRQ` line must only be done via `host->AssertIrq(slot, true/false)`.

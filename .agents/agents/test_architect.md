@@ -22,7 +22,7 @@ All tests MUST be anchored directly to one of LinApple's five physical architect
 3. **Seam 3: Core Motherboard ↔ Peripheral Seam**
    - Boundaries: `Peripheral_t` C-ABI dispatch and `HostInterface_t`.
    - Interactions: Memory-mapped I/O reads/writes (`$C080`–`$C0FF`, `$C100`–`$C7FF`), `think()`, `on_vblank()`, `command()`, `save_state()`, `load_state()`.
-   - Observable Outputs: Bus read bytes, `HostInterface_t` callbacks (`AssertIrq`, `AudioPushSamples`, `PrinterPutChar`, `SerialTransmitByte`).
+   - Observable Outputs: Bus read bytes, `HostInterface_t` callbacks (`AssertIrq`, `AudioPushSamples`, `PrinterPutChar`, `SinkWrite`, `SinkSetLine`).
    - Constraint: Never cast `void* instance` to inspect private struct fields.
 4. **Seam 4: Device Controller ↔ Media Format Driver Seam**
    - Boundaries: `DiskFormatDriver_t` interface, container decompression (`DiskCompression`).

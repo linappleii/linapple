@@ -169,10 +169,13 @@ More on building in <!-- Imported from: INSTALL.md -->
     executable and the plugins never export them.
   - A card's byte output (a printer's, a serial line's) goes through the
     host's byte sink members of `HostInterface_t`: `SinkOpen`, `SinkWrite`,
-    `SinkReady` and `SinkClose`. The frontend installs the one `ByteSink_t`
-    through `linapple_set_byte_sink`; the file, its path, its mode (append
-    or overwrite) and its flushing belong to the frontend, never to the
-    card.
+    `SinkReady` and `SinkClose`. A serial line also receives: it pulls
+    received bytes through `SinkRead`, reports its format through
+    `SinkSetLine` and reads its modem inputs through `SinkGetLines`. The
+    frontend installs the one `ByteSink_t` through `linapple_set_byte_sink`;
+    the file or device, its path, its mode (append or overwrite) and its
+    flushing belong to the frontend, never to the card. The slot comes from
+    the token `SinkOpen` returned, never from the card's own bookkeeping.
   - A line two devices drive (the //e wires Open and Solid Apple in
     parallel with the game connector's PB0 and PB1, and the shift-key mod
     puts shift on PB2; IIe Technical Reference p. 41) is owned by one card,
