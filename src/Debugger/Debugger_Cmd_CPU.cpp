@@ -20,7 +20,7 @@ extern auto frame_refresh_status(int) -> void;
 #include "Debugger_Parser.h"
 #include "apple2/Memory.h"
 #include "apple2/peripherals/Peripheral.h"
-#include "apple2/peripherals/Peripheral_Types.h"
+#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/Util_Path.h"
 #include "frontends/common/AudioMixer.h"
 

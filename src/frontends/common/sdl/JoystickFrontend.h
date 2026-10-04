@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-#include "SdlBackend.h"  // IWYU pragma: export
+#include "SdlBackend.h"
 
 auto joy_frontend_initialize() -> void;
 auto joy_frontend_shutdown() -> void;

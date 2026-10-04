@@ -16,6 +16,7 @@
 #include "apple2/peripherals/Peripheral_Subsystems.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
+#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/LinAppleCore.h"
 #include "doctest.h"
 #include "test_fixtures.h"

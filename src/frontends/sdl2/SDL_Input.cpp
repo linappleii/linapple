@@ -14,7 +14,7 @@
 #endif
 #include "apple2/Video.h"
 #include "apple2/peripherals/Peripheral.h"
-#include "apple2/peripherals/Peripheral_Types.h"
+#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/LinAppleCore.h"
 #include "frontends/common/AudioMixer.h"
 #include "frontends/common/Frontend.h"

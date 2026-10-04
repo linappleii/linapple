@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-#include <SDL2/SDL.h>           // IWYU pragma: export
-#include <SDL2/SDL_events.h>    // IWYU pragma: export
-#include <SDL2/SDL_joystick.h>  // IWYU pragma: export
-#include <SDL2/SDL_keyboard.h>  // IWYU pragma: export
-#include <SDL2/SDL_keycode.h>   // IWYU pragma: export
-#include <SDL2/SDL_timer.h>     // IWYU pragma: export
-#include <SDL2/SDL_video.h>     // IWYU pragma: export
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_events.h>
+#include <SDL2/SDL_joystick.h>
+#include <SDL2/SDL_keyboard.h>
+#include <SDL2/SDL_keycode.h>
+#include <SDL2/SDL_surface.h>
+#include <SDL2/SDL_timer.h>
+#include <SDL2/SDL_video.h>
 
 #include <cstdint>
 
-#include "frontends/sdl2/SdlPtr.h"  // IWYU pragma: export
+#include "frontends/sdl2/SdlPtr.h"
 
 using SdlKeycode_t = SDL_Keycode;
 using SdlKeymod_t = SDL_Keymod;
@@ -29,6 +30,14 @@ inline auto sdl_compat_get_key_from_event(const SDL_Event& event)
     -> SdlKeycode_t {
   return event.key.keysym.sym;
 }
+
+inline auto sdl_compat_get_ticks() -> uint32_t { return SDL_GetTicks(); }
+
+inline auto sdl_compat_get_mod_state() -> SdlKeymod_t {
+  return SDL_GetModState();
+}
+
+inline auto sdl_compat_quit() -> void { SDL_Quit(); }
 
 inline auto sdl_compat_set_window_title(const char* title) -> void {
   if (g_window != nullptr) {

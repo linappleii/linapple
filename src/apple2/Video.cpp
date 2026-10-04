@@ -17,6 +17,8 @@
 
 #include "apple2/Apple2Types.h"
 #include "apple2/peripherals/Peripheral_Types.h"
+#include "apple2/peripherals/harddisk/HarddiskCommands.h"
+#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/Asset.h"
 #include "core/LinAppleCore.h"
 #include "frontends/common/VideoSurface.h"

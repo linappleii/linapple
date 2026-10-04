@@ -3,8 +3,6 @@
 
 #include <stdint.h>
 
-#include "apple2/peripherals/Peripheral_Subsystems.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -45,14 +43,6 @@ enum IrqSrc_t {
   is_slot6,
   is_slot7
 };
-
-// IWYU pragma: begin_exports
-#include "apple2/peripherals/disk/DiskCommands.h"
-#include "apple2/peripherals/harddisk/HarddiskCommands.h"
-#include "apple2/peripherals/keyboard/KeyboardCommands.h"
-#include "apple2/peripherals/mockingboard/MockingboardCommands.h"
-#include "apple2/peripherals/mouse/MouseCommands.h"
-// IWYU pragma: end_exports
 
 #ifdef __cplusplus
 }

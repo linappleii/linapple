@@ -81,8 +81,10 @@ static std::array<int, 2> g_joy_shr_y = {8, 8};
 static std::array<int, 2> g_joy_sub_x = {0, 0};
 static std::array<int, 2> g_joy_sub_y = {0, 0};
 
+// NOLINTBEGIN(misc-include-cleaner): SdlJoystickPtr_t is provided across SDL1/2/3 backends via SdlBackend.h
 static SdlJoystickPtr_t g_joy1;
 static SdlJoystickPtr_t g_joy2;
+// NOLINTEND(misc-include-cleaner)
 
 // Trim is host calibration: one offset per axis, seeded from the two PDL
 // keys and adjusted with Right-Ctrl and the arrows, added to every position
@@ -437,6 +439,7 @@ static auto square_stick(int& x, int& y) -> void {
   }
 }
 
+// NOLINTNEXTLINE(misc-include-cleaner): SDL_Joystick is provided across SDL1/2/3 backends via SdlBackend.h
 static auto poll_gamepad(size_t joy_num, SDL_Joystick* joystick) -> void {
   sdl_compat_update_joysticks();
 
@@ -479,7 +482,7 @@ auto joy_frontend_update() -> void {
     if (!joy_ptr || device_of(joy_id) != DEVICE_JOYSTICK) {
       return;
     }
-    const uint32_t curr_time = SDL_GetTicks();
+    const uint32_t curr_time = sdl_compat_get_ticks();
     if (curr_time - last_check < 10) {
       return;
     }
@@ -493,6 +496,7 @@ auto joy_frontend_update() -> void {
   poll_if_due(1, g_joy2, last_check2);
 }
 
+// NOLINTBEGIN(misc-include-cleaner): Keycodes (SDLK_*) are provided across SDL1/2/3 backends via SdlBackend.h
 auto joy_frontend_update_trim_via_key(SdlKeycode_t virtkey) -> void {
   switch (virtkey) {
     case SDLK_DOWN:
@@ -589,6 +593,7 @@ auto joy_frontend_process_key(SdlKeycode_t virtkey, bool extended, bool down,
   }
   return true;
 }
+// NOLINTEND(misc-include-cleaner)
 
 auto joy_frontend_is_mouse_emulation_active() -> bool {
   return device_of(0) == DEVICE_MOUSE || device_of(1) == DEVICE_MOUSE;

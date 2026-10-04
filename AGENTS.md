@@ -181,13 +181,10 @@ More on building in <!-- Imported from: INSTALL.md -->
     (`JOYSTICK_CMD_SET_BUTTON` carries `source`, 0 the connector, 1 the
     keyboard). No two cards register one address: the direct-I/O bridge
     serves the first registrant, and registration order is not a contract.
-  - `Peripheral_Types.h` re-exports the command headers of five cards:
-    `DiskCommands.h`, `HarddiskCommands.h`, `KeyboardCommands.h`,
-    `MockingboardCommands.h` and `MouseCommands.h`. A card whose commands
-    no frontend uses keeps its command header out of the type header (the
-    clock card: `ClockCardCommands.h` is included only by the card and its
-    tests), and the list is expected to shrink once the frontends stop
-    including peripheral headers directly.
+  - Peripheral command headers (e.g., `DiskCommands.h`, `KeyboardCommands.h`,
+    `HarddiskCommands.h`, `MockingboardCommands.h`, `MouseCommands.h`) are
+    included directly by consumers that send or handle those commands, rather
+    than being re-exported through `Peripheral_Types.h`.
   - The two greps below print nothing on a conforming tree; any line they
     print is a violation:
 

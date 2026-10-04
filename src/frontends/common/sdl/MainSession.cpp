@@ -6,14 +6,14 @@
 #include "core/services/ftp/FtpClient.h"
 #endif
 
+#include "Frame.h"
+#include "SdlBackend.h"
 #include "apple2/Video.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
 #include "frontends/common/AppController.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/common/sdl/JoystickFrontend.h"
-#include "Frame.h"
-#include "SdlBackend.h"
 
 using Logger::error;
 
@@ -51,7 +51,7 @@ auto sys_init() -> int {
 auto sys_shutdown() -> void {
   ds_shutdown();
   frame_destroy_window();
-  SDL_Quit();
+  sdl_compat_quit();
 #if ENABLE_FTP
   g_curl_guard.reset();
 #endif

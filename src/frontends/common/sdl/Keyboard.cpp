@@ -3,12 +3,12 @@
 #include <cstdint>
 #include <string>
 
-#include "apple2/peripherals/Peripheral_Types.h"
+#include "SdlBackend.h"
+#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/common/KeyboardTranslator.h"
-#include "SdlBackend.h"
 
 static int g_keyboard_mapping_mode = 0;
 static int g_keyboard_caps_mode = caps_mode_host;
@@ -68,6 +68,7 @@ auto frontend_update_keyboard_mapping() -> void {
   keyboard_apply_custom_mappings();
 }
 
+// NOLINTBEGIN(misc-include-cleaner): Keycodes (SDLK_*) are provided across SDL1/2/3 backends via SdlBackend.h
 auto frontend_to_core_key(int key, uint32_t mod) -> LinAppleKey_t {
   switch (key) {
     case SDLK_UP:
@@ -84,6 +85,7 @@ auto frontend_to_core_key(int key, uint32_t mod) -> LinAppleKey_t {
 
   return keyboard_symbolic_to_core(key, mod);
 }
+// NOLINTEND(misc-include-cleaner)
 
 // The host's four modifier levels. Shift and ctrl follow the SDL modifier
 // mask; the two Apple keys follow their own key edges, because the mask
@@ -154,6 +156,7 @@ auto frontend_dispatch_key_event(uint32_t scancode, uint32_t keycode,
 // Left Alt or Left GUI is Open Apple and Right Alt or Right GUI is Solid
 // Apple. Alt is the key most desktops leave to applications; GUI (Super) is
 // usually the window manager's and may never arrive.
+// NOLINTBEGIN(misc-include-cleaner): Modifier keycodes (SDLK_*) are provided across SDL1/2/3 backends via SdlBackend.h
 auto frontend_handle_key_event(SdlKeycode_t key, bool is_down) -> bool {
   switch (key) {
     case SDLK_LALT:
@@ -172,7 +175,7 @@ auto frontend_handle_key_event(SdlKeycode_t key, bool is_down) -> bool {
     case SDLK_RCTRL:
     case SDLK_LSHIFT:
     case SDLK_RSHIFT:
-      track_shift_and_ctrl(static_cast<uint32_t>(SDL_GetModState()));
+      track_shift_and_ctrl(static_cast<uint32_t>(sdl_compat_get_mod_state()));
       send_host_modifiers();
       return true;
 
@@ -180,6 +183,7 @@ auto frontend_handle_key_event(SdlKeycode_t key, bool is_down) -> bool {
       return false;
   }
 }
+// NOLINTEND(misc-include-cleaner)
 
 auto frontend_handle_event(SdlKeycode_t key, bool is_down) -> bool {
   return frontend_handle_key_event(key, is_down);

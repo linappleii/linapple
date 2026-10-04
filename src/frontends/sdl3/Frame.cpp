@@ -35,6 +35,7 @@
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
+#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/Asset.h"
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
