@@ -7,7 +7,6 @@
 
 #include "apple2/Video.h"
 #include "apple2/peripherals/Peripheral.h"
-#include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/mouse/MouseCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
