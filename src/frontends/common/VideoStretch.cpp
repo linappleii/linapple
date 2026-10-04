@@ -2,6 +2,7 @@
 
 #include "frontends/common/VideoStretch.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -226,9 +227,9 @@ static auto copy8mono4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
   }
 }
 
-static inline auto clip_source_rect(const VideoSurface_t* src,
-                                    VideoRect_t* rect) -> bool {
-  if (src == nullptr || rect == nullptr) {
+static inline auto clip_source_rect(VideoSurfaceView_t src, VideoRect_t* rect)
+    -> bool {
+  if (src.pixels == nullptr || rect == nullptr) {
     return false;
   }
   if (rect->x + rect->w <= 0 || rect->y + rect->h <= 0) {
@@ -242,28 +243,30 @@ static inline auto clip_source_rect(const VideoSurface_t* src,
     rect->h += rect->y;
     rect->y = 0;
   }
-  if (rect->x >= src->w || rect->y >= src->h) {
+  if (rect->x >= src.w || rect->y >= src.h) {
     return false;
   }
-  if (rect->x + rect->w > src->w) {
-    rect->w = src->w - rect->x;
+  if (rect->x + rect->w > src.w) {
+    rect->w = src.w - rect->x;
   }
-  if (rect->y + rect->h > src->h) {
-    rect->h = src->h - rect->y;
+  if (rect->y + rect->h > src.h) {
+    rect->h = src.h - rect->y;
   }
   return (rect->w > 0 && rect->h > 0);
 }
 
 template <typename RowOp>
-static auto video_soft_stretch_impl(VideoSurface_t* src, VideoRect_t* srcrect,
-                                    VideoSurface_t* dst, VideoRect_t* dstrect,
-                                    RowOp row_op) -> int {
-  if (!src || !dst || !src->pixels || !dst->pixels) {
+static auto video_soft_stretch_impl(VideoSurfaceView_t src,
+                                    const VideoRect_t* srcrect,
+                                    VideoSurfaceView_t dst,
+                                    const VideoRect_t* dstrect, RowOp row_op)
+    -> int {
+  if (!src.pixels || !dst.pixels) {
     return -1;
   }
 
-  VideoRect_t full_src = srcrect ? *srcrect : VideoRect_t{0, 0, src->w, src->h};
-  VideoRect_t full_dst = dstrect ? *dstrect : VideoRect_t{0, 0, dst->w, dst->h};
+  VideoRect_t full_src = srcrect ? *srcrect : VideoRect_t{0, 0, src.w, src.h};
+  VideoRect_t full_dst = dstrect ? *dstrect : VideoRect_t{0, 0, dst.w, dst.h};
 
   if (full_dst.h <= 0 || full_src.h <= 0 || full_dst.w <= 0 ||
       full_src.w <= 0) {
@@ -274,34 +277,35 @@ static auto video_soft_stretch_impl(VideoSurface_t* src, VideoRect_t* srcrect,
     return 0;
   }
 
-  const int sbpp = src->bpp;
+  const int sbpp = src.bpp;
   for (int row_idx = 0; row_idx < full_dst.h; ++row_idx) {
     int cur_dst_row = full_dst.y + row_idx;
-    if (cur_dst_row < 0 || cur_dst_row >= dst->h) continue;
+    if (cur_dst_row < 0 || cur_dst_row >= dst.h) continue;
 
     int cur_src_row =
         full_src.y +
         static_cast<int>((static_cast<int64_t>(row_idx) * full_src.h) /
                          full_dst.h);
-    if (cur_src_row < 0 || cur_src_row >= src->h) continue;
+    if (cur_src_row < 0 || cur_src_row >= src.h) continue;
 
-    uint8_t* srcp = src->pixels + (cur_src_row * src->pitch) +
+    uint8_t* srcp = src.pixels + (cur_src_row * src.pitch) +
                     (static_cast<ptrdiff_t>(full_src.x * sbpp));
-    uint8_t* dst_row_base = dst->pixels + (cur_dst_row * dst->pitch);
+    uint8_t* dst_row_base = dst.pixels + (cur_dst_row * dst.pitch);
 
-    row_op(srcp, full_src.w, dst_row_base, full_dst.x, full_dst.w, dst->w);
+    row_op(srcp, full_src.w, dst_row_base, full_dst.x, full_dst.w, dst.w);
   }
 
   return 0;
 }
 
-auto video_soft_stretch(VideoSurface_t* src, VideoRect_t* srcrect,
-                        VideoSurface_t* dst, VideoRect_t* dstrect) -> int {
+auto video_soft_stretch(VideoSurfaceView_t src, const VideoRect_t* srcrect,
+                        VideoSurfaceView_t dst, const VideoRect_t* dstrect)
+    -> int {
   return video_soft_stretch_impl(
       src, srcrect, dst, dstrect,
       [&](uint8_t* srcp, int src_w, uint8_t* dst_row_base, int dst_x, int dst_w,
           int max_w) {
-        switch (dst->bpp) {
+        switch (dst.bpp) {
           case 1:
             copy_row1(srcp, src_w, dst_row_base, dst_x, dst_w, max_w);
             break;
@@ -315,10 +319,10 @@ auto video_soft_stretch(VideoSurface_t* src, VideoRect_t* srcrect,
             break;
           case 4: {
             auto* dst32 = reinterpret_cast<uint32_t*>(dst_row_base);
-            switch (src->bpp) {
+            switch (src.bpp) {
               case 1:
                 copy_row1to4(srcp, src_w, dst32, dst_x, dst_w, max_w,
-                             src->palette.data());
+                             src.palette);
                 break;
               case 3:
                 copy_row3to4(srcp, src_w, dst32, dst_x, dst_w, max_w);
@@ -338,17 +342,19 @@ auto video_soft_stretch(VideoSurface_t* src, VideoRect_t* srcrect,
       });
 }
 
-auto video_soft_stretch_mono8(VideoSurface_t* src, VideoRect_t* srcrect,
-                              VideoSurface_t* dst, VideoRect_t* dstrect,
-                              uint32_t fgbrush, uint32_t bgbrush) -> int {
+auto video_soft_stretch_mono8(VideoSurfaceView_t src,
+                              const VideoRect_t* srcrect,
+                              VideoSurfaceView_t dst,
+                              const VideoRect_t* dstrect, uint32_t fgbrush,
+                              uint32_t bgbrush) -> int {
   return video_soft_stretch_impl(
       src, srcrect, dst, dstrect,
       [&](uint8_t* srcp, int src_w, uint8_t* dst_row_base, int dst_x, int dst_w,
           int max_w) {
-        if (src->bpp == 1 && dst->bpp == 4) {
+        if (src.bpp == 1 && dst.bpp == 4) {
           copy8mono4(srcp, src_w, reinterpret_cast<uint32_t*>(dst_row_base),
                      dst_x, dst_w, max_w, fgbrush, bgbrush);
-        } else if (dst->bpp == 1) {
+        } else if (dst.bpp == 1) {
           copy8mono(srcp, src_w, dst_row_base, dst_x, dst_w, max_w,
                     static_cast<uint8_t>(fgbrush),
                     static_cast<uint8_t>(bgbrush));
@@ -356,13 +362,14 @@ auto video_soft_stretch_mono8(VideoSurface_t* src, VideoRect_t* srcrect,
       });
 }
 
-auto video_soft_stretch_or(VideoSurface_t* src, VideoRect_t* srcrect,
-                           VideoSurface_t* dst, VideoRect_t* dstrect) -> int {
+auto video_soft_stretch_or(VideoSurfaceView_t src, const VideoRect_t* srcrect,
+                           VideoSurfaceView_t dst, const VideoRect_t* dstrect)
+    -> int {
   return video_soft_stretch_impl(
       src, srcrect, dst, dstrect,
       [&](uint8_t* srcp, int src_w, uint8_t* dst_row_base, int dst_x, int dst_w,
           int max_w) {
-        switch (dst->bpp) {
+        switch (dst.bpp) {
           case 1:
             copy_row_or1(srcp, src_w, dst_row_base, dst_x, dst_w, max_w);
             break;
@@ -376,10 +383,10 @@ auto video_soft_stretch_or(VideoSurface_t* src, VideoRect_t* srcrect,
             break;
           case 4: {
             auto* dst32 = reinterpret_cast<uint32_t*>(dst_row_base);
-            switch (src->bpp) {
+            switch (src.bpp) {
               case 1:
                 copy_row_or1to4(srcp, src_w, dst32, dst_x, dst_w, max_w,
-                                src->palette.data());
+                                src.palette);
                 break;
               case 3:
                 copy_row_or3to4(srcp, src_w, dst32, dst_x, dst_w, max_w);
@@ -411,13 +418,13 @@ auto fonts_termination() -> void {
   }
 }
 
-auto font_print(int x, int y, const char* text, VideoSurface_t* surface,
+auto font_print(int x, int y, const char* text, VideoSurfaceView_t surface,
                 double kx, double ky) -> void {
   int i = 0, c = 0;
   VideoRect_t s{}, d{};
 
-  if (font_sfc == nullptr || text == nullptr || surface == nullptr ||
-      surface->pixels == nullptr || y >= surface->h) {
+  if (font_sfc == nullptr || text == nullptr || surface.pixels == nullptr ||
+      y >= surface.h) {
     return;
   }
 
@@ -441,14 +448,15 @@ auto font_print(int x, int y, const char* text, VideoSurface_t* surface,
     d.w = static_cast<int>(s.w * kx);
     d.h = static_cast<int>(s.h * ky);
 
-    if (d.x >= surface->w) break;
+    if (d.x >= surface.w) break;
     if (d.x + d.w <= 0 || d.y + d.h <= 0) continue;
     video_soft_stretch_or(font_sfc, &s, surface, &d);
   }
 }
 
-auto font_print_right(int x, int y, const char* text, VideoSurface_t* surface,
-                      double kx, double ky) -> void {
+auto font_print_right(int x, int y, const char* text,
+                      VideoSurfaceView_t surface, double kx, double ky)
+    -> void {
   if (text == nullptr) {
     return;
   }
@@ -457,7 +465,7 @@ auto font_print_right(int x, int y, const char* text, VideoSurface_t* surface,
 }
 
 auto font_print_centered(int x, int y, const char* text,
-                         VideoSurface_t* surface, double kx, double ky)
+                         VideoSurfaceView_t surface, double kx, double ky)
     -> void {
   if (text == nullptr) {
     return;
@@ -467,7 +475,8 @@ auto font_print_centered(int x, int y, const char* text,
 }
 
 auto surface_fader(VideoSurface_t* surface, float r_factor, float g_factor,
-                   float b_factor, float a_factor, VideoRect_t* r) -> void {
+                   float b_factor, float a_factor, const VideoRect_t* r)
+    -> void {
   (void)a_factor;
   (void)r;
   int i = 0;
@@ -485,16 +494,17 @@ auto surface_fader(VideoSurface_t* surface, float r_factor, float g_factor,
   }
 }
 
-auto putpixel(VideoSurface_t* surface, int x, int y, uint32_t pixel) -> void {
-  if (!surface || !surface->pixels || x < 0 || x >= surface->w || y < 0 ||
-      y >= surface->h) {
+auto putpixel(VideoSurfaceView_t surface, int x, int y, uint32_t pixel)
+    -> void {
+  if (surface.pixels == nullptr || x < 0 || x >= surface.w || y < 0 ||
+      y >= surface.h) {
     return;
   }
 
-  uint8_t* p = surface->pixels + y * surface->pitch +
-               static_cast<ptrdiff_t>(x * surface->bpp);
+  uint8_t* p = surface.pixels + y * surface.pitch +
+               static_cast<ptrdiff_t>(x * surface.bpp);
 
-  switch (surface->bpp) {
+  switch (surface.bpp) {
     case 1:
       *p = static_cast<uint8_t>(pixel);
       break;
@@ -509,9 +519,9 @@ auto putpixel(VideoSurface_t* surface, int x, int y, uint32_t pixel) -> void {
   }
 }
 
-auto rectangle(VideoSurface_t* surface, int x, int y, int w, int h,
+auto rectangle(VideoSurfaceView_t surface, int x, int y, int w, int h,
                uint32_t pixel) -> void {
-  if (surface == nullptr) {
+  if (surface.pixels == nullptr) {
     return;
   }
   int i = 0;
@@ -523,5 +533,22 @@ auto rectangle(VideoSurface_t* surface, int x, int y, int w, int h,
   for (i = 0; i <= h; i++) {
     putpixel(surface, x, y + i, pixel);
     putpixel(surface, x + w, y + i, pixel);
+  }
+}
+
+auto fill_rectangle(VideoSurfaceView_t surface, int x, int y, int w, int h,
+                    uint32_t pixel) -> void {
+  if (surface.pixels == nullptr || w <= 0 || h <= 0) {
+    return;
+  }
+  const int x_start = std::max(0, x);
+  const int y_start = std::max(0, y);
+  const int x_end = std::min(surface.w, x + w);
+  const int y_end = std::min(surface.h, y + h);
+
+  for (int cy = y_start; cy < y_end; ++cy) {
+    for (int cx = x_start; cx < x_end; ++cx) {
+      putpixel(surface, cx, cy, pixel);
+    }
   }
 }

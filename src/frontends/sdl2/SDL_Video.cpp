@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <mutex>
 
+#include "SdlBackend.h"
 #include "apple2/Video.h"
 #include "frontends/common/VideoSurface.h"
 
@@ -19,38 +20,93 @@ auto stretch_blt_mem_to_frame_dc() -> void {
   video_set_frame_ready(true);
 }
 
-auto sdl_surface_to_video_surface(SDL_Surface* surface) -> VideoSurface_t {
+ScopedSurfaceLock_t::ScopedSurfaceLock_t(SDL_Surface* surface)
+    : surface_(surface) {
+  if (surface_ == nullptr) {
+    return;
+  }
+  locked_ = sdl_compat_lock_surface(surface_);
   constexpr int k_default_bpp = 4;
-
-  VideoSurface_t video_surface{};
-  if (surface == nullptr) {
-    return video_surface;
-  }
-
-  video_surface.pixels = static_cast<uint8_t*>(surface->pixels);
-  video_surface.w = surface->w;
-  video_surface.h = surface->h;
-  video_surface.pitch = surface->pitch;
-
-  if (surface->format == nullptr) {
-    video_surface.bpp = k_default_bpp;
-    return video_surface;
-  }
-
-  video_surface.bpp = surface->format->BytesPerPixel;
-  if (surface->format->palette != nullptr &&
-      surface->format->palette->colors != nullptr) {
+  bpp_ = (surface_->format != nullptr) ? surface_->format->BytesPerPixel
+                                       : k_default_bpp;
+  if (surface_->format != nullptr && surface_->format->palette != nullptr &&
+      surface_->format->palette->colors != nullptr) {
     const int ncolors =
-        std::max(0, std::min(surface->format->palette->ncolors,
+        std::max(0, std::min(surface_->format->palette->ncolors,
                              static_cast<int>(k_video_palette_size)));
     for (int i = 0; i < ncolors; ++i) {
       const auto idx = static_cast<size_t>(i);
-      video_surface.palette.at(idx).r = surface->format->palette->colors[i].r;
-      video_surface.palette.at(idx).g = surface->format->palette->colors[i].g;
-      video_surface.palette.at(idx).b = surface->format->palette->colors[i].b;
-      video_surface.palette.at(idx).a = surface->format->palette->colors[i].a;
+      palette_.at(idx).r = surface_->format->palette->colors[i].r;
+      palette_.at(idx).g = surface_->format->palette->colors[i].g;
+      palette_.at(idx).b = surface_->format->palette->colors[i].b;
+      palette_.at(idx).a = surface_->format->palette->colors[i].a;
     }
+    has_palette_ = true;
   }
+}
 
+ScopedSurfaceLock_t::~ScopedSurfaceLock_t() {
+  if (locked_ && surface_ != nullptr) {
+    sdl_compat_unlock_surface(surface_);
+  }
+}
+
+ScopedSurfaceLock_t::ScopedSurfaceLock_t(ScopedSurfaceLock_t&& other) noexcept
+    : surface_(other.surface_),
+      locked_(other.locked_),
+      bpp_(other.bpp_),
+      has_palette_(other.has_palette_),
+      palette_(other.palette_) {
+  other.surface_ = nullptr;
+  other.locked_ = false;
+  other.has_palette_ = false;
+}
+
+auto ScopedSurfaceLock_t::operator=(ScopedSurfaceLock_t&& other) noexcept
+    -> ScopedSurfaceLock_t& {
+  if (this != &other) {
+    if (locked_ && surface_ != nullptr) {
+      sdl_compat_unlock_surface(surface_);
+    }
+    surface_ = other.surface_;
+    locked_ = other.locked_;
+    bpp_ = other.bpp_;
+    has_palette_ = other.has_palette_;
+    palette_ = other.palette_;
+    other.surface_ = nullptr;
+    other.locked_ = false;
+    other.has_palette_ = false;
+  }
+  return *this;
+}
+
+auto ScopedSurfaceLock_t::view() const noexcept -> VideoSurfaceView_t {
+  if (surface_ == nullptr || surface_->pixels == nullptr) {
+    return {};
+  }
+  return VideoSurfaceView_t{static_cast<uint8_t*>(surface_->pixels),
+                            surface_->w,
+                            surface_->h,
+                            surface_->pitch,
+                            bpp_,
+                            has_palette_ ? palette_.data() : nullptr};
+}
+
+auto sdl_surface_to_video_surface(SDL_Surface* surface) -> VideoSurface_t {
+  ScopedSurfaceLock_t lock(surface);
+  VideoSurface_t video_surface{};
+  const VideoSurfaceView_t v = lock.view();
+  if (v.pixels == nullptr) {
+    return video_surface;
+  }
+  video_surface.pixels = v.pixels;
+  video_surface.w = v.w;
+  video_surface.h = v.h;
+  video_surface.pitch = v.pitch;
+  video_surface.bpp = v.bpp;
+  if (v.palette != nullptr) {
+    std::copy(v.palette, v.palette + k_video_palette_size,
+              video_surface.palette.begin());
+  }
   return video_surface;
 }

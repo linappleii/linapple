@@ -5,7 +5,6 @@
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_keycode.h>
 #include <SDL3/SDL_pixels.h>
-#include <SDL3/SDL_rect.h>
 #include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_surface.h>
 #include <SDL3/SDL_timer.h>
@@ -86,38 +85,37 @@ auto prepare_dialog_background() -> bool {
                                                   : g_device_bitmap)
           : g_origscreen;
 
-  VideoSurface_t vs_screen{};
-  if (temp_surface == nullptr) {
-    vs_screen = sdl_surface_to_video_surface(g_screen.get());
-    temp_surface = &vs_screen;
-  }
+  ScopedSurfaceLock_t lock_screen(g_screen.get());
+  const VideoSurfaceView_t src_view =
+      (temp_surface != nullptr) ? *temp_surface : lock_screen.view();
 
-  if (temp_surface->w <= 0 || temp_surface->h <= 0) {
+  if (src_view.w <= 0 || src_view.h <= 0) {
     return false;
   }
 
-  g_diskChooseState.bg_screen.reset(SDL_CreateSurface(
-      temp_surface->w, temp_surface->h, SDL_PIXELFORMAT_ARGB8888));
+  g_diskChooseState.bg_screen.reset(
+      SDL_CreateSurface(src_view.w, src_view.h, SDL_PIXELFORMAT_ARGB8888));
   if (g_diskChooseState.bg_screen == nullptr) {
     return false;
   }
 
-  VideoSurface_t vs_bg =
-      sdl_surface_to_video_surface(g_diskChooseState.bg_screen.get());
-  video_soft_stretch(temp_surface, nullptr, &vs_bg, nullptr);
+  {
+    ScopedSurfaceLock_t lock_bg(g_diskChooseState.bg_screen.get());
+    video_soft_stretch(src_view, nullptr, lock_bg.view(), nullptr);
 
-  const int blur_w = std::max(1, temp_surface->w / 16);
-  const int blur_h = std::max(1, temp_surface->h / 16);
-  SdlSurfacePtr_t blur_temp(
-      SDL_CreateSurface(blur_w, blur_h, SDL_PIXELFORMAT_ARGB8888));
-  if (blur_temp != nullptr) {
-    VideoSurface_t vs_blur = sdl_surface_to_video_surface(blur_temp.get());
-    video_soft_stretch(&vs_bg, nullptr, &vs_blur, nullptr);
-    video_soft_stretch(&vs_blur, nullptr, &vs_bg, nullptr);
+    const int blur_w = std::max(1, src_view.w / 16);
+    const int blur_h = std::max(1, src_view.h / 16);
+    SdlSurfacePtr_t blur_temp(
+        SDL_CreateSurface(blur_w, blur_h, SDL_PIXELFORMAT_ARGB8888));
+    if (blur_temp != nullptr) {
+      ScopedSurfaceLock_t lock_blur(blur_temp.get());
+      video_soft_stretch(lock_bg.view(), nullptr, lock_blur.view(), nullptr);
+      video_soft_stretch(lock_blur.view(), nullptr, lock_bg.view(), nullptr);
+    }
   }
 
-  SdlSurfacePtr_t dim_surface(SDL_CreateSurface(
-      temp_surface->w, temp_surface->h, SDL_PIXELFORMAT_ARGB8888));
+  SdlSurfacePtr_t dim_surface(
+      SDL_CreateSurface(src_view.w, src_view.h, SDL_PIXELFORMAT_ARGB8888));
   if (dim_surface != nullptr) {
     const Uint32 dim_color =
         SDL_MapRGBA(SDL_GetPixelFormatDetails(dim_surface->format),
@@ -263,81 +261,85 @@ auto disk_choose_draw() -> void {
   const double facy = static_cast<double>(facy_f);
   const int screen_w = static_cast<int>(system_state.screen_width);
 
-  VideoSurface_t vs_bg =
-      sdl_surface_to_video_surface(g_diskChooseState.bg_screen.get());
-  VideoSurface_t vs_screen = sdl_surface_to_video_surface(g_screen.get());
+  {
+    ScopedSurfaceLock_t lock_bg(g_diskChooseState.bg_screen.get());
+    ScopedSurfaceLock_t lock_screen(g_screen.get());
 
-  video_soft_stretch(&vs_bg, nullptr, &vs_screen, nullptr);
+    video_soft_stretch(lock_bg.view(), nullptr, lock_screen.view(), nullptr);
 
-  font_print_centered(
-      screen_w / 2, static_cast<int>(5 * facy),
-      g_diskChooseState.current_dir.substr(0, k_normal_length).c_str(),
-      &vs_screen, 1.5f * facx_f, 1.3f * facy_f);
+    font_print_centered(
+        screen_w / 2, static_cast<int>(5 * facy),
+        g_diskChooseState.current_dir.substr(0, k_normal_length).c_str(),
+        lock_screen.view(), 1.5f * facx_f, 1.3f * facy_f);
 
-  const char* slot_title = disk_browser_get_title(g_diskChooseState.slot);
-  if (slot_title[0] != '\0') {
-    font_print_centered(screen_w / 2, static_cast<int>(20 * facy), slot_title,
-                        &vs_screen, 1.0f * facx_f, 1.0f * facy_f);
-  }
-
-  font_print_centered(screen_w / 2, static_cast<int>(30 * facy),
-                      "Press ENTER to choose, or ESC to cancel", &vs_screen,
-                      1.0f * facx_f, 1.0f * facy_f);
-
-  const int top_y = static_cast<int>(45 * facy);
-  const size_t list_count =
-      g_diskChooseState.list_handle != nullptr
-          ? file_browser_get_count(g_diskChooseState.list_handle)
-          : 0;
-
-  for (size_t j = 0; j < k_files_in_screen; ++j) {
-    const size_t i = g_diskChooseState.first_file + j;
-    if (i >= list_count) {
-      break;
-    }
-    const FileEntry_t* file_entry =
-        file_browser_get_entry(g_diskChooseState.list_handle, i);
-    if (file_entry == nullptr) {
-      continue;
+    const char* slot_title = disk_browser_get_title(g_diskChooseState.slot);
+    if (slot_title[0] != '\0') {
+      font_print_centered(screen_w / 2, static_cast<int>(20 * facy), slot_title,
+                          lock_screen.view(), 1.0f * facx_f, 1.0f * facy_f);
     }
 
-    const std::string file_name = file_entry->name;
+    font_print_centered(screen_w / 2, static_cast<int>(30 * facy),
+                        "Press ENTER to choose, or ESC to cancel",
+                        lock_screen.view(), 1.0f * facx_f, 1.0f * facy_f);
 
-    if (i == g_diskChooseState.act_file) {
-      SDL_Rect r{};
-      r.x = 2;
-      r.y = static_cast<int>(static_cast<double>(top_y) +
+    const int top_y = static_cast<int>(45 * facy);
+    const size_t list_count =
+        g_diskChooseState.list_handle != nullptr
+            ? file_browser_get_count(g_diskChooseState.list_handle)
+            : 0;
+
+    const Uint32 sel_color =
+        SDL_MapRGB(SDL_GetPixelFormatDetails(g_screen->format),
+                   SDL_GetSurfacePalette(g_screen.get()), 64, 128, 190);
+
+    for (size_t j = 0; j < k_files_in_screen; ++j) {
+      const size_t i = g_diskChooseState.first_file + j;
+      if (i >= list_count) {
+        break;
+      }
+      const FileEntry_t* file_entry =
+          file_browser_get_entry(g_diskChooseState.list_handle, i);
+      if (file_entry == nullptr) {
+        continue;
+      }
+
+      const std::string file_name = file_entry->name;
+
+      if (i == g_diskChooseState.act_file) {
+        const int rx = 2;
+        const int ry =
+            static_cast<int>(static_cast<double>(top_y) +
                              static_cast<double>(j) * 15.0 * facy - 1.0);
-      const auto display_len = std::min(file_name.size(), k_max_filename);
-      r.w = static_cast<int>(static_cast<double>(display_len * k_font_size_x) *
-                             facx_f);
-      r.h = static_cast<int>(9.0 * facy);
-      SDL_FillSurfaceRect(
-          g_screen.get(), &r,
-          SDL_MapRGB(SDL_GetPixelFormatDetails(g_screen->format),
-                     SDL_GetSurfacePalette(g_screen.get()), 64, 128, 190));
+        const auto display_len = std::min(file_name.size(), k_max_filename);
+        const int rw = static_cast<int>(
+            static_cast<double>(display_len * k_font_size_x) * facx_f);
+        const int rh = static_cast<int>(9.0 * facy);
+        fill_rectangle(lock_screen.view(), rx, ry, rw, rh, sel_color);
+      }
+
+      std::array<char, 32> type_size_str{};
+      file_entry_format_type_or_size(file_entry, type_size_str.data(),
+                                     type_size_str.size());
+
+      font_print(4,
+                 static_cast<int>(static_cast<double>(top_y) +
+                                  static_cast<double>(j) * 15.0 * facy),
+                 file_name.substr(0, k_max_filename).c_str(),
+                 lock_screen.view(), 1.0f * facx_f, 1.0f * facy_f);
+      font_print_right(
+          screen_w - static_cast<int>(8.0 * static_cast<double>(facx_f)),
+          static_cast<int>(static_cast<double>(top_y) +
+                           static_cast<double>(j) * 15.0 * facy),
+          type_size_str.data(), lock_screen.view(), 1.0f * facx_f,
+          1.0f * facy_f);
     }
 
-    std::array<char, 32> type_size_str{};
-    file_entry_format_type_or_size(file_entry, type_size_str.data(),
-                                   type_size_str.size());
-
-    font_print(4,
-               static_cast<int>(static_cast<double>(top_y) +
-                                static_cast<double>(j) * 15.0 * facy),
-               file_name.substr(0, k_max_filename).c_str(), &vs_screen,
-               1.0f * facx_f, 1.0f * facy_f);
-    font_print_right(
-        screen_w - static_cast<int>(8.0 * static_cast<double>(facx_f)),
-        static_cast<int>(static_cast<double>(top_y) +
-                         static_cast<double>(j) * 15.0 * facy),
-        type_size_str.data(), &vs_screen, 1.0f * facx_f, 1.0f * facy_f);
+    rectangle(lock_screen.view(), 0, top_y - 5, screen_w - 1,
+              static_cast<int>(320.0 * facy), RGB(255, 255, 255));
+    rectangle(lock_screen.view(),
+              static_cast<int>(480.0 * static_cast<double>(facx_f)), top_y - 5,
+              0, static_cast<int>(320.0 * facy), RGB(255, 255, 255));
   }
-
-  rectangle(&vs_screen, 0, top_y - 5, screen_w - 1,
-            static_cast<int>(320.0 * facy), RGB(255, 255, 255));
-  rectangle(&vs_screen, static_cast<int>(480.0 * static_cast<double>(facx_f)),
-            top_y - 5, 0, static_cast<int>(320.0 * facy), RGB(255, 255, 255));
 
   frame_refresh();
 }
@@ -364,23 +366,21 @@ auto choose_image_dialog(int screen_w, int screen_h, const std::string& dir,
     return false;
   }
 
-  VideoSurface_t vs_bg =
-      sdl_surface_to_video_surface(g_diskChooseState.bg_screen.get());
-  VideoSurface_t vs_actual_screen =
-      sdl_surface_to_video_surface(g_screen.get());
-
   {
     const std::lock_guard<std::recursive_mutex> lock(g_video_draw_mutex);
-    video_soft_stretch(&vs_bg, nullptr, &vs_actual_screen, nullptr);
+    ScopedSurfaceLock_t lock_bg(g_diskChooseState.bg_screen.get());
+    ScopedSurfaceLock_t lock_screen(g_screen.get());
+
+    video_soft_stretch(lock_bg.view(), nullptr, lock_screen.view(), nullptr);
 
     font_print_centered(screen_w / 2, static_cast<int>(5 * facy),
                         dir.substr(0, k_normal_length).c_str(),
-                        &vs_actual_screen, static_cast<float>(1.5 * facx),
+                        lock_screen.view(), static_cast<float>(1.5 * facx),
                         static_cast<float>(1.3 * facy));
     font_print_centered(
         screen_w / 2, static_cast<int>(20 * facy),
         file_list_generator->get_starting_message(file_list_generator),
-        &vs_actual_screen, static_cast<float>(1.0 * facx),
+        lock_screen.view(), static_cast<float>(1.0 * facx),
         static_cast<float>(1.0 * facy));
     frame_refresh();
   }
@@ -394,8 +394,9 @@ auto choose_image_dialog(int screen_w, int screen_h, const std::string& dir,
 
     {
       const std::lock_guard<std::recursive_mutex> lock(g_video_draw_mutex);
+      ScopedSurfaceLock_t lock_screen(g_screen.get());
       font_print_centered(screen_w / 2, static_cast<int>(30 * facy),
-                          "Failure. Press any key!", &vs_actual_screen,
+                          "Failure. Press any key!", lock_screen.view(),
                           static_cast<float>(1.4 * facx),
                           static_cast<float>(1.1 * facy));
       frame_refresh();

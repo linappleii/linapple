@@ -11,25 +11,33 @@ constexpr int k_chars_in_row = 45;
 
 extern VideoSurface_t* font_sfc;
 
-auto video_soft_stretch(VideoSurface_t* src, VideoRect_t* srcrect,
-                        VideoSurface_t* dst, VideoRect_t* dstrect) -> int;
-auto video_soft_stretch_or(VideoSurface_t* src, VideoRect_t* srcrect,
-                           VideoSurface_t* dst, VideoRect_t* dstrect) -> int;
-auto video_soft_stretch_mono8(VideoSurface_t* src, VideoRect_t* srcrect,
-                              VideoSurface_t* dst, VideoRect_t* dstrect,
-                              uint32_t fgbrush, uint32_t bgbrush) -> int;
+auto video_soft_stretch(VideoSurfaceView_t src, const VideoRect_t* srcrect,
+                        VideoSurfaceView_t dst, const VideoRect_t* dstrect)
+    -> int;
+auto video_soft_stretch_or(VideoSurfaceView_t src, const VideoRect_t* srcrect,
+                           VideoSurfaceView_t dst, const VideoRect_t* dstrect)
+    -> int;
+auto video_soft_stretch_mono8(VideoSurfaceView_t src,
+                              const VideoRect_t* srcrect,
+                              VideoSurfaceView_t dst,
+                              const VideoRect_t* dstrect, uint32_t fgbrush,
+                              uint32_t bgbrush) -> int;
 
 auto fonts_initialization() -> bool;
 auto fonts_termination() -> void;
-auto font_print(int x, int y, const char* text, VideoSurface_t* surface,
+auto font_print(int x, int y, const char* text, VideoSurfaceView_t surface,
                 double kx, double ky) -> void;
-auto font_print_right(int x, int y, const char* text, VideoSurface_t* surface,
-                      double kx, double ky) -> void;
+auto font_print_right(int x, int y, const char* text,
+                      VideoSurfaceView_t surface, double kx, double ky) -> void;
 auto font_print_centered(int x, int y, const char* text,
-                         VideoSurface_t* surface, double kx, double ky) -> void;
+                         VideoSurfaceView_t surface, double kx, double ky)
+    -> void;
 
 auto surface_fader(VideoSurface_t* surface, float r_factor, float g_factor,
-                   float b_factor, float a_factor, VideoRect_t* r) -> void;
-auto putpixel(VideoSurface_t* surface, int x, int y, uint32_t pixel) -> void;
-auto rectangle(VideoSurface_t* surface, int x, int y, int w, int h,
+                   float b_factor, float a_factor, const VideoRect_t* r)
+    -> void;
+auto putpixel(VideoSurfaceView_t surface, int x, int y, uint32_t pixel) -> void;
+auto rectangle(VideoSurfaceView_t surface, int x, int y, int w, int h,
                uint32_t pixel) -> void;
+auto fill_rectangle(VideoSurfaceView_t surface, int x, int y, int w, int h,
+                    uint32_t pixel) -> void;

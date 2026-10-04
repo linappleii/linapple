@@ -90,7 +90,8 @@ inline auto to_video_rect(const SDL_Rect& r) noexcept -> VideoRect_t {
 }
 
 #if ENABLE_DEBUGGER
-auto draw_debugger_tui(VideoSurface_t* vs_screen, const SDL_Rect& r) -> void {
+auto draw_debugger_tui(VideoSurfaceView_t vs_screen, const SDL_Rect& r)
+    -> void {
   if (g_debug_screen == nullptr) {
     return;
   }
@@ -446,26 +447,22 @@ auto draw_frame_window() -> void {
     const SDL_Rect r = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
 
     if (system_state.mode != app_mode_debug) {
-      VideoSurface_t vs_screen = sdl_surface_to_video_surface(g_screen.get());
-      VideoSurface_t vs_output{};
-      vs_output.pixels = reinterpret_cast<uint8_t*>(output);
-      vs_output.w = SCREEN_WIDTH;
-      vs_output.h = SCREEN_HEIGHT;
-      vs_output.pitch = SCREEN_WIDTH * 4;
-      vs_output.bpp = 4;
+      ScopedSurfaceLock_t lock_screen(g_screen.get());
+      const VideoSurfaceView_t vs_output(output, SCREEN_WIDTH, SCREEN_HEIGHT,
+                                         SCREEN_WIDTH * 4, 4);
 
       if (!g_window_resized) {
         VideoRect_t vr = to_video_rect(r);
-        video_soft_stretch(&vs_output, &vr, &vs_screen, &vr);
+        video_soft_stretch(vs_output, &vr, lock_screen.view(), &vr);
       } else {
         VideoRect_t vor = to_video_rect(g_orig_rect);
         VideoRect_t vnr = to_video_rect(g_new_rect);
-        video_soft_stretch(&vs_output, &vor, &vs_screen, &vnr);
+        video_soft_stretch(vs_output, &vor, lock_screen.view(), &vnr);
       }
     } else {
-      VideoSurface_t vs_screen = sdl_surface_to_video_surface(g_screen.get());
 #if ENABLE_DEBUGGER
-      draw_debugger_tui(&vs_screen, r);
+      ScopedSurfaceLock_t lock_screen(g_screen.get());
+      draw_debugger_tui(lock_screen.view(), r);
 #endif
     }
 
@@ -571,24 +568,23 @@ auto frame_show_help_screen(int sx, int sy) -> void {
     temp_surface = g_origscreen;
   }
 
-  VideoSurface_t vs_screen_fallback{};
-  if (temp_surface == nullptr) {
-    vs_screen_fallback = sdl_surface_to_video_surface(g_screen.get());
-    temp_surface = &vs_screen_fallback;
-  }
+  {
+    ScopedSurfaceLock_t lock_screen(g_screen.get());
+    const VideoSurfaceView_t view_temp =
+        (temp_surface != nullptr) ? *temp_surface : lock_screen.view();
+    video_soft_stretch(view_temp, nullptr, lock_screen.view(), nullptr);
 
-  VideoSurface_t vs_actual_screen =
-      sdl_surface_to_video_surface(g_screen.get());
-  video_soft_stretch(temp_surface, nullptr, &vs_actual_screen, nullptr);
-
-  const int blur_w = std::max(1, g_screen->w / 16);
-  const int blur_h = std::max(1, g_screen->h / 16);
-  SdlSurfacePtr_t blur_temp(
-      SDL_CreateSurface(blur_w, blur_h, SDL_PIXELFORMAT_ARGB8888));
-  if (blur_temp != nullptr) {
-    VideoSurface_t vs_blur = sdl_surface_to_video_surface(blur_temp.get());
-    video_soft_stretch(&vs_actual_screen, nullptr, &vs_blur, nullptr);
-    video_soft_stretch(&vs_blur, nullptr, &vs_actual_screen, nullptr);
+    const int blur_w = std::max(1, g_screen->w / 16);
+    const int blur_h = std::max(1, g_screen->h / 16);
+    SdlSurfacePtr_t blur_temp(
+        SDL_CreateSurface(blur_w, blur_h, SDL_PIXELFORMAT_ARGB8888));
+    if (blur_temp != nullptr) {
+      ScopedSurfaceLock_t lock_blur(blur_temp.get());
+      video_soft_stretch(lock_screen.view(), nullptr, lock_blur.view(),
+                         nullptr);
+      video_soft_stretch(lock_blur.view(), nullptr, lock_screen.view(),
+                         nullptr);
+    }
   }
 
   SdlSurfacePtr_t dim_surface(
@@ -611,49 +607,52 @@ auto frame_show_help_screen(int sx, int sy) -> void {
 
   const int hdr_top = static_cast<int>(4.0f * facy_f);
   const int hdr_height = static_cast<int>(42.0f * facy_f);
-  rectangle(&vs_actual_screen, static_cast<int>(4.0f * facx_f), hdr_top,
-            static_cast<int>(system_state.screen_width - (8.0f * facx_f)),
-            hdr_height, RGB(255, 255, 0));
 
-  font_print_centered(sx / 2, hdr_top + static_cast<int>(4.0f * facy_f),
-                      HELP_HEADER_STRINGS.at(0), &vs_actual_screen, scale_x,
-                      scale_y);
-  font_print_centered(sx / 2, hdr_top + static_cast<int>(16.0f * facy_f),
-                      HELP_HEADER_STRINGS.at(1), &vs_actual_screen, scale_x,
-                      scale_y);
-  font_print_centered(sx / 2, hdr_top + static_cast<int>(28.0f * facy_f),
-                      HELP_HEADER_STRINGS.at(2), &vs_actual_screen, scale_x,
-                      scale_y);
+  {
+    ScopedSurfaceLock_t lock_screen(g_screen.get());
+    rectangle(lock_screen.view(), static_cast<int>(4.0f * facx_f), hdr_top,
+              static_cast<int>(system_state.screen_width - (8.0f * facx_f)),
+              hdr_height, RGB(255, 255, 0));
 
-  const int body_top = hdr_top + hdr_height + static_cast<int>(4.0f * facy_f);
-  const int body_height =
-      static_cast<int>(system_state.screen_height - body_top - (4.0f * facy_f));
-  rectangle(&vs_actual_screen, static_cast<int>(4.0f * facx_f), body_top,
-            static_cast<int>(system_state.screen_width - (8.0f * facx_f)),
-            body_height, RGB(255, 255, 255));
+    font_print_centered(sx / 2, hdr_top + static_cast<int>(4.0f * facy_f),
+                        HELP_HEADER_STRINGS.at(0), lock_screen.view(), scale_x,
+                        scale_y);
+    font_print_centered(sx / 2, hdr_top + static_cast<int>(16.0f * facy_f),
+                        HELP_HEADER_STRINGS.at(1), lock_screen.view(), scale_x,
+                        scale_y);
+    font_print_centered(sx / 2, hdr_top + static_cast<int>(28.0f * facy_f),
+                        HELP_HEADER_STRINGS.at(2), lock_screen.view(), scale_x,
+                        scale_y);
 
-  const float line_spacing = 13.0f * facy_f;
-  for (size_t i = 0; i < HELP_BODY_LINES.size(); ++i) {
-    if (HELP_BODY_LINES.at(i).text != nullptr &&
-        HELP_BODY_LINES.at(i).text[0] != '\0') {
-      font_print(
-          static_cast<int>(16.0f * facx_f),
-          body_top + static_cast<int>(6.0f * facy_f +
-                                      static_cast<float>(i) * line_spacing),
-          HELP_BODY_LINES.at(i).text, &vs_actual_screen, scale_x, scale_y);
+    const int body_top = hdr_top + hdr_height + static_cast<int>(4.0f * facy_f);
+    const int body_height = static_cast<int>(system_state.screen_height -
+                                             body_top - (4.0f * facy_f));
+    rectangle(lock_screen.view(), static_cast<int>(4.0f * facx_f), body_top,
+              static_cast<int>(system_state.screen_width - (8.0f * facx_f)),
+              body_height, RGB(255, 255, 255));
+
+    const float line_spacing = 13.0f * facy_f;
+    for (size_t i = 0; i < HELP_BODY_LINES.size(); ++i) {
+      if (HELP_BODY_LINES.at(i).text != nullptr &&
+          HELP_BODY_LINES.at(i).text[0] != '\0') {
+        font_print(
+            static_cast<int>(16.0f * facx_f),
+            body_top + static_cast<int>(6.0f * facy_f +
+                                        static_cast<float>(i) * line_spacing),
+            HELP_BODY_LINES.at(i).text, lock_screen.view(), scale_x, scale_y);
+      }
     }
-  }
 
-  if (assets != nullptr && assets->icon != nullptr) {
-    VideoSurface_t vs_icon =
-        sdl_surface_to_video_surface(static_cast<SDL_Surface*>(assets->icon));
-    VideoRect_t logo{0, 0, static_cast<int16_t>(vs_icon.w),
-                     static_cast<int16_t>(vs_icon.h)};
-    VideoRect_t scrr{static_cast<int16_t>(460.0f * facx_f),
-                     static_cast<int16_t>(270.0f * facy_f),
-                     static_cast<int16_t>(100.0f * facy_f),
-                     static_cast<int16_t>(100.0f * facy_f)};
-    video_soft_stretch_or(&vs_icon, &logo, &vs_actual_screen, &scrr);
+    if (assets != nullptr && assets->icon != nullptr) {
+      ScopedSurfaceLock_t lock_icon(static_cast<SDL_Surface*>(assets->icon));
+      VideoRect_t logo{0, 0, static_cast<int16_t>(lock_icon.view().w),
+                       static_cast<int16_t>(lock_icon.view().h)};
+      VideoRect_t scrr{static_cast<int16_t>(460.0f * facx_f),
+                       static_cast<int16_t>(270.0f * facy_f),
+                       static_cast<int16_t>(100.0f * facy_f),
+                       static_cast<int16_t>(100.0f * facy_f)};
+      video_soft_stretch_or(lock_icon.view(), &logo, lock_screen.view(), &scrr);
+    }
   }
 
   frame_refresh();

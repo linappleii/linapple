@@ -85,3 +85,19 @@ inline auto sdl_compat_get_joystick_axis(SDL_Joystick* joy, int axis)
   }
   return SDL_GetJoystickAxis(joy, axis);
 }
+
+inline auto sdl_compat_lock_surface(SDL_Surface* s) -> bool {
+  if (s == nullptr) {
+    return false;
+  }
+  if (!SDL_MUSTLOCK(s)) {
+    return true;
+  }
+  return SDL_LockSurface(s);
+}
+
+inline auto sdl_compat_unlock_surface(SDL_Surface* s) -> void {
+  if (s != nullptr && SDL_MUSTLOCK(s)) {
+    SDL_UnlockSurface(s);
+  }
+}
