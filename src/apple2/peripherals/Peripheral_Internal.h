@@ -17,8 +17,6 @@ auto peripheral_register_internal() -> void;
 auto peripheral_plugins_init(const char* plugin_dir = nullptr) -> void;
 auto peripheral_plugins_shutdown() -> void;
 auto peripheral_find_internal(const char* name) -> Peripheral_t*;
-// The built-in descriptors in the order they are walked: sorted by id.
-auto peripheral_get_builtin_registry() -> std::vector<Peripheral_t*>&;
 auto peripheral_get_plugin_path(const char* name) -> const char*;
 auto peripheral_is_any_active() -> bool;
 
@@ -68,3 +66,6 @@ auto linapple_set_byte_sink(const ByteSink_t* vtable, void* ctx)
 #ifdef __cplusplus
 }
 #endif
+
+// The built-in descriptors in the order they are walked: sorted by id.
+auto peripheral_get_builtin_registry() -> std::vector<Peripheral_t*>&;
