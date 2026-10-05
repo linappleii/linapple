@@ -82,6 +82,12 @@ constexpr uint32_t poke_command_bytes = 4;
 // and never reads it.
 constexpr uint8_t init_mouse_reply = 0xFF;
 
+// Bits 1-3 and 5 of the status byte travel in the frame; bits 7 and 6 are
+// rebuilt from the button fields, bits 4 and 0 are reserved.
+constexpr uint8_t frame_status_mask = 0x2E;
+constexpr uint32_t frame_word_max = 0xFFFF;
+constexpr uint32_t frame_buffer_size = 8;
+
 // Mode byte bits (manual p. 44).
 namespace mode {
 constexpr uint8_t tracking = 0x01;
@@ -116,6 +122,7 @@ constexpr uint8_t write_strobe = 0x20;
 constexpr uint8_t byte_ready = 0x40;
 constexpr uint8_t busy = 0x80;
 constexpr uint8_t card_driven = 0x3E;
+constexpr uint8_t pia_inputs = 0xC1;
 }  // namespace port_b
 
 // Apple's GetClamp reads 6805 RAM $4E down to $47 through the $F0 peek and
@@ -614,6 +621,20 @@ auto on_read_strobe(MouseCard_t* card, uint8_t data) -> void {
   card->port_b_shadow |= port_b::byte_ready;
 }
 
+// The two replies are functions of the two strobes: PB6 is the read strobe's
+// complement and PB7 the write strobe's level, from reset on and after every
+// edge the two handlers above take; PB0 is the PAL's input and never driven.
+auto reply_levels(uint8_t strobes) -> uint8_t {
+  uint8_t levels = 0;
+  if ((strobes & port_b::read_strobe) == 0) {
+    levels |= port_b::byte_ready;
+  }
+  if ((strobes & port_b::write_strobe) != 0) {
+    levels |= port_b::busy;
+  }
+  return levels;
+}
+
 auto pia_listener_b(void* obj, uint8_t data) -> void {
   if (obj == nullptr) {
     return;
@@ -804,6 +825,7 @@ auto mouse_abi_save_state(void* instance, void* buffer, size_t* size)
   }
 
   const auto* card = static_cast<const MouseCard_t*>(instance);
+  const uint64_t now = card->host->GetCycles();
   MouseSaveState_t state{};
   state.version = MOUSE_STATE_VERSION;
   state.struct_size = static_cast<uint32_t>(required);
@@ -813,6 +835,8 @@ auto mouse_abi_save_state(void* instance, void* buffer, size_t* size)
   state.max_x = static_cast<uint16_t>(card->max_x);
   state.min_y = static_cast<uint16_t>(card->min_y);
   state.max_y = static_cast<uint16_t>(card->max_y);
+  state.tick_phase =
+      static_cast<uint32_t>(card->next_tick > now ? card->next_tick - now : 0);
   state.read_x = static_cast<uint16_t>(card->read_x);
   state.read_y = static_cast<uint16_t>(card->read_y);
   state.parser_pos = card->pos;
@@ -825,10 +849,15 @@ auto mouse_abi_save_state(void* instance, void* buffer, size_t* size)
   state.pia_crb = card->pia.crb;
   state.pia_port_a_in = card->pia.port_a_in;
   state.pia_port_b_in = card->pia.port_b_in;
+  state.rate_50hz = card->rate_50hz ? 1 : 0;
+  state.pending = card->pending;
+  state.irq_asserted = card->irq_asserted ? 1 : 0;
+  state.parser_in_len = static_cast<uint8_t>(card->in_len);
+  state.parser_reply_pos = static_cast<uint8_t>(card->reply_pos);
   state.pia_port_a_shadow = card->port_a_shadow;
   state.pia_port_b_shadow = card->port_b_shadow;
   state.mode = card->mode;
-  state.status = card->status;
+  state.status = card->status & frame_status_mask;
   state.button_at_last_read = card->button_at_last_read ? 1 : 0;
   state.button = card->button ? 1 : 0;
   std::copy(card->buffer.begin(), card->buffer.end(), state.buffer);
@@ -838,21 +867,101 @@ auto mouse_abi_save_state(void* instance, void* buffer, size_t* size)
   return peripheral_ok;
 }
 
+// The reason a frame is refused, or null. Every refusal is of a frame no
+// build of this card writes.
+auto frame_refusal(const MouseSaveState_t& state) -> const char* {
+  if (state.version != MOUSE_STATE_VERSION ||
+      state.struct_size != sizeof(MouseSaveState_t)) {
+    return "the header";
+  }
+  const std::array<uint32_t, 8> words = {
+      state.position_x, state.position_y, state.min_x,  state.max_x,
+      state.min_y,      state.max_y,      state.read_x, state.read_y};
+  for (uint32_t word : words) {
+    if (word > frame_word_max) {
+      return "a position or clamp above 16 bits";
+    }
+  }
+  if (state.parser_pos >= frame_buffer_size || state.parser_out_len < 1 ||
+      state.parser_out_len > frame_buffer_size) {
+    return "the parser's cursor or length";
+  }
+  if (state.mode > mode::mask ||
+      (state.pending & static_cast<uint8_t>(~status::interrupt_sources)) != 0) {
+    return "the mode or pending bits";
+  }
+  if (state.rate_50hz > 1 || state.irq_asserted > 1 || state.button > 1 ||
+      state.button_at_last_read > 1) {
+    return "a flag above 1";
+  }
+  // The reply length is a function of the command byte; a frame that
+  // disagrees was not written by this card. Older frames hold a zero here.
+  const uint32_t in_len = command_in_len(state.buffer[0]);
+  if (state.parser_in_len != 0 && state.parser_in_len != in_len) {
+    return "the reply length";
+  }
+  if (state.parser_reply_pos > in_len) {
+    return "the reply cursor";
+  }
+  // A shadow whose replies do not answer its strobes parks the firmware: it
+  // raises a strobe the shadow already holds, so no edge comes, and waits
+  // for the reply (bank 6 $C49C and $C4B6, bank 3 $C40E and $C436).
+  if ((state.pia_port_b_shadow & port_b::pia_inputs) !=
+      reply_levels(state.pia_port_b_shadow)) {
+    return "port B's replies against its strobes";
+  }
+  return nullptr;
+}
+
+// Any buffer of at least the frame's size loads, so the 104-byte fixed region
+// a file from before the slot trailer carries loads too; what an older frame
+// lacks takes its default: the host width it held at tick_phase becomes a
+// phase bounded by one period, so the first tick comes within one, the rate
+// 60 Hz, nothing pending, the line released. Sources named with no line
+// raised are a state the model cannot reach, since the tick sets the bits and
+// the line together, READMOUSE clears the bits and leaves the line, and
+// SERVEMOUSE clears both; an older frame carries exactly that state, so its
+// bits 1-3 go with the line. Bits 7 and 6 are never read from the frame:
+// READMOUSE rebuilds them from the two button fields.
 auto mouse_abi_load_state(void* instance, const void* buffer, size_t size)
     -> PeripheralStatus_t {
   if (instance == nullptr || buffer == nullptr ||
-      size != sizeof(MouseSaveState_t)) {
+      size < sizeof(MouseSaveState_t)) {
     return peripheral_error;
   }
   MouseSaveState_t state{};
   std::memcpy(&state, buffer, sizeof(state));
-  if (state.version != MOUSE_STATE_VERSION ||
-      state.struct_size != sizeof(MouseSaveState_t)) {
+  auto* card = static_cast<MouseCard_t*>(instance);
+  const char* refusal = frame_refusal(state);
+  if (refusal != nullptr) {
+    card->host->Log(card, log_warn,
+                    "Mouse Interface in slot %d: the save state's frame is "
+                    "refused for %s; the card stays as it was\n",
+                    card->slot, refusal);
     return peripheral_error;
   }
 
-  auto* card = static_cast<MouseCard_t*>(instance);
+  // The shadow's bank and strobe bits are the PIA's pins as of the last ORB
+  // write; a DDRB write after it moves the pins without a listener call, and
+  // the pull-downs (R4-R7) hold an undriven line low, so a frame whose
+  // shadow disagrees with ORB & DDRB takes the pins, the replies answering
+  // the strobes as they do live. Byte 63 is the same shadow as the chip saw
+  // it and is not read.
+  const uint8_t pins = state.pia_orb & state.pia_ddrb & port_b::card_driven;
+  uint8_t shadow = state.pia_port_b_shadow;
+  if ((shadow & port_b::card_driven) != pins) {
+    shadow = pins | reply_levels(pins);
+    card->host->Log(
+        card, log_warn,
+        "Mouse Interface in slot %d: the save state's port B "
+        "shadow $%02X disagrees with the PIA's pins; loading $%02X\n",
+        card->slot, state.pia_port_b_shadow, shadow);
+  }
+
+  const uint64_t now = card->host->GetCycles();
   pia_6821_reset(&card->pia);
+  pia_6821_set_listener_a(&card->pia, card, pia_listener_a);
+  pia_6821_set_listener_b(&card->pia, card, pia_listener_b);
   card->pia.ora = state.pia_ora;
   card->pia.orb = state.pia_orb;
   card->pia.ddra = state.pia_ddra;
@@ -860,19 +969,18 @@ auto mouse_abi_load_state(void* instance, const void* buffer, size_t size)
   card->pia.cra = state.pia_cra;
   card->pia.crb = state.pia_crb;
   card->pia.port_a_in = state.pia_port_a_in;
-  card->pia.port_b_in = state.pia_port_b_in;
   card->port_a_shadow = state.pia_port_a_shadow;
-  card->port_b_shadow = state.pia_port_b_shadow;
-  card->mode = state.mode;
+  card->port_b_shadow = shadow;
+  pia_6821_set_port_b(&card->pia, shadow);
 
   std::copy(state.buffer, state.buffer + card->buffer.size(),
             card->buffer.begin());
-  card->pos = state.parser_pos < card->buffer.size() ? state.parser_pos : 0;
+  card->pos = state.parser_pos;
   card->out_len = command_out_len(card->buffer.at(0));
   card->in_len = command_in_len(card->buffer.at(0));
-  card->reply_pos = 0;
-  card->status = state.status;
+  card->reply_pos = state.parser_reply_pos;
 
+  card->mode = state.mode;
   card->position_x = static_cast<int16_t>(state.position_x);
   card->position_y = static_cast<int16_t>(state.position_y);
   card->min_x = static_cast<int16_t>(state.min_x);
@@ -881,11 +989,25 @@ auto mouse_abi_load_state(void* instance, const void* buffer, size_t size)
   card->max_y = static_cast<int16_t>(state.max_y);
   card->read_x = static_cast<int16_t>(state.read_x);
   card->read_y = static_cast<int16_t>(state.read_y);
-  card->button_at_last_read = state.button_at_last_read != 0;
   card->button = state.button != 0;
+  card->button_at_last_read = state.button_at_last_read != 0;
 
-  pia_6821_set_listener_a(&card->pia, card, pia_listener_a);
-  pia_6821_set_listener_b(&card->pia, card, pia_listener_b);
+  card->status = state.status & frame_status_mask;
+  if (state.irq_asserted == 0) {
+    card->status &= static_cast<uint8_t>(~status::interrupt_sources);
+  }
+  card->pending = state.pending;
+  card->rate_50hz = state.rate_50hz != 0;
+  card->tick_period = card->rate_50hz ? tick_period_50hz : tick_period_60hz;
+  card->next_tick =
+      now + std::min<uint64_t>(state.tick_phase, card->tick_period);
+  card->host->ScheduleEvent(card, card->next_tick);
+
+  // The CPU's own restore may have cleared the slot's line under the latch,
+  // so the level is driven whatever the latch held.
+  card->irq_asserted = state.irq_asserted != 0;
+  card->host->AssertIrq(card->slot, card->irq_asserted);
+
   register_bank(card);
   return peripheral_ok;
 }

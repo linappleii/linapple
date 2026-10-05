@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#include <algorithm>
 #include <array>
 #include <cstdarg>
 #include <cstddef>
@@ -20,6 +21,7 @@
 #include "apple2/peripherals/mouse/MouseCommands.h"
 #include "apple2/peripherals/mouse/MouseRom.h"
 #include "core/LinAppleCore.h"
+#include "core/Log.h"
 #include "doctest.h"
 #include "frontends/common/MouseFrontend.h"
 #include "test_fixtures.h"
@@ -1081,4 +1083,398 @@ TEST_CASE(
   CHECK(values.at(2) == 0x00);
   CHECK(values.at(3) == 0x00);
   CHECK(values.at(4) == 0x00);
+}
+
+namespace {
+
+using Frame_t = std::array<uint8_t, frame_size>;
+
+constexpr size_t frame_tick_phase = 32;
+constexpr size_t frame_rate = 64;
+constexpr size_t frame_pending = 65;
+constexpr size_t frame_irq = 66;
+constexpr size_t frame_in_len = 68;
+constexpr size_t frame_reply_pos = 69;
+constexpr size_t frame_mode = 74;
+constexpr size_t frame_status = 76;
+constexpr size_t frame_button = 79;
+constexpr uint64_t one_frame = 17030;
+
+auto save_frame(int slot) -> Frame_t {
+  Frame_t frame{};
+  size_t size = frame.size();
+  peripheral_save_state(slot, frame.data(), &size);
+  REQUIRE(size == frame.size());
+  return frame;
+}
+
+auto frame_word(const Frame_t& frame, size_t at) -> uint32_t {
+  return static_cast<uint32_t>(frame.at(at)) |
+         (static_cast<uint32_t>(frame.at(at + 1)) << 8) |
+         (static_cast<uint32_t>(frame.at(at + 2)) << 16) |
+         (static_cast<uint32_t>(frame.at(at + 3)) << 24);
+}
+
+auto set_frame_word(Frame_t& frame, size_t at, uint32_t value) -> void {
+  frame.at(at) = static_cast<uint8_t>(value & 0xFF);
+  frame.at(at + 1) = static_cast<uint8_t>((value >> 8) & 0xFF);
+  frame.at(at + 2) = static_cast<uint8_t>((value >> 16) & 0xFF);
+  frame.at(at + 3) = static_cast<uint8_t>((value >> 24) & 0xFF);
+}
+
+// The slot-4 trailer entry of tests/fixtures/mouse-slot4-0aad3663.aws, as
+// the card before this series wrote it after SETMOUSE $0B, a host position of
+// (123, 456), the button pressed and one READMOUSE with it held: bytes 32-39
+// are the host window's 1023 x 1023 range, byte 76 the whole status byte with
+// the button in bit 7, bytes 64-71 the PIA's unconnected pins.
+constexpr Frame_t legacy_frame = {
+    0x01, 0x00, 0x00, 0x00, 0x5C, 0x00, 0x00, 0x00, 0x7B, 0x00, 0x00, 0x00,
+    0xC8, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x03, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0xFF, 0x03, 0x00, 0x00, 0xFF, 0x03, 0x00, 0x00,
+    0xFF, 0x03, 0x00, 0x00, 0x7B, 0x00, 0x00, 0x00, 0xC8, 0x01, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0xA0, 0x40, 0x00, 0x3E,
+    0x04, 0x04, 0xA0, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x10, 0x40, 0x0B, 0x00, 0x80, 0x01, 0x00, 0x01, 0x00, 0x10, 0x7B, 0x00,
+    0xC8, 0x01, 0xA0, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+}  // namespace
+
+TEST_CASE(
+    "Mouse card: the frame carries the 6805's state, the tick's phase and the "
+    "line, and a reset card takes it all back") {
+  MouseSession_t session;
+  REQUIRE_FALSE(call_firmware(session.slot, entry_set_mouse, 0x0F));
+  poke_slot0_holes(0x64, 0xC8, 0x00, 0x00);
+  REQUIRE_FALSE(call_firmware(session.slot, entry_clamp_mouse, 0));
+  move_mouse(session.slot, 150, 20);
+  press_button(session.slot, true);
+  session.harness.run_frames(1);
+
+  const Frame_t saved = save_frame(session.slot);
+  CHECK(frame_word(saved, 8) == 150);
+  CHECK(frame_word(saved, 12) == 20);
+  CHECK(frame_word(saved, 16) == 100);
+  CHECK(frame_word(saved, 20) == 200);
+  CHECK(frame_word(saved, frame_tick_phase) > 0);
+  CHECK(frame_word(saved, frame_tick_phase) <= one_frame);
+  CHECK(saved.at(frame_rate) == 0);
+  CHECK(saved.at(frame_pending) == 0);
+  CHECK(saved.at(frame_irq) == 1);
+  CHECK(saved.at(frame_in_len) == 0);
+  CHECK(saved.at(frame_reply_pos) == 0);
+  CHECK(saved.at(frame_mode) == 0x0F);
+  CHECK(saved.at(frame_status) == 0x2E);
+  CHECK(saved.at(frame_button) == 1);
+  for (size_t at : {36U, 67U, 70U, 71U, 75U, 78U, 80U, 89U, 90U, 91U}) {
+    CHECK(saved.at(at) == 0);
+  }
+
+  linapple_reset_hard();
+  REQUIRE(peripheral_load_state(session.slot, saved.data(), saved.size()) ==
+          peripheral_ok);
+  const Frame_t reloaded = save_frame(session.slot);
+  CHECK(reloaded == saved);
+
+  // The sources come back: SERVEMOUSE names every one.
+  CHECK_FALSE(call_firmware(session.slot, entry_serve_mouse, 0));
+  CHECK((mem[0x77C] & 0x0E) == 0x0E);
+
+  // And the line: loaded again, the handler is entered at the CLI, not at
+  // the tick.
+  REQUIRE(peripheral_load_state(session.slot, saved.data(), saved.size()) ==
+          peripheral_ok);
+  poke_meter(session.slot);
+  const std::vector<uint64_t> entries = session.run_metered_frames(1);
+  REQUIRE(entries.size() >= 1);
+  CHECK(entries.at(0) < 200);
+
+  REQUIRE_FALSE(call_firmware(session.slot, entry_set_mouse, 0x0F));
+  Reading_t reading = read_mouse(session.slot);
+  CHECK(reading.x == 150);
+  CHECK(reading.y == 20);
+  CHECK(reading.status == 0xA0);
+  move_mouse(session.slot, 1000, 0);
+  CHECK(read_mouse(session.slot).x == 200);
+}
+
+TEST_CASE(
+    "Mouse card: a frame written before the tick existed loads with the host "
+    "width as the phase, its status bits dropped with the line, and the "
+    "button from its own fields") {
+  MouseSession_t session;
+  REQUIRE(peripheral_load_state(session.slot, legacy_frame.data(),
+                                legacy_frame.size()) == peripheral_ok);
+  const Frame_t rewritten = save_frame(session.slot);
+  CHECK(rewritten.at(frame_status) == 0x00);
+  CHECK(rewritten.at(frame_irq) == 0);
+  CHECK(rewritten.at(frame_pending) == 0);
+  CHECK(rewritten.at(frame_rate) == 0);
+  CHECK(frame_word(rewritten, frame_tick_phase) == 1023);
+  CHECK(frame_word(rewritten, 16) == 0);
+  CHECK(frame_word(rewritten, 20) == 1023);
+
+  // Stepped before the first tick can come: nothing to serve.
+  CHECK(call_firmware(session.slot, entry_serve_mouse, 0));
+
+  REQUIRE_FALSE(call_firmware(session.slot, entry_set_mouse, 0x0B));
+  const Reading_t reading = read_mouse(session.slot);
+  CHECK(reading.x == 123);
+  CHECK(reading.y == 456);
+  CHECK(mem[0x47C] == 0x7B);
+  CHECK(mem[0x57C] == 0x00);
+  CHECK(mem[0x4FC] == 0xC8);
+  CHECK(mem[0x5FC] == 0x01);
+  CHECK(reading.status == 0xC0);
+
+  // Reloaded, the first tick comes within the 1,023 cycles the width reads
+  // as, plus the instruction in flight.
+  REQUIRE(peripheral_load_state(session.slot, legacy_frame.data(),
+                                legacy_frame.size()) == peripheral_ok);
+  poke_meter(session.slot);
+  const std::vector<uint64_t> entries = session.run_metered_frames(1);
+  REQUIRE(entries.size() >= 1);
+  CHECK(entries.at(0) <= 1023 + 16);
+  CHECK((mem[0x77C] & 0x0E) == 0x08);
+
+  SUBCASE("status $2E with the line released loads as bit 5 alone") {
+    Frame_t frame = legacy_frame;
+    frame.at(frame_status) = 0x2E;
+    REQUIRE(peripheral_load_state(session.slot, frame.data(), frame.size()) ==
+            peripheral_ok);
+    CHECK(call_firmware(session.slot, entry_serve_mouse, 0));
+    CHECK(save_frame(session.slot).at(frame_status) == 0x20);
+    REQUIRE_FALSE(call_firmware(session.slot, entry_set_mouse, 0x0B));
+    CHECK((read_mouse(session.slot).status & 0x20) == 0x20);
+  }
+
+  SUBCASE("a phase beyond one period is bounded by it") {
+    Frame_t frame = legacy_frame;
+    set_frame_word(frame, frame_tick_phase, 100000);
+    REQUIRE(peripheral_load_state(session.slot, frame.data(), frame.size()) ==
+            peripheral_ok);
+    CHECK(frame_word(save_frame(session.slot), frame_tick_phase) == one_frame);
+  }
+
+  SUBCASE("the 104-byte fixed region of an older file loads") {
+    std::array<uint8_t, 104> region{};
+    std::copy(legacy_frame.begin(), legacy_frame.end(), region.begin());
+    REQUIRE(peripheral_load_state(session.slot, region.data(), region.size()) ==
+            peripheral_ok);
+    CHECK(frame_word(save_frame(session.slot), 8) == 123);
+  }
+}
+
+TEST_CASE(
+    "Mouse card: a refused frame leaves every byte of the card's state as it "
+    "was") {
+  MouseSession_t session;
+  REQUIRE_FALSE(call_firmware(session.slot, entry_set_mouse, 0x03));
+  move_mouse(session.slot, 40, 50);
+  const Frame_t before = save_frame(session.slot);
+
+  auto refused = [&](Frame_t frame, size_t size) {
+    CHECK(peripheral_load_state(session.slot, frame.data(), size) ==
+          peripheral_error);
+    CHECK(save_frame(session.slot) == before);
+  };
+
+  Frame_t frame = before;
+  refused(frame, frame_size - 1);
+  frame = before;
+  frame.at(0) = 2;
+  refused(frame, frame_size);
+  frame = before;
+  frame.at(4) = 50;
+  refused(frame, frame_size);
+  frame = before;
+  set_frame_word(frame, 48, 8);
+  refused(frame, frame_size);
+  frame = before;
+  set_frame_word(frame, 52, 9);
+  refused(frame, frame_size);
+  frame = before;
+  frame.at(frame_pending) = 0x10;
+  refused(frame, frame_size);
+  frame = before;
+  set_frame_word(frame, 20, 0x10000);
+  refused(frame, frame_size);
+  frame = before;
+  frame.at(frame_in_len) = 3;
+  refused(frame, frame_size);
+  frame = before;
+  frame.at(frame_reply_pos) = 1;
+  refused(frame, frame_size);
+  frame = before;
+  frame.at(frame_mode) = 0x10;
+  refused(frame, frame_size);
+  frame = before;
+  frame.at(frame_button) = 2;
+  refused(frame, frame_size);
+  CHECK(peripheral_load_state(session.slot, nullptr, frame_size) ==
+        peripheral_error);
+  CHECK(save_frame(session.slot) == before);
+}
+
+namespace {
+
+constexpr size_t frame_pia_orb = 57;
+constexpr size_t frame_pia_ddrb = 59;
+constexpr size_t frame_pia_port_b_in = 63;
+constexpr size_t frame_port_b_shadow = 73;
+
+struct LogLines_t {
+  std::vector<std::string> lines;
+};
+
+auto collect_log_line(LogLevel_t level, const char* message, void* user_data)
+    -> void {
+  (void)level;
+  auto* lines = static_cast<LogLines_t*>(user_data);
+  if (lines != nullptr && message != nullptr) {
+    lines->lines.emplace_back(message);
+  }
+}
+
+class ScopedLogCapture_t {
+ public:
+  ScopedLogCapture_t() : verbosity_(Logger::get_verbosity()) {
+    Logger::set_verbosity(LogLevel_t::info);
+    Logger::set_callback_with_context(collect_log_line, &lines_);
+  }
+  ~ScopedLogCapture_t() {
+    Logger::set_callback_with_context(nullptr, nullptr);
+    Logger::set_verbosity(verbosity_);
+  }
+  ScopedLogCapture_t(const ScopedLogCapture_t&) = delete;
+  auto operator=(const ScopedLogCapture_t&) -> ScopedLogCapture_t& = delete;
+  ScopedLogCapture_t(ScopedLogCapture_t&&) = delete;
+  auto operator=(ScopedLogCapture_t&&) -> ScopedLogCapture_t& = delete;
+
+  auto count_containing(const std::string& needle) const -> size_t {
+    size_t count = 0;
+    for (const std::string& line : lines_.lines) {
+      if (line.find(needle) != std::string::npos) {
+        ++count;
+      }
+    }
+    return count;
+  }
+
+ private:
+  LogLevel_t verbosity_;
+  LogLines_t lines_;
+};
+
+// The first byte of the page the CPU sees at $Cn00, through the copier.
+auto slot_page_first_byte(int slot) -> uint8_t {
+  const uint16_t sentinel = poke_page_copier(slot);
+  TestFixtures::enter_at({program_start, 0, 0, 0});
+  TestFixtures::step_until_pc(sentinel, cycle_cap);
+  REQUIRE(cpu_get_registers()->pc == sentinel);
+  return mem[page_copy];
+}
+
+}  // namespace
+
+// The firmware raises a strobe, waits for the 6805's reply, drops it and
+// waits again; a shadow whose replies already answer the strobe it is about
+// to raise gives it no edge to answer, so that frame is refused. The bank and
+// strobe bits are the PIA's pins, so a shadow that disagrees with ORB & DDRB
+// is loaded with the pins and the replies that answer them.
+TEST_CASE(
+    "Mouse card: a frame whose port B replies do not answer its strobes is "
+    "refused, one whose shadow disagrees with the PIA's pins takes the pins, "
+    "and READMOUSE returns after either") {
+  MouseSession_t session;
+  REQUIRE_FALSE(call_firmware(session.slot, entry_set_mouse, 0x01));
+  move_mouse(session.slot, 10, 20);
+  const Frame_t before = save_frame(session.slot);
+  REQUIRE(before.at(frame_pia_orb) == 0x40);
+  REQUIRE(before.at(frame_pia_ddrb) == 0x3E);
+  REQUIRE(before.at(frame_pia_port_b_in) == 0x40);
+  REQUIRE(before.at(frame_port_b_shadow) == 0x40);
+
+  ScopedLogCapture_t log;
+
+  SUBCASE("replies that do not answer their strobes are refused") {
+    const std::array<uint8_t, 7> shadows = {0x7F, 0xFF, 0x50, 0x20,
+                                            0x80, 0x01, 0x00};
+    size_t refusals = 0;
+    for (uint8_t shadow : shadows) {
+      Frame_t frame = before;
+      frame.at(frame_port_b_shadow) = shadow;
+      CHECK(peripheral_load_state(session.slot, frame.data(), frame.size()) ==
+            peripheral_error);
+      CHECK(save_frame(session.slot) == before);
+      ++refusals;
+      CHECK(log.count_containing("refused for port B's replies") == refusals);
+    }
+    CHECK(read_mouse(session.slot).x == 10);
+  }
+
+  SUBCASE("the levels a save mid-handshake holds load as they are") {
+    const std::array<uint8_t, 2> shadows = {0x10, 0xE0};
+    for (uint8_t shadow : shadows) {
+      Frame_t frame = before;
+      frame.at(frame_port_b_shadow) = shadow;
+      frame.at(frame_pia_orb) = static_cast<uint8_t>(shadow & 0x3E);
+      REQUIRE(peripheral_load_state(session.slot, frame.data(), frame.size()) ==
+              peripheral_ok);
+      CHECK(save_frame(session.slot).at(frame_port_b_shadow) == shadow);
+    }
+    CHECK(log.count_containing("disagrees with the PIA's pins") == 0);
+  }
+
+  SUBCASE("a shadow selecting bank 7 over pins at bank 0 shows bank 0") {
+    Frame_t frame = before;
+    frame.at(frame_port_b_shadow) = 0x4E;
+    REQUIRE(peripheral_load_state(session.slot, frame.data(), frame.size()) ==
+            peripheral_ok);
+    CHECK(log.count_containing("shadow $4E disagrees with the PIA's pins; "
+                               "loading $40") == 1);
+    CHECK(save_frame(session.slot).at(frame_port_b_shadow) == 0x40);
+    CHECK(slot_page_first_byte(session.slot) == mouse_rom.at(0));
+    CHECK(read_mouse(session.slot).x == 10);
+  }
+
+  SUBCASE("pins at bank 7 under a shadow at bank 0 show bank 7") {
+    Frame_t frame = before;
+    frame.at(frame_pia_orb) = 0x4E;
+    REQUIRE(peripheral_load_state(session.slot, frame.data(), frame.size()) ==
+            peripheral_ok);
+    CHECK(save_frame(session.slot).at(frame_port_b_shadow) == 0x4E);
+    CHECK(slot_page_first_byte(session.slot) ==
+          mouse_rom.at(7 * mouse_rom_bank_size));
+  }
+
+  SUBCASE("a DDRB of inputs releases the bank the shadow held") {
+    Frame_t frame = before;
+    frame.at(frame_pia_orb) = 0x4E;
+    frame.at(frame_pia_ddrb) = 0x00;
+    frame.at(frame_port_b_shadow) = 0x4E;
+    REQUIRE(peripheral_load_state(session.slot, frame.data(), frame.size()) ==
+            peripheral_ok);
+    CHECK(save_frame(session.slot).at(frame_port_b_shadow) == 0x40);
+    CHECK(slot_page_first_byte(session.slot) == mouse_rom.at(0));
+    CHECK(read_mouse(session.slot).x == 10);
+  }
+
+  SUBCASE("a strobe the pins dropped drops, and its reply follows") {
+    Frame_t frame = before;
+    frame.at(frame_port_b_shadow) = 0x10;
+    REQUIRE(peripheral_load_state(session.slot, frame.data(), frame.size()) ==
+            peripheral_ok);
+    CHECK(save_frame(session.slot).at(frame_port_b_shadow) == 0x40);
+    CHECK(log.count_containing("disagrees with the PIA's pins") == 1);
+    CHECK(read_mouse(session.slot).x == 10);
+  }
+
+  SUBCASE("byte 63 is not read: the chip's port B is the shadow") {
+    Frame_t frame = before;
+    frame.at(frame_pia_port_b_in) = 0x00;
+    REQUIRE(peripheral_load_state(session.slot, frame.data(), frame.size()) ==
+            peripheral_ok);
+    CHECK(save_frame(session.slot).at(frame_pia_port_b_in) == 0x40);
+    CHECK(read_mouse(session.slot).x == 10);
+  }
 }
