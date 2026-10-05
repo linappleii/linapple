@@ -1030,6 +1030,7 @@ done
     add_test(NAME test-util-crc32 COMMAND test-util-crc32)
 
     add_linapple_test(video-stretch "tests/test_main.cpp;tests/test_video_stretch.cpp")
+    add_linapple_test(video-vbl tests/test_video_vbl.cpp)
 
     add_linapple_test(ftp-parser "tests/test_main.cpp;tests/test_ftp_parser.cpp")
 

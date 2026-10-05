@@ -55,12 +55,12 @@ This document specifies the functional behavior of Apple II series hardware, der
     *   The CA key must be electrically mapped to Game Button 1 ($C062).
 *   **Expected Behavior:** Depressing the Open-Apple key must cause bit 7 of $C061 to transition from '0' to '1'.
 
-### [IOU-01] VBL (Vertical Blanking) Interrupts
-*   **Hardware Feature:** VBL Signal ($C019).
+### [IOU-01] Vertical Blanking Status (RDVBLBAR)
+*   **Hardware Feature:** VBL status soft switch ($C019).
 *   **Functional Requirement:**
-    *   Bit 7 of $C019 must be high during the vertical blanking interval (approximately 60Hz NTSC).
-    *   The signal must remain high for the duration of the non-visible scanlines.
-*   **Expected Behavior:** Software polling $C019 must be able to synchronize screen updates to avoid tearing.
+    *   $C019 is VBL inverted (RDVBLBAR): bit 7 must be high (value 128 or more) while the visible lines 0-191 are drawn and low (value below 128) during the vertical blanking lines 192-261, as the Apple IIe Technical Reference (p. 170) specifies.
+    *   On the NTSC frame of 262 lines at 65 cycles each, bit 7 must be low from frame cycle 12,480 through 17,029 and high from 0 through 12,479.
+*   **Expected Behavior:** Software polling $C019 for bit 7 falling finds the start of blanking and can change display data there without tearing.
 
 ## 3. Peripheral Hardware (Common)
 

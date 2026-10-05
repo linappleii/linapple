@@ -1986,7 +1986,7 @@ auto video_set_snapshot(const SsIoVideo_t* ss) noexcept -> uint32_t {
   return 0;
 }
 
-auto video_get_scanner_address(bool* pbVblBar_OUT,
+auto video_get_scanner_address(bool* vbl_bar_out,
                                const uint32_t executed_cycles) noexcept
     -> uint16_t {
   if (system_state.clks_per_frame == 0) return 0;
@@ -2068,12 +2068,10 @@ auto video_get_scanner_address(bool* pbVblBar_OUT,
     }
   }
 
-  if (pbVblBar_OUT != nullptr) {
-    if (v_4 & v_3) {
-      *pbVblBar_OUT = true;
-    } else {
-      *pbVblBar_OUT = false;
-    }
+  // RDVBLBAR is VBL inverted: the Apple IIe Technical Reference (p. 170) has
+  // $C019 below 128 only while the IOU blanks, which is lines 192-261.
+  if (vbl_bar_out != nullptr) {
+    *vbl_bar_out = (v_4 & v_3) == 0;
   }
   return static_cast<uint16_t>(address);
 }
