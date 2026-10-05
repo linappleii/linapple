@@ -1040,6 +1040,17 @@ auto peripheral_unregister(int slot) -> int {
   recompute_next_event_cycle();
   register_io_handler(static_cast<uint32_t>(slot), nullptr, nullptr, nullptr,
                       nullptr, nullptr, nullptr);
+  // The page a card registered through host_register_cx_rom stays in the
+  // store and the live image otherwise, so an empty slot, or the next card in
+  // it, would still present the departed card's identification bytes to a
+  // slot scan.
+  uint8_t* cxrom = mem_get_cx_rom_peripheral();
+  if (slot >= min_slot_with_rom && slot <= max_slot_with_rom &&
+      cxrom != nullptr) {
+    memset(cxrom + (static_cast<uint16_t>(slot) << addr_slot_rom_shift), 0,
+           cxrom_slot_size);
+    mem_refresh_cx_page(slot);
+  }
   return 0;
 }
 

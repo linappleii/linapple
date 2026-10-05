@@ -4,6 +4,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
@@ -11,6 +12,7 @@
 #include "apple2/SnapshotTypes.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Internal.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
@@ -112,6 +114,112 @@ auto trailer_is_sane(const Snapshot_t* snapshot) noexcept -> bool {
   return true;
 }
 
+// The one change of card a file may ask of the machine: the slot the Mouse in
+// slot 4 key took over may hold the card the key displaced instead, or the
+// key's card again after such a load. card is null when the slot is to be
+// left empty.
+struct LegacySwap_t {
+  bool wanted = false;
+  int slot = 0;
+  Peripheral_t* card = nullptr;
+  const char* held = "";
+  const char* wanted_name = "";
+};
+
+auto name_or_none(const char* name) noexcept -> const char* {
+  return name[0] != '\0' ? name : "no card";
+}
+
+// Slot 0 holds several internal devices and a manifest names one of them;
+// peripheral_verify_manifest accepts any, so its rule decides here too: a
+// probe whose other slots are the machine's own can only fail on slot 0.
+auto slot0_matches(const SsPeripheralManifest_t* file,
+                   const SsPeripheralManifest_t* live) -> bool {
+  SsPeripheralManifest_t probe = *live;
+  memcpy(probe.peripherals[0].name, file->peripherals[0].name,
+         max_peripheral_name);
+  return peripheral_verify_manifest(&probe);
+}
+
+// A pure check: the manifest is admitted when every slot names the card the
+// machine holds, the overridden slot alone being allowed the other of the two
+// names the key knows. Nothing is changed here; the swap that would make the
+// file match is only described.
+auto manifest_admits(const SsPeripheralManifest_t* file, LegacySwap_t* swap)
+    -> bool {
+  SsPeripheralManifest_t live;
+  peripheral_get_manifest(&live);
+  int override_slot = 0;
+  const char* key_card = "";
+  const char* displaced = "";
+  const bool overrode =
+      peripheral_legacy_override(&override_slot, &key_card, &displaced);
+
+  for (size_t i = 0; i < NUM_SLOTS; ++i) {
+    const char* wanted = file->peripherals[i].name;
+    const char* held = live.peripherals[i].name;
+    const bool same =
+        (i == 0) ? slot0_matches(file, &live) : strcmp(wanted, held) == 0;
+    if (same) {
+      continue;
+    }
+    if (overrode && static_cast<int>(i) == override_slot) {
+      // The swap outlives live, so it keeps the key's own two names, which are
+      // the descriptors', and never a pointer into the manifest copied here.
+      const char* other = nullptr;
+      const char* holding = nullptr;
+      if (strcmp(held, key_card) == 0 && strcmp(wanted, displaced) == 0) {
+        other = displaced;
+        holding = key_card;
+      } else if (strcmp(held, displaced) == 0 &&
+                 strcmp(wanted, key_card) == 0) {
+        other = key_card;
+        holding = displaced;
+      }
+      if (other != nullptr) {
+        Peripheral_t* card =
+            other[0] != '\0' ? peripheral_find_internal(other) : nullptr;
+        if (other[0] != '\0' && card == nullptr) {
+          Logger::info(
+              "Slot %zu: the save state names %s, which is not built\n", i,
+              other);
+          return false;
+        }
+        swap->wanted = true;
+        swap->slot = static_cast<int>(i);
+        swap->card = card;
+        swap->held = holding;
+        swap->wanted_name = other;
+        continue;
+      }
+    }
+    Logger::info(
+        "Slot %zu: the save state names %s where the machine holds %s; the "
+        "file is refused\n",
+        i, name_or_none(wanted), name_or_none(held));
+    return false;
+  }
+  return true;
+}
+
+auto apply_legacy_swap(const LegacySwap_t& swap) -> bool {
+  if (!swap.wanted) {
+    return true;
+  }
+  peripheral_unregister(swap.slot);
+  if (swap.card != nullptr && peripheral_register(swap.card, swap.slot) != 0) {
+    Logger::error("Slot %d: %s could not be installed for the save state\n",
+                  swap.slot, swap.wanted_name);
+    return false;
+  }
+  Logger::info(
+      "Slot %d: the save state holds %s where Mouse in slot 4 left %s; "
+      "loading with %s for this session\n",
+      swap.slot, name_or_none(swap.wanted_name), name_or_none(swap.held),
+      name_or_none(swap.wanted_name));
+  return true;
+}
+
 }  // namespace
 
 auto snapshot_serialize(Snapshot_t* snapshot) noexcept -> void {
@@ -169,11 +277,22 @@ auto snapshot_deserialize(const Snapshot_t* snapshot) -> bool {
     return false;
   }
 
-  if (!peripheral_verify_manifest(&snapshot->manifest)) {
+  // Every check that can refuse the file runs before the machine is touched,
+  // so a refused load leaves it exactly as it was.
+  LegacySwap_t swap;
+  if (!manifest_admits(&snapshot->manifest, &swap)) {
     return false;
   }
 
   if (!trailer_is_sane(snapshot)) {
+    return false;
+  }
+
+  if (!apply_legacy_swap(swap)) {
+    return false;
+  }
+
+  if (!peripheral_verify_manifest(&snapshot->manifest)) {
     return false;
   }
 

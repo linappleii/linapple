@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -581,4 +582,60 @@ TEST_CASE(
     }
   }
   Logger::set_callback_with_context(nullptr, nullptr);
+}
+
+namespace {
+
+constexpr size_t page_size = 256;
+std::array<uint8_t, page_size> g_page_card_rom{};
+
+auto page_card_init(int slot, HostInterface_t* host) -> void* {
+  host->RegisterCxROM(slot, g_page_card_rom.data());
+  return g_page_card_rom.data();
+}
+
+auto page_card_shutdown(void* instance) -> void { (void)instance; }
+
+Peripheral_t g_page_card = {.abi_version = LINAPPLE_ABI_VERSION,
+                            .id = "test.page_card",
+                            .name = "Page Card",
+                            .description = "Registers a $Cn00 page",
+                            .author = "LinApple Contributors",
+                            .version = "1.0.0",
+                            .compatible_slots = PERIPHERAL_MASK_EXPANSION,
+                            .default_slot = -1,
+                            .init = page_card_init,
+                            .reset = nullptr,
+                            .shutdown = page_card_shutdown,
+                            .think = nullptr,
+                            .on_vblank = nullptr,
+                            .save_state = nullptr,
+                            .load_state = nullptr,
+                            .command = nullptr,
+                            .query = nullptr};
+
+}  // namespace
+
+TEST_CASE(
+    "Peripheral Manager: an unregistered card's $Cn00 page reads zero in the "
+    "store and the live image") {
+  TestFixtures::ScopedTestConfig_t config(
+      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  TestFixtures::ScopedCore_t core(config);
+
+  for (size_t i = 0; i < page_size; ++i) {
+    g_page_card_rom.at(i) = static_cast<uint8_t>(i ^ 0xA5);
+  }
+  constexpr int slot = 4;
+  constexpr uint16_t page = 0xC400;
+  REQUIRE(peripheral_register(&g_page_card, slot) == 0);
+  REQUIRE(mem[page] == g_page_card_rom.at(0));
+  REQUIRE(mem[page + page_size - 1] == g_page_card_rom.at(page_size - 1));
+
+  REQUIRE(peripheral_unregister(slot) == 0);
+  const uint8_t* store = mem_get_cx_rom_peripheral() + slot * page_size;
+  for (size_t i = 0; i < page_size; ++i) {
+    CHECK(mem[page + i] == 0);
+    CHECK(store[i] == 0);
+  }
 }

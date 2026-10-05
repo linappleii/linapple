@@ -11,6 +11,7 @@
 #include <cstring>
 #include <fstream>
 #include <ios>
+#include <iterator>
 #include <memory>
 #include <string>
 #include <vector>
@@ -21,9 +22,11 @@
 #include "apple2/SnapshotTypes.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Internal.h"
+#include "apple2/peripherals/mouse/MouseCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
 #include "doctest.h"
+#include "frontends/common/MouseFrontend.h"
 #include "frontends/common/SaveStateManager.h"
 #include "test_fixtures.h"
 #include "test_fixtures_core.h"
@@ -736,3 +739,316 @@ TEST_CASE(
   SUBCASE("slot 2") { ssc_survives_the_file(2); }
   SUBCASE("slot 7") { ssc_survives_the_file(7); }
 }
+
+#if defined(ENABLE_PERIPHERAL_MOUSE)
+
+// The key's fixture was written with the shipped Disk II and Harddisk in
+// slots 6 and 7; a build without both cards refuses it at the manifest before
+// the key's slot is ever walked.
+#if defined(ENABLE_PERIPHERAL_DISK) && defined(ENABLE_PERIPHERAL_HARDDISK)
+
+namespace {
+
+constexpr int mouse_key_slot = 4;
+constexpr const char* mouse_card_id = "linapple.mouse";
+
+// The shipped [Slots] with the key set: the machine a user of the key has had
+// since the key stopped being read, Mockingboard and all.
+auto key_machine() -> TestConfig_t::Description_t {
+  TestConfig_t::Description_t description;
+  description.slots[0] = "Parallel Printer";
+  description.slots[1] = "Super Serial Card";
+  description.slots[3] = "Mockingboard";
+  description.slots[4] = "Mockingboard";
+  description.slots[5] = "Disk II";
+  description.slots[6] = "Harddisk";
+  description.extras.push_back({"Configuration", "Mouse in slot 4", "1"});
+  return description;
+}
+
+auto legacy_key_fixture() -> std::string {
+  const std::string path =
+      TestFixtures::get_fixture_path("mouse-key1-mockingboard-0aad3663.aws");
+  REQUIRE(access(path.c_str(), R_OK) == 0);
+  return path;
+}
+
+auto mouse_in_slot(int slot) -> bool {
+  uint8_t active = 0;
+  size_t size = sizeof(active);
+  return peripheral_query_by_id(slot, mouse_card_id, mouse_query_is_active,
+                                &active, &size) == peripheral_ok;
+}
+
+auto machine_names(int slot) -> std::string {
+  SS_PERIPHERAL_MANIFEST manifest;
+  peripheral_get_manifest(&manifest);
+  return manifest.peripherals[slot].name;
+}
+
+auto page_reads_zero(int slot) -> bool {
+  const auto page = static_cast<uint16_t>(0xC000 + (slot << 8));
+  for (uint16_t i = 0; i < 16; ++i) {
+    if (mem[page + i] != 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
+auto manifest_name_offset(int slot) -> size_t {
+  return offsetof(Snapshot_t, manifest) +
+         offsetof(SsPeripheralManifest_t, peripherals) +
+         static_cast<size_t>(slot) * sizeof(SsPeripheralInfo_t);
+}
+
+auto file_names(const std::string& path, int slot) -> std::string {
+  std::ifstream in(path, std::ios::binary);
+  REQUIRE(in.good());
+  std::array<char, max_peripheral_name> name{};
+  in.seekg(static_cast<std::streamoff>(manifest_name_offset(slot)));
+  in.read(name.data(), static_cast<std::streamsize>(name.size()));
+  REQUIRE(in.good());
+  name.back() = '\0';
+  return std::string(name.data());
+}
+
+// A copy of the fixture with one run of bytes replaced, written to the temp
+// file so the fixture itself is never touched.
+auto patched_copy(const std::string& source,
+                  const TestFixtures::ScopedTempFile_t& destination, size_t at,
+                  const std::vector<uint8_t>& bytes) -> void {
+  std::ifstream in(source, std::ios::binary);
+  REQUIRE(in.good());
+  std::vector<char> image((std::istreambuf_iterator<char>(in)),
+                          std::istreambuf_iterator<char>());
+  REQUIRE(image.size() == sizeof(Snapshot_t));
+  REQUIRE(at + bytes.size() <= image.size());
+  for (size_t i = 0; i < bytes.size(); ++i) {
+    image.at(at + i) = static_cast<char>(bytes[i]);
+  }
+  std::ofstream out(destination.path(), std::ios::binary | std::ios::trunc);
+  REQUIRE(out.good());
+  out.write(image.data(), static_cast<std::streamsize>(image.size()));
+  REQUIRE(out.good());
+}
+
+auto name_bytes(const std::string& name) -> std::vector<uint8_t> {
+  std::vector<uint8_t> bytes(max_peripheral_name, 0);
+  for (size_t i = 0; i < name.size() && i + 1 < bytes.size(); ++i) {
+    bytes[i] = static_cast<uint8_t>(name[i]);
+  }
+  return bytes;
+}
+
+// What the legacy file does to a machine the key built: the Mockingboard
+// comes back for the session, and a save afterwards says so.
+auto legacy_file_loads_with_the_mockingboard(
+    const TestConfig_t::Description_t& description, bool strip_slot_4_line)
+    -> void {
+  TestConfig_t config(description);
+  if (strip_slot_4_line) {
+    std::ifstream in(config.path());
+    REQUIRE(in.is_open());
+    std::vector<std::string> kept;
+    std::string line;
+    while (std::getline(in, line)) {
+      if (line.compare(0, 7, "Slot 4 ") != 0) {
+        kept.push_back(line);
+      }
+    }
+    in.close();
+    std::ofstream out(config.path(), std::ios::trunc);
+    for (const std::string& kept_line : kept) {
+      out << kept_line << "\n";
+    }
+  }
+  TestFixtures::ScopedCore_t core(config);
+  REQUIRE(mouse_in_slot(mouse_key_slot));
+  mouse_frontend_initialize();
+  REQUIRE(mouse_frontend_card_present());
+
+  save_state_set_filename(legacy_key_fixture().c_str());
+  {
+    ScopedLogCapture_t log;
+    REQUIRE(save_state_load());
+    CHECK(log.count_containing("for this session") == 1);
+    CHECK(log.count_containing(
+              "Slot 4: the save state holds Mockingboard where Mouse in slot 4 "
+              "left Mouse Interface; loading with Mockingboard for this "
+              "session") == 1);
+  }
+  CHECK_FALSE(mouse_in_slot(mouse_key_slot));
+  CHECK(machine_names(mouse_key_slot) == "Mockingboard");
+  CHECK(page_reads_zero(mouse_key_slot));
+  CHECK_FALSE(mouse_frontend_card_present());
+
+  TestFixtures::ScopedTempFile_t written(".aws");
+  save_state_set_filename(written.c_str());
+  save_state_save();
+  CHECK(file_names(written.path(), mouse_key_slot) == "Mockingboard");
+}
+
+}  // namespace
+
+TEST_CASE(
+    "Snapshot: a save state from before Mouse in slot 4 was read loads with "
+    "the Mockingboard back in slot 4 for the session") {
+  SUBCASE("Slot 4 = Mockingboard") {
+    legacy_file_loads_with_the_mockingboard(key_machine(), false);
+  }
+  SUBCASE("no Slot 4 entry, the fallback displaced") {
+    legacy_file_loads_with_the_mockingboard(key_machine(), true);
+  }
+  SUBCASE("Slot 4 = linapple.mockingboard, the id spelling") {
+    TestConfig_t::Description_t description = key_machine();
+    description.slots[3] = "linapple.mockingboard";
+    legacy_file_loads_with_the_mockingboard(description, false);
+  }
+}
+
+TEST_CASE(
+    "Snapshot: the legacy file and a file this build wrote swap slot 4 back "
+    "and forth within one session") {
+  TestConfig_t config(key_machine());
+  TestFixtures::ScopedCore_t core(config);
+  REQUIRE(mouse_in_slot(mouse_key_slot));
+
+  TestFixtures::ScopedTempFile_t mine(".aws");
+  save_state_set_filename(mine.c_str());
+  save_state_save();
+  REQUIRE(file_names(mine.path(), mouse_key_slot) == "Mouse Interface");
+
+  ScopedLogCapture_t log;
+  save_state_set_filename(legacy_key_fixture().c_str());
+  REQUIRE(save_state_load());
+  CHECK_FALSE(mouse_in_slot(mouse_key_slot));
+
+  save_state_set_filename(mine.c_str());
+  REQUIRE(save_state_load());
+  CHECK(mouse_in_slot(mouse_key_slot));
+  CHECK(machine_names(mouse_key_slot) == "Mouse Interface");
+  CHECK(log.count_containing(
+            "Slot 4: the save state holds Mouse Interface where Mouse in slot "
+            "4 left Mockingboard; loading with Mouse Interface for this "
+            "session") == 1);
+
+  save_state_set_filename(legacy_key_fixture().c_str());
+  REQUIRE(save_state_load());
+  CHECK_FALSE(mouse_in_slot(mouse_key_slot));
+  CHECK(log.count_containing("for this session") == 3);
+  CHECK(log.count_containing(
+            "Slot 4: the save state holds Mockingboard where Mouse in slot 4 "
+            "left Mouse Interface; loading with Mockingboard for this "
+            "session") == 2);
+}
+
+TEST_CASE(
+    "Snapshot: the swap is refused for any other difference, and a refused "
+    "file leaves slot 4 alone") {
+  SUBCASE("the key at 0 with Slot 4 = Mouse Interface names both cards") {
+    TestConfig_t::Description_t description = key_machine();
+    description.slots[3] = "Mouse Interface";
+    description.extras.clear();
+    description.extras.push_back({"Configuration", "Mouse in slot 4", "0"});
+    TestConfig_t config(description);
+    TestFixtures::ScopedCore_t core(config);
+    REQUIRE(mouse_in_slot(mouse_key_slot));
+
+    save_state_set_filename(legacy_key_fixture().c_str());
+    ScopedLogCapture_t log;
+    CHECK(save_state_load() == false);
+    CHECK(log.count_containing("Slot 4: the save state names Mockingboard "
+                               "where the machine holds Mouse Interface") == 1);
+    CHECK(log.count_containing("for this session") == 0);
+    CHECK(mouse_in_slot(mouse_key_slot));
+  }
+
+  SUBCASE("a file naming the Clock Card in slot 4 under the key") {
+    TestConfig_t config(key_machine());
+    TestFixtures::ScopedCore_t core(config);
+    TestFixtures::ScopedTempFile_t copy(".aws");
+    patched_copy(legacy_key_fixture(), copy,
+                 manifest_name_offset(mouse_key_slot),
+                 name_bytes("Clock Card"));
+
+    save_state_set_filename(copy.c_str());
+    ScopedLogCapture_t log;
+    CHECK(save_state_load() == false);
+    CHECK(log.count_containing("for this session") == 0);
+    CHECK(mouse_in_slot(mouse_key_slot));
+  }
+
+  SUBCASE("a file differing in slot 2 is refused before slot 4 is swapped") {
+    TestConfig_t config(key_machine());
+    TestFixtures::ScopedCore_t core(config);
+    TestFixtures::ScopedTempFile_t copy(".aws");
+    patched_copy(legacy_key_fixture(), copy, manifest_name_offset(2),
+                 name_bytes("Clock Card"));
+
+    save_state_set_filename(copy.c_str());
+    ScopedLogCapture_t log;
+    CHECK(save_state_load() == false);
+    CHECK(log.count_containing("Slot 2: the save state names Clock Card") == 1);
+    CHECK(log.count_containing("for this session") == 0);
+    CHECK(mouse_in_slot(mouse_key_slot));
+    CHECK(machine_names(2) == "Super Serial Card");
+  }
+
+  SUBCASE(
+      "a file differing in slot 5, walked after slot 4, is refused with slot 4 "
+      "kept") {
+    TestConfig_t config(key_machine());
+    TestFixtures::ScopedCore_t core(config);
+    TestFixtures::ScopedTempFile_t copy(".aws");
+    patched_copy(legacy_key_fixture(), copy, manifest_name_offset(5),
+                 name_bytes("Clock Card"));
+
+    save_state_set_filename(copy.c_str());
+    ScopedLogCapture_t log;
+    CHECK(save_state_load() == false);
+    CHECK(log.count_containing("Slot 5: the save state names Clock Card") == 1);
+    CHECK(log.count_containing("for this session") == 0);
+    CHECK(mouse_in_slot(mouse_key_slot));
+    CHECK(machine_names(mouse_key_slot) == "Mouse Interface");
+    CHECK(machine_names(5) == "Mockingboard");
+  }
+
+  SUBCASE("a Slot 4 naming a card that does not exist displaced nothing") {
+    TestConfig_t::Description_t description = key_machine();
+    description.slots[3] = "No Such Card";
+    TestConfig_t config(description);
+    TestFixtures::ScopedCore_t core(config);
+    REQUIRE(mouse_in_slot(mouse_key_slot));
+
+    save_state_set_filename(legacy_key_fixture().c_str());
+    ScopedLogCapture_t log;
+    CHECK(save_state_load() == false);
+    CHECK(log.count_containing("for this session") == 0);
+    CHECK(mouse_in_slot(mouse_key_slot));
+  }
+
+  SUBCASE("an impossible trailer length is refused before the swap") {
+    TestConfig_t config(key_machine());
+    TestFixtures::ScopedCore_t core(config);
+    TestFixtures::ScopedTempFile_t copy(".aws");
+    const size_t slot_1_length = offsetof(Snapshot_t, slot_trailer) +
+                                 offsetof(SsSlotTrailer_t, slots) +
+                                 offsetof(SsSlotState_t, length);
+    patched_copy(legacy_key_fixture(), copy, slot_1_length,
+                 {0xFF, 0xFF, 0x00, 0x00});
+
+    save_state_set_filename(copy.c_str());
+    ScopedLogCapture_t log;
+    CHECK(save_state_load() == false);
+    CHECK(log.count_containing("claims 65535 bytes, more than a slot holds") ==
+          1);
+    CHECK(log.count_containing("for this session") == 0);
+    CHECK(mouse_in_slot(mouse_key_slot));
+    CHECK(machine_names(mouse_key_slot) == "Mouse Interface");
+  }
+}
+
+#endif
+
+#endif
