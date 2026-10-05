@@ -15,8 +15,9 @@
 #include "frontends/common/AudioMixer.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/common/KeyboardTranslator.h"
+#include "frontends/common/MouseFrontend.h"
 #include "frontends/common/sdl/JoystickFrontend.h"
-#include "frontends/common/sdl/MouseFrontend.h"
+#include "frontends/common/sdl/MouseInput.h"
 #include "frontends/sdl3/Frame.h"
 
 #if ENABLE_DEBUGGER
@@ -39,7 +40,7 @@ auto handle_mouse_button_down(const SDL_MouseButtonEvent& button,
 
   if (button.button == SDL_BUTTON_RIGHT) {
     if (g_usingcursor) {
-      mouse_frontend_dispatch_button(k_mouse_button_right, true);
+      mouse_input_dispatch_button(k_mouse_button_right, true);
     }
     return;
   }
@@ -59,7 +60,7 @@ auto handle_mouse_button_down(const SDL_MouseButtonEvent& button,
 #endif
 
   if (!g_usingcursor) {
-    if (mouse_frontend_should_auto_capture()) {
+    if (mouse_input_should_auto_capture()) {
       set_using_cursor(true);
     }
     return;
@@ -70,7 +71,7 @@ auto handle_mouse_button_down(const SDL_MouseButtonEvent& button,
     return;
   }
 
-  mouse_frontend_dispatch_button(k_mouse_button_left, true);
+  mouse_input_dispatch_button(k_mouse_button_left, true);
 }
 
 auto handle_mouse_button_up(const SDL_MouseButtonEvent& button) -> void {
@@ -78,9 +79,9 @@ auto handle_mouse_button_up(const SDL_MouseButtonEvent& button) -> void {
     return;
   }
   if (button.button == SDL_BUTTON_LEFT) {
-    mouse_frontend_dispatch_button(k_mouse_button_left, false);
+    mouse_input_dispatch_button(k_mouse_button_left, false);
   } else if (button.button == SDL_BUTTON_RIGHT) {
-    mouse_frontend_dispatch_button(k_mouse_button_right, false);
+    mouse_input_dispatch_button(k_mouse_button_right, false);
   }
 }
 
@@ -88,8 +89,8 @@ auto handle_mouse_motion(const SDL_MouseMotionEvent& motion) -> void {
   if (!g_usingcursor) {
     return;
   }
-  mouse_frontend_dispatch_motion(static_cast<int>(motion.x),
-                                 static_cast<int>(motion.y));
+  mouse_input_dispatch_motion(static_cast<int>(motion.x),
+                              static_cast<int>(motion.y));
 }
 
 }  // namespace

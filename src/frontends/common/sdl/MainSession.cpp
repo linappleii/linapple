@@ -13,6 +13,7 @@
 #include "core/Log.h"
 #include "frontends/common/AppController.h"
 #include "frontends/common/Frontend.h"
+#include "frontends/common/MouseFrontend.h"
 #include "frontends/common/sdl/JoystickFrontend.h"
 
 using Logger::error;
@@ -76,6 +77,7 @@ auto session_init(AppConfig_t* config) -> int {
 
   ds_init();
   joy_frontend_initialize();
+  mouse_frontend_initialize();
   return 0;
 }
 

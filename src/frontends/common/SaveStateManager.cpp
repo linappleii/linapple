@@ -15,6 +15,7 @@
 #include "core/Log.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
+#include "frontends/common/MouseFrontend.h"
 
 static constexpr const char* k_default_snapshot_name = "SaveState.aws";
 
@@ -101,6 +102,8 @@ auto save_state_load() -> bool {
     return false;
   }
 
+  // A load may change which slot holds the mouse card.
+  mouse_frontend_initialize();
   Logger::info("Loaded save state from: %s\n", filename);
   return true;
 }

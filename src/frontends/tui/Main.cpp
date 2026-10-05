@@ -15,6 +15,7 @@
 #include "frontends/common/AppController.h"
 #include "frontends/common/AudioMixer.h"
 #include "frontends/common/FramePacer.h"
+#include "frontends/common/MouseFrontend.h"
 
 namespace {
 
@@ -70,6 +71,7 @@ auto main(int argc, char** argv) -> int {
       return 1;
     }
 
+    mouse_frontend_initialize();
     tui_video_initialize();
     tui_video_set_render_mode(config.tui_render_mode);
     tui_input_initialize();

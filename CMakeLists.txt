@@ -386,6 +386,7 @@ set(SOURCES_CORE
     src/frontends/common/SuperSerialFrontend.cpp
     src/frontends/common/PrinterFrontend.cpp
     src/frontends/common/HostSink.cpp
+    src/frontends/common/MouseFrontend.cpp
     src/core/services/ftp/FtpParser.cpp
 )
 
@@ -447,7 +448,7 @@ set(SOURCES_FE_COMMON_SDL
     src/frontends/common/sdl/MainSession.cpp
     src/frontends/common/sdl/Keyboard.cpp
     src/frontends/common/sdl/JoystickFrontend.cpp
-    src/frontends/common/sdl/MouseFrontend.cpp
+    src/frontends/common/sdl/MouseInput.cpp
     src/core/services/ftp/FtpClient.cpp
 )
 
