@@ -5,15 +5,20 @@
 #include <cstdint>
 #include <cstdio>
 #include <fstream>
+#include <ios>
 #include <string>
 #include <vector>
 
+#include "apple2/CPU.h"
+#include "apple2/Memory.h"
 #include "apple2/SnapshotTypes.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Internal.h"
 #include "apple2/peripherals/Peripheral_Subsystems.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/mouse/MouseCommands.h"
+#include "apple2/peripherals/mouse/MouseRom.h"
+#include "core/LinAppleCore.h"
 #include "doctest.h"
 #include "frontends/common/MouseFrontend.h"
 #include "test_fixtures.h"
@@ -429,4 +434,109 @@ TEST_CASE(
     CHECK(mouse_in(test_slot));
     CHECK(card_named_in(test_slot) == "Mouse Interface");
   }
+}
+
+namespace {
+
+constexpr uint16_t program_start = 0x0300;
+constexpr uint16_t page_copy = 0x2000;
+constexpr uint32_t cycle_cap = 60000;
+
+using Rom_t = std::array<uint8_t, mouse_rom_size>;
+
+auto read_rom_file() -> Rom_t {
+  Rom_t rom{};
+  std::ifstream in(TestFixtures::get_fixture_path("roms/MouseInterface.rom"),
+                   std::ios::binary);
+  REQUIRE(in.is_open());
+  in.read(reinterpret_cast<char*>(rom.data()),
+          static_cast<std::streamsize>(rom.size()));
+  REQUIRE(in.gcount() == static_cast<std::streamsize>(rom.size()));
+  CHECK(in.peek() == std::ifstream::traits_type::eof());
+  return rom;
+}
+
+auto describe_mouse_in(int slot) -> Description_t {
+  Description_t description;
+  description.slots.at(static_cast<size_t>(slot - 1)) = "Mouse Interface";
+  return description;
+}
+
+// An Enhanced //e with the card in one slot, built and reset as the frontends
+// build it.
+struct MouseMachine_t {
+  TestFixtures::ScopedTestConfig_t config;
+  TestFixtures::ScopedCore_t core;
+  int slot;
+
+  explicit MouseMachine_t(int in_slot = test_slot)
+      : config(describe_mouse_in(in_slot)), core(config), slot(in_slot) {
+    peripheral_manager_init();
+    linapple_register_peripherals();
+    linapple_reset_hard();
+  }
+
+  auto run_until(uint16_t entry, uint16_t sentinel, uint32_t cap = cycle_cap)
+      -> uint32_t {
+    TestFixtures::enter_at({entry, 0, 0, 0});
+    const uint32_t cycles = TestFixtures::step_until_pc(sentinel, cap);
+    REQUIRE(cpu_get_registers()->pc == sentinel);
+    return cycles;
+  }
+};
+
+// Copies $Cn00-$CnFF to $2000.
+auto poke_page_copier(int slot) -> uint16_t {
+  const auto slot_page = static_cast<uint8_t>(0xC0 + slot);
+  const std::array<uint8_t, 14> program = {
+      0xA2, 0x00,             // LDX #$00
+      0xBD, 0x00, slot_page,  // LDA $Cn00,X
+      0x9D, 0x00, 0x20,       // STA $2000,X
+      0xE8,                   // INX
+      0xD0, 0xF7,             // BNE $0302
+      0x4C, 0x0B, 0x03        // JMP $030B
+  };
+  TestFixtures::ScopedCore_t::poke(program_start, program);
+  return 0x030B;
+}
+
+}  // namespace
+
+TEST_CASE(
+    "Mouse card: the firmware array is res/roms/MouseInterface.rom byte for "
+    "byte") {
+  const Rom_t rom = read_rom_file();
+  size_t mismatches = 0;
+  for (size_t i = 0; i < rom.size(); ++i) {
+    if (rom.at(i) != mouse_rom.at(i)) {
+      ++mismatches;
+    }
+  }
+  CHECK(mismatches == 0);
+}
+
+// The signature bytes and the identification byte (AppleMouse II User's
+// Manual p. 43; Apple II Technical Note Mouse #5), then the whole page.
+TEST_CASE(
+    "Mouse card: after reset $C400-$C4FF is the ROM's bank 0 and $C4FB reads "
+    "$D6") {
+  MouseMachine_t machine;
+  const uint16_t sentinel = poke_page_copier(machine.slot);
+  machine.run_until(program_start, sentinel);
+
+  const std::array<uint8_t, 16> signature = {0x2C, 0x58, 0xFF, 0x70, 0x1B, 0x38,
+                                             0x90, 0x18, 0xB8, 0x50, 0x15, 0x01,
+                                             0x20, 0xF4, 0xF4, 0xF4};
+  for (size_t i = 0; i < signature.size(); ++i) {
+    CHECK(mem[page_copy + i] == signature.at(i));
+  }
+  CHECK(mem[page_copy + 0xFB] == 0xD6);
+
+  size_t mismatches = 0;
+  for (size_t i = 0; i < mouse_rom_bank_size; ++i) {
+    if (mem[page_copy + i] != mouse_rom.at(i)) {
+      ++mismatches;
+    }
+  }
+  CHECK(mismatches == 0);
 }

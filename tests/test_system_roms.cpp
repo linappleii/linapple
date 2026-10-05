@@ -58,12 +58,6 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
     CHECK(g_rom_disk2[0] == 0xA2);
     CHECK(g_rom_disk2[1] == 0x20);
 #endif
-#if ENABLE_ROM_MOUSE
-    CHECK(g_rom_mouse_interface_size == 2048);
-    CHECK(g_rom_mouse_interface[0] == 0x2C);
-    CHECK(g_rom_mouse_interface[5] == 0x38);
-    CHECK(g_rom_mouse_interface[7] == 0x18);
-#endif
   }
 
   TEST_CASE("Hardware Reset, IRQ, and NMI Vectors") {

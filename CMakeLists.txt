@@ -123,14 +123,6 @@ else()
     add_compile_definitions(ENABLE_ROM_DISK2=0)
 endif()
 
-option(ENABLE_ROM_MOUSE "Include Mouse Interface Card ROM" ON)
-
-if(ENABLE_ROM_MOUSE)
-    add_compile_definitions(ENABLE_ROM_MOUSE=1)
-else()
-    add_compile_definitions(ENABLE_ROM_MOUSE=0)
-endif()
-
 # --- Compiler Flags ---
 add_compile_options(-Wall -Wextra)
 
@@ -330,7 +322,6 @@ add_custom_command(
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/DISK2.rom"
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/DISK2-13sector.rom"
             "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/DISK2-P6.rom"
-            "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/MouseInterface.rom"
     COMMENT "Generating EmbeddedRoms source from res/roms"
     VERBATIM
 )
@@ -346,7 +337,6 @@ set(LINAPPLE_INCLUDES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/apple2/peripherals"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/apple2/peripherals/disk"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/apple2/peripherals/harddisk"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/apple2/peripherals/mouse"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/common"
     "${GEN_RES_DIR}"
     "${GEN_ROMS_DIR}"
@@ -391,7 +381,6 @@ set(SOURCES_CORE
 )
 
 set(SOURCES_A2_MANDATORY
-    src/apple2/chips/6821.cpp
     src/apple2/CPU.cpp
     src/apple2/Memory.cpp
     src/apple2/Snapshot.cpp
@@ -659,7 +648,7 @@ set(DISK_BACKEND_SOURCES
 
 add_peripheral(disk "Disk II" "src/apple2/peripherals/disk/Disk.cpp;src/apple2/peripherals/disk/DiskLoader.cpp;${DISK_BACKEND_SOURCES};${DISK_FORMAT_SOURCES}" "" "image-container" TRUE)
 add_peripheral(harddisk "Harddisk (SmartPort)" "src/apple2/peripherals/harddisk/Harddisk.cpp;src/apple2/peripherals/harddisk/HarddiskLoader.cpp;src/apple2/peripherals/harddisk/formats/RawHdDriver.cpp;src/apple2/peripherals/harddisk/formats/TwoImgDriver.cpp;src/apple2/peripherals/harddisk/formats/BlockDiskImage.cpp" "" "image-container" TRUE)
-add_peripheral(mouse "Mouse Interface" "src/apple2/peripherals/mouse/Mouse.cpp" "" "" TRUE)
+add_peripheral(mouse "Mouse Interface" "src/apple2/peripherals/mouse/Mouse.cpp;src/apple2/chips/6821.cpp" "" "" FALSE)
 add_peripheral(mockingboard "Mockingboard" "src/apple2/peripherals/mockingboard/Mockingboard.cpp;src/apple2/chips/AY8910.cpp;src/apple2/chips/6522.cpp" "" "" FALSE)
 add_peripheral(super_serial "Super Serial Card" "src/apple2/peripherals/super_serial_card/SuperSerial.cpp;src/apple2/chips/6551.cpp" "" "" FALSE)
 add_peripheral(joystick "game I/O port (paddles, buttons and the //e Apple-key switch inputs)" "src/apple2/peripherals/joystick/Joystick.cpp" "" "" TRUE)

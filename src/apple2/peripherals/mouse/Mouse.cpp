@@ -9,19 +9,17 @@
 #include <memory>
 #include <new>
 
-#include "EmbeddedRoms.h"
 #include "apple2/chips/6821.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Subsystems.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/mouse/MouseCommands.h"
+#include "apple2/peripherals/mouse/MouseRom.h"
 
 namespace {
 
 constexpr int min_slot = 1;
 constexpr int max_slot = 7;
-constexpr size_t rom_size = 2048;
-constexpr size_t rom_page_size = 256;
 // Power-on clamps (AppleMouse II User's Manual p. 48).
 constexpr uint32_t default_clamp_max = 1023;
 constexpr uint32_t io_register_mask = 0x03;
@@ -186,8 +184,6 @@ struct MouseCard_t {
   bool button_at_last_read = false;
   bool second_button_at_last_read = false;
   std::array<bool, 2> buttons{false, false};
-
-  std::array<uint8_t, rom_size> slot_rom{};
 };
 
 auto mouse_update_slot_rom(MouseCard_t* card) -> void {
@@ -198,7 +194,7 @@ auto mouse_update_slot_rom(MouseCard_t* card) -> void {
       (static_cast<uint32_t>(card->port_b_shadow) & port_b::bank_mask) >>
       port_b::bank_shift;
   card->host->RegisterCxROM(card->slot,
-                            card->slot_rom.data() + bank * rom_page_size);
+                            mouse_rom.data() + bank * mouse_rom_bank_size);
 }
 
 auto pia_listener_a(void* obj, uint8_t data) -> void {
@@ -594,11 +590,6 @@ auto mouse_abi_init(int slot, HostInterface_t* host) -> void* {
   card->max_y = default_clamp_max;
   mouse_reset_internal(card.get());
 
-#if ENABLE_ROM_MOUSE
-  std::copy(g_rom_mouse_interface,
-            g_rom_mouse_interface + g_rom_mouse_interface_size,
-            card->slot_rom.begin());
-#endif
   mouse_update_slot_rom(card.get());
 
   host->RegisterIO(slot, mouse_io, mouse_io, nullptr, nullptr);

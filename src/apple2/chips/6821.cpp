@@ -79,20 +79,19 @@ auto pia_6821_read(Pia6821_t* p, uint8_t addr) noexcept -> uint8_t {
     return 0;
   }
   switch (addr & 0x03) {
-    case 0:  // Port A or DDRA
+    case 0:
       if (!(p->cra & CRA_DDR_SEL)) {
         return p->ddra;
       }
       p->cra &= ~(CRA_IRQ1 | CRA_IRQ2);
       update_interrupts(p);
 
-      if ((p->cra & (CRA_CA2_OUT | CRA_CA2_SEL)) ==
-          CRA_CA2_OUT) {  // Read Strobe Mode
+      if ((p->cra & (CRA_CA2_OUT | CRA_CA2_SEL)) == CRA_CA2_OUT) {
         if (p->oca2 == 1) {
           p->oca2 = 0;
           pia_call(p->out_ca2, 0);
         }
-        if (p->cra & CRA_CA2_LVL) {  // E-Reset
+        if (p->cra & CRA_CA2_LVL) {
           p->oca2 = 1;
           pia_call(p->out_ca2, 1);
         }
@@ -101,11 +100,11 @@ auto pia_6821_read(Pia6821_t* p, uint8_t addr) noexcept -> uint8_t {
       // the ORA latch)
       return p->port_a_in;
 
-    case 1:  // Control A
+    case 1:
       // Datasheet Page 10: IRQA2=0 if CA2 is an output
       return ((p->cra & CRA_CA2_OUT) != 0) ? (p->cra & ~CRA_IRQ2) : p->cra;
 
-    case 2:  // Port B or DDRB
+    case 2:
       if (!(p->crb & CRB_DDR_SEL)) {
         return p->ddrb;
       }
@@ -114,7 +113,7 @@ auto pia_6821_read(Pia6821_t* p, uint8_t addr) noexcept -> uint8_t {
       update_interrupts(p);
       return (p->orb & p->ddrb) | (p->port_b_in & ~p->ddrb);
 
-    case 3:  // Control B
+    case 3:
       // Datasheet Page 10: IRQB2=0 if CB2 is an output
       return ((p->crb & CRB_CB2_OUT) != 0) ? (p->crb & ~CRB_IRQ2) : p->crb;
 
@@ -130,7 +129,7 @@ auto pia_6821_write(Pia6821_t* p, uint8_t addr, uint8_t val) noexcept -> void {
   addr &= 0x03;
 
   switch (addr) {
-    case 0:  // Port A or DDRA
+    case 0:
       if (!(p->cra & CRA_DDR_SEL)) {
         p->ddra = val;
         break;
@@ -139,7 +138,7 @@ auto pia_6821_write(Pia6821_t* p, uint8_t addr, uint8_t val) noexcept -> void {
       pia_call(p->out_a, p->ora & p->ddra);
       break;
 
-    case 1:  // Control A
+    case 1:
       p->cra = (p->cra & 0xC0) | (val & 0x3F);
 
       if ((p->cra & CRA_CA2_OUT) && (p->cra & CRA_CA2_SEL)) {
@@ -152,7 +151,7 @@ auto pia_6821_write(Pia6821_t* p, uint8_t addr, uint8_t val) noexcept -> void {
       update_interrupts(p);
       break;
 
-    case 2:  // Port B or DDRB
+    case 2:
       if (!(p->crb & CRB_DDR_SEL)) {
         p->ddrb = val;
         break;
@@ -160,20 +159,19 @@ auto pia_6821_write(Pia6821_t* p, uint8_t addr, uint8_t val) noexcept -> void {
       p->orb = val;
       pia_call(p->out_b, p->orb & p->ddrb);
 
-      if ((p->crb & (CRB_CB2_OUT | CRB_CB2_SEL)) ==
-          CRB_CB2_OUT) {  // Write Strobe Mode
+      if ((p->crb & (CRB_CB2_OUT | CRB_CB2_SEL)) == CRB_CB2_OUT) {
         if (p->ocb2 == 1) {
           p->ocb2 = 0;
           pia_call(p->out_cb2, 0);
         }
-        if (p->crb & CRB_CB2_LVL) {  // E-Reset
+        if (p->crb & CRB_CB2_LVL) {
           p->ocb2 = 1;
           pia_call(p->out_cb2, 1);
         }
       }
       break;
 
-    case 3:  // Control B
+    case 3:
       p->crb = (p->crb & 0xC0) | (val & 0x3F);
 
       if ((p->crb & CRB_CB2_OUT) && (p->crb & CRB_CB2_SEL)) {
