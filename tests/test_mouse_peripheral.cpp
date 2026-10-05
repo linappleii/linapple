@@ -22,7 +22,9 @@
 extern "C" unsigned mouse_abi_c_frame_size(void);
 extern "C" unsigned mouse_abi_c_state_version(void);
 extern "C" unsigned mouse_abi_c_button_payload_size(void);
+extern "C" unsigned mouse_abi_c_move_payload_size(void);
 extern "C" uint32_t mouse_abi_c_set_button_id(void);
+extern "C" uint32_t mouse_abi_c_move_id(void);
 extern "C" uint32_t mouse_abi_c_is_active_query_id(void);
 
 namespace {
@@ -242,13 +244,48 @@ TEST_CASE("Mouse card: a null instance or an empty host is refused") {
 }
 
 TEST_CASE(
+    "Mouse card: init refuses a host lacking a member it needs, naming the "
+    "member and the slot, and refuses a slot outside 1 to 7") {
+  const Peripheral_t* desc = mouse_descriptor();
+  REQUIRE(desc != nullptr);
+  BenchHost_t bench;
+
+  auto refused_naming = [&](const std::string& member, int slot) {
+    CHECK(desc->init(slot, bench.host()) == nullptr);
+    CHECK(BenchHost_t::last_log().find(member) != std::string::npos);
+    CHECK(BenchHost_t::last_log().find("slot " + std::to_string(slot)) !=
+          std::string::npos);
+  };
+
+  SUBCASE("AssertIrq") {
+    bench.host()->AssertIrq = nullptr;
+    refused_naming("AssertIrq", test_slot);
+  }
+  SUBCASE("RegisterIO") {
+    bench.host()->RegisterIO = nullptr;
+    refused_naming("RegisterIO", test_slot);
+  }
+  SUBCASE("RegisterCxROM") {
+    bench.host()->RegisterCxROM = nullptr;
+    refused_naming("RegisterCxROM", test_slot);
+  }
+  SUBCASE("slot 0") { refused_naming("slots 1 to 7", 0); }
+  SUBCASE("slot 8") { refused_naming("slots 1 to 7", 8); }
+  SUBCASE("a complete host in slot 7 is accepted") {
+    void* instance = desc->init(7, bench.host());
+    REQUIRE(instance != nullptr);
+    desc->shutdown(instance);
+  }
+}
+
+TEST_CASE(
     "Mouse card: a command or query outside the card's subsystem, or unknown "
     "inside it, is incompatible") {
   BenchCard_t card;
   REQUIRE(card.instance() != nullptr);
   const Peripheral_t* desc = mouse_descriptor();
 
-  MouseButtonPayload_t payload{0, true, {0, 0}};
+  MouseButtonPayload_t payload{0, 1, {0, 0}};
   size_t size = sizeof(payload);
   CHECK(desc->command(card.instance(), foreign_command, &payload,
                       sizeof(payload)) == peripheral_incompatible);
@@ -296,6 +333,8 @@ TEST_CASE(
   CHECK(mouse_abi_c_is_active_query_id() == mouse_query_is_active);
   CHECK(mouse_abi_c_set_button_id() == mouse_cmd_set_button);
   CHECK(mouse_abi_c_button_payload_size() == sizeof(MouseButtonPayload_t));
+  CHECK(mouse_abi_c_move_id() == mouse_cmd_move);
+  CHECK(mouse_abi_c_move_payload_size() == sizeof(MouseMovePayload_t));
 
   size_t size = 0;
   CHECK(desc->query(card.instance(), mouse_query_is_active, nullptr, &size) ==

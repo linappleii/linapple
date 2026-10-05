@@ -14,9 +14,6 @@ namespace {
 constexpr const char* k_mouse_card_id = "linapple.mouse";
 constexpr int k_first_slot = 1;
 constexpr int k_last_slot = 7;
-// The host pointer's range as the card scales it: the Apple's 560 x 384 frame.
-constexpr int k_host_range_x = 560;
-constexpr int k_host_range_y = 384;
 
 int g_card_slot = 0;
 bool g_capture_enabled = true;
@@ -51,16 +48,13 @@ auto mouse_frontend_dispatch_button(uint8_t button, bool is_down) -> void {
   if (g_card_slot == 0) {
     return;
   }
-  MouseButtonPayload_t payload{button, is_down, {0, 0}};
+  MouseButtonPayload_t payload{
+      button, static_cast<uint8_t>(is_down ? 1 : 0), {0, 0}};
   peripheral_command_by_id(g_card_slot, k_mouse_card_id, mouse_cmd_set_button,
                            &payload, sizeof(payload));
 }
 
 auto mouse_frontend_dispatch_motion(int x, int y) -> void {
-  if (g_card_slot == 0) {
-    return;
-  }
-  MousePosPayload_t payload{x, k_host_range_x, y, k_host_range_y};
-  peripheral_command_by_id(g_card_slot, k_mouse_card_id, mouse_cmd_set_pos,
-                           &payload, sizeof(payload));
+  (void)x;
+  (void)y;
 }
