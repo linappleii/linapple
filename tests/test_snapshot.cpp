@@ -16,12 +16,14 @@
 #include <string>
 #include <vector>
 
+#include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/Snapshot.h"
 #include "apple2/SnapshotTypes.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Internal.h"
+#include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/mouse/MouseCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
@@ -1046,6 +1048,458 @@ TEST_CASE(
     CHECK(log.count_containing("for this session") == 0);
     CHECK(mouse_in_slot(mouse_key_slot));
     CHECK(machine_names(mouse_key_slot) == "Mouse Interface");
+  }
+}
+
+#endif
+
+namespace {
+
+constexpr uint16_t mouse_program = 0x0300;
+constexpr uint16_t mouse_indirect_jump = 0x03F0;
+constexpr uint16_t mouse_handler = 0x0380;
+constexpr uint32_t mouse_cycle_cap = 200000;
+constexpr uint64_t mouse_tick_period = 17030;
+constexpr uint64_t mouse_legacy_phase = 1023;
+// Not $06: SERVEMOUSE borrows that byte as an RTS while it runs (bank 0
+// $0C4-$0CC).
+constexpr uint8_t mouse_entry_count = 0x0A;
+constexpr size_t mouse_frame_size = 92;
+constexpr size_t mouse_frame_phase = 32;
+constexpr size_t mouse_frame_rate = 64;
+constexpr size_t mouse_frame_pending = 65;
+constexpr size_t mouse_frame_irq = 66;
+constexpr size_t mouse_frame_mode = 74;
+constexpr size_t mouse_frame_status = 76;
+constexpr size_t mouse_frame_button = 79;
+
+enum MouseEntry_t {
+  mouse_entry_set = 0,
+  mouse_entry_serve = 1,
+  mouse_entry_read = 2,
+  mouse_entry_pos = 4,
+  mouse_entry_clamp = 5
+};
+
+using MouseFrame_t = std::array<uint8_t, mouse_frame_size>;
+
+// The table at $Cn12 holds the low bytes of the entries (manual p. 49), so
+// every call goes through it indirectly: LDA $Cn12+k / STA $07 / LDA #$Cn /
+// STA $08 / LDA #a / LDX #$Cn / LDY #$n0 / JSR $03F0, with JMP ($0007) there.
+auto emit_mouse_call(std::vector<uint8_t>& program, int slot, int entry,
+                     uint8_t a) -> void {
+  const auto page = static_cast<uint8_t>(0xC0 + slot);
+  const auto table = static_cast<uint16_t>((page << 8) + 0x12 + entry);
+  const std::vector<uint8_t> call = {
+      0xAD,
+      static_cast<uint8_t>(table & 0xFF),
+      static_cast<uint8_t>(table >> 8),
+      0x85,
+      0x07,
+      0xA9,
+      page,
+      0x85,
+      0x08,
+      0xA9,
+      a,
+      0xA2,
+      page,
+      0xA0,
+      static_cast<uint8_t>(slot << 4),
+      0x20,
+      static_cast<uint8_t>(mouse_indirect_jump & 0xFF),
+      static_cast<uint8_t>(mouse_indirect_jump >> 8)};
+  program.insert(program.end(), call.begin(), call.end());
+  const std::array<uint8_t, 3> jump = {0x6C, 0x07, 0x00};
+  TestFixtures::ScopedCore_t::poke(mouse_indirect_jump, jump);
+}
+
+// One entry stepped from $0300 to a spin, with interrupts masked; the carry
+// it came back with.
+auto call_mouse_firmware(int slot, int entry, uint8_t a) -> bool {
+  std::vector<uint8_t> program;
+  emit_mouse_call(program, slot, entry, a);
+  const auto spin = static_cast<uint16_t>(mouse_program + program.size());
+  program.push_back(0x4C);
+  program.push_back(static_cast<uint8_t>(spin & 0xFF));
+  program.push_back(static_cast<uint8_t>(spin >> 8));
+  TestFixtures::ScopedCore_t::poke(mouse_program, program.data(),
+                                   program.size());
+  TestFixtures::enter_at({mouse_program, 0, 0, 0});
+  TestFixtures::step_until_pc(spin, mouse_cycle_cap);
+  REQUIRE(cpu_get_registers()->pc == spin);
+  return (cpu_get_registers()->ps & 0x01) != 0;
+}
+
+auto mouse_frame(int slot) -> MouseFrame_t {
+  MouseFrame_t frame{};
+  size_t size = frame.size();
+  peripheral_save_state(slot, frame.data(), &size);
+  REQUIRE(size == frame.size());
+  return frame;
+}
+
+auto mouse_frame_word(const MouseFrame_t& frame, size_t at) -> uint32_t {
+  return static_cast<uint32_t>(frame.at(at)) |
+         (static_cast<uint32_t>(frame.at(at + 1)) << 8) |
+         (static_cast<uint32_t>(frame.at(at + 2)) << 16) |
+         (static_cast<uint32_t>(frame.at(at + 3)) << 24);
+}
+
+struct MouseReading_t {
+  int16_t x;
+  int16_t y;
+  uint8_t status;
+};
+
+// READMOUSE through the table, then the slot's holes (manual p. 44).
+auto read_mouse_holes(int slot) -> MouseReading_t {
+  REQUIRE_FALSE(call_mouse_firmware(slot, mouse_entry_read, 0));
+  const auto n = static_cast<uint16_t>(slot);
+  MouseReading_t reading{};
+  reading.x = static_cast<int16_t>(static_cast<uint16_t>(
+      mem[0x478 + n] | (static_cast<uint16_t>(mem[0x578 + n]) << 8)));
+  reading.y = static_cast<int16_t>(static_cast<uint16_t>(
+      mem[0x4F8 + n] | (static_cast<uint16_t>(mem[0x5F8 + n]) << 8)));
+  reading.status = mem[0x778 + n];
+  return reading;
+}
+
+auto poke_mouse_byte(uint16_t at, uint8_t value) -> void {
+  const std::array<uint8_t, 1> byte = {value};
+  TestFixtures::ScopedCore_t::poke(at, byte);
+}
+
+auto press_mouse_button(int slot, bool down) -> void {
+  MouseButtonPayload_t payload{0, static_cast<uint8_t>(down ? 1 : 0), {0, 0}};
+  REQUIRE(peripheral_command(slot, mouse_cmd_set_button, &payload,
+                             sizeof(payload)) == peripheral_ok);
+  peripheral_manager_think(0);
+}
+
+auto move_mouse_by(int slot, int32_t dx, int32_t dy) -> void {
+  MouseMovePayload_t payload{dx, dy};
+  REQUIRE(peripheral_command(slot, mouse_cmd_move, &payload, sizeof(payload)) ==
+          peripheral_ok);
+  peripheral_manager_think(0);
+}
+
+// Stepped execution services no card event, so the card is brought up to
+// date after every instruction; its tick then fires within one instruction
+// of its cycle, as the frame loop would have it.
+auto step_with_think(uint64_t cycles) -> void {
+  const uint64_t end = cpu_get_cumulative_cycles() + cycles;
+  while (cpu_get_cumulative_cycles() < end) {
+    cpu_execute(0);
+    peripheral_manager_think(0);
+  }
+}
+
+// A CLI / JMP * loop whose handler counts its entries in $0A and serves the
+// card through the table, so the line is released each time.
+auto enter_mouse_cli_loop(int slot) -> void {
+  std::vector<uint8_t> handler = {0xE6, mouse_entry_count};
+  emit_mouse_call(handler, slot, mouse_entry_serve, 0);
+  handler.push_back(0x40);
+  TestFixtures::ScopedCore_t::poke(mouse_handler, handler.data(),
+                                   handler.size());
+  const std::array<uint8_t, 2> vector = {
+      static_cast<uint8_t>(mouse_handler & 0xFF),
+      static_cast<uint8_t>(mouse_handler >> 8)};
+  TestFixtures::ScopedCore_t::poke(IRQ_VECTOR_ADDR, vector);
+  poke_mouse_byte(mouse_entry_count, 0);
+  const std::array<uint8_t, 4> loop = {0x58, 0x4C, 0x01, 0x03};
+  TestFixtures::ScopedCore_t::poke(mouse_program, loop);
+  TestFixtures::enter_at({mouse_program, 0, 0, 0});
+}
+
+// Steps until the handler has been entered `count` times or the cap is
+// spent, then until that handler has returned to the loop, so the hole it
+// wrote can be read; the cycles to the entry.
+auto cycles_until_mouse_entries(uint8_t count, uint64_t cap) -> uint64_t {
+  constexpr uint64_t handler_cap = 1000;
+  const uint64_t start = cpu_get_cumulative_cycles();
+  while (mem[mouse_entry_count] < count &&
+         cpu_get_cumulative_cycles() - start < cap) {
+    cpu_execute(0);
+    peripheral_manager_think(0);
+  }
+  const uint64_t entered = cpu_get_cumulative_cycles() - start;
+  if (mem[mouse_entry_count] < count) {
+    return entered;
+  }
+  const uint64_t handler_end = cpu_get_cumulative_cycles() + handler_cap;
+  while ((cpu_get_registers()->pc < mouse_program ||
+          cpu_get_registers()->pc > mouse_program + 3) &&
+         cpu_get_cumulative_cycles() < handler_end) {
+    cpu_execute(0);
+    peripheral_manager_think(0);
+  }
+  return entered;
+}
+
+auto mouse_machine_in(int slot) -> TestConfig_t::Description_t {
+  TestConfig_t::Description_t description;
+  description.slots.at(static_cast<size_t>(slot - 1)) = "Mouse Interface";
+  return description;
+}
+
+// snapshot_deserialize restores the CPU before the slots load, so the card's
+// AssertIrq during load_state sticks and a CLI loop afterwards proves it.
+auto mouse_survives_the_file(int slot) -> void {
+  TestConfig_t config(mouse_machine_in(slot));
+  TestFixtures::ScopedCore_t core(config);
+  peripheral_manager_init();
+  linapple_register_peripherals();
+  linapple_reset_hard();
+
+  REQUIRE_FALSE(call_mouse_firmware(slot, mouse_entry_set, 0x0F));
+  poke_mouse_byte(0x478, 0x64);
+  poke_mouse_byte(0x4F8, 0xC8);
+  poke_mouse_byte(0x578, 0x00);
+  poke_mouse_byte(0x5F8, 0x00);
+  REQUIRE_FALSE(call_mouse_firmware(slot, mouse_entry_clamp, 0));
+  press_mouse_button(slot, true);
+  // One tick with interrupts masked reports the button and the refresh and
+  // raises the line; a move after it is pending for the next.
+  step_with_think(mouse_tick_period);
+  move_mouse_by(slot, 1, 0);
+
+  const MouseFrame_t saved = mouse_frame(slot);
+  CHECK(saved.at(mouse_frame_mode) == 0x0F);
+  CHECK(mouse_frame_word(saved, 16) == 100);
+  CHECK(mouse_frame_word(saved, 20) == 200);
+  CHECK(mouse_frame_word(saved, 8) == 100);
+  CHECK(saved.at(mouse_frame_button) == 1);
+  CHECK(saved.at(mouse_frame_pending) == 0x02);
+  CHECK(saved.at(mouse_frame_irq) == 1);
+  CHECK((saved.at(mouse_frame_status) & 0x0E) == 0x0C);
+
+  TestFixtures::ScopedTempFile_t file(".aws");
+  save_state_set_filename(file.c_str());
+  save_state_save();
+
+  linapple_reset_hard();
+  CHECK(mouse_frame(slot).at(mouse_frame_mode) == 0x00);
+  REQUIRE(save_state_load());
+  CHECK(mouse_frame(slot) == saved);
+
+  // The line is up: the handler runs at the CLI and SERVEMOUSE names the two
+  // sources the tick reported; the pending move comes with the next tick,
+  // within one period of the load.
+  const uint64_t loaded_at = cpu_get_cumulative_cycles();
+  enter_mouse_cli_loop(slot);
+  CHECK(cycles_until_mouse_entries(1, 400) < 400);
+  CHECK((mem[0x778 + slot] & 0x0E) == 0x0C);
+  const uint64_t second = cycles_until_mouse_entries(2, 2 * mouse_tick_period);
+  CHECK(second < mouse_tick_period);
+  CHECK(cpu_get_cumulative_cycles() - loaded_at <= mouse_tick_period + 32);
+  CHECK((mem[0x778 + slot] & 0x0E) == 0x0A);
+
+  const MouseReading_t reading = read_mouse_holes(slot);
+  CHECK(reading.x == 100);
+  CHECK(reading.y == 0);
+  CHECK(reading.status == 0xA0);
+}
+
+}  // namespace
+
+TEST_CASE(
+    "Snapshot: an .aws gives the mouse card back its mode, clamps, position, "
+    "button, pending sources and asserted line in slot 4 and in slot 5, with "
+    "the next tick within one period") {
+  SUBCASE("slot 4") { mouse_survives_the_file(4); }
+  SUBCASE("slot 5") { mouse_survives_the_file(5); }
+}
+
+namespace {
+
+// The machine tests/fixtures/minimal.aws was written on, with the mouse where
+// its Mockingboard was.
+auto mouse_minimal_machine() -> TestConfig_t::Description_t {
+  TestConfig_t::Description_t description;
+  description.slots[0] = "Parallel Printer";
+  description.slots[1] = "Super Serial Card";
+  description.slots[3] = "Mouse Interface";
+  return description;
+}
+
+}  // namespace
+
+// A trailer-less file hands slot 4 its 104-byte fixed region; a region that
+// is not a mouse frame is refused, logged once, and the card stays at reset.
+// The shipped minimal.aws names the Mockingboard there, so a mouse machine
+// refuses it at the manifest, before any region is read.
+TEST_CASE(
+    "Snapshot: a fixed-body file whose slot-4 region is not a mouse frame "
+    "loads with the card at reset and says so once, and minimal.aws is "
+    "refused at the manifest") {
+  TestConfig_t config(mouse_minimal_machine());
+  TestFixtures::ScopedCore_t core(config);
+  peripheral_manager_init();
+  linapple_register_peripherals();
+  linapple_reset_hard();
+
+  REQUIRE_FALSE(call_mouse_firmware(4, mouse_entry_set, 0x01));
+  poke_mouse_byte(0x47C, 150);
+  poke_mouse_byte(0x57C, 0);
+  poke_mouse_byte(0x4FC, 20);
+  poke_mouse_byte(0x5FC, 0);
+  REQUIRE_FALSE(call_mouse_firmware(4, mouse_entry_pos, 0));
+  REQUIRE(read_mouse_holes(4).x == 150);
+
+  TestFixtures::ScopedTempFile_t file(".aws");
+  save_state_set_filename(file.c_str());
+  save_state_save();
+  REQUIRE(truncate(file.c_str(),
+                   static_cast<off_t>(snapshot_size_fixed_body)) == 0);
+  {
+    std::fstream patch(file.path(),
+                       std::ios::binary | std::ios::in | std::ios::out);
+    REQUIRE(patch.good());
+    const std::array<char, 4> no_version = {0, 0, 0, 0};
+    patch.seekp(
+        static_cast<std::streamoff>(offsetof(Snapshot_t, mockingboard1)));
+    patch.write(no_version.data(), no_version.size());
+    REQUIRE(patch.good());
+  }
+
+  {
+    ScopedLogCapture_t log;
+    REQUIRE(save_state_load());
+    CHECK(log.count_containing("Slot 4: Mouse Interface refused the 104-byte "
+                               "fixed-body region and stays at reset") == 1);
+    CHECK(log.count_containing("Slot 4:") == 1);
+  }
+  REQUIRE_FALSE(call_mouse_firmware(4, mouse_entry_set, 0x01));
+  MouseReading_t reading = read_mouse_holes(4);
+  CHECK(reading.x == 0);
+  CHECK(reading.y == 0);
+  move_mouse_by(4, 2000, 2000);
+  reading = read_mouse_holes(4);
+  CHECK(reading.x == 1023);
+  CHECK(reading.y == 1023);
+
+  const std::string minimal = TestFixtures::get_fixture_path("minimal.aws");
+  struct stat on_disk{};
+  REQUIRE(stat(minimal.c_str(), &on_disk) == 0);
+  CHECK(static_cast<size_t>(on_disk.st_size) == snapshot_size_fixed_body);
+  save_state_set_filename(minimal.c_str());
+  {
+    ScopedLogCapture_t log;
+    CHECK(save_state_load() == false);
+    CHECK(log.count_containing("Slot 4: the save state names Mockingboard "
+                               "where the machine holds Mouse Interface") == 1);
+    CHECK(log.count_containing("refused the") == 0);
+  }
+}
+
+// The two fixtures name the shipped Disk II and Harddisk in slots 6 and 7, so
+// a build without both cards refuses them at the manifest.
+#if defined(ENABLE_PERIPHERAL_DISK) && defined(ENABLE_PERIPHERAL_HARDDISK)
+
+namespace {
+
+// The machine the two slot-4 fixtures were written on.
+auto mouse_fixture_machine() -> TestConfig_t::Description_t {
+  TestConfig_t::Description_t description;
+  description.slots[0] = "Parallel Printer";
+  description.slots[1] = "Super Serial Card";
+  description.slots[3] = "Mouse Interface";
+  description.slots[4] = "Mockingboard";
+  description.slots[5] = "Disk II";
+  description.slots[6] = "Harddisk";
+  return description;
+}
+
+auto load_mouse_fixture(const std::string& name) -> void {
+  const std::string path = TestFixtures::get_fixture_path(name);
+  REQUIRE(access(path.c_str(), R_OK) == 0);
+  save_state_set_filename(path.c_str());
+  ScopedLogCapture_t log;
+  REQUIRE(save_state_load());
+  // The Harddisk's 2,160-byte frame never fit the trailer, so its empty
+  // entry falls back to the 16-byte region, which it refuses; the mouse's
+  // frame is taken.
+  CHECK(log.count_containing("Slot 7: Harddisk refused") == 1);
+  CHECK(log.count_containing("Slot 4:") == 0);
+}
+
+// The fixtures hold the frame the card wrote before the tick existed: mode
+// $0B, position (123, 456), the button held through one READMOUSE, the host
+// window's 1023 x 1023 range where the phase now travels, the status byte
+// $80 with the button in bit 7, and zeros where the rate, the pending
+// sources and the line now travel. The loader takes the width as a phase
+// bounded by one period, drops the status bits with the line, and rebuilds
+// bits 7 and 6 from the button fields.
+auto mouse_fixture_loads(const std::string& name) -> void {
+  TestConfig_t config(mouse_fixture_machine());
+  TestFixtures::ScopedCore_t core(config);
+  peripheral_manager_init();
+  linapple_register_peripherals();
+  linapple_reset_hard();
+
+  load_mouse_fixture(name);
+  const MouseFrame_t loaded = mouse_frame(4);
+  CHECK(loaded.at(mouse_frame_mode) == 0x0B);
+  CHECK(mouse_frame_word(loaded, mouse_frame_phase) == mouse_legacy_phase);
+  CHECK(loaded.at(mouse_frame_rate) == 0);
+  CHECK(loaded.at(mouse_frame_pending) == 0);
+  CHECK(loaded.at(mouse_frame_irq) == 0);
+  CHECK(loaded.at(mouse_frame_status) == 0x00);
+
+  // Stepped before the first tick can come: nothing to serve, and a CLI loop
+  // enters no handler.
+  CHECK(call_mouse_firmware(4, mouse_entry_serve, 0));
+  enter_mouse_cli_loop(4);
+  CHECK(cycles_until_mouse_entries(1, 300) >= 300);
+  CHECK(mem[mouse_entry_count] == 0);
+
+  MouseReading_t reading = read_mouse_holes(4);
+  CHECK(mem[0x47C] == 0x7B);
+  CHECK(mem[0x57C] == 0x00);
+  CHECK(mem[0x4FC] == 0xC8);
+  CHECK(mem[0x5FC] == 0x01);
+  CHECK(reading.status == 0xC0);
+  move_mouse_by(4, 2000, 2000);
+  reading = read_mouse_holes(4);
+  CHECK(reading.x == 1023);
+  CHECK(reading.y == 1023);
+
+  // Reloaded, the first tick comes within the 1,023 cycles the width reads
+  // as, plus the instruction in flight; the frame written then carries the
+  // line where the fixture held zeros.
+  load_mouse_fixture(name);
+  enter_mouse_cli_loop(4);
+  const uint64_t first_tick =
+      cycles_until_mouse_entries(1, 2 * mouse_tick_period);
+  CHECK(first_tick <= mouse_legacy_phase + 24);
+  CHECK((mem[0x77C] & 0x0E) == 0x08);
+
+  load_mouse_fixture(name);
+  const std::array<uint8_t, 3> spin = {0x4C, 0x00, 0x03};
+  TestFixtures::ScopedCore_t::poke(mouse_program, spin);
+  TestFixtures::enter_at({mouse_program, 0, 0, 0});
+  step_with_think(mouse_legacy_phase + 24);
+  const MouseFrame_t ticked = mouse_frame(4);
+  CHECK(ticked.at(mouse_frame_irq) == 1);
+  CHECK((ticked.at(mouse_frame_status) & 0x0E) == 0x08);
+  CHECK(ticked.at(mouse_frame_pending) == 0);
+  CHECK(ticked.at(mouse_frame_rate) == 0);
+  CHECK(mouse_frame_word(ticked, mouse_frame_phase) <= mouse_tick_period);
+}
+
+}  // namespace
+
+TEST_CASE(
+    "Snapshot: the slot-4 fixtures from before the tick existed load through "
+    "the trailer and through the fixed region, serve nothing, read their "
+    "position and button, and tick within 1,023 cycles") {
+  SUBCASE("the 134,200-byte file, from the trailer") {
+    mouse_fixture_loads("mouse-slot4-0aad3663.aws");
+  }
+  SUBCASE("the 132,344-byte file, from the fixed region") {
+    mouse_fixture_loads("mouse-slot4-0aad3663-fixed.aws");
   }
 }
 
