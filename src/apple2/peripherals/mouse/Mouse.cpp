@@ -24,6 +24,19 @@ constexpr int max_slot = 7;
 constexpr uint32_t default_clamp_max = 1023;
 constexpr uint32_t io_register_mask = 0x03;
 
+// The 6805's timer is clocked from the Apple's own Q3 through the PAL's
+// "2 MHZ CLOCK" (schematic 050-0101-A zones A3, C2), so its tick is a fixed
+// count of 6502 cycles. The count is in the 6805's ROM and unknown; 17,030
+// and 20,280 (one NTSC and one PAL frame, IIe Technical Reference p. 169) are
+// the only counts under which Tech Note Mouse #2's "synchronized with the
+// actual VBL rate on standard North American Apples" holds, and they keep an
+// NTSC program's interrupt phase fixed. A real card may drift slowly against
+// the frame: the MC6805P timer is an 8-bit down-counter behind a
+// mask-programmed prescaler (MC6805P data sheet 5.1) reloaded by software,
+// so any count is reachable.
+constexpr uint64_t tick_period_60hz = 17030;
+constexpr uint64_t tick_period_50hz = 20280;
+
 // The byte the 6502 firmware writes to the 6805 first; the high nibble names
 // the command (manual pp. 47-49).
 namespace command {
@@ -38,6 +51,10 @@ constexpr uint8_t home_mouse = 0x70;
 constexpr uint8_t time_data = 0x90;
 constexpr uint8_t group_mask = 0xF0;
 constexpr uint8_t axis_bit = 0x01;
+// TIMEDATA's bit 0 selects 50 Hz "effective at the next INITMOUSE" (Tech Note
+// Mouse #2); bits 3-2 add one, two or three bytes whose meaning the ROM alone
+// shows (bank 7 $C441-$C4AE).
+constexpr uint8_t time_data_rate_bit = 0x01;
 constexpr uint8_t time_data_length_mask = 0x0C;
 constexpr uint8_t time_data_two_bytes = 0x08;
 constexpr uint8_t time_data_three_bytes = 0x04;
@@ -53,7 +70,8 @@ constexpr uint8_t refresh_interrupts = 0x08;
 constexpr uint8_t mask = 0x0F;
 }  // namespace mode
 
-// Status byte bits (manual p. 45).
+// Status byte bits (manual p. 45). The interrupt sources share the mode's
+// bit positions, which is what lets the mode mask the pending sources.
 namespace status {
 constexpr uint8_t movement_interrupt = 0x02;
 constexpr uint8_t button_interrupt = 0x04;
@@ -163,12 +181,20 @@ struct MouseCard_t {
   uint8_t port_a_shadow = 0;
   uint8_t port_b_shadow = 0;
   uint8_t mode = 0;
-  bool vblank_rising = false;
 
   std::array<uint8_t, 8> buffer{};
   int32_t buffer_pos = 0;
   int32_t data_len = 0;
+
+  // Bits 1-3 of status are the sources the last tick reported, bit 5 the
+  // movement since the last reading; pending holds the sources seen since
+  // the last tick, in the same bit positions.
   uint8_t status = 0;
+  uint8_t pending = 0;
+  bool irq_asserted = false;
+  bool rate_50hz = false;
+  uint64_t tick_period = tick_period_60hz;
+  uint64_t next_tick = 0;
 
   uint32_t position_x = 0;
   uint32_t position_y = 0;
@@ -195,6 +221,62 @@ auto mouse_update_slot_rom(MouseCard_t* card) -> void {
       port_b::bank_shift;
   card->host->RegisterCxROM(card->slot,
                             mouse_rom.data() + bank * mouse_rom_bank_size);
+}
+
+// IRQ' is the 6805's PB6 through a 10 k pull-up; the PIA's interrupt pins are
+// not connected (schematic zones D2, C3), so the line is the card's own latch.
+auto set_irq(MouseCard_t* card, bool level) -> void {
+  if (card->irq_asserted == level) {
+    return;
+  }
+  card->irq_asserted = level;
+  card->host->AssertIrq(card->slot, level);
+}
+
+// Every source interrupts "at the end of the current monitor screen writing
+// cycle" (manual p. 46), that is at the tick. Bit 0 gates the movement and
+// button interrupts and not the screen refresh: "A mode byte of $08 (mouse
+// off but VBL interrupt on) will generate VBL interrupts" (Tech Note Mouse
+// #3).
+auto fire(MouseCard_t* card) -> void {
+  uint8_t reportable = 0;
+  if ((card->mode & mode::tracking) != 0) {
+    reportable = card->pending & card->mode &
+                 (mode::movement_interrupts | mode::button_interrupts);
+  }
+  if ((card->mode & mode::refresh_interrupts) != 0) {
+    reportable |= status::refresh_interrupt;
+  }
+  card->pending = 0;
+  if (reportable == 0) {
+    return;
+  }
+  card->status |= reportable;
+  set_irq(card, true);
+}
+
+// Missed ticks collapse into one with the phase kept: the status bits are
+// OR'd, so firing N times and once are the same observable, and a counter
+// that jumped a session ahead costs one division. A counter that went
+// backwards, after a snapshot was restored, re-anchors.
+auto advance(MouseCard_t* card, uint64_t now) -> void {
+  if (now + card->tick_period < card->next_tick) {
+    card->next_tick = now + card->tick_period;
+  }
+  if (card->next_tick <= now) {
+    fire(card);
+    card->next_tick +=
+        ((now - card->next_tick) / card->tick_period + 1) * card->tick_period;
+  }
+  card->host->ScheduleEvent(card, card->next_tick);
+}
+
+// The 6805's latency from the INITMOUSE strobe to its timer restart is
+// unknown and modelled as zero.
+auto restart_tick(MouseCard_t* card) -> void {
+  card->tick_period = card->rate_50hz ? tick_period_50hz : tick_period_60hz;
+  card->next_tick = card->host->GetCycles() + card->tick_period;
+  card->host->ScheduleEvent(card, card->next_tick);
 }
 
 auto pia_listener_a(void* obj, uint8_t data) -> void {
@@ -254,6 +336,7 @@ auto mouse_reset_internal(MouseCard_t* card) -> void {
   card->data_len = 1;
   card->mode = 0;
   card->status = 0;
+  card->pending = 0;
   card->read_x = 0;
   card->read_y = 0;
   card->button_at_last_read = false;
@@ -263,39 +346,16 @@ auto mouse_reset_internal(MouseCard_t* card) -> void {
   mouse_set_position_internal(card, 0, 0);
 }
 
-auto mouse_on_mouse_event(MouseCard_t* card) -> void {
-  if (card == nullptr) {
+// Movement that changes the position while the mouse is on; the interrupt it
+// may raise waits for the tick.
+auto mark_movement(MouseCard_t* card) -> void {
+  if (static_cast<uint32_t>(card->read_x) == card->position_x &&
+      static_cast<uint32_t>(card->read_y) == card->position_y) {
     return;
   }
-
-  uint8_t state = 0;
-  if (static_cast<uint32_t>(card->read_x) != card->position_x ||
-      static_cast<uint32_t>(card->read_y) != card->position_y) {
-    state |= status::moved;
-    if ((card->mode & mode::tracking) != 0 &&
-        (card->mode & mode::movement_interrupts) != 0) {
-      state |= status::movement_interrupt;
-    }
-  }
-
+  card->status |= status::moved;
   if ((card->mode & mode::tracking) != 0) {
-    if (card->button_at_last_read != card->buttons.at(0) ||
-        card->second_button_at_last_read != card->buttons.at(1)) {
-      if ((card->mode & mode::button_interrupts) != 0) {
-        state |= status::button_interrupt;
-      }
-    }
-    if (card->vblank_rising && (card->mode & mode::refresh_interrupts) != 0) {
-      state |= status::refresh_interrupt;
-    }
-  }
-
-  if (state == 0) {
-    return;
-  }
-  card->status |= state;
-  if ((state & status::interrupt_sources) != 0) {
-    card->host->AssertIrq(card->slot, true);
+    card->pending |= status::movement_interrupt;
   }
 }
 
@@ -309,9 +369,13 @@ auto mouse_on_command(MouseCard_t* card) -> void {
     case command::set_mouse:
       card->data_len = 1;
       card->mode = card->buffer.at(0) & mode::mask;
-      mouse_on_mouse_event(card);
       break;
 
+    // Bits 1-3 of the reply read 0 (manual p. 47) and the 6805 forgets the
+    // sources with them, so a SERVEMOUSE after a READMOUSE finds nothing:
+    // inferred, the manual speaking of the hole and the nearest support
+    // being the IIc's own firmware (IIc Technical Reference Table 9-3,
+    // p. 180). The line stays up until SERVEMOUSE (Tech Note Mouse #4).
     case command::read_mouse:
       card->data_len = read_mouse_bytes;
       card->status &= status::moved;
@@ -341,10 +405,14 @@ auto mouse_on_command(MouseCard_t* card) -> void {
       card->status &= static_cast<uint8_t>(~status::moved);
       break;
 
+    // The firmware takes its carry from bits 1-3 of the reply alone (bank 3
+    // $C4BD-$C4D4), so a consumed event must read back as $00 for the second
+    // call to answer "not the mouse" (manual p. 47; Tech Note Mouse #4).
     case command::serve_mouse:
       card->data_len = 2;
-      card->buffer.at(1) = card->status & static_cast<uint8_t>(~status::moved);
-      card->host->AssertIrq(card->slot, false);
+      card->buffer.at(1) = card->status & status::interrupt_sources;
+      card->status &= static_cast<uint8_t>(~status::interrupt_sources);
+      set_irq(card, false);
       break;
 
     case command::clear_mouse:
@@ -356,9 +424,18 @@ auto mouse_on_command(MouseCard_t* card) -> void {
       card->data_len = five_byte_command;
       break;
 
+    // The firmware strobes $50 twice on a IIe, the second time after waiting
+    // for the vertical blanking edge (bank 2 $C426-$C445); each restarts the
+    // tick, which is how INITMOUSE "synchronizes it with the vertical
+    // blanking cycle" (manual p. 48). The reply byte is arbitrary and
+    // unsourced: the firmware stores it and never reads it.
     case command::init_mouse:
       card->data_len = 3;
       card->buffer.at(1) = byte_mask;
+      card->pending = 0;
+      card->status &= static_cast<uint8_t>(~status::interrupt_sources);
+      set_irq(card, false);
+      restart_tick(card);
       break;
 
     case command::clamp_mouse:
@@ -368,10 +445,11 @@ auto mouse_on_command(MouseCard_t* card) -> void {
     case command::home_mouse:
       card->data_len = 1;
       mouse_set_position_internal(card, 0, 0);
-      mouse_on_mouse_event(card);
+      mark_movement(card);
       break;
 
     case command::time_data:
+      card->rate_50hz = (card->buffer.at(0) & command::time_data_rate_bit) != 0;
       switch (card->buffer.at(0) & command::time_data_length_mask) {
         case command::time_data_three_bytes:
           card->data_len = 3;
@@ -419,7 +497,7 @@ auto mouse_on_write(MouseCard_t* card) -> void {
       card->read_x = (card->buffer.at(2) << byte_shift) | card->buffer.at(1);
       card->read_y = (card->buffer.at(4) << byte_shift) | card->buffer.at(3);
       mouse_set_position_internal(card, card->read_x, card->read_y);
-      mouse_on_mouse_event(card);
+      mark_movement(card);
       break;
 
     case command::init_mouse:
@@ -428,7 +506,7 @@ auto mouse_on_write(MouseCard_t* card) -> void {
       mouse_clamp_x(card, 0, static_cast<int>(default_clamp_max));
       mouse_clamp_y(card, 0, static_cast<int>(default_clamp_max));
       mouse_set_position_internal(card, 0, 0);
-      mouse_on_mouse_event(card);
+      restart_tick(card);
       break;
 
     default:
@@ -517,6 +595,9 @@ auto pia_listener_b(void* obj, uint8_t data) -> void {
   mouse_update_slot_rom(card);
 }
 
+// The tick is brought up to date at every register access as well as at the
+// wake, so a stepped program sees it at its accesses and a free-running one
+// within one instruction of the cycle.
 auto mouse_io(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
               uint8_t val, uint32_t cycles) -> uint8_t {
   (void)pc;
@@ -525,6 +606,7 @@ auto mouse_io(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
     return 0;
   }
   auto* card = static_cast<MouseCard_t*>(instance);
+  advance(card, card->host->GetCycles());
   // Only A0, A1 and DEVICE SELECT' reach the PIA (schematic zone C3), so its
   // four registers repeat through $C0n4-$C0nF.
   const auto rs = static_cast<uint8_t>(addr & io_register_mask);
@@ -546,6 +628,12 @@ auto missing_host_member(const HostInterface_t* host) -> const char* {
   }
   if (host->RegisterCxROM == nullptr) {
     return "RegisterCxROM";
+  }
+  if (host->GetCycles == nullptr) {
+    return "GetCycles";
+  }
+  if (host->ScheduleEvent == nullptr) {
+    return "ScheduleEvent";
   }
   return nullptr;
 }
@@ -589,6 +677,9 @@ auto mouse_abi_init(int slot, HostInterface_t* host) -> void* {
   card->min_y = 0;
   card->max_y = default_clamp_max;
   mouse_reset_internal(card.get());
+  // A schedule from init is dropped by the host, which stores the instance
+  // only once init has returned; reset and the first think schedule.
+  card->next_tick = host->GetCycles() + card->tick_period;
 
   mouse_update_slot_rom(card.get());
 
@@ -596,12 +687,18 @@ auto mouse_abi_init(int slot, HostInterface_t* host) -> void* {
   return card.release();
 }
 
+// RES' reaches the 6805 (schematic P1-31), whose ports become inputs (MC6805P
+// data sheet 8.1), so the pull-up releases IRQ' and a pending interrupt is
+// forgotten; the rate returns to 60 Hz (Tech Note Mouse #2).
 auto mouse_abi_reset(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
   auto* card = static_cast<MouseCard_t*>(instance);
   mouse_reset_internal(card);
+  set_irq(card, false);
+  card->rate_50hz = false;
+  restart_tick(card);
 }
 
 auto mouse_abi_shutdown(void* instance) -> void {
@@ -609,20 +706,18 @@ auto mouse_abi_shutdown(void* instance) -> void {
     return;
   }
   const std::unique_ptr<MouseCard_t> card(static_cast<MouseCard_t*>(instance));
+  if (card->irq_asserted) {
+    card->host->AssertIrq(card->slot, false);
+  }
 }
 
-auto mouse_abi_on_vblank(void* instance, bool vblank) -> void {
+auto mouse_abi_think(void* instance, uint32_t elapsed_cycles) -> void {
+  (void)elapsed_cycles;
   if (instance == nullptr) {
     return;
   }
   auto* card = static_cast<MouseCard_t*>(instance);
-  if (card->vblank_rising == vblank) {
-    return;
-  }
-  card->vblank_rising = vblank;
-  if (card->vblank_rising) {
-    mouse_on_mouse_event(card);
-  }
+  advance(card, card->host->GetCycles());
 }
 
 auto mouse_abi_save_state(void* instance, void* buffer, size_t* size)
@@ -752,15 +847,27 @@ auto mouse_abi_command(void* instance, uint32_t cmd_id, const void* data,
       }
       return peripheral_ok;
     }
+    // Whether a release interrupts is unknown: the manual says "Enable
+    // interrupts when button pressed" (p. 44) and "Interrupt caused by
+    // button press" (p. 45) and the Tech Notes are silent; either edge is
+    // taken here. While the mouse is off "any mouse motion is ignored"
+    // (Tech Note Mouse #3) and the button raises nothing.
     case mouse_cmd_set_button: {
       if (size != sizeof(MouseButtonPayload_t)) {
         return peripheral_error;
       }
       MouseButtonPayload_t payload{};
       std::memcpy(&payload, data, sizeof(payload));
-      if (payload.button < card->buttons.size()) {
-        card->buttons.at(payload.button) = payload.down != 0;
-        mouse_on_mouse_event(card);
+      if (payload.button >= card->buttons.size()) {
+        return peripheral_ok;
+      }
+      const bool down = payload.down != 0;
+      if (card->buttons.at(payload.button) == down) {
+        return peripheral_ok;
+      }
+      card->buttons.at(payload.button) = down;
+      if (payload.button == 0 && (card->mode & mode::tracking) != 0) {
+        card->pending |= status::button_interrupt;
       }
       return peripheral_ok;
     }
@@ -811,8 +918,8 @@ static const Peripheral_t mouse_peripheral = {
     .init = mouse_abi_init,
     .reset = mouse_abi_reset,
     .shutdown = mouse_abi_shutdown,
-    .think = nullptr,
-    .on_vblank = mouse_abi_on_vblank,
+    .think = mouse_abi_think,
+    .on_vblank = nullptr,
     .save_state = mouse_abi_save_state,
     .load_state = mouse_abi_load_state,
     .command = mouse_abi_command,
