@@ -5,16 +5,14 @@
 #include <cstddef>
 #include <cstdint>
 
-// AppleMouse II interface card firmware, part 342-0285 (res/roms/README.md),
-// transcribed from res/roms/MouseInterface.rom, whose SHA-1 the build pins.
-// Bank 1 offset $127 carries the ROM's own text, "AppleMouse / Copyright 1983
-// by Apple Computer, Inc. / Bachman/Marks/MacKay". The 2 KiB are eight
-// 256-byte banks, one at a time at $Cn00-$CnFF under PIA port B bits 1-3,
-// which drive the ROM's A8-A10 (schematic 050-0101-A zone B3): bank 0 holds
-// the signature, the entry table at $Cn12 and the dispatcher; 1 the $Cn1A peek
-// and poke driver; 2 INITMOUSE's VBL synchronisation; 3 the one-byte
-// commands; 4 the BASIC PR#n / IN#n handler; 5 its decimal formatter; 6 the
-// byte transfer to and from the 6805; 7 the multi-byte writes.
+// AppleMouse II firmware, part 342-0285 (res/roms/README.md), transcribed from
+// res/roms/MouseInterface.rom, whose SHA-1 the build pins; offset $127 carries
+// "AppleMouse / Copyright 1983 by Apple Computer, Inc.". Eight 256-byte banks
+// appear one at a time at $Cn00-$CnFF under PIA port B bits 1-3, the ROM's
+// A8-A10 (schematic 050-0101-A zone B3): 0 the signature, the entry table at
+// $Cn12 and the dispatcher; 1 the $Cn1A peek and poke driver; 2 INITMOUSE's VBL
+// sync; 3 the one-byte commands; 4 BASIC PR#n / IN#n; 5 its decimal formatter;
+// 6 the byte transfer to and from the 6805; 7 the multi-byte writes.
 constexpr size_t mouse_rom_size = 2048;
 constexpr size_t mouse_rom_bank_size = 256;
 

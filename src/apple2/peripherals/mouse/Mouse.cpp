@@ -24,29 +24,24 @@ constexpr uint32_t io_register_mask = 0x03;
 constexpr int byte_shift = 8;
 constexpr uint8_t byte_mask = 0xFF;
 
-// Power-on clamps (AppleMouse II User's Manual p. 48). Positions are
-// "-32768 to +32767 (or 0 to +65535)" (p. 45); whether the 6805 compares
-// signed or unsigned is unknown, and signed lets a program use the negative
-// range the manual names while the default reads the same either way.
+// Power-on clamps (AppleMouse II User's Manual p. 48). Signed because the
+// manual's positions run "-32768 to +32767 (or 0 to +65535)" (p. 45); how the
+// 6805 compares is unknown.
 constexpr int16_t default_clamp_min = 0;
 constexpr int16_t default_clamp_max = 1023;
 
-// The 6805's timer is clocked from the Apple's own Q3 through the PAL's
-// "2 MHZ CLOCK" (schematic 050-0101-A zones A3, C2), so its tick is a fixed
-// count of 6502 cycles. The count is in the 6805's ROM and unknown; 17,030
-// and 20,280 (one NTSC and one PAL frame, IIe Technical Reference p. 169) are
-// the only counts under which Tech Note Mouse #2's "synchronized with the
-// actual VBL rate on standard North American Apples" holds, and they keep an
-// NTSC program's interrupt phase fixed. A real card may drift slowly against
-// the frame: the MC6805P timer is an 8-bit down-counter behind a
-// mask-programmed prescaler (MC6805P data sheet 5.1) reloaded by software,
-// so any count is reachable.
+// The 6805's timer runs from the Apple's Q3 through the PAL's "2 MHZ CLOCK"
+// (schematic 050-0101-A zones A3, C2), so its tick is a fixed count of 6502
+// cycles. The count is in the 6805's ROM and unknown; one NTSC or PAL frame
+// (IIe Technical Reference p. 169) is the only count under which Tech Note
+// Mouse #2's "synchronized with the actual VBL rate" holds. A real card may
+// drift: its 8-bit timer is reloaded by software (MC6805P data sheet 5.1).
 constexpr uint64_t tick_period_60hz = 17030;
 constexpr uint64_t tick_period_50hz = 20280;
 
-// The byte the 6502 firmware writes to the 6805 first; the high nibble names
-// the command (manual pp. 47-49; the undocumented ones are what the ROM's
-// entries at $Cn1A and $Cn1D-$Cn1F send).
+// The first byte the firmware writes to the 6805; the high nibble names the
+// command (manual pp. 47-49; the undocumented ones are what the entries at
+// $Cn1A and $Cn1D-$Cn1F send).
 namespace command {
 constexpr uint8_t set_mouse = 0x00;
 constexpr uint8_t read_mouse = 0x10;
@@ -65,8 +60,7 @@ constexpr uint8_t poke = 0xF1;
 constexpr uint8_t group_mask = 0xF0;
 constexpr uint8_t axis_bit = 0x01;
 // TIMEDATA's bit 0 selects 50 Hz "effective at the next INITMOUSE" (Tech Note
-// Mouse #2); bits 3-2 add one, two or three bytes whose meaning the ROM alone
-// shows (bank 7 $C441-$C4AE).
+// Mouse #2); bits 3-2 add one to three data bytes (bank 7 $C441-$C4AE).
 constexpr uint8_t time_data_rate_bit = 0x01;
 constexpr uint8_t time_data_length_mask = 0x0C;
 constexpr uint8_t time_data_two_bytes = 0x08;
@@ -82,8 +76,7 @@ constexpr uint32_t poke_command_bytes = 4;
 // and never reads it.
 constexpr uint8_t init_mouse_reply = 0xFF;
 
-// Bits 1-3 and 5 of the status byte travel in the frame; bits 7 and 6 are
-// rebuilt from the button fields, bits 4 and 0 are reserved.
+// Bits 7 and 6 are rebuilt from the button fields; 4 and 0 are reserved.
 constexpr uint8_t frame_status_mask = 0x2E;
 constexpr uint32_t frame_word_max = 0xFFFF;
 constexpr uint32_t frame_buffer_size = 8;
@@ -97,10 +90,9 @@ constexpr uint8_t refresh_interrupts = 0x08;
 constexpr uint8_t mask = 0x0F;
 }  // namespace mode
 
-// Status byte bits (manual p. 45). The interrupt sources share the mode's
-// bit positions, which is what lets the mode mask the pending sources. Bits 4
-// and 0 are reserved: the card has one button (schematic: SW on J1-4 to the
-// 6805's PB7, PB4 and PB5 not connected).
+// Status byte bits (manual p. 45). The interrupt sources share the mode's bit
+// positions, which lets the mode mask them. Bits 4 and 0 are reserved: the
+// card has one button (schematic: SW on J1-4 to the 6805's PB7).
 namespace status {
 constexpr uint8_t movement_interrupt = 0x02;
 constexpr uint8_t button_interrupt = 0x04;
@@ -125,10 +117,9 @@ constexpr uint8_t card_driven = 0x3E;
 constexpr uint8_t pia_inputs = 0xC1;
 }  // namespace port_b
 
-// Apple's GetClamp reads 6805 RAM $4E down to $47 through the $F0 peek and
-// gets MaxYL, MaxXL, MaxYH, MaxXH, MinYL, MinXL, MinYH, MinXH (Tech Note
-// Mouse #7); the MC6805P2 keeps its 64 bytes of RAM at $10-$4F (data sheet
-// 3.1). That the peek's operand is that RAM address is inferred from the two.
+// GetClamp peeks $4E down to $47 for MaxYL, MaxXL, MaxYH, MaxXH, MinYL, MinXL,
+// MinYH, MinXH (Tech Note Mouse #7); the MC6805P2's 64 bytes of RAM are
+// $10-$4F (data sheet 3.1). That the operand is that RAM address is inferred.
 namespace peek_address {
 constexpr uint16_t max_y_low = 0x4E;
 constexpr uint16_t max_x_low = 0x4D;
@@ -221,8 +212,6 @@ struct MouseCard_t {
   uint8_t port_a_shadow = 0;
   uint8_t port_b_shadow = 0;
 
-  // The command in flight: its bytes from the 6502 and its reply to it. A
-  // command's length and its reply's are functions of the command byte.
   std::array<uint8_t, 8> buffer{};
   uint32_t pos = 0;
   uint32_t out_len = 1;
@@ -241,9 +230,6 @@ struct MouseCard_t {
   bool button = false;
   bool button_at_last_read = false;
 
-  // Bits 1-3 of status are the sources the last tick reported, bit 5 the
-  // movement since the last reading; pending holds the sources seen since
-  // the last tick, in the same bit positions.
   uint8_t status = 0;
   uint8_t pending = 0;
   bool irq_asserted = false;
@@ -291,10 +277,9 @@ auto set_irq(MouseCard_t* card, bool level) -> void {
 }
 
 // Every source interrupts "at the end of the current monitor screen writing
-// cycle" (manual p. 46), that is at the tick. Bit 0 gates the movement and
-// button interrupts and not the screen refresh: "A mode byte of $08 (mouse
-// off but VBL interrupt on) will generate VBL interrupts" (Tech Note Mouse
-// #3).
+// cycle" (manual p. 46), the tick. Bit 0 gates movement and button, not the
+// refresh: "$08 (mouse off but VBL interrupt on) will generate VBL interrupts"
+// (Tech Note Mouse #3).
 auto fire(MouseCard_t* card) -> void {
   uint8_t reportable = 0;
   if ((card->mode & mode::tracking) != 0) {
@@ -313,9 +298,8 @@ auto fire(MouseCard_t* card) -> void {
 }
 
 // Missed ticks collapse into one with the phase kept: the status bits are
-// OR'd, so firing N times and once are the same observable, and a counter
-// that jumped a session ahead costs one division. A counter that went
-// backwards, after a snapshot was restored, re-anchors.
+// OR'd, so N firings and one are the same observable. A counter that went
+// backwards (a restored snapshot) re-anchors.
 auto advance(MouseCard_t* card, uint64_t now) -> void {
   if (now + card->tick_period < card->next_tick) {
     card->next_tick = now + card->tick_period;
@@ -336,10 +320,10 @@ auto restart_tick(MouseCard_t* card) -> void {
   card->host->ScheduleEvent(card, card->next_tick);
 }
 
-// The bytes a command takes, the command byte included, as the firmware
-// sends them: POSMOUSE and CLAMPMOUSE four parameters (bank 7 $C418-$C43F),
-// TIMEDATA by its bits 3-2, the $Cn1D entry one data byte (bank 7
-// $C413-$C416), the peek two and the poke three (bank 1 $C48B-$C4DE).
+// Bytes per command, the command byte included, as the firmware sends them:
+// POSMOUSE and CLAMPMOUSE five (bank 7 $C418-$C43F), TIMEDATA by its bits 3-2,
+// the $Cn1D entry two (bank 7 $C413-$C416), the peek three and the poke four
+// (bank 1 $C48B-$C4DE).
 auto command_out_len(uint8_t cmd) -> uint32_t {
   switch (cmd & command::group_mask) {
     case command::pos_mouse:
@@ -410,11 +394,10 @@ auto peek_byte(const MouseCard_t* card, uint16_t address) -> uint8_t {
   }
 }
 
-// Bits 1-3 of the reply read 0 (manual p. 47) and the 6805 forgets the
-// sources with them, so a SERVEMOUSE after a READMOUSE finds nothing:
-// inferred, the manual speaking of the hole and the nearest support being
-// the IIc's own firmware (IIc Technical Reference Table 9-3, p. 180). The
-// line stays up until SERVEMOUSE (Tech Note Mouse #4).
+// Bits 1-3 of the reply read 0 (manual p. 47) and the 6805 forgets the sources
+// with them, so a SERVEMOUSE after a READMOUSE finds nothing (inferred; the
+// nearest support is IIc Technical Reference Table 9-3, p. 180). The line
+// stays up until SERVEMOUSE (Tech Note Mouse #4).
 auto execute_read_mouse(MouseCard_t* card) -> void {
   uint8_t reply = card->status & status::moved;
   if (card->button) {
@@ -435,12 +418,10 @@ auto execute_read_mouse(MouseCard_t* card) -> void {
   card->buffer.at(5) = reply;
 }
 
-// INITMOUSE "sets the internal default values for the mouse subsystem"
-// (manual p. 48): off, at (0, 0), clamped 0..1023, the rate TIMEDATA last
-// selected. The firmware strobes $50 twice on a IIe, the second time after
-// waiting for the vertical blanking edge (bank 2 $C426-$C445); each restarts
-// the tick, which is how INITMOUSE "synchronizes it with the vertical
-// blanking cycle".
+// INITMOUSE "sets the internal default values" (manual p. 48): off, (0, 0),
+// clamps 0..1023, the rate TIMEDATA last chose. On a IIe the firmware strobes
+// $50 twice, the second after the vertical blanking edge (bank 2 $C426-$C445);
+// each restarts the tick, which "synchronizes it with the vertical blanking".
 auto execute_init_mouse(MouseCard_t* card) -> void {
   card->mode = 0;
   card->position_x = 0;
@@ -456,12 +437,11 @@ auto execute_init_mouse(MouseCard_t* card) -> void {
   card->buffer.at(1) = init_mouse_reply;
 }
 
-// The firmware pushes $5F8, $578, $4F8, $478 and the command and pops them
-// into the write loop (bank 7 $C418-$C43F), so the wire order is the command,
-// the low minimum, the low maximum, the high minimum and the high maximum
-// (manual p. 48 for the holes). The clamp moves nothing (IIc Technical
-// Reference Table 9-3, "does not affect mouse position"; weakly sourced for
-// the card).
+// The firmware pushes $5F8, $578, $4F8, $478 and the command and pops them into
+// the write loop (bank 7 $C418-$C43F), so the wire order is command, low
+// minimum, low maximum, high minimum, high maximum (manual p. 48). The clamp
+// moves nothing (IIc Technical Reference Table 9-3; weakly sourced for the
+// card).
 auto execute_clamp_mouse(MouseCard_t* card) -> void {
   const int16_t low = word_of(card->buffer.at(1), card->buffer.at(3));
   const int16_t high = word_of(card->buffer.at(2), card->buffer.at(4));
@@ -474,10 +454,9 @@ auto execute_clamp_mouse(MouseCard_t* card) -> void {
   card->max_x = high;
 }
 
-// The position registers are loaded as given: whether a loaded value is
-// clamped is not stated for the card, and the IIc says CLEARMOUSE's zero is
-// "not necessarily within clamping boundaries" (Table 9-3), so motion clamps
-// and loads do not (inferred). None of the three marks movement.
+// A loaded position is taken as given and only motion clamps (inferred from the
+// IIc's CLEARMOUSE zero "not necessarily within clamping boundaries", Table
+// 9-3). No load marks movement.
 auto execute(MouseCard_t* card) -> void {
   const uint8_t cmd = card->buffer.at(0);
   switch (cmd & command::group_mask) {
@@ -490,8 +469,8 @@ auto execute(MouseCard_t* card) -> void {
       break;
 
     // The firmware takes its carry from bits 1-3 of the reply alone (bank 3
-    // $C4BD-$C4D4), so a consumed event must read back as $00 for the second
-    // call to answer "not the mouse" (manual p. 47; Tech Note Mouse #4).
+    // $C4BD-$C4D4), so a consumed event must read back $00 for the second call
+    // to answer "not the mouse" (manual p. 47; Tech Note Mouse #4).
     case command::serve_mouse:
       card->buffer.at(1) = card->status & status::interrupt_sources;
       card->status &= static_cast<uint8_t>(~status::interrupt_sources);
@@ -525,9 +504,8 @@ auto execute(MouseCard_t* card) -> void {
 
     // CHR$(1) after PR#n sends $80 (bank 4 $C411-$C42E) and "places the mouse
     // in BASIC mode and sets the mouse position numbers to zero" (manual
-    // p. 35); nothing else in bank 4 moves the position or sets a mode, so
-    // the 6805 must: tracking on, interrupts off, position (0, 0), clamps
-    // untouched (inferred). CHR$(0) sends $00, SETMOUSE off.
+    // p. 35); nothing else in bank 4 moves the position or sets a mode, so the
+    // 6805 must (inferred). CHR$(0) sends $00, SETMOUSE off.
     case command::basic_mode:
       if (cmd == command::basic_mode) {
         card->mode = mode::tracking;
@@ -563,10 +541,8 @@ auto present_reply(MouseCard_t* card) -> void {
                       card->buffer.at(card->out_len + card->reply_pos));
 }
 
-// A new command byte clears the rest of the buffer, so what the buffer holds
-// is a function of the last command alone. The reply's first byte is on port
-// A as the last byte of the command is taken, before the firmware's first
-// read.
+// The buffer is cleared at a new command so a frame is a function of the last
+// command alone; the reply's first byte is on port A before the firmware reads.
 auto take_byte(MouseCard_t* card, uint8_t byte) -> void {
   if (card->pos == 0) {
     card->buffer.fill(0);
@@ -605,10 +581,9 @@ auto on_write_strobe(MouseCard_t* card, uint8_t data) -> void {
   card->port_b_shadow &= static_cast<uint8_t>(~port_b::busy);
 }
 
-// PB4 rising: the 6805 drops "byte ready" on PB6; PB4 falling: it presents
-// the next reply byte, if any, and raises PB6 (the firmware's read loop, bank
-// 6 $C486-$C4C4). A reply nobody reads, INITMOUSE's second, stays on port A
-// with PB6 high until the next read.
+// PB4 rising: the 6805 drops "byte ready" on PB6; PB4 falling: it presents the
+// next reply byte, if any, and raises PB6 (the firmware's read loop, bank 6
+// $C486-$C4C4). An unread reply (INITMOUSE's second) stays on port A.
 auto on_read_strobe(MouseCard_t* card, uint8_t data) -> void {
   if ((data & port_b::read_strobe) != 0) {
     card->port_b_shadow &= static_cast<uint8_t>(~port_b::byte_ready);
@@ -621,9 +596,8 @@ auto on_read_strobe(MouseCard_t* card, uint8_t data) -> void {
   card->port_b_shadow |= port_b::byte_ready;
 }
 
-// The two replies are functions of the two strobes: PB6 is the read strobe's
-// complement and PB7 the write strobe's level, from reset on and after every
-// edge the two handlers above take; PB0 is the PAL's input and never driven.
+// PB6 is the read strobe's complement and PB7 the write strobe's level, from
+// reset on and after every edge; PB0 is the PAL's input and never driven.
 auto reply_levels(uint8_t strobes) -> uint8_t {
   uint8_t levels = 0;
   if ((strobes & port_b::read_strobe) == 0) {
@@ -661,9 +635,7 @@ auto pia_listener_b(void* obj, uint8_t data) -> void {
   }
 }
 
-// The tick is brought up to date at every register access as well as at the
-// wake, so a stepped program sees it at its accesses and a free-running one
-// within one instruction of the cycle.
+// The tick is advanced at every access too, so a stepped program sees it.
 auto mouse_io(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
               uint8_t val, uint32_t cycles) -> uint8_t {
   (void)pc;
@@ -683,14 +655,12 @@ auto mouse_io(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
   return pia_6821_read(&card->pia, rs);
 }
 
-// RES' reaches the PIA and the 6805 (schematic P1-31). A PIA reset zeroes
-// every register (MC6821 data sheet, "Initialization"), so PB1-PB3 become
-// inputs and the pull-downs select bank 0; the 6805's ports become inputs
-// too (MC6805P data sheet 8.1), so the pull-up releases IRQ' and the levels
-// its firmware then puts on PB6 and PB7 are unknown. PB6 is taken high
-// because the 6502 firmware never reads before it has written. The
-// subsystem comes up off at (0, 0) with clamps 0..1023 (manual pp. 44, 48)
-// at 60 Hz (Tech Note Mouse #2).
+// RES' reaches the PIA and the 6805 (schematic P1-31). A PIA reset zeroes every
+// register (MC6821 data sheet, "Initialization"), so PB1-PB3 become inputs and
+// the pull-downs select bank 0; the 6805's ports become inputs too (MC6805P
+// data sheet 8.1), releasing IRQ'. PB6 is taken high because the 6502 firmware
+// never reads before it has written. The defaults are the manual's (pp. 44,
+// 48) and Tech Note Mouse #2's 60 Hz.
 auto reset_card(MouseCard_t* card, uint64_t now) -> void {
   pia_6821_reset(&card->pia);
   pia_6821_set_listener_a(&card->pia, card, pia_listener_a);
@@ -867,8 +837,7 @@ auto mouse_abi_save_state(void* instance, void* buffer, size_t* size)
   return peripheral_ok;
 }
 
-// The reason a frame is refused, or null. Every refusal is of a frame no
-// build of this card writes.
+// Every refusal is of a frame no build of this card writes.
 auto frame_refusal(const MouseSaveState_t& state) -> const char* {
   if (state.version != MOUSE_STATE_VERSION ||
       state.struct_size != sizeof(MouseSaveState_t)) {
@@ -894,8 +863,7 @@ auto frame_refusal(const MouseSaveState_t& state) -> const char* {
       state.button_at_last_read > 1) {
     return "a flag above 1";
   }
-  // The reply length is a function of the command byte; a frame that
-  // disagrees was not written by this card. Older frames hold a zero here.
+  // Older frames hold a zero here.
   const uint32_t in_len = command_in_len(state.buffer[0]);
   if (state.parser_in_len != 0 && state.parser_in_len != in_len) {
     return "the reply length";
@@ -904,8 +872,8 @@ auto frame_refusal(const MouseSaveState_t& state) -> const char* {
     return "the reply cursor";
   }
   // A shadow whose replies do not answer its strobes parks the firmware: it
-  // raises a strobe the shadow already holds, so no edge comes, and waits
-  // for the reply (bank 6 $C49C and $C4B6, bank 3 $C40E and $C436).
+  // raises a strobe the shadow already holds, so no edge comes, and waits for
+  // the reply (bank 6 $C49C and $C4B6, bank 3 $C40E and $C436).
   if ((state.pia_port_b_shadow & port_b::pia_inputs) !=
       reply_levels(state.pia_port_b_shadow)) {
     return "port B's replies against its strobes";
@@ -913,16 +881,11 @@ auto frame_refusal(const MouseSaveState_t& state) -> const char* {
   return nullptr;
 }
 
-// Any buffer of at least the frame's size loads, so the 104-byte fixed region
-// a file from before the slot trailer carries loads too; what an older frame
-// lacks takes its default: the host width it held at tick_phase becomes a
-// phase bounded by one period, so the first tick comes within one, the rate
-// 60 Hz, nothing pending, the line released. Sources named with no line
-// raised are a state the model cannot reach, since the tick sets the bits and
-// the line together, READMOUSE clears the bits and leaves the line, and
-// SERVEMOUSE clears both; an older frame carries exactly that state, so its
-// bits 1-3 go with the line. Bits 7 and 6 are never read from the frame:
-// READMOUSE rebuilds them from the two button fields.
+// Any buffer of at least the frame's size loads, so an older file's 104-byte
+// fixed region loads too, its host width at tick_phase bounded to one period.
+// Sources with no line raised are a state the model cannot reach (the tick sets
+// both, READMOUSE clears the bits, SERVEMOUSE both), so bits 1-3 go with the
+// line. Bits 7 and 6 are never read: READMOUSE rebuilds them.
 auto mouse_abi_load_state(void* instance, const void* buffer, size_t size)
     -> PeripheralStatus_t {
   if (instance == nullptr || buffer == nullptr ||
@@ -943,10 +906,9 @@ auto mouse_abi_load_state(void* instance, const void* buffer, size_t size)
 
   // The shadow's bank and strobe bits are the PIA's pins as of the last ORB
   // write; a DDRB write after it moves the pins without a listener call, and
-  // the pull-downs (R4-R7) hold an undriven line low, so a frame whose
-  // shadow disagrees with ORB & DDRB takes the pins, the replies answering
-  // the strobes as they do live. Byte 63 is the same shadow as the chip saw
-  // it and is not read.
+  // the pull-downs (R4-R7) hold an undriven line low, so a shadow that
+  // disagrees with ORB & DDRB takes the pins. Byte 63 is the same shadow as the
+  // chip saw it and is not read.
   const uint8_t pins = state.pia_orb & state.pia_ddrb & port_b::card_driven;
   uint8_t shadow = state.pia_port_b_shadow;
   if ((shadow & port_b::card_driven) != pins) {
@@ -1026,10 +988,10 @@ auto mouse_abi_command(void* instance, uint32_t cmd_id, const void* data,
 
   auto* card = static_cast<MouseCard_t*>(instance);
   switch (static_cast<MouseCmd_t>(cmd_id)) {
-    // Counts are added while the mouse is on and clamped; while it is off
-    // "any mouse motion is ignored" (Tech Note Mouse #3). A count the clamp
-    // absorbs entirely changes nothing, so it marks nothing ("X or Y changed
-    // since last reading", manual p. 45). The interrupt waits for the tick.
+    // Counts are added while the mouse is on and clamped; off, "any mouse
+    // motion is ignored" (Tech Note Mouse #3). A count the clamp absorbs marks
+    // nothing ("X or Y changed since last reading", manual p. 45). The
+    // interrupt waits for the tick.
     case mouse_cmd_move: {
       if (size != sizeof(MouseMovePayload_t)) {
         return peripheral_error;
@@ -1059,10 +1021,9 @@ auto mouse_abi_command(void* instance, uint32_t cmd_id, const void* data,
       return peripheral_ok;
     }
     // Whether a release interrupts is unknown: the manual says "Enable
-    // interrupts when button pressed" (p. 44) and "Interrupt caused by
-    // button press" (p. 45) and the Tech Notes are silent; either edge is
-    // taken here, and nothing while the mouse is off. A second button is
-    // accepted and ignored: the card has one.
+    // interrupts when button pressed" (p. 44) and "Interrupt caused by button
+    // press" (p. 45); either edge is taken here. A second button is accepted
+    // and ignored.
     case mouse_cmd_set_button: {
       if (size != sizeof(MouseButtonPayload_t)) {
         return peripheral_error;
@@ -1136,9 +1097,8 @@ static const Peripheral_t mouse_peripheral = {
     .command = mouse_abi_command,
     .query = mouse_abi_query};
 
-// peripheral_register and ActivePeripheral_t::api take a mutable
-// Peripheral_t*, so the immutable descriptor is cast the same way
-// PERIPHERAL_REGISTER casts it.
+// peripheral_register takes a mutable Peripheral_t*, so the descriptor is cast
+// as PERIPHERAL_REGISTER casts it.
 auto mouse_get_descriptor() -> Peripheral_t* {
   return const_cast<Peripheral_t*>(&mouse_peripheral);
 }

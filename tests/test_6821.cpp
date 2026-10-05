@@ -136,10 +136,8 @@ TEST_CASE("6821 PIA: Output Listeners Receive Masked Values") {
   CHECK(pia_6821_get_port_b(&pia) == 0xAA);
 }
 
-// "The B side read comes from an output latch" (MC6821 data sheet, page 8):
-// an output bit reads what was written, an input bit reads the pin. The
-// AppleMouse firmware relies on it with DDRB $3E, reading its own bank and
-// strobe bits back beside the 6805's three replies.
+// "The B side read comes from an output latch" (MC6821 data sheet, page 8); the
+// AppleMouse firmware relies on it with DDRB $3E, reading its bank bits back.
 TEST_CASE(
     "6821 PIA: Port B reads the latch for output bits and the pins for input "
     "bits") {
@@ -153,7 +151,6 @@ TEST_CASE(
   pia_6821_set_port_b(&pia, 0xC1);
   CHECK(pia_6821_read(&pia, 2) == 0xD3);
 
-  // Pins driven against the latch on the output bits change nothing.
   pia_6821_set_port_b(&pia, 0xFF);
   CHECK(pia_6821_read(&pia, 2) == 0xD3);
   pia_6821_set_port_b(&pia, 0x00);

@@ -364,8 +364,7 @@ auto handle_btn_drive_swap() -> void {
   }
 }
 
-// A load can take the mouse card out of the machine, and a captured pointer
-// would then feed nothing.
+// A load can take the mouse card away; a captured pointer would feed nothing.
 auto load_save_state() -> void {
   save_state_load();
   if (!mouse_input_consumer_present()) {

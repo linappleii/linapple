@@ -263,8 +263,7 @@ auto compute_aspect_fit_rect(int width, int height) noexcept -> SDL_Rect {
   return SDL_Rect{offset_x, offset_y, target_w, target_h};
 }
 
-// A load can take the mouse card out of the machine, and a captured pointer
-// would then feed nothing.
+// A load can take the mouse card away; a captured pointer would feed nothing.
 auto load_save_state() -> void {
   save_state_load();
   if (!mouse_input_consumer_present()) {

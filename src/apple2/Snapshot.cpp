@@ -114,10 +114,9 @@ auto trailer_is_sane(const Snapshot_t* snapshot) noexcept -> bool {
   return true;
 }
 
-// The one change of card a file may ask of the machine: the slot the Mouse in
-// slot 4 key took over may hold the card the key displaced instead, or the
-// key's card again after such a load. card is null when the slot is to be
-// left empty.
+// The one change of card a file may ask: the slot the Mouse in slot 4 key took
+// over may hold the displaced card instead, or the key's card again after such
+// a load. card is null when the slot is to be left empty.
 struct LegacySwap_t {
   bool wanted = false;
   int slot = 0;
@@ -131,8 +130,7 @@ auto name_or_none(const char* name) noexcept -> const char* {
 }
 
 // Slot 0 holds several internal devices and a manifest names one of them;
-// peripheral_verify_manifest accepts any, so its rule decides here too: a
-// probe whose other slots are the machine's own can only fail on slot 0.
+// peripheral_verify_manifest's rule for which are accepted decides here too.
 auto slot0_matches(const SsPeripheralManifest_t* file,
                    const SsPeripheralManifest_t* live) -> bool {
   SsPeripheralManifest_t probe = *live;
@@ -141,10 +139,9 @@ auto slot0_matches(const SsPeripheralManifest_t* file,
   return peripheral_verify_manifest(&probe);
 }
 
-// A pure check: the manifest is admitted when every slot names the card the
-// machine holds, the overridden slot alone being allowed the other of the two
-// names the key knows. Nothing is changed here; the swap that would make the
-// file match is only described.
+// The overridden slot alone may name the other of the two cards the key knows.
+// Nothing is changed here; the swap that would make the file match is only
+// described.
 auto manifest_admits(const SsPeripheralManifest_t* file, LegacySwap_t* swap)
     -> bool {
   SsPeripheralManifest_t live;
@@ -277,8 +274,7 @@ auto snapshot_deserialize(const Snapshot_t* snapshot) -> bool {
     return false;
   }
 
-  // Every check that can refuse the file runs before the machine is touched,
-  // so a refused load leaves it exactly as it was.
+  // Every check that can refuse the file runs before the machine is touched.
   LegacySwap_t swap;
   if (!manifest_admits(&snapshot->manifest, &swap)) {
     return false;

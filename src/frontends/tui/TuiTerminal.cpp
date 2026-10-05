@@ -20,10 +20,9 @@ static bool s_atexit_registered = false;
 
 static constexpr const char* k_enter_alt_screen_hide_cursor =
     "\x1b[?1049h\x1b[?25l";
-// Mouse tracking is turned off whether or not it was turned on: the disable
-// is harmless without the enable, and a crash or an exit inside the
-// emulation would otherwise leave the shell typing a report at every pointer
-// movement until `reset`.
+// Mouse tracking is turned off whether or not it was turned on: a crash inside
+// the emulation would otherwise leave the shell typing a report at every
+// pointer movement until `reset`.
 static constexpr char k_restore_terminal[] =
     "\x1b[?1016l\x1b[?1006l\x1b[?1003l\x1b[?25h\x1b[?1049l";
 

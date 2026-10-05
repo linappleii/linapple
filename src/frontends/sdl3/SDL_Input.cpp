@@ -64,9 +64,8 @@ auto handle_mouse_button_up(const SDL_MouseButtonEvent& button) -> void {
   mouse_input_button_up(host_button(button.button));
 }
 
-// SDL3 reports motion in floats, and relative mode on a scaled display
-// delivers fractions of a pixel; truncating each event would lose a slow
-// drag entirely, so the fraction waits for the next event.
+// SDL3 reports motion in floats and relative mode on a scaled display delivers
+// fractions of a pixel; truncating each event would lose a slow drag.
 auto handle_mouse_motion(const SDL_MouseMotionEvent& motion) -> void {
   static float carry_x = 0.0F;
   static float carry_y = 0.0F;

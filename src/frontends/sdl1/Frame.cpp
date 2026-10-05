@@ -237,8 +237,7 @@ auto compute_aspect_fit_rect(int width, int height) noexcept -> SDL_Rect {
       static_cast<uint16_t>(target_w), static_cast<uint16_t>(target_h)};
 }
 
-// A load can take the mouse card out of the machine, and a captured pointer
-// would then feed nothing.
+// A load can take the mouse card away; a captured pointer would feed nothing.
 auto load_save_state() -> void {
   save_state_load();
   if (!mouse_input_consumer_present()) {
@@ -785,9 +784,8 @@ auto set_normal_mode() -> void {
   }
 }
 
-// SDL 1.2 has no relative mode to ask for: a grabbed window with a hidden
-// cursor already reports unbounded relative motion, and the event's x and y
-// stay the host pointer's.
+// SDL 1.2 has no relative mode: a grabbed window with a hidden cursor already
+// reports unbounded relative motion, and x and y stay the host pointer's.
 auto frame_pointer_capture(bool captured, bool relative) -> void {
   (void)relative;
   SDL_WM_GrabInput(captured ? SDL_GRAB_ON : SDL_GRAB_OFF);

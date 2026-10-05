@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-/* A plugin written in C must see the same frame and payloads. */
 #include <stddef.h>
 #include <stdint.h>
 
@@ -57,9 +56,8 @@ typedef char
     mouse_move_payload_is_8_bytes[sizeof(MouseMovePayload_t) == 8 ? 1 : -1];
 typedef char
     mouse_button_payload_is_4_bytes[sizeof(MouseButtonPayload_t) == 4 ? 1 : -1];
-/* The accessor is declared for a C consumer and never called: the card is a
- * plugin in the shared build, so the suite reaches it through the registry
- * and only the declaration is pinned, under sizeof, which evaluates nothing. */
+/* Never called: in the shared build the card is a plugin reached through the
+ * registry, so only the declaration is pinned, under sizeof. */
 typedef char mouse_accessor_is_declared[sizeof(&mouse_get_descriptor) ? 1 : -1];
 
 unsigned mouse_abi_c_frame_size(void) {

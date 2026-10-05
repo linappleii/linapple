@@ -20,12 +20,10 @@ auto peripheral_find_internal(const char* name) -> Peripheral_t*;
 auto peripheral_get_plugin_path(const char* name) -> const char*;
 auto peripheral_is_any_active() -> bool;
 
-// The slot the Mouse in slot 4 key took over when the machine was built, with
-// the descriptor names of the card it installed and of the card the [Slots]
-// entry (or its fallback) would have put there: "" when that was no card or a
-// card not built in. False when the key overrode nothing. A save state written
-// while the key had no reader names the displaced card in that slot, and this
-// is what lets such a file still load.
+// The slot the Mouse in slot 4 key took over, with the descriptor names of the
+// card it installed and of the card [Slots] would have put there ("" for none).
+// False when the key overrode nothing. A save state written while the key had
+// no reader names the displaced card, which is what lets such a file load.
 auto peripheral_legacy_override(int* slot, const char** key_card,
                                 const char** displaced) -> bool;
 

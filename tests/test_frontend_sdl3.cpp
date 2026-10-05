@@ -176,7 +176,6 @@ TEST_CASE("SDL3 Frontend Fullscreen Toggle Preserves Scaled Dimensions") {
   CHECK(g_new_rect.x == 172);
   CHECK(g_new_rect.y == 0);
 
-  // The letterbox is the picture host motion is scaled against.
   const MousePictureRect_t letterbox = frame_picture_rect();
   CHECK(letterbox.x == 172);
   CHECK(letterbox.y == 0);
@@ -842,8 +841,6 @@ auto pread(uint8_t paddle) -> uint8_t {
   return cpu_get_registers()->y;
 }
 
-// An Enhanced //e built and reset as the frontend builds it, its pointer
-// released and its window a plain 560 x 384, the machine running.
 struct MouseInputMachine_t {
   TestFixtures::ScopedTestConfig_t config;
   TestFixtures::ScopedCore_t core;

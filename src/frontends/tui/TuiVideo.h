@@ -19,7 +19,7 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
 auto tui_video_on_resize() -> void;
 
 // Where the last frame placed the Apple screen, in cells; the whole terminal
-// until a frame has been drawn.
+// until one has been drawn.
 auto tui_video_picture_box() -> MousePictureRect_t;
 
 auto tui_video_toggle_help() -> void;

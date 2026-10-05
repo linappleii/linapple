@@ -4,8 +4,8 @@
 #include <cstdint>
 #include <type_traits>
 
-// Motorola MC6821 Peripheral Interface Adapter (PIA), after the Motorola data
-// sheet; the "Datasheet Page N" citations in 6821.cpp refer to
+// Motorola MC6821 Peripheral Interface Adapter. The "Datasheet Page N"
+// citations in 6821.cpp refer to
 // https://colorcomputerarchive.com/repo/Documents/Datasheets/MC6821%20NMOS%20Peripheral%20Interface%20Adapter%20(Motorola).pdf
 
 using PiaOutputCallback_t = void (*)(void* obj_to, uint8_t data);
@@ -23,8 +23,8 @@ struct Pia6821_t {
   uint8_t cra = 0;
   uint8_t crb = 0;
 
-  // Port A has internal pull-up devices that stay connected in input mode
-  // (MC6821 data sheet, Section B peripheral data).
+  // Port A's inputs have internal pull-ups (MC6821 data sheet, "Section A
+  // Peripheral Data").
   uint8_t port_a_in = 0xFF;
   uint8_t port_b_in = 0xFF;
   bool ca1_in = false;

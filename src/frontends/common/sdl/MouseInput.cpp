@@ -14,10 +14,8 @@ auto capture_allowed() -> bool {
 }
 
 // Relative mode is for the card alone: in it SDL's x and y become a virtual
-// position accumulated from the deltas, which the joystick-as-mouse path
-// reads in place of the host pointer when a card sits beside it. The capture
-// state never waits on the SDL call's result, which the dummy video driver
-// may refuse.
+// position, which the joystick-as-mouse path reads in place of the pointer. The
+// capture state never waits on SDL's result, which the dummy driver may refuse.
 auto set_captured(bool captured) -> void {
   g_captured = captured;
   frame_pointer_capture(captured, captured && mouse_frontend_card_present());

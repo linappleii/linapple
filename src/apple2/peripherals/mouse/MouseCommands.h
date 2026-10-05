@@ -14,8 +14,7 @@ extern "C" {
 
 enum { MOUSE_STATE_VERSION = 1 };
 
-// Command id 0x0000 carried an absolute host position and a host range; it
-// is retired and never reused.
+// Id 0x0000 carried an absolute host position and range; retired, never reused.
 typedef enum {
   mouse_cmd_set_button =
       PERIPHERAL_SUBSYSTEM_MOUSE | 0x0001, /**< data: MouseButtonPayload_t */
@@ -28,33 +27,28 @@ typedef enum {
                           0x0001 /**< out: uint8_t (0=inactive, 1=active) */
 } MouseQuery_t;
 
-// Counts of the mouse's own quadrature, one per step of about 0.020 inch
-// (AppleMouse II User's Manual p. 45): X positive to the right, Y positive
-// toward the user. The card adds them while the mouse is on and clamps.
+// Counts of the mouse's quadrature, about 0.020 inch a step (AppleMouse II
+// User's Manual p. 45): X positive to the right, Y positive toward the user.
 typedef struct {
   int32_t dx;
   int32_t dy;
 } MouseMovePayload_t;
 
 // The card has one button (schematic 050-0101-A: SW on J1-4 to the 6805's
-// PB7); a payload naming button 1 is accepted and ignored.
+// PB7); button 1 is accepted and ignored.
 typedef struct {
   uint8_t button; /**< 0 or 1 */
   uint8_t down;   /**< 0 released, 1 pressed */
   uint8_t padding[2];
 } MouseButtonPayload_t;
 
-// The frame has ridden the slot trailer and the slot-4 fixed region of every
-// .aws written with the card, so every field keeps its offset. Positions and
-// clamps are signed 16-bit values carried in the low 16 bits of their words.
-// tick_phase is the cycles from the saved instant to the card's next 60 Hz
-// (or 50 Hz) tick; older frames hold the host window's width there and its
-// height in reserved0, and the loader takes the width as a phase bounded by
-// one period. Bytes 64-71 were the PIA's CA1, CA2, CB1 and CB2 inputs and
-// outputs and its two IRQ outputs, pins the card leaves unconnected (schematic
-// zone C3), so every frame ever written holds them as zero and the 6805's
-// rate, pending sources, IRQ level and the parser's reply fields take them.
-// The reserved bytes are written as zero and read past.
+// Every field keeps its offset: the frame has ridden the slot trailer and the
+// slot-4 fixed region of every .aws written with the card. Positions and clamps
+// are signed 16-bit values in the low 16 bits of their words. tick_phase is the
+// cycles to the next tick; older frames hold the host window's width there and
+// its height in reserved0. Bytes 64-71 were the PIA's CA/CB pins and IRQ
+// outputs, unconnected on the card (schematic zone C3) and so always zero; the
+// rate, pending sources, IRQ level and reply fields take them.
 typedef struct {
   uint32_t version;
   uint32_t struct_size;

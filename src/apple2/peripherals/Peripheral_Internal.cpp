@@ -33,8 +33,8 @@ struct LegacyOverride_t {
   const char* displaced = "";
 };
 
-// The shipped conf documents the key as the switch that puts the mouse card
-// in slot 4 in place of whatever [Slots] names there.
+// The shipped conf documents the key as putting the mouse card in slot 4 in
+// place of whatever [Slots] names there.
 static constexpr int k_mouse_key_slot = 4;
 static constexpr const char* k_mouse_card_id = "linapple.mouse";
 static LegacyOverride_t g_legacy_override;
@@ -99,8 +99,7 @@ auto peripheral_get_plugin_path(const char* name) -> const char* {
 
 auto peripheral_register_internal() -> void {
   peripheral_plugins_init();
-  // A restart rebuilds the machine from the configuration, so the record
-  // starts over with it.
+  // A restart rebuilds the machine from the configuration; so does the record.
   g_legacy_override = LegacyOverride_t{};
 
   for (auto* p : peripheral_get_builtin_registry()) {

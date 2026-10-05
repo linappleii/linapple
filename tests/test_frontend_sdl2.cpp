@@ -689,8 +689,6 @@ TEST_CASE("SDL2 Frontend Joystick Config Out-of-Range Handling") {
 
 namespace {
 
-// An Enhanced //e built and reset as the frontend builds it, its pointer
-// released and its window a plain 560 x 384, the machine running.
 struct MouseInputMachine_t {
   TestFixtures::ScopedTestConfig_t config;
   TestFixtures::ScopedCore_t core;
@@ -805,8 +803,8 @@ constexpr size_t mouse_frame_mode = 74;
 
 using MouseFrame_t = std::array<uint8_t, mouse_frame_size>;
 
-// The card counts host motion only while its mode byte says so; the loader
-// is the one public path that sets that byte without running the firmware.
+// The loader is the one public path that turns tracking on without running
+// the firmware.
 auto turn_mouse_tracking_on(int slot) -> void {
   MouseFrame_t frame{};
   frame.at(0) = MOUSE_STATE_VERSION;
@@ -816,7 +814,7 @@ auto turn_mouse_tracking_on(int slot) -> void {
   frame.at(mouse_frame_max_y) = 0xFF;
   frame.at(mouse_frame_max_y + 1) = 0x03;
   frame.at(mouse_frame_parser_out_len) = 1;
-  // Port B at rest as a real build saves it: PB6 answers the lowered PB4.
+  // Port B at rest: PB6 answers the lowered PB4.
   frame.at(mouse_frame_orb) = 0x40;
   frame.at(mouse_frame_ddrb) = 0x3E;
   frame.at(mouse_frame_port_b_shadow) = 0x40;

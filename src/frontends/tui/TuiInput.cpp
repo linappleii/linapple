@@ -174,11 +174,9 @@ static auto toggle_pause() -> void {
 
 static auto toggle_scroll_lock() -> void { linapple_toggle_turbo(); }
 
-// The terminal's mouse is asked for only while a mouse card can take it.
-// Its reports carry absolute positions, so successive ones are differenced
-// into the card's counts: in pixels once the terminal has said it reports
-// them and a cell size is known to scale them by, in cells otherwise, so the
-// unit requested and the unit read never disagree.
+// The terminal's mouse is asked for only while a card can take it. Reports are
+// absolute, so successive ones are differenced: in pixels once the terminal has
+// said it reports them and a cell size is known, in cells otherwise.
 static bool g_tracking = false;
 static bool g_pixel_reports = false;
 static int g_pixel_mode_setting = -1;
@@ -220,10 +218,8 @@ static auto read_cell_size_from_window() -> void {
   g_cell_height_px = w.ws_ypixel / w.ws_row;
 }
 
-// A terminal that honoured an unconditional pixel request but answered
-// neither query would deliver pixel reports a cell scale cannot use, so
-// pixels are taken only once the terminal has said it knows the mode and a
-// cell size is in hand.
+// An unconditional ?1016 could bring pixel reports with no cell size to scale
+// them by, so pixels wait until the terminal has answered both queries.
 static auto decide_report_unit() -> void {
   if (g_pixel_reports) {
     return;
@@ -248,8 +244,7 @@ static auto decide_report_unit() -> void {
   }
 }
 
-// Query before setting: the DECRQM and XTWINOPS replies arrive through the
-// input queue like any other sequence.
+// The DECRQM and XTWINOPS replies arrive through the input queue.
 static auto start_tracking() -> void {
   g_tracking = true;
   g_pixel_reports = false;
@@ -304,9 +299,8 @@ static auto picture_in_report_units() -> MousePictureRect_t {
   return box;
 }
 
-// A press or a release re-anchors the difference without moving the Apple
-// pointer: under any-event tracking the pointer's travel to that spot has
-// already arrived as motion reports.
+// A press or release re-anchors without moving the pointer: under any-event
+// tracking its travel to that spot has already arrived as motion reports.
 static auto handle_mouse_report(const MouseSgrEvent_t& event) -> void {
   if (event.motion) {
     if (g_have_last_report) {

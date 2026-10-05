@@ -76,8 +76,8 @@ auto word_at(const Frame_t& frame, size_t offset) -> int16_t {
   return static_cast<int16_t>(frame.at(offset) | (frame.at(offset + 1) << 8));
 }
 
-// The card counts host motion only while its mode byte says so; the loader
-// is the one public path that sets that byte without running the firmware.
+// The loader is the one public path that turns tracking on without running
+// the firmware.
 auto turn_tracking_on(int slot) -> void {
   Frame_t frame{};
   frame.at(0) = MOUSE_STATE_VERSION;
@@ -87,7 +87,7 @@ auto turn_tracking_on(int slot) -> void {
   frame.at(frame_max_y) = 0xFF;
   frame.at(frame_max_y + 1) = 0x03;
   frame.at(frame_parser_out_len) = 1;
-  // Port B at rest as a real build saves it: PB6 answers the lowered PB4.
+  // Port B at rest: PB6 answers the lowered PB4.
   frame.at(frame_orb) = 0x40;
   frame.at(frame_ddrb) = 0x3E;
   frame.at(frame_port_b_shadow) = 0x40;

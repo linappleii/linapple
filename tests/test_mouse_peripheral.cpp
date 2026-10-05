@@ -39,8 +39,7 @@ extern "C" uint32_t mouse_abi_c_is_active_query_id(void);
 
 namespace {
 
-// Through the registry, so one binary covers the built-in card and a loaded
-// plugin alike.
+// Through the registry, so one binary covers the built-in card and a plugin.
 auto mouse_descriptor() -> Peripheral_t* {
   return peripheral_find_internal("linapple.mouse");
 }
@@ -57,9 +56,6 @@ struct IrqCall_t {
   bool level;
 };
 
-// A host of six members and a clock the test turns by hand. The card's I/O
-// handlers are captured so a case can drive its registers with no 6502, and
-// every IRQ level and ROM page registration is recorded.
 class BenchHost_t {
  public:
   BenchHost_t() {
@@ -197,9 +193,8 @@ class BenchCard_t {
   void* instance_;
 };
 
-// The firmware's bank switch (bank 0 $05B-$078): CRB selects DDRB, DDRB
-// becomes $3E, CRB selects ORB, and ORB takes the bank in bits 1-3 with the
-// three input bits copied from the pins.
+// The firmware's bank switch (bank 0 $05B-$078): CRB to DDRB, DDRB $3E, CRB to
+// ORB, the bank into ORB bits 1-3 with the input bits copied from the pins.
 auto bench_select_bank(BenchHost_t& bench, void* card, uint8_t bank) -> void {
   bench.write(card, 3, bench.read(card, 3) & 0xFB);
   bench.write(card, 2, 0x3E);
@@ -208,7 +203,7 @@ auto bench_select_bank(BenchHost_t& bench, void* card, uint8_t bank) -> void {
               static_cast<uint8_t>((bench.read(card, 2) & 0xC1) | (bank << 1)));
 }
 
-// The firmware's write handshake (bank 3 $30E-$343): wait for PB7 low, DDRA
+// The firmware's write handshake (bank 3 $30E-$33F): wait for PB7 low, DDRA
 // out, the byte on port A, PB5 up, wait for PB7 high, PB5 down.
 auto bench_send(BenchHost_t& bench, void* card, uint8_t byte) -> void {
   bench_select_bank(bench, card, 0);
@@ -244,8 +239,8 @@ auto card_named_in(int slot) -> std::string {
   return manifest.peripherals[slot].name;
 }
 
-// ScopedTestConfig_t writes every slot, so a conf with no entry for one is
-// made by taking the line out again.
+// ScopedTestConfig_t writes every slot; a conf with no entry for one is made by
+// taking the line out again.
 auto remove_slot_line(const std::string& path, int slot) -> void {
   const std::string prefix = "Slot " + std::to_string(slot) + " ";
   std::vector<std::string> kept;
@@ -574,8 +569,6 @@ auto describe_mouse_in(int slot) -> Description_t {
   return description;
 }
 
-// An Enhanced //e with the card in one slot, built and reset as the frontends
-// build it.
 struct MouseMachine_t {
   TestFixtures::ScopedTestConfig_t config;
   TestFixtures::ScopedCore_t core;
@@ -597,7 +590,6 @@ struct MouseMachine_t {
   }
 };
 
-// Copies $Cn00-$CnFF to $2000.
 auto poke_page_copier(int slot) -> uint16_t {
   const auto slot_page = static_cast<uint8_t>(0xC0 + slot);
   const std::array<uint8_t, 14> program = {
@@ -612,8 +604,7 @@ auto poke_page_copier(int slot) -> uint16_t {
   return 0x030B;
 }
 
-// The firmware's own bank switch (bank 0 $05B-$078) for one bank, then the
-// first eight bytes of the page copied to $2000.
+// The firmware's own bank switch (bank 0 $05B-$078).
 auto poke_bank_switch_and_copier(int slot, uint8_t bank) -> uint16_t {
   const auto base = static_cast<uint16_t>(0xC080 + (slot << 4));
   const auto slot_page = static_cast<uint8_t>(0xC0 + slot);
@@ -672,8 +663,8 @@ TEST_CASE(
   CHECK(mismatches == 0);
 }
 
-// The signature bytes and the identification byte (AppleMouse II User's
-// Manual p. 43; Apple II Technical Note Mouse #5), then the whole page.
+// The signature and identification bytes: AppleMouse II User's Manual p. 43;
+// Tech Note Mouse #5.
 TEST_CASE(
     "Mouse card: after reset $C400-$C4FF is the ROM's bank 0 and $C4FB reads "
     "$D6") {
@@ -699,8 +690,7 @@ TEST_CASE(
 }
 
 // The table at $Cn12 holds the low bytes of the entry points (manual p. 49;
-// Tech Note Mouse #1), not the entries themselves, which is why every call
-// in this suite goes through it indirectly.
+// Tech Note Mouse #1), not the entries themselves.
 TEST_CASE(
     "Mouse card: $C412-$C41F is the table of the entries' low bytes, read "
     "from bank 0") {
@@ -717,8 +707,8 @@ TEST_CASE(
   }
 }
 
-// PB1-PB3 drive the ROM's A8-A10 (schematic 050-0101-A zone B3), so each
-// of the eight banks is the 256 bytes at bank * 256 of the file.
+// PB1-PB3 drive the ROM's A8-A10 (schematic 050-0101-A zone B3), so bank n is
+// the 256 bytes at n * 256 of the file.
 TEST_CASE(
     "Mouse card: the firmware's own bank switch brings each of the eight "
     "banks into $C400, and a page is registered once per bank change and "
@@ -748,7 +738,6 @@ TEST_CASE(
   CHECK(std::memcmp(bench.last_rom(), mouse_rom.data() + mouse_rom_bank_size,
                     mouse_rom_bank_size) == 0);
 
-  // The strobes toggle bits 4 and 5 with the bank held.
   const std::array<uint8_t, 2> strobes = {0x20, 0x10};
   for (uint8_t strobe : strobes) {
     bench.write(card.instance(), 2, bench.read(card.instance(), 2) | strobe);
@@ -802,10 +791,9 @@ struct Call_t {
   uint8_t a;
 };
 
-// The table at $Cn12 holds the low bytes of the entries, so every call goes
-// through it indirectly: LDA $Cn12+k / STA $07 / LDA #$Cn / STA $08 / LDA #a
-// / LDX #x / LDY #y / JSR $03F0, with JMP ($0007) at $03F0. X and Y are
-// $Cn and $n0 unless a case proves the firmware derives them itself.
+// LDA $Cn12+k / STA $07 / LDA #$Cn / STA $08 / LDA #a / LDX #x / LDY #y /
+// JSR $03F0, with JMP ($0007) at $03F0. X and Y are $Cn and $n0 unless a case
+// proves the firmware derives them itself.
 auto emit_firmware_call(std::vector<uint8_t>& program, int slot, int entry,
                         uint8_t a, bool x_y_zero = false) -> void {
   const auto page = static_cast<uint8_t>(0xC0 + slot);
@@ -838,7 +826,6 @@ auto poke_indirect_jump() -> void {
   TestFixtures::ScopedCore_t::poke(indirect_jump, jump);
 }
 
-// A sequence of entries from $0300 to a spin, returning the spin's address.
 auto poke_calls(int slot, const std::vector<Call_t>& calls) -> uint16_t {
   std::vector<uint8_t> program;
   for (const Call_t& call : calls) {
@@ -861,8 +848,6 @@ struct StepResult_t {
   uint32_t cycles;
 };
 
-// Runs one firmware entry stepped, from $0300 to a spin, with interrupts
-// masked, and says whether it came back within the cap and with what carry.
 auto step_firmware(int slot, int entry, uint8_t a) -> StepResult_t {
   const uint16_t spin = poke_calls(slot, {{entry, a}});
   TestFixtures::enter_at({program_start, 0, 0, 0});
@@ -877,15 +862,12 @@ auto call_firmware(int slot, int entry, uint8_t a) -> bool {
   return result.carry;
 }
 
-// Zero page $06 and $09 count turns of 8 cycles (15 at a wrap of $06); the
-// handler files the count, $C019, the interrupted return address and
-// SERVEMOUSE's returned flags in tables indexed by entry, so each entry's
-// cycle, blanking level and carry can be read back. The two count bytes are
-// not updated atomically: an interrupt taken between the INC that wrapped
-// $06 and the INC of $09 sees a high byte one short, which the return
-// address (the INC $09 about to run) lets the reader correct. SERVEMOUSE
-// keeps $06 in Y across its own use of it as an RTS (bank 0 $0C4-$0CC), so
-// the counter survives the call.
+// $06 and $09 count turns of 8 cycles (15 at a wrap of $06); the handler files
+// the count, $C019, the interrupted return address and SERVEMOUSE's flags per
+// entry. An interrupt taken between the INC that wrapped $06 and the INC of $09
+// sees a high byte one short, which the return address lets the reader
+// correct. SERVEMOUSE keeps $06 in Y across its own use of it as an RTS (bank 0
+// $0C4-$0CC), so the counter survives the call.
 auto poke_meter(int slot, bool serve = true, bool x_y_zero = false) -> void {
   const std::vector<uint8_t> loop = {
       0x58,                   // CLI
@@ -969,8 +951,8 @@ auto poke_meter(int slot, bool serve = true, bool x_y_zero = false) -> void {
   TestFixtures::ScopedCore_t::poke(meter_low_table, blank.data(), blank.size());
 }
 
-// 8 cycles a turn, 7 more at every wrap of the low byte; the count itself
-// wraps after 65,536 turns, so two entries are compared modulo that.
+// 8 cycles a turn, 7 more at every wrap of the low byte; the count wraps after
+// 65,536 turns, so two entries are compared modulo that.
 constexpr uint64_t meter_wrap = 8 * 65536 + 7 * 256;
 
 auto meter_delta(uint64_t from, uint64_t to) -> uint64_t {
@@ -1001,14 +983,13 @@ auto storm_count() -> unsigned {
   return mem[storm_low] | (static_cast<unsigned>(mem[storm_high]) << 8);
 }
 
-// The cycles one entry of the serving handler takes, from the interrupt to
-// the RTI, SERVEMOUSE included: a regression pin of this emulator, measured
-// from a sixty-entry run and held to it below.
+// Interrupt to RTI, SERVEMOUSE included: a regression pin of this emulator,
+// measured from a sixty-entry run.
 constexpr uint64_t serve_handler_cycles = 456;
 
-// Entry i stands at its count plus the i handlers the loop did not count.
-// Held against i periods from the first entry, a count one cycle off drifts
-// across the run, which consecutive gaps could never show.
+// Entry i stands at its count plus the i handlers the loop did not count. Held
+// against i periods from the first entry, a period one cycle off drifts across
+// the run, which consecutive gaps could never show.
 auto check_period(const std::vector<uint64_t>& entries, uint64_t period)
     -> void {
   REQUIRE(entries.size() >= 2);
@@ -1024,9 +1005,8 @@ auto check_period(const std::vector<uint64_t>& entries, uint64_t period)
   }
 }
 
-// Where the video scanner stands at this instant: the cycles of the frame
-// already drawn, found from the blanking flag the IOU raises at line 192
-// (IIe Technical Reference p. 170) by asking at every offset of one frame.
+// The cycles of the frame already drawn, found from the blanking flag the IOU
+// raises at line 192 (IIe Technical Reference p. 170).
 auto video_frame_phase() -> uint32_t {
   const uint32_t period = system_state.clks_per_frame;
   REQUIRE(period > 0);
@@ -1039,8 +1019,7 @@ auto video_frame_phase() -> uint32_t {
   return 0;
 }
 
-// The frame loop the frontends drive, with the card in one slot. Frames are
-// run at the machine's own length so a PAL machine gets 20,280-cycle frames.
+// Frames run at the machine's own length, so a PAL machine gets 20,280 cycles.
 struct MouseSession_t {
   TestFixtures::ScopedTestConfig_t config;
   HeadlessHarness_t harness;
@@ -1070,11 +1049,9 @@ struct MouseSession_t {
     }
   }
 
-  // A partial frame first by default: a tick that free-runs from reset
-  // stands at a frame's end, and the few hundred cycles the stepped calls
-  // took would otherwise leave the handler straddling the boundary. The
-  // batch's exact length and the loop's final count are kept so the cycles
-  // the handlers took, which the loop did not count, can be recovered.
+  // A partial frame first by default: a tick free-running from reset stands at
+  // a frame's end, and the stepped calls' few hundred cycles would otherwise
+  // leave the handler straddling the boundary.
   auto run_metered_frames(uint32_t frames, uint32_t lead_in = lead_in_cycles)
       -> std::vector<uint64_t> {
     TestFixtures::enter_at({meter_loop, 0, 0, 0});
@@ -1096,8 +1073,6 @@ struct MouseSession_t {
   uint64_t last_total_cycles = 0;
   uint64_t last_loop_cycles = 0;
 
-  // Runs a frame's worth less the scanner's phase on a spin, so the next
-  // frame batch starts where the scanner starts its frame.
   auto align_to_video_frame() -> void {
     const std::array<uint8_t, 3> spin = {0x4C, 0x00, 0x03};
     TestFixtures::ScopedCore_t::poke(program_start, spin);
@@ -1108,9 +1083,7 @@ struct MouseSession_t {
     }
   }
 
-  // Entries that need the scanner (INITMOUSE waits on $C019) run under the
-  // frame loop with interrupts masked, from the batch boundary; the carry of
-  // the last entry is returned.
+  // For entries that need the scanner: INITMOUSE waits on $C019.
   auto run_calls_in_frames(const std::vector<Call_t>& calls, uint32_t frames)
       -> bool {
     const uint16_t spin = poke_calls(slot, calls);
@@ -1121,9 +1094,8 @@ struct MouseSession_t {
   }
 };
 
-// The cycles one handler took, from a run whose batch ended in the loop: the
-// batch total less the loop time, which wrapped at most once a run, over the
-// entries.
+// The batch total less the loop time, which wrapped at most once a run, over
+// the entries.
 auto measured_handler_cycles(const MouseSession_t& session, size_t entries)
     -> uint64_t {
   REQUIRE(entries > 0);
@@ -1194,8 +1166,8 @@ auto poke_slot_holes(int slot, int16_t x, int16_t y) -> void {
   poke_byte(0x5F8 + n, static_cast<uint8_t>(static_cast<uint16_t>(y) >> 8));
 }
 
-// The firmware's own write handshake (bank 3 $30E-$343), driven from a
-// program so a byte reaches the 6805 with no firmware entry in between.
+// The firmware's own write handshake (bank 3 $30E-$33F), so a byte reaches the
+// 6805 with no firmware entry in between.
 auto send_raw_byte(MouseMachine_t& machine, uint8_t byte) -> void {
   const auto base = static_cast<uint16_t>(0xC080 + (machine.slot << 4));
   std::vector<uint8_t> program;
@@ -1275,8 +1247,7 @@ auto read_addresses(MouseMachine_t& machine,
   return values;
 }
 
-// The firmware's bank switch to one bank, left selected (bank 0 $05B-$078),
-// run stepped.
+// The firmware's bank switch (bank 0 $05B-$078), the bank left selected.
 auto select_bank_stepped(int slot, uint8_t bank) -> void {
   const auto base = static_cast<uint16_t>(0xC080 + (slot << 4));
   std::vector<uint8_t> program;
@@ -1314,8 +1285,7 @@ auto select_bank_stepped(int slot, uint8_t bank) -> void {
 
 }  // namespace
 
-// A mode byte at or above $10 is refused with the carry set and the hole
-// left alone (manual pp. 44, 47; bank 0 $0B3: CMP #$10 / BCS).
+// Manual pp. 44, 47; bank 0 $0B3: CMP #$10 / BCS.
 TEST_CASE(
     "Mouse card: SETMOUSE refuses a mode of $10 or more with the carry set "
     "and takes one below it into $7FC") {
@@ -1331,9 +1301,8 @@ TEST_CASE(
   CHECK(mem[0x7FC] == 0x00);
 }
 
-// The tick free-runs from reset at one frame's length; a handler installed
-// after SETMOUSE sees one entry a frame, each late in the frame rather than
-// at its boundary, and the second SERVEMOUSE finds the event consumed.
+// The tick free-runs from reset at one frame's length, so a handler installed
+// after SETMOUSE sees one entry a frame, late in the frame.
 TEST_CASE(
     "Mouse card: the screen-refresh interrupt comes once a frame with bit 3 "
     "set whatever bit 0 says, SERVEMOUSE reports $08 and a second call finds "
@@ -1382,11 +1351,10 @@ TEST_CASE(
 }
 
 // On a IIe the firmware waits for three edges of $C019 (bank 2 $226-$234)
-// before the second $50, so INITMOUSE runs under the frame loop; it "sets
-// the internal default values for the mouse subsystem" (manual p. 48): mode
-// off, position (0, 0), clamps 0..1023. The 6502 side keeps the mode's low
-// nibble in the hole with $40 in the high one (bank 2 $200-$209), so the
-// hole does not show the 6805's mode; a tick that enters no handler does.
+// before the second $50, so INITMOUSE runs under the frame loop. It "sets the
+// internal default values" (manual p. 48). The 6502 side keeps the mode's low
+// nibble in the hole with $40 above it (bank 2 $200-$209), so the hole does
+// not show the 6805's mode; a tick that enters no handler does.
 TEST_CASE(
     "Mouse card: INITMOUSE on an Enhanced //e returns with the carry clear, "
     "reads one reply byte into $6FC, and leaves the 6805 off at (0, 0) with "
@@ -1404,8 +1372,7 @@ TEST_CASE(
   REQUIRE(reading.y == 350);
   REQUIRE_FALSE(call_firmware(session.slot, entry_set_mouse, 0x09));
 
-  // The reply's value is the 6805's and unsourced; only that one byte was
-  // stored is pinned.
+  // The reply's value is unsourced; only that one byte was stored is pinned.
   poke_byte(0x6FC, 0x00);
   session.align_to_video_frame();
   CHECK_FALSE(session.run_calls_in_frames({{entry_init_mouse, 0}}, 3));
@@ -1479,11 +1446,9 @@ TEST_CASE(
   CHECK(read_mouse(machine.slot).x == 200);
 }
 
-// POSMOUSE "sets the position registers on the peripheral card to the
-// values it finds in the X and Y position screen holes" (manual p. 47); a
-// loaded value is taken as given and only motion clamps (IIc Technical
-// Reference Table 9-3 for CLEARMOUSE's zero "not necessarily within clamping
-// boundaries").
+// Manual p. 47; a loaded value is taken as given and only motion clamps (IIc
+// Technical Reference Table 9-3: CLEARMOUSE's zero is "not necessarily within
+// clamping boundaries").
 TEST_CASE(
     "Mouse card: POSMOUSE loads the position from the slot's holes unclamped, "
     "and the next motion clamps it") {
@@ -1506,8 +1471,7 @@ TEST_CASE(
   CHECK(read_mouse(machine.slot).x == 279);
 }
 
-// CLEARMOUSE "sets the mouse's X and Y position values to $0 ... The button
-// and interrupt status byte remains unchanged" (manual p. 47); only
+// "The button and interrupt status byte remains unchanged" (manual p. 47); only
 // INITMOUSE resets the mode and clamps (Tech Note Mouse #3). The firmware
 // zeroes the four holes itself (bank 3 $349-$356).
 TEST_CASE(
@@ -1539,12 +1503,9 @@ TEST_CASE(
   CHECK(read_mouse(session.slot).x == 100);
 }
 
-// Bit 7 is the button now, bit 6 the button at the last reading, bit 5
-// movement since the last reading; bits 4 and 0 are reserved (manual p. 45)
-// and the card has one button (schematic: SW on J1-4). Bits 1-3 read 0 in
-// the hole (manual p. 47) and the 6805 forgets the sources with them, which
-// is inferred: a SERVEMOUSE after a READMOUSE answers "not the mouse" while
-// the line stays up until that SERVEMOUSE (Tech Note Mouse #4).
+// Status bits: manual p. 45; one button: schematic SW on J1-4. Bits 1-3 read 0
+// in the hole (manual p. 47) and the 6805 forgets the sources with them
+// (inferred), while the line stays up until SERVEMOUSE (Tech Note Mouse #4).
 TEST_CASE(
     "Mouse card: READMOUSE writes the status byte whole, a second button "
     "changes nothing, and the interrupt bits read 0 while the line stays up") {
@@ -1578,8 +1539,8 @@ TEST_CASE(
     CHECK((reading.status & 0x0E) == 0x00);
     CHECK((reading.status & 0x20) == 0x20);
 
-    // The line is still up: the handler is entered at the CLI, its SERVEMOUSE
-    // finds nothing, and the frame's own tick follows with the refresh bit.
+    // The line is still up, so the handler is entered at the CLI and finds
+    // nothing; the frame's own tick follows with the refresh bit.
     poke_meter(session.slot);
     const std::vector<uint64_t> entries = session.run_metered_frames(1, 0);
     REQUIRE(entries.size() == 2);
@@ -1590,11 +1551,9 @@ TEST_CASE(
   }
 }
 
-// SERVEMOUSE "sets C to 0 if the interrupt was caused by the mouse and sets
-// C to 1 otherwise" (manual p. 47), the carry coming from bits 1-3 of the
-// reply alone (bank 3 $3BD-$3D4), merged into the hole over the bits
-// READMOUSE left; the entry derives X and Y itself (bank 0 $0C4-$0D8), so a
-// handler need not set them.
+// SERVEMOUSE "sets C to 0 if the interrupt was caused by the mouse" (manual
+// p. 47), the carry coming from bits 1-3 of the reply alone (bank 3 $3BD-$3D4);
+// the entry derives X and Y itself (bank 0 $0C4-$0D8).
 TEST_CASE(
     "Mouse card: SERVEMOUSE from a handler with X and Y zero reports the "
     "sources once over READMOUSE's bits, releases the line, and the second "
@@ -1627,13 +1586,11 @@ TEST_CASE(
   }
 }
 
-// The interrupt is sent "at the end of the current monitor screen writing
-// cycle" (manual p. 46), the 6805's tick, which INITMOUSE anchors about 125
-// cycles after the blanking edge it saw (bank 2 $235-$245, the stub, bank 6
-// $400-$443): blanking begins at frame cycle 12,480 in this emulator, so a
-// movement interrupt lands near frame cycle 12,610 whatever instant the
-// motion arrived at. Bit 0 gates movement and button interrupts (Tech Note
-// Mouse #3).
+// The interrupt comes "at the end of the current monitor screen writing cycle"
+// (manual p. 46), the tick, which INITMOUSE anchors about 125 cycles after the
+// blanking edge it saw (bank 2 $235-$245 and bank 6 $600-$645): blanking begins
+// at frame cycle 12,480 in this emulator, so the interrupt lands near 12,610.
+// Bit 0 gates movement and button interrupts (Tech Note Mouse #3).
 TEST_CASE(
     "Mouse card: movement and button interrupts land at the tick inside "
     "blanking, once per tick, and only while the mouse is on") {
@@ -1694,12 +1651,11 @@ TEST_CASE(
   }
 }
 
-// The 6805's timer is clocked from Q3 through the PAL (schematic zones A3,
-// C2), so the tick is a count of 6502 cycles: 17,030 at 60 Hz and 20,280
-// after TIMEDATA selects 50 Hz "effective at the next INITMOUSE" (Tech Note
-// Mouse #2), on an NTSC and a PAL machine alike. Anchored by INITMOUSE
-// inside blanking, every entry on a IIe reads $C019 below $80 (IIe Technical
-// Reference p. 170).
+// The 6805's timer runs from Q3 through the PAL (schematic zones A3, C2), so
+// the tick is a count of 6502 cycles on an NTSC and a PAL machine alike: 20,280
+// once TIMEDATA selects 50 Hz "effective at the next INITMOUSE" (Tech Note
+// Mouse #2). Anchored inside blanking, every entry reads $C019 below $80 (IIe
+// Technical Reference p. 170).
 TEST_CASE(
     "Mouse card: after INITMOUSE the refresh tick comes every 17,030 cycles "
     "inside blanking, one a frame on NTSC and 119 or 120 per 100 PAL frames, "
@@ -1750,9 +1706,8 @@ TEST_CASE(
   }
 }
 
-// The card decodes nothing but DEVICE SELECT' (schematic zone C3), so the
-// same firmware, registers and holes appear at the slot's own addresses
-// (manual p. 44, n = slot).
+// The card decodes nothing but DEVICE SELECT' (schematic zone C3), so the same
+// firmware, registers and holes appear at any slot's addresses (manual p. 44).
 TEST_CASE(
     "Mouse card: the card works the same in slots 1, 5 and 7, and two cards "
     "hold the interrupt line independently") {
@@ -1813,7 +1768,6 @@ TEST_CASE(
       handler.push_back(0x4C);
       handler.push_back(static_cast<uint8_t>(handler_start & 0xFF));
       handler.push_back(static_cast<uint8_t>(handler_start >> 8));
-      // The slot-5 call sits in front of the recorded slot-4 handler.
       const auto front = static_cast<uint16_t>(handler_start - handler.size());
       TestFixtures::ScopedCore_t::poke(front, handler.data(), handler.size());
       const std::array<uint8_t, 2> vector = {static_cast<uint8_t>(front & 0xFF),
@@ -1828,10 +1782,10 @@ TEST_CASE(
   }
 }
 
-// Every handshake loop in the ROM waits on PB6 or PB7 with no timeout (bank
-// 3 $30E-$343 writing, bank 6 $486-$4C4 reading), so each entry's return
-// within the cap is the proof that the 6805 model answers every strobe. The
-// cycle counts are regression pins of this emulator, not hardware facts.
+// Every handshake loop in the ROM waits on PB6 or PB7 with no timeout (bank 3
+// $30E-$33F writing, bank 6 $686-$6C4 reading), so a return within the cap
+// proves the 6805 model answers every strobe. The cycle counts are regression
+// pins of this emulator, not hardware facts.
 TEST_CASE(
     "Mouse card: the write and read handshakes terminate, and SETMOUSE and "
     "READMOUSE cost the cycles they cost") {
@@ -1846,9 +1800,8 @@ TEST_CASE(
   CHECK(read.cycles == 630);
 }
 
-// GetClamp (Tech Note Mouse #7) peeks $4E down to $47 and gets MaxYL, MaxXL,
-// MaxYH, MaxXH, MinYL, MinXL, MinYH, MinXH; the $Cn1D entry's data byte and
-// the poke's three bytes must not be taken for commands.
+// GetClamp (Tech Note Mouse #7) peeks $4E down to $47 for MaxYL, MaxXL, MaxYH,
+// MaxXH, MinYL, MinXL, MinYH, MinXH.
 TEST_CASE(
     "Mouse card: the $F0 peeks answer GetClamp's eight bytes, and the $Cn1D "
     "entry's data byte and the $F1 poke's bytes keep the stream in step") {
@@ -1882,10 +1835,9 @@ TEST_CASE(
   CHECK(reading.y == 305);
 }
 
-// CHR$(1) after PR#n sends $80, "places the mouse in BASIC mode and sets the
-// mouse position numbers to zero" (manual p. 35); CHR$(0) sends $00 and turns
-// it off, after which motion is ignored (Tech Note Mouse #3). SETMOUSE
-// changes no position (p. 47), so it is the stepped observer of the off leg.
+// $80 "places the mouse in BASIC mode and sets the mouse position numbers to
+// zero" (manual p. 35); off, motion is ignored (Tech Note Mouse #3). SETMOUSE
+// changes no position (p. 47), so it can observe the off leg.
 TEST_CASE(
     "Mouse card: $80 turns tracking on at (0, 0) and $00 turns it off, "
     "leaving the position") {
@@ -1932,10 +1884,9 @@ TEST_CASE(
 }
 
 // RES' reaches the PIA and the 6805 (schematic P1-31): the PIA's registers
-// read zero (MC6821 "Initialization"), the pull-downs select bank 0, the
-// 6805's ports go to input (MC6805P 8.1) so IRQ' is released, and the
-// subsystem comes up off at (0, 0) at 60 Hz (manual p. 44; Tech Note Mouse
-// #2).
+// read zero (MC6821 "Initialization"), the pull-downs select bank 0, the 6805's
+// ports go to input (MC6805P 8.1) so IRQ' is released, and the subsystem comes
+// up off at (0, 0) at 60 Hz (manual p. 44; Tech Note Mouse #2).
 TEST_CASE(
     "Mouse card: reset returns the PIA to zero and the slot page to bank 0, "
     "drops a pending interrupt, and restarts the tick at 60 Hz") {
@@ -1972,7 +1923,7 @@ TEST_CASE(
     check_period(session.run_metered_frames(4, 0), pal_frame);
     move_mouse(session.slot, 40, 40);
 
-    // One frame with interrupts masked leaves the tick's interrupt pending.
+    // A masked frame leaves the tick's interrupt pending.
     const uint16_t spin = poke_calls(session.slot, {});
     TestFixtures::enter_at({spin, 0, 0, 0});
     session.run_frames(2);
@@ -2073,20 +2024,14 @@ auto frame_coordinate(const Frame_t& frame, size_t at) -> int16_t {
   return static_cast<int16_t>(static_cast<uint16_t>(frame_word(frame, at)));
 }
 
-// The frame after INITMOUSE, SETMOUSE $0F, a move of (789, 321), the button
-// down and one tick, derived from the layout and the firmware's register
-// writes rather than read off the card. Bytes 32-35 are the cycles to the
-// next tick and are filled in by the case. The PIA is as SETMOUSE's write
-// handshake left it: DDRA $FF (bank 3 sets it for the write and no read
-// follows), CRA and CRB $04, ORA the mode byte; ORB is $40 because the last
-// ORB write before the save is the return stub's read-modify-write (bank 3
-// $370-$378: LDA $C082,Y / AND #$F1 / ORA / STA), which copies PB6 high and
-// PB7 low from the pins after the 6805 dropped busy, not the handshake's own
-// closing store, which ran while busy was still high. Port A holds
-// INITMOUSE's reply, the last byte presented. The status is $2E: movement
-// since the last reading, and the three sources the tick reported with every
-// one enabled. The buffer holds the command byte alone, the rest cleared by
-// the new command.
+// Derived from the layout and the firmware's register writes, not read off the
+// card; bytes 32-35, the cycles to the next tick, are filled in by the case.
+// The PIA is as SETMOUSE's write handshake left it: DDRA $FF, CRA and CRB $04,
+// ORA the mode byte. ORB is $40 because the last ORB write is the return stub's
+// read-modify-write (bank 3 $370-$378: LDA $C082,Y / AND #$F1 / ORA / STA),
+// which copies PB6 high and PB7 low from the pins after the 6805 dropped busy.
+// Port A holds INITMOUSE's reply, the last byte presented. Status $2E is
+// movement since the last reading plus the three sources the tick reported.
 constexpr Frame_t frame_after_tick = {
     0x01, 0x00, 0x00, 0x00, 0x5C, 0x00, 0x00, 0x00, 0x15, 0x03, 0x00, 0x00,
     0x41, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x03, 0x00, 0x00,
@@ -2097,11 +2042,11 @@ constexpr Frame_t frame_after_tick = {
     0x0F, 0x40, 0x0F, 0x00, 0x2E, 0x00, 0x00, 0x01, 0x00, 0x0F, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-// The slot-4 trailer entry of tests/fixtures/mouse-slot4-0aad3663.aws, as
-// the card before this series wrote it after SETMOUSE $0B, a host position of
-// (123, 456), the button pressed and one READMOUSE with it held: bytes 32-39
-// are the host window's 1023 x 1023 range, byte 76 the whole status byte with
-// the button in bit 7, bytes 64-71 the PIA's unconnected pins.
+// The slot-4 trailer entry of tests/fixtures/mouse-slot4-0aad3663.aws, written
+// by an earlier card after SETMOUSE $0B, a host position of (123, 456), the
+// button pressed and one READMOUSE: bytes 32-39 are the host window's 1023 x
+// 1023 range, byte 76 the whole status byte, bytes 64-71 the PIA's unconnected
+// pins.
 constexpr Frame_t legacy_frame = {
     0x01, 0x00, 0x00, 0x00, 0x5C, 0x00, 0x00, 0x00, 0x7B, 0x00, 0x00, 0x00,
     0xC8, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x03, 0x00, 0x00,
@@ -2139,8 +2084,8 @@ TEST_CASE(
     CHECK(saved.at(i) == expected.at(i));
   }
 
-  // The line is up at the save, so the handler runs at the CLI; the next
-  // entry, its loop time plus the first handler, is the tick the phase named.
+  // The line is up at the save, so the handler runs at the CLI; the next entry,
+  // its loop time plus the first handler, is the tick the phase named.
   poke_meter(session.slot);
   const std::vector<uint64_t> entries = session.run_metered_frames(1, 0);
   REQUIRE(entries.size() >= 2);
@@ -2186,12 +2131,10 @@ TEST_CASE(
   const Frame_t reloaded = save_frame(session.slot);
   CHECK(reloaded == saved);
 
-  // The sources come back: SERVEMOUSE names every one.
   CHECK_FALSE(call_firmware(session.slot, entry_serve_mouse, 0));
   CHECK((mem[0x77C] & 0x0E) == 0x0E);
 
-  // And the line: loaded again, the handler is entered at the CLI, not at
-  // the tick.
+  // Loaded again, the handler is entered at the CLI, not at the tick.
   REQUIRE(peripheral_load_state(session.slot, saved.data(), saved.size()) ==
           peripheral_ok);
   poke_meter(session.slot);
@@ -2224,7 +2167,7 @@ TEST_CASE(
   CHECK(frame_word(rewritten, 16) == 0);
   CHECK(frame_word(rewritten, 20) == 1023);
 
-  // Stepped before the first tick can come: nothing to serve.
+  // Before the first tick can come there is nothing to serve.
   CHECK(call_firmware(session.slot, entry_serve_mouse, 0));
 
   REQUIRE_FALSE(call_firmware(session.slot, entry_set_mouse, 0x0B));
@@ -2237,8 +2180,8 @@ TEST_CASE(
   CHECK(mem[0x5FC] == 0x01);
   CHECK(reading.status == 0xC0);
 
-  // Reloaded, the first tick comes within the 1,023 cycles the width reads
-  // as, plus the instruction in flight.
+  // The first tick comes within the 1,023 cycles the width reads as, plus the
+  // instruction in flight.
   REQUIRE(peripheral_load_state(session.slot, legacy_frame.data(),
                                 legacy_frame.size()) == peripheral_ok);
   poke_meter(session.slot);
@@ -2351,14 +2294,10 @@ constexpr int stale_command_flush = 4;
 
 }  // namespace
 
-// Every byte of the frame at five values: the loader answers ok or error and
-// nothing else, and a card that took the frame still runs the firmware,
-// clamps its next motion and takes its next command. A frame whose port B
-// shadow holds replies that do not answer its strobes is refused, since the
-// firmware would wait forever for an edge; byte 63 is the chip's copy of the
-// shadow and is never read. A taken frame may select any bank through ORB,
-// so the observer brings bank 0 back the way the firmware's entry does
-// before it reads the entry table.
+// Byte 73 is always refused: replies that do not answer their strobes would
+// park the firmware. Byte 63 is the chip's copy of the shadow and never read. A
+// taken frame may select any bank through ORB, so bank 0 is brought back before
+// the entry table is read.
 TEST_CASE(
     "Mouse card: each of the 92 frame bytes corrupted five ways is taken or "
     "refused, never anything else, and a taken frame leaves a working card") {
@@ -2425,9 +2364,8 @@ TEST_CASE(
       }
     }
   }
-  // The acceptance set is the loader's contract: 160 of the 460 corruptions
-  // hit a header, a word above 16 bits, the parser, the mode, a flag, the
-  // reply fields or port B's replies.
+  // 160 of the 460 corruptions hit a header, a word above 16 bits, the parser,
+  // the mode, a flag, the reply fields or port B's replies.
   CHECK(taken == 300);
   CHECK(refused == 160);
 }
@@ -2436,8 +2374,7 @@ namespace {
 
 constexpr uint32_t prompt_frame_cap = 300;
 
-// An Enhanced //e with the card in slot 4 and no disk controller, so the
-// Autostart scan falls through to Applesoft, run to its prompt.
+// With no disk controller the Autostart scan falls through to Applesoft.
 struct BasicSession_t {
   MouseSession_t session;
 
@@ -2466,8 +2403,7 @@ struct BasicSession_t {
   }
 
   // The Enhanced //e reaches its prompt with the internal $Cn00 ROM switched
-  // in, so a program calling slot firmware selects the slot ROMs first (IIe
-  // Technical Reference, SETSLOTCXROM at $C006).
+  // in (IIe Technical Reference, SETSLOTCXROM at $C006).
   auto select_slot_roms() -> void {
     const std::array<uint8_t, 6> program = {0x8D, 0x06, 0xC0,   // STA $C006
                                             0x4C, 0x03, 0x03};  // JMP $0303
@@ -2480,16 +2416,12 @@ struct BasicSession_t {
 
 }  // namespace
 
-// From BASIC the card is driven through PR#n and IN#n (manual pp. 35-37):
-// CHR$(1) printed to the card is the $80 that turns tracking on at (0, 0),
-// CHR$(0) the $00 that turns it off (bank 4 $411-$42E), and PR#0 must follow
-// on the same line because every byte printed afterwards, the prompt
-// included, would be a command by its low bit. IN#n with INPUT X,Y,S reads
-// the holes the firmware formats into the input buffer (bank 5); Applesoft
-// refuses INPUT outside a program, so that line runs under RUN. With
-// tracking off the input path zeroes the holes and never asks the card (bank
-// 4 $440-$452), so the card's own position is read through a stepped
-// SETMOUSE and READMOUSE.
+// PR#n and IN#n: manual pp. 35-37; CHR$(1) sends $80 and CHR$(0) $00 (bank 4
+// $411-$42E). PR#0 must follow on the same line because every byte printed
+// afterwards would be a command by its low bit; Applesoft refuses INPUT outside
+// a program, so that line runs under RUN. With tracking off the input path
+// zeroes the holes and never asks the card (bank 4 $440-$452), so the card's
+// own position is read through a stepped SETMOUSE and READMOUSE.
 TEST_CASE(
     "Mouse card: PR#4 with CHR$(1) and IN#4 read the mouse from Applesoft, "
     "and CHR$(0) turns tracking off at the card") {
@@ -2562,7 +2494,6 @@ class ScopedLogCapture_t {
   LogLines_t lines_;
 };
 
-// The first byte of the page the CPU sees at $Cn00, through the copier.
 auto slot_page_first_byte(int slot) -> uint8_t {
   const uint16_t sentinel = poke_page_copier(slot);
   TestFixtures::enter_at({program_start, 0, 0, 0});
@@ -2573,11 +2504,10 @@ auto slot_page_first_byte(int slot) -> uint8_t {
 
 }  // namespace
 
-// The firmware raises a strobe, waits for the 6805's reply, drops it and
-// waits again; a shadow whose replies already answer the strobe it is about
-// to raise gives it no edge to answer, so that frame is refused. The bank and
+// A shadow whose replies already answer the strobe the firmware is about to
+// raise gives it no edge to wait for, so that frame is refused. The bank and
 // strobe bits are the PIA's pins, so a shadow that disagrees with ORB & DDRB
-// is loaded with the pins and the replies that answer them.
+// takes the pins.
 TEST_CASE(
     "Mouse card: a frame whose port B replies do not answer its strobes is "
     "refused, one whose shadow disagrees with the PIA's pins takes the pins, "

@@ -933,8 +933,8 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
 
     int text_off_x = (g_term_width - a2_w_cols) / 2;
     if (text_off_x < 0) text_off_x = 0;
-    // The four text rows sit under the graphics box; the mouse scales
-    // against the box's width and the whole screen's height.
+    // The four text rows sit under the graphics box, so the picture is the
+    // box's width by the whole screen's height.
     record_picture_box(gfx_off_x, off_y, gfx_w, total_display_h);
 
     int gfx_sample_height = height * 20 / 24;

@@ -19,14 +19,10 @@ constexpr int k_last_slot = 7;
 int g_card_slot = 0;
 bool g_capture_enabled = true;
 
-// Host motion times the count scale, less what has already been sent, so
-// the fraction of a count left over by one event is spent by the next.
+// The fraction of a count one event leaves over is spent by the next.
 int g_carry_x = 0;
 int g_carry_y = 0;
 
-// Integer division truncates toward zero and the remainder keeps the
-// dividend's sign, so a carry never pushes the position across zero on its
-// own.
 auto counts_for(int* carry, int delta, int counts_per_picture, int picture)
     -> int {
   if (picture <= 0) {
@@ -40,12 +36,9 @@ auto counts_for(int* carry, int delta, int counts_per_picture, int picture)
 
 constexpr uint8_t k_escape = 0x1B;
 constexpr size_t k_csi_max_params = 3;
-// A terminal coordinate or mode number never needs more digits; a longer
-// run is noise, not a report.
+// No coordinate or mode number needs more digits; a longer run is noise.
 constexpr int k_csi_max_param_digits = 6;
 
-// CSI, an optional private marker, up to three decimal parameters, an
-// optional intermediate byte and the final byte.
 struct CsiReport_t {
   uint8_t marker;
   std::array<int, k_csi_max_params> params;

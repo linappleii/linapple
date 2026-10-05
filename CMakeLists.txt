@@ -914,14 +914,14 @@ fi
             "echo '3a9d881a8a8d30f55b9719aceebbcf717f829d6f  res/roms/MouseInterface.rom' | sha1sum -c --quiet"
             WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
         set_tests_properties(test-mouse-rom-pinned PROPERTIES TIMEOUT 5)
-        # Save states written by an earlier build of the card: the loader's
-        # compatibility is proven against these bytes, so they are pinned too.
+        # Save states from an earlier build of the card; the loader's
+        # compatibility is proven against these bytes.
         add_test(NAME test-mouse-fixtures-pinned COMMAND sh -c "sha1sum -c --quiet mouse-fixtures.sha1"
             WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures")
         set_tests_properties(test-mouse-fixtures-pinned PROPERTIES TIMEOUT 5)
     endif()
     # The frontend's mouse logic links into every binary, so its test is built
-    # with or without the card; the cases that need one sit under the macro.
+    # with or without the card.
     add_linapple_test(mouse-frontend "tests/test_main.cpp;tests/HeadlessHarness.cpp;tests/test_mouse_frontend.cpp")
     set_tests_properties(test-mouse-frontend PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
     if(ENABLE_PERIPHERAL_MOUSE)

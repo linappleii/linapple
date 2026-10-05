@@ -46,9 +46,8 @@ auto read_all_available(int fd) -> std::string {
   return out;
 }
 
-// Puts a pipe behind stdout for the span of the guard and hands back what was
-// written so far. stdout is flushed on the way in and out so doctest's own
-// report stays on the real descriptor.
+// stdout is flushed on the way in and out so doctest's own report stays on the
+// real descriptor.
 class ScopedStdoutPipe_t {
  public:
   ScopedStdoutPipe_t() {
@@ -83,9 +82,7 @@ class ScopedStdoutPipe_t {
   int saved_ = -1;
 };
 
-// Puts a pipe behind stdin so the terminal's reports and replies can be fed
-// to the poll; the read end is non-blocking because a terminal in raw mode
-// with VMIN 0 never blocks either.
+// The read end is non-blocking, as a raw-mode terminal with VMIN 0 is.
 class ScopedStdinPipe_t {
  public:
   ScopedStdinPipe_t() {
@@ -124,8 +121,6 @@ struct ModeSequence_t {
   bool enable;
 };
 
-// CSI ? Pm h and CSI ? Pm l, xterm's private mode set and reset; anything else
-// in the stream is a failure the caller reports.
 auto parse_mode_sequences(const std::string& text,
                           std::vector<ModeSequence_t>* out) -> bool {
   size_t i = 0;
@@ -155,8 +150,6 @@ constexpr const char* k_pixel_mode_reset_reply = "\x1b[?1016;2$y";
 constexpr const char* k_pixel_mode_set_reply = "\x1b[?1016;1$y";
 constexpr const char* k_cell_size_reply = "\x1b[6;16;8t";
 
-// An Enhanced //e built and reset as the frontend builds it, with the mouse
-// probe run as the TUI's start-up runs it.
 struct TuiMachine_t {
   TestFixtures::ScopedTestConfig_t config;
   TestFixtures::ScopedCore_t core;
@@ -175,8 +168,7 @@ struct TuiMachine_t {
   TuiMachine_t(TuiMachine_t&&) = delete;
   auto operator=(TuiMachine_t&&) -> TuiMachine_t& = delete;
 
-  // The renderer records the box it drew; on a pipe the terminal size falls
-  // back to 80 x 24 and nothing is written.
+  // On a pipe the terminal size falls back to 80 x 24 and nothing is written.
   static auto render_frame() -> void {
     static std::vector<uint32_t> pixels(560 * 384, 0);
     tui_video_render_frame(pixels.data(), 560, 384, 560);
@@ -195,9 +187,8 @@ struct TuiMachine_t {
   }
 };
 
-// Shuts the TUI down while the pipes still stand in for the terminal, so
-// the disables land there and not in doctest's report. Declared after the
-// pipes, it goes first.
+// Declared after the pipes so it goes first: the disables then land in the
+// pipes and not in doctest's report.
 struct ScopedTuiSession_t {
   ScopedTuiSession_t() = default;
   ~ScopedTuiSession_t() {

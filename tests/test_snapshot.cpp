@@ -755,7 +755,7 @@ constexpr int mouse_key_slot = 4;
 constexpr const char* mouse_card_id = "linapple.mouse";
 
 // The shipped [Slots] with the key set: the machine a user of the key has had
-// since the key stopped being read, Mockingboard and all.
+// since the key stopped being read.
 auto key_machine() -> TestConfig_t::Description_t {
   TestConfig_t::Description_t description;
   description.slots[0] = "Parallel Printer";
@@ -815,8 +815,6 @@ auto file_names(const std::string& path, int slot) -> std::string {
   return std::string(name.data());
 }
 
-// A copy of the fixture with one run of bytes replaced, written to the temp
-// file so the fixture itself is never touched.
 auto patched_copy(const std::string& source,
                   const TestFixtures::ScopedTempFile_t& destination, size_t at,
                   const std::vector<uint8_t>& bytes) -> void {
@@ -843,8 +841,6 @@ auto name_bytes(const std::string& name) -> std::vector<uint8_t> {
   return bytes;
 }
 
-// What the legacy file does to a machine the key built: the Mockingboard
-// comes back for the session, and a save afterwards says so.
 auto legacy_file_loads_with_the_mockingboard(
     const TestConfig_t::Description_t& description, bool strip_slot_4_line)
     -> void {
@@ -1114,8 +1110,6 @@ auto emit_mouse_call(std::vector<uint8_t>& program, int slot, int entry,
   TestFixtures::ScopedCore_t::poke(mouse_indirect_jump, jump);
 }
 
-// One entry stepped from $0300 to a spin, with interrupts masked; the carry
-// it came back with.
 auto call_mouse_firmware(int slot, int entry, uint8_t a) -> bool {
   std::vector<uint8_t> program;
   emit_mouse_call(program, slot, entry, a);
@@ -1184,9 +1178,8 @@ auto move_mouse_by(int slot, int32_t dx, int32_t dy) -> void {
   peripheral_manager_think(0);
 }
 
-// Stepped execution services no card event, so the card is brought up to
-// date after every instruction; its tick then fires within one instruction
-// of its cycle, as the frame loop would have it.
+// Stepped execution services no card event, so the card is brought up to date
+// after every instruction.
 auto step_with_think(uint64_t cycles) -> void {
   const uint64_t end = cpu_get_cumulative_cycles() + cycles;
   while (cpu_get_cumulative_cycles() < end) {
@@ -1195,8 +1188,7 @@ auto step_with_think(uint64_t cycles) -> void {
   }
 }
 
-// A CLI / JMP * loop whose handler counts its entries in $0A and serves the
-// card through the table, so the line is released each time.
+// A CLI / JMP * loop; its handler counts entries in $0A and serves the card.
 auto enter_mouse_cli_loop(int slot) -> void {
   std::vector<uint8_t> handler = {0xE6, mouse_entry_count};
   emit_mouse_call(handler, slot, mouse_entry_serve, 0);
@@ -1213,9 +1205,7 @@ auto enter_mouse_cli_loop(int slot) -> void {
   TestFixtures::enter_at({mouse_program, 0, 0, 0});
 }
 
-// Steps until the handler has been entered `count` times or the cap is
-// spent, then until that handler has returned to the loop, so the hole it
-// wrote can be read; the cycles to the entry.
+// Runs on until the handler has returned, so the hole it wrote can be read.
 auto cycles_until_mouse_entries(uint8_t count, uint64_t cap) -> uint64_t {
   constexpr uint64_t handler_cap = 1000;
   const uint64_t start = cpu_get_cumulative_cycles();
@@ -1260,8 +1250,8 @@ auto mouse_survives_the_file(int slot) -> void {
   poke_mouse_byte(0x5F8, 0x00);
   REQUIRE_FALSE(call_mouse_firmware(slot, mouse_entry_clamp, 0));
   press_mouse_button(slot, true);
-  // One tick with interrupts masked reports the button and the refresh and
-  // raises the line; a move after it is pending for the next.
+  // One masked tick reports the button and the refresh and raises the line; a
+  // move after it is pending for the next.
   step_with_think(mouse_tick_period);
   move_mouse_by(slot, 1, 0);
 
@@ -1284,9 +1274,8 @@ auto mouse_survives_the_file(int slot) -> void {
   REQUIRE(save_state_load());
   CHECK(mouse_frame(slot) == saved);
 
-  // The line is up: the handler runs at the CLI and SERVEMOUSE names the two
-  // sources the tick reported; the pending move comes with the next tick,
-  // within one period of the load.
+  // The line is up, so the handler runs at the CLI with the tick's two sources;
+  // the pending move comes with the next tick, within one period of the load.
   const uint64_t loaded_at = cpu_get_cumulative_cycles();
   enter_mouse_cli_loop(slot);
   CHECK(cycles_until_mouse_entries(1, 400) < 400);
@@ -1314,8 +1303,8 @@ TEST_CASE(
 
 namespace {
 
-// The machine tests/fixtures/minimal.aws was written on, with the mouse where
-// its Mockingboard was.
+// The machine minimal.aws was written on, with the mouse where its Mockingboard
+// was.
 auto mouse_minimal_machine() -> TestConfig_t::Description_t {
   TestConfig_t::Description_t description;
   description.slots[0] = "Parallel Printer";
@@ -1326,10 +1315,9 @@ auto mouse_minimal_machine() -> TestConfig_t::Description_t {
 
 }  // namespace
 
-// A trailer-less file hands slot 4 its 104-byte fixed region; a region that
-// is not a mouse frame is refused, logged once, and the card stays at reset.
-// The shipped minimal.aws names the Mockingboard there, so a mouse machine
-// refuses it at the manifest, before any region is read.
+// A trailer-less file hands slot 4 its 104-byte fixed region. The shipped
+// minimal.aws names the Mockingboard there, so a mouse machine refuses it at
+// the manifest, before any region is read.
 TEST_CASE(
     "Snapshot: a fixed-body file whose slot-4 region is not a mouse frame "
     "loads with the card at reset and says so once, and minimal.aws is "
@@ -1418,20 +1406,16 @@ auto load_mouse_fixture(const std::string& name) -> void {
   save_state_set_filename(path.c_str());
   ScopedLogCapture_t log;
   REQUIRE(save_state_load());
-  // The Harddisk's 2,160-byte frame never fit the trailer, so its empty
-  // entry falls back to the 16-byte region, which it refuses; the mouse's
-  // frame is taken.
+  // The Harddisk's 2,160-byte frame never fit the trailer, so its empty entry
+  // falls back to the 16-byte region, which it refuses.
   CHECK(log.count_containing("Slot 7: Harddisk refused") == 1);
   CHECK(log.count_containing("Slot 4:") == 0);
 }
 
-// The fixtures hold the frame the card wrote before the tick existed: mode
-// $0B, position (123, 456), the button held through one READMOUSE, the host
-// window's 1023 x 1023 range where the phase now travels, the status byte
-// $80 with the button in bit 7, and zeros where the rate, the pending
-// sources and the line now travel. The loader takes the width as a phase
-// bounded by one period, drops the status bits with the line, and rebuilds
-// bits 7 and 6 from the button fields.
+// The fixtures hold the frame the card wrote before the tick existed: mode $0B,
+// position (123, 456), the button held through one READMOUSE, the host
+// window's 1023 x 1023 range where the phase now travels, status $80 with the
+// button in bit 7, and zeros where the rate, pending sources and line travel.
 auto mouse_fixture_loads(const std::string& name) -> void {
   TestConfig_t config(mouse_fixture_machine());
   TestFixtures::ScopedCore_t core(config);
@@ -1448,8 +1432,7 @@ auto mouse_fixture_loads(const std::string& name) -> void {
   CHECK(loaded.at(mouse_frame_irq) == 0);
   CHECK(loaded.at(mouse_frame_status) == 0x00);
 
-  // Stepped before the first tick can come: nothing to serve, and a CLI loop
-  // enters no handler.
+  // Before the first tick can come there is nothing to serve.
   CHECK(call_mouse_firmware(4, mouse_entry_serve, 0));
   enter_mouse_cli_loop(4);
   CHECK(cycles_until_mouse_entries(1, 300) >= 300);
@@ -1466,9 +1449,8 @@ auto mouse_fixture_loads(const std::string& name) -> void {
   CHECK(reading.x == 1023);
   CHECK(reading.y == 1023);
 
-  // Reloaded, the first tick comes within the 1,023 cycles the width reads
-  // as, plus the instruction in flight; the frame written then carries the
-  // line where the fixture held zeros.
+  // The first tick comes within the 1,023 cycles the width reads as, plus the
+  // instruction in flight; the frame written then carries the line.
   load_mouse_fixture(name);
   enter_mouse_cli_loop(4);
   const uint64_t first_tick =
