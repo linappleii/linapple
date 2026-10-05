@@ -96,8 +96,8 @@ static auto render_help_overlay() -> void {
   constexpr int box_w = box_inner_w + 2;
 
   // Features not supported in the TUI are excluded from the help overlay.
-  constexpr std::array<HelpFeature_t, 1> excluded = {
-      {HelpFeature_t::numpad_speed}};
+  constexpr std::array<HelpFeature_t, 2> excluded = {
+      {HelpFeature_t::numpad_speed, HelpFeature_t::mouse_capture}};
 
   const bool compact = (g_term_height < 28);
   std::vector<const char*> visible_body_lines;

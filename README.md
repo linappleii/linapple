@@ -114,8 +114,17 @@ cmake --build build -j$(nproc)
 * **Authentic Hardware Emulation:**
   * MOS 6502 and 65C02 CPUs with cycle-accurate timing.
   * 128K memory, 80-column text card, and auxiliary RAM bank-switching.
-  * Apple Mouse Card, Mockingboard / Phasor multi-channel sound, and a
-    ThunderClock-compatible ProDOS clock card.
+  * AppleMouse II interface card running Apple's firmware, installed in any
+    slot with `Slot n = Mouse Interface` under `[Slots]` in `linapple.conf`
+    (the legacy `Mouse in slot 4 = 1` key still puts it in slot 4); the host
+    mouse is captured only while a mouse card or a mouse-emulated joystick
+    is there to use it. In the TUI the terminal's mouse drives the card, in
+    pixels where the terminal reports them and in character cells otherwise;
+    motion is relative, so the Apple pointer moves as far as the host pointer
+    can before the terminal's edge, and you move back and come in again as
+    with a real mouse.
+  * Mockingboard / Phasor multi-channel sound, and a ThunderClock-compatible
+    ProDOS clock card.
   * Super Serial Card (SSC) running Apple's firmware, its RS-232 line cabled
     to a host serial port, a pseudo-terminal (`pty`) for terminal programs
     and `tcpser`, a loopback plug, or a file.
@@ -212,6 +221,7 @@ and may never reach the emulator, so Alt is the dependable choice.
 | **`Pause`**                     | Pause / Resume emulation                                        |
 | **`Scroll Lock`**               | Toggle unthrottled maximum emulation speed                      |
 | **`Numpad +` / `-` / `*`**      | Increase / Decrease / Reset emulation speed                     |
+| **Middle / Shift- / Ctrl-click** | Capture or release the mouse (mouse card or mouse joystick)     |
 | **`F12`**                       | Quit LinApple                                                   |
 
 *(Note: If function keys conflict with your Linux window manager, set

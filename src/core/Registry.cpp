@@ -294,6 +294,7 @@ auto Configuration_t::load_defaults() -> void {
   set_int(cfg_sec_configuration, "Video Emulation", 1);
   set_string(cfg_sec_configuration, "Monochrome Color", "#C0C0C0");
   set_int(cfg_sec_configuration, cfg_mouse_in_slot4, 0);
+  set_int(cfg_sec_configuration, cfg_mouse_capture, 1);
   set_int(cfg_sec_configuration, cfg_printer_append, 1);
   set_int(cfg_sec_configuration, cfg_printer_eight_bit, 0);
   set_string(cfg_sec_configuration, cfg_serial_port, "");

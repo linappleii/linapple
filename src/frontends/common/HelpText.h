@@ -25,6 +25,7 @@ enum class HelpFeature_t {
   pause,
   scroll_lock,
   numpad_speed,
+  mouse_capture,
 };
 
 struct HelpLine_t {
@@ -33,7 +34,7 @@ struct HelpLine_t {
 };
 
 constexpr size_t HELP_HEADER_LINE_COUNT = 3;
-constexpr size_t HELP_BODY_LINE_COUNT = 22;
+constexpr size_t HELP_BODY_LINE_COUNT = 23;
 constexpr size_t HELP_TOTAL_LINE_COUNT =
     HELP_HEADER_LINE_COUNT + HELP_BODY_LINE_COUNT;
 
@@ -74,4 +75,6 @@ constexpr std::array<HelpLine_t, HELP_BODY_LINE_COUNT> HELP_BODY_LINES = {{
      "  ScrollLock - Toggle full speed (warp mode)"},
     {HelpFeature_t::numpad_speed,
      "Numpad +/-/* - Increase/Decrease/Normal speed"},
+    {HelpFeature_t::mouse_capture,
+     "Middle, Shift- or Ctrl-click - Capture or release the mouse"},
 }};
