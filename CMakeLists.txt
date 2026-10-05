@@ -915,7 +915,28 @@ fi
         add_linapple_test(slot0-dispatch "tests/test_main.cpp;tests/test_slot0_dispatch.cpp")
         set_tests_properties(test-slot0-dispatch PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
     endif()
-    add_linapple_test(mouse-exhaustive "tests/test_main.cpp;tests/test_mouse_exhaustive.cpp")
+    if(ENABLE_PERIPHERAL_MOUSE)
+        set_source_files_properties(tests/test_mouse_abi_c.c PROPERTIES COMPILE_OPTIONS "-std=c99;-pedantic")
+        add_linapple_test(mouse-peripheral "tests/test_main.cpp;tests/HeadlessHarness.cpp;tests/test_mouse_peripheral.cpp;tests/test_mouse_abi_c.c")
+        set_tests_properties(test-mouse-peripheral PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
+        # Pinned so the bytes the suite is written against cannot drift.
+        add_test(NAME test-mouse-rom-pinned COMMAND sh -c
+            "echo '3a9d881a8a8d30f55b9719aceebbcf717f829d6f  res/roms/MouseInterface.rom' | sha1sum -c --quiet"
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+        set_tests_properties(test-mouse-rom-pinned PROPERTIES TIMEOUT 5)
+        # Save states written by an earlier build of the card: the loader's
+        # compatibility is proven against these bytes, so they are pinned too.
+        add_test(NAME test-mouse-fixtures-pinned COMMAND sh -c "sha1sum -c --quiet mouse-fixtures.sha1"
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures")
+        set_tests_properties(test-mouse-fixtures-pinned PROPERTIES TIMEOUT 5)
+    endif()
+    # The frontend's mouse logic links into every binary, so its test is built
+    # with or without the card; the cases that need one sit under the macro.
+    add_linapple_test(mouse-frontend "tests/test_main.cpp;tests/HeadlessHarness.cpp;tests/test_mouse_frontend.cpp")
+    set_tests_properties(test-mouse-frontend PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
+    if(ENABLE_PERIPHERAL_MOUSE)
+        target_compile_definitions(test-mouse-frontend PRIVATE ENABLE_PERIPHERAL_MOUSE)
+    endif()
     add_linapple_test(peripheral-slot0 "tests/test_main.cpp;tests/test_peripheral_slot0.cpp")
     add_linapple_test(device-events "tests/test_main.cpp;tests/HeadlessHarness.cpp;tests/test_device_events.cpp")
     set_tests_properties(test-device-events PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
@@ -1055,6 +1076,12 @@ done
     add_test(NAME test-tui-shape-detector COMMAND test-tui-shape-detector)
 
     add_linapple_test(tui-disk-select "tests/test_main.cpp;tests/test_tui_disk_select.cpp;src/frontends/tui/TuiDiskSelect.cpp;src/frontends/tui/TuiVideo.cpp;src/frontends/tui/TuiShapeDetector.cpp")
+    add_linapple_test(tui-input "tests/test_main.cpp;tests/test_tui_input.cpp;src/frontends/tui/TuiInput.cpp;src/frontends/tui/TuiVideo.cpp;src/frontends/tui/TuiDiskSelect.cpp;src/frontends/tui/TuiShapeDetector.cpp;src/frontends/tui/TuiTerminal.cpp")
+    target_include_directories(test-tui-input PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/tui")
+    set_tests_properties(test-tui-input PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
+    if(ENABLE_PERIPHERAL_MOUSE)
+        target_compile_definitions(test-tui-input PRIVATE ENABLE_PERIPHERAL_MOUSE)
+    endif()
 
     set(DISK_TEST_CASES "")
     if(ENABLE_PERIPHERAL_DISK)
@@ -1163,6 +1190,9 @@ fi
         add_linapple_test(harddisk-exhaustive tests/test_harddisk_exhaustive.cpp)
     endif()
     add_linapple_test(snapshot tests/test_snapshot.cpp)
+    if(ENABLE_PERIPHERAL_MOUSE)
+        target_compile_definitions(test-snapshot PRIVATE ENABLE_PERIPHERAL_MOUSE)
+    endif()
     # Pinned fixture for regression testing.
     add_test(NAME test-snapshot-fixture-pinned COMMAND sh -c
         "echo '508d85b3144ab7a576cb7a01be705c21d59d68c2  tests/fixtures/minimal.aws' | sha1sum -c --quiet"
@@ -1198,37 +1228,46 @@ fi
     if(FRONTEND_LOWER STREQUAL "sdl1" OR FRONTEND_LOWER STREQUAL "all")
         set(TEST_SOURCES_FE_SDL1 ${SOURCES_FE_SDL1})
         list(REMOVE_ITEM TEST_SOURCES_FE_SDL1 src/frontends/sdl1/Main.cpp)
-        add_executable(test-frontend-sdl1 tests/test_main.cpp tests/test_frontend_sdl1.cpp ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} ${TEST_SOURCES_FE_SDL1})
+        add_executable(test-frontend-sdl1 tests/test_main.cpp tests/test_frontend_sdl1.cpp tests/test_fixtures_core.cpp ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} ${TEST_SOURCES_FE_SDL1})
         add_dependencies(test-frontend-sdl1 generate_xpms generate_embedded_roms)
         target_include_directories(test-frontend-sdl1 PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} ${SDL_INCLUDE_DIR} tests src "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/sdl1")
         target_compile_definitions(test-frontend-sdl1 PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
         target_link_libraries(test-frontend-sdl1 PRIVATE ${SDL_LIBRARY} ${SDL_IMAGE_LIBRARIES} ${FTP_LIBRARIES} ${COMMON_LIBS} ${MEDIA_TARGETS})
         add_test(NAME test-frontend-sdl1 COMMAND test-frontend-sdl1)
         linapple_test_home(test-frontend-sdl1 frontend-sdl1)
+        if(ENABLE_PERIPHERAL_MOUSE)
+            target_compile_definitions(test-frontend-sdl1 PRIVATE ENABLE_PERIPHERAL_MOUSE)
+        endif()
     endif()
 
     if(FRONTEND_LOWER STREQUAL "sdl2" OR FRONTEND_LOWER STREQUAL "all")
         set(TEST_SOURCES_FE_SDL2 ${SOURCES_FE_SDL2})
         list(REMOVE_ITEM TEST_SOURCES_FE_SDL2 src/frontends/sdl2/Main.cpp)
-        add_executable(test-frontend-sdl2 tests/test_main.cpp tests/test_frontend_sdl2.cpp ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} ${TEST_SOURCES_FE_SDL2})
+        add_executable(test-frontend-sdl2 tests/test_main.cpp tests/test_frontend_sdl2.cpp tests/test_fixtures_core.cpp ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} ${TEST_SOURCES_FE_SDL2})
         add_dependencies(test-frontend-sdl2 generate_xpms generate_embedded_roms)
         target_include_directories(test-frontend-sdl2 PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} tests src "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/sdl2")
         target_compile_definitions(test-frontend-sdl2 PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
         target_link_libraries(test-frontend-sdl2 PRIVATE SDL2::SDL2 ${FTP_LIBRARIES} ${COMMON_LIBS} ${MEDIA_TARGETS})
         add_test(NAME test-frontend-sdl2 COMMAND test-frontend-sdl2)
         linapple_test_home(test-frontend-sdl2 frontend-sdl2)
+        if(ENABLE_PERIPHERAL_MOUSE)
+            target_compile_definitions(test-frontend-sdl2 PRIVATE ENABLE_PERIPHERAL_MOUSE)
+        endif()
     endif()
 
     if(FRONTEND_LOWER STREQUAL "sdl3" OR FRONTEND_LOWER STREQUAL "all")
         set(TEST_SOURCES_FE_SDL3 ${SOURCES_FE_SDL3})
         list(REMOVE_ITEM TEST_SOURCES_FE_SDL3 src/frontends/sdl3/Main.cpp)
-        add_executable(test-frontend-sdl3 tests/test_main.cpp tests/test_frontend_sdl3.cpp ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} ${TEST_SOURCES_FE_SDL3})
+        add_executable(test-frontend-sdl3 tests/test_main.cpp tests/test_frontend_sdl3.cpp tests/test_fixtures_core.cpp ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} ${TEST_SOURCES_FE_SDL3})
         add_dependencies(test-frontend-sdl3 generate_xpms generate_embedded_roms)
         target_include_directories(test-frontend-sdl3 PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} tests src "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/sdl3")
         target_compile_definitions(test-frontend-sdl3 PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
         target_link_libraries(test-frontend-sdl3 PRIVATE SDL3::SDL3 SDL3_image::SDL3_image ${FTP_LIBRARIES} ${COMMON_LIBS} ${MEDIA_TARGETS})
         add_test(NAME test-frontend-sdl3 COMMAND test-frontend-sdl3)
         linapple_test_home(test-frontend-sdl3 frontend-sdl3)
+        if(ENABLE_PERIPHERAL_MOUSE)
+            target_compile_definitions(test-frontend-sdl3 PRIVATE ENABLE_PERIPHERAL_MOUSE)
+        endif()
     endif()
 endif()
 
