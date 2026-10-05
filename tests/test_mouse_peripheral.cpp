@@ -573,7 +573,8 @@ enum FirmwareEntry_t {
   entry_home_mouse = 6,
   entry_init_mouse = 7,
   entry_peek_poke = 8,
-  entry_time_data = 10
+  entry_time_data = 10,
+  entry_data_byte = 11
 };
 
 // The table at $Cn12 holds the low bytes of the entries, so every call goes
@@ -778,4 +779,306 @@ TEST_CASE(
     const std::vector<uint64_t> entries = session.run_metered_frames(2);
     CHECK(entries.empty());
   }
+}
+
+namespace {
+
+struct Reading_t {
+  int16_t x;
+  int16_t y;
+  uint8_t status;
+};
+
+auto word_at(uint16_t low, uint16_t high) -> int16_t {
+  return static_cast<int16_t>(static_cast<uint16_t>(
+      mem[low] | (static_cast<uint16_t>(mem[high]) << 8)));
+}
+
+// READMOUSE through the table, then the slot's holes (manual p. 44).
+auto read_mouse(int slot) -> Reading_t {
+  REQUIRE_FALSE(call_firmware(slot, entry_read_mouse, 0));
+  const auto n = static_cast<uint16_t>(slot);
+  Reading_t reading{};
+  reading.x = word_at(0x478 + n, 0x578 + n);
+  reading.y = word_at(0x4F8 + n, 0x5F8 + n);
+  reading.status = mem[0x778 + n];
+  return reading;
+}
+
+// CLAMPMOUSE and the peek take their bytes from the slot-0 holes (manual
+// p. 48; Tech Note Mouse #7).
+auto poke_slot0_holes(uint8_t at_478, uint8_t at_4f8, uint8_t at_578,
+                      uint8_t at_5f8) -> void {
+  const std::array<uint8_t, 1> a = {at_478};
+  const std::array<uint8_t, 1> b = {at_4f8};
+  const std::array<uint8_t, 1> c = {at_578};
+  const std::array<uint8_t, 1> d = {at_5f8};
+  TestFixtures::ScopedCore_t::poke(0x478, a);
+  TestFixtures::ScopedCore_t::poke(0x4F8, b);
+  TestFixtures::ScopedCore_t::poke(0x578, c);
+  TestFixtures::ScopedCore_t::poke(0x5F8, d);
+}
+
+auto poke_slot_holes(int slot, int16_t x, int16_t y) -> void {
+  const auto n = static_cast<uint16_t>(slot);
+  const std::array<uint8_t, 1> xl = {static_cast<uint8_t>(x & 0xFF)};
+  const std::array<uint8_t, 1> xh = {static_cast<uint8_t>(x >> 8)};
+  const std::array<uint8_t, 1> yl = {static_cast<uint8_t>(y & 0xFF)};
+  const std::array<uint8_t, 1> yh = {static_cast<uint8_t>(y >> 8)};
+  TestFixtures::ScopedCore_t::poke(0x478 + n, xl);
+  TestFixtures::ScopedCore_t::poke(0x578 + n, xh);
+  TestFixtures::ScopedCore_t::poke(0x4F8 + n, yl);
+  TestFixtures::ScopedCore_t::poke(0x5F8 + n, yh);
+}
+
+auto move_mouse(int slot, int32_t dx, int32_t dy) -> void {
+  MouseMovePayload_t payload{dx, dy};
+  REQUIRE(peripheral_command(slot, mouse_cmd_move, &payload, sizeof(payload)) ==
+          peripheral_ok);
+  peripheral_manager_think(0);
+}
+
+// The firmware's own write handshake (bank 3 $C40E-$C43F), driven from a
+// program so a byte reaches the 6805 with no firmware entry in between.
+auto send_raw_byte(MouseMachine_t& machine, uint8_t byte) -> void {
+  const auto base = static_cast<uint16_t>(0xC080 + (machine.slot << 4));
+  std::vector<uint8_t> program;
+  auto emit = [&program](uint8_t opcode, uint16_t operand) {
+    program.push_back(opcode);
+    program.push_back(static_cast<uint8_t>(operand & 0xFF));
+    program.push_back(static_cast<uint8_t>(operand >> 8));
+  };
+  auto emit_imm = [&program](uint8_t opcode, uint8_t operand) {
+    program.push_back(opcode);
+    program.push_back(operand);
+  };
+  const uint16_t port_a = base;
+  const uint16_t control_a = static_cast<uint16_t>(base + 1);
+  const uint16_t port_b = static_cast<uint16_t>(base + 2);
+  const uint16_t control_b = static_cast<uint16_t>(base + 3);
+  emit(0xAD, control_b);
+  emit_imm(0x29, 0xFB);
+  emit(0x8D, control_b);
+  emit_imm(0xA9, 0x3E);
+  emit(0x8D, port_b);
+  emit(0xAD, control_b);
+  emit_imm(0x09, 0x04);
+  emit(0x8D, control_b);
+  emit(0xAD, control_a);
+  emit_imm(0x29, 0xFB);
+  emit(0x8D, control_a);
+  emit_imm(0xA9, 0xFF);
+  emit(0x8D, port_a);
+  emit(0xAD, control_a);
+  emit_imm(0x09, 0x04);
+  emit(0x8D, control_a);
+  emit(0xAD, port_b);
+  emit_imm(0x30, 0xFB);
+  emit_imm(0xA9, byte);
+  emit(0x8D, port_a);
+  emit(0xAD, port_b);
+  emit_imm(0x09, 0x20);
+  emit(0x8D, port_b);
+  emit(0xAD, port_b);
+  emit_imm(0x10, 0xFB);
+  emit(0xAD, port_b);
+  emit_imm(0x29, 0xDF);
+  emit(0x8D, port_b);
+  const auto spin = static_cast<uint16_t>(program_start + program.size());
+  emit(0x4C, spin);
+  TestFixtures::ScopedCore_t::poke(program_start, program.data(),
+                                   program.size());
+  machine.run_until(program_start, spin);
+}
+
+// LDA abs / STA zp for each address, into $10 upwards.
+auto read_addresses(MouseMachine_t& machine,
+                    const std::vector<uint16_t>& addresses)
+    -> std::vector<uint8_t> {
+  std::vector<uint8_t> program;
+  uint8_t zero_page = 0x10;
+  for (uint16_t address : addresses) {
+    program.push_back(0xAD);
+    program.push_back(static_cast<uint8_t>(address & 0xFF));
+    program.push_back(static_cast<uint8_t>(address >> 8));
+    program.push_back(0x85);
+    program.push_back(zero_page++);
+  }
+  const auto spin = static_cast<uint16_t>(program_start + program.size());
+  program.push_back(0x4C);
+  program.push_back(static_cast<uint8_t>(spin & 0xFF));
+  program.push_back(static_cast<uint8_t>(spin >> 8));
+  TestFixtures::ScopedCore_t::poke(program_start, program.data(),
+                                   program.size());
+  machine.run_until(program_start, spin);
+  std::vector<uint8_t> values;
+  zero_page = 0x10;
+  for (size_t i = 0; i < addresses.size(); ++i) {
+    values.push_back(mem[zero_page++]);
+  }
+  return values;
+}
+
+}  // namespace
+
+TEST_CASE(
+    "Mouse card: CLAMPMOUSE takes its bytes in the firmware's order, as signed "
+    "values, moves nothing, and HOMEMOUSE goes to the lower boundaries") {
+  MouseMachine_t machine;
+  REQUIRE_FALSE(call_firmware(machine.slot, entry_set_mouse, 0x01));
+
+  poke_slot0_holes(0x64, 0xC8, 0x00, 0x00);
+  REQUIRE_FALSE(call_firmware(machine.slot, entry_clamp_mouse, 0));
+  Reading_t reading = read_mouse(machine.slot);
+  CHECK(reading.x == 0);
+  CHECK(reading.y == 0);
+  move_mouse(machine.slot, 2000, 0);
+  CHECK(read_mouse(machine.slot).x == 200);
+  move_mouse(machine.slot, -2000, 0);
+  CHECK(read_mouse(machine.slot).x == 100);
+
+  poke_slot0_holes(0x2C, 0x90, 0x01, 0x01);
+  REQUIRE_FALSE(call_firmware(machine.slot, entry_clamp_mouse, 1));
+  move_mouse(machine.slot, 0, 2000);
+  CHECK(read_mouse(machine.slot).y == 400);
+  move_mouse(machine.slot, 0, -2000);
+  CHECK(read_mouse(machine.slot).y == 300);
+
+  move_mouse(machine.slot, 50, 50);
+  reading = read_mouse(machine.slot);
+  CHECK(reading.x == 150);
+  CHECK(reading.y == 350);
+  REQUIRE_FALSE(call_firmware(machine.slot, entry_home_mouse, 0));
+  reading = read_mouse(machine.slot);
+  CHECK(reading.x == 100);
+  CHECK(reading.y == 300);
+
+  poke_slot0_holes(0x00, 0xFF, 0xFF, 0x00);
+  REQUIRE_FALSE(call_firmware(machine.slot, entry_clamp_mouse, 0));
+  move_mouse(machine.slot, -1000, 0);
+  reading = read_mouse(machine.slot);
+  CHECK(reading.x == -256);
+  CHECK(mem[0x47C] == 0x00);
+  CHECK(mem[0x57C] == 0xFF);
+  move_mouse(machine.slot, 156, 0);
+  CHECK(read_mouse(machine.slot).x == -100);
+}
+
+// GetClamp (Tech Note Mouse #7) peeks $4E down to $47 and gets MaxYL, MaxXL,
+// MaxYH, MaxXH, MinYL, MinXL, MinYH, MinXH; the $Cn1D entry's data byte must
+// not be taken for a command.
+TEST_CASE(
+    "Mouse card: the $F0 peeks answer GetClamp's eight bytes and the $Cn1D "
+    "entry's data byte keeps the stream in step") {
+  MouseMachine_t machine;
+  poke_slot0_holes(0x64, 0xC8, 0x00, 0x00);
+  REQUIRE_FALSE(call_firmware(machine.slot, entry_clamp_mouse, 0));
+  poke_slot0_holes(0x2C, 0x90, 0x01, 0x01);
+  REQUIRE_FALSE(call_firmware(machine.slot, entry_clamp_mouse, 1));
+
+  const std::array<uint8_t, 8> expected = {0x90, 0xC8, 0x01, 0x00,
+                                           0x2C, 0x64, 0x01, 0x00};
+  for (size_t i = 0; i < expected.size(); ++i) {
+    poke_slot0_holes(static_cast<uint8_t>(0x4E - i), 0x00, 0x00, 0x00);
+    REQUIRE_FALSE(call_firmware(machine.slot, entry_peek_poke, 0));
+    CHECK(mem[0x578] == expected.at(i));
+  }
+
+  REQUIRE_FALSE(call_firmware(machine.slot, entry_home_mouse, 0));
+  REQUIRE_FALSE(call_firmware(machine.slot, entry_data_byte, 0x40));
+  REQUIRE_FALSE(call_firmware(machine.slot, entry_set_mouse, 0x01));
+  move_mouse(machine.slot, 3, 4);
+  const Reading_t reading = read_mouse(machine.slot);
+  CHECK(reading.x == 103);
+  CHECK(reading.y == 304);
+}
+
+// CHR$(1) after PR#n sends $80, "places the mouse in BASIC mode and sets the
+// mouse position numbers to zero" (manual p. 35); CHR$(0) sends $00 and turns
+// it off, after which motion is ignored (Tech Note Mouse #3). SETMOUSE
+// changes no position (p. 47), so it is the stepped observer of the off leg.
+TEST_CASE(
+    "Mouse card: $80 turns tracking on at (0, 0) and $00 turns it off, "
+    "leaving the position") {
+  MouseMachine_t machine;
+  REQUIRE_FALSE(call_firmware(machine.slot, entry_set_mouse, 0x01));
+  poke_slot_holes(machine.slot, 300, 100);
+  REQUIRE_FALSE(call_firmware(machine.slot, entry_pos_mouse, 0));
+  Reading_t reading = read_mouse(machine.slot);
+  CHECK(reading.x == 300);
+  CHECK(reading.y == 100);
+
+  send_raw_byte(machine, 0x80);
+  move_mouse(machine.slot, 37, 11);
+  reading = read_mouse(machine.slot);
+  CHECK(reading.x == 37);
+  CHECK(reading.y == 11);
+  CHECK(reading.status == 0x20);
+
+  send_raw_byte(machine, 0x00);
+  move_mouse(machine.slot, 5, 5);
+  REQUIRE_FALSE(call_firmware(machine.slot, entry_set_mouse, 0x01));
+  reading = read_mouse(machine.slot);
+  CHECK(reading.x == 37);
+  CHECK(reading.y == 11);
+  CHECK(reading.status == 0x00);
+}
+
+// RES' reaches the PIA and the 6805 (schematic P1-31): the PIA's registers
+// read zero (MC6821 "Initialization"), the pull-downs select bank 0.
+TEST_CASE(
+    "Mouse card: reset returns the PIA to zero and the slot page to bank 0") {
+  MouseMachine_t machine;
+  const auto base = static_cast<uint16_t>(0xC080 + (machine.slot << 4));
+  const auto page = static_cast<uint16_t>(0xC000 + (machine.slot << 8));
+
+  // The firmware's own bank switch to bank 3: DDRB $3E, then ORB $06.
+  std::vector<uint8_t> program = {0xAD,
+                                  static_cast<uint8_t>((base + 3) & 0xFF),
+                                  static_cast<uint8_t>((base + 3) >> 8),
+                                  0x29,
+                                  0xFB,
+                                  0x8D,
+                                  static_cast<uint8_t>((base + 3) & 0xFF),
+                                  static_cast<uint8_t>((base + 3) >> 8),
+                                  0xA9,
+                                  0x3E,
+                                  0x8D,
+                                  static_cast<uint8_t>((base + 2) & 0xFF),
+                                  static_cast<uint8_t>((base + 2) >> 8),
+                                  0xAD,
+                                  static_cast<uint8_t>((base + 3) & 0xFF),
+                                  static_cast<uint8_t>((base + 3) >> 8),
+                                  0x09,
+                                  0x04,
+                                  0x8D,
+                                  static_cast<uint8_t>((base + 3) & 0xFF),
+                                  static_cast<uint8_t>((base + 3) >> 8),
+                                  0xA9,
+                                  0x06,
+                                  0x8D,
+                                  static_cast<uint8_t>((base + 2) & 0xFF),
+                                  static_cast<uint8_t>((base + 2) >> 8)};
+  const auto spin = static_cast<uint16_t>(program_start + program.size());
+  program.push_back(0x4C);
+  program.push_back(static_cast<uint8_t>(spin & 0xFF));
+  program.push_back(static_cast<uint8_t>(spin >> 8));
+  TestFixtures::ScopedCore_t::poke(program_start, program.data(),
+                                   program.size());
+  machine.run_until(program_start, spin);
+
+  std::vector<uint8_t> values =
+      read_addresses(machine, {page, static_cast<uint16_t>(base + 2)});
+  CHECK(values.at(0) == mouse_rom.at(3 * mouse_rom_bank_size));
+  CHECK((values.at(1) & 0x0E) == 0x06);
+
+  linapple_reset_hard();
+  values = read_addresses(machine, {page, base, static_cast<uint16_t>(base + 1),
+                                    static_cast<uint16_t>(base + 2),
+                                    static_cast<uint16_t>(base + 3)});
+  CHECK(values.at(0) == 0x2C);
+  CHECK(values.at(1) == 0x00);
+  CHECK(values.at(2) == 0x00);
+  CHECK(values.at(3) == 0x00);
+  CHECK(values.at(4) == 0x00);
 }
