@@ -2,6 +2,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Types.h"
@@ -190,3 +191,95 @@ TEST_CASE(
   }
 }
 #endif
+
+namespace {
+
+auto decode(const char* text, MouseSgrEvent_t* out) -> bool {
+  return mouse_frontend_sgr_decode(reinterpret_cast<const uint8_t*>(text),
+                                   strlen(text), out);
+}
+
+}  // namespace
+
+TEST_CASE(
+    "Mouse frontend: the SGR decoder tells a press, a release, a motion and "
+    "a drag apart and refuses a short report") {
+  MouseSgrEvent_t event{};
+
+  REQUIRE(decode("\x1b[<0;10;5M", &event));
+  CHECK(event.button == 0);
+  CHECK(event.pressed);
+  CHECK_FALSE(event.released);
+  CHECK_FALSE(event.motion);
+  CHECK_FALSE(event.wheel);
+  CHECK(event.x == 10);
+  CHECK(event.y == 5);
+
+  REQUIRE(decode("\x1b[<0;10;5m", &event));
+  CHECK(event.button == 0);
+  CHECK_FALSE(event.pressed);
+  CHECK(event.released);
+  CHECK_FALSE(event.motion);
+
+  REQUIRE(decode("\x1b[<35;12;5M", &event));
+  CHECK(event.button == 3);
+  CHECK_FALSE(event.pressed);
+  CHECK(event.motion);
+  CHECK(event.x == 12);
+  CHECK(event.y == 5);
+
+  // Under any-event tracking every report of a drag carries the held button
+  // with the motion bit; a press here would re-press the button every cell.
+  REQUIRE(decode("\x1b[<32;12;5M", &event));
+  CHECK(event.button == 0);
+  CHECK(event.motion);
+  CHECK_FALSE(event.pressed);
+  CHECK_FALSE(event.released);
+
+  REQUIRE(decode("\x1b[<64;12;5M", &event));
+  CHECK(event.wheel);
+  CHECK_FALSE(event.pressed);
+
+  CHECK_FALSE(decode("\x1b[<0;10M", &event));
+  CHECK_FALSE(decode("\x1b[<0;10;5;7M", &event));
+  CHECK_FALSE(decode("\x1b[0;10;5M", &event));
+  CHECK_FALSE(decode("\x1b[<0;10;5", &event));
+  CHECK_FALSE(decode("\x1b[<0;;5M", &event));
+  CHECK_FALSE(decode("\x1b[<0;1234567;5M", &event));
+}
+
+TEST_CASE(
+    "Mouse frontend: the DECRPM and cell-size decoders read xterm's replies "
+    "and nothing else") {
+  int mode = 0;
+  int setting = 0;
+  const char* reset = "\x1b[?1016;2$y";
+  REQUIRE(mouse_frontend_decode_mode_report(
+      reinterpret_cast<const uint8_t*>(reset), strlen(reset), &mode, &setting));
+  CHECK(mode == 1016);
+  CHECK(setting == 2);
+
+  const char* no_marker = "\x1b[1016;2$y";
+  CHECK_FALSE(mouse_frontend_decode_mode_report(
+      reinterpret_cast<const uint8_t*>(no_marker), strlen(no_marker), &mode,
+      &setting));
+  const char* sgr_report = "\x1b[<0;10;5M";
+  CHECK_FALSE(mouse_frontend_decode_mode_report(
+      reinterpret_cast<const uint8_t*>(sgr_report), strlen(sgr_report), &mode,
+      &setting));
+
+  int width = 0;
+  int height = 0;
+  const char* cell = "\x1b[6;16;8t";
+  REQUIRE(mouse_frontend_decode_cell_size_report(
+      reinterpret_cast<const uint8_t*>(cell), strlen(cell), &width, &height));
+  CHECK(width == 8);
+  CHECK(height == 16);
+
+  const char* window_size = "\x1b[8;24;80t";
+  CHECK_FALSE(mouse_frontend_decode_cell_size_report(
+      reinterpret_cast<const uint8_t*>(window_size), strlen(window_size),
+      &width, &height));
+  CHECK_FALSE(mouse_frontend_decode_cell_size_report(
+      reinterpret_cast<const uint8_t*>(reset), strlen(reset), &width, &height));
+}

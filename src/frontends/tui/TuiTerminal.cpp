@@ -20,8 +20,12 @@ static bool s_atexit_registered = false;
 
 static constexpr const char* k_enter_alt_screen_hide_cursor =
     "\x1b[?1049h\x1b[?25l";
-static constexpr const char* k_exit_alt_screen_show_cursor =
-    "\x1b[?25h\x1b[?1049l";
+// Mouse tracking is turned off whether or not it was turned on: the disable
+// is harmless without the enable, and a crash or an exit inside the
+// emulation would otherwise leave the shell typing a report at every pointer
+// movement until `reset`.
+static constexpr char k_restore_terminal[] =
+    "\x1b[?1016l\x1b[?1006l\x1b[?1003l\x1b[?25h\x1b[?1049l";
 
 static auto signal_handler(int sig) -> void {
   switch (sig) {
@@ -43,8 +47,8 @@ static auto restore_terminal_signal_safe() -> void {
   if (!g_terminal_initialized) {
     return;
   }
-  static const char seq[] = "\x1b[?25h\x1b[?1049l";
-  ssize_t n = write(STDOUT_FILENO, seq, sizeof(seq) - 1);
+  ssize_t n =
+      write(STDOUT_FILENO, k_restore_terminal, sizeof(k_restore_terminal) - 1);
   (void)n;
   tcsetattr(STDIN_FILENO, TCSAFLUSH, &g_orig_termios);
   g_terminal_initialized = 0;
@@ -128,7 +132,7 @@ auto tui_terminal_shutdown() -> void {
     return;
   }
 
-  fputs(k_exit_alt_screen_show_cursor, stdout);
+  fputs(k_restore_terminal, stdout);
   fflush(stdout);
 
   tcsetattr(STDIN_FILENO, TCSAFLUSH, &g_orig_termios);

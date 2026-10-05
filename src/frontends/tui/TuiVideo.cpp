@@ -27,6 +27,7 @@
 #include "core/Util_Path.h"
 #include "frontends/common/FileBrowser.h"
 #include "frontends/common/HelpText.h"
+#include "frontends/common/MouseFrontend.h"
 #include "frontends/common/VideoSurface.h"
 
 namespace {
@@ -57,7 +58,22 @@ static TuiRenderMode_t g_render_mode = TUI_RENDER_SMART;
 static bool g_show_help = false;
 static bool g_fullscreen = false;
 
+static MousePictureRect_t g_picture_box{};
+static bool g_picture_box_drawn = false;
+
+static auto record_picture_box(int x, int y, int w, int h) -> void {
+  g_picture_box = {x, y, w, h};
+  g_picture_box_drawn = true;
+}
+
 }  // namespace
+
+auto tui_video_picture_box() -> MousePictureRect_t {
+  if (g_picture_box_drawn) {
+    return g_picture_box;
+  }
+  return {0, 0, g_term_width, g_term_height};
+}
 
 auto tui_video_set_render_mode(TuiRenderMode_t mode) -> void {
   g_render_mode = mode;
@@ -601,12 +617,14 @@ auto tui_video_shutdown() -> void {
   g_frame_count = 0;
   g_show_help = false;
   g_fullscreen = false;
+  g_picture_box_drawn = false;
   system_state.fullscreen = false;
   printf("\x1b[?7h");
   fflush(stdout);
 }
 
 auto tui_video_on_resize() -> void {
+  g_picture_box_drawn = false;
   struct winsize w{};
   if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == 0) {
     g_term_width = w.ws_col;
@@ -881,6 +899,7 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
     int off_y = (avail_rows - display_h) / 2;
     if (off_x < 0) off_x = 0;
     if (off_y < 0) off_y = 0;
+    record_picture_box(off_x, off_y, display_w, display_h);
 
     for (int r = 0; r < display_h; ++r) {
       int ty = off_y + r;
@@ -914,6 +933,9 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
 
     int text_off_x = (g_term_width - a2_w_cols) / 2;
     if (text_off_x < 0) text_off_x = 0;
+    // The four text rows sit under the graphics box; the mouse scales
+    // against the box's width and the whole screen's height.
+    record_picture_box(gfx_off_x, off_y, gfx_w, total_display_h);
 
     int gfx_sample_height = height * 20 / 24;
     for (int y = 0; y < gfx_h; ++y) {
@@ -954,6 +976,7 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
     if (off_y < 0) off_y = 0;
     int gfx_off_x = (g_term_width - gfx_w) / 2;
     if (gfx_off_x < 0) gfx_off_x = 0;
+    record_picture_box(gfx_off_x, off_y, gfx_w, gfx_h);
 
     for (int y = 0; y < gfx_h; ++y) {
       int ty = off_y + y;

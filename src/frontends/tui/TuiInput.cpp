@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "TuiInput.h"
 
+#include <asm-generic/ioctls.h>
 #include <fcntl.h>
 #include <linux/joystick.h>
+#include <sys/ioctl.h>
 #include <sys/poll.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -30,6 +32,7 @@
 #include "core/Registry.h"
 #include "frontends/common/AppController.h"
 #include "frontends/common/AudioMixer.h"
+#include "frontends/common/MouseFrontend.h"
 #include "frontends/common/SaveStateManager.h"
 
 namespace {
@@ -170,6 +173,183 @@ static auto toggle_pause() -> void {
 }
 
 static auto toggle_scroll_lock() -> void { linapple_toggle_turbo(); }
+
+// The terminal's mouse is asked for only while a mouse card can take it.
+// Its reports carry absolute positions, so successive ones are differenced
+// into the card's counts: in pixels once the terminal has said it reports
+// them and a cell size is known to scale them by, in cells otherwise, so the
+// unit requested and the unit read never disagree.
+static bool g_tracking = false;
+static bool g_pixel_reports = false;
+static int g_pixel_mode_setting = -1;
+static int g_cell_width_px = 0;
+static int g_cell_height_px = 0;
+static bool g_have_last_report = false;
+static int g_last_report_x = 0;
+static int g_last_report_y = 0;
+static bool g_left_held = false;
+
+static constexpr int k_sgr_left_button = 0;
+static constexpr int k_pixel_report_mode = 1016;
+static constexpr int k_mode_set = 1;
+static constexpr int k_mode_reset = 2;
+static constexpr int k_mode_set_permanently = 3;
+
+static auto write_terminal(const char* seq) -> void {
+  fputs(seq, stdout);
+  fflush(stdout);
+}
+
+// The TUI has no joystick-from-mouse path, so the card alone is a consumer.
+static auto tracking_wanted() -> bool {
+  return mouse_frontend_card_present() && mouse_frontend_capture_enabled();
+}
+
+static auto cell_size_known() -> bool {
+  return g_cell_width_px > 0 && g_cell_height_px > 0;
+}
+
+// xterm fills ws_xpixel and ws_ypixel; many terminals leave them zero.
+static auto read_cell_size_from_window() -> void {
+  struct winsize w{};
+  if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) != 0 || w.ws_col == 0 ||
+      w.ws_row == 0 || w.ws_xpixel == 0 || w.ws_ypixel == 0) {
+    return;
+  }
+  g_cell_width_px = w.ws_xpixel / w.ws_col;
+  g_cell_height_px = w.ws_ypixel / w.ws_row;
+}
+
+// A terminal that honoured an unconditional pixel request but answered
+// neither query would deliver pixel reports a cell scale cannot use, so
+// pixels are taken only once the terminal has said it knows the mode and a
+// cell size is in hand.
+static auto decide_report_unit() -> void {
+  if (g_pixel_reports) {
+    return;
+  }
+  if (cell_size_known()) {
+    if (g_pixel_mode_setting == k_mode_reset) {
+      write_terminal("\x1b[?1016h");
+      g_pixel_reports = true;
+      g_have_last_report = false;
+    } else if (g_pixel_mode_setting == k_mode_set ||
+               g_pixel_mode_setting == k_mode_set_permanently) {
+      g_pixel_reports = true;
+      g_have_last_report = false;
+    }
+    return;
+  }
+  if (g_pixel_mode_setting == k_mode_set ||
+      g_pixel_mode_setting == k_mode_set_permanently) {
+    // Another program left pixel reporting on.
+    write_terminal("\x1b[?1016l");
+    g_pixel_mode_setting = k_mode_reset;
+  }
+}
+
+// Query before setting: the DECRQM and XTWINOPS replies arrive through the
+// input queue like any other sequence.
+static auto start_tracking() -> void {
+  g_tracking = true;
+  g_pixel_reports = false;
+  g_pixel_mode_setting = -1;
+  g_cell_width_px = 0;
+  g_cell_height_px = 0;
+  g_have_last_report = false;
+  g_left_held = false;
+  read_cell_size_from_window();
+  write_terminal("\x1b[?1003h\x1b[?1006h\x1b[?1016$p\x1b[16t");
+}
+
+static auto stop_tracking() -> void {
+  if (!g_tracking) {
+    return;
+  }
+  if (g_left_held) {
+    g_left_held = false;
+    mouse_frontend_button(false);
+  }
+  write_terminal("\x1b[?1016l\x1b[?1006l\x1b[?1003l");
+  g_tracking = false;
+  g_pixel_reports = false;
+  g_have_last_report = false;
+}
+
+static auto follow_machine() -> void {
+  if (tracking_wanted() == g_tracking) {
+    return;
+  }
+  if (g_tracking) {
+    stop_tracking();
+  } else {
+    start_tracking();
+  }
+}
+
+// A load can move the mouse card or take it away.
+static auto load_state() -> void {
+  save_state_load();
+  follow_machine();
+}
+
+static auto picture_in_report_units() -> MousePictureRect_t {
+  MousePictureRect_t box = tui_video_picture_box();
+  if (g_pixel_reports) {
+    box.x *= g_cell_width_px;
+    box.y *= g_cell_height_px;
+    box.w *= g_cell_width_px;
+    box.h *= g_cell_height_px;
+  }
+  return box;
+}
+
+// A press or a release re-anchors the difference without moving the Apple
+// pointer: under any-event tracking the pointer's travel to that spot has
+// already arrived as motion reports.
+static auto handle_mouse_report(const MouseSgrEvent_t& event) -> void {
+  if (event.motion) {
+    if (g_have_last_report) {
+      const MousePictureRect_t picture = picture_in_report_units();
+      mouse_frontend_motion(event.x - g_last_report_x,
+                            event.y - g_last_report_y, picture.w, picture.h);
+    }
+  } else if (event.button == k_sgr_left_button) {
+    if (event.pressed && !g_left_held) {
+      g_left_held = true;
+      mouse_frontend_button(true);
+    } else if (event.released && g_left_held) {
+      g_left_held = false;
+      mouse_frontend_button(false);
+    }
+  }
+  g_have_last_report = true;
+  g_last_report_x = event.x;
+  g_last_report_y = event.y;
+}
+
+static auto handle_terminal_reply(const uint8_t* seq, size_t len) -> void {
+  int mode = 0;
+  int setting = 0;
+  if (mouse_frontend_decode_mode_report(seq, len, &mode, &setting)) {
+    if (mode == k_pixel_report_mode) {
+      g_pixel_mode_setting = setting;
+      decide_report_unit();
+    }
+    return;
+  }
+  int width = 0;
+  int height = 0;
+  if (mouse_frontend_decode_cell_size_report(seq, len, &width, &height) &&
+      width > 0 && height > 0) {
+    if (width != g_cell_width_px || height != g_cell_height_px) {
+      g_have_last_report = false;
+    }
+    g_cell_width_px = width;
+    g_cell_height_px = height;
+    decide_report_unit();
+  }
+}
 
 static auto process_sequences() -> void {
   size_t i = 0;
@@ -313,7 +493,7 @@ static auto process_sequences() -> void {
             } else if (g_input_queue.at(i + 3) == 'I') {  // Linux Console F9
               cycle_video_mode();
             } else if (g_input_queue.at(i + 3) == 'J') {  // Linux Console F10
-              save_state_load();
+              load_state();
             } else if (g_input_queue.at(i + 3) == 'K') {  // Linux Console F11
               save_state_save();
             } else if (g_input_queue.at(i + 3) == 'L') {  // Linux Console F12
@@ -340,6 +520,13 @@ static auto process_sequences() -> void {
           uint8_t cmd = g_input_queue.at(end);
 
           if (g_input_queue.at(i + 2) == '<') {
+            MouseSgrEvent_t event{};
+            if (mouse_frontend_sgr_decode(&g_input_queue.at(i), end - i + 1,
+                                          &event)) {
+              handle_mouse_report(event);
+            }
+          } else if (cmd == 'y' || cmd == 't') {
+            handle_terminal_reply(&g_input_queue.at(i), end - i + 1);
           } else if (cmd == 'P') {  // Pause key (\x1b[P); F1 is \x1bOP (SS3)
             toggle_pause();
           } else if (cmd == 'Q') {  // xterm F2 / Shift+F2 / Ctrl+F2
@@ -489,7 +676,7 @@ static auto process_sequences() -> void {
                   } else if (val == k_f9_vt_code) {
                     cycle_video_mode();
                   } else if (val == k_f10_vt_code) {
-                    save_state_load();
+                    load_state();
                   } else if (val == k_f11_vt_code) {
                     save_state_save();
                   } else if (val == k_f12_code) {
@@ -621,16 +808,24 @@ static auto process_sequences() -> void {
 }  // namespace
 
 auto tui_input_initialize() -> void {
-  // Enable Mouse Tracking (Any Event + SGR)
-  fputs("\x1b[?1003h\x1b[?1006h", stdout);
-  fflush(stdout);
+  if (tracking_wanted()) {
+    start_tracking();
+  }
   g_joy_fd = open("/dev/input/js0", O_RDONLY | O_NONBLOCK);
 }
 
+auto tui_input_on_resize() -> void {
+  if (!g_tracking) {
+    return;
+  }
+  g_have_last_report = false;
+  read_cell_size_from_window();
+  decide_report_unit();
+  write_terminal("\x1b[16t");
+}
+
 auto tui_input_shutdown() -> void {
-  // Disable Mouse Tracking
-  fputs("\x1b[?1006l\x1b[?1003l", stdout);
-  fflush(stdout);
+  stop_tracking();
   if (g_joy_fd != -1) {
     close(g_joy_fd);
     g_joy_fd = -1;

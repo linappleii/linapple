@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include "core/Registry.h"
+#include "frontends/common/MouseFrontend.h"
 
 auto tui_video_initialize() -> void;
 auto tui_video_shutdown() -> void;
@@ -16,6 +17,10 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
                             int pitch) -> void;
 
 auto tui_video_on_resize() -> void;
+
+// Where the last frame placed the Apple screen, in cells; the whole terminal
+// until a frame has been drawn.
+auto tui_video_picture_box() -> MousePictureRect_t;
 
 auto tui_video_toggle_help() -> void;
 auto tui_video_is_help_visible() -> bool;

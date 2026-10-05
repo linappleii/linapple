@@ -95,6 +95,7 @@ auto main(int argc, char** argv) -> int {
       if (tui_terminal_was_resized()) {
         tui_terminal_clear_resized();
         tui_video_on_resize();
+        tui_input_on_resize();
         if (system_state.mode == app_mode_paused) {
           tui_video_render_frame(nullptr, 0, 0, 0);
         }
