@@ -27,6 +27,32 @@ struct LoadedPlugin_t {
 static std::vector<LoadedPlugin_t> g_loaded_plugins;
 static bool g_plugins_initialized = false;
 
+struct LegacyOverride_t {
+  int slot = 0;
+  const char* key_card = "";
+  const char* displaced = "";
+};
+
+// The shipped conf documents the key as the switch that puts the mouse card
+// in slot 4 in place of whatever [Slots] names there.
+static constexpr int k_mouse_key_slot = 4;
+static constexpr const char* k_mouse_card_id = "linapple.mouse";
+static LegacyOverride_t g_legacy_override;
+
+auto peripheral_legacy_override(int* slot, const char** key_card,
+                                const char** displaced) -> bool {
+  if (slot == nullptr || key_card == nullptr || displaced == nullptr) {
+    return false;
+  }
+  if (g_legacy_override.slot == 0) {
+    return false;
+  }
+  *slot = g_legacy_override.slot;
+  *key_card = g_legacy_override.key_card;
+  *displaced = g_legacy_override.displaced;
+  return true;
+}
+
 auto peripheral_find_internal(const char* name) -> Peripheral_t* {
   if (name == nullptr) {
     return nullptr;
@@ -73,6 +99,9 @@ auto peripheral_get_plugin_path(const char* name) -> const char* {
 
 auto peripheral_register_internal() -> void {
   peripheral_plugins_init();
+  // A restart rebuilds the machine from the configuration, so the record
+  // starts over with it.
+  g_legacy_override = LegacyOverride_t{};
 
   for (auto* p : peripheral_get_builtin_registry()) {
     if (p != nullptr && p->default_slot == 0) {
@@ -100,6 +129,19 @@ auto peripheral_register_internal() -> void {
     }
   }
 
+  uint32_t mouse_key = 0;
+  config_load_int(cfg_sec_configuration, cfg_mouse_in_slot4, &mouse_key);
+  Peripheral_t* mouse_key_card = nullptr;
+  if (mouse_key != 0) {
+    mouse_key_card = peripheral_find_internal(k_mouse_card_id);
+    if (mouse_key_card == nullptr) {
+      Logger::warning(
+          "Mouse in slot 4 is set but the Mouse Interface is not built; Slot "
+          "%d keeps its card\n",
+          k_mouse_key_slot);
+    }
+  }
+
   for (int slot = 1; slot < NUM_SLOTS; ++slot) {
     constexpr size_t key_size = 16;
     char key[key_size];
@@ -109,8 +151,8 @@ auto peripheral_register_internal() -> void {
     bool in_config = config_load_string("Slots", key, &name);
 
     if (in_config) {
-      if (name == "None" || name.empty()) {
-        continue;
+      if (name == "None") {
+        name.clear();
       }
     } else {
       if (slot == 1) {
@@ -131,9 +173,27 @@ auto peripheral_register_internal() -> void {
           name = "linapple.harddisk";
         }
       }
-      if (name.empty()) {
-        continue;
+    }
+
+    if (slot == k_mouse_key_slot && mouse_key_card != nullptr) {
+      Peripheral_t* displaced =
+          name.empty() ? nullptr : peripheral_find_internal(name.c_str());
+      if (displaced != mouse_key_card) {
+        g_legacy_override.slot = slot;
+        g_legacy_override.key_card = mouse_key_card->name;
+        g_legacy_override.displaced =
+            displaced != nullptr ? displaced->name : "";
+        if (displaced != nullptr) {
+          Logger::info(
+              "Slot %d: Mouse in slot 4 installs the %s in place of %s\n", slot,
+              mouse_key_card->name, displaced->name);
+        }
       }
+      name = k_mouse_card_id;
+    }
+
+    if (name.empty()) {
+      continue;
     }
 
     Peripheral_t* p = peripheral_find_internal(name.c_str());
@@ -245,9 +305,9 @@ auto peripheral_plugins_init(const char* plugin_dir) -> void {
                 }
               }
               for (const auto* builtin : peripheral_get_builtin_registry()) {
-                if (builtin == p || (builtin != nullptr &&
-                                     builtin->id != nullptr &&
-                                     strcmp(builtin->id, p->id) == 0)) {
+                if (builtin == p ||
+                    (builtin != nullptr && builtin->id != nullptr &&
+                     strcmp(builtin->id, p->id) == 0)) {
                   already_loaded = true;
                   break;
                 }

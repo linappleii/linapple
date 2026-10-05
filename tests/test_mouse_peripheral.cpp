@@ -4,14 +4,20 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <fstream>
 #include <string>
+#include <vector>
 
+#include "apple2/SnapshotTypes.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Internal.h"
 #include "apple2/peripherals/Peripheral_Subsystems.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/mouse/MouseCommands.h"
 #include "doctest.h"
+#include "frontends/common/MouseFrontend.h"
+#include "test_fixtures.h"
+#include "test_fixtures_core.h"
 
 extern "C" unsigned mouse_abi_c_frame_size(void);
 extern "C" unsigned mouse_abi_c_state_version(void);
@@ -122,6 +128,70 @@ class BenchCard_t {
   BenchHost_t host_;
   void* instance_;
 };
+
+using Description_t = TestFixtures::ScopedTestConfig_t::Description_t;
+
+auto mouse_key(const char* key, const char* value) -> Description_t {
+  Description_t description;
+  description.slots[3] = "Mockingboard";
+  description.extras.push_back({"Configuration", key, value});
+  return description;
+}
+
+auto mouse_in(int slot) -> bool {
+  uint8_t active = 0;
+  size_t size = sizeof(active);
+  return peripheral_query_by_id(slot, "linapple.mouse", mouse_query_is_active,
+                                &active, &size) == peripheral_ok;
+}
+
+auto card_named_in(int slot) -> std::string {
+  SS_PERIPHERAL_MANIFEST manifest;
+  peripheral_get_manifest(&manifest);
+  return manifest.peripherals[slot].name;
+}
+
+// ScopedTestConfig_t writes every slot, so a conf with no entry for one is
+// made by taking the line out again.
+auto remove_slot_line(const std::string& path, int slot) -> void {
+  const std::string prefix = "Slot " + std::to_string(slot) + " ";
+  std::vector<std::string> kept;
+  {
+    std::ifstream in(path);
+    REQUIRE(in.is_open());
+    std::string line;
+    while (std::getline(in, line)) {
+      if (line.compare(0, prefix.size(), prefix) != 0) {
+        kept.push_back(line);
+      }
+    }
+  }
+  std::ofstream out(path, std::ios::trunc);
+  REQUIRE(out.is_open());
+  for (const std::string& line : kept) {
+    out << line << "\n";
+  }
+}
+
+struct Override_t {
+  bool overrode = false;
+  int slot = 0;
+  std::string key_card;
+  std::string displaced;
+};
+
+auto legacy_override() -> Override_t {
+  Override_t result;
+  const char* key_card = nullptr;
+  const char* displaced = nullptr;
+  result.overrode =
+      peripheral_legacy_override(&result.slot, &key_card, &displaced);
+  if (result.overrode) {
+    result.key_card = key_card;
+    result.displaced = displaced;
+  }
+  return result;
+}
 
 }  // namespace
 
@@ -242,4 +312,82 @@ TEST_CASE(
   CHECK(desc->query(card.instance(), mouse_query_is_active, &active, &size) ==
         peripheral_ok);
   CHECK(active == 1);
+}
+
+TEST_CASE(
+    "Mouse card: Mouse in slot 4 installs the card in slot 4 over the [Slots] "
+    "entry, and only then") {
+  SUBCASE("Slot 4 = Mockingboard with the key at 1 holds the mouse alone") {
+    TestFixtures::ScopedTestConfig_t config(mouse_key("Mouse in slot 4", "1"));
+    TestFixtures::ScopedCore_t core(config);
+    CHECK(mouse_in(test_slot));
+    CHECK(card_named_in(test_slot) == "Mouse Interface");
+    mouse_frontend_initialize();
+    CHECK(mouse_frontend_card_slot() == test_slot);
+    const Override_t record = legacy_override();
+    CHECK(record.overrode);
+    CHECK(record.slot == test_slot);
+    CHECK(record.key_card == "Mouse Interface");
+    CHECK(record.displaced == "Mockingboard");
+  }
+
+  SUBCASE("Slot 4 = Mouse Interface with the key at 0 holds the mouse") {
+    Description_t description = mouse_key("Mouse in slot 4", "0");
+    description.slots[3] = "Mouse Interface";
+    TestFixtures::ScopedTestConfig_t config(description);
+    TestFixtures::ScopedCore_t core(config);
+    CHECK(mouse_in(test_slot));
+    CHECK_FALSE(legacy_override().overrode);
+  }
+
+  SUBCASE("Slot 4 = Mockingboard with the key at 0 holds no mouse") {
+    TestFixtures::ScopedTestConfig_t config(mouse_key("Mouse in slot 4", "0"));
+    TestFixtures::ScopedCore_t core(config);
+    CHECK_FALSE(mouse_in(test_slot));
+    CHECK(card_named_in(test_slot) == "Mockingboard");
+    mouse_frontend_initialize();
+    CHECK(mouse_frontend_card_slot() == 0);
+    CHECK_FALSE(legacy_override().overrode);
+  }
+
+  SUBCASE(
+      "the key at 1 with Slot 5 = Mouse Interface puts a card in 4 and in 5, "
+      "and the probe takes the lower") {
+    Description_t description = mouse_key("Mouse in slot 4", "1");
+    description.slots[4] = "Mouse Interface";
+    TestFixtures::ScopedTestConfig_t config(description);
+    TestFixtures::ScopedCore_t core(config);
+    CHECK(mouse_in(test_slot));
+    CHECK(mouse_in(test_slot + 1));
+    mouse_frontend_initialize();
+    CHECK(mouse_frontend_card_slot() == test_slot);
+  }
+
+  SUBCASE("the key at 1 with no Slot 4 entry displaces the fallback") {
+    TestFixtures::ScopedTestConfig_t config(mouse_key("Mouse in slot 4", "1"));
+    remove_slot_line(config.path(), test_slot);
+    TestFixtures::ScopedCore_t core(config);
+    CHECK(mouse_in(test_slot));
+    const Override_t record = legacy_override();
+    CHECK(record.overrode);
+    CHECK(record.displaced == "Mockingboard");
+  }
+
+  SUBCASE("the key at 1 over Slot 4 = None displaces nothing") {
+    Description_t description = mouse_key("Mouse in slot 4", "1");
+    description.slots[3].clear();
+    TestFixtures::ScopedTestConfig_t config(description);
+    TestFixtures::ScopedCore_t core(config);
+    CHECK(mouse_in(test_slot));
+    const Override_t record = legacy_override();
+    CHECK(record.overrode);
+    CHECK(record.displaced.empty());
+  }
+
+  SUBCASE("the key at 1 under its legacy spelling resolves the same") {
+    TestFixtures::ScopedTestConfig_t config(mouse_key("Mouse in slot4", "1"));
+    TestFixtures::ScopedCore_t core(config);
+    CHECK(mouse_in(test_slot));
+    CHECK(card_named_in(test_slot) == "Mouse Interface");
+  }
 }

@@ -20,6 +20,15 @@ auto peripheral_find_internal(const char* name) -> Peripheral_t*;
 auto peripheral_get_plugin_path(const char* name) -> const char*;
 auto peripheral_is_any_active() -> bool;
 
+// The slot the Mouse in slot 4 key took over when the machine was built, with
+// the descriptor names of the card it installed and of the card the [Slots]
+// entry (or its fallback) would have put there: "" when that was no card or a
+// card not built in. False when the key overrode nothing. A save state written
+// while the key had no reader names the displaced card in that slot, and this
+// is what lets such a file still load.
+auto peripheral_legacy_override(int* slot, const char** key_card,
+                                const char** displaced) -> bool;
+
 // Test hook: inject frozen host clock provider.
 typedef bool (*LocalTimeProvider_t)(void* ctx, HostLocalTime_t* out);
 auto linapple_set_local_time_provider(LocalTimeProvider_t provider, void* ctx)
