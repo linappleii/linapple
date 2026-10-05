@@ -37,7 +37,6 @@ extern bool g_window_resized;
 extern SDL_Rect g_orig_rect;
 extern SDL_Rect g_new_rect;
 extern int g_buttondown;
-extern bool g_usingcursor;
 
 auto init_sdl() -> int;
 
@@ -59,7 +58,6 @@ auto frame_on_focus(bool gained) -> void;
 auto frame_on_expose() -> void;
 auto frame_show_help_screen(int width, int height) -> void;
 
-auto set_using_cursor(bool enable) -> void;
 auto set_fullscreen_mode() -> void;
 auto set_normal_mode() -> void;
 

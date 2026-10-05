@@ -33,7 +33,6 @@ extern SdlSurfacePtr_t g_texture;
 constexpr int k_show_cycles = 15;
 
 extern bool g_window_resized;
-extern bool g_usingcursor;
 extern int g_buttondown;
 
 extern SDL_Rect g_orig_rect;
@@ -58,7 +57,6 @@ auto frame_on_focus(bool gained) -> void;
 auto frame_on_expose() -> void;
 auto frame_show_help_screen(int sx, int sy) -> void;
 
-auto set_using_cursor(bool enable) -> void;
 auto set_fullscreen_mode() -> void;
 auto set_normal_mode() -> void;
 

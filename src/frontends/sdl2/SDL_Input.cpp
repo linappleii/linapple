@@ -4,6 +4,7 @@
 #include <SDL2/SDL_keycode.h>
 #include <SDL2/SDL_mouse.h>
 #include <SDL2/SDL_scancode.h>
+#include <SDL2/SDL_stdinc.h>
 #include <SDL2/SDL_video.h>
 
 #include <cstdint>
@@ -19,7 +20,6 @@
 #include "frontends/common/AudioMixer.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/common/KeyboardTranslator.h"
-#include "frontends/common/MouseFrontend.h"
 #include "frontends/common/sdl/JoystickFrontend.h"
 #include "frontends/common/sdl/MouseInput.h"
 #include "frontends/sdl2/Frame.h"
@@ -33,72 +33,39 @@ constexpr auto is_extended_scancode(SDL_Scancode scancode) noexcept -> bool {
          (scancode == SDL_SCANCODE_DELETE);
 }
 
+auto host_button(Uint8 button) -> MouseHostButton_t {
+  switch (button) {
+    case SDL_BUTTON_LEFT:
+      return MouseHostButton_t::left;
+    case SDL_BUTTON_MIDDLE:
+      return MouseHostButton_t::middle;
+    case SDL_BUTTON_RIGHT:
+      return MouseHostButton_t::right;
+    default:
+      return MouseHostButton_t::other;
+  }
+}
+
 auto handle_mouse_button_down(const SDL_MouseButtonEvent& button,
                               SDL_Keymod key_mod) -> void {
-  if (button.button == SDL_BUTTON_MIDDLE) {
-    set_using_cursor(!g_usingcursor);
-    return;
-  }
-
-  if (button.button == SDL_BUTTON_RIGHT) {
-    if (g_usingcursor) {
-      mouse_input_dispatch_button(k_mouse_button_right, true);
-    }
-    return;
-  }
-
-  if (button.button != SDL_BUTTON_LEFT) {
-    return;
-  }
-
-  if (g_buttondown != -1) {
-    process_button_click(g_buttondown, key_mod);
-    g_buttondown = -1;
-    return;
-  }
-
-  const int x = static_cast<int>(button.x);
-  const int y = static_cast<int>(button.y);
-
+  const bool release_modifier = (key_mod & (KMOD_SHIFT | KMOD_CTRL)) != 0;
+  const bool debugger_click = mouse_input_button_down(
+      host_button(button.button), release_modifier, g_buttondown != -1);
 #if ENABLE_DEBUGGER
-  if (system_state.mode == app_mode_debug) {
-    debugger_mouse_click(x, y);
-    return;
+  if (debugger_click) {
+    debugger_mouse_click(button.x, button.y);
   }
+#else
+  (void)debugger_click;
 #endif
-
-  if (!g_usingcursor) {
-    if (mouse_input_should_auto_capture()) {
-      set_using_cursor(true);
-    }
-    return;
-  }
-
-  if ((key_mod & (KMOD_SHIFT | KMOD_CTRL)) != 0) {
-    set_using_cursor(false);
-    return;
-  }
-
-  mouse_input_dispatch_button(k_mouse_button_left, true);
 }
 
 auto handle_mouse_button_up(const SDL_MouseButtonEvent& button) -> void {
-  if (!g_usingcursor) {
-    return;
-  }
-  if (button.button == SDL_BUTTON_LEFT) {
-    mouse_input_dispatch_button(k_mouse_button_left, false);
-  } else if (button.button == SDL_BUTTON_RIGHT) {
-    mouse_input_dispatch_button(k_mouse_button_right, false);
-  }
+  mouse_input_button_up(host_button(button.button));
 }
 
 auto handle_mouse_motion(const SDL_MouseMotionEvent& motion) -> void {
-  if (!g_usingcursor) {
-    return;
-  }
-  mouse_input_dispatch_motion(static_cast<int>(motion.x),
-                              static_cast<int>(motion.y));
+  mouse_input_motion(motion.xrel, motion.yrel, motion.x, motion.y);
 }
 
 }  // namespace
@@ -130,7 +97,7 @@ auto sdl_handle_event(SDL_Event* event) -> void {
         case SDL_WINDOWEVENT_FOCUS_LOST:
           frame_on_focus(false);
           g_buttondown = -1;
-          set_using_cursor(false);
+          mouse_input_release();
           break;
         default:
           break;
@@ -160,7 +127,7 @@ auto sdl_handle_event(SDL_Event* event) -> void {
 
       if (keyboard_get_hotkeys_enabled() && (key_sym >= SDLK_F1) &&
           (key_sym <= SDLK_F12) && (g_buttondown == -1)) {
-        set_using_cursor(false);
+        mouse_input_release();
         g_buttondown = key_sym - SDLK_F1;
       } else if (key_sym == SDLK_KP_PLUS) {
         const uint32_t speed = linapple_speed_increase();
@@ -179,7 +146,7 @@ auto sdl_handle_event(SDL_Event* event) -> void {
           linapple_toggle_caps_lock_state();
         }
       } else if (key_sym == SDLK_PAUSE) {
-        set_using_cursor(false);
+        mouse_input_release();
         switch (system_state.mode) {
           case app_mode_running:
             system_state.mode = app_mode_paused;

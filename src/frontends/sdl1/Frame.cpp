@@ -35,10 +35,12 @@
 #include "frontends/common/AppController.h"
 #include "frontends/common/AudioMixer.h"
 #include "frontends/common/HelpText.h"
+#include "frontends/common/MouseFrontend.h"
 #include "frontends/common/SaveStateManager.h"
 #include "frontends/common/VideoStretch.h"
 #include "frontends/common/VideoSurface.h"
 #include "frontends/common/sdl/DiskUI.h"
+#include "frontends/common/sdl/MouseInput.h"
 #include "frontends/sdl1/DiskChoose.h"
 #include "frontends/sdl1/SDL_Asset.h"
 #include "frontends/sdl1/SDL_Video.h"
@@ -51,7 +53,6 @@ SDL_Rect g_new_rect{};
 
 int g_buttondown = -1;
 bool g_window_resized = false;
-bool g_usingcursor = false;
 
 namespace {
 
@@ -234,6 +235,15 @@ auto compute_aspect_fit_rect(int width, int height) noexcept -> SDL_Rect {
   return SDL_Rect{
       static_cast<int16_t>(offset_x), static_cast<int16_t>(offset_y),
       static_cast<uint16_t>(target_w), static_cast<uint16_t>(target_h)};
+}
+
+// A load can take the mouse card out of the machine, and a captured pointer
+// would then feed nothing.
+auto load_save_state() -> void {
+  save_state_load();
+  if (!mouse_input_consumer_present()) {
+    mouse_input_release();
+  }
 }
 
 }  // namespace
@@ -531,7 +541,7 @@ auto frame_quick_state(int num, int mod) -> void {
   if ((mod & KMOD_SHIFT) != 0) {
     save_state_save();
   } else {
-    save_state_load();
+    load_save_state();
   }
 }
 
@@ -648,7 +658,7 @@ auto handle_btn_debug() -> void {
   }
   if (system_state.mode != app_mode_debug) {
     debug_begin();
-    set_using_cursor(false);
+    mouse_input_release();
     return;
   }
   debug_end();
@@ -673,7 +683,7 @@ auto handle_btn_load_state(int mod) -> void {
     return;
   }
   if ((mod & KMOD_ALT) != 0 || psp_save_state_select_image(false)) {
-    save_state_load();
+    load_save_state();
   }
 }
 
@@ -770,16 +780,19 @@ auto set_normal_mode() -> void {
     frame_on_resize(static_cast<int>(s_windowed_width),
                     static_cast<int>(s_windowed_height));
   }
-  if (!g_usingcursor) {
+  if (!mouse_input_is_captured()) {
     SDL_ShowCursor(SDL_ENABLE);
   }
 }
 
-auto set_using_cursor(bool enable) -> void {
-  g_usingcursor = enable;
-  SDL_WM_GrabInput(g_usingcursor ? SDL_GRAB_ON : SDL_GRAB_OFF);
+// SDL 1.2 has no relative mode to ask for: a grabbed window with a hidden
+// cursor already reports unbounded relative motion, and the event's x and y
+// stay the host pointer's.
+auto frame_pointer_capture(bool captured, bool relative) -> void {
+  (void)relative;
+  SDL_WM_GrabInput(captured ? SDL_GRAB_ON : SDL_GRAB_OFF);
 
-  if (g_usingcursor) {
+  if (captured) {
     SDL_ShowCursor(SDL_DISABLE);
     return;
   }
@@ -787,6 +800,15 @@ auto set_using_cursor(bool enable) -> void {
   if (!s_is_fullscreen || system_state.mode == app_mode_debug) {
     SDL_ShowCursor(SDL_ENABLE);
   }
+}
+
+// g_new_rect is set only on a resize, so until one the picture is the window.
+auto frame_picture_rect() -> MousePictureRect_t {
+  if (g_window_resized) {
+    return {g_new_rect.x, g_new_rect.y, g_new_rect.w, g_new_rect.h};
+  }
+  return {0, 0, static_cast<int>(system_state.screen_width),
+          static_cast<int>(system_state.screen_height)};
 }
 
 auto frame_create_window() -> int {

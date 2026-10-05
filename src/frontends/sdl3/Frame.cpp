@@ -45,10 +45,12 @@
 #include "frontends/common/AudioMixer.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/common/HelpText.h"
+#include "frontends/common/MouseFrontend.h"
 #include "frontends/common/SaveStateManager.h"
 #include "frontends/common/VideoStretch.h"
 #include "frontends/common/VideoSurface.h"
 #include "frontends/common/sdl/DiskUI.h"
+#include "frontends/common/sdl/MouseInput.h"
 #include "frontends/sdl3/DiskChoose.h"
 #include "frontends/sdl3/SDL_Asset.h"
 #include "frontends/sdl3/SDL_Video.h"
@@ -68,7 +70,6 @@ SDL_Rect g_new_rect;
 
 int g_buttondown = -1;
 bool g_window_resized = false;
-bool g_usingcursor = false;
 
 namespace {
 
@@ -363,6 +364,15 @@ auto handle_btn_drive_swap() -> void {
   }
 }
 
+// A load can take the mouse card out of the machine, and a captured pointer
+// would then feed nothing.
+auto load_save_state() -> void {
+  save_state_load();
+  if (!mouse_input_consumer_present()) {
+    mouse_input_release();
+  }
+}
+
 auto handle_btn_debug() -> void {
 #if ENABLE_DEBUGGER
   if (system_state.disable_debugger) {
@@ -370,7 +380,7 @@ auto handle_btn_debug() -> void {
   }
   if (system_state.mode != app_mode_debug) {
     debug_begin();
-    set_using_cursor(false);
+    mouse_input_release();
     return;
   }
   debug_end();
@@ -395,7 +405,7 @@ auto handle_btn_load_state(int mod) -> void {
     return;
   }
   if ((mod & SDL_KMOD_ALT) != 0 || psp_save_state_select_image(false)) {
-    save_state_load();
+    load_save_state();
   }
 }
 
@@ -705,7 +715,7 @@ auto frame_quick_state(int state, int mod) -> void {
   if ((mod & SDL_KMOD_SHIFT) != 0) {
     save_state_save();
   } else {
-    save_state_load();
+    load_save_state();
   }
 }
 
@@ -886,18 +896,18 @@ auto set_normal_mode() -> void {
                       static_cast<int>(s_windowed_height));
     }
   }
-  if (!g_usingcursor) {
+  if (!mouse_input_is_captured()) {
     SDL_ShowCursor();
   }
 }
 
-auto set_using_cursor(bool enable) -> void {
-  g_usingcursor = enable;
+auto frame_pointer_capture(bool captured, bool relative) -> void {
   if (g_window != nullptr) {
-    SDL_SetWindowMouseGrab(g_window.get(), g_usingcursor);
+    SDL_SetWindowMouseGrab(g_window.get(), captured);
+    SDL_SetWindowRelativeMouseMode(g_window.get(), captured && relative);
   }
 
-  if (g_usingcursor) {
+  if (captured) {
     SDL_HideCursor();
     return;
   }
@@ -905,6 +915,15 @@ auto set_using_cursor(bool enable) -> void {
   if (!s_is_fullscreen || system_state.mode == app_mode_debug) {
     SDL_ShowCursor();
   }
+}
+
+// g_new_rect is set only on a resize, so until one the picture is the window.
+auto frame_picture_rect() -> MousePictureRect_t {
+  if (g_window_resized) {
+    return {g_new_rect.x, g_new_rect.y, g_new_rect.w, g_new_rect.h};
+  }
+  return {0, 0, static_cast<int>(system_state.screen_width),
+          static_cast<int>(system_state.screen_height)};
 }
 
 auto frame_create_window() -> int {

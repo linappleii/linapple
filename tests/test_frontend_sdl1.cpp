@@ -2,24 +2,34 @@
 #include <SDL/SDL.h>
 #include <stdlib.h>
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <string>
 
 #include "SDL_events.h"
+#include "SDL_keyboard.h"
 #include "SDL_keysym.h"
+#include "SDL_mouse.h"
 #include "SDL_stdinc.h"
 #include "SDL_video.h"
 #include "apple2/Video.h"
+#include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Types.h"
+#include "apple2/peripherals/mouse/MouseCommands.h"
 #include "core/Asset.h"
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
 #include "doctest.h"
 #include "frontends/common/AppConfig.h"
 #include "frontends/common/Frontend.h"
+#include "frontends/common/MouseFrontend.h"
 #include "frontends/common/sdl/JoystickFrontend.h"
+#include "frontends/common/sdl/MouseInput.h"
 #include "frontends/sdl1/DiskChoose.h"
 #include "frontends/sdl1/Frame.h"
+#include "test_fixtures.h"
+#include "test_fixtures_core.h"
 
 auto ds_init() -> bool { return true; }
 auto ds_shutdown() -> void {}
@@ -531,3 +541,241 @@ TEST_CASE("SDL1 Frontend Joystick Config Out-of-Range Handling") {
   joy_frontend_shutdown();
   SDL_Quit();
 }
+
+namespace {
+
+// An Enhanced //e built and reset as the frontend builds it, its pointer
+// released and its window a plain 560 x 384, the machine running.
+struct MouseInputMachine_t {
+  TestFixtures::ScopedTestConfig_t config;
+  TestFixtures::ScopedCore_t core;
+  AppMode_t saved_mode;
+
+  explicit MouseInputMachine_t(
+      const TestFixtures::ScopedTestConfig_t::Description_t& description)
+      : config(description), core(config), saved_mode(system_state.mode) {
+    SDL_putenv(const_cast<char*>("SDL_VIDEODRIVER=dummy"));
+    REQUIRE(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK) == 0);
+    peripheral_manager_init();
+    linapple_register_peripherals();
+    linapple_reset_hard();
+    joy_frontend_initialize();
+    mouse_frontend_initialize();
+    mouse_input_release();
+    system_state.mode = app_mode_running;
+    system_state.screen_width = 560;
+    system_state.screen_height = 384;
+    g_window_resized = false;
+    g_buttondown = -1;
+    SDL_SetModState(KMOD_NONE);
+  }
+
+  ~MouseInputMachine_t() {
+    SDL_SetModState(KMOD_NONE);
+    mouse_input_release();
+    g_window_resized = false;
+    g_buttondown = -1;
+    system_state.mode = saved_mode;
+    joy_frontend_shutdown();
+    SDL_Quit();
+  }
+
+  MouseInputMachine_t(const MouseInputMachine_t&) = delete;
+  auto operator=(const MouseInputMachine_t&) -> MouseInputMachine_t& = delete;
+  MouseInputMachine_t(MouseInputMachine_t&&) = delete;
+  auto operator=(MouseInputMachine_t&&) -> MouseInputMachine_t& = delete;
+
+  static auto click(Uint8 button, bool down) -> void {
+    SDL_Event event{};
+    event.type = down ? SDL_MOUSEBUTTONDOWN : SDL_MOUSEBUTTONUP;
+    event.button.button = button;
+    event.button.state = down ? SDL_PRESSED : SDL_RELEASED;
+    sdl_handle_event(&event);
+  }
+
+  static auto move(Sint16 dx, Sint16 dy, Uint16 x, Uint16 y) -> void {
+    SDL_Event event{};
+    event.type = SDL_MOUSEMOTION;
+    event.motion.xrel = dx;
+    event.motion.yrel = dy;
+    event.motion.x = x;
+    event.motion.y = y;
+    sdl_handle_event(&event);
+  }
+};
+
+auto mouse_as_joystick() -> TestFixtures::ScopedTestConfig_t::Description_t {
+  TestFixtures::ScopedTestConfig_t::Description_t description;
+  description.extras.push_back({"Configuration", "Joystick 0", "4"});
+  return description;
+}
+
+}  // namespace
+
+TEST_CASE(
+    "SDL1 mouse capture: with no mouse card and no mouse-emulated joystick "
+    "neither a left nor a middle click takes the pointer") {
+  MouseInputMachine_t machine(
+      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  CHECK_FALSE(mouse_input_consumer_present());
+
+  MouseInputMachine_t::click(SDL_BUTTON_LEFT, true);
+  MouseInputMachine_t::click(SDL_BUTTON_LEFT, false);
+  CHECK_FALSE(mouse_input_is_captured());
+  MouseInputMachine_t::click(SDL_BUTTON_MIDDLE, true);
+  MouseInputMachine_t::click(SDL_BUTTON_MIDDLE, false);
+  CHECK_FALSE(mouse_input_is_captured());
+}
+
+TEST_CASE(
+    "SDL1 mouse capture: a mouse-emulated joystick is a consumer, so a left "
+    "click captures and a Shift-click releases") {
+  MouseInputMachine_t machine(mouse_as_joystick());
+  REQUIRE_FALSE(mouse_frontend_card_present());
+  REQUIRE(joy_frontend_is_mouse_emulation_active());
+
+  MouseInputMachine_t::click(SDL_BUTTON_LEFT, true);
+  MouseInputMachine_t::click(SDL_BUTTON_LEFT, false);
+  CHECK(mouse_input_is_captured());
+
+  SDL_SetModState(KMOD_LSHIFT);
+  MouseInputMachine_t::click(SDL_BUTTON_LEFT, true);
+  MouseInputMachine_t::click(SDL_BUTTON_LEFT, false);
+  CHECK_FALSE(mouse_input_is_captured());
+}
+
+#if defined(ENABLE_PERIPHERAL_MOUSE)
+
+namespace {
+
+constexpr size_t mouse_frame_size = 92;
+constexpr size_t mouse_frame_position_x = 8;
+constexpr size_t mouse_frame_max_x = 20;
+constexpr size_t mouse_frame_max_y = 28;
+constexpr size_t mouse_frame_parser_out_len = 52;
+constexpr size_t mouse_frame_orb = 57;
+constexpr size_t mouse_frame_ddrb = 59;
+constexpr size_t mouse_frame_port_b_shadow = 73;
+constexpr size_t mouse_frame_mode = 74;
+
+using MouseFrame_t = std::array<uint8_t, mouse_frame_size>;
+
+// The card counts host motion only while its mode byte says so; the loader
+// is the one public path that sets that byte without running the firmware.
+auto turn_mouse_tracking_on(int slot) -> void {
+  MouseFrame_t frame{};
+  frame.at(0) = MOUSE_STATE_VERSION;
+  frame.at(4) = mouse_frame_size;
+  frame.at(mouse_frame_max_x) = 0xFF;
+  frame.at(mouse_frame_max_x + 1) = 0x03;
+  frame.at(mouse_frame_max_y) = 0xFF;
+  frame.at(mouse_frame_max_y + 1) = 0x03;
+  frame.at(mouse_frame_parser_out_len) = 1;
+  // Port B at rest as a real build saves it: PB6 answers the lowered PB4.
+  frame.at(mouse_frame_orb) = 0x40;
+  frame.at(mouse_frame_ddrb) = 0x3E;
+  frame.at(mouse_frame_port_b_shadow) = 0x40;
+  frame.at(mouse_frame_mode) = 1;
+  REQUIRE(peripheral_load_state(slot, frame.data(), frame.size()) ==
+          peripheral_ok);
+}
+
+auto mouse_position_x(int slot) -> int16_t {
+  peripheral_manager_think(0);
+  MouseFrame_t frame{};
+  size_t size = frame.size();
+  peripheral_save_state(slot, frame.data(), &size);
+  REQUIRE(size == frame.size());
+  return static_cast<int16_t>(frame.at(mouse_frame_position_x) |
+                              (frame.at(mouse_frame_position_x + 1) << 8));
+}
+
+auto mouse_in_slot_4() -> TestFixtures::ScopedTestConfig_t::Description_t {
+  TestFixtures::ScopedTestConfig_t::Description_t description;
+  description.slots[3] = "Mouse Interface";
+  return description;
+}
+
+}  // namespace
+
+TEST_CASE(
+    "SDL1 mouse capture: with a mouse card in slot 4 the first left click "
+    "captures, a toolbar key or a pause refuses it, the middle button "
+    "toggles, and a Shift-click releases") {
+  MouseInputMachine_t machine(mouse_in_slot_4());
+  REQUIRE(mouse_frontend_card_slot() == 4);
+
+  SUBCASE("the first left click captures and a Shift-click releases") {
+    MouseInputMachine_t::click(SDL_BUTTON_LEFT, true);
+    MouseInputMachine_t::click(SDL_BUTTON_LEFT, false);
+    CHECK(mouse_input_is_captured());
+    SDL_SetModState(KMOD_LSHIFT);
+    MouseInputMachine_t::click(SDL_BUTTON_LEFT, true);
+    MouseInputMachine_t::click(SDL_BUTTON_LEFT, false);
+    CHECK_FALSE(mouse_input_is_captured());
+  }
+
+  SUBCASE("a left click while a toolbar key is held is ignored") {
+    g_buttondown = k_btn_help;
+    MouseInputMachine_t::click(SDL_BUTTON_LEFT, true);
+    MouseInputMachine_t::click(SDL_BUTTON_LEFT, false);
+    CHECK_FALSE(mouse_input_is_captured());
+  }
+
+  SUBCASE("a left click while paused captures nothing") {
+    system_state.mode = app_mode_paused;
+    MouseInputMachine_t::click(SDL_BUTTON_LEFT, true);
+    MouseInputMachine_t::click(SDL_BUTTON_LEFT, false);
+    CHECK_FALSE(mouse_input_is_captured());
+  }
+
+  SUBCASE("the middle button captures and releases in turn") {
+    MouseInputMachine_t::click(SDL_BUTTON_MIDDLE, true);
+    MouseInputMachine_t::click(SDL_BUTTON_MIDDLE, false);
+    CHECK(mouse_input_is_captured());
+    MouseInputMachine_t::click(SDL_BUTTON_MIDDLE, true);
+    MouseInputMachine_t::click(SDL_BUTTON_MIDDLE, false);
+    CHECK_FALSE(mouse_input_is_captured());
+  }
+}
+
+TEST_CASE(
+    "SDL1 mouse capture: Mouse Capture = 0 refuses the left and the middle "
+    "click even with a card present") {
+  TestFixtures::ScopedTestConfig_t::Description_t description =
+      mouse_in_slot_4();
+  description.extras.push_back({"Configuration", "Mouse Capture", "0"});
+  MouseInputMachine_t machine(description);
+  REQUIRE(mouse_frontend_card_present());
+  REQUIRE_FALSE(mouse_frontend_capture_enabled());
+
+  MouseInputMachine_t::click(SDL_BUTTON_LEFT, true);
+  MouseInputMachine_t::click(SDL_BUTTON_LEFT, false);
+  CHECK_FALSE(mouse_input_is_captured());
+  MouseInputMachine_t::click(SDL_BUTTON_MIDDLE, true);
+  MouseInputMachine_t::click(SDL_BUTTON_MIDDLE, false);
+  CHECK_FALSE(mouse_input_is_captured());
+}
+
+TEST_CASE(
+    "SDL1 mouse motion: a captured motion event reaches the card as counts "
+    "scaled to the window") {
+  MouseInputMachine_t machine(mouse_in_slot_4());
+  turn_mouse_tracking_on(4);
+  REQUIRE(mouse_position_x(4) == 0);
+
+  MouseInputMachine_t::move(2, 0, 2, 0);
+  CHECK(mouse_position_x(4) == 0);
+
+  MouseInputMachine_t::click(SDL_BUTTON_LEFT, true);
+  MouseInputMachine_t::click(SDL_BUTTON_LEFT, false);
+  REQUIRE(mouse_input_is_captured());
+
+  MouseInputMachine_t::move(2, 0, 4, 0);
+  CHECK(mouse_position_x(4) == 1);
+  MouseInputMachine_t::move(1, 0, 5, 0);
+  CHECK(mouse_position_x(4) == 1);
+  MouseInputMachine_t::move(1, 0, 6, 0);
+  CHECK(mouse_position_x(4) == 2);
+}
+#endif
