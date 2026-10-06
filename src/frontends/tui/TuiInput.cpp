@@ -26,7 +26,6 @@
 #include "apple2/Video.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
-#include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
@@ -843,10 +842,7 @@ auto tui_input_poll() -> void {
       // The port has three pushbutton inputs (Apple II Reference Manual, 1979,
       // p. 100); a device with more buttons keeps the rest to itself.
       if ((js.type & JS_EVENT_BUTTON) != 0 && js.number < 3) {
-        const JoystickButtonPayload_t payload = {
-            js.number, static_cast<uint8_t>(js.value != 0), 0, 0};
-        peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &payload,
-                           sizeof(payload));
+        linapple_set_game_switch(js.number, js.value != 0);
       }
     }
   }

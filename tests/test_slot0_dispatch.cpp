@@ -10,6 +10,7 @@
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
+#include "apple2/SwitchInputs.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Audio.h"
 #include "apple2/peripherals/Peripheral_Internal.h"
@@ -19,15 +20,11 @@
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/LinAppleCore.h"
 #include "doctest.h"
-#include "test_fixtures.h"
-#include "test_fixtures_core.h"
 
 namespace {
 
 constexpr uint16_t addr_switch0 = 0xC061;
 constexpr uint8_t switch_bit = 0x80;
-constexpr uint8_t source_connector = 0;
-constexpr uint8_t source_keyboard = 1;
 constexpr uint8_t all_lines_pulled_down = 0x07;
 constexpr uint16_t addr_paddle0 = 0xC064;
 constexpr uint16_t addr_trigger = 0xC070;
@@ -39,12 +36,9 @@ constexpr uint64_t off_centre_pulse = 2210;
 // Far past any pulse, so the first strobe finds every timer expired.
 constexpr uint64_t probe_counter = 1000000;
 constexpr uint32_t unknown_joystick_id = PERIPHERAL_SUBSYSTEM_JOYSTICK | 0x00FF;
-constexpr uint16_t addr_keyboard_data = 0xC000;
-constexpr uint8_t shift_line = 2;
-constexpr uint8_t jumper_in = 1;
-// The ASCII A is $41; the keyboard latch carries it under the strobe in
-// bit 7, so a read of $C000 gives $C1.
-constexpr uint8_t latched_a = 0xC1;
+// A value the game port once answered and no longer knows: the right unknown
+// id inside its own subsystem.
+constexpr uint32_t retired_joystick_id = PERIPHERAL_SUBSYSTEM_JOYSTICK | 0x0001;
 
 enum class Order_t : uint8_t { keyboard_first, joystick_first };
 
@@ -79,7 +73,12 @@ struct Slot0_t {
   explicit Slot0_t(Order_t order) {
     cpu_set_active_context(&cpu);
     current_apple2_type = A2TYPE_APPLE2EENHANCED;
+    // The machine is built by hand, so the motherboard's own I/O handlers,
+    // which answer the switch inputs, and its board are stated by hand too: a
+    // //e with its keyboard plugged in, whose resistors hold PB0 and PB1 low.
+    mem_pre_initialize();
     REQUIRE(mem_initialize() == 0);
+    switch_inputs_reset_configuration(true, true);
     peripheral_manager_init();
     if (order == Order_t::keyboard_first) {
       keyboard_registered = peripheral_register(keyboard_descriptor(), 0);
@@ -174,22 +173,17 @@ auto keyboard_mods() -> KeyboardModifiers_t {
 }
 
 // Bit 7 of a switch line through the memory map, as the 6502 would read it.
-auto switch_level(uint8_t line) -> uint8_t {
+auto line_level(uint8_t line) -> uint8_t {
   const uint16_t addr = static_cast<uint16_t>(addr_switch0 + line);
   return (io_map_dispatch(0, addr, 0, 0, 0) & switch_bit) != 0 ? 1 : 0;
 }
 
-auto set_switch(uint8_t line, uint8_t source, uint8_t down) -> void {
-  const JoystickButtonPayload_t payload{line, down, source, 0};
-  send(JOYSTICK_CMD_SET_BUTTON, &payload, sizeof(payload));
-}
-
 auto press_button(uint8_t button) -> void {
-  set_switch(button, source_connector, 1);
+  linapple_set_game_switch(button, true);
 }
 
-auto set_pulldowns(uint8_t mask) -> void {
-  send(JOYSTICK_CMD_SET_PULLDOWNS, &mask, sizeof(mask));
+auto release_button(uint8_t button) -> void {
+  linapple_set_game_switch(button, false);
 }
 
 // A position is visible only as the length of the pulse a strobe starts, so
@@ -216,61 +210,6 @@ auto move_axis(uint8_t joystick, uint8_t axis, uint8_t value) -> void {
 const std::initializer_list<Order_t> both_orders = {Order_t::keyboard_first,
                                                     Order_t::joystick_first};
 
-enum class Model_t : uint8_t { enhanced_2e, ii_plus };
-
-auto operator<<(std::ostream& out, Model_t model) -> std::ostream& {
-  return out << (model == Model_t::enhanced_2e ? "Enhanced //e" : "II Plus");
-}
-
-const std::initializer_list<Model_t> both_models = {Model_t::enhanced_2e,
-                                                    Model_t::ii_plus};
-
-auto describe(Model_t model)
-    -> TestFixtures::ScopedTestConfig_t::Description_t {
-  using Config_t = TestFixtures::ScopedTestConfig_t;
-  Config_t::Description_t description = Config_t::enhanced_2e_only();
-  if (model == Model_t::ii_plus) {
-    description.machine_type = Config_t::machine_apple2_plus;
-  }
-  return description;
-}
-
-// The machine as a frontend brings it up: linapple_init takes the internal
-// slot-0 cards from the registry, so a host call reaches the cards the shipped
-// emulator wires in rather than ones a case registered by hand. The game port
-// knows no model, which is what running on a II Plus as well shows.
-struct HostMachine_t {
-  TestFixtures::ScopedTestConfig_t config;
-  TestFixtures::ScopedCore_t core;
-
-  explicit HostMachine_t(Model_t model)
-      : config(describe(model)), core(config) {
-    linapple_reset_hard();
-  }
-};
-
-// The host's four modifier booleans, settled by the one think a running
-// machine gives the queue each frame.
-auto hold_modifiers(bool shift, bool ctrl, bool open_apple, bool solid_apple)
-    -> void {
-  linapple_set_modifiers(shift, ctrl, open_apple, solid_apple);
-  settle();
-}
-
-auto release_modifiers() -> void { hold_modifiers(false, false, false, false); }
-
-auto press_key(uint32_t key) -> void {
-  KeyboardEvent_t event{};
-  event.key = key;
-  event.is_down = 1;
-  send(keyboard_cmd_event, &event, sizeof(event));
-}
-
-// $C000 through the memory map: the key code in bits 0-6 under the strobe.
-auto keyboard_data() -> uint8_t {
-  return io_map_dispatch(0, addr_keyboard_data, 0, 0, 0);
-}
-
 // Allocate oversized buffer to test payload bounds handling safely.
 template <typename T>
 struct OneByteLong_t {
@@ -296,7 +235,8 @@ TEST_CASE("Slot 0: the rocker switch and a button under one slot") {
     CHECK(peripheral_query(0, keyboard_query_rocker, &rocker, &size) ==
           peripheral_ok);
     CHECK(rocker == 1);
-    CHECK(switch_level(0) == 1);
+    CHECK(line_level(0) == 1);
+    release_button(0);
   }
 }
 
@@ -311,9 +251,10 @@ TEST_CASE("Slot 0: a stick move and the modifiers under one id") {
     press_button(0);
 
     CHECK(paddle_pulse_is(0, off_centre_pulse));
-    CHECK(switch_level(0) == 1);
+    CHECK(line_level(0) == 1);
     CHECK(keyboard_mods().shift == 0);
     CHECK(keyboard_mods().ctrl == 0);
+    release_button(0);
   }
 }
 
@@ -327,18 +268,19 @@ TEST_CASE("Slot 0: flipping the rocker leaves the sticks where they are") {
     move_axis(0, 0, joy_off_centre);
     press_button(0);
     REQUIRE(paddle_pulse_is(0, off_centre_pulse));
-    REQUIRE(switch_level(0) == 1);
+    REQUIRE(line_level(0) == 1);
 
     const uint8_t on = 1;
     send(keyboard_cmd_set_rocker, &on, sizeof(on));
 
     CHECK(paddle_pulse_is(0, off_centre_pulse));
-    CHECK(switch_level(0) == 1);
+    CHECK(line_level(0) == 1);
     CHECK(keyboard_state().rocker_switch == 1);
+    release_button(0);
   }
 }
 
-TEST_CASE("Slot 0: a button payload does not hold down shift") {
+TEST_CASE("Slot 0: a connector button reaches no keyboard modifier") {
   for (Order_t order : both_orders) {
     CAPTURE(order);
     Slot0_t slot0(order);
@@ -346,15 +288,15 @@ TEST_CASE("Slot 0: a button payload does not hold down shift") {
     REQUIRE(slot0.joystick_registered == 0);
 
     const KeyboardModifiers_t before = keyboard_mods();
-    // Bytes 1, 1 would land on KeyboardModifiers_t::shift and ::ctrl.
-    const JoystickButtonPayload_t payload{1, 1, 0, 0};
-    send(JOYSTICK_CMD_SET_BUTTON, &payload, sizeof(payload));
+    press_button(1);
+    settle();
 
     const KeyboardModifiers_t after = keyboard_mods();
     CHECK(after.shift == 0);
     CHECK(after.ctrl == 0);
     CHECK(after.caps == before.caps);
-    CHECK(switch_level(1) == 1);
+    CHECK(line_level(1) == 1);
+    release_button(1);
   }
 }
 
@@ -377,9 +319,10 @@ TEST_CASE("Slot 0: setting modifiers does not move the stick") {
     CHECK(keyboard_mods().shift == 1);
     CHECK(keyboard_mods().ctrl == 1);
     const JoystickSaveState_t after = joystick_state();
-    CHECK(switch_level(0) == 1);
+    CHECK(line_level(0) == 1);
     CHECK(std::memcmp(&before, &after, sizeof(JoystickSaveState_t)) == 0);
     CHECK(paddle_pulse_is(0, off_centre_pulse));
+    release_button(0);
   }
 }
 
@@ -396,47 +339,41 @@ TEST_CASE("Slot 0: a button press does not toggle caps lock") {
 
     // With nothing pulling PB2 down the line rests high, so a pull-down is
     // installed first to make the press visible.
-    set_pulldowns(all_lines_pulled_down);
-    REQUIRE(switch_level(2) == 0);
+    linapple_set_game_pulldowns(all_lines_pulled_down);
+    REQUIRE(line_level(2) == 0);
     press_button(2);
 
     CHECK(keyboard_state().caps_lock == 0);
-    CHECK(switch_level(2) == 1);
+    CHECK(line_level(2) == 1);
+    release_button(2);
+    linapple_set_game_pulldowns(0);
   }
 }
 
-TEST_CASE("Slot 0: a line reads the OR of its button and its Apple key") {
+TEST_CASE(
+    "Slot 0: the keyboard card's modifier command answers its query and "
+    "reaches no switch line") {
   for (Order_t order : both_orders) {
     CAPTURE(order);
     Slot0_t slot0(order);
     REQUIRE(slot0.keyboard_registered == 0);
     REQUIRE(slot0.joystick_registered == 0);
 
-    // PB0 and PB1 rest low through the controller's pull-downs; PB2 has none
-    // and its open TTL input rests high (Sather, Understanding the Apple II,
-    // 7-9 and 7-11).
-    CHECK(switch_level(0) == 0);
-    CHECK(switch_level(1) == 0);
-    CHECK(switch_level(2) == 1);
+    // PB0 and PB1 rest low through the keyboard's pull-downs; PB2 has none
+    // and its open TTL input rests high (Sather, Understanding the Apple IIe,
+    // 7-8; Understanding the Apple II, 7-9 and 7-11).
+    CHECK(line_level(0) == 0);
+    CHECK(line_level(1) == 0);
+    CHECK(line_level(2) == 1);
 
-    set_switch(0, source_keyboard, 1);
-    CHECK(switch_level(0) == 1);
-    CHECK(switch_level(1) == 0);
-    set_switch(0, source_connector, 1);
-    CHECK(switch_level(0) == 1);
-    set_switch(0, source_keyboard, 0);
-    CHECK(switch_level(0) == 1);
-    set_switch(0, source_connector, 0);
-    CHECK(switch_level(0) == 0);
-
-    // The keyboard card's own modifier levels answer the debugger's query and
-    // reach no switch line.
     KeyboardModifiers_t mods{};
     mods.gui = 1;
+    mods.alt = 1;
     send(keyboard_cmd_set_mods, &mods, sizeof(mods));
     CHECK(keyboard_mods().gui == 1);
-    CHECK(switch_level(0) == 0);
-    CHECK(switch_level(1) == 0);
+    CHECK(keyboard_mods().alt == 1);
+    CHECK(line_level(0) == 0);
+    CHECK(line_level(1) == 0);
   }
 }
 
@@ -462,13 +399,6 @@ TEST_CASE("Slot 0: a payload of the wrong size changes nothing") {
     REQUIRE(peripheral_command(0, JOYSTICK_CMD_SET_AXIS, &axis,
                                sizeof(JoystickAxisPayload_t) + 1) ==
             peripheral_ok);
-    const OneByteLong_t<JoystickButtonPayload_t> button{{0, 1, 0, 0}, 0};
-    REQUIRE(peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &button,
-                               sizeof(JoystickButtonPayload_t) - 1) ==
-            peripheral_ok);
-    REQUIRE(peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &button,
-                               sizeof(JoystickButtonPayload_t) + 1) ==
-            peripheral_ok);
     KeyboardModifiers_t mods{};
     mods.shift = 1;
     REQUIRE(peripheral_command(0, keyboard_cmd_set_mods, &mods,
@@ -477,7 +407,7 @@ TEST_CASE("Slot 0: a payload of the wrong size changes nothing") {
 
     const KeyboardSaveState_t keyboard_after = keyboard_state();
     const JoystickSaveState_t joystick_after = joystick_state();
-    CHECK(switch_level(0) == 0);
+    CHECK(line_level(0) == 0);
     CHECK(std::memcmp(&keyboard_before, &keyboard_after,
                       sizeof(KeyboardSaveState_t)) == 0);
     CHECK(std::memcmp(&joystick_before, &joystick_after,
@@ -519,17 +449,6 @@ TEST_CASE("Slot 0: a dispatcher says peripheral_error to the wrong size") {
   CHECK(joystick->command(joy, JOYSTICK_CMD_SET_AXIS, &axis, axis_size + 1) ==
         peripheral_error);
   CHECK(joystick->command(joy, JOYSTICK_CMD_SET_AXIS, nullptr, axis_size) ==
-        peripheral_error);
-
-  const OneByteLong_t<JoystickButtonPayload_t> button{{0, 1, 0, 0}, 0};
-  constexpr size_t button_size = sizeof(JoystickButtonPayload_t);
-  CHECK(joystick->command(joy, JOYSTICK_CMD_SET_BUTTON, &button, button_size) ==
-        peripheral_ok);
-  CHECK(joystick->command(joy, JOYSTICK_CMD_SET_BUTTON, &button,
-                          button_size - 1) == peripheral_error);
-  CHECK(joystick->command(joy, JOYSTICK_CMD_SET_BUTTON, &button,
-                          button_size + 1) == peripheral_error);
-  CHECK(joystick->command(joy, JOYSTICK_CMD_SET_BUTTON, nullptr, button_size) ==
         peripheral_error);
 }
 
@@ -594,9 +513,9 @@ TEST_CASE("Slot 0: a foreign id is incompatible, never an error") {
   size = sizeof(answer);
   CHECK(joystick->query(joy, keyboard_query_rocker, &answer, &size) ==
         peripheral_incompatible);
-  const JoystickButtonPayload_t button{0, 1, 0, 0};
-  CHECK(keyboard->command(kbd, JOYSTICK_CMD_SET_BUTTON, &button,
-                          sizeof(button)) == peripheral_incompatible);
+  const std::array<uint8_t, 4> button{{0, 1, 0, 0}};
+  CHECK(keyboard->command(kbd, retired_joystick_id, button.data(),
+                          button.size()) == peripheral_incompatible);
   CHECK(joystick->command(joy, keyboard_cmd_set_rocker, &answer,
                           sizeof(answer)) == peripheral_incompatible);
 
@@ -604,6 +523,8 @@ TEST_CASE("Slot 0: a foreign id is incompatible, never an error") {
   // incompatible too, so a neighbour in the slot still gets asked.
   CHECK(joystick->command(joy, unknown_joystick_id, nullptr, 0) ==
         peripheral_incompatible);
+  CHECK(joystick->command(joy, retired_joystick_id, button.data(),
+                          button.size()) == peripheral_incompatible);
   size = sizeof(answer);
   CHECK(joystick->query(joy, unknown_joystick_id, &answer, &size) ==
         peripheral_incompatible);
@@ -653,89 +574,5 @@ TEST_CASE("Slot 0: a command can name the peripheral it is for") {
     size_t size = sizeof(rocker);
     CHECK(peripheral_query_by_id(0, "linapple.joystick", keyboard_query_rocker,
                                  &rocker, &size) == peripheral_incompatible);
-  }
-}
-
-TEST_CASE(
-    "Slot 0: Open Apple from the host reaches PB0 on a //e and a II Plus") {
-  for (Model_t model : both_models) {
-    CAPTURE(model);
-    HostMachine_t machine(model);
-    REQUIRE(switch_level(0) == 0);
-    REQUIRE(switch_level(1) == 0);
-
-    hold_modifiers(false, false, true, false);
-    CHECK(switch_level(0) == 1);
-    CHECK(switch_level(1) == 0);
-    CHECK(keyboard_mods().gui == 1);
-    CHECK(keyboard_mods().alt == 0);
-
-    release_modifiers();
-    CHECK(switch_level(0) == 0);
-    CHECK(switch_level(1) == 0);
-    CHECK(keyboard_mods().gui == 0);
-  }
-}
-
-TEST_CASE("Slot 0: Solid Apple from the host reaches PB1 and the key arrives") {
-  for (Model_t model : both_models) {
-    CAPTURE(model);
-    HostMachine_t machine(model);
-    REQUIRE(keyboard_data() == 0);
-
-    hold_modifiers(false, false, false, true);
-    press_key('A');
-    CHECK(switch_level(0) == 0);
-    CHECK(switch_level(1) == 1);
-    CHECK(keyboard_mods().alt == 1);
-    CHECK(keyboard_mods().gui == 0);
-    CHECK(keyboard_data() == latched_a);
-  }
-}
-
-TEST_CASE("Slot 0: the host's shift reaches PB2 only while the jumper is in") {
-  for (Model_t model : both_models) {
-    CAPTURE(model);
-    HostMachine_t machine(model);
-    // A two-button controller's plug pulls down PB0 and PB1 and leaves PB2
-    // open (Sather, Understanding the Apple II, 7-9 and 7-11), so the TTL
-    // input rests high (TI, Designing With Logic, SDYA009C, section 3) and the
-    // shift key has nowhere to go.
-    REQUIRE(switch_level(shift_line) == 1);
-
-    hold_modifiers(true, false, false, false);
-    CHECK(switch_level(shift_line) == 1);
-    CHECK(switch_level(0) == 0);
-    CHECK(switch_level(1) == 0);
-    CHECK(keyboard_mods().shift == 1);
-    release_modifiers();
-
-    send(JOYSTICK_CMD_SET_SHIFT_KEY_MOD, &jumper_in, sizeof(jumper_in));
-    CHECK(switch_level(shift_line) == 1);
-    hold_modifiers(true, false, false, false);
-    CHECK(switch_level(shift_line) == 0);
-    CHECK(keyboard_mods().shift == 1);
-    release_modifiers();
-    CHECK(switch_level(shift_line) == 1);
-    CHECK(keyboard_mods().shift == 0);
-  }
-}
-
-TEST_CASE("Slot 0: both Apple keys held read on both lines and in the query") {
-  for (Model_t model : both_models) {
-    CAPTURE(model);
-    HostMachine_t machine(model);
-
-    hold_modifiers(false, false, true, true);
-    CHECK(switch_level(0) == 1);
-    CHECK(switch_level(1) == 1);
-    CHECK(keyboard_mods().gui == 1);
-    CHECK(keyboard_mods().alt == 1);
-
-    hold_modifiers(false, false, false, true);
-    CHECK(switch_level(0) == 0);
-    CHECK(switch_level(1) == 1);
-    CHECK(keyboard_mods().gui == 0);
-    CHECK(keyboard_mods().alt == 1);
   }
 }

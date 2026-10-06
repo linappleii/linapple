@@ -50,8 +50,4 @@ size_t joystick_abi_c_axis_payload_size(void) {
   return sizeof(JoystickAxisPayload_t);
 }
 
-size_t joystick_abi_c_button_payload_size(void) {
-  return sizeof(JoystickButtonPayload_t);
-}
-
 uint32_t joystick_abi_c_state_version(void) { return JOYSTICK_STATE_VERSION; }

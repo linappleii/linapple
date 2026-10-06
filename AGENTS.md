@@ -176,14 +176,20 @@ More on building in <!-- Imported from: INSTALL.md -->
     the file or device, its path, its mode (append or overwrite) and its
     flushing belong to the frontend, never to the card. The slot comes from
     the token `SinkOpen` returned, never from the card's own bookkeeping.
-  - A line two devices drive (the //e wires Open and Solid Apple in
-    parallel with the game connector's PB0 and PB1, and the shift-key mod
-    puts shift on PB2; IIe Technical Reference p. 41) is owned by one card,
-    which registers the address and composes the levels; the other device's
-    level reaches it from the host as a second source on the same command
-    (`JOYSTICK_CMD_SET_BUTTON` carries `source`, 0 the connector, 1 the
-    keyboard). No two cards register one address: the direct-I/O bridge
-    serves the first registrant, and registration order is not a contract.
+  - A line two devices drive is the motherboard's, never a card's. The //e
+    wires Open and Solid Apple in parallel with the game connector's PB0 and
+    PB1, and the shift-key mod puts shift on PB2 (IIe Technical Reference
+    p. 41), and the resting level depends on which devices are plugged in
+    (the keyboard's 470 ohm pull-downs, a controller plug's 560 ohm, the
+    revision C board's 12 k pull-ups), so `src/apple2/SwitchInputs.{h,cpp}`
+    holds both sides of each wired-OR, the plug's mask and the jumper, and
+    `Memory.cpp`'s `io_read_c06x` answers `$C061-$C063` and their mirrors
+    from it. No card registers those addresses. Each device closes its own
+    side through the bridge: the keyboard's through `linapple_set_modifiers`,
+    the connector's through `linapple_set_game_switch`,
+    `linapple_set_game_pulldowns` and `linapple_set_shift_key_mod`. No two
+    cards register one address: the direct-I/O bridge serves the first
+    registrant, and registration order is not a contract.
   - Peripheral command headers (e.g., `DiskCommands.h`, `KeyboardCommands.h`,
     `HarddiskCommands.h`, `MockingboardCommands.h`, `MouseCommands.h`) are
     included directly by consumers that send or handle those commands, rather

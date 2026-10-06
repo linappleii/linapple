@@ -18,43 +18,24 @@ namespace {
 
 // The 74LS251 behind $C060-$C06F puts one input on D7 alone, selected by
 // A0-A2; A3 is not decoded, so $C068-$C06F mirror $C060-$C067, and bits 0-6
-// are the undriven bus. Input 0 is the cassette input, the motherboard's. Any
-// access to $C070-$C07F triggers all four timers. $C07F stays with the
-// motherboard: on the //e its read answers RDDHIRES. (Apple II Reference
-// Manual 1979 pp. 78-79, 99; Sather 7-8; IIe Tech Ref pp. 29, 41, 187.)
+// are the undriven bus. Inputs 0-3, the cassette input and the three
+// pushbutton lines the keyboard and the connector drive together, are the
+// motherboard's; the card answers inputs 4-7, its four timers. Any access to
+// $C070-$C07F triggers all four. $C07F stays with the motherboard: on the //e
+// its read answers RDDHIRES. (Apple II Reference Manual 1979 pp. 78-79, 99;
+// Sather 7-8; IIe Tech Ref pp. 29, 41, 187.)
 constexpr uint16_t addr_mux_first = 0xC060;
 constexpr uint16_t addr_mux_last = 0xC06F;
 constexpr uint16_t addr_trigger_first = 0xC070;
 constexpr uint16_t addr_trigger_last = 0xC07E;
 constexpr uint16_t mux_select_mask = 0x07;
-constexpr size_t mux_switch0 = 1;
 constexpr size_t mux_paddle0 = 4;
 constexpr uint8_t bus_data_mask = 0x7F;
 constexpr uint8_t input_bit = 0x80;
 
 constexpr size_t paddle_count = 4;
-constexpr size_t switch_count = 3;
 constexpr uint8_t joystick_count = 2;
 constexpr uint8_t axis_count = 2;
-constexpr uint8_t level_max = 1;
-constexpr uint8_t flag_max = 1;
-
-// PB0-PB2 are TTL inputs: a button puts +5 V on the line, the 560 ohm
-// pull-down lives in the controller's plug, and an open input reads 1 (Apple
-// II Reference Manual 1979 p. 100; Sather 7-9, 7-11; TI SDYA009C section 3).
-// The //e wires Open and Solid Apple in parallel with PB0 and PB1 (IIe Tech
-// Ref pp. 13, 41), so a line is the OR of its two switches over whatever
-// pull-down is present.
-enum SwitchSource_t : uint8_t { source_connector = 0, source_keyboard = 1 };
-constexpr uint8_t source_max = source_keyboard;
-constexpr uint8_t default_pulldowns = 0x03;
-constexpr uint8_t pulldowns_max = 0x07;
-
-// The shift-key mod grounds PB2 through the shift key, so with the jumper in
-// the line reads 0 while shift is down and 1 otherwise, whatever the button
-// does (IIe Tech Ref p. 41; Sather 7-31 calls the mod and a pulled-down button
-// on one line a combination where neither works). Out by default, as shipped.
-constexpr size_t shift_mod_line = 2;
 
 // Where a centred stick rests.
 constexpr uint8_t centre_position = 127;
@@ -74,10 +55,6 @@ struct GamePort_t {
   // The pot as it stood at the accepted strobe, moved with the pot only while
   // the output is high.
   std::array<uint8_t, paddle_count> pulse_position{};
-  std::array<bool, switch_count> connector{};
-  std::array<bool, switch_count> keyboard{};
-  uint8_t pulldowns = default_pulldowns;
-  bool shift_key_mod = false;
   HostInterface_t* host = nullptr;
   int slot = 0;
 };
@@ -98,44 +75,6 @@ auto timer_expired(const GamePort_t* port, size_t paddle, uint64_t now)
     return true;
   }
   return now - trigger >= pulse_cycles(port->pulse_position.at(paddle));
-}
-
-// No latch sits between the pin and D7: the level is the switches at the
-// instant of the read (Apple II Reference Manual 1979 p. 100; Sather 7-9).
-auto switch_level(const GamePort_t* port, size_t line) -> bool {
-  if (line == shift_mod_line && port->shift_key_mod) {
-    return !port->keyboard.at(line);
-  }
-  if (port->connector.at(line)) {
-    return true;
-  }
-  if (line != shift_mod_line && port->keyboard.at(line)) {
-    return true;
-  }
-  return (port->pulldowns & (1U << line)) == 0;
-}
-
-auto joystick_io_read_switch(void* instance, uint16_t program_counter,
-                             uint16_t memory_address, uint8_t is_write,
-                             uint8_t data_value, uint32_t executed_cycles)
-    -> uint8_t {
-  (void)program_counter;
-  (void)is_write;
-  (void)data_value;
-  if (instance == nullptr) {
-    return 0;
-  }
-  auto* port = static_cast<GamePort_t*>(instance);
-
-  uint8_t result = port->host->ReadFloatingBus(executed_cycles) & bus_data_mask;
-  const size_t line = (memory_address & mux_select_mask) - mux_switch0;
-  if (line >= switch_count) {
-    return result;
-  }
-  if (switch_level(port, line)) {
-    result |= input_bit;
-  }
-  return result;
 }
 
 auto joystick_io_read_paddle(void* instance, uint16_t program_counter,
@@ -217,14 +156,10 @@ auto joystick_abi_init(int slot, HostInterface_t* host) -> void* {
   port->slot = slot;
 
   for (uint16_t addr = addr_mux_first; addr <= addr_mux_last; ++addr) {
-    const size_t input = addr & mux_select_mask;
-    if (input < mux_switch0) {
+    if ((addr & mux_select_mask) < mux_paddle0) {
       continue;
     }
-    host->RegisterDirectIO(
-        port.get(), addr,
-        input < mux_paddle0 ? joystick_io_read_switch : joystick_io_read_paddle,
-        nullptr);
+    host->RegisterDirectIO(port.get(), addr, joystick_io_read_paddle, nullptr);
   }
   for (uint16_t addr = addr_trigger_first; addr <= addr_trigger_last; ++addr) {
     host->RegisterDirectIOStrobe(port.get(), addr, joystick_strobe);
@@ -272,43 +207,6 @@ auto joystick_abi_command(void* instance, uint32_t command_id,
       }
       return peripheral_ok;
     }
-    case JOYSTICK_CMD_SET_BUTTON: {
-      if (payload == nullptr ||
-          payload_size != sizeof(JoystickButtonPayload_t)) {
-        return peripheral_error;
-      }
-      const auto* button = static_cast<const JoystickButtonPayload_t*>(payload);
-      if (button->button >= switch_count || button->down > level_max ||
-          button->source > source_max) {
-        return peripheral_error;
-      }
-      auto& source =
-          button->source == source_connector ? port->connector : port->keyboard;
-      source.at(button->button) = button->down != 0;
-      return peripheral_ok;
-    }
-    case JOYSTICK_CMD_SET_SHIFT_KEY_MOD: {
-      if (payload == nullptr || payload_size != sizeof(uint8_t)) {
-        return peripheral_error;
-      }
-      const uint8_t jumper = *static_cast<const uint8_t*>(payload);
-      if (jumper > flag_max) {
-        return peripheral_error;
-      }
-      port->shift_key_mod = jumper != 0;
-      return peripheral_ok;
-    }
-    case JOYSTICK_CMD_SET_PULLDOWNS: {
-      if (payload == nullptr || payload_size != sizeof(uint8_t)) {
-        return peripheral_error;
-      }
-      const uint8_t mask = *static_cast<const uint8_t*>(payload);
-      if (mask > pulldowns_max) {
-        return peripheral_error;
-      }
-      port->pulldowns = mask;
-      return peripheral_ok;
-    }
     default:
       return peripheral_incompatible;
   }
@@ -351,8 +249,8 @@ static_assert(offsetof(JoystickSaveState_t, trim_y) == 50,
 static_assert(offsetof(JoystickSaveState_t, reserved1) == 52,
               "the fields after the triggers keep their place");
 
-// Four trigger cycles are the whole state; positions, switches and trim are
-// the host's and go out as zeros.
+// Four trigger cycles are the whole state; positions and trim are the host's,
+// the switch levels the motherboard's, and all go out as zeros.
 auto joystick_abi_save_state(void* instance, void* state_buffer,
                              size_t* buffer_size) -> PeripheralStatus_t {
   if (buffer_size == nullptr) {
@@ -382,8 +280,7 @@ auto joystick_abi_save_state(void* instance, void* state_buffer,
 
 // Any trigger loads; one ahead of the counter reads expired. The frame carries
 // no positions, so a loaded pulse is measured against the pot as the host
-// holds it now (it re-sends within a slice; a pulse is under 3 ms). The jumper
-// and the pull-down mask are wiring, not state, and stay as the host set them.
+// holds it now (it re-sends within a slice; a pulse is under 3 ms).
 auto joystick_abi_load_state(void* instance, const void* state_buffer,
                              size_t buffer_size) -> PeripheralStatus_t {
   if (instance == nullptr || state_buffer == nullptr ||
@@ -411,18 +308,14 @@ static const Peripheral_t joystick_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.joystick",
     .name = "Joystick",
-    .description =
-        "Apple II game I/O port: four paddle timers and three "
-        "pushbutton inputs",
+    .description = "Apple II game I/O port: four paddle timers",
     .author = "LinApple Contributors",
     .version = VERSIONSTRING,
     .compatible_slots = PERIPHERAL_MASK_INTERNAL,
     .default_slot = 0,
     .init = joystick_abi_init,
-    // RESET' reaches neither the NE558 (its RESET pin is unused, Sather 7-11)
-    // nor a switch, and the //e monitor reads $C062/$C061 inside its reset
-    // routine to pick the self-test or the cold start (IIe Tech Ref pp. 90-91),
-    // so clearing the levels here would put both out of reach.
+    // RESET' does not reach the NE558 (its RESET pin is unused, Sather 7-11),
+    // so a pulse in flight runs out on its own.
     .reset = nullptr,
     .shutdown = joystick_abi_shutdown,
     .think = nullptr,

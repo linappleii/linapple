@@ -88,8 +88,6 @@ struct JoystickHostConfig_t {
 static JoystickHostConfig_t g_joy_config;
 
 constexpr uint8_t k_switch_line_count = 3;
-constexpr uint8_t k_two_button_pulldowns =
-    joystick_line_pb0 | joystick_line_pb1;
 
 // A press and its release delivered in one SDL pump would reach the port
 // with no emulated cycles between them, which no program could see and no
@@ -119,25 +117,8 @@ static auto device_button_lines(size_t joy_num, int button) -> uint8_t {
                                       g_joy_config.joy_type[1]);
 }
 
-// The 560 ohm pull-downs sit in the controller's plug, two in a standard set
-// (Sather, Understanding the Apple II, 7-9 and 7-11), and an open TTL input
-// reads high (TI, Designing With Logic, SDYA009C, section 3). PB0 and PB1
-// are always pulled down here: the //e ROM reads both inside RESET with no
-// controller plugged in (Apple IIe Technical Reference Manual, pp. 90-91),
-// which only works with the lines at rest low, and an open PB0 would turn
-// every reset into an Open-Apple cold start. PB2 is pulled down only when a
-// device drives it.
-static auto connector_pulldowns() -> uint8_t {
-  return static_cast<uint8_t>(
-      k_two_button_pulldowns |
-      joystick_config_pulldown_mask(g_joy_config.joy_type[0],
-                                    g_joy_config.joy_type[1]));
-}
-
 static auto send_connector_switch(uint8_t line, bool down) -> void {
-  const JoystickButtonPayload_t level = {
-      line, static_cast<uint8_t>(down ? 1 : 0), 0, 0};
-  peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &level, sizeof(level));
+  linapple_set_game_switch(line, down);
 }
 
 static auto send_connector_lines(uint8_t lines, bool down) -> void {
@@ -315,12 +296,7 @@ auto joy_frontend_initialize() -> void {
 
   // The jumper is soldered in or out; it is read with the configuration and
   // never changes while the machine runs.
-  uint8_t shift_key_mod = 0;
-  if (load(REGVALUE_SHIFT_KEY_MOD, &val)) {
-    shift_key_mod = (val != 0) ? 1 : 0;
-  }
-  peripheral_command(0, JOYSTICK_CMD_SET_SHIFT_KEY_MOD, &shift_key_mod,
-                     sizeof(shift_key_mod));
+  linapple_set_shift_key_mod(load(REGVALUE_SHIFT_KEY_MOD, &val) && val != 0);
 
   const int number_of_joysticks = sdl_compat_num_joysticks();
 
@@ -357,7 +333,8 @@ auto joy_frontend_initialize() -> void {
 
   // The mask follows the devices actually present, so a configured second
   // stick that is not plugged in leaves PB2 open as the hardware would.
-  linapple_set_game_pulldowns(connector_pulldowns());
+  linapple_set_game_pulldowns(joystick_config_pulldown_mask(
+      g_joy_config.joy_type[0], g_joy_config.joy_type[1]));
 
   // Start the queues and the port from the same released levels, whatever a
   // previous session left held.

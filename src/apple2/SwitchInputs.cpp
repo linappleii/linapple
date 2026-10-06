@@ -14,7 +14,7 @@ constexpr int override_none = -1;
 struct SwitchInputs_t {
   std::array<bool, switch_input_count> keyboard_closed{};
   std::array<bool, switch_input_count> connector_closed{};
-  uint8_t connector_pulldowns = 0;
+  uint8_t plug_pulldowns = 0;
   bool shift_key_mod = false;
   bool apple2e = true;
   bool keyboard_present = true;
@@ -45,7 +45,7 @@ auto switch_inputs_set_level(uint8_t line, SwitchInputSource_t source,
 }
 
 auto switch_inputs_set_connector_pulldowns(uint8_t mask) -> void {
-  g_switch_inputs.connector_pulldowns = mask & pulldown_mask_all;
+  g_switch_inputs.plug_pulldowns = mask & pulldown_mask_all;
 }
 
 auto switch_inputs_set_shift_key_mod(bool jumper_in) -> void {
@@ -66,7 +66,7 @@ auto switch_inputs_pulldowns() -> uint8_t {
   if (g_switch_inputs.override_pulldowns != override_none) {
     return static_cast<uint8_t>(g_switch_inputs.override_pulldowns);
   }
-  uint8_t mask = g_switch_inputs.connector_pulldowns;
+  uint8_t mask = g_switch_inputs.plug_pulldowns;
   if (g_switch_inputs.apple2e && g_switch_inputs.keyboard_present) {
     mask |= keyboard_pulldowns_2e;
   }

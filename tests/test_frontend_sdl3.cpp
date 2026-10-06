@@ -738,6 +738,9 @@ struct GamePortOnly_t {
   GamePortOnly_t() {
     cpu_set_active_context(&cpu);
     current_apple2_type = A2TYPE_APPLE2EENHANCED;
+    // The switch inputs are answered by the motherboard's own I/O handlers,
+    // installed by the pre-initialisation a frontend-built machine gets.
+    mem_pre_initialize();
     REQUIRE(mem_initialize() == 0);
     peripheral_manager_init();
     Peripheral_t* joystick = peripheral_find_internal("linapple.joystick");

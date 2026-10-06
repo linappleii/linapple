@@ -19,7 +19,6 @@
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
-#include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/Asset.h"
 #include "core/BasicLiveSync.h"
@@ -532,20 +531,14 @@ auto linapple_toggle_caps_lock_state() -> bool {
   return new_state;
 }
 
-static auto send_keyboard_switch(uint8_t line, bool down) -> void {
-  const JoystickButtonPayload_t level = {
-      line, static_cast<uint8_t>(down ? 1 : 0), 1, 0};
-  peripheral_command(0, JOYSTICK_CMD_SET_BUTTON, &level, sizeof(level));
-}
-
-// The host's modifier keys are both keyboard modifiers and game-port switches:
-// the //e wires Open Apple and Solid Apple in parallel with the connector's
-// PB0 and PB1, and the shift-key mod runs the shift key to PB2 (Apple IIe
-// Technical Reference Manual, pp. 13 and 41). The levels go to the port on
-// every model as the keyboard's source, so they OR with a controller's
-// buttons rather than overwrite them; on a II or II Plus they are the host
-// buttons the README promises, and the port applies the shift level only
-// while the jumper is in.
+// The host's modifier keys are both keyboard modifiers and switch inputs: the
+// //e wires Open Apple and Solid Apple in parallel with the connector's PB0
+// and PB1, and the shift-key mod runs the shift key to PB2 (Apple IIe
+// Technical Reference Manual, pp. 13 and 41). The levels reach the
+// motherboard's lines on every model as the keyboard's side of the wired-OR,
+// so they combine with a controller's buttons rather than overwrite them; on
+// a II or II Plus they are the host buttons the README promises, and the
+// shift level counts only while the jumper is in.
 auto linapple_set_modifiers(bool shift, bool ctrl, bool open_apple,
                             bool solid_apple) -> void {
   const KeyboardModifiers_t mods = {static_cast<uint8_t>(shift ? 1 : 0),
@@ -558,19 +551,16 @@ auto linapple_set_modifiers(bool shift, bool ctrl, bool open_apple,
   switch_inputs_set_level(0, switch_source_keyboard, open_apple);
   switch_inputs_set_level(1, switch_source_keyboard, solid_apple);
   switch_inputs_set_level(2, switch_source_keyboard, shift);
-  send_keyboard_switch(0, open_apple);
-  send_keyboard_switch(1, solid_apple);
-  send_keyboard_switch(2, shift);
+}
+
+auto linapple_set_game_switch(uint8_t line, bool down) -> void {
+  switch_inputs_set_level(line, switch_source_connector, down);
 }
 
 auto linapple_set_game_pulldowns(uint8_t mask) -> void {
   switch_inputs_set_connector_pulldowns(mask);
-  peripheral_command(0, JOYSTICK_CMD_SET_PULLDOWNS, &mask, sizeof(mask));
 }
 
 auto linapple_set_shift_key_mod(bool jumper_in) -> void {
   switch_inputs_set_shift_key_mod(jumper_in);
-  const uint8_t jumper = jumper_in ? 1 : 0;
-  peripheral_command(0, JOYSTICK_CMD_SET_SHIFT_KEY_MOD, &jumper,
-                     sizeof(jumper));
 }

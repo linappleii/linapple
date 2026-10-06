@@ -8,7 +8,6 @@
 #include <cstring>
 #include <initializer_list>
 #include <map>
-#include <ostream>
 #include <string>
 #include <vector>
 
@@ -20,7 +19,6 @@
 #include "apple2/peripherals/Peripheral_Subsystems.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/joystick/JoystickCommands.h"
-#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/LinAppleCore.h"
 #include "doctest.h"
 #include "test_fixtures.h"
@@ -36,7 +34,6 @@ extern "C" auto joystick_abi_c_buttons_offset() -> size_t;
 extern "C" auto joystick_abi_c_trim_x_offset() -> size_t;
 extern "C" auto joystick_abi_c_trim_y_offset() -> size_t;
 extern "C" auto joystick_abi_c_axis_payload_size() -> size_t;
-extern "C" auto joystick_abi_c_button_payload_size() -> size_t;
 extern "C" auto joystick_abi_c_state_version() -> uint32_t;
 
 namespace {
@@ -44,18 +41,15 @@ namespace {
 constexpr int slot0 = 0;
 
 // The 74LS251 behind the "6" line puts one of eight inputs on D7: inputs 1-3
-// are the pushbuttons, 4-7 the four NE558 timers, and A3 does not reach the
-// part, so $C068-$C06F are $C060-$C067 again (Apple II Reference Manual, 1979,
-// p. 99; Sather, Understanding the Apple II, 7-8; Apple IIe Technical
-// Reference Manual, p. 189). Any access to the "7" line, $C070-$C07F, triggers
-// the timers (1979 manual pp. 78-79 and 99; IIe Tech Ref pp. 29-30 and 187).
-// $C07F stays the motherboard's: on the //e its read is RDDHIRES.
-constexpr uint16_t addr_switch0 = 0xC061;
-constexpr uint16_t addr_switch1 = 0xC062;
-constexpr uint16_t addr_switch2 = 0xC063;
+// are the pushbuttons, the motherboard's, 4-7 the four NE558 timers, and A3
+// does not reach the part, so $C068-$C06F are $C060-$C067 again (Apple II
+// Reference Manual, 1979, p. 99; Sather, Understanding the Apple II, 7-8;
+// Apple IIe Technical Reference Manual, p. 189). Any access to the "7" line,
+// $C070-$C07F, triggers the timers (1979 manual pp. 78-79 and 99; IIe Tech
+// Ref pp. 29-30 and 187). $C07F stays the motherboard's: on the //e its read
+// is RDDHIRES.
 constexpr uint16_t addr_paddle0 = 0xC064;
 constexpr uint16_t addr_paddle1 = 0xC065;
-constexpr uint16_t addr_mirror_switch0 = 0xC069;
 constexpr uint16_t addr_mirror_paddle0 = 0xC06C;
 constexpr uint16_t addr_trigger_first = 0xC070;
 constexpr uint16_t addr_trigger_last = 0xC07E;
@@ -77,16 +71,6 @@ constexpr uint16_t probe_base = 0x0380;
 constexpr uint8_t marker_low = 0x5A;
 constexpr uint8_t marker_high = 0xDA;
 
-constexpr uint8_t source_connector = 0;
-constexpr uint8_t source_keyboard = 1;
-constexpr uint8_t shift_line = 2;
-
-// A standard two-button controller pulls PB0 and PB1 down through the 560 ohm
-// resistors in its plug and leaves PB2 open, which a TTL input reads as 1
-// (Sather 7-9 and 7-11; TI, Designing With Logic, SDYA009C, section 3).
-constexpr uint8_t default_pulldowns = 0x03;
-constexpr uint8_t every_line_pulled_down = 0x07;
-
 // Far past any pulse a fresh counter could have seen, so a first strobe there
 // finds every timer expired; 1,000,000 is $0F4240.
 constexpr uint64_t far_counter = 1000000;
@@ -99,25 +83,8 @@ constexpr uint64_t longest_pulse_and_then_some = 3000;
 // runaway without cutting a legitimate read short.
 constexpr uint32_t pread_cycle_cap = 4000;
 constexpr uint32_t probe_cycle_cap = 64;
-// The Monitor's reset routine is done inside a tenth of a second.
-constexpr uint32_t reset_routine_cycle_cap = 100000;
-
-// The Enhanced //e reset routine reads $C062 and, with bit 7 set, jumps to the
-// self-test at $C600 (bytes AD 62 C0 10 03 4C 00 C6 at $C2BB of
-// res/roms/Apple2e_Enhanced.rom; IIe Tech Ref pp. 90-91).
-constexpr uint16_t rom_self_test = 0xC600;
 
 constexpr uint32_t unknown_joystick_id = PERIPHERAL_SUBSYSTEM_JOYSTICK | 0x00FF;
-
-enum class Order_t : uint8_t { keyboard_first, joystick_first };
-
-auto operator<<(std::ostream& out, Order_t order) -> std::ostream& {
-  return out << (order == Order_t::keyboard_first ? "keyboard first"
-                                                  : "joystick first");
-}
-
-const std::initializer_list<Order_t> both_orders = {Order_t::keyboard_first,
-                                                    Order_t::joystick_first};
 
 // The card as the registry hands it out, which is what the machine wires in.
 auto game_port() -> Peripheral_t* {
@@ -126,18 +93,12 @@ auto game_port() -> Peripheral_t* {
   return descriptor;
 }
 
-auto keyboard_card() -> Peripheral_t* {
-  Peripheral_t* descriptor = peripheral_find_internal("linapple.keyboard");
-  REQUIRE(descriptor != nullptr);
-  return descriptor;
-}
-
 using Frame_t = std::array<uint8_t, sizeof(JoystickSaveState_t)>;
 
 // Header: version 1, struct_size 56 ($38). A cold start has every timer
 // expired, so one strobe at cycle 1,000,000 ($0F4240) triggers all four. The
-// positions, switch levels and trim are not the port's and go out as zeros.
-// Bytes as a little-endian host lays the frame out.
+// positions and trim are not the port's, nor are the switch levels, and all
+// go out as zeros. Bytes as a little-endian host lays the frame out.
 constexpr Frame_t frame_after_one_strobe = {{
     0x01, 0x00, 0x00, 0x00, 0x38, 0x00, 0x00, 0x00,  //
     0x40, 0x42, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00,  //
@@ -173,15 +134,6 @@ auto axis_payload(uint8_t paddle, uint8_t position) -> JoystickAxisPayload_t {
   return payload;
 }
 
-auto button_payload(uint8_t line, uint8_t source, bool down)
-    -> JoystickButtonPayload_t {
-  JoystickButtonPayload_t payload{};
-  payload.button = line;
-  payload.down = down ? 1 : 0;
-  payload.source = source;
-  return payload;
-}
-
 // The game port in an Enhanced //e built the way a frontend builds it, the
 // internal cards in slot 0 through the registry, and the 6502 stepped one
 // instruction at a time so that every I/O access is charged at the cumulative
@@ -195,23 +147,6 @@ struct GamePortMachine_t {
   GamePortMachine_t()
       : config(TestFixtures::ScopedTestConfig_t::enhanced_2e_only()),
         core(config) {
-    linapple_reset_hard();
-    move_off_cycle_zero();
-  }
-
-  // Both slot-0 cards registered by hand through the public API in the order
-  // asked for, so a case can show the answer does not depend on it.
-  explicit GamePortMachine_t(Order_t order)
-      : config(TestFixtures::ScopedTestConfig_t::enhanced_2e_only()),
-        core(config) {
-    peripheral_manager_init();
-    if (order == Order_t::keyboard_first) {
-      REQUIRE(peripheral_register(keyboard_card(), slot0) == 0);
-      REQUIRE(peripheral_register(game_port(), slot0) == 0);
-    } else {
-      REQUIRE(peripheral_register(game_port(), slot0) == 0);
-      REQUIRE(peripheral_register(keyboard_card(), slot0) == 0);
-    }
     linapple_reset_hard();
     move_off_cycle_zero();
   }
@@ -236,19 +171,6 @@ struct GamePortMachine_t {
   static auto set_paddle(uint8_t paddle, uint8_t position) -> void {
     const JoystickAxisPayload_t payload = axis_payload(paddle, position);
     send(JOYSTICK_CMD_SET_AXIS, &payload, sizeof(payload));
-  }
-
-  static auto set_switch(uint8_t line, uint8_t source, bool down) -> void {
-    const JoystickButtonPayload_t payload = button_payload(line, source, down);
-    send(JOYSTICK_CMD_SET_BUTTON, &payload, sizeof(payload));
-  }
-
-  static auto set_pulldowns(uint8_t mask) -> void {
-    send(JOYSTICK_CMD_SET_PULLDOWNS, &mask, sizeof(mask));
-  }
-
-  static auto set_shift_key_mod(uint8_t jumper) -> void {
-    send(JOYSTICK_CMD_SET_SHIFT_KEY_MOD, &jumper, sizeof(jumper));
   }
 
   // With one instruction per cpu_execute every access reaches the bus with a
@@ -342,15 +264,6 @@ struct GamePortMachine_t {
     peripheral_save_state_by_name(slot0, "Joystick", frame.data(), &size);
     REQUIRE(size == frame.size());
     return frame;
-  }
-
-  static auto keyboard_mods() -> KeyboardModifiers_t {
-    KeyboardModifiers_t mods{};
-    size_t size = sizeof(mods);
-    REQUIRE(peripheral_query_by_id(slot0, "linapple.keyboard",
-                                   keyboard_query_mods, &mods,
-                                   &size) == peripheral_ok);
-    return mods;
   }
 };
 
@@ -536,8 +449,8 @@ TEST_CASE(
   CHECK(descriptor->load_state != nullptr);
   CHECK(descriptor->command != nullptr);
   CHECK(descriptor->query != nullptr);
-  // RESET' reaches neither the NE558 (its RESET pin is unused, Sather 7-11)
-  // nor a switch contact, and nothing in the port counts time on its own.
+  // RESET' does not reach the NE558 (its RESET pin is unused, Sather 7-11),
+  // and nothing in the port counts time on its own.
   CHECK(descriptor->reset == nullptr);
   CHECK(descriptor->think == nullptr);
   CHECK(descriptor->on_vblank == nullptr);
@@ -749,22 +662,8 @@ TEST_CASE(
   CHECK_FALSE(machine.high_at(addr_paddle0, far_counter + 1110));
 }
 
-TEST_CASE("Game port: $C069 to $C06F read as $C061 to $C067") {
+TEST_CASE("Game port: $C06C to $C06F read as $C064 to $C067") {
   GamePortMachine_t machine;
-
-  // With every line pulled down a press is visible on all three.
-  GamePortMachine_t::set_pulldowns(every_line_pulled_down);
-  for (uint8_t line = 0; line < 3; ++line) {
-    CAPTURE(line);
-    const uint16_t base = static_cast<uint16_t>(addr_switch0 + line);
-    const uint16_t mirror = static_cast<uint16_t>(addr_mirror_switch0 + line);
-    CHECK_FALSE(machine.high_at(mirror, far_counter));
-    CHECK_FALSE(machine.high_at(base, far_counter));
-    GamePortMachine_t::set_switch(line, source_connector, true);
-    CHECK(machine.high_at(mirror, far_counter));
-    CHECK(machine.high_at(base, far_counter));
-    GamePortMachine_t::set_switch(line, source_connector, false);
-  }
 
   // Every paddle at the centre, 127, is an 11 x 127 + 10 = 1,407-cycle pulse.
   constexpr uint64_t centre_pulse = 1407;
@@ -833,8 +732,8 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "Game port: bits 0-6 are the floating bus and bit 7 the timer or the "
-    "switch, on a paddle and on a button") {
+    "Game port: bits 0-6 are the floating bus and bit 7 the timer on a "
+    "paddle") {
   GamePortMachine_t machine;
 
   // Paddle 0 at the centre is a 1,407-cycle pulse. With scanner byte $5A a
@@ -853,150 +752,6 @@ TEST_CASE(
   machine.strobe_at(second);
   CHECK(machine.read_at(addr_paddle0, second + 1) == marker_high);
   CHECK(machine.read_at(addr_paddle0, second + centre_pulse) == marker_low);
-
-  // The same on PB0, pulled down: pressed $DA, released $5A, with either
-  // scanner byte.
-  machine.bus_marker = marker_low;
-  GamePortMachine_t::set_switch(0, source_connector, true);
-  CHECK(machine.read(addr_switch0) == marker_high);
-  GamePortMachine_t::set_switch(0, source_connector, false);
-  CHECK(machine.read(addr_switch0) == marker_low);
-  machine.bus_marker = marker_high;
-  GamePortMachine_t::set_switch(0, source_connector, true);
-  CHECK(machine.read(addr_switch0) == marker_high);
-  GamePortMachine_t::set_switch(0, source_connector, false);
-  CHECK(machine.read(addr_switch0) == marker_low);
-
-  // PB2 is open with the default mask and reads 1 at rest.
-  machine.bus_marker = marker_low;
-  CHECK(machine.read(addr_switch2) == marker_high);
-}
-
-TEST_CASE(
-    "Game port: each switch line reads the OR of its button and its key over "
-    "the pull-down, whichever slot-0 card registered first") {
-  for (Order_t order : both_orders) {
-    CAPTURE(order);
-    GamePortMachine_t machine(order);
-
-    // PB0 and PB1 rest low through the controller's pull-downs; the //e
-    // wires Open Apple and Solid Apple in parallel with them (IIe Tech Ref
-    // pp. 13 and 41), so either switch, or both, drives the line high. With
-    // the pull-down gone the open input reads 1 with nothing down.
-    for (uint8_t line = 0; line < 2; ++line) {
-      CAPTURE(line);
-      const uint16_t addr = static_cast<uint16_t>(addr_switch0 + line);
-      CHECK_FALSE(machine.high_at(addr, far_counter));
-      GamePortMachine_t::set_switch(line, source_connector, true);
-      CHECK(machine.high_at(addr, far_counter));
-      GamePortMachine_t::set_switch(line, source_keyboard, true);
-      CHECK(machine.high_at(addr, far_counter));
-      GamePortMachine_t::set_switch(line, source_connector, false);
-      CHECK(machine.high_at(addr, far_counter));
-      GamePortMachine_t::set_switch(line, source_keyboard, false);
-      CHECK_FALSE(machine.high_at(addr, far_counter));
-
-      const uint8_t without_this_line =
-          static_cast<uint8_t>(default_pulldowns & ~(1U << line));
-      GamePortMachine_t::set_pulldowns(without_this_line);
-      CHECK(machine.high_at(addr, far_counter));
-      GamePortMachine_t::set_switch(line, source_connector, true);
-      CHECK(machine.high_at(addr, far_counter));
-      GamePortMachine_t::set_switch(line, source_connector, false);
-      GamePortMachine_t::set_pulldowns(default_pulldowns);
-      CHECK_FALSE(machine.high_at(addr, far_counter));
-    }
-
-    // PB2, mod off: open with the default mask, so 1 at rest and 1 with the
-    // button; a pull-down on it makes the button visible; and the shift key
-    // is not wired to it, so shift down leaves the line as it was.
-    CHECK(machine.high_at(addr_switch2, far_counter));
-    GamePortMachine_t::set_switch(shift_line, source_connector, true);
-    CHECK(machine.high_at(addr_switch2, far_counter));
-    GamePortMachine_t::set_switch(shift_line, source_connector, false);
-    GamePortMachine_t::set_switch(shift_line, source_keyboard, true);
-    CHECK(machine.high_at(addr_switch2, far_counter));
-    GamePortMachine_t::set_switch(shift_line, source_keyboard, false);
-
-    GamePortMachine_t::set_pulldowns(every_line_pulled_down);
-    CHECK_FALSE(machine.high_at(addr_switch2, far_counter));
-    GamePortMachine_t::set_switch(shift_line, source_connector, true);
-    CHECK(machine.high_at(addr_switch2, far_counter));
-    GamePortMachine_t::set_switch(shift_line, source_connector, false);
-    GamePortMachine_t::set_switch(shift_line, source_keyboard, true);
-    CHECK_FALSE(machine.high_at(addr_switch2, far_counter));
-    GamePortMachine_t::set_switch(shift_line, source_keyboard, false);
-    GamePortMachine_t::set_pulldowns(default_pulldowns);
-
-    // PB2, mod on: the single-wire shift-key mod grounds the line through the
-    // shift key (IIe Tech Ref p. 41; Sather 7-31), so shift down reads 0 and
-    // shift up 1 whatever the connector button and the mask do.
-    GamePortMachine_t::set_shift_key_mod(1);
-    CHECK(machine.high_at(addr_switch2, far_counter));
-    GamePortMachine_t::set_switch(shift_line, source_keyboard, true);
-    CHECK_FALSE(machine.high_at(addr_switch2, far_counter));
-    GamePortMachine_t::set_switch(shift_line, source_connector, true);
-    CHECK_FALSE(machine.high_at(addr_switch2, far_counter));
-    GamePortMachine_t::set_switch(shift_line, source_keyboard, false);
-    CHECK(machine.high_at(addr_switch2, far_counter));
-    GamePortMachine_t::set_switch(shift_line, source_connector, false);
-    GamePortMachine_t::set_pulldowns(every_line_pulled_down);
-    CHECK(machine.high_at(addr_switch2, far_counter));
-    GamePortMachine_t::set_switch(shift_line, source_keyboard, true);
-    CHECK_FALSE(machine.high_at(addr_switch2, far_counter));
-    GamePortMachine_t::set_switch(shift_line, source_keyboard, false);
-    GamePortMachine_t::set_pulldowns(default_pulldowns);
-    GamePortMachine_t::set_shift_key_mod(0);
-
-    // The keyboard card's own modifier levels answer the debugger's query and
-    // reach no switch line; the Solid Apple switch on PB1 is the game port's.
-    KeyboardModifiers_t mods{};
-    mods.alt = 1;
-    GamePortMachine_t::send(keyboard_cmd_set_mods, &mods, sizeof(mods));
-    GamePortMachine_t::set_switch(1, source_keyboard, true);
-    CHECK_FALSE(machine.high_at(addr_switch0, far_counter));
-    CHECK(machine.high_at(addr_switch1, far_counter));
-    CHECK(GamePortMachine_t::keyboard_mods().alt == 1);
-    CHECK(GamePortMachine_t::keyboard_mods().gui == 0);
-    GamePortMachine_t::set_switch(1, source_keyboard, false);
-    CHECK_FALSE(machine.high_at(addr_switch1, far_counter));
-  }
-}
-
-TEST_CASE(
-    "Game port: Open Apple held through a hard reset reads high at the first "
-    "instruction after it") {
-  GamePortMachine_t machine;
-  GamePortMachine_t::set_switch(0, source_keyboard, true);
-  linapple_reset_hard();
-  CHECK((machine.read(addr_switch0) & bit7) == bit7);
-  CHECK((machine.read(addr_switch1) & bit7) == 0);
-
-  // The switch is a contact: a reset with the key up reads it up.
-  GamePortMachine_t::set_switch(0, source_keyboard, false);
-  linapple_reset_hard();
-  CHECK((machine.read(addr_switch0) & bit7) == 0);
-}
-
-TEST_CASE(
-    "Game port: the Enhanced //e ROM run from its reset vector with Solid "
-    "Apple held reaches the self-test at $C600") {
-  GamePortMachine_t machine;
-
-  // Without the key the reset routine passes the check and never lands on
-  // $C600 inside the cap; with it, the JMP at $C2C0 is taken.
-  linapple_reset_hard();
-  REQUIRE(cpu_get_registers()->pc != rom_self_test);
-  static_cast<void>(
-      TestFixtures::step_until_pc(rom_self_test, reset_routine_cycle_cap));
-  CHECK(cpu_get_registers()->pc != rom_self_test);
-
-  GamePortMachine_t::set_switch(1, source_keyboard, true);
-  linapple_reset_hard();
-  const uint32_t cycles =
-      TestFixtures::step_until_pc(rom_self_test, reset_routine_cycle_cap);
-  CHECK(cpu_get_registers()->pc == rom_self_test);
-  CHECK(cycles < reset_routine_cycle_cap);
 }
 
 TEST_CASE("Game port: a running pulse survives a hard reset") {
@@ -1048,7 +803,6 @@ TEST_CASE(
 TEST_CASE(
     "Game port: the frame after one strobe from a cold start is the literal") {
   GamePortMachine_t first;
-  GamePortMachine_t::set_switch(0, source_connector, true);
   GamePortMachine_t::set_paddle(0, 255);
   first.strobe_at(far_counter);
   CHECK(GamePortMachine_t::frame() == frame_after_one_strobe);
@@ -1136,46 +890,6 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "Game port: the jumper and the pull-down mask survive a hard reset and a "
-    "loaded frame") {
-  GamePortMachine_t machine;
-
-  // Soldered, not state: with every line pulled down and the jumper in, PB2
-  // reads 0 at rest and follows the shift key, and neither a reset nor a
-  // frame carries either setting away.
-  GamePortMachine_t::set_pulldowns(every_line_pulled_down);
-  GamePortMachine_t::set_shift_key_mod(1);
-  GamePortMachine_t::set_switch(shift_line, source_keyboard, true);
-  CHECK_FALSE(machine.high_at(addr_switch2, far_counter));
-  GamePortMachine_t::set_switch(shift_line, source_keyboard, false);
-  CHECK(machine.high_at(addr_switch2, far_counter));
-
-  linapple_reset_hard();
-  GamePortMachine_t::set_switch(shift_line, source_keyboard, true);
-  CHECK_FALSE(machine.high_at(addr_switch2, far_counter));
-  GamePortMachine_t::set_switch(shift_line, source_keyboard, false);
-  CHECK(machine.high_at(addr_switch2, far_counter));
-
-  peripheral_load_state_by_name(slot0, "Joystick",
-                                frame_after_four_strobes.data(),
-                                frame_after_four_strobes.size());
-  CHECK(GamePortMachine_t::frame() == frame_after_four_strobes);
-  GamePortMachine_t::set_switch(shift_line, source_keyboard, true);
-  CHECK_FALSE(machine.high_at(addr_switch2, far_counter));
-  GamePortMachine_t::set_switch(shift_line, source_keyboard, false);
-  CHECK(machine.high_at(addr_switch2, far_counter));
-
-  // With the jumper out again the mask is what shows: PB2 pulled down rests
-  // at 0 and reads the button.
-  GamePortMachine_t::set_shift_key_mod(0);
-  CHECK_FALSE(machine.high_at(addr_switch2, far_counter));
-  GamePortMachine_t::set_switch(shift_line, source_connector, true);
-  CHECK(machine.high_at(addr_switch2, far_counter));
-  GamePortMachine_t::set_switch(shift_line, source_connector, false);
-  CHECK_FALSE(machine.high_at(addr_switch2, far_counter));
-}
-
-TEST_CASE(
     "Game port: an unknown id in its own subsystem and a foreign id are "
     "incompatible, and the wrong payload size is an error") {
   BenchHost_t bench;
@@ -1198,8 +912,8 @@ TEST_CASE(
     CHECK(game_port()->command(port, id, nullptr, 0) ==
           peripheral_incompatible);
   }
-  CHECK(game_port()->command(port, keyboard_cmd_set_rocker, bytes.data(), 1) ==
-        peripheral_incompatible);
+  CHECK(game_port()->command(port, PERIPHERAL_SUBSYSTEM_KEYBOARD | 0x0003,
+                             bytes.data(), 1) == peripheral_incompatible);
   CHECK(game_port()->command(port, PERIPHERAL_SUBSYSTEM_DISK | 0x0003,
                              bytes.data(),
                              bytes.size()) == peripheral_incompatible);
@@ -1214,45 +928,17 @@ TEST_CASE(
   CHECK(game_port()->command(port, JOYSTICK_CMD_SET_AXIS, nullptr,
                              sizeof(axis)) == peripheral_error);
 
-  const JoystickButtonPayload_t button =
-      button_payload(0, source_connector, true);
-  CHECK(game_port()->command(port, JOYSTICK_CMD_SET_BUTTON, &button,
-                             sizeof(button)) == peripheral_ok);
-  CHECK(game_port()->command(port, JOYSTICK_CMD_SET_BUTTON, &button,
-                             sizeof(button) - 1) == peripheral_error);
-  CHECK(game_port()->command(port, JOYSTICK_CMD_SET_BUTTON, bytes.data(),
-                             sizeof(button) + 1) == peripheral_error);
-  CHECK(game_port()->command(port, JOYSTICK_CMD_SET_BUTTON, nullptr,
-                             sizeof(button)) == peripheral_error);
-
-  const uint8_t one = 1;
-  CHECK(game_port()->command(port, JOYSTICK_CMD_SET_SHIFT_KEY_MOD, &one, 1) ==
-        peripheral_ok);
-  CHECK(game_port()->command(port, JOYSTICK_CMD_SET_SHIFT_KEY_MOD, bytes.data(),
-                             2) == peripheral_error);
-  CHECK(game_port()->command(port, JOYSTICK_CMD_SET_SHIFT_KEY_MOD, nullptr,
-                             1) == peripheral_error);
-  CHECK(game_port()->command(port, JOYSTICK_CMD_SET_PULLDOWNS, &one, 1) ==
-        peripheral_ok);
-  CHECK(game_port()->command(port, JOYSTICK_CMD_SET_PULLDOWNS, &one, 0) ==
-        peripheral_error);
-  CHECK(game_port()->command(port, JOYSTICK_CMD_SET_PULLDOWNS, nullptr, 1) ==
-        peripheral_error);
-
   CHECK(game_port()->command(nullptr, JOYSTICK_CMD_SET_AXIS, &axis,
                              sizeof(axis)) == peripheral_error);
 }
 
-TEST_CASE(
-    "Game port: a button, level, source, joystick, axis, mask or jumper out "
-    "of range is refused") {
+TEST_CASE("Game port: a joystick or axis out of range is refused") {
   BenchHost_t bench;
   void* port = bench.create();
   REQUIRE(port != nullptr);
 
-  // Two joysticks of two axes, three lines, two levels, two sources, a
-  // three-bit mask and a one-bit jumper: the last value in range is taken
-  // and the first beyond it refused.
+  // Two joysticks of two axes: the last value in range is taken and the
+  // first beyond it refused.
   JoystickAxisPayload_t axis = axis_payload(3, 0);
   CHECK(game_port()->command(port, JOYSTICK_CMD_SET_AXIS, &axis,
                              sizeof(axis)) == peripheral_ok);
@@ -1263,34 +949,6 @@ TEST_CASE(
   axis.axis = 2;
   CHECK(game_port()->command(port, JOYSTICK_CMD_SET_AXIS, &axis,
                              sizeof(axis)) == peripheral_error);
-
-  JoystickButtonPayload_t button = button_payload(2, source_keyboard, true);
-  CHECK(game_port()->command(port, JOYSTICK_CMD_SET_BUTTON, &button,
-                             sizeof(button)) == peripheral_ok);
-  button.button = 3;
-  CHECK(game_port()->command(port, JOYSTICK_CMD_SET_BUTTON, &button,
-                             sizeof(button)) == peripheral_error);
-  button.button = 0;
-  button.down = 2;
-  CHECK(game_port()->command(port, JOYSTICK_CMD_SET_BUTTON, &button,
-                             sizeof(button)) == peripheral_error);
-  button.down = 1;
-  button.source = 2;
-  CHECK(game_port()->command(port, JOYSTICK_CMD_SET_BUTTON, &button,
-                             sizeof(button)) == peripheral_error);
-
-  uint8_t value = every_line_pulled_down;
-  CHECK(game_port()->command(port, JOYSTICK_CMD_SET_PULLDOWNS, &value, 1) ==
-        peripheral_ok);
-  value = every_line_pulled_down + 1;
-  CHECK(game_port()->command(port, JOYSTICK_CMD_SET_PULLDOWNS, &value, 1) ==
-        peripheral_error);
-  value = 1;
-  CHECK(game_port()->command(port, JOYSTICK_CMD_SET_SHIFT_KEY_MOD, &value, 1) ==
-        peripheral_ok);
-  value = 2;
-  CHECK(game_port()->command(port, JOYSTICK_CMD_SET_SHIFT_KEY_MOD, &value, 1) ==
-        peripheral_error);
 }
 
 TEST_CASE("Game port: every query is incompatible") {
@@ -1298,15 +956,15 @@ TEST_CASE("Game port: every query is incompatible") {
   void* port = bench.create();
   REQUIRE(port != nullptr);
 
-  // The port has nothing to answer: its state is read through the switches
-  // and the timers. The command indices 0 and 1 and the reserved index 2 are
+  // The port has nothing to answer: its state is read through the timers.
+  // The command index 0, the retired index 1 and the reserved index 2 are
   // among the ids asked.
   const std::initializer_list<uint32_t> queries = {
       PERIPHERAL_SUBSYSTEM_JOYSTICK | 0x0000,
       PERIPHERAL_SUBSYSTEM_JOYSTICK | 0x0001,
       PERIPHERAL_SUBSYSTEM_JOYSTICK | 0x0002,
       unknown_joystick_id,
-      static_cast<uint32_t>(keyboard_query_mods),
+      PERIPHERAL_SUBSYSTEM_KEYBOARD | 0x0001,
       static_cast<uint32_t>(PERIPHERAL_QUERY_AUDIO_INFO),
   };
   for (uint32_t id : queries) {
@@ -1352,9 +1010,6 @@ TEST_CASE("Game port: the C99 view of the frame matches the C++ one") {
 
   CHECK(joystick_abi_c_axis_payload_size() == 4);
   CHECK(joystick_abi_c_axis_payload_size() == sizeof(JoystickAxisPayload_t));
-  CHECK(joystick_abi_c_button_payload_size() == 4);
-  CHECK(joystick_abi_c_button_payload_size() ==
-        sizeof(JoystickButtonPayload_t));
 }
 
 }  // namespace

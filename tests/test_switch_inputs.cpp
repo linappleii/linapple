@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <initializer_list>
 
@@ -7,6 +8,8 @@
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/SwitchInputs.h"
+#include "apple2/Video.h"
+#include "apple2/peripherals/Peripheral.h"
 #include "core/LinAppleCore.h"
 #include "doctest.h"
 #include "test_fixtures.h"
@@ -20,8 +23,11 @@ constexpr uint16_t addr_keyboard_data = 0xC000;
 constexpr uint16_t addr_keyboard_strobe = 0xC010;
 constexpr uint16_t addr_cassette_in = 0xC060;
 constexpr uint16_t addr_switch0 = 0xC061;
+constexpr uint16_t addr_switch2 = 0xC063;
 constexpr uint16_t addr_mirror_switch0 = 0xC069;
 constexpr uint8_t bit7 = 0x80;
+constexpr uint8_t shift_line = 2;
+constexpr uint8_t every_line_pulled_down = 0x07;
 
 // One NTSC frame of scanner positions, every byte the undriven bus can hold.
 constexpr uint32_t scanner_positions = 17030;
@@ -32,6 +38,20 @@ constexpr uint16_t text_page = 0x0400;
 constexpr uint16_t text_page_hbl_mirror = 0x1400;
 constexpr uint16_t text_page_size = 0x0400;
 constexpr uint8_t normal_space = 0xA0;
+
+// A scanner byte with bit 7 clear shows the bus bits pass; one with bit 7 set
+// is what proves the level, not the bus, decides bit 7.
+constexpr uint8_t marker_low = 0x5A;
+constexpr uint8_t marker_high = 0xDA;
+
+// The Enhanced //e reset routine reads $C062 and, with bit 7 set, jumps to the
+// self-test at $C600 (bytes AD 62 C0 10 03 4C 00 C6 at $C2BB of
+// res/roms/Apple2e_Enhanced.rom; IIe Tech Ref pp. 93-95); with both Apple
+// keys up it reaches the power-up byte check at $C2E2.
+constexpr uint16_t rom_self_test = 0xC600;
+constexpr uint16_t rom_cold_start_check = 0xC2E2;
+// The Monitor's reset routine is done inside a tenth of a second.
+constexpr uint32_t reset_routine_cycle_cap = 100000;
 
 // A machine as a frontend brings it up: the model and the configured
 // controller come from the configuration, as they do for every frontend. The
@@ -54,6 +74,13 @@ struct SwitchMachine_t {
     TestFixtures::ScopedCore_t::poke(text_page, spaces);
     TestFixtures::ScopedCore_t::poke(text_page_hbl_mirror, spaces);
   }
+
+  // One byte at the scanner's address for position 0, so a read there has
+  // known bits 0-6.
+  static auto place_bus_marker(uint8_t marker) -> void {
+    TestFixtures::ScopedCore_t::poke(video_get_scanner_address(nullptr, 0),
+                                     &marker, 1);
+  }
 };
 
 auto describe(TestConfig_t::MachineType_t model,
@@ -66,10 +93,18 @@ auto describe(TestConfig_t::MachineType_t model,
   return description;
 }
 
+// The command queue is drained by a think, as a running machine drains it
+// once a frame; the switch record itself needs none.
+auto settle() -> void { peripheral_manager_think(0); }
+
+auto read_at(uint16_t addr, uint32_t position) -> uint8_t {
+  return io_map_dispatch(0, addr, 0, 0, position);
+}
+
 // Bit 7 of an address through the memory map at one scanner position, as the
 // 6502 would read it.
 auto high_at(uint16_t addr, uint32_t position) -> bool {
-  return (io_map_dispatch(0, addr, 0, 0, position) & bit7) != 0;
+  return (read_at(addr, position) & bit7) != 0;
 }
 
 auto line_level(uint8_t line) -> int {
@@ -90,6 +125,16 @@ auto samples_with_bit7(uint16_t addr, bool set) -> uint32_t {
     }
   }
   return count;
+}
+
+auto hold_apple_keys(bool open_apple, bool solid_apple) -> void {
+  linapple_set_modifiers(false, false, open_apple, solid_apple);
+  settle();
+}
+
+auto hold_shift(bool shift) -> void {
+  linapple_set_modifiers(shift, false, false, false);
+  settle();
 }
 
 const std::initializer_list<TestConfig_t::MachineType_t> both_models = {
@@ -131,10 +176,10 @@ TEST_CASE(
     "inputs: a II Plus reads $C000 as $7F, $C010 as the undriven bus, and its "
     "reset routine reaches $FA7E") {
   SwitchMachine_t machine(describe(TestConfig_t::machine_apple2_plus));
-  CHECK(io_map_dispatch(0, addr_keyboard_data, 0, 0, 0) == 0x7F);
+  CHECK(read_at(addr_keyboard_data, 0) == 0x7F);
   for (uint32_t position = 0; position < scanner_positions; ++position) {
-    if (io_map_dispatch(0, addr_keyboard_strobe, 0, 0, position) !=
-        io_map_dispatch(0, addr_cassette_in, 0, 0, position)) {
+    if (read_at(addr_keyboard_strobe, position) !=
+        read_at(addr_cassette_in, position)) {
       CAPTURE(position);
       FAIL("$C010 differs from the undriven bus");
     }
@@ -143,7 +188,6 @@ TEST_CASE(
   // The Autostart ROM's reset reads no switch input before BIT $C010 at
   // $FA7E (Apple II Reference Manual 1979, Monitor listing).
   constexpr uint16_t reset_clears_strobe = 0xFA7E;
-  constexpr uint32_t reset_routine_cycle_cap = 100000;
   machine.harness.boot();
   TestFixtures::step_until_pc(reset_clears_strobe, reset_routine_cycle_cap);
   CHECK(cpu_get_registers()->pc == reset_clears_strobe);
@@ -165,7 +209,6 @@ TEST_CASE(
   }
 }
 
-#if !defined(ENABLE_PERIPHERAL_JOYSTICK)
 TEST_CASE(
     "Switch inputs: with no controller configured a II Plus reads its three "
     "buttons open, since nothing on its board or keyboard pulls them down") {
@@ -209,7 +252,7 @@ TEST_CASE(
   CHECK(line_level(0) == 1);
   CHECK(line_level(1) == 1);
   CHECK(line_level(2) == 1);
-  switch_inputs_override_pulldowns(0x07);
+  switch_inputs_override_pulldowns(every_line_pulled_down);
   CHECK(line_level(0) == 0);
   CHECK(line_level(1) == 0);
   CHECK(line_level(2) == 0);
@@ -219,6 +262,7 @@ TEST_CASE(
   CHECK(line_level(2) == 1);
 }
 
+#if !defined(ENABLE_PERIPHERAL_JOYSTICK)
 TEST_CASE(
     "Switch inputs: with no game port card every paddle reads high at every "
     "scanner position and PREAD returns 255") {
@@ -260,14 +304,12 @@ TEST_CASE(
     REQUIRE(line_level(0) == 0);
     REQUIRE(line_level(1) == 0);
 
-    linapple_set_modifiers(false, false, true, false);
-    peripheral_manager_think(0);
+    hold_apple_keys(true, false);
     CHECK(line_level(0) == 1);
     CHECK(line_level(1) == 0);
     CHECK(mirror_level(0) == 1);
 
-    linapple_set_modifiers(false, false, true, true);
-    peripheral_manager_think(0);
+    hold_apple_keys(true, true);
     CHECK(line_level(0) == 1);
     CHECK(line_level(1) == 1);
 
@@ -277,9 +319,177 @@ TEST_CASE(
     CHECK(line_level(0) == 1);
     CHECK(line_level(1) == 1);
 
-    linapple_set_modifiers(false, false, false, false);
-    peripheral_manager_think(0);
+    // The switch is a contact: a reset with the keys up reads them up.
+    hold_apple_keys(false, false);
+    linapple_reset_hard();
     CHECK(line_level(0) == 0);
     CHECK(line_level(1) == 0);
   }
+}
+
+TEST_CASE(
+    "Switch inputs: a line reads the OR of its connector button and its Apple "
+    "key over the pull-down, with bits 0-6 the undriven bus, at $C061 and "
+    "$C069") {
+  SwitchMachine_t machine(describe(TestConfig_t::machine_apple2e_enhanced));
+
+  // The //e wires Open Apple and Solid Apple in parallel with PB0 and PB1
+  // (IIe Tech Ref pp. 13 and 41), so either switch, or both, drives the line
+  // high and the line falls only when both are open.
+  for (uint8_t line = 0; line < 2; ++line) {
+    CAPTURE(line);
+    const uint16_t addr = static_cast<uint16_t>(addr_switch0 + line);
+    const uint16_t mirror = static_cast<uint16_t>(addr_mirror_switch0 + line);
+    REQUIRE(line_level(line) == 0);
+    linapple_set_game_switch(line, true);
+    CHECK(high_at(addr, 0));
+    CHECK(high_at(mirror, 0));
+    hold_apple_keys(line == 0, line == 1);
+    CHECK(high_at(addr, 0));
+    linapple_set_game_switch(line, false);
+    CHECK(high_at(addr, 0));
+    CHECK(high_at(mirror, 0));
+    hold_apple_keys(false, false);
+    CHECK_FALSE(high_at(addr, 0));
+    CHECK_FALSE(high_at(mirror, 0));
+  }
+
+  // Pressed $DA, released $5A, with either scanner byte (IIe Tech Ref p. 41:
+  // bits 0-6 are whatever the bus holds).
+  for (uint8_t marker : {marker_low, marker_high}) {
+    CAPTURE(marker);
+    SwitchMachine_t::place_bus_marker(marker);
+    linapple_set_game_switch(0, true);
+    CHECK(read_at(addr_switch0, 0) == marker_high);
+    CHECK(read_at(addr_mirror_switch0, 0) == marker_high);
+    linapple_set_game_switch(0, false);
+    CHECK(read_at(addr_switch0, 0) == marker_low);
+    CHECK(read_at(addr_mirror_switch0, 0) == marker_low);
+  }
+
+  // A line past PB2 is no line: the bridge ignores it.
+  linapple_set_game_switch(switch_input_count, true);
+  CHECK(line_level(0) == 0);
+  CHECK(line_level(1) == 0);
+  CHECK(line_level(2) == 1);
+}
+
+TEST_CASE(
+    "Switch inputs: PB2 follows its button only over a pull-down, and the "
+    "shift key only through the jumper, which then overrides the button") {
+  SwitchMachine_t machine(describe(TestConfig_t::machine_apple2e_enhanced));
+
+  // Jumper out: PB2 is open with a two-button plug, so 1 at rest and 1 with
+  // the button; a three-button plug's pull-down makes the button visible; the
+  // shift key is not wired to the line, so shift down leaves it as it was.
+  REQUIRE(line_level(shift_line) == 1);
+  linapple_set_game_switch(shift_line, true);
+  CHECK(line_level(shift_line) == 1);
+  linapple_set_game_switch(shift_line, false);
+  hold_shift(true);
+  CHECK(line_level(shift_line) == 1);
+  hold_shift(false);
+
+  linapple_set_game_pulldowns(every_line_pulled_down);
+  CHECK(line_level(shift_line) == 0);
+  linapple_set_game_switch(shift_line, true);
+  CHECK(line_level(shift_line) == 1);
+  linapple_set_game_switch(shift_line, false);
+  hold_shift(true);
+  CHECK(line_level(shift_line) == 0);
+  hold_shift(false);
+  // A mask wider than the three lines is cut to them.
+  linapple_set_game_pulldowns(0xFF);
+  CHECK(line_level(shift_line) == 0);
+  linapple_set_game_pulldowns(0x03);
+
+  // Jumper in: the single-wire shift-key mod grounds the line through the
+  // shift key (IIe Tech Ref p. 41; Sather IIe 7-31), so shift down reads 0
+  // and shift up 1 whatever the connector button and the mask do.
+  linapple_set_shift_key_mod(true);
+  CHECK(line_level(shift_line) == 1);
+  hold_shift(true);
+  CHECK(line_level(shift_line) == 0);
+  linapple_set_game_switch(shift_line, true);
+  CHECK(line_level(shift_line) == 0);
+  hold_shift(false);
+  CHECK(line_level(shift_line) == 1);
+  linapple_set_game_switch(shift_line, false);
+  linapple_set_game_pulldowns(every_line_pulled_down);
+  CHECK(line_level(shift_line) == 1);
+  hold_shift(true);
+  CHECK(line_level(shift_line) == 0);
+  hold_shift(false);
+  CHECK(line_level(shift_line) == 1);
+  linapple_set_game_pulldowns(0x03);
+  linapple_set_shift_key_mod(false);
+  CHECK(line_level(shift_line) == 1);
+}
+
+TEST_CASE(
+    "Switch inputs: the jumper and the pull-down mask survive a hard reset "
+    "and a loaded game-port frame") {
+  SwitchMachine_t machine(describe(TestConfig_t::machine_apple2e_enhanced));
+
+  // Soldered, not state: with every line pulled down and the jumper in, PB2
+  // reads 1 at rest and follows the shift key, and neither a reset nor a
+  // frame carries either setting away.
+  linapple_set_game_pulldowns(every_line_pulled_down);
+  linapple_set_shift_key_mod(true);
+  hold_shift(true);
+  CHECK_FALSE(high_at(addr_switch2, 0));
+  hold_shift(false);
+  CHECK(high_at(addr_switch2, 0));
+
+  linapple_reset_hard();
+  hold_shift(true);
+  CHECK_FALSE(high_at(addr_switch2, 0));
+  hold_shift(false);
+  CHECK(high_at(addr_switch2, 0));
+
+#if defined(ENABLE_PERIPHERAL_JOYSTICK)
+  std::array<uint8_t, 56> frame{};
+  size_t size = frame.size();
+  peripheral_save_state_by_name(0, "Joystick", frame.data(), &size);
+  REQUIRE(size == frame.size());
+  peripheral_load_state_by_name(0, "Joystick", frame.data(), frame.size());
+  hold_shift(true);
+  CHECK_FALSE(high_at(addr_switch2, 0));
+  hold_shift(false);
+  CHECK(high_at(addr_switch2, 0));
+#endif
+
+  // With the jumper out again the mask is what shows: PB2 pulled down rests
+  // at 0 and reads the button.
+  linapple_set_shift_key_mod(false);
+  CHECK_FALSE(high_at(addr_switch2, 0));
+  linapple_set_game_switch(shift_line, true);
+  CHECK(high_at(addr_switch2, 0));
+  linapple_set_game_switch(shift_line, false);
+  CHECK_FALSE(high_at(addr_switch2, 0));
+}
+
+TEST_CASE(
+    "Switch inputs: the Enhanced //e ROM run from its reset vector takes the "
+    "self-test at $C600 with Solid Apple held and the cold-start check at "
+    "$C2E2 with both Apple keys up") {
+  SwitchMachine_t machine(describe(TestConfig_t::machine_apple2e_enhanced));
+
+  // Without the key the reset routine passes the check at $C2BB and reaches
+  // the power-up byte check; with it, the JMP at $C2C0 is taken.
+  linapple_reset_hard();
+  TestFixtures::step_until_pc(rom_cold_start_check, reset_routine_cycle_cap);
+  CHECK(cpu_get_registers()->pc == rom_cold_start_check);
+
+  hold_apple_keys(false, true);
+  linapple_reset_hard();
+  const uint32_t cycles =
+      TestFixtures::step_until_pc(rom_self_test, reset_routine_cycle_cap);
+  CHECK(cpu_get_registers()->pc == rom_self_test);
+  CHECK(cycles < reset_routine_cycle_cap);
+
+  hold_apple_keys(false, false);
+  linapple_reset_hard();
+  TestFixtures::step_until_pc(rom_cold_start_check, reset_routine_cycle_cap);
+  CHECK(cpu_get_registers()->pc == rom_cold_start_check);
 }
