@@ -1745,6 +1745,7 @@ TEST_CASE(
 // The frontend's own controller builds this machine, so the sink guard is
 // constructed after it: whatever sink the controller installs, the guard
 // takes over and puts back.
+#if defined(ENABLE_PERIPHERAL_KEYBOARD)
 TEST_CASE(
     "Printer Firmware: PR#1, PRINT \"HELLO\" and PR#0 at the Applesoft "
     "prompt stream 34 bytes") {
@@ -1788,6 +1789,7 @@ TEST_CASE(
   CHECK(sink.dropped() == 0);
   CHECK_FALSE(peripheral_is_any_active());
 }
+#endif
 
 }  // namespace
 

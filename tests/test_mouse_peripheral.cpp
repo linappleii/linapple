@@ -2391,6 +2391,9 @@ TEST_CASE(
   CHECK(refused == 160);
 }
 
+// The session below types at the Applesoft prompt, which needs the keyboard
+// card.
+#if defined(ENABLE_PERIPHERAL_KEYBOARD)
 namespace {
 
 constexpr uint32_t prompt_frame_cap = 300;
@@ -2464,6 +2467,7 @@ TEST_CASE(
   CHECK(reading.x == 37);
   CHECK(reading.y == 11);
 }
+#endif
 
 namespace {
 

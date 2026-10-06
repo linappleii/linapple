@@ -823,6 +823,8 @@ TEST_CASE(
 namespace {
 
 constexpr uint16_t mouse_program_start = 0x0300;
+
+#if defined(ENABLE_PERIPHERAL_JOYSTICK)
 constexpr uint16_t rom_pread = 0xFB1E;
 constexpr uint32_t pread_cycle_cap = 4000;
 
@@ -840,6 +842,7 @@ auto pread(uint8_t paddle) -> uint8_t {
   REQUIRE(cpu_get_registers()->pc == sentinel);
   return cpu_get_registers()->y;
 }
+#endif
 
 struct MouseInputMachine_t {
   TestFixtures::ScopedTestConfig_t config;

@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <cstring>
 #include <fstream>
+#include <initializer_list>
 #include <ios>
 #include <iterator>
 #include <memory>
@@ -299,6 +300,11 @@ TEST_CASE("Snapshot: An impossible slot length refuses the file untouched") {
   CHECK(cpu_get_registers()->a == a_before);
 }
 
+// minimal.aws names a Parallel Printer, a Super Serial Card and a
+// Mockingboard, so the cases that load it need all three cards built.
+#if defined(ENABLE_PERIPHERAL_PRINTER) &&      \
+    defined(ENABLE_PERIPHERAL_SUPER_SERIAL) && \
+    defined(ENABLE_PERIPHERAL_MOCKINGBOARD)
 TEST_CASE("Snapshot: A fixed-body file loads with its slots intact") {
   // Verify snapshot matches golden fixture written by legacy writer.
   TestConfig_t::Description_t description;
@@ -356,6 +362,7 @@ TEST_CASE("Snapshot: A fixed-body file loads with its slots intact") {
   CHECK(manifest.peripherals[6].name[0] == '\0');
   CHECK(manifest.peripherals[7].name[0] == '\0');
 }
+#endif
 
 namespace {
 
@@ -402,6 +409,13 @@ class ScopedLogCapture_t {
   LogLevel_t verbosity_;
   LogLines_t lines_;
 };
+
+}  // namespace
+
+#if defined(ENABLE_PERIPHERAL_PRINTER) &&      \
+    defined(ENABLE_PERIPHERAL_SUPER_SERIAL) && \
+    defined(ENABLE_PERIPHERAL_MOCKINGBOARD)
+namespace {
 
 constexpr size_t serial_frame_size = 56;
 constexpr size_t serial_frame_control = 12;
@@ -464,6 +478,7 @@ TEST_CASE(
   REQUIRE(in.good());
   CHECK(length == serial_frame_size);
 }
+#endif
 
 TEST_CASE("Snapshot: The file's length says whether a trailer follows") {
   TestConfig_t config(TestConfig_t::enhanced_2e_only());
@@ -550,7 +565,17 @@ TEST_CASE("Snapshot: A manifest naming any slot-0 device is the same machine") {
   peripheral_get_manifest(&manifest);
   REQUIRE(peripheral_verify_manifest(&manifest));
 
-  for (const char* device : {"Speaker", "Keyboard", "Joystick"}) {
+  // Only a device the build has in slot 0 can be named there.
+  const std::initializer_list<const char*> slot0_devices = {
+      "Speaker",
+#if defined(ENABLE_PERIPHERAL_KEYBOARD)
+      "Keyboard",
+#endif
+#if defined(ENABLE_PERIPHERAL_JOYSTICK)
+      "Joystick",
+#endif
+  };
+  for (const char* device : slot0_devices) {
     snprintf(manifest.peripherals[0].name, sizeof(manifest.peripherals[0].name),
              "%s", device);
     CHECK_MESSAGE(peripheral_verify_manifest(&manifest), device);
@@ -574,7 +599,6 @@ namespace {
 
 constexpr uint32_t cycles_per_frame = 17030;
 constexpr uint16_t probe_address = 0x0300;
-constexpr uint8_t bit7 = 0x80;
 
 // Runs one instruction at probe_address and leaves the registers as the
 // instruction left them, for the caller to read.
@@ -615,7 +639,9 @@ TEST_CASE("Snapshot: The game port's eight bytes are written as zeros") {
   CHECK(field == std::array<char, sizeof(SsIoJoystick_t)>{});
 }
 
+#if defined(ENABLE_PERIPHERAL_JOYSTICK)
 TEST_CASE("Snapshot: A loaded file starts with every paddle timer expired") {
+  constexpr uint8_t bit7 = 0x80;
   TestFixtures::ScopedTempFile_t file(".aws");
   uint64_t saved_cycles = 0;
   {
@@ -643,7 +669,9 @@ TEST_CASE("Snapshot: A loaded file starts with every paddle timer expired") {
   step_one({0xAD, 0x64, 0xC0});
   CHECK((cpu_get_registers()->a & bit7) == 0);
 }
+#endif
 
+#if defined(ENABLE_PERIPHERAL_SUPER_SERIAL)
 namespace {
 
 constexpr size_t ssc_frame_size = 56;
@@ -741,6 +769,7 @@ TEST_CASE(
   SUBCASE("slot 2") { ssc_survives_the_file(2); }
   SUBCASE("slot 7") { ssc_survives_the_file(7); }
 }
+#endif
 
 #if defined(ENABLE_PERIPHERAL_MOUSE)
 

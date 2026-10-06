@@ -442,6 +442,9 @@ class ScopedTestConfig_t {
 
     out << "[Configuration]\n";
     out << "Computer Emulation = " << description.machine_type << "\n";
+    // 0 is the US table in the code's own numbering; stated so that no
+    // suite's typing depends on the host's locale.
+    out << "Keyboard Type = 0\n";
 
     out << "\n[Slots]\n";
     for (size_t i = 0; i < description.slots.size(); ++i) {

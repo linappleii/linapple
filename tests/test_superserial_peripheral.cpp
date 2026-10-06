@@ -1764,6 +1764,9 @@ TEST_CASE(
   CHECK((mem[0x16] & 0x01) == 1);
 }
 
+// The sessions below type at the Applesoft prompt, which needs the keyboard
+// card.
+#if defined(ENABLE_PERIPHERAL_KEYBOARD)
 namespace {
 
 constexpr uint8_t high_cr = 0x8D;
@@ -1879,6 +1882,7 @@ TEST_CASE(
   CHECK(hex(session.stream()) ==
         hex(std::vector<uint8_t>{high_cr, high_prompt}));
 }
+#endif
 
 namespace {
 

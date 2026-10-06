@@ -9,6 +9,7 @@
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Internal.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
@@ -99,6 +100,9 @@ auto HeadlessHarness_t::run_frames(uint32_t count) -> void {
 
 auto HeadlessHarness_t::type_string(const std::string& text,
                                     uint32_t frames_per_stroke) -> void {
+  // A keystroke sent to a machine with no keyboard card reaches nothing and
+  // the case would fail somewhere downstream for no visible reason.
+  REQUIRE(peripheral_find_internal("linapple.keyboard") != nullptr);
   for (char c : text) {
     uint8_t key = static_cast<uint8_t>(c);
     if (c == '\n' || c == '\r') {

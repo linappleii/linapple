@@ -808,7 +808,54 @@ if(BUILD_TESTING)
     set_source_files_properties(tests/test_peripheral_abi_c.c PROPERTIES COMPILE_OPTIONS "-std=c99;-pedantic")
     add_linapple_test(peripheral-abi "tests/test_main.cpp;tests/test_peripheral_abi.cpp;tests/test_peripheral_abi_c.c")
 
-    add_linapple_test(keyboard-peripheral "tests/test_main.cpp;tests/test_keyboard_peripheral.cpp")
+    if(ENABLE_PERIPHERAL_KEYBOARD)
+        set_source_files_properties(tests/test_keyboard_abi_c.c PROPERTIES COMPILE_OPTIONS "-std=c99;-pedantic")
+        add_linapple_test(keyboard-peripheral "tests/test_main.cpp;tests/HeadlessHarness.cpp;tests/test_keyboard_peripheral.cpp;tests/test_keyboard_abi_c.c")
+        set_tests_properties(test-keyboard-peripheral PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
+        # A save state from an earlier build of the card; the loader's
+        # compatibility is proven against these bytes.
+        add_test(NAME test-keyboard-fixtures-pinned COMMAND sh -c "sha1sum -c --quiet keyboard-fixtures.sha1"
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures")
+        set_tests_properties(test-keyboard-fixtures-pinned PROPERTIES TIMEOUT 5)
+    endif()
+    # The keyboard, switch-input and boot suites read these ROMs and this
+    # disk on the 6502; pinned so the bytes they are written against cannot
+    # drift.
+    add_test(NAME test-keyboard-roms-pinned COMMAND sh -c
+    [=[
+sha1sum -c --quiet <<'EOF'
+b8ea90abe135a0031065e01697c4a3a20d51198b  res/roms/Apple2e_Enhanced.rom
+61fa9254628e5bb7236fb474006116d67684d747  res/roms/Apple2e.rom
+33a24f5489ba9195b44be77d9afb2252594cb5c7  res/roms/Apple2_Plus.rom
+7b03befac4fbcef8c649048fa3ff5d095fd48dd3  res/Master.dsk
+EOF
+]=]
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+    set_tests_properties(test-keyboard-roms-pinned PROPERTIES TIMEOUT 5)
+    # The switch inputs are the motherboard's and the key translation the
+    # host's, so their suites are built in every configuration, cards on or
+    # off; the minimal machine's boot needs a drive to boot from and the
+    # speaker it proves silent.
+    add_linapple_test(switch-inputs "tests/test_main.cpp;tests/HeadlessHarness.cpp;tests/test_switch_inputs.cpp")
+    set_tests_properties(test-switch-inputs PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
+    if(ENABLE_PERIPHERAL_KEYBOARD)
+        target_compile_definitions(test-switch-inputs PRIVATE ENABLE_PERIPHERAL_KEYBOARD)
+    endif()
+    if(ENABLE_PERIPHERAL_JOYSTICK)
+        target_compile_definitions(test-switch-inputs PRIVATE ENABLE_PERIPHERAL_JOYSTICK)
+    endif()
+    add_linapple_test(keyboard-translator "tests/test_main.cpp;tests/test_keyboard_translator.cpp")
+    set_tests_properties(test-keyboard-translator PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
+    if(ENABLE_PERIPHERAL_KEYBOARD)
+        target_compile_definitions(test-keyboard-translator PRIVATE ENABLE_PERIPHERAL_KEYBOARD)
+    endif()
+    if(ENABLE_PERIPHERAL_DISK AND ENABLE_PERIPHERAL_SPEAKER)
+        add_linapple_test(minimal-boot "tests/HeadlessHarness.cpp;tests/test_minimal_boot.cpp")
+        set_tests_properties(test-minimal-boot PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
+        if(ENABLE_PERIPHERAL_KEYBOARD)
+            target_compile_definitions(test-minimal-boot PRIVATE ENABLE_PERIPHERAL_KEYBOARD)
+        endif()
+    endif()
     if(ENABLE_PERIPHERAL_CLOCK)
         set_source_files_properties(tests/test_clock_abi_c.c PROPERTIES COMPILE_OPTIONS "-std=c99;-pedantic")
         add_linapple_test(clock-peripheral "tests/test_main.cpp;tests/test_clock_peripheral.cpp;tests/test_clock_abi_c.c")
@@ -853,6 +900,10 @@ fi
         set_source_files_properties(tests/test_printer_abi_c.c PROPERTIES COMPILE_OPTIONS "-std=c99;-pedantic")
         add_linapple_test(printer-peripheral "tests/test_main.cpp;tests/HeadlessHarness.cpp;tests/test_printer_peripheral.cpp;tests/test_printer_abi_c.c")
         set_tests_properties(test-printer-peripheral PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
+        # The suite's Applesoft session types, which needs the keyboard card.
+        if(ENABLE_PERIPHERAL_KEYBOARD)
+            target_compile_definitions(test-printer-peripheral PRIVATE ENABLE_PERIPHERAL_KEYBOARD)
+        endif()
         add_linapple_test(printer-frontend "tests/HeadlessHarness.cpp;tests/test_printer_frontend.cpp")
         set_tests_properties(test-printer-frontend PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
         add_linapple_test(printer-snapshot tests/test_printer_snapshot.cpp)
@@ -871,6 +922,11 @@ fi
         set_tests_properties(test-superserial-peripheral PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
         add_linapple_test(superserial-frontend "tests/HeadlessHarness.cpp;tests/test_superserial_frontend.cpp")
         set_tests_properties(test-superserial-frontend PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
+        # Both suites' Applesoft sessions type, which needs the keyboard card.
+        if(ENABLE_PERIPHERAL_KEYBOARD)
+            target_compile_definitions(test-superserial-peripheral PRIVATE ENABLE_PERIPHERAL_KEYBOARD)
+            target_compile_definitions(test-superserial-frontend PRIVATE ENABLE_PERIPHERAL_KEYBOARD)
+        endif()
         # Pinned so the bytes the suite is written against cannot drift.
         add_test(NAME test-ssc-rom-pinned COMMAND sh -c
             "echo '6dab633470c6bc4cb3e81d09fda46597caf8ee57  res/roms/SSC.rom' | sha1sum -c --quiet"
@@ -894,22 +950,30 @@ fi
     add_test(NAME test-acia6551 COMMAND test-acia6551)
     set_tests_properties(test-acia6551 PROPERTIES TIMEOUT 5)
 
-    add_linapple_test(mockingboard-peripheral "tests/test_main.cpp;tests/test_mockingboard_peripheral.cpp")
-    add_linapple_test(mockingboard-core "tests/test_main.cpp;tests/test_mockingboard_core.cpp")
-    add_linapple_test(mockingboard-e2e "tests/test_main.cpp;tests/test_mockingboard_e2e.cpp")
-    set_tests_properties(test-mockingboard-e2e PROPERTIES LABELS "e2e")
+    if(ENABLE_PERIPHERAL_MOCKINGBOARD)
+        add_linapple_test(mockingboard-peripheral "tests/test_main.cpp;tests/test_mockingboard_peripheral.cpp")
+        add_linapple_test(mockingboard-core "tests/test_main.cpp;tests/test_mockingboard_core.cpp")
+        add_linapple_test(mockingboard-e2e "tests/test_main.cpp;tests/test_mockingboard_e2e.cpp")
+        set_tests_properties(test-mockingboard-e2e PROPERTIES LABELS "e2e")
+    endif()
     if(ENABLE_PERIPHERAL_JOYSTICK)
         set_source_files_properties(tests/test_joystick_abi_c.c PROPERTIES COMPILE_OPTIONS "-std=c99;-pedantic")
         add_linapple_test(joystick-peripheral "tests/test_main.cpp;tests/HeadlessHarness.cpp;tests/test_joystick_peripheral.cpp;tests/test_joystick_abi_c.c")
         set_tests_properties(test-joystick-peripheral PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
         # The dispatch suite registers the game port beside the keyboard.
-        add_linapple_test(slot0-dispatch "tests/test_main.cpp;tests/test_slot0_dispatch.cpp")
-        set_tests_properties(test-slot0-dispatch PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
+        if(ENABLE_PERIPHERAL_KEYBOARD)
+            add_linapple_test(slot0-dispatch "tests/test_main.cpp;tests/test_slot0_dispatch.cpp")
+            set_tests_properties(test-slot0-dispatch PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
+        endif()
     endif()
     if(ENABLE_PERIPHERAL_MOUSE)
         set_source_files_properties(tests/test_mouse_abi_c.c PROPERTIES COMPILE_OPTIONS "-std=c99;-pedantic")
         add_linapple_test(mouse-peripheral "tests/test_main.cpp;tests/HeadlessHarness.cpp;tests/test_mouse_peripheral.cpp;tests/test_mouse_abi_c.c")
         set_tests_properties(test-mouse-peripheral PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
+        # The suite's Applesoft session types, which needs the keyboard card.
+        if(ENABLE_PERIPHERAL_KEYBOARD)
+            target_compile_definitions(test-mouse-peripheral PRIVATE ENABLE_PERIPHERAL_KEYBOARD)
+        endif()
         # Pinned so the bytes the suite is written against cannot drift.
         add_test(NAME test-mouse-rom-pinned COMMAND sh -c
             "echo '3a9d881a8a8d30f55b9719aceebbcf717f829d6f  res/roms/MouseInterface.rom' | sha1sum -c --quiet"
@@ -1011,6 +1075,12 @@ done
         add_linapple_test(disk-config-runtime-insert tests/test_disk_config_runtime_insert.cpp)
         add_linapple_test(disk-config-runtime-eject tests/test_disk_config_runtime_eject.cpp)
         add_linapple_test(headless-boot "tests/HeadlessHarness.cpp;tests/test_headless_boot.cpp")
+        # The DOS session that types and the boot cases that resolve the
+        # keyboard run against the plugin too, so the macro follows the card.
+        if(ENABLE_PERIPHERAL_KEYBOARD)
+            target_compile_definitions(test-disk-smoke PRIVATE ENABLE_PERIPHERAL_KEYBOARD)
+            target_compile_definitions(test-headless-boot PRIVATE ENABLE_PERIPHERAL_KEYBOARD)
+        endif()
     endif()
 
     add_linapple_test(program-loader tests/test_program_loader.cpp)
@@ -1072,6 +1142,9 @@ done
     set_tests_properties(test-tui-input PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
     if(ENABLE_PERIPHERAL_MOUSE)
         target_compile_definitions(test-tui-input PRIVATE ENABLE_PERIPHERAL_MOUSE)
+    endif()
+    if(ENABLE_PERIPHERAL_KEYBOARD)
+        target_compile_definitions(test-tui-input PRIVATE ENABLE_PERIPHERAL_KEYBOARD)
     endif()
 
     set(DISK_TEST_CASES "")
@@ -1159,7 +1232,8 @@ fi
     add_linapple_test(speaker-e2e "tests/test_main.cpp;tests/test_speaker_e2e.cpp")
     set_tests_properties(test-speaker-e2e PROPERTIES LABELS "e2e")
     add_linapple_test(frontend-init-order tests/test_frontend_init_order.cpp)
-    if(ENABLE_PERIPHERAL_DISK)
+    # The Applesoft session types its programs in.
+    if(ENABLE_PERIPHERAL_DISK AND ENABLE_PERIPHERAL_KEYBOARD)
         add_linapple_test(e2e-applesoft "tests/HeadlessHarness.cpp;tests/test_e2e_applesoft.cpp")
         set_tests_properties(test-e2e-applesoft PROPERTIES LABELS "e2e")
     endif()
@@ -1176,14 +1250,26 @@ fi
     add_linapple_test(peripheral-lifecycle tests/test_peripheral_lifecycle.cpp)
     add_dependencies(test-peripheral-lifecycle test-plugin-slot0)
     target_compile_definitions(test-peripheral-lifecycle PRIVATE TEST_PLUGIN_DIR="${TEST_PLUGIN_DIR}")
+    # The direct I/O probe reads the switch lines a keyboard holds released
+    # and the timers the game port drives, and the declared machine names a
+    # Mockingboard, with any of the cards a plugin or not.
+    foreach(card KEYBOARD JOYSTICK MOCKINGBOARD)
+        if(ENABLE_PERIPHERAL_${card})
+            target_compile_definitions(test-peripheral-lifecycle PRIVATE ENABLE_PERIPHERAL_${card})
+        endif()
+    endforeach()
     if(ENABLE_PERIPHERAL_HARDDISK)
         add_linapple_test(harddisk-peripheral tests/test_harddisk_peripheral.cpp)
         add_linapple_test(harddisk-exhaustive tests/test_harddisk_exhaustive.cpp)
     endif()
     add_linapple_test(snapshot tests/test_snapshot.cpp)
-    if(ENABLE_PERIPHERAL_MOUSE)
-        target_compile_definitions(test-snapshot PRIVATE ENABLE_PERIPHERAL_MOUSE)
-    endif()
+    # Each case that declares or names a card is compiled only with that
+    # card, plugin or built-in, so every configuration's suite is green.
+    foreach(card MOUSE KEYBOARD JOYSTICK PRINTER SUPER_SERIAL MOCKINGBOARD DISK HARDDISK)
+        if(ENABLE_PERIPHERAL_${card})
+            target_compile_definitions(test-snapshot PRIVATE ENABLE_PERIPHERAL_${card})
+        endif()
+    endforeach()
     # Pinned fixture for regression testing.
     add_test(NAME test-snapshot-fixture-pinned COMMAND sh -c
         "echo '508d85b3144ab7a576cb7a01be705c21d59d68c2  tests/fixtures/minimal.aws' | sha1sum -c --quiet"
@@ -1229,6 +1315,9 @@ fi
         if(ENABLE_PERIPHERAL_MOUSE)
             target_compile_definitions(test-frontend-sdl1 PRIVATE ENABLE_PERIPHERAL_MOUSE)
         endif()
+        if(ENABLE_PERIPHERAL_KEYBOARD)
+            target_compile_definitions(test-frontend-sdl1 PRIVATE ENABLE_PERIPHERAL_KEYBOARD)
+        endif()
     endif()
 
     if(FRONTEND_LOWER STREQUAL "sdl2" OR FRONTEND_LOWER STREQUAL "all")
@@ -1244,6 +1333,9 @@ fi
         if(ENABLE_PERIPHERAL_MOUSE)
             target_compile_definitions(test-frontend-sdl2 PRIVATE ENABLE_PERIPHERAL_MOUSE)
         endif()
+        if(ENABLE_PERIPHERAL_KEYBOARD)
+            target_compile_definitions(test-frontend-sdl2 PRIVATE ENABLE_PERIPHERAL_KEYBOARD)
+        endif()
     endif()
 
     if(FRONTEND_LOWER STREQUAL "sdl3" OR FRONTEND_LOWER STREQUAL "all")
@@ -1258,6 +1350,9 @@ fi
         linapple_test_home(test-frontend-sdl3 frontend-sdl3)
         if(ENABLE_PERIPHERAL_MOUSE)
             target_compile_definitions(test-frontend-sdl3 PRIVATE ENABLE_PERIPHERAL_MOUSE)
+        endif()
+        if(ENABLE_PERIPHERAL_KEYBOARD)
+            target_compile_definitions(test-frontend-sdl3 PRIVATE ENABLE_PERIPHERAL_KEYBOARD)
         endif()
     endif()
 endif()

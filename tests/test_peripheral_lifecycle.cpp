@@ -378,7 +378,9 @@ TEST_CASE("Peripheral Manager: A declared machine reaches the slots") {
   // so the declaration described nothing and the hand registration was the
   // only truth.
   TestFixtures::ScopedTestConfig_t::Description_t description;
+#ifdef ENABLE_PERIPHERAL_MOCKINGBOARD
   description.slots[3] = "Mockingboard";
+#endif
 #ifdef ENABLE_PERIPHERAL_DISK
   description.slots[5] = "Disk II";
 #endif
@@ -388,7 +390,11 @@ TEST_CASE("Peripheral Manager: A declared machine reaches the slots") {
   SS_PERIPHERAL_MANIFEST manifest;
   peripheral_get_manifest(&manifest);
 
+#ifdef ENABLE_PERIPHERAL_MOCKINGBOARD
   CHECK(std::string(manifest.peripherals[4].name) == "Mockingboard");
+#else
+  CHECK(manifest.peripherals[4].name[0] == '\0');
+#endif
 #ifdef ENABLE_PERIPHERAL_DISK
   CHECK(std::string(manifest.peripherals[6].name) == "Disk II");
 #else
@@ -513,6 +519,11 @@ TEST_CASE(
 #endif
 }
 
+// The released levels below are a //e with its keyboard plugged in: PB0 and
+// PB1 rest low through the keyboard's 470 ohm pull-downs (Apple IIe Technical
+// Note #9; Sather, Understanding the Apple IIe, 7-8), and the timers are the
+// game port's.
+#if defined(ENABLE_PERIPHERAL_KEYBOARD) && defined(ENABLE_PERIPHERAL_JOYSTICK)
 namespace {
 
 auto record_log_line(LogLevel_t level, const char* message, void* user_data)
@@ -566,9 +577,10 @@ TEST_CASE(
     TestFixtures::ScopedCore_t::poke(
         video_get_scanner_address(nullptr, probe_cycle), &marker, 1);
     g_cumulative_cycles = long_after_any_pulse;
-    // PB2 has no pull-down in a standard two-button controller, so its open
-    // TTL input reads high at rest (Sather, Understanding the Apple II, 7-9
-    // and 7-11); PB0, PB1 and the four expired timers read low.
+    // PB2 has no pull-down on the keyboard or in a two-button controller's
+    // plug, so its open TTL input reads high at rest (Sather, Understanding
+    // the Apple II, 7-9 and 7-11); PB0, PB1 and the four expired timers read
+    // low.
     constexpr uint16_t open_button = 0xC063;
     for (uint16_t addr = first_button; addr <= last_paddle; ++addr) {
       CAPTURE(addr);
@@ -583,6 +595,7 @@ TEST_CASE(
   }
   Logger::set_callback_with_context(nullptr, nullptr);
 }
+#endif
 
 namespace {
 

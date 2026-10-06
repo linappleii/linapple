@@ -2,7 +2,6 @@
 #include <chrono>
 #include <cstdint>
 #include <cstring>
-#include <string>
 #include <thread>
 
 #include "HeadlessHarness.h"
@@ -25,7 +24,7 @@ TEST_CASE("Headless: [HL-01] Boot from --d1") {
   TestConfig_t config(TestConfig_t::disk_ii_only());
   HeadlessHarness_t harness(config);
 
-  auto disk1 = TestFixtures::create_ephemeral("minimal.woz");
+  auto disk1 = TestFixtures::create_ephemeral("Master.dsk");
   harness.mount_disk(6, 0, disk1);
 
   DiskStatus_t status{};
@@ -37,10 +36,21 @@ TEST_CASE("Headless: [HL-01] Boot from --d1") {
   CHECK(status.drive0_loaded == true);
   CHECK(status.drive0_last_error == disk_err_none);
 
-  // E2E boot sequence: reset CPU/system and advance virtual frames
+  // The self-test screen also says "Apple //e", and its RAM patterns can put
+  // a "]" in column 0, so only a row holding the DOS prompt alone proves the
+  // disk booted.
   harness.boot();
-  harness.run_frames(20);
-  CHECK(harness.get_text_row(0).find("Apple //e") != std::string::npos);
+  constexpr uint32_t prompt_frame_cap = 300;
+  bool at_prompt = false;
+  for (uint32_t frame = 0; frame < prompt_frame_cap && !at_prompt; ++frame) {
+    harness.run_frames(1);
+    for (int row = 0; row < 24; ++row) {
+      if (harness.get_text_row(row) == "]") {
+        at_prompt = true;
+      }
+    }
+  }
+  CHECK(at_prompt);
 }
 
 TEST_CASE("Headless: [HL-02] Both drives loaded") {

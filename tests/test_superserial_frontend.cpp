@@ -676,6 +676,9 @@ TEST_CASE(
 
 namespace {
 
+// The sessions below type at the Applesoft prompt, which needs the keyboard
+// card.
+#if defined(ENABLE_PERIPHERAL_KEYBOARD)
 constexpr uint32_t prompt_frame_cap = 300;
 constexpr uint32_t session_frame_cap = 60;
 
@@ -724,6 +727,7 @@ auto clear_input_buffer() -> void {
     }
   }
 }
+#endif
 
 auto open_peer(const ScopedLogCapture_t& log) -> std::string {
   REQUIRE(super_serial_frontend_primary_slot() == card_slot);
@@ -733,6 +737,7 @@ auto open_peer(const ScopedLogCapture_t& log) -> std::string {
   return path;
 }
 
+#if defined(ENABLE_PERIPHERAL_KEYBOARD)
 // After PR#2 hooks CSW: CRDO and the prompt, GETLN's echo of PRINT "HELLO"
 // and its Return, HELLO, CRDO and the prompt, GETLN's echo of PR#0 and its
 // Return. In communications mode the firmware sends each COUT byte with bit 7
@@ -741,9 +746,11 @@ const std::vector<uint8_t> applesoft_session_stream = {
     0x8D, 0xDD, 0xD0, 0xD2, 0xC9, 0xCE, 0xD4, 0xA0, 0xA2, 0xC8,
     0xC5, 0xCC, 0xCC, 0xCF, 0xA2, 0x8D, 0xC8, 0xC5, 0xCC, 0xCC,
     0xCF, 0x8D, 0x8D, 0xDD, 0xD0, 0xD2, 0xA3, 0xB0, 0x8D};
+#endif
 
 }  // namespace
 
+#if defined(ENABLE_PERIPHERAL_KEYBOARD)
 // The firmware ORs $80 into each received byte for GETLN, which stores it at
 // $0200 with no echo to the line.
 TEST_CASE(
@@ -814,6 +821,7 @@ TEST_CASE(
   CHECK(peer.has_byte() == false);
   CHECK(screen_has_row(harness, "HELLO"));
 }
+#endif
 
 TEST_CASE(
     "Serial Frontend: the switch keys set to the manual's printer-mode rows "
