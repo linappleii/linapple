@@ -16,11 +16,25 @@
 
 namespace {
 
+constexpr size_t rom_size = 256;
+constexpr size_t rom_slot_operand = 0x0D;
+constexpr int slot_io_shift = 4;
+
 // ProDOS 8 ThunderClock firmware emulation ($Cn00 ID, $Cn08 READ, $Cn0B WRITE).
-const std::array<uint8_t, 256> clock_rom = {{
+//
+// READ loads Y with the card's I/O page offset from an immediate at $0D,
+// patched per instance, instead of recovering it from the stack with
+// JSR $FF58 / TSX / LDA $100,X. That idiom needs the Monitor's RTS at $FF58,
+// and ProDOS 1.1.1 calls the clock from its kernel with the language card
+// read-enabled, where $FF58 holds $03 ("ProDOS DOES NOT HAVE $60 AT $FF58 in
+// the language card", Apple Assembly Line, November 1983). The PHP/SEI/PLP
+// that guarded the stack read go with it; nothing from $1B on reads X, P or
+// the stack, and the NOPs keep every later offset where the BEQ at $20 and
+// the RTS at $0B expect it.
+const std::array<uint8_t, rom_size> clock_rom = {{
     0x08, 0x90, 0x28, 0xb0, 0x58, 0x00, 0x70, 0x00, 0xea, 0xea, 0xa9, 0x60,
-    0x08, 0x78, 0x20, 0x58, 0xff, 0xba, 0xbd, 0x00, 0x01, 0x28, 0x0a, 0x0a,
-    0x0a, 0x0a, 0xa8, 0xb9, 0x8f, 0xc0, 0xa2, 0x00, 0xf0, 0x0b, 0x00, 0x00,
+    0xa0, 0x00, 0xea, 0xea, 0xea, 0xea, 0xea, 0xea, 0xea, 0xea, 0xea, 0xea,
+    0xea, 0xea, 0xea, 0xb9, 0x8f, 0xc0, 0xa2, 0x00, 0xf0, 0x0b, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x28, 0x60, 0xb9, 0x80, 0xc0,
     0xc8, 0x09, 0xb0, 0x9d, 0x00, 0x02, 0xe8, 0xb9, 0x80, 0xc0, 0xc8, 0x09,
     0xb0, 0x9d, 0x00, 0x02, 0xe8, 0xa9, 0xac, 0x9d, 0x00, 0x02, 0xe8, 0x98,
@@ -48,6 +62,7 @@ constexpr int minute_max = 59;
 
 struct ClockCard_t {
   std::array<uint8_t, latch_count> latches{};
+  std::array<uint8_t, rom_size> rom{};
   HostInterface_t* host = nullptr;
   int slot = 0;
   bool reported_missing_time = false;
@@ -154,8 +169,10 @@ auto clockcard_abi_init(int slot, HostInterface_t* host) -> void* {
   }
   card->slot = slot;
   card->host = host;
+  card->rom = clock_rom;
+  card->rom.at(rom_slot_operand) = static_cast<uint8_t>(slot << slot_io_shift);
 
-  host->RegisterCxROM(slot, clock_rom.data());
+  host->RegisterCxROM(slot, card->rom.data());
   host->RegisterIO(slot, clockcard_io_read, nullptr, nullptr, nullptr);
 
   return card.release();

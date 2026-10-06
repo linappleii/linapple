@@ -118,11 +118,12 @@ constexpr Frame_t frozen_frame = {
 constexpr std::array<uint8_t, 12> frame_v1_prefix = {
     0x01, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0xE8, 0xCD, 0xB2, 0x69};
 
-// Golden disassembly test vector for ProDOS 8 ThunderClock firmware.
+// Golden disassembly test vector for ProDOS 8 ThunderClock firmware as slot 4
+// sees it; another slot's image differs only in the LDY operand at $0D.
 constexpr std::array<uint8_t, slot_rom_size> firmware_rom = {
     0x08, 0x90, 0x28, 0xB0, 0x58, 0x00, 0x70, 0x00, 0xEA, 0xEA, 0xA9, 0x60,
-    0x08, 0x78, 0x20, 0x58, 0xFF, 0xBA, 0xBD, 0x00, 0x01, 0x28, 0x0A, 0x0A,
-    0x0A, 0x0A, 0xA8, 0xB9, 0x8F, 0xC0, 0xA2, 0x00, 0xF0, 0x0B, 0x00, 0x00,
+    0xA0, 0x40, 0xEA, 0xEA, 0xEA, 0xEA, 0xEA, 0xEA, 0xEA, 0xEA, 0xEA, 0xEA,
+    0xEA, 0xEA, 0xEA, 0xB9, 0x8F, 0xC0, 0xA2, 0x00, 0xF0, 0x0B, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x28, 0x60, 0xB9, 0x80, 0xC0,
     0xC8, 0x09, 0xB0, 0x9D, 0x00, 0x02, 0xE8, 0xB9, 0x80, 0xC0, 0xC8, 0x09,
     0xB0, 0x9D, 0x00, 0x02, 0xE8, 0xA9, 0xAC, 0x9D, 0x00, 0x02, 0xE8, 0x98,
@@ -130,15 +131,28 @@ constexpr std::array<uint8_t, slot_rom_size> firmware_rom = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xB0, 0xCC};
 
 constexpr size_t rom_write_entry = 0x0B;
+constexpr size_t rom_slot_operand = 0x0D;
 constexpr size_t rom_carry_leg = 0x5D;
 constexpr size_t rom_first_unused = 0x5F;
 
-// Slot 4's firmware entries and the monitor RTS its slot detection relies on.
+// Slot 4's firmware entries, and slot 5's for the second card.
 constexpr uint16_t slot4_read_entry = 0xC408;
 constexpr uint16_t slot4_write_entry = 0xC40B;
-constexpr uint16_t monitor_iorts = 0xFF58;
+constexpr uint16_t slot5_read_entry = 0xC508;
+constexpr uint16_t slot5_first_latch = 0xC0D0;
 constexpr uint8_t opcode_rts = 0x60;
+constexpr uint8_t opcode_ldy_immediate = 0xA0;
+constexpr uint8_t opcode_nop = 0xEA;
 constexpr uint32_t rts_cycles = 6;
+
+// The Monitor's IORTS, which the slot-finding idiom JSR $FF58 / TSX /
+// LDA $100,X relies on, and what sits there instead when ProDOS 1.1.1 calls
+// the clock from its kernel with the language card read-enabled (Apple
+// Assembly Line, November 1983: "ProDOS DOES NOT HAVE $60 AT $FF58 in the
+// language card").
+constexpr uint16_t monitor_iorts = 0xFF58;
+constexpr uint8_t prodos_111_byte_at_iorts = 0x03;
+constexpr uint16_t lc_bank2_read_write = 0xC083;
 
 // What ProDOS 8's ThunderClock driver passes in A when it calls the WRITE
 // entry: "#" with the high bit set, asking a real card for numeric output.
@@ -468,6 +482,36 @@ struct ClockInSlot4_t {
   }
 };
 
+struct ClockInSlots4And5_t {
+  static auto describe() -> TestFixtures::ScopedTestConfig_t::Description_t {
+    TestFixtures::ScopedTestConfig_t::Description_t description;
+    description.slots.at(oracle_slot - 1) = "Clock Card";
+    description.slots.at(oracle_slot) = "Clock Card";
+    return description;
+  }
+
+  TestFixtures::ScopedTestConfig_t config;
+  TestFixtures::ScopedCore_t core;
+
+  ClockInSlots4And5_t() : config(describe()), core(config) {
+    peripheral_manager_init();
+    linapple_register_peripherals();
+    linapple_reset_hard();
+  }
+};
+
+// Puts the machine where ProDOS 1.1.1's kernel leaves it when it calls the
+// clock: language card RAM readable in place of the Monitor, with the given
+// byte where the Monitor keeps its RTS.
+auto read_enable_language_card(uint8_t byte_at_iorts) -> void {
+  REQUIRE(mem[monitor_iorts] == opcode_rts);
+  io_map_dispatch(0, lc_bank2_read_write, 0, 0, 0);
+  io_map_dispatch(0, lc_bank2_read_write, 0, 0, 0);
+  REQUIRE((mem_get_mode() & MF_HIGHRAM) != 0);
+  TestFixtures::ScopedCore_t::poke(monitor_iorts, &byte_at_iorts, 1);
+  REQUIRE(mem[monitor_iorts] == byte_at_iorts);
+}
+
 auto fill_input_page(uint8_t marker) -> void {
   InputPage_t page{};
   page.fill(marker);
@@ -504,13 +548,31 @@ auto call_subroutine(uint16_t entry, uint8_t accumulator) -> uint32_t {
   return cycles;
 }
 
-auto dispatch_latches() -> Latches_t {
+auto dispatch_latches(uint16_t first_latch = oracle_first_latch) -> Latches_t {
   Latches_t latched{};
   for (size_t i = 0; i < latch_count; ++i) {
-    latched.at(i) = io_map_dispatch(
-        0, static_cast<uint16_t>(oracle_first_latch + i), 0, 0, 0);
+    latched.at(i) =
+        io_map_dispatch(0, static_cast<uint16_t>(first_latch + i), 0, 0, 0);
   }
   return latched;
+}
+
+// The frozen line reached $0200 and nothing else did, with the stack back
+// where the caller left it.
+auto check_read_entry_returned(uint32_t cycles) -> void {
+  CHECK(cpu_get_registers()->pc == return_sentinel);
+  CHECK(cpu_get_registers()->sp == stack_top);
+  CHECK(cycles < subroutine_cycle_cap);
+
+  const InputPage_t page = read_input_page();
+  CHECK(std::equal(frozen_input_line.begin(), frozen_input_line.end(),
+                   page.begin()));
+  CHECK(std::all_of(page.begin() + frozen_input_line.size(), page.end(),
+                    [](uint8_t byte) { return byte == untouched_marker; }));
+
+  // Five fields of two digits and a comma each leave X at the fifteenth byte,
+  // the one the firmware overwrote with $80.
+  CHECK(cpu_get_registers()->x == frozen_input_line.size());
 }
 
 auto read_fixture_frame(const char* name) -> Frame_t {
@@ -934,10 +996,45 @@ TEST_CASE("Clock Peripheral: The slot ROM is the firmware, byte for byte") {
   CHECK(first_difference.first == rom_end);
 
   CHECK(rom[rom_write_entry] == opcode_rts);
+  CHECK(rom[rom_slot_operand - 1] == opcode_ldy_immediate);
+  CHECK(rom[rom_slot_operand] == slot << io_slot_shift);
   CHECK(rom[rom_carry_leg] == 0xB0);
   CHECK(rom[rom_carry_leg + 1] == 0xCC);
   CHECK(std::all_of(rom + rom_first_unused, rom_end,
                     [](uint8_t byte) { return byte == 0; }));
+
+  // The second card's image differs from the first in the slot operand alone.
+  REQUIRE(harness.create_clock(test_slot_2) != nullptr);
+  const uint8_t* second = harness.rom_pointer(test_slot_2);
+  REQUIRE(second != nullptr);
+  REQUIRE(second != rom);
+  CHECK(second[rom_slot_operand] == test_slot_2 << io_slot_shift);
+  CHECK(rom[rom_slot_operand] == slot << io_slot_shift);
+  for (size_t offset = 0; offset < slot_rom_size; ++offset) {
+    if (offset == rom_slot_operand) {
+      continue;
+    }
+    CAPTURE(offset);
+    CHECK(second[offset] == rom[offset]);
+  }
+}
+
+TEST_CASE("Clock Peripheral: The slot is found without a JSR to $FF58") {
+  ClockHarness_t harness;
+  REQUIRE(harness.create_clock(test_slot_1) != nullptr);
+  const uint8_t* rom = harness.rom_pointer(test_slot_1);
+  REQUIRE(rom != nullptr);
+
+  // From the LDY operand to the strobe at $1B, nothing but NOPs: no PHP, SEI,
+  // JSR, TSX or stack read remains to depend on the Monitor being switched in.
+  constexpr size_t strobe_offset_in_rom = 0x1B;
+  for (size_t offset = rom_slot_operand + 1; offset < strobe_offset_in_rom;
+       ++offset) {
+    CAPTURE(offset);
+    CHECK(rom[offset] == opcode_nop);
+  }
+  constexpr uint8_t opcode_jsr = 0x20;
+  CHECK(std::find(rom, rom + slot_rom_size, opcode_jsr) == rom + slot_rom_size);
 }
 
 // Verify ProDOS 8 ThunderClock READ entry ($C408) populates $0200 buffer.
@@ -945,35 +1042,39 @@ TEST_CASE("Clock Peripheral: The READ entry writes the frozen time to $0200") {
   ClockInSlot4_t machine;
   TestFixtures::ScopedLocalTimeProvider_t clock(frozen_thursday);
 
-  // The firmware learns its slot from the return address JSR $FF58 leaves on
-  // the stack, which only works because that monitor byte is an RTS.
-  REQUIRE(mem[monitor_iorts] == opcode_rts);
+  SUBCASE("with the Monitor ROM in, as BASIC calls it") {
+    REQUIRE(mem[monitor_iorts] == opcode_rts);
+  }
+  // ProDOS 1.1.1's kernel calls $Cn0B then $Cn08 from the language card.
+  SUBCASE("from ProDOS 1.1.1's language card, $03 at $FF58") {
+    read_enable_language_card(prodos_111_byte_at_iorts);
+  }
+  SUBCASE("from a language card with $00 at $FF58") {
+    read_enable_language_card(0x00);
+  }
 
   fill_input_page(untouched_marker);
   const uint32_t cycles = call_subroutine(slot4_read_entry, 0);
-  CHECK(cpu_get_registers()->pc == return_sentinel);
-  CHECK(cycles < subroutine_cycle_cap);
+  check_read_entry_returned(cycles);
   CHECK(clock.calls() == 1);
-
-  const InputPage_t page = read_input_page();
-  CHECK(std::equal(frozen_input_line.begin(), frozen_input_line.end(),
-                   page.begin()));
-  CHECK(std::all_of(page.begin() + frozen_input_line.size(), page.end(),
-                    [](uint8_t byte) { return byte == untouched_marker; }));
-
-  // Five fields of two digits and a comma each leave X at the fifteenth byte,
-  // the one the firmware overwrote with $80.
-  CHECK(cpu_get_registers()->x == frozen_input_line.size());
 }
 
 TEST_CASE("Clock Peripheral: The WRITE entry is a bare RTS that keeps A") {
   ClockInSlot4_t machine;
   TestFixtures::ScopedLocalTimeProvider_t clock(frozen_thursday);
 
+  SUBCASE("with the Monitor ROM in") {
+    REQUIRE(mem[monitor_iorts] == opcode_rts);
+  }
+  SUBCASE("from ProDOS 1.1.1's language card, $03 at $FF58") {
+    read_enable_language_card(prodos_111_byte_at_iorts);
+  }
+
   fill_input_page(untouched_marker);
   const uint32_t cycles =
       call_subroutine(slot4_write_entry, prodos_write_format);
   CHECK(cpu_get_registers()->pc == return_sentinel);
+  CHECK(cpu_get_registers()->sp == stack_top);
   CHECK(cycles == rts_cycles);
   CHECK(cpu_get_registers()->a == prodos_write_format);
   CHECK(clock.calls() == 0);
@@ -981,6 +1082,31 @@ TEST_CASE("Clock Peripheral: The WRITE entry is a bare RTS that keeps A") {
   const InputPage_t page = read_input_page();
   CHECK(std::all_of(page.begin(), page.end(),
                     [](uint8_t byte) { return byte == untouched_marker; }));
+}
+
+// Two cards, each entered from the language card: the one called strobes its
+// own slot's registers and the other's latches stay untouched.
+TEST_CASE("Clock Peripheral: Two cards each read their own slot's registers") {
+  ClockInSlots4And5_t machine;
+  TestFixtures::ScopedLocalTimeProvider_t clock(frozen_thursday);
+
+  CHECK(mem[0xC400 + rom_slot_operand] == oracle_slot << io_slot_shift);
+  CHECK(mem[0xC500 + rom_slot_operand] == (oracle_slot + 1) << io_slot_shift);
+  REQUIRE(dispatch_latches(oracle_first_latch) == Latches_t{});
+  REQUIRE(dispatch_latches(slot5_first_latch) == Latches_t{});
+
+  read_enable_language_card(prodos_111_byte_at_iorts);
+
+  fill_input_page(untouched_marker);
+  check_read_entry_returned(call_subroutine(slot5_read_entry, 0));
+  CHECK(clock.calls() == 1);
+  CHECK(dispatch_latches(slot5_first_latch) == frozen_latches);
+  CHECK(dispatch_latches(oracle_first_latch) == Latches_t{});
+
+  fill_input_page(untouched_marker);
+  check_read_entry_returned(call_subroutine(slot4_read_entry, 0));
+  CHECK(clock.calls() == 2);
+  CHECK(dispatch_latches(oracle_first_latch) == frozen_latches);
 }
 
 TEST_CASE("Clock Peripheral: The calendar's edges reach the latches") {
