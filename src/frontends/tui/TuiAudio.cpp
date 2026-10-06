@@ -18,7 +18,7 @@ static pa_simple* g_pa_handle = nullptr;
 #endif
 
 #ifdef HAVE_ALSA
-#include <alsa/asoundlib.h>
+#include <alsa/asoundlib.h>  // IWYU pragma: keep
 #include <alsa/pcm.h>
 static snd_pcm_t* g_alsa_handle = nullptr;
 #endif
