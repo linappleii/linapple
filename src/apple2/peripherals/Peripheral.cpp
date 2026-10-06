@@ -1088,6 +1088,10 @@ static auto peripheral_by_id(int slot, const char* peripheral_id)
   return nullptr;
 }
 
+auto peripheral_present(int slot, const char* peripheral_id) -> bool {
+  return peripheral_by_id(slot, peripheral_id) != nullptr;
+}
+
 auto peripheral_command_by_id(int slot, const char* peripheral_id,
                               uint32_t cmd_id, const void* data, size_t size)
     -> PeripheralStatus_t {

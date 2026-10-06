@@ -31,6 +31,7 @@
 #include "frontends/common/AppEnvironment.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/common/HostSink.h"
+#include "frontends/common/JoystickConfig.h"
 #include "frontends/common/PrinterFrontend.h"
 #include "frontends/common/SaveStateManager.h"
 #include "frontends/common/SuperSerialFrontend.h"
@@ -257,6 +258,12 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
     return -1;
   }
   s_initialized = true;
+
+  // The connector's pull-downs are the configured controller's, reported here
+  // so that every frontend and a headless machine start from the same plug;
+  // an SDL frontend reports again with the devices it actually opened.
+  linapple_set_game_pulldowns(joystick_config_pulldown_mask());
+  linapple_set_shift_key_mod(joystick_config_shift_key_mod());
 
   apply_screen_factor();
 

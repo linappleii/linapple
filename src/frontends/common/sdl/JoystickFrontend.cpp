@@ -9,20 +9,7 @@
 #include "apple2/peripherals/joystick/JoystickCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
-
-enum {
-  DEVICE_NONE = 0,
-  DEVICE_JOYSTICK = 1,
-  DEVICE_KEYBOARD = 2,
-  DEVICE_MOUSE = 3
-};
-
-enum { MODE_NONE = 0, MODE_STANDARD = 1, MODE_CENTERING = 2, MODE_SMOOTH = 3 };
-
-using JoyInfoRec_t = struct JoyInfoRec_t {
-  int device;
-  int mode;
-};
+#include "frontends/common/JoystickConfig.h"
 
 inline auto clamp_val(int val, int low, int high) -> int {
   return (val < low) ? low : (val > high) ? high : val;
@@ -32,13 +19,6 @@ struct JoyCoord_t {
   int x;
   int y;
 };
-
-static const std::array<JoyInfoRec_t, 5> k_joy_info = {
-    {{DEVICE_NONE, MODE_NONE},
-     {DEVICE_JOYSTICK, MODE_STANDARD},
-     {DEVICE_KEYBOARD, MODE_STANDARD},
-     {DEVICE_KEYBOARD, MODE_CENTERING},
-     {DEVICE_MOUSE, MODE_STANDARD}}};
 
 // In keypad order so KP_1-KP_9 index directly; 0 and '.' are the buttons.
 enum JoyKey_t {
@@ -108,10 +88,8 @@ struct JoystickHostConfig_t {
 static JoystickHostConfig_t g_joy_config;
 
 constexpr uint8_t k_switch_line_count = 3;
-constexpr uint8_t k_line_pb0 = 0x01;
-constexpr uint8_t k_line_pb1 = 0x02;
-constexpr uint8_t k_line_pb2 = 0x04;
-constexpr uint8_t k_two_button_pulldowns = k_line_pb0 | k_line_pb1;
+constexpr uint8_t k_two_button_pulldowns =
+    joystick_line_pb0 | joystick_line_pb1;
 
 // A press and its release delivered in one SDL pump would reach the port
 // with no emulated cycles between them, which no program could see and no
@@ -132,27 +110,13 @@ struct SwitchQueue_t {
 
 static std::array<SwitchQueue_t, k_switch_line_count> g_switch_queues;
 
-static auto device_of(size_t joy_num) -> int {
-  return k_joy_info.at(static_cast<size_t>(g_joy_config.joy_type.at(joy_num)))
-      .device;
+static auto device_of(size_t joy_num) -> JoystickDevice_t {
+  return joystick_config_device(g_joy_config.joy_type.at(joy_num));
 }
 
-// The switch lines a device's button drives. Joystick 0's first button is
-// PB0 and its second PB1, the second only while no device sits on joystick
-// 1; joystick 1's one button is PB2 and PB1 together. One connector owner per
-// line, so a device's 10 ms poll never overwrites a key the other device just
-// pressed.
 static auto device_button_lines(size_t joy_num, int button) -> uint8_t {
-  if (joy_num != 0) {
-    return button == 0 ? static_cast<uint8_t>(k_line_pb2 | k_line_pb1) : 0;
-  }
-  if (button == 0) {
-    return k_line_pb0;
-  }
-  if (button == 1 && device_of(1) == DEVICE_NONE) {
-    return k_line_pb1;
-  }
-  return 0;
+  return joystick_config_button_lines(joy_num, button, g_joy_config.joy_type[0],
+                                      g_joy_config.joy_type[1]);
 }
 
 // The 560 ohm pull-downs sit in the controller's plug, two in a standard set
@@ -164,15 +128,10 @@ static auto device_button_lines(size_t joy_num, int button) -> uint8_t {
 // every reset into an Open-Apple cold start. PB2 is pulled down only when a
 // device drives it.
 static auto connector_pulldowns() -> uint8_t {
-  uint8_t mask = k_two_button_pulldowns;
-  for (size_t joy_num = 0; joy_num < 2; ++joy_num) {
-    if (device_of(joy_num) == DEVICE_NONE) {
-      continue;
-    }
-    mask |= device_button_lines(joy_num, 0);
-    mask |= device_button_lines(joy_num, 1);
-  }
-  return mask;
+  return static_cast<uint8_t>(
+      k_two_button_pulldowns |
+      joystick_config_pulldown_mask(g_joy_config.joy_type[0],
+                                    g_joy_config.joy_type[1]));
 }
 
 static auto send_connector_switch(uint8_t line, bool down) -> void {
@@ -259,10 +218,10 @@ static auto send_axis(uint8_t joy_num, uint8_t axis, int position) -> void {
 }
 
 static auto keypad_joystick() -> int {
-  if (device_of(0) == DEVICE_KEYBOARD) {
+  if (device_of(0) == joystick_device_keyboard) {
     return 0;
   }
-  if (device_of(1) == DEVICE_KEYBOARD) {
+  if (device_of(1) == joystick_device_keyboard) {
     return 1;
   }
   return -1;
@@ -336,10 +295,10 @@ auto joy_frontend_initialize() -> void {
   g_joy_config = {};
   uint32_t val = 0;
   if (load(REGVALUE_JOY_TYPE1, &val)) {
-    g_joy_config.joy_type[0] = (val < k_joy_info.size()) ? val : 0;
+    g_joy_config.joy_type[0] = (val < joystick_config_type_count) ? val : 0;
   }
   if (load(REGVALUE_JOY_TYPE2, &val)) {
-    g_joy_config.joy_type[1] = (val < k_joy_info.size()) ? val : 0;
+    g_joy_config.joy_type[1] = (val < joystick_config_type_count) ? val : 0;
   }
   if (load(REGVALUE_JOY_INDEX1, &val)) g_joy_config.joy_index[0] = val;
   if (load(REGVALUE_JOY_INDEX2, &val)) g_joy_config.joy_index[1] = val;
@@ -367,7 +326,7 @@ auto joy_frontend_initialize() -> void {
 
   auto open_device = [&](size_t joy_id, SdlJoystickPtr_t& joy_ptr,
                          uint32_t fallback_type) {
-    if (device_of(joy_id) != DEVICE_JOYSTICK) {
+    if (device_of(joy_id) != joystick_device_joystick) {
       return;
     }
     const auto joy_idx = static_cast<int>(g_joy_config.joy_index.at(joy_id));
@@ -394,13 +353,11 @@ auto joy_frontend_initialize() -> void {
   };
 
   open_device(0, g_joy1, 4);
-  open_device(1, g_joy2, DEVICE_NONE);
+  open_device(1, g_joy2, joystick_device_none);
 
   // The mask follows the devices actually present, so a configured second
   // stick that is not plugged in leaves PB2 open as the hardware would.
-  const uint8_t pulldowns = connector_pulldowns();
-  peripheral_command(0, JOYSTICK_CMD_SET_PULLDOWNS, &pulldowns,
-                     sizeof(pulldowns));
+  linapple_set_game_pulldowns(connector_pulldowns());
 
   // Start the queues and the port from the same released levels, whatever a
   // previous session left held.
@@ -479,7 +436,7 @@ auto joy_frontend_update() -> void {
 
   auto poll_if_due = [](size_t joy_id, SdlJoystickPtr_t& joy_ptr,
                         uint32_t& last_check) {
-    if (!joy_ptr || device_of(joy_id) != DEVICE_JOYSTICK) {
+    if (!joy_ptr || device_of(joy_id) != joystick_device_joystick) {
       return;
     }
     const uint32_t curr_time = sdl_compat_get_ticks();
@@ -533,11 +490,8 @@ auto joy_frontend_process_key(uint32_t virtkey, bool extended, bool down,
     return false;
   }
 
-  const int centering_type =
-      k_joy_info
-          .at(static_cast<size_t>(
-              g_joy_config.joy_type.at(static_cast<size_t>(joy_num))))
-          .mode;
+  const JoystickMode_t centering_type = joystick_config_mode(
+      g_joy_config.joy_type.at(static_cast<size_t>(joy_num)));
 
   if ((virtkey >= SDLK_KP_1) && (virtkey <= SDLK_KP_9)) {
     g_key_down.at(static_cast<size_t>(virtkey - SDLK_KP_1)) = down;
@@ -588,7 +542,8 @@ auto joy_frontend_process_key(uint32_t virtkey, bool extended, bool down,
     queue_connector_lines(device_button_lines(joystick, 0), down);
   } else if ((virtkey == SDLK_KP_PERIOD) || (virtkey == SDLK_DELETE)) {
     queue_connector_lines(device_button_lines(joystick, 1), down);
-  } else if ((down && !autorep) || (centering_type == MODE_CENTERING)) {
+  } else if ((down && !autorep) ||
+             (centering_type == joystick_mode_centering)) {
     send_keypad_axes(joystick);
   }
   return true;
@@ -596,7 +551,8 @@ auto joy_frontend_process_key(uint32_t virtkey, bool extended, bool down,
 // NOLINTEND(misc-include-cleaner)
 
 auto joy_frontend_is_mouse_emulation_active() -> bool {
-  return device_of(0) == DEVICE_MOUSE || device_of(1) == DEVICE_MOUSE;
+  return device_of(0) == joystick_device_mouse ||
+         device_of(1) == joystick_device_mouse;
 }
 
 auto joy_frontend_process_mouse_motion(int x, int max_x, int y, int max_y)
@@ -607,7 +563,7 @@ auto joy_frontend_process_mouse_motion(int x, int max_x, int y, int max_y)
   int joy_y = ((y * 255) + (range_y / 2)) / range_y;
 
   for (uint8_t joy_num = 0; joy_num < 2; ++joy_num) {
-    if (device_of(joy_num) == DEVICE_MOUSE) {
+    if (device_of(joy_num) == joystick_device_mouse) {
       send_axis(joy_num, 0, joy_x);
       send_axis(joy_num, 1, joy_y);
     }
@@ -616,7 +572,7 @@ auto joy_frontend_process_mouse_motion(int x, int max_x, int y, int max_y)
 
 auto joy_frontend_process_mouse_button(int button, bool down) -> void {
   for (size_t joy_num = 0; joy_num < 2; ++joy_num) {
-    if (device_of(joy_num) == DEVICE_MOUSE) {
+    if (device_of(joy_num) == joystick_device_mouse) {
       queue_connector_lines(device_button_lines(joy_num, button), down);
     }
   }

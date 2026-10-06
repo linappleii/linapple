@@ -368,6 +368,7 @@ set(SOURCES_CORE
     src/frontends/common/AppController.cpp
     src/frontends/common/FileBrowser.cpp
     src/frontends/common/Util_Hash.cpp
+    src/frontends/common/JoystickConfig.cpp
     src/frontends/common/KeyboardTranslator.cpp
     src/frontends/common/AudioDumper.cpp
     src/frontends/common/SaveStateManager.cpp
@@ -384,6 +385,7 @@ set(SOURCES_A2_MANDATORY
     src/apple2/CPU.cpp
     src/apple2/Memory.cpp
     src/apple2/Snapshot.cpp
+    src/apple2/SwitchInputs.cpp
     src/apple2/Video.cpp
     src/apple2/peripherals/Peripheral.cpp
     src/apple2/peripherals/Peripheral_Internal.cpp

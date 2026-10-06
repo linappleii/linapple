@@ -214,6 +214,11 @@ auto linapple_get_caps_lock_state() -> bool;
 auto linapple_toggle_caps_lock_state() -> bool;
 auto linapple_set_modifiers(bool shift, bool ctrl, bool open_apple,
                             bool solid_apple) -> void;
+// The game connector's side of the motherboard's switch inputs: the lines a
+// controller plug's resistors pull down, one bit per line PB0-PB2, and the
+// //e board's shift-key mod jumper.
+auto linapple_set_game_pulldowns(uint8_t mask) -> void;
+auto linapple_set_shift_key_mod(bool jumper_in) -> void;
 
 auto linapple_set_video_callback(LinappleVideoCallback_t cb) -> void;
 auto linapple_set_audio_channel_callback(FrontendAudioChannelCallback_t cb)

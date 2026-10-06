@@ -213,6 +213,8 @@ PeripheralStatus_t peripheral_command_by_id(int slot, const char* peripheral_id,
 PeripheralStatus_t peripheral_query_by_id(int slot, const char* peripheral_id,
                                           uint32_t cmd_id, void* out,
                                           size_t* out_size);
+// Whether a card with this descriptor id is registered in the slot.
+bool peripheral_present(int slot, const char* peripheral_id);
 void peripheral_save_state(int slot, void* buffer, size_t* size);
 // peripheral_incompatible for an empty slot or a card that keeps no state,
 // so a refused frame is told apart from one nobody was there to take.

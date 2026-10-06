@@ -32,6 +32,7 @@
 #include "core/Registry.h"
 #include "frontends/common/AppController.h"
 #include "frontends/common/AudioMixer.h"
+#include "frontends/common/JoystickConfig.h"
 #include "frontends/common/MouseFrontend.h"
 #include "frontends/common/SaveStateManager.h"
 
@@ -792,6 +793,19 @@ auto tui_input_initialize() -> void {
     start_tracking();
   }
   g_joy_fd = open("/dev/input/js0", O_RDONLY | O_NONBLOCK);
+  if (g_joy_fd == -1) {
+    return;
+  }
+  // The device is a second plug on the game connector, with a 560 ohm
+  // pull-down on each line it has a button for: PB0 and PB1, and PB2 when it
+  // reports a third button (Sather, Understanding the Apple II, 7-9 and
+  // 7-11). The configured controller's resistors stay in the mask beside it.
+  uint8_t buttons = 0;
+  const bool three_buttons =
+      ioctl(g_joy_fd, JSIOCGBUTTONS, &buttons) == 0 && buttons >= 3;
+  linapple_set_game_pulldowns(joystick_config_pulldown_mask() |
+                              joystick_line_pb0 | joystick_line_pb1 |
+                              (three_buttons ? joystick_line_pb2 : 0));
 }
 
 auto tui_input_on_resize() -> void {

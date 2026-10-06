@@ -12,6 +12,7 @@
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
+#include "apple2/SwitchInputs.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Internal.h"
@@ -213,6 +214,19 @@ auto linapple_init() -> int {
 
   peripheral_manager_init();
   peripheral_register_internal();
+
+  // The switch inputs' resting levels depend on the model and on whether a
+  // keyboard hangs on the board's connector: the bridge knows both, no card
+  // does. A //e with no keyboard reads PB0 and PB1 high through the board's
+  // pull-ups and its reset routine enters the self-test (IIe Technical Note
+  // #9), as the hardware does with the cable out.
+  const bool keyboard_present = peripheral_present(0, "linapple.keyboard");
+  switch_inputs_reset_configuration(!is_apple2(), keyboard_present);
+  if (!is_apple2() && !keyboard_present) {
+    Logger::warning(
+        "no keyboard card: the //e runs with its keyboard unplugged and "
+        "self-tests unless a game controller is configured\n");
+  }
   return 0;
 }
 
@@ -541,7 +555,22 @@ auto linapple_set_modifiers(bool shift, bool ctrl, bool open_apple,
                                     0,
                                     {0, 0, 0}};
   peripheral_command(0, keyboard_cmd_set_mods, &mods, sizeof(mods));
+  switch_inputs_set_level(0, switch_source_keyboard, open_apple);
+  switch_inputs_set_level(1, switch_source_keyboard, solid_apple);
+  switch_inputs_set_level(2, switch_source_keyboard, shift);
   send_keyboard_switch(0, open_apple);
   send_keyboard_switch(1, solid_apple);
   send_keyboard_switch(2, shift);
+}
+
+auto linapple_set_game_pulldowns(uint8_t mask) -> void {
+  switch_inputs_set_connector_pulldowns(mask);
+  peripheral_command(0, JOYSTICK_CMD_SET_PULLDOWNS, &mask, sizeof(mask));
+}
+
+auto linapple_set_shift_key_mod(bool jumper_in) -> void {
+  switch_inputs_set_shift_key_mod(jumper_in);
+  const uint8_t jumper = jumper_in ? 1 : 0;
+  peripheral_command(0, JOYSTICK_CMD_SET_SHIFT_KEY_MOD, &jumper,
+                     sizeof(jumper));
 }

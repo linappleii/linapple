@@ -445,6 +445,12 @@ class ScopedTestConfig_t {
     // 0 is the US table in the code's own numbering; stated so that no
     // suite's typing depends on the host's locale.
     out << "Keyboard Type = 0\n";
+    // The shipped controller, a two-button keypad joystick, whose plug pulls
+    // PB0 and PB1 down. A loaded file carries no Registry default, so the
+    // machine's switch inputs would otherwise rest as if nothing were plugged
+    // in, and a //e without its keyboard card would self-test at every reset.
+    out << "Joystick 0 = 2\n";
+    out << "Joystick 1 = 0\n";
 
     out << "\n[Slots]\n";
     for (size_t i = 0; i < description.slots.size(); ++i) {

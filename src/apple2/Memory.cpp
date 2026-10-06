@@ -17,6 +17,7 @@
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/SnapshotTypes.h"
+#include "apple2/SwitchInputs.h"
 #include "apple2/Video.h"
 #include "core/Log.h"
 #include "core/Util_Endian.h"
@@ -200,15 +201,24 @@ auto io_annunciator(uint16_t programcounter, uint16_t address, uint8_t write,
 
 auto mem_update_paging(bool initialize, bool updatewriteonly) -> void;
 
+// The bare motherboard's answer when no keyboard card has taken $C000-$C00F:
+// a machine with its keyboard unplugged. On the //e the encoder, the keyboard
+// ROM and the strobe logic are on the main board and the cable carries only
+// the key matrix, so with nothing plugged in no key is ever strobed and bit 7
+// stays 0 (IIe Technical Reference p. 187, Figure 7-14b); the ROM's idle output
+// in bits 0-6 is not documented and $00 is taken. On a II or II Plus the
+// encoder is on the keyboard and the 74LS257 data inputs are open LS-TTL
+// inputs, which read high, so $7F is inferred for bits 0-6 with the strobe
+// flip-flop clear after the power-up reset (Apple II Reference Manual 1979
+// p. 102; Sather, Understanding the Apple II, 7-13, 7-15).
 static auto io_read_c00x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
                          uint32_t executed_cycles) -> uint8_t {
   (void)pc;
   (void)addr;
   (void)write;
   (void)d;
-  // $C000-$C00F are owned by the keyboard peripheral once initialized.
-  // RegisterDirectIO overwrites these dispatch slots before any CPU execution.
-  return mem_read_floating_bus(executed_cycles);
+  (void)executed_cycles;
+  return is_apple2() ? 0x7F : 0x00;
 }
 
 static const uint8_t LAST_MEM_SOFT_SWITCH_OFFSET = 0x0B;
@@ -222,9 +232,20 @@ static auto io_write_c00x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
   }
 }
 
+// On a II or II Plus any access to $C01X clears the strobe flip-flop and a
+// read returns the undriven bus; the flags in bit 7 of $C011-$C01F are the
+// //e's MMU and IOU (Sather, Understanding the Apple II, 7-4, 7-5, 5-25). On
+// the //e $C010's bit 7 is any-key-down, which never rises with the keyboard
+// unplugged (IIe Technical Reference pp. 12-13), so a //e with no keyboard
+// card reads it as 0.
 static auto io_read_c01x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
                          uint32_t executed_cycles) -> uint8_t {
+  if (is_apple2()) {
+    return mem_read_floating_bus(executed_cycles);
+  }
   switch (addr & ADDR_NIBBLE_MASK) {
+    case 0x0:
+      return 0;
     case 0x1:
     case 0x2:
     case 0x3:
@@ -356,9 +377,31 @@ static auto io_write_c05x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
   return io_access_c05x(pc, addr, write, d, executed_cycles);
 }
 
+// The 74LS251 behind $C060-$C06F puts one input on D7 over the undriven bus
+// in bits 0-6; A3 is not decoded, so $C068-$C06F mirror $C060-$C067 (Apple II
+// Reference Manual 1979 p. 99; Sather, Understanding the Apple II, 7-8; IIe
+// Technical Reference p. 189). Input 0 is the cassette input. Inputs 1-3 are
+// the pushbutton lines, composed by the motherboard from the keyboard, the
+// connector and the pull-downs. Inputs 4-7 are the 558 timers; with no game
+// port card they answer as a channel whose timing pot is absent, whose output
+// once triggered never falls (1979 p. 99), an approximation since an
+// untriggered monostable rests low and PREAD always triggers first.
 static auto io_read_c06x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
                          uint32_t executed_cycles) -> uint8_t {
-  return io_null(pc, addr, write, d, executed_cycles);
+  constexpr uint8_t mux_select_mask = 0x07;
+  constexpr uint8_t mux_switch0 = 1;
+  constexpr uint8_t mux_paddle0 = 4;
+  constexpr uint8_t bus_data_mask = 0x7F;
+  constexpr uint8_t input_bit = 0x80;
+  const uint8_t input = addr & mux_select_mask;
+  if (input == 0) {
+    return io_null(pc, addr, write, d, executed_cycles);
+  }
+  const uint8_t bus = mem_read_floating_bus(executed_cycles) & bus_data_mask;
+  if (input < mux_paddle0) {
+    return switch_inputs_level(input - mux_switch0) ? (bus | input_bit) : bus;
+  }
+  return bus | input_bit;
 }
 
 static auto io_write_c06x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
