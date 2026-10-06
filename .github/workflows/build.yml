@@ -484,7 +484,100 @@ jobs:
           ldd build-nodisk/linapple
           ! ldd build-nodisk/linapple | grep -E 'libz\.so|libzip\.so'
 
-  # 9. CI Gate (All Checks Passed)
+  # 9. Minimal Peripherals (a Disk II and the speaker, every other card off):
+  #    the headless test tree proves the keyboard-less machine boots a disk,
+  #    and the SDL3 binary a user would build this way compiles clean.
+  minimal-peripherals:
+    name: Minimal Peripherals (Headless Tests + SDL3 Build)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ cmake ninja-build imagemagick libzip-dev \
+            libcurl4-openssl-dev zlib1g-dev git libxkbcommon-dev libz3-dev ccache
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ccache-portable-${{ runner.os }}-minimal-peripherals
+      - name: Configure
+        run: |
+          cmake -B build-minimal-tests -G Ninja \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DFRONTEND=headless \
+            -DENABLE_PERIPHERAL_CLOCK=OFF \
+            -DENABLE_PERIPHERAL_HARDDISK=OFF \
+            -DENABLE_PERIPHERAL_JOYSTICK=OFF \
+            -DENABLE_PERIPHERAL_KEYBOARD=OFF \
+            -DENABLE_PERIPHERAL_MOCKINGBOARD=OFF \
+            -DENABLE_PERIPHERAL_MOUSE=OFF \
+            -DENABLE_PERIPHERAL_PRINTER=OFF \
+            -DENABLE_PERIPHERAL_SUPER_SERIAL=OFF \
+            -DENABLE_NATIVE=OFF \
+            -DBUILD_TESTING=ON \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+      - name: Build
+        run: cmake --build build-minimal-tests -j$(nproc)
+      - name: Test
+        run: ctest --test-dir build-minimal-tests -j$(nproc) --output-on-failure
+      - name: Report Test Failures
+        if: failure()
+        run: |
+          for f in $(find build-minimal-tests -name "LastTestsFailed.log" 2>/dev/null); do
+            failed_tests=$(cat "$f" | tr '\n' ', ')
+            echo "::error title=Failed Tests ($f)::$failed_tests"
+            echo "### Failed Tests ($f):" >> $GITHUB_STEP_SUMMARY
+            cat "$f" >> $GITHUB_STEP_SUMMARY
+          done
+          for f in $(find build-minimal-tests -name "LastTest.log" 2>/dev/null); do
+            details=$(grep -E -C 3 '(FAIL|Failed|ERROR:|values:)' "$f" | head -n 40 | tr '\n' ' ')
+            if [ -n "$details" ]; then
+              echo "::warning title=Failure Details ($f)::$details"
+            fi
+            echo "### Failures in $f:" >> $GITHUB_STEP_SUMMARY
+            grep -E -C 3 '(FAIL|Failed|ERROR:|values:)' "$f" | head -n 60 >> $GITHUB_STEP_SUMMARY || true
+          done
+      - name: Assert the Speaker and the Disk II Are the Only Hardware
+        run: |
+          ./build-minimal-tests/linapple --list-hardware
+          names=$(./build-minimal-tests/linapple --list-hardware \
+            | sed -nE 's/^- (.*[^ ]) +\[.*$/\1/p' | sort | tr '\n' ',')
+          echo "Detected hardware: $names"
+          [ "$names" = "Disk II,Speaker," ]
+      - name: Setup SDL3
+        uses: libsdl-org/setup-sdl@main
+        id: sdl
+        with:
+          version: 3-latest
+          version-sdl-image: 3-latest
+          install-linux-dependencies: true
+      - name: Configure SDL3 Binary
+        run: |
+          cmake -B build-minimal -G Ninja \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DFRONTEND=sdl3 \
+            -DENABLE_PERIPHERAL_CLOCK=OFF \
+            -DENABLE_PERIPHERAL_HARDDISK=OFF \
+            -DENABLE_PERIPHERAL_JOYSTICK=OFF \
+            -DENABLE_PERIPHERAL_KEYBOARD=OFF \
+            -DENABLE_PERIPHERAL_MOCKINGBOARD=OFF \
+            -DENABLE_PERIPHERAL_MOUSE=OFF \
+            -DENABLE_PERIPHERAL_PRINTER=OFF \
+            -DENABLE_PERIPHERAL_SUPER_SERIAL=OFF \
+            -DENABLE_NATIVE=OFF \
+            -DBUILD_TESTING=OFF \
+            -DCMAKE_PREFIX_PATH="${{ steps.sdl.outputs.prefix }}" \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+      - name: Build SDL3 Binary With No Warnings
+        run: |
+          cmake --build build-minimal -j$(nproc) 2>&1 | tee build-minimal.log
+          test "${PIPESTATUS[0]}" -eq 0
+          ! grep -E 'warning:' build-minimal.log
+
+  # 10. CI Gate (All Checks Passed)
   ci-gate:
     name: CI Status Gate
     if: always()
@@ -497,6 +590,7 @@ jobs:
       - fuzz-smoke
       - shared-peripherals
       - no-disk-peripherals
+      - minimal-peripherals
     runs-on: ubuntu-latest
     steps:
       - name: Verify all required jobs passed
@@ -510,7 +604,8 @@ jobs:
                         "${{ needs.clang-tidy-check.result }}" \
                         "${{ needs.fuzz-smoke.result }}" \
                         "${{ needs.shared-peripherals.result }}" \
-                        "${{ needs.no-disk-peripherals.result }}"; do
+                        "${{ needs.no-disk-peripherals.result }}" \
+                        "${{ needs.minimal-peripherals.result }}"; do
             echo "Job result: $result"
             if [ "$result" != "success" ]; then
               passed=false
