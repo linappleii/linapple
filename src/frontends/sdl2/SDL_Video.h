@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
+#include <SDL2/SDL_surface.h>
+
 #include <array>
 
-#include "SdlBackend.h"
 #include "frontends/common/VideoSurface.h"
 
 auto stretch_blt_mem_to_frame_dc() -> void;
@@ -21,12 +22,10 @@ class ScopedSurfaceLock_t {
   ScopedSurfaceLock_t(ScopedSurfaceLock_t&& other) noexcept;
   auto operator=(ScopedSurfaceLock_t&& other) noexcept -> ScopedSurfaceLock_t&;
 
-  [[nodiscard]] auto view() const noexcept -> VideoSurfaceView_t;
+  auto view() const noexcept -> VideoSurfaceView_t;
   operator VideoSurfaceView_t() const noexcept { return view(); }
-  [[nodiscard]] auto surface() const noexcept -> SDL_Surface* {
-    return surface_;
-  }
-  [[nodiscard]] auto is_valid() const noexcept -> bool {
+  auto surface() const noexcept -> SDL_Surface* { return surface_; }
+  auto is_valid() const noexcept -> bool {
     return surface_ != nullptr && surface_->pixels != nullptr;
   }
 

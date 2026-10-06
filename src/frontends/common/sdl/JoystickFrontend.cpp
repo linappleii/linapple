@@ -497,7 +497,7 @@ auto joy_frontend_update() -> void {
 }
 
 // NOLINTBEGIN(misc-include-cleaner): Keycodes (SDLK_*) are provided across SDL1/2/3 backends via SdlBackend.h
-auto joy_frontend_update_trim_via_key(SdlKeycode_t virtkey) -> void {
+auto joy_frontend_update_trim_via_key(uint32_t virtkey) -> void {
   switch (virtkey) {
     case SDLK_DOWN:
     case SDLK_KP_2:
@@ -526,7 +526,7 @@ auto joy_frontend_update_trim_via_key(SdlKeycode_t virtkey) -> void {
   refresh_keypad_axes();
 }
 
-auto joy_frontend_process_key(SdlKeycode_t virtkey, bool extended, bool down,
+auto joy_frontend_process_key(uint32_t virtkey, bool extended, bool down,
                               bool autorep) -> bool {
   const int joy_num = keypad_joystick();
   if (joy_num == -1 || extended) {

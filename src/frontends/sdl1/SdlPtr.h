@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-#include <SDL/SDL.h>
+#include <SDL/SDL_joystick.h>
+#include <SDL/SDL_video.h>
 
 #include <memory>
 

@@ -2,7 +2,7 @@
 #include "TuiVideo.h"
 
 #include <asm-generic/ioctls.h>
-#include <sys/ioctl.h>  // IWYU pragma: keep
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
