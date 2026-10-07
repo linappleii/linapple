@@ -49,7 +49,7 @@ typedef struct {
   char path[harddisk_insert_path_max];
   uint8_t drive;
   uint8_t write_protected;
-  uint8_t create_if_necessary;
+  uint8_t reserved;
   uint8_t padding[5];
 } HarddiskInsertCmd_t;
 

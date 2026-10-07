@@ -9,7 +9,9 @@
 #include <stdint.h>
 
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
+#include "apple2/peripherals/harddisk/HarddiskError.h"
 #include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
+#include "apple2/peripherals/harddisk/HarddiskLoader.h"
 /* NOLINTEND(misc-include-cleaner) */
 
 unsigned harddisk_abi_c_frame_size(void) {
@@ -61,3 +63,13 @@ uint32_t harddisk_abi_c_extensions_query_id(void) {
 }
 
 int harddisk_abi_c_error_none(void) { return harddisk_err_none; }
+
+int harddisk_abi_c_error_not_block_image(void) {
+  return harddisk_err_not_block_image;
+}
+
+unsigned harddisk_abi_c_prodos_codes(void) {
+  return ((unsigned)harddisk_prodos_io_error << 16) |
+         ((unsigned)harddisk_prodos_no_device << 8) |
+         (unsigned)harddisk_prodos_write_protected;
+}

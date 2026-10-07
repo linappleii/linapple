@@ -1,11 +1,16 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#include <cstdint>
 #include <cstring>
 #include <string>
+#include <vector>
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "apple2/SnapshotTypes.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Internal.h"
+#include "apple2/peripherals/harddisk/HarddiskError.h"
+#include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
+#include "apple2/peripherals/harddisk/HarddiskLoader.h"
 #include "doctest.h"
 #include "test_fixtures.h"
 #include "test_fixtures_core.h"
@@ -16,6 +21,63 @@ using TestConfig_t = TestFixtures::ScopedTestConfig_t;
 
 constexpr const char* harddisk_id = "linapple.harddisk";
 constexpr int card_slot = 7;
+
+auto probe_no(const uint8_t*, size_t, uint64_t, const char*)
+    -> HarddiskProbe_e {
+  return harddisk_probe_no;
+}
+
+auto fake_open(const char*, uint32_t, bool, void** out_instance)
+    -> HarddiskError_e {
+  *out_instance = const_cast<char*>("fake");
+  return harddisk_err_none;
+}
+
+auto fake_close(void*) -> void {}
+
+auto fake_is_write_protected(void*) -> bool { return true; }
+
+auto fake_read_block(void*, uint32_t, uint8_t*) -> HarddiskError_e {
+  return harddisk_err_io;
+}
+
+auto fake_write_block(void*, uint32_t, const uint8_t*) -> HarddiskError_e {
+  return harddisk_err_io;
+}
+
+auto fake_get_total_blocks(void*) -> uint32_t { return 0; }
+
+auto make_fake(const char* name) -> HarddiskFormatDriver_t {
+  HarddiskFormatDriver_t driver{};
+  driver.abi_version = harddisk_format_abi_version;
+  driver.name = name;
+  driver.probe = probe_no;
+  driver.open = fake_open;
+  driver.close = fake_close;
+  driver.is_write_protected = fake_is_write_protected;
+  driver.read_block = fake_read_block;
+  driver.get_total_blocks = fake_get_total_blocks;
+  return driver;
+}
+
+auto drain_names() -> std::vector<std::string> {
+  std::vector<std::string> names;
+  harddisk_loader_drain_rejections(
+      [](void* context, const char* driver_name, const char*) {
+        static_cast<std::vector<std::string>*>(context)->emplace_back(
+            driver_name);
+      },
+      &names);
+  return names;
+}
+
+auto registered_names() -> std::vector<std::string> {
+  std::vector<std::string> names;
+  for (uint32_t i = 0; i < harddisk_loader_driver_count(); ++i) {
+    names.emplace_back(harddisk_loader_driver_at(i)->name);
+  }
+  return names;
+}
 
 }  // namespace
 
@@ -34,4 +96,112 @@ TEST_CASE(
   SS_PERIPHERAL_MANIFEST manifest;
   peripheral_get_manifest(&manifest);
   CHECK(std::string(manifest.peripherals[card_slot].name) == "Harddisk");
+}
+
+TEST_CASE(
+    "Harddisk registry: every driver source registers itself, by name, with "
+    "the nibble refusal among them") {
+  harddisk_loader_reset();
+  CHECK(harddisk_loader_driver_count() == HARDDISK_FORMAT_DRIVER_COUNT);
+  const std::vector<std::string> expected = {"2MG", "DOS Order", "Nibble image",
+                                             "ProDOS Order"};
+  CHECK(registered_names() == expected);
+  CHECK(harddisk_loader_driver_at(harddisk_loader_driver_count()) == nullptr);
+  CHECK(drain_names().empty());
+}
+
+TEST_CASE("Harddisk registry: the same driver registers once") {
+  harddisk_loader_reset();
+  const uint32_t baseline = harddisk_loader_driver_count();
+
+  HarddiskFormatDriver_t fake = make_fake("Fake Once");
+  harddisk_loader_register(&fake);
+  harddisk_loader_register(&fake);
+  harddisk_loader_register(&fake);
+
+  CHECK(harddisk_loader_driver_count() == baseline + 1);
+  CHECK(drain_names().empty());
+  harddisk_loader_reset();
+  CHECK(harddisk_loader_driver_count() == baseline);
+}
+
+TEST_CASE(
+    "Harddisk registry: a driver with a foreign ABI, a missing entry point, "
+    "a disagreeing write bit or a taken name is refused and named") {
+  harddisk_loader_reset();
+  const uint32_t baseline = harddisk_loader_driver_count();
+
+  HarddiskFormatDriver_t future = make_fake("Fake Future");
+  future.abi_version = harddisk_format_abi_version + 1;
+  harddisk_loader_register(&future);
+
+  HarddiskFormatDriver_t no_read = make_fake("Fake Unreadable");
+  no_read.read_block = nullptr;
+  harddisk_loader_register(&no_read);
+
+  HarddiskFormatDriver_t no_count = make_fake("Fake Uncounted");
+  no_count.get_total_blocks = nullptr;
+  harddisk_loader_register(&no_count);
+
+  HarddiskFormatDriver_t write_bit_only = make_fake("Fake Write Bit");
+  write_bit_only.capabilities = harddisk_driver_cap_write;
+  harddisk_loader_register(&write_bit_only);
+
+  HarddiskFormatDriver_t write_fn_only = make_fake("Fake Write Fn");
+  write_fn_only.write_block = fake_write_block;
+  harddisk_loader_register(&write_fn_only);
+
+  HarddiskFormatDriver_t taken = make_fake("DOS Order");
+  harddisk_loader_register(&taken);
+
+  CHECK(harddisk_loader_driver_count() == baseline);
+  const std::vector<std::string> expected = {
+      "Fake Future",    "Fake Unreadable", "Fake Uncounted",
+      "Fake Write Bit", "Fake Write Fn",   "DOS Order"};
+  CHECK(drain_names() == expected);
+  CHECK(drain_names().empty());
+
+  harddisk_loader_reset();
+}
+
+TEST_CASE(
+    "Harddisk registry: a reset forgets what a test registered and every "
+    "pending note") {
+  harddisk_loader_reset();
+  const uint32_t baseline = harddisk_loader_driver_count();
+
+  HarddiskFormatDriver_t fake = make_fake("Fake Transient");
+  harddisk_loader_register(&fake);
+  CHECK(harddisk_loader_driver_count() == baseline + 1);
+  harddisk_loader_note("Fake Transient", "a note nobody drained");
+
+  harddisk_loader_reset();
+  CHECK(harddisk_loader_driver_count() == baseline);
+  CHECK(drain_names().empty());
+  const std::vector<std::string> expected = {"2MG", "DOS Order", "Nibble image",
+                                             "ProDOS Order"};
+  CHECK(registered_names() == expected);
+}
+
+TEST_CASE("Harddisk registry: the extension list reports the length it needs") {
+  harddisk_loader_reset();
+  const char* const expected =
+      "2mg;2img;2meg;do;dsk;nib;nb2;woz;po;hdv;img;gz;zip";
+  const size_t needed = strlen(expected);
+
+  CHECK(harddisk_loader_get_supported_extensions(nullptr, 0) == needed);
+
+  char full[64] = {};
+  CHECK(harddisk_loader_get_supported_extensions(full, sizeof(full)) == needed);
+  CHECK(std::string(full) == expected);
+
+  // Truncation keeps the terminator and still reports the whole length, so a
+  // caller can size a second buffer from the first answer.
+  char tiny[5] = {};
+  CHECK(harddisk_loader_get_supported_extensions(tiny, sizeof(tiny)) == needed);
+  CHECK(std::string(tiny) == "2mg;");
+
+  char untouched[8] = "keep";
+  CHECK(harddisk_loader_get_supported_extensions(untouched, 0) == needed);
+  CHECK(std::string(untouched) == "keep");
 }

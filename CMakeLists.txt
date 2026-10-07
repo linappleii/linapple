@@ -651,7 +651,16 @@ set(DISK_BACKEND_SOURCES
     src/apple2/peripherals/disk/formats/NibbleDiskImage.cpp)
 
 add_peripheral(disk "Disk II" "src/apple2/peripherals/disk/Disk.cpp;src/apple2/peripherals/disk/DiskLoader.cpp;${DISK_BACKEND_SOURCES};${DISK_FORMAT_SOURCES}" "" "image-container" TRUE)
-add_peripheral(harddisk "Harddisk (SmartPort)" "src/apple2/peripherals/harddisk/Harddisk.cpp;src/apple2/peripherals/harddisk/HarddiskLoader.cpp;src/apple2/peripherals/harddisk/formats/RawHdDriver.cpp;src/apple2/peripherals/harddisk/formats/TwoImgDriver.cpp;src/apple2/peripherals/harddisk/formats/BlockDiskImage.cpp" "" "image-container" TRUE)
+# The hard disk's drivers register themselves the same way, over the one
+# block-image backend they share.
+file(GLOB HARDDISK_FORMAT_SOURCES CONFIGURE_DEPENDS
+     "${CMAKE_CURRENT_SOURCE_DIR}/src/apple2/peripherals/harddisk/formats/*Driver.cpp")
+list(LENGTH HARDDISK_FORMAT_SOURCES HARDDISK_FORMAT_DRIVER_COUNT)
+
+set(HARDDISK_BACKEND_SOURCES
+    src/apple2/peripherals/harddisk/formats/BlockDiskImage.cpp)
+
+add_peripheral(harddisk "Harddisk (SmartPort)" "src/apple2/peripherals/harddisk/Harddisk.cpp;src/apple2/peripherals/harddisk/HarddiskLoader.cpp;${HARDDISK_BACKEND_SOURCES};${HARDDISK_FORMAT_SOURCES}" "" "image-container" TRUE)
 add_peripheral(mouse "Mouse Interface" "src/apple2/peripherals/mouse/Mouse.cpp;src/apple2/chips/6821.cpp" "" "" FALSE)
 add_peripheral(mockingboard "Mockingboard" "src/apple2/peripherals/mockingboard/Mockingboard.cpp;src/apple2/chips/AY8910.cpp;src/apple2/chips/6522.cpp" "" "" FALSE)
 add_peripheral(super_serial "Super Serial Card" "src/apple2/peripherals/super_serial_card/SuperSerial.cpp;src/apple2/chips/6551.cpp" "" "" FALSE)
@@ -1277,6 +1286,7 @@ fi
             string(REPLACE "_" "-" TEST_NAME ${T})
             add_linapple_test(${TEST_NAME} tests/test_${T}.cpp)
         endforeach()
+        target_compile_definitions(test-harddisk-registry PRIVATE HARDDISK_FORMAT_DRIVER_COUNT=${HARDDISK_FORMAT_DRIVER_COUNT})
         add_linapple_test(harddisk-smoke "tests/HeadlessHarness.cpp;tests/test_harddisk_smoke.cpp")
         if(LINAPPLE_PRODOS_IMAGE)
             if(EXISTS "${LINAPPLE_PRODOS_IMAGE}")
@@ -1440,6 +1450,9 @@ if(ENABLE_FUZZING)
         add_linapple_fuzzer(fuzz-disk-controller tests/fuzz/fuzz_disk_controller.cpp)
         add_linapple_fuzzer(fuzz-disk-adapter tests/fuzz/fuzz_disk_adapter.cpp)
     endif()
+    if(ENABLE_PERIPHERAL_HARDDISK)
+        add_linapple_fuzzer(fuzz-harddisk-loader tests/fuzz/fuzz_harddisk_loader.cpp)
+    endif()
     if(ENABLE_PERIPHERAL_DISK OR ENABLE_PERIPHERAL_HARDDISK)
         add_linapple_fuzzer(fuzz-image-container tests/fuzz/fuzz_image_container.cpp)
     endif()
@@ -1470,6 +1483,21 @@ if(ENABLE_FUZZING)
                              -malloc_limit_mb=256
                              -max_total_time=10)
             set_tests_properties(fuzz-disk-loader PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
+        endif()
+
+        if(ENABLE_PERIPHERAL_HARDDISK)
+            # The selector is the input's last byte, so a fixture read as a
+            # seed reaches the probes aligned at its first byte.
+            add_test(NAME fuzz-harddisk-loader
+                     COMMAND fuzz-harddisk-loader
+                             ${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/corpus/harddisk-loader
+                             ${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures
+                             -dict=${CMAKE_CURRENT_SOURCE_DIR}/tests/fuzz/dictionaries/disk_formats.dict
+                             -max_len=65536
+                             -rss_limit_mb=512
+                             -malloc_limit_mb=256
+                             -max_total_time=10)
+            set_tests_properties(fuzz-harddisk-loader PROPERTIES LABELS "fuzz" TIMEOUT ${FUZZ_CASE_TIMEOUT})
         endif()
 
         if(ENABLE_PERIPHERAL_DISK OR ENABLE_PERIPHERAL_HARDDISK)

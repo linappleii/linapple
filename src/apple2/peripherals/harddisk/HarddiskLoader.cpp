@@ -1,36 +1,137 @@
 // SPDX-License-Identifier: GPL-2.0-only
+// Justification: the probe window is walked by pointer, as the C99 driver
+// entry points take it, and the drivers' extension lists are C arrays.
+// NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
 #include "apple2/peripherals/harddisk/HarddiskLoader.h"
 
 #include <unistd.h>
 
 #include <algorithm>
-#include <array>
 #include <cctype>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <memory>
 #include <string>
 #include <vector>
 
 #include "apple2/media/image_container/ImageContainer.h"
+#include "apple2/peripherals/harddisk/HarddiskError.h"
 #include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
-#include "core/Log.h"
+#include "apple2/peripherals/harddisk/formats/HarddiskFormatRegistration.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 
-// NOLINTBEGIN(cppcoreguidelines-avoid-non-const-global-variables, modernize-make-unique, cppcoreguidelines-pro-type-const-cast, bugprone-easily-swappable-parameters)
-// Justification: Driver registration uses
-// a global registry pattern for technical consistency with the floppy loading
-// subsystem. const-cast is required to register the immutable global driver
-// descriptor. easily-swappable-parameters is mandated by the loader ABI
-// signatures. make-unique is suppressed to maintain C++11 compatibility.
-
 namespace {
-static std::vector<HarddiskFormatDriver_t*> g_harddisk_drivers;
-static int g_loader_ref_count = 0;
 
-constexpr size_t load_path_len = 512;
+// A driver may register itself during static initialisation, so the registry
+// has to come into existence on first use rather than wait its turn in an
+// initialisation order it cannot see.
+auto registry() -> std::vector<const HarddiskFormatDriver_t*>& {
+  static std::vector<const HarddiskFormatDriver_t*> drivers;
+  return drivers;
+}
+
+// A driver compiled into the binary outlives any registry a test builds, so it
+// is remembered separately and handed back by harddisk_loader_reset.
+auto permanent_registry() -> std::vector<const HarddiskFormatDriver_t*>& {
+  static std::vector<const HarddiskFormatDriver_t*> drivers;
+  return drivers;
+}
+
+struct DriverNote_t {
+  std::string subject;
+  std::string text;
+};
+
+// Registration happens during static initialisation, with no host to tell, so
+// a refusal waits here for a caller that has somewhere to put it.
+auto notes() -> std::vector<DriverNote_t>& {
+  static std::vector<DriverNote_t> pending;
+  return pending;
+}
+
+auto driver_label(const HarddiskFormatDriver_t* driver) -> const char* {
+  return (driver != nullptr && driver->name != nullptr) ? driver->name
+                                                        : "<unnamed>";
+}
+
+auto refuse(const HarddiskFormatDriver_t* driver, const char* reason) -> bool {
+  notes().push_back(DriverNote_t{driver_label(driver), reason});
+  return false;
+}
+
+auto driver_is_usable(const HarddiskFormatDriver_t* driver) -> bool {
+  if (driver == nullptr) {
+    return refuse(driver, "null driver");
+  }
+  if (driver->abi_version != harddisk_format_abi_version) {
+    return refuse(driver, "driver ABI version does not match the loader's");
+  }
+  if (driver->probe == nullptr || driver->open == nullptr ||
+      driver->close == nullptr) {
+    return refuse(driver, "probe, open or close missing");
+  }
+  if (driver->read_block == nullptr || driver->is_write_protected == nullptr ||
+      driver->get_total_blocks == nullptr) {
+    return refuse(driver,
+                  "read_block, is_write_protected or get_total_blocks missing");
+  }
+  const bool has_write_cap =
+      (driver->capabilities & harddisk_driver_cap_write) != 0;
+  const bool has_write_fn = driver->write_block != nullptr;
+  if (has_write_cap != has_write_fn) {
+    return refuse(driver, "write capability disagrees with write_block");
+  }
+  return true;
+}
+
+auto already_registered(const HarddiskFormatDriver_t* driver) -> bool {
+  return std::find(registry().begin(), registry().end(), driver) !=
+         registry().end();
+}
+
+// The name is what settles an ambiguous image and what a note names, so two
+// drivers answering to one name would leave one of them unreachable.
+auto name_is_taken(const HarddiskFormatDriver_t* driver) -> bool {
+  for (const auto* registered : registry()) {
+    if (strcmp(driver_label(registered), driver_label(driver)) == 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+auto admit(const HarddiskFormatDriver_t* driver) -> bool {
+  if (!driver_is_usable(driver) || already_registered(driver)) {
+    return false;
+  }
+  if (name_is_taken(driver)) {
+    return refuse(driver, "a driver with this name is already registered");
+  }
+  return true;
+}
+
+// A probe that finds no definite claim settles for the first driver that says
+// "possible", so the order drivers sit in decides which one opens an ambiguous
+// image. Link order is not an answer a user can reason about; alphabetical by
+// name is.
+auto insert_by_name(std::vector<const HarddiskFormatDriver_t*>& drivers,
+                    const HarddiskFormatDriver_t* driver) -> void {
+  const auto at = std::upper_bound(
+      drivers.begin(), drivers.end(), driver,
+      [](const HarddiskFormatDriver_t* lhs, const HarddiskFormatDriver_t* rhs) {
+        return strcmp(driver_label(lhs), driver_label(rhs)) < 0;
+      });
+  drivers.insert(at, driver);
+}
+
+constexpr size_t path_max_len = 512;
+
+// 80 KiB holds track 17, where the DOS 3.3 catalog ends at 73,728 bytes, even
+// behind a 128-byte MacBinary wrapper. A ProDOS directory that chains past
+// the window is not seen; the probe then answers possible, never wrong.
+constexpr size_t probe_header_size = 80 * 1024;
+constexpr size_t extension_hint_size = 16;
 
 // A ProDOS volume tops out at 65,535 blocks, just under 32 MiB, because its
 // block count is a 16-bit field (ProDOS 8 Technical Reference), so an all-zero
@@ -56,187 +157,246 @@ auto container_error_to_harddisk_error(ImageContainerError_e error)
       return harddisk_err_io;
   }
 }
-}  // namespace
 
-extern "C" const HarddiskFormatDriver_t g_two_img_driver;
-extern "C" const HarddiskFormatDriver_t g_raw_hd_driver;
-
-void harddisk_loader_init(void) {
-  if (g_loader_ref_count++ == 0) {
-    g_harddisk_drivers.clear();
-    harddisk_loader_register(
-        const_cast<HarddiskFormatDriver_t*>(&g_two_img_driver));
-    harddisk_loader_register(
-        const_cast<HarddiskFormatDriver_t*>(&g_raw_hd_driver));
-  }
-}
-
-void harddisk_loader_shutdown(void) {
-  if (g_loader_ref_count > 0) {
-    --g_loader_ref_count;
-    if (g_loader_ref_count == 0) {
-      g_harddisk_drivers.clear();
-    }
-  }
-}
-
-auto harddisk_loader_register(HarddiskFormatDriver_t* driver_ptr) -> void {
-  if (driver_ptr == nullptr) {
-    Logger::error("HarddiskLoader: Attempted to register null driver");
-    return;
-  }
-  if (driver_ptr->probe == nullptr || driver_ptr->open == nullptr ||
-      driver_ptr->close == nullptr) {
-    Logger::error(
-        "HarddiskLoader: Driver '%s' missing required functions "
-        "(probe/open/close)",
-        driver_ptr->name != nullptr ? driver_ptr->name : "<unnamed>");
-    return;
-  }
-  const bool has_write_cap =
-      (driver_ptr->capabilities & harddisk_driver_cap_write) != 0;
-  const bool has_write_fn = driver_ptr->write_block != nullptr;
-  if (has_write_cap != has_write_fn) {
-    Logger::error("HarddiskLoader: Driver '%s' write capability mismatch",
-                  driver_ptr->name != nullptr ? driver_ptr->name : "<unnamed>");
-    return;
-  }
-  g_harddisk_drivers.push_back(driver_ptr);
-}
-
-struct TemporaryFileGuard {
-  char path[512]{};
-  explicit TemporaryFileGuard(const char* p) {
+// The temporary an archive was unwrapped into is unlinked the moment the open
+// returns, whatever happened; the driver's handle keeps the inode alive, and
+// nothing written to it would outlive the session anyway.
+struct TemporaryFile_t {
+  char path[path_max_len];
+  explicit TemporaryFile_t(const char* p) {
     if (p != nullptr) {
-      util_safe_strcpy(path, p, sizeof(path));
+      util_safe_strcpy(path, p, path_max_len);
+    } else {
+      path[0] = '\0';
     }
   }
-  ~TemporaryFileGuard() {
+  ~TemporaryFile_t() {
     if (path[0] != '\0') {
-      (void)unlink(path);
+      unlink(path);
     }
   }
-  TemporaryFileGuard(const TemporaryFileGuard&) = delete;
-  auto operator=(const TemporaryFileGuard&) -> TemporaryFileGuard& = delete;
+  TemporaryFile_t(const TemporaryFile_t&) = delete;
+  auto operator=(const TemporaryFile_t&) -> TemporaryFile_t& = delete;
+  TemporaryFile_t(TemporaryFile_t&&) = delete;
+  auto operator=(TemporaryFile_t&&) -> TemporaryFile_t& = delete;
 };
 
-auto harddisk_loader_open(const char* path, bool* out_os_readonly,
-                          HarddiskFormatDriver_t** out_driver,
-                          void** out_instance_handle) -> HarddiskError_e {
-  if (path == nullptr || out_driver == nullptr ||
-      out_instance_handle == nullptr) {
+auto extension_hint(const char* payload_name, char* ext_hint, size_t size)
+    -> void {
+  ext_hint[0] = '\0';
+  const char* dot = strrchr(payload_name, '.');
+  if (dot == nullptr) {
+    return;
+  }
+  util_safe_strcpy(ext_hint, dot, size);
+  for (char* p = ext_hint; *p != '\0'; ++p) {
+    *p = static_cast<char>(tolower(static_cast<uint8_t>(*p)));
+  }
+}
+
+auto find_best_driver(const uint8_t* header_ptr, size_t header_size,
+                      uint64_t file_size, const char* ext_hint)
+    -> const HarddiskFormatDriver_t* {
+  const HarddiskFormatDriver_t* possible_driver = nullptr;
+  for (auto* driver : registry()) {
+    const HarddiskProbe_e result =
+        driver->probe(header_ptr, header_size, file_size, ext_hint);
+    if (result == harddisk_probe_definite) {
+      return driver;
+    }
+    if (result == harddisk_probe_possible && possible_driver == nullptr) {
+      possible_driver = driver;
+    }
+  }
+  return possible_driver;
+}
+
+auto driver_lists_extension(const HarddiskFormatDriver_t* driver,
+                            const char* ext_hint) -> bool {
+  if (driver->supported_exts == nullptr || ext_hint[0] != '.') {
+    return false;
+  }
+  for (const char* const* ext = driver->supported_exts; *ext != nullptr;
+       ++ext) {
+    if (strcmp(*ext, ext_hint + 1) == 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// A file whose contents read coherently in one order under another order's
+// name is served as its contents say, and the user is told the name that
+// would say the same, since a later tool going by the name alone would read
+// it wrongly.
+auto note_name_overridden(const HarddiskFormatDriver_t* chosen,
+                          const char* payload_name, const char* ext_hint)
+    -> void {
+  if (ext_hint[0] == '\0' || driver_lists_extension(chosen, ext_hint)) {
+    return;
+  }
+  bool another_lists_it = false;
+  for (const auto* driver : registry()) {
+    if (driver != chosen && driver_lists_extension(driver, ext_hint)) {
+      another_lists_it = true;
+      break;
+    }
+  }
+  if (!another_lists_it || chosen->supported_exts == nullptr ||
+      chosen->supported_exts[0] == nullptr) {
+    return;
+  }
+  const char* base = strrchr(payload_name, '/');
+  base = (base != nullptr) ? base + 1 : payload_name;
+  std::string stem(base);
+  stem.resize(stem.size() - strlen(ext_hint));
+  const std::string text = std::string("serves '") + base + "' as " +
+                           driver_label(chosen) +
+                           ", the order its contents read in; '" + stem + "." +
+                           chosen->supported_exts[0] + "' would name it truly";
+  harddisk_loader_note(driver_label(chosen), text.c_str());
+}
+
+}  // namespace
+
+auto harddisk_loader_register(const HarddiskFormatDriver_t* driver) -> void {
+  if (!admit(driver)) {
+    return;
+  }
+  insert_by_name(registry(), driver);
+}
+
+auto harddisk_loader_register_permanent(const HarddiskFormatDriver_t* driver)
+    -> void {
+  if (!admit(driver)) {
+    return;
+  }
+  insert_by_name(permanent_registry(), driver);
+  insert_by_name(registry(), driver);
+}
+
+auto harddisk_loader_reset(void) -> void {
+  registry() = permanent_registry();
+  notes().clear();
+}
+
+auto harddisk_loader_drain_rejections(HarddiskDriverRejectionFn_t sink,
+                                      void* context) -> void {
+  if (sink != nullptr) {
+    for (const auto& note : notes()) {
+      sink(context, note.subject.c_str(), note.text.c_str());
+    }
+  }
+  notes().clear();
+}
+
+auto harddisk_loader_note(const char* subject, const char* text) -> void {
+  if (subject == nullptr || text == nullptr) {
+    return;
+  }
+  notes().push_back(DriverNote_t{subject, text});
+}
+
+auto harddisk_loader_open(const char* image_path,
+                          const HarddiskFormatDriver_t** out_driver,
+                          void** out_instance) -> HarddiskError_e {
+  if (out_driver != nullptr) {
+    *out_driver = nullptr;
+  }
+  if (out_instance != nullptr) {
+    *out_instance = nullptr;
+  }
+  if (image_path == nullptr || out_driver == nullptr ||
+      out_instance == nullptr) {
     return harddisk_err_io;
   }
 
-  char load_path[load_path_len] = {0};
+  char load_path[path_max_len] = {0};
   bool is_temporary = false;
   const ImageContainerError_e prepared =
       image_container_prepare_compressed_path(
-          path, load_path, sizeof(load_path), harddisk_decompression_threshold,
-          &is_temporary);
+          image_path, load_path, sizeof(load_path),
+          harddisk_decompression_threshold, &is_temporary);
   if (prepared != image_container_ok) {
     return container_error_to_harddisk_error(prepared);
   }
 
-  std::unique_ptr<TemporaryFileGuard> temp_guard;
-  if (is_temporary) {
-    temp_guard.reset(new TemporaryFileGuard(load_path));
-  }
+  TemporaryFile_t temporary(is_temporary ? load_path : nullptr);
 
-  FilePtr_t file{fopen(load_path, "rb"), fclose};
-  if (file == nullptr) {
+  FilePtr_t image_file(fopen(load_path, "rb"), fclose);
+  if (image_file == nullptr) {
     return harddisk_err_not_found;
   }
 
-  const int64_t raw_file_size = Path::file_size(file.get());
+  const int64_t raw_file_size = Path::file_size(image_file.get());
   if (raw_file_size < 0) {
     return harddisk_err_io;
   }
-  const uint32_t file_size = static_cast<uint32_t>(raw_file_size);
+  const auto file_size = static_cast<uint64_t>(raw_file_size);
 
-  constexpr size_t probe_header_size = 4096;
-  std::array<uint8_t, probe_header_size> header{};
-  const size_t header_read = fread(header.data(), 1, header.size(), file.get());
-  file.reset();
+  std::vector<uint8_t> header(probe_header_size, 0);
+  const size_t header_read =
+      fread(header.data(), 1, header.size(), image_file.get());
+  image_file.reset();
 
-  const uint32_t file_offset =
-      image_container_detect_macbinary(header.data(), header_read, file_size);
-
-  // The extension that names the format is the payload's, not the archive's
-  // and never the extracted temporary's; a name the library cannot give leaves
-  // the hint empty and the probes deciding by content alone.
-  std::array<char, load_path_len> payload_name{};
-  if (image_container_payload_name(path, payload_name.data(),
-                                   payload_name.size()) != image_container_ok) {
-    payload_name[0] = '\0';
+  // The wrapper detector measures in 32 bits; the size is clamped, since no
+  // wrapped image comes near the limit.
+  const uint32_t wrapper_size =
+      static_cast<uint32_t>(std::min<uint64_t>(file_size, UINT32_MAX));
+  const uint32_t file_offset = image_container_detect_macbinary(
+      header.data(), header_read, wrapper_size);
+  if (file_offset > file_size) {
+    return harddisk_err_invalid_format;
   }
-  const char* ext = strrchr(payload_name.data(), '.');
-  constexpr size_t ext_hint_size = 16;
-  std::array<char, ext_hint_size> ext_hint{};
-  ext_hint.fill(0);
-
-  if (ext != nullptr) {
-    util_safe_strcpy(ext_hint.data(), ext, ext_hint.size());
-    for (char& c : ext_hint) {
-      if (c == '\0') {
-        break;
-      }
-      c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-    }
-  }
-
-  HarddiskFormatDriver_t* best_driver = nullptr;
-  HarddiskProbe_e best_probe = harddisk_probe_no;
-
   const uint8_t* probe_ptr = header.data() + file_offset;
   const size_t probe_size =
       (header_read > file_offset) ? (header_read - file_offset) : 0;
 
-  for (auto* driver : g_harddisk_drivers) {
-    const HarddiskProbe_e result = driver->probe(
-        probe_ptr, probe_size, file_size - file_offset, ext_hint.data());
-    if (result > best_probe) {
-      best_probe = result;
-      best_driver = driver;
-    }
-    if (best_probe == harddisk_probe_definite) {
-      break;
-    }
+  // The name only supplies the extension hint; a name the library cannot give
+  // (one that does not fit) leaves the hint empty and the probes deciding by
+  // content alone.
+  char payload_name[path_max_len] = {0};
+  if (image_container_payload_name(image_path, payload_name,
+                                   sizeof(payload_name)) !=
+      image_container_ok) {
+    payload_name[0] = '\0';
   }
+  char ext_hint[extension_hint_size] = {0};
+  extension_hint(payload_name, ext_hint, sizeof(ext_hint));
 
-  if (best_driver == nullptr || best_probe == harddisk_probe_no) {
+  *out_driver = find_best_driver(probe_ptr, probe_size, file_size - file_offset,
+                                 ext_hint);
+
+  if (*out_driver == nullptr) {
     return harddisk_err_invalid_format;
   }
 
-  bool os_readonly = false;
-  const HarddiskError_e err = best_driver->open(
-      load_path, file_offset, &os_readonly, out_instance_handle);
-
-  if (err != harddisk_err_none) {
-    return err;
+  // A decompressed temporary is unlinked the moment this call returns, so
+  // anything written to it would be thrown away with it.
+  const HarddiskError_e opened =
+      (*out_driver)->open(load_path, file_offset, is_temporary, out_instance);
+  if (opened == harddisk_err_none) {
+    note_name_overridden(*out_driver, payload_name, ext_hint);
   }
-
-  if (out_os_readonly != nullptr) {
-    *out_os_readonly = os_readonly || is_temporary;
-  }
-
-  *out_driver = best_driver;
-  return harddisk_err_none;
+  return opened;
 }
 
-void harddisk_loader_get_supported_extensions(char* out_buffer,
-                                              size_t buffer_size) {
-  if (out_buffer == nullptr || buffer_size == 0) {
-    return;
-  }
-  out_buffer[0] = '\0';
+auto harddisk_loader_driver_count(void) -> uint32_t {
+  return static_cast<uint32_t>(registry().size());
+}
 
-  if (g_harddisk_drivers.empty()) {
-    harddisk_loader_init();
+auto harddisk_loader_driver_at(uint32_t index)
+    -> const HarddiskFormatDriver_t* {
+  if (index >= registry().size()) {
+    return nullptr;
   }
+  return registry()[index];
+}
 
+auto harddisk_loader_get_supported_extensions(char* out_buffer,
+                                              size_t buffer_size) -> size_t {
   std::vector<std::string> exts;
-  for (const auto* driver : g_harddisk_drivers) {
+  for (const auto* driver : registry()) {
     if (driver != nullptr && driver->supported_exts != nullptr) {
       for (const char* const* ext = driver->supported_exts; *ext != nullptr;
            ++ext) {
@@ -247,10 +407,11 @@ void harddisk_loader_get_supported_extensions(char* out_buffer,
     }
   }
 
-  for (const char* const* ext = image_container_supported_extensions();
-       ext != nullptr && *ext != nullptr; ++ext) {
-    if (std::find(exts.begin(), exts.end(), *ext) == exts.end()) {
-      exts.emplace_back(*ext);
+  const char* const* container_exts = image_container_supported_extensions();
+  for (; container_exts != nullptr && *container_exts != nullptr;
+       ++container_exts) {
+    if (std::find(exts.begin(), exts.end(), *container_exts) == exts.end()) {
+      exts.emplace_back(*container_exts);
     }
   }
 
@@ -262,7 +423,10 @@ void harddisk_loader_get_supported_extensions(char* out_buffer,
     result += exts[i];
   }
 
-  util_safe_strcpy(out_buffer, result.c_str(), buffer_size);
+  if (out_buffer != nullptr && buffer_size > 0) {
+    util_safe_strcpy(out_buffer, result.c_str(), buffer_size);
+  }
+  return result.size();
 }
 
-// NOLINTEND(cppcoreguidelines-avoid-non-const-global-variables, modernize-make-unique, cppcoreguidelines-pro-type-const-cast, bugprone-easily-swappable-parameters)
+// NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-array-to-pointer-decay)

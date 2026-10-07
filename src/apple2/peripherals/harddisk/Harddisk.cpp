@@ -14,6 +14,7 @@
 #include "apple2/peripherals/Peripheral_Subsystems.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
+#include "apple2/peripherals/harddisk/HarddiskError.h"
 #include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
 #include "apple2/peripherals/harddisk/HarddiskLoader.h"
 
@@ -57,15 +58,6 @@ enum HarddiskProdosCommand_e {
   prodos_cmd_write = 0x02,
   prodos_cmd_format = 0x03
 };
-
-// The codes a block device returns in A with the carry set (6.3.2), which
-// the MLI passes through to the program (4.8).
-namespace prodos {
-constexpr uint8_t ok = 0x00;
-constexpr uint8_t io_error = 0x27;
-constexpr uint8_t no_device = 0x28;
-constexpr uint8_t write_protected = 0x2B;
-}  // namespace prodos
 
 // The controller's data buffer is the firmware's to fill or drain: read-out
 // opens when a READ completes and closes after the 512th byte is taken,
@@ -284,9 +276,8 @@ struct Harddisk_t {
   std::string full_path;
   std::string display_name;
   bool is_loaded = false;
-  HarddiskFormatDriver_t* driver = nullptr;
+  const HarddiskFormatDriver_t* driver = nullptr;
   void* driver_instance = nullptr;
-  bool os_readonly = false;
   bool user_write_protected = false;
   HarddiskError_e last_error = harddisk_err_none;
 };
@@ -303,7 +294,7 @@ struct HarddiskPeripheral_t {
   uint16_t block_count = 0;
   uint8_t unit = 0;
   uint8_t command = 0;
-  uint8_t result = prodos::ok;
+  uint8_t result = harddisk_prodos_ok;
   uint8_t data_phase = harddisk_phase_idle;
   bool buffer_poisoned = false;
   int slot = 0;
@@ -355,10 +346,10 @@ auto read_floating_bus(const HarddiskPeripheral_t* card,
   return card->host->ReadFloatingBus(executed_cycles);
 }
 
-// One answer to "may this be written": the user's flag, the host's refusal to
-// open the file for writing, and whatever the driver knows about the medium.
+// One answer to "may this be written": the user's flag, and whatever the
+// driver knows about the file and the medium.
 auto is_write_protected(const Harddisk_t& drive) -> bool {
-  if (drive.user_write_protected || drive.os_readonly) {
+  if (drive.user_write_protected) {
     return true;
   }
   return drive.driver != nullptr && drive.driver_instance != nullptr &&
@@ -398,6 +389,18 @@ auto update_image_metadata(Harddisk_t* drive, const char* path) -> void {
   drive->display_name = name;
 }
 
+// The loader has no host of its own, so what it and the drivers could only
+// record is told here.
+auto report_loader_note(void* context, const char* driver_name,
+                        const char* reason) -> void {
+  auto* card = static_cast<HarddiskPeripheral_t*>(context);
+  if (card == nullptr || card->host == nullptr || card->host->Log == nullptr) {
+    return;
+  }
+  card->host->Log(card, log_warn, "Hard disk: format driver '%s': %s\n",
+                  driver_name, reason);
+}
+
 auto eject_harddisk_from_drive(HarddiskPeripheral_t* card, int drive_index)
     -> void {
   if (card == nullptr || !is_drive_valid(drive_index)) {
@@ -408,6 +411,7 @@ auto eject_harddisk_from_drive(HarddiskPeripheral_t* card, int drive_index)
   if (drive.driver != nullptr && drive.driver_instance != nullptr &&
       drive.driver->close != nullptr) {
     drive.driver->close(drive.driver_instance);
+    harddisk_loader_drain_rejections(report_loader_note, card);
   }
 
   drive = Harddisk_t();
@@ -426,8 +430,9 @@ auto insert_harddisk_into_drive(HarddiskPeripheral_t* card, int drive_index,
   }
 
   drive.user_write_protected = write_protected;
-  const HarddiskError_e error = harddisk_loader_open(
-      path, &drive.os_readonly, &drive.driver, &drive.driver_instance);
+  const HarddiskError_e error =
+      harddisk_loader_open(path, &drive.driver, &drive.driver_instance);
+  harddisk_loader_drain_rejections(report_loader_note, card);
 
   drive.last_error = error;
 
@@ -438,6 +443,14 @@ auto insert_harddisk_into_drive(HarddiskPeripheral_t* card, int drive_index,
 
   drive.is_loaded = true;
   update_image_metadata(&drive, path);
+
+  const uint32_t blocks = total_blocks(drive);
+  if (blocks > physical::max_block_count) {
+    card->host->Log(card, log_warn,
+                    "Hard disk: '%s' holds %u blocks; ProDOS can address "
+                    "%u, so the rest are not served\n",
+                    path, blocks, physical::max_block_count);
+  }
   notify_status_changed(card);
 
   return harddisk_err_none;
@@ -450,65 +463,65 @@ auto execute_command(HarddiskPeripheral_t* card) -> uint8_t {
   Harddisk_t& drive = selected_drive(card);
 
   if (card->command > prodos_cmd_format) {
-    return prodos::io_error;
+    return harddisk_prodos_io_error;
   }
   if (!drive.is_loaded) {
-    return prodos::no_device;
+    return harddisk_prodos_no_device;
   }
   const bool writes_medium =
       card->command == prodos_cmd_write || card->command == prodos_cmd_format;
   if (writes_medium && is_write_protected(drive)) {
-    return prodos::write_protected;
+    return harddisk_prodos_write_protected;
   }
   const uint32_t blocks = total_blocks(drive);
   const bool addresses_block =
       card->command == prodos_cmd_read || card->command == prodos_cmd_write;
   if (addresses_block && card->block >= blocks) {
-    return prodos::io_error;
+    return harddisk_prodos_io_error;
   }
 
   switch (card->command) {
     case prodos_cmd_status:
       card->block_count = static_cast<uint16_t>(
           std::min<uint32_t>(blocks, physical::max_block_count));
-      return prodos::ok;
+      return harddisk_prodos_ok;
 
     case prodos_cmd_read:
       if (drive.driver->read_block == nullptr ||
           drive.driver->read_block(drive.driver_instance, card->block,
                                    card->buffer.data()) != harddisk_err_none) {
-        return prodos::io_error;
+        return harddisk_prodos_io_error;
       }
       card->data_index = 0;
       card->data_phase = harddisk_phase_read_out;
       notify_activity_changed(card, true);
-      return prodos::ok;
+      return harddisk_prodos_ok;
 
     case prodos_cmd_write:
       // A buffer a save state could not carry must not reach the medium as
       // zeros; the one write that would have used it fails instead.
       if (card->buffer_poisoned) {
         card->buffer_poisoned = false;
-        return prodos::io_error;
+        return harddisk_prodos_io_error;
       }
       if (drive.driver->write_block == nullptr ||
           drive.driver->write_block(drive.driver_instance, card->block,
                                     card->buffer.data()) != harddisk_err_none) {
-        return prodos::io_error;
+        return harddisk_prodos_io_error;
       }
       card->data_index = 0;
       card->data_phase = harddisk_phase_idle;
       notify_activity_changed(card, true);
       notify_activity_changed(card, false);
-      return prodos::ok;
+      return harddisk_prodos_ok;
 
     case prodos_cmd_format:
       // A block device "need only lay down address marks if required" (TRM
       // 6.3.2); an image file has none, so a format changes nothing.
-      return prodos::ok;
+      return harddisk_prodos_ok;
 
     default:
-      return prodos::io_error;
+      return harddisk_prodos_io_error;
   }
 }
 
@@ -680,7 +693,7 @@ auto missing_host_member(const HostInterface_t* host) -> const char* {
 auto power_on(HarddiskPeripheral_t* card) -> void {
   card->unit = 0;
   card->command = 0;
-  card->result = prodos::ok;
+  card->result = harddisk_prodos_ok;
   card->block = 0;
   card->data_index = 0;
   card->block_count = 0;
@@ -707,7 +720,7 @@ auto harddisk_abi_init(int slot, HostInterface_t* host) -> void* {
   card->host = host;
   card->slot = slot;
 
-  harddisk_loader_init();
+  harddisk_loader_drain_rejections(report_loader_note, card.get());
 
   card->rom = harddisk_rom;
   card->rom.at(rom::slot_operand) =
@@ -734,7 +747,6 @@ auto harddisk_abi_shutdown(void* instance) -> void {
   for (int i = 0; i < harddisk_drive_count; ++i) {
     eject_harddisk_from_drive(card.get(), i);
   }
-  harddisk_loader_shutdown();
 }
 
 auto harddisk_abi_command(void* instance, uint32_t cmd_id, const void* payload,
@@ -926,7 +938,7 @@ auto harddisk_abi_save_state(void* instance, void* buffer, size_t* size)
     d_ss.buffer_ptr = card->data_index;
     d_ss.error_code = card->result;
     d_ss.is_loaded = drive.is_loaded ? 1 : 0;
-    d_ss.os_readonly = drive.os_readonly ? 1 : 0;
+    d_ss.os_readonly = 0;
     d_ss.user_write_protected = drive.user_write_protected ? 1 : 0;
     std::copy(card->buffer.begin(), card->buffer.end(), d_ss.data_buffer);
   }
