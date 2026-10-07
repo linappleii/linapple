@@ -28,6 +28,7 @@
 #include "apple2/peripherals/mouse/MouseCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
+#include "core/Util_Crc32.h"
 #include "doctest.h"
 #include "frontends/common/MouseFrontend.h"
 #include "frontends/common/SaveStateManager.h"
@@ -590,6 +591,139 @@ TEST_CASE("Snapshot: A manifest naming any slot-0 device is the same machine") {
            "%s", "Mockingboard");
   CHECK(peripheral_verify_manifest(&manifest) == false);
 }
+
+#if defined(ENABLE_PERIPHERAL_KEYBOARD)
+
+namespace {
+
+constexpr uint16_t addr_keyboard_data = 0xC000;
+constexpr uint16_t addr_keyboard_strobe = 0xC010;
+constexpr uint8_t strobe_bit = 0x80;
+constexpr size_t keyboard_region_size = 552;
+// The CRC-32 of tests/fixtures/minimal.aws as shipped (gzip's trailer over the
+// file), so a rewrite of the fixture shows here as well as in the pin.
+constexpr uint32_t minimal_aws_crc32 = 0x1DFDECD4;
+
+// The core takes the model from a process-wide variable that a harness-built
+// machine leaves behind; a core built without one states its own.
+struct EnhancedIIe_t {
+  struct Model_t {
+    Apple2Type_t saved = current_apple2_type;
+    Model_t() { current_apple2_type = A2TYPE_APPLE2EENHANCED; }
+    ~Model_t() { current_apple2_type = saved; }
+    Model_t(const Model_t&) = delete;
+    auto operator=(const Model_t&) -> Model_t& = delete;
+    Model_t(Model_t&&) = delete;
+    auto operator=(Model_t&&) -> Model_t& = delete;
+  };
+  Model_t model;
+  TestConfig_t config{TestConfig_t::enhanced_2e_only()};
+  TestFixtures::ScopedCore_t core{config};
+};
+
+auto press(uint8_t code) -> void {
+  linapple_set_key_state(code, true);
+  peripheral_manager_think(0);
+}
+
+auto release(uint8_t code) -> void {
+  linapple_set_key_state(code, false);
+  peripheral_manager_think(0);
+}
+
+auto keyboard_data() -> uint8_t {
+  return io_map_dispatch(0, addr_keyboard_data, 0, 0, 0);
+}
+
+auto any_key_down() -> bool {
+  return (io_map_dispatch(0, addr_keyboard_strobe, 0, 0, 0) & strobe_bit) != 0;
+}
+
+auto file_bytes(const std::string& path) -> std::vector<char> {
+  std::ifstream in(path, std::ios::binary);
+  REQUIRE(in.good());
+  return std::vector<char>((std::istreambuf_iterator<char>(in)),
+                           std::istreambuf_iterator<char>());
+}
+
+}  // namespace
+
+TEST_CASE(
+    "Snapshot: an .aws gives the keyboard back its latch and strobe with no "
+    "key down, a fixed-body image whose keyboard region is zero loads with "
+    "the card at reset, and minimal.aws is the file it was") {
+  static_assert(offsetof(Snapshot_t, apple2_unit.keyboard) == 80,
+                "the keyboard region sits at byte 80 of the file");
+  static_assert(sizeof(SsKeyboardRegion_t) == keyboard_region_size,
+                "the keyboard region is the card's 552-byte frame");
+  EnhancedIIe_t machine;
+  TestFixtures::ScopedTempFile_t file(".aws");
+
+  press(0x5A);
+  REQUIRE(keyboard_data() == (0x5A | strobe_bit));
+  save_state_set_filename(file.c_str());
+  save_state_save();
+  struct stat written{};
+  REQUIRE(stat(file.c_str(), &written) == 0);
+  CHECK(static_cast<size_t>(written.st_size) == 134200);
+
+  // The key up and another typed: the file brings back Z under its strobe,
+  // read before $C010 since that read clears it, and no key down though one
+  // was held at the save.
+  release(0x5A);
+  press(0x51);
+  REQUIRE(keyboard_data() == (0x51 | strobe_bit));
+  REQUIRE(any_key_down());
+  REQUIRE(save_state_load());
+  CHECK(keyboard_data() == (0x5A | strobe_bit));
+  CHECK_FALSE(any_key_down());
+  CHECK(keyboard_data() == 0x5A);
+
+  // The same file with the keyboard's 552 bytes zeroed and no trailer: the
+  // card refuses a frame of version 0 and stays at reset, and the rest of the
+  // machine loads.
+  {
+    std::fstream patch(file.path(),
+                       std::ios::binary | std::ios::in | std::ios::out);
+    REQUIRE(patch.good());
+    const std::array<char, keyboard_region_size> zeros{};
+    patch.seekp(static_cast<std::streamoff>(
+        offsetof(Snapshot_t, apple2_unit.keyboard)));
+    patch.write(zeros.data(), zeros.size());
+    REQUIRE(patch.good());
+  }
+  REQUIRE(truncate(file.c_str(),
+                   static_cast<off_t>(snapshot_size_fixed_body)) == 0);
+  press(0x51);
+  REQUIRE(keyboard_data() == (0x51 | strobe_bit));
+  REQUIRE(save_state_load());
+  CHECK(keyboard_data() == 0);
+  CHECK_FALSE(any_key_down());
+
+  const std::string minimal = TestFixtures::get_fixture_path("minimal.aws");
+  const std::vector<char> shipped = file_bytes(minimal);
+  CHECK(shipped.size() == snapshot_size_fixed_body);
+  CHECK(crc32_compute(shipped.data(), shipped.size()) == minimal_aws_crc32);
+}
+
+TEST_CASE(
+    "Snapshot: the .aws an earlier card wrote loads on a machine with nothing "
+    "in any slot and gives back its latch and strobe with no key down") {
+  EnhancedIIe_t machine;
+  press(0x41);
+  REQUIRE(any_key_down());
+
+  const std::string path =
+      TestFixtures::get_fixture_path("keyboard-14249ec3.aws");
+  REQUIRE(access(path.c_str(), R_OK) == 0);
+  save_state_set_filename(path.c_str());
+  REQUIRE(save_state_load());
+  CHECK(keyboard_data() == (0x5A | strobe_bit));
+  CHECK_FALSE(any_key_down());
+  CHECK(keyboard_data() == 0x5A);
+}
+
+#endif
 
 TEST_CASE("Snapshot: Memory snapshot null pointer defense") {
   CHECK(mem_get_snapshot(nullptr) == 1);

@@ -12,6 +12,7 @@
 #include "apple2/peripherals/Peripheral.h"
 #include "core/LinAppleCore.h"
 #include "doctest.h"
+#include "frontends/common/JoystickConfig.h"
 #include "test_fixtures.h"
 #include "test_fixtures_core.h"
 
@@ -167,21 +168,33 @@ TEST_CASE(
       CHECK(samples_with_bit7(addr_keyboard_strobe, false) ==
             scanner_positions);
     }
+    // The shipped two-button plug holds PB0 and PB1 down and leaves PB2 open
+    // at every position: the level, not the bus, decides bit 7.
+    CHECK(samples_with_bit7(addr_switch0, false) == scanner_positions);
+    CHECK(samples_with_bit7(static_cast<uint16_t>(addr_switch0 + 1), false) ==
+          scanner_positions);
+    CHECK(samples_with_bit7(addr_switch2, true) == scanner_positions);
   }
 }
 
 #if !defined(ENABLE_PERIPHERAL_KEYBOARD)
 TEST_CASE(
     "Switch inputs: keyboard unplugged, inferred from the open 74LS257 "
-    "inputs: a II Plus reads $C000 as $7F, $C010 as the undriven bus, and its "
-    "reset routine reaches $FA7E") {
+    "inputs: a II Plus reads $C000 as $7F, $C010-$C01F as the undriven bus, "
+    "and its reset routine reaches $FA7E") {
   SwitchMachine_t machine(describe(TestConfig_t::machine_apple2_plus));
   CHECK(read_at(addr_keyboard_data, 0) == 0x7F);
-  for (uint32_t position = 0; position < scanner_positions; ++position) {
-    if (read_at(addr_keyboard_strobe, position) !=
-        read_at(addr_cassette_in, position)) {
-      CAPTURE(position);
-      FAIL("$C010 differs from the undriven bus");
+  // Any access to $C01X resets the strobe flip-flop and nothing drives the
+  // bus on the read, the flags of $C011-$C01F being the //e's (Sather,
+  // Understanding the Apple II, 7-4, 7-5, 5-25).
+  for (uint16_t addr = addr_keyboard_strobe; addr <= addr_keyboard_strobe + 15;
+       ++addr) {
+    for (uint32_t position = 0; position < scanner_positions; ++position) {
+      if (read_at(addr, position) != read_at(addr_cassette_in, position)) {
+        CAPTURE(addr);
+        CAPTURE(position);
+        FAIL("the read differs from the undriven bus");
+      }
     }
   }
 
@@ -241,6 +254,51 @@ TEST_CASE(
   CHECK(line_level(2) == 1);
 }
 #endif
+
+TEST_CASE(
+    "Switch inputs: a second stick configured but not found: the configured "
+    "plug pulls PB2 down until the frontend reports the devices it opened, "
+    "and PB2 is open afterwards") {
+  TestConfig_t::Description_t description =
+      describe(TestConfig_t::machine_apple2e_enhanced);
+  description.extras.push_back({"Configuration", "Joystick 1", "1"});
+  SwitchMachine_t machine(description);
+  // The configured baseline: joystick 1's button sits on PB2 and PB1, so its
+  // plug's resistors pull both down beside joystick 0's PB0.
+  CHECK(line_level(0) == 0);
+  CHECK(line_level(1) == 0);
+  CHECK(line_level(2) == 0);
+
+  // The frontend found the keypad for joystick 0 and nothing for joystick 1
+  // and reports that plug alone, as the SDL frontends do after their device
+  // open and on every hot-plug event.
+  linapple_set_game_pulldowns(joystick_config_pulldown_mask(2, 0));
+  CHECK(line_level(0) == 0);
+  CHECK(line_level(1) == 0);
+  CHECK(line_level(2) == 1);
+}
+
+TEST_CASE(
+    "Switch inputs: the mask a terminal sends with /dev/input/js0 open, PB0 "
+    "and PB1 beside the configured controller's lines, pulls both down on a II "
+    "Plus with no controller configured") {
+  SwitchMachine_t machine(describe(TestConfig_t::machine_apple2_plus, "0"));
+  REQUIRE(line_level(0) == 1);
+  REQUIRE(line_level(1) == 1);
+  REQUIRE(line_level(2) == 1);
+  // A two-button device on the kernel's joystick interface is a second plug
+  // with a 560 ohm pull-down on each of its lines (Sather, Understanding the
+  // Apple II, 7-9 and 7-11).
+  linapple_set_game_pulldowns(joystick_config_pulldown_mask() |
+                              joystick_line_pb0 | joystick_line_pb1);
+  CHECK(line_level(0) == 0);
+  CHECK(line_level(1) == 0);
+  CHECK(line_level(2) == 1);
+  linapple_set_game_pulldowns(joystick_config_pulldown_mask() |
+                              joystick_line_pb0 | joystick_line_pb1 |
+                              joystick_line_pb2);
+  CHECK(line_level(2) == 0);
+}
 
 TEST_CASE(
     "Switch inputs: an override replaces the hardware's pull-downs and -1 "
@@ -551,4 +609,41 @@ TEST_CASE(
   linapple_reset_hard();
   TestFixtures::step_until_pc(rom_cold_start_check, reset_routine_cycle_cap);
   CHECK(cpu_get_registers()->pc == rom_cold_start_check);
+}
+
+TEST_CASE(
+    "Switch inputs: a //e told its keyboard is unplugged, with no plug, reads "
+    "PB1 high through the board's pull-ups and its reset takes the self-test "
+    "on every one of sixteen reset phases") {
+  SwitchMachine_t machine(
+      describe(TestConfig_t::machine_apple2e_enhanced, "0"));
+  constexpr uint16_t rom_read_solid_apple = 0xC2BB;
+  constexpr uint32_t phase_step_cycles = 1931;
+  constexpr int phase_count = 16;
+
+  // The record as the bridge would set it for a //e with no keyboard card:
+  // every plug mask and switch cleared with it, the keyboard's 470 ohm
+  // resistors gone, so the revision C board's 12 k pull-ups alone set the
+  // level (Technical Note #9). The next machine's bridge sets it back.
+  switch_inputs_reset_configuration(true, false);
+  REQUIRE(line_level(0) == 1);
+  REQUIRE(line_level(1) == 1);
+  REQUIRE(line_level(2) == 1);
+
+  for (int trial = 0; trial < phase_count; ++trial) {
+    CAPTURE(trial);
+    machine.harness.boot();
+    uint32_t spent = 0;
+    while (spent < static_cast<uint32_t>(trial) * phase_step_cycles) {
+      spent += cpu_execute(0);
+    }
+    machine.harness.reset_soft();
+    TestFixtures::step_until_pc(rom_read_solid_apple, reset_routine_cycle_cap);
+    REQUIRE(cpu_get_registers()->pc == rom_read_solid_apple);
+    cpu_execute(0);
+    cpu_execute(0);
+    CHECK(cpu_get_registers()->pc == rom_read_solid_apple + 5);
+    cpu_execute(0);
+    CHECK(cpu_get_registers()->pc == rom_self_test);
+  }
 }

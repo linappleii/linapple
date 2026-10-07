@@ -9,7 +9,6 @@
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/Peripheral.h"
-#include "apple2/peripherals/Peripheral_Internal.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
@@ -102,7 +101,7 @@ auto HeadlessHarness_t::type_string(const std::string& text,
                                     uint32_t frames_per_stroke) -> void {
   // A keystroke sent to a machine with no keyboard card reaches nothing and
   // the case would fail somewhere downstream for no visible reason.
-  REQUIRE(peripheral_find_internal("linapple.keyboard") != nullptr);
+  REQUIRE(peripheral_present(0, "linapple.keyboard"));
   // While a drive spins, one frame here is a hundred frames in the machine,
   // and a key held for a hundred frames repeats on a //e as it does on the
   // hardware; the strokes are counted in the machine's own frames instead.

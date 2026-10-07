@@ -22,11 +22,12 @@ This document specifies the functional behavior of Apple II series hardware, der
 *   **Expected Behavior:** Summation of bytes in the $F800-$FFFF range must match the specific "Apple II" or "Apple II Plus" signature values.
 
 ### [IO-01] Keyboard Strobe and Data
-*   **Hardware Feature:** Keyboard Input Register ($C000) and Clear Strobe ($C010).
+*   **Hardware Feature:** Keyboard Input Register ($C000) and Clear Strobe ($C010-$C01F).
 *   **Functional Requirement:**
     *   $C000 must reflect the last key pressed. Bit 7 must be '1' if a new key is available.
-    *   $C010 must reset bit 7 of $C000 to '0' upon access (read or write).
-*   **Expected Behavior:** If bit 7 of $C000 is high, accessing $C010 must immediately cause bit 7 of $C000 to become low.
+    *   Any access to $C010, read or write, must reset bit 7 of $C000 to '0' on every model.
+    *   On the II and II Plus any access to $C011-$C01F, read or write, must reset it as well, and a read of $C010-$C01F returns the undriven bus; on the //e only a write to $C011-$C01F resets it, a read there returning an MMU or IOU flag in bit 7 and leaving the strobe set, and a read of $C010 returns the any-key-down flag in bit 7.
+*   **Expected Behavior:** If bit 7 of $C000 is high, accessing $C010 must immediately cause bit 7 of $C000 to become low; on a II Plus `LDA $C011` does the same, while on a //e it does not.
 
 ---
 
