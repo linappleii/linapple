@@ -496,9 +496,11 @@ static auto host_audio_push_channels(void* instance,
   }
 }
 
+// A card pulling RESET' resets the whole machine, so the MMU's switches go
+// back before the vector fetch exactly as they do for Ctrl-Reset.
 static auto host_reset_system(void* instance) -> void {
   (void)instance;
-  cpu_reset();
+  linapple_reset_soft();
   peripheral_manager_reset();
 }
 

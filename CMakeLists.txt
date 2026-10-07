@@ -801,6 +801,7 @@ if(BUILD_TESTING)
     add_linapple_test(integration tests/test_main.cpp)
     add_linapple_test(cpu-context tests/test_cpu_context.cpp)
     add_linapple_test(memory-context tests/test_memory_context.cpp)
+    add_linapple_test(reset-vector "tests/test_main.cpp;tests/test_reset_vector.cpp")
 
     add_linapple_test(abi tests/test_abi.cpp)
     # Verifies ABI headers compile cleanly as pure C99.

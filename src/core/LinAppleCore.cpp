@@ -235,10 +235,17 @@ auto linapple_reset_hard() -> void {
 }
 
 auto linapple_reset_soft() -> void {
-  cpu_reset();
+  // The //e MMU has no RESET' pin. It recognises the 6502's reset fingerprint,
+  // three page-1 accesses then $FFFC, and turns every soft switch off as that
+  // fetch begins, so the vector always comes out of ROM even with high RAM
+  // read-enabled (Sather, Understanding the Apple IIe, 4-14 to 4-15 and
+  // 5-23). The 16K RAM card has no such hook: RESET' at its slot changes
+  // nothing, and a II Plus fetches the vector from whatever is read-enabled
+  // (Sather, Understanding the Apple II, 5-28 and 5-30).
   if (!is_apple2()) {
     mem_reset_paging();
   }
+  cpu_reset();
 }
 
 auto linapple_cpu_test(const char* test_file, uint16_t trap_addr) -> void {
