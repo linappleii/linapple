@@ -4,6 +4,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <string>
 #include <vector>
 
 #include "apple2/CPU.h"
@@ -11,9 +12,67 @@
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Internal.h"
 #include "core/LinAppleCore.h"
+#include "core/Log.h"
 #include "test_fixtures.h"
 
 namespace TestFixtures {
+
+/**
+ * @brief RAII capture of every log line at info verbosity.
+ *
+ * The callback and the verbosity are process globals, so both are put back on
+ * destruction and the next case measures only its own lines.
+ */
+class ScopedLogCapture_t {
+ public:
+  ScopedLogCapture_t() : verbosity_(Logger::get_verbosity()) {
+    Logger::set_verbosity(LogLevel_t::info);
+    Logger::set_callback_with_context(collect, &lines_);
+  }
+  ~ScopedLogCapture_t() {
+    Logger::set_callback_with_context(nullptr, nullptr);
+    Logger::set_verbosity(verbosity_);
+  }
+  ScopedLogCapture_t(const ScopedLogCapture_t&) = delete;
+  auto operator=(const ScopedLogCapture_t&) -> ScopedLogCapture_t& = delete;
+  ScopedLogCapture_t(ScopedLogCapture_t&&) = delete;
+  auto operator=(ScopedLogCapture_t&&) -> ScopedLogCapture_t& = delete;
+
+  auto lines() const -> const std::vector<std::string>& { return lines_; }
+  auto lines_containing(const std::string& needle) const
+      -> std::vector<std::string> {
+    std::vector<std::string> found;
+    for (const std::string& line : lines_) {
+      if (line.find(needle) != std::string::npos) {
+        found.push_back(line);
+      }
+    }
+    return found;
+  }
+  auto count_containing(const std::string& needle) const -> size_t {
+    return lines_containing(needle).size();
+  }
+  auto joined() const -> std::string {
+    std::string out;
+    for (const std::string& line : lines_) {
+      out += line;
+    }
+    return out;
+  }
+
+ private:
+  static auto collect(LogLevel_t level, const char* message, void* user_data)
+      -> void {
+    (void)level;
+    auto* lines = static_cast<std::vector<std::string>*>(user_data);
+    if (lines != nullptr && message != nullptr) {
+      lines->emplace_back(message);
+    }
+  }
+
+  LogLevel_t verbosity_;
+  std::vector<std::string> lines_;
+};
 
 /** Retrieve snapshot fixture path. */
 class ScopedLocalTimeProvider_t {

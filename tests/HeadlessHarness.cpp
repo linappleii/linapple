@@ -15,9 +15,11 @@
 #include "core/Util_Crc32.h"
 #include "core/Util_Text.h"
 #include "doctest.h"
+#include "frontends/common/AppArgs.h"
 #include "frontends/common/AppConfig.h"
 #include "frontends/common/AppController.h"
 #include "frontends/common/AppEnvironment.h"
+#include "test_fixtures.h"
 
 namespace {
 
@@ -38,15 +40,33 @@ auto on_audio(const char* peripheral_id, int slot, const float* const* channels,
 
 HeadlessHarness_t::HeadlessHarness_t(
     const TestFixtures::ScopedTestConfig_t& test_config) {
-  s_active_harness = this;
-
   AppConfig_t config = {};
   app_config_default(&config);
-  util_safe_strcpy(config.config_path.data(), test_config.c_str(),
-                   path_max_len);
-  app_env_resolve_paths(&config);
+  start(test_config, &config);
+}
 
-  app_controller_initialize(&config);
+HeadlessHarness_t::HeadlessHarness_t(
+    const TestFixtures::ScopedTestConfig_t& test_config, int argc,
+    char** argv) {
+  // Parsed into the one configuration object, as every frontend's main does,
+  // so the controller reads its paths from the instance's own buffers.
+  AppConfig_t& config = Configuration_t::instance();
+  app_config_default(&config);
+  REQUIRE(app_args_parse(argc, argv, &config) == 0);
+  start(test_config, &config);
+  app_controller_load_initial_media(&config);
+}
+
+auto HeadlessHarness_t::start(
+    const TestFixtures::ScopedTestConfig_t& test_config, AppConfig_t* config)
+    -> void {
+  s_active_harness = this;
+
+  util_safe_strcpy(config->config_path.data(), test_config.c_str(),
+                   path_max_len);
+  app_env_resolve_paths(config);
+
+  app_controller_initialize(config);
 
   video_set_rendering_enabled(false);
   linapple_set_audio_channel_callback(on_audio);

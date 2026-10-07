@@ -1043,13 +1043,16 @@ if [ "$size" -ne 256 ]; then
 fi
 ]=]
             sh "${CMAKE_CURRENT_SOURCE_DIR}/res/roms/DISK2-P6.rom")
+    endif()
 
-        # The disk fixtures are generated, so a hand edit to one, or a generator
-        # that stopped being deterministic, would quietly move every golden built
-        # on it. The committed copies and a fresh regeneration are both held to
-        # the same pins. Raw images and stored archives are pinned byte for byte;
-        # the gzip member's deflate bytes depend on which zlib perl links, so it
-        # is pinned by its extracted payload instead.
+    # The disk fixtures are generated, so a hand edit to one, or a generator
+    # that stopped being deterministic, would quietly move every golden built
+    # on it. The committed copies and a fresh regeneration are both held to
+    # the same pins. Raw images and stored archives are pinned byte for byte;
+    # the gzip member's deflate bytes depend on which zlib perl links, so it
+    # is pinned by its extracted payload instead. Both cards that open images
+    # read these fixtures, so either card alone keeps the check.
+    if(ENABLE_PERIPHERAL_DISK OR ENABLE_PERIPHERAL_HARDDISK)
         add_test(NAME test-disk-fixtures COMMAND sh -c
     [=[
 set -e
@@ -1068,7 +1071,9 @@ for dir in "$1" "$scratch"; do
 done
 ]=]
             sh "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures")
+    endif()
 
+    if(ENABLE_PERIPHERAL_DISK)
         add_linapple_test(disk-smoke "tests/HeadlessHarness.cpp;tests/test_disk_smoke.cpp")
         add_linapple_test(disk-config-startup tests/test_disk_config_startup.cpp)
         add_linapple_test(disk-config-runtime-insert tests/test_disk_config_runtime_insert.cpp)
@@ -1165,7 +1170,6 @@ done
             test-disk-drivers
             test-disk-e2e
             test-disk-errors
-            test-disk-fixtures
             test-disk-gcr
             test-disk-io
             test-disk-lss
@@ -1186,7 +1190,7 @@ done
     # The container library exists only when a card that opens images does.
     if(ENABLE_PERIPHERAL_DISK OR ENABLE_PERIPHERAL_HARDDISK)
         add_linapple_test(image-container tests/test_image_container.cpp)
-        list(APPEND DISK_TEST_CASES test-image-container)
+        list(APPEND DISK_TEST_CASES test-disk-fixtures test-image-container)
     endif()
     if(DISK_TEST_CASES)
         set_tests_properties(${DISK_TEST_CASES} PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
@@ -1249,15 +1253,76 @@ fi
     add_dependencies(test-peripheral-lifecycle test-plugin-slot0)
     target_compile_definitions(test-peripheral-lifecycle PRIVATE TEST_PLUGIN_DIR="${TEST_PLUGIN_DIR}")
     # The direct I/O probe reads the switch lines a keyboard holds released and
-    # the game port's timers, and the declared machine names a Mockingboard.
-    foreach(card KEYBOARD JOYSTICK MOCKINGBOARD)
+    # the game port's timers, the declared machines name a Mockingboard, and
+    # the run-request rows fill the slots around the hard disk with the other
+    # cards.
+    foreach(card KEYBOARD JOYSTICK MOCKINGBOARD CLOCK DISK HARDDISK MOUSE)
         if(ENABLE_PERIPHERAL_${card})
             target_compile_definitions(test-peripheral-lifecycle PRIVATE ENABLE_PERIPHERAL_${card})
         endif()
     endforeach()
+
+    # The hard disk's suites follow the Disk II's: one file per subject, the
+    # ABI file with its C99 unit, the smoke file with the harness. The ProDOS
+    # boot is opt-in because the image is the user's own; the case is declared
+    # only when the file named is the one it was written against, so a wrong
+    # image declares nothing rather than failing.
+    set(LINAPPLE_PRODOS_IMAGE "" CACHE FILEPATH "ProDOS 2.4.2 disk image for the hard disk boot test")
+    set(HARDDISK_TEST_CASES "")
     if(ENABLE_PERIPHERAL_HARDDISK)
-        add_linapple_test(harddisk-peripheral tests/test_harddisk_peripheral.cpp)
-        add_linapple_test(harddisk-exhaustive tests/test_harddisk_exhaustive.cpp)
+        set_source_files_properties(tests/test_harddisk_abi_c.c PROPERTIES COMPILE_OPTIONS "-std=c99;-pedantic")
+        add_linapple_test(harddisk-abi "tests/test_harddisk_abi.cpp;tests/test_harddisk_abi_c.c")
+        foreach(T harddisk_firmware;harddisk_drivers;harddisk_registry;harddisk_savestate;harddisk_config_startup;harddisk_config_runtime_insert;harddisk_config_runtime_eject)
+            string(REPLACE "_" "-" TEST_NAME ${T})
+            add_linapple_test(${TEST_NAME} tests/test_${T}.cpp)
+        endforeach()
+        add_linapple_test(harddisk-smoke "tests/HeadlessHarness.cpp;tests/test_harddisk_smoke.cpp")
+        if(LINAPPLE_PRODOS_IMAGE)
+            if(EXISTS "${LINAPPLE_PRODOS_IMAGE}")
+                file(SHA1 "${LINAPPLE_PRODOS_IMAGE}" LINAPPLE_PRODOS_IMAGE_SHA1)
+            else()
+                set(LINAPPLE_PRODOS_IMAGE_SHA1 "missing")
+            endif()
+            if(LINAPPLE_PRODOS_IMAGE_SHA1 STREQUAL "135256f9b3aaccafd39798a2c5d732de1659e723")
+                target_compile_definitions(test-harddisk-smoke PRIVATE LINAPPLE_PRODOS_IMAGE="${LINAPPLE_PRODOS_IMAGE}")
+            else()
+                message(WARNING "LINAPPLE_PRODOS_IMAGE is not the ProDOS 2.4.2 image the boot test is written against (sha1 ${LINAPPLE_PRODOS_IMAGE_SHA1}); the case is not declared")
+            endif()
+        endif()
+        set(HARDDISK_TEST_CASES
+            test-harddisk-abi
+            test-harddisk-firmware
+            test-harddisk-drivers
+            test-harddisk-registry
+            test-harddisk-savestate
+            test-harddisk-config-startup
+            test-harddisk-config-runtime-insert
+            test-harddisk-config-runtime-eject
+            test-harddisk-smoke)
+        # The boot legs run through a Disk II and the typed leg through the
+        # keyboard; the slot-request rows put a clock card and Mockingboards
+        # beside the hard disk.
+        foreach(card KEYBOARD DISK CLOCK MOCKINGBOARD)
+            if(ENABLE_PERIPHERAL_${card})
+                foreach(target IN LISTS HARDDISK_TEST_CASES)
+                    target_compile_definitions(${target} PRIVATE ENABLE_PERIPHERAL_${card})
+                endforeach()
+            endif()
+        endforeach()
+        set_tests_properties(${HARDDISK_TEST_CASES} PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
+        # The suites' expectations are written against these bytes.
+        add_test(NAME test-harddisk-roms-pinned COMMAND sh -c
+    [=[
+sha1sum -c --quiet <<'EOF'
+b8ea90abe135a0031065e01697c4a3a20d51198b  res/roms/Apple2e_Enhanced.rom
+61fa9254628e5bb7236fb474006116d67684d747  res/roms/Apple2e.rom
+33a24f5489ba9195b44be77d9afb2252594cb5c7  res/roms/Apple2_Plus.rom
+09288be705464b608ff190519ab008d3dfcd1b05  res/roms/Apple2.rom
+7b03befac4fbcef8c649048fa3ff5d095fd48dd3  res/Master.dsk
+EOF
+]=]
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+        set_tests_properties(test-harddisk-roms-pinned PROPERTIES TIMEOUT 5)
     endif()
     add_linapple_test(snapshot tests/test_snapshot.cpp)
     # A case that names a card compiles only with that card, plugin or built-in.

@@ -24,13 +24,14 @@
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Internal.h"
 #include "apple2/peripherals/Peripheral_Types.h"
-#include "core/Log.h"
 #include "doctest.h"
 #include "frontends/common/SuperSerialFrontend.h"
 #include "test_fixtures.h"
+#include "test_fixtures_core.h"
 
 namespace {
 
+using TestFixtures::ScopedLogCapture_t;
 using TestFixtures::ScopedTempDir_t;
 using TestFixtures::ScopedTempFile_t;
 using TestFixtures::ScopedTestConfig_t;
@@ -58,57 +59,6 @@ auto read_switch_register(int slot, int offset) -> uint8_t {
   const auto address = static_cast<uint16_t>(0xC080 + (slot * 0x10) + offset);
   return io_map_dispatch(0, address, 0, 0, 0);
 }
-
-struct LogLines_t {
-  std::vector<std::string> lines;
-};
-
-auto collect_log_line(LogLevel_t level, const char* message, void* user_data)
-    -> void {
-  (void)level;
-  auto* lines = static_cast<LogLines_t*>(user_data);
-  if (lines != nullptr && message != nullptr) {
-    lines->lines.emplace_back(message);
-  }
-}
-
-class ScopedLogCapture_t {
- public:
-  ScopedLogCapture_t() : verbosity_(Logger::get_verbosity()) {
-    Logger::set_verbosity(LogLevel_t::info);
-    Logger::set_callback_with_context(collect_log_line, &lines_);
-  }
-  ~ScopedLogCapture_t() {
-    Logger::set_callback_with_context(nullptr, nullptr);
-    Logger::set_verbosity(verbosity_);
-  }
-  ScopedLogCapture_t(const ScopedLogCapture_t&) = delete;
-  auto operator=(const ScopedLogCapture_t&) -> ScopedLogCapture_t& = delete;
-  ScopedLogCapture_t(ScopedLogCapture_t&&) = delete;
-  auto operator=(ScopedLogCapture_t&&) -> ScopedLogCapture_t& = delete;
-
-  auto lines() const -> const std::vector<std::string>& { return lines_.lines; }
-  auto count_containing(const std::string& needle) const -> size_t {
-    size_t count = 0;
-    for (const std::string& line : lines_.lines) {
-      if (line.find(needle) != std::string::npos) {
-        ++count;
-      }
-    }
-    return count;
-  }
-  auto joined() const -> std::string {
-    std::string out;
-    for (const std::string& line : lines_.lines) {
-      out += line;
-    }
-    return out;
-  }
-
- private:
-  LogLevel_t verbosity_;
-  LogLines_t lines_;
-};
 
 class Peer_t {
  public:
