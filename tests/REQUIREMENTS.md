@@ -72,3 +72,36 @@ This document specifies the functional behavior of Apple II series hardware, der
     *   Accessing $C0EA/$C0EB must select the active drive (1 or 2).
     *   Stepper phases ($C0E0-$C0E7) must be toggled in sequence to move the drive head across tracks.
 *   **Expected Behavior:** Accessing $C0E9 followed by $C0E8 must result in the drive motor being enabled and then disabled. Sequential access to stepper phases (e.g., Phase 0, then Phase 1) must be registered by the hardware as a head movement request.
+
+### [HDD-01] ProDOS Block Device Firmware
+
+* **Hardware Feature:** A block-device controller's 256-byte firmware page at
+  $Cn00, as the ProDOS 8 Technical Reference Manual specifies it (6.3.1 and
+  6.3.2).
+* **Functional Requirement:**
+  * $Cn01, $Cn03 and $Cn05 must read $20, $00 and $03, the bytes ProDOS
+    identifies a block device by; $Cn07 must not read $00, which would name a
+    SmartPort interface (ProDOS 8 Technical Note #21).
+  * $CnFF must hold the low byte of the driver entry, neither $00 nor $FF;
+    the entry is $Cn46. $CnFE must have bits 0 and 1 set; $CnFC-$CnFD hold
+    the block count or $0000, in which case ProDOS asks STATUS for it.
+  * The driver takes its parameters at $42 (command: 0 STATUS, 1 READ, 2
+    WRITE, 3 FORMAT), $43 (unit: drive in bit 7, slot in bits 6-4), $44-$45
+    (a 512-byte buffer) and $46-$47 (a block number), and must leave them as
+    it found them.
+  * On success the carry is clear and A is zero (6.3.1 states this for
+    STATUS; for READ, WRITE and FORMAT it is inferred, 6.3.2 giving only the
+    error rule); STATUS also returns the block count low in X and high in Y.
+    On failure the carry is set and A
+    holds $27 (I/O error), $28 (no device connected) or $2B (write
+    protected), the codes the MLI passes to the program (4.7.1-4.7.2, 4.8).
+  * Entered at $Cn00, the firmware must read block 0 of drive 1 to $0800 and
+    jump to $0801 with X holding the slot times 16; when STATUS or the READ
+    of block 0 fails it must continue the Autostart Monitor's slot scan at
+    $FABA, or enter the Monitor at $FF59 on an original II, whose Monitor has
+    no scan.
+* **Expected Behavior:** With `$42 = 0` and `$43 = $70`, `JSR $C746` returns
+  with the carry clear, A zero and X/Y the volume's block count; with
+  `$42 = 2` on a protected volume it returns with the carry set and A = $2B;
+  with `$42 = 1` and `$46-$47` past the volume's end it returns with the
+  carry set and A = $27 and leaves the buffer untouched.

@@ -110,6 +110,48 @@ TEST_CASE(
   CHECK(drain_names().empty());
 }
 
+TEST_CASE(
+    "Harddisk registry: the nibble refusal is a whole driver, every entry "
+    "point present with its write bit, so the usable-check that admits the "
+    "others admits it") {
+  harddisk_loader_reset();
+  const HarddiskFormatDriver_t* nibble = nullptr;
+  for (uint32_t i = 0; i < harddisk_loader_driver_count(); ++i) {
+    const HarddiskFormatDriver_t* driver = harddisk_loader_driver_at(i);
+    if (std::string(driver->name) == "Nibble image") {
+      nibble = driver;
+    }
+  }
+  REQUIRE(nibble != nullptr);
+  CHECK(nibble->abi_version == harddisk_format_abi_version);
+  CHECK((nibble->capabilities & harddisk_driver_cap_write) != 0);
+  CHECK(nibble->supported_exts != nullptr);
+  CHECK(nibble->probe != nullptr);
+  CHECK(nibble->open != nullptr);
+  CHECK(nibble->close != nullptr);
+  CHECK(nibble->is_write_protected != nullptr);
+  CHECK(nibble->read_block != nullptr);
+  CHECK(nibble->write_block != nullptr);
+  CHECK(nibble->get_total_blocks != nullptr);
+
+  const std::vector<std::string> expected = {"nib", "nb2", "woz"};
+  std::vector<std::string> listed;
+  for (const char* const* ext = nibble->supported_exts;
+       ext != nullptr && *ext != nullptr; ++ext) {
+    listed.emplace_back(*ext);
+  }
+  CHECK(listed == expected);
+
+  // The name alone claims an image: open is the one entry point an image
+  // reaches, and it refuses by the one code that says why.
+  void* instance = const_cast<char*>("never");
+  CHECK(nibble->open(TestFixtures::get_fixture_path("minimal.nib").c_str(), 0,
+                     false, &instance) == harddisk_err_not_block_image);
+  CHECK(instance == nullptr);
+  CHECK(nibble->is_write_protected(nullptr));
+  CHECK(nibble->get_total_blocks(nullptr) == 0);
+}
+
 TEST_CASE("Harddisk registry: the same driver registers once") {
   harddisk_loader_reset();
   const uint32_t baseline = harddisk_loader_driver_count();

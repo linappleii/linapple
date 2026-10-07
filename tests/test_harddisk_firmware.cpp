@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include <algorithm>
 #include <array>
 #include <cstddef>
@@ -6,6 +9,7 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <utility>
 #include <vector>
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
@@ -15,6 +19,9 @@
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
+#include "apple2/peripherals/harddisk/HarddiskError.h"
+#include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
+#include "apple2/peripherals/harddisk/HarddiskLoader.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 #include "doctest.h"
@@ -22,6 +29,7 @@
 #include "test_fixtures_core.h"
 #if ENABLE_DEBUGGER
 #include "Debugger/Debugger_Assembler.h"
+#include "Debugger/Debugger_Types.h"
 #endif
 
 namespace {
@@ -99,6 +107,14 @@ struct Machine_t {
     linapple_reset_hard();
   }
 };
+
+// The unit byte a stepped call carries must name the slot the card is in, or
+// the firmware addresses another slot's page and reads the floating bus; the
+// manager is asked rather than the description trusted.
+auto require_card_in(int slot) -> void {
+  REQUIRE(peripheral_present(slot, harddisk_id));
+  REQUIRE(peripheral_slot_of(harddisk_id) == slot);
+}
 
 auto settle() -> void { peripheral_manager_think(0); }
 
@@ -334,6 +350,54 @@ auto buffer_all(uint16_t addr, uint8_t value) -> bool {
     }
   }
   return true;
+}
+
+auto buffer_of(uint8_t value) -> std::array<uint8_t, block_size> {
+  std::array<uint8_t, block_size> bytes{};
+  bytes.fill(value);
+  return bytes;
+}
+
+class ScopedFileMode_t {
+ public:
+  ScopedFileMode_t(std::string path, mode_t new_mode, mode_t restore_mode)
+      : path_(std::move(path)), restore_mode_(restore_mode) {
+    chmod(path_.c_str(), new_mode);
+  }
+  ~ScopedFileMode_t() { chmod(path_.c_str(), restore_mode_); }
+  ScopedFileMode_t(const ScopedFileMode_t&) = delete;
+  auto operator=(const ScopedFileMode_t&) -> ScopedFileMode_t& = delete;
+  ScopedFileMode_t(ScopedFileMode_t&&) = delete;
+  auto operator=(ScopedFileMode_t&&) -> ScopedFileMode_t& = delete;
+
+ private:
+  std::string path_;
+  mode_t restore_mode_;
+};
+
+// Whatever protects the drive, the driver answers the two writing commands
+// with the one ProDOS code, reads as before, and the status agrees.
+auto check_protected(int slot, int drive) -> void {
+  const HarddiskStatus_t current = status(slot);
+  CHECK((drive == 0 ? current.drive0_loaded : current.drive1_loaded) == 1);
+  CHECK((drive == 0 ? current.drive0_write_protected
+                    : current.drive1_write_protected) == 1);
+
+  CallResult_t result =
+      call_card(slot, {prodos_write, unit_for(slot, drive), write_buffer, 3});
+  CHECK(result.carry());
+  CHECK(result.a == prodos_write_protected);
+
+  result = call_card(slot, {prodos_format, unit_for(slot, drive), 0, 0});
+  CHECK(result.carry());
+  CHECK(result.a == prodos_write_protected);
+
+  fill(read_buffer, block_size, 0xEE);
+  result =
+      call_card(slot, {prodos_read, unit_for(slot, drive), read_buffer, 3});
+  CHECK_FALSE(result.carry());
+  CHECK(result.a == prodos_ok);
+  CHECK(buffer_all(read_buffer, 3));
 }
 
 // The boots that end at a DOS prompt need the Disk II, as their cases do.
@@ -663,7 +727,7 @@ TEST_CASE(
     "page the card shows, byte for byte, with the slot patched into $09") {
   const int slot = 7;
   Machine_t machine(machine_with_card(slot));
-  REQUIRE(peripheral_present(slot, harddisk_id));
+  require_card_in(slot);
 
   std::array<uint8_t, page_size> expected = assemble_listing();
   expected.at(0x09) = static_cast<uint8_t>(0xC0 | slot);
@@ -725,7 +789,7 @@ TEST_CASE(
   for (const int slot : {7, 5, 1}) {
     CAPTURE(slot);
     Machine_t machine(machine_with_card(slot));
-    REQUIRE(peripheral_present(slot, harddisk_id));
+    require_card_in(slot);
     const std::array<uint8_t, page_size> page = read_slot_page(slot);
 
     // ProDOS 8 Technical Reference Manual, 6.3.1; Technical Note #21 for
@@ -748,7 +812,7 @@ TEST_CASE(
   for (const int slot : {7, 5}) {
     CAPTURE(slot);
     Machine_t machine(machine_with_card(slot));
-    REQUIRE(peripheral_present(slot, harddisk_id));
+    require_card_in(slot);
     const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
     insert(slot, 0, image.path());
     const std::array<uint8_t, block_size> block0 =
@@ -786,38 +850,40 @@ TEST_CASE(
     "Harddisk firmware: with no image the boot takes the trampoline into the "
     "fallback, reads the machine byte, sets the scan pointer to its own slot "
     "and re-enters SLOOP, and the scan ends in BASIC when nothing is below") {
-  const int slot = 7;
-  Machine_t machine(machine_with_card(slot));
-  REQUIRE(peripheral_present(slot, harddisk_id));
-  const uint16_t page = slot_page(slot);
+  for (const int slot : {7, 5}) {
+    CAPTURE(slot);
+    Machine_t machine(machine_with_card(slot));
+    require_card_in(slot);
+    const uint16_t page = slot_page(slot);
 
-  linapple_reset_hard();
-  // The scan enters SLOOP before it looks at any slot, so the fallback is
-  // the first mark; the scan pointer is read on the fallback's own re-entry.
-  const std::vector<uint16_t> to_fail =
-      run_recording(static_cast<uint16_t>(page + fail_offset), boot_cycle_cap);
-  REQUIRE(cpu_get_registers()->pc == page + fail_offset);
-  CHECK(visited(to_fail, page));
-  CHECK(visited_in_order(to_fail,
-                         {static_cast<uint16_t>(page + driver_offset),
-                          static_cast<uint16_t>(page + ret1_offset),
-                          static_cast<uint16_t>(page + trampoline_offset)}));
-  CHECK_FALSE(visited(to_fail, static_cast<uint16_t>(page + ret2_offset)));
+    linapple_reset_hard();
+    // The scan enters SLOOP before it looks at any slot, so the fallback is
+    // the first mark; the scan pointer is read on the fallback's own re-entry.
+    const std::vector<uint16_t> to_fail = run_recording(
+        static_cast<uint16_t>(page + fail_offset), boot_cycle_cap);
+    REQUIRE(cpu_get_registers()->pc == page + fail_offset);
+    CHECK(visited(to_fail, page));
+    CHECK(visited_in_order(to_fail,
+                           {static_cast<uint16_t>(page + driver_offset),
+                            static_cast<uint16_t>(page + ret1_offset),
+                            static_cast<uint16_t>(page + trampoline_offset)}));
+    CHECK_FALSE(visited(to_fail, static_cast<uint16_t>(page + ret2_offset)));
 
-  step_once();
-  run_recording(monitor_sloop, boot_cycle_cap);
-  REQUIRE(cpu_get_registers()->pc == monitor_sloop);
-  // LOC0/LOC1 as the scan left them before JMP ($0000) (Apple IIe Technical
-  // Reference Manual, p. 307).
-  CHECK(mem[0x01] == static_cast<uint8_t>(0xC0 | slot));
-  CHECK(mem[0x00] == 0x00);
+    step_once();
+    run_recording(monitor_sloop, boot_cycle_cap);
+    REQUIRE(cpu_get_registers()->pc == monitor_sloop);
+    // LOC0/LOC1 as the scan left them before JMP ($0000) (Apple IIe Technical
+    // Reference Manual, p. 307).
+    CHECK(mem[0x01] == static_cast<uint8_t>(0xC0 | slot));
+    CHECK(mem[0x00] == 0x00);
 
-  step_once();
-  const std::vector<uint16_t> to_basic =
-      run_recording(basic_cold_start, boot_cycle_cap);
-  REQUIRE(cpu_get_registers()->pc == basic_cold_start);
-  CHECK(visited(to_basic, monitor_no_slot));
-  CHECK_FALSE(visited(to_basic, page));
+    step_once();
+    const std::vector<uint16_t> to_basic =
+        run_recording(basic_cold_start, boot_cycle_cap);
+    REQUIRE(cpu_get_registers()->pc == basic_cold_start);
+    CHECK(visited(to_basic, monitor_no_slot));
+    CHECK_FALSE(visited(to_basic, page));
+  }
 }
 
 #if defined(ENABLE_PERIPHERAL_DISK)
@@ -831,7 +897,7 @@ TEST_CASE(
   description.extras.push_back(
       {"Slots", "Disk Image 1", Path::find_data_file("Master.dsk")});
   Machine_t machine(description);
-  REQUIRE(peripheral_present(slot, harddisk_id));
+  require_card_in(slot);
   REQUIRE(peripheral_present(6, "linapple.disk_II"));
 
   linapple_reset_hard();
@@ -859,7 +925,7 @@ TEST_CASE(
   description.extras.push_back(
       {"Slots", "Disk Image 1", Path::find_data_file("Master.dsk")});
   Machine_t machine(description);
-  REQUIRE(peripheral_present(slot, harddisk_id));
+  require_card_in(slot);
   REQUIRE(peripheral_present(0, "linapple.keyboard"));
   const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
   insert(slot, 0, image.path());
@@ -907,7 +973,7 @@ TEST_CASE(
   linapple_set_apple2_type(A2TYPE_APPLE2);
   {
     Machine_t machine(description);
-    REQUIRE(peripheral_present(slot, harddisk_id));
+    require_card_in(slot);
     // Apple IIe Technical Reference Manual, p. 136: $38 names the II.
     REQUIRE(mem[0xFBB3] == 0x38);
 
@@ -927,7 +993,7 @@ TEST_CASE(
     "CONNECTED for an empty drive") {
   const int slot = 7;
   Machine_t machine(machine_with_card(slot));
-  REQUIRE(peripheral_present(slot, harddisk_id));
+  require_card_in(slot);
   const uint16_t count_low = io_base(slot) + 5;
   const uint16_t count_high = io_base(slot) + 6;
 
@@ -972,7 +1038,7 @@ TEST_CASE(
     "bytes, and refuses a block past the end or an empty drive") {
   const int slot = 7;
   Machine_t machine(machine_with_card(slot));
-  REQUIRE(peripheral_present(slot, harddisk_id));
+  require_card_in(slot);
   const auto hdv = TestFixtures::create_ephemeral("minimal-block.hdv");
   insert(slot, 0, hdv.path());
   const uint16_t data_port = io_base(slot) + 4;
@@ -1018,72 +1084,102 @@ TEST_CASE(
 
 TEST_CASE(
     "Harddisk firmware: WRITE pushes the caller's block through the data "
-    "port and reads back, both pages in order, and a block past the end is "
-    "an I/O error") {
+    "port, the file holds it before the card is touched again and after the "
+    "eject, both pages land in order, and a block past the end is an I/O "
+    "error") {
   const int slot = 7;
-  Machine_t machine(machine_with_card(slot));
-  REQUIRE(peripheral_present(slot, harddisk_id));
   const auto hdv = TestFixtures::create_ephemeral("minimal-block.hdv");
-  insert(slot, 0, hdv.path());
-
   std::array<uint8_t, block_size> pattern{};
   for (size_t i = 0; i < block_size; ++i) {
     pattern.at(i) = static_cast<uint8_t>((i & 0xFF) ^ (i >> 8));
   }
-  TestFixtures::ScopedCore_t::poke(write_buffer, pattern);
+  {
+    Machine_t machine(machine_with_card(slot));
+    require_card_in(slot);
+    insert(slot, 0, hdv.path());
+    TestFixtures::ScopedCore_t::poke(write_buffer, pattern);
 
-  CallResult_t result =
-      call_card(slot, {prodos_write, unit_for(slot, 0), write_buffer, 5});
-  CHECK_FALSE(result.carry());
-  CHECK(result.a == prodos_ok);
-  const std::array<uint8_t, 6> params = parameter_block();
-  CHECK(params.at(2) == (write_buffer & 0xFF));
-  CHECK(params.at(3) == (write_buffer >> 8));
+    CallResult_t result =
+        call_card(slot, {prodos_write, unit_for(slot, 0), write_buffer, 5});
+    CHECK_FALSE(result.carry());
+    CHECK(result.a == prodos_ok);
+    const std::array<uint8_t, 6> params = parameter_block();
+    CHECK(params.at(2) == (write_buffer & 0xFF));
+    CHECK(params.at(3) == (write_buffer >> 8));
 
+    // The block is in the file as soon as the call returns, seen through a
+    // handle of the test's own before the card touches the file again.
+    CHECK(read_block_from_file(hdv.path(), 5) == pattern);
+    CHECK(read_block_from_file(hdv.path(), 4) == buffer_of(4));
+    CHECK(read_block_from_file(hdv.path(), 6) == buffer_of(6));
+
+    fill(read_buffer, block_size, 0xEE);
+    result = call_card(slot, {prodos_read, unit_for(slot, 0), read_buffer, 5});
+    REQUIRE_FALSE(result.carry());
+    for (size_t i = 0; i < block_size; ++i) {
+      CAPTURE(i);
+      CHECK(mem[read_buffer + i] == pattern.at(i));
+    }
+    result = call_card(slot, {prodos_read, unit_for(slot, 0), read_buffer, 4});
+    REQUIRE_FALSE(result.carry());
+    CHECK(buffer_all(read_buffer, 4));
+    result = call_card(slot, {prodos_read, unit_for(slot, 0), read_buffer, 6});
+    REQUIRE_FALSE(result.carry());
+    CHECK(buffer_all(read_buffer, 6));
+
+    result = call_card(
+        slot, {prodos_write, unit_for(slot, 0), write_buffer, hdv_blocks});
+    CHECK(result.carry());
+    CHECK(result.a == prodos_io_error);
+
+    eject(slot, 0);
+    CHECK(read_block_from_file(hdv.path(), 5) == pattern);
+  }
+
+  // Another machine mounting the file finds the block there.
+  Machine_t second(machine_with_card(slot));
+  require_card_in(slot);
+  insert(slot, 0, hdv.path());
   fill(read_buffer, block_size, 0xEE);
-  result = call_card(slot, {prodos_read, unit_for(slot, 0), read_buffer, 5});
-  REQUIRE_FALSE(result.carry());
+  const CallResult_t again =
+      call_card(slot, {prodos_read, unit_for(slot, 0), read_buffer, 5});
+  REQUIRE_FALSE(again.carry());
   for (size_t i = 0; i < block_size; ++i) {
     CAPTURE(i);
     CHECK(mem[read_buffer + i] == pattern.at(i));
   }
-  result = call_card(slot, {prodos_read, unit_for(slot, 0), read_buffer, 4});
-  REQUIRE_FALSE(result.carry());
-  CHECK(buffer_all(read_buffer, 4));
-  result = call_card(slot, {prodos_read, unit_for(slot, 0), read_buffer, 6});
-  REQUIRE_FALSE(result.carry());
-  CHECK(buffer_all(read_buffer, 6));
-
-  result = call_card(
-      slot, {prodos_write, unit_for(slot, 0), write_buffer, hdv_blocks});
-  CHECK(result.carry());
-  CHECK(result.a == prodos_io_error);
 }
 
 TEST_CASE(
-    "Harddisk firmware: a drive the user protected answers WRITE and FORMAT "
-    "with WRITE PROTECTED, still reads, and says so in the status") {
+    "Harddisk firmware: a drive protected by the user, by the file's mode, by "
+    "a locked 2MG or by an archive answers WRITE and FORMAT with WRITE "
+    "PROTECTED, still reads, and says so in the status") {
   const int slot = 7;
   Machine_t machine(machine_with_card(slot));
-  REQUIRE(peripheral_present(slot, harddisk_id));
-  const auto hdv = TestFixtures::create_ephemeral("minimal-block.hdv");
-  insert(slot, 0, hdv.path());
+  require_card_in(slot);
+
+  const auto user = TestFixtures::create_ephemeral("minimal-block.hdv");
+  insert(slot, 0, user.path());
   set_protect(slot, 0, true);
-  CHECK(status(slot).drive0_write_protected == 1);
+  check_protected(slot, 0);
 
-  CallResult_t result =
-      call_card(slot, {prodos_write, unit_for(slot, 0), write_buffer, 3});
-  CHECK(result.carry());
-  CHECK(result.a == prodos_write_protected);
+  // Superuser bypasses the file mode, as test_disk_prot does.
+  if (getuid() != 0) {
+    const auto readonly = TestFixtures::create_ephemeral("minimal-block.hdv");
+    const ScopedFileMode_t mode(readonly.path(), 0444, 0644);
+    insert(slot, 0, readonly.path());
+    check_protected(slot, 0);
+    eject(slot, 0);
+  }
 
-  result = call_card(slot, {prodos_format, unit_for(slot, 0), 0, 0});
-  CHECK(result.carry());
-  CHECK(result.a == prodos_write_protected);
+  const auto locked =
+      TestFixtures::create_ephemeral("minimal-block-locked.2mg");
+  insert(slot, 0, locked.path());
+  check_protected(slot, 0);
 
-  result = call_card(slot, {prodos_read, unit_for(slot, 0), read_buffer, 3});
-  CHECK_FALSE(result.carry());
-  CHECK(result.a == prodos_ok);
-  CHECK(buffer_all(read_buffer, 3));
+  const auto archive = TestFixtures::create_ephemeral("minimal-block.hdv.gz");
+  insert(slot, 0, archive.path());
+  check_protected(slot, 0);
 }
 
 TEST_CASE(
@@ -1091,7 +1187,7 @@ TEST_CASE(
     "nothing in it; an empty drive answers NO DEVICE CONNECTED") {
   const int slot = 7;
   Machine_t machine(machine_with_card(slot));
-  REQUIRE(peripheral_present(slot, harddisk_id));
+  require_card_in(slot);
   const auto hdv = TestFixtures::create_ephemeral("minimal-block.hdv");
   const std::vector<uint8_t> before = read_whole_file(hdv.path());
   insert(slot, 0, hdv.path());
@@ -1113,7 +1209,7 @@ TEST_CASE(
     "through one register set, and the boot takes drive 1 only") {
   const int slot = 7;
   Machine_t machine(machine_with_card(slot));
-  REQUIRE(peripheral_present(slot, harddisk_id));
+  require_card_in(slot);
   const auto hdv = TestFixtures::create_ephemeral("minimal-block.hdv");
   const auto po = TestFixtures::create_ephemeral("minimal.po");
   insert(slot, 0, hdv.path());
@@ -1153,7 +1249,7 @@ TEST_CASE(
     "still answers READ and STATUS for a card in slot 7") {
   const int slot = 7;
   Machine_t machine(machine_with_card(slot));
-  REQUIRE(peripheral_present(slot, harddisk_id));
+  require_card_in(slot);
   const auto hdv = TestFixtures::create_ephemeral("minimal-block.hdv");
   insert(slot, 0, hdv.path());
 
@@ -1169,4 +1265,120 @@ TEST_CASE(
   CHECK(result.a == prodos_ok);
   CHECK(result.x == (hdv_blocks & 0xFF));
   CHECK(result.y == (hdv_blocks >> 8));
+}
+
+namespace {
+
+// A driver that serves any block number at all, so the one bound a READ or
+// WRITE meets is the controller's own.
+constexpr uint32_t boundless_blocks = 4;
+
+auto boundless_probe(const uint8_t*, size_t, uint64_t, const char* ext_hint)
+    -> HarddiskProbe_e {
+  return (ext_hint != nullptr && std::strcmp(ext_hint, ".boundless") == 0)
+             ? harddisk_probe_definite
+             : harddisk_probe_no;
+}
+
+auto boundless_open(const char*, uint32_t, bool, void** out_instance)
+    -> HarddiskError_e {
+  static int instance = 0;
+  *out_instance = &instance;
+  return harddisk_err_none;
+}
+
+auto boundless_close(void*) -> void {}
+
+auto boundless_is_write_protected(void*) -> bool { return false; }
+
+auto boundless_read_block(void*, uint32_t block, uint8_t* buffer)
+    -> HarddiskError_e {
+  std::memset(buffer, static_cast<int>(block & 0xFF), block_size);
+  return harddisk_err_none;
+}
+
+auto boundless_write_block(void*, uint32_t, const uint8_t*) -> HarddiskError_e {
+  return harddisk_err_none;
+}
+
+auto boundless_get_total_blocks(void*) -> uint32_t { return boundless_blocks; }
+
+const char* const boundless_exts[] = {"boundless", nullptr};
+
+const HarddiskFormatDriver_t g_boundless_driver = {
+    .abi_version = harddisk_format_abi_version,
+    .capabilities = harddisk_driver_cap_write,
+    .name = "Boundless",
+    .supported_exts = boundless_exts,
+    .probe = boundless_probe,
+    .open = boundless_open,
+    .close = boundless_close,
+    .is_write_protected = boundless_is_write_protected,
+    .read_block = boundless_read_block,
+    .write_block = boundless_write_block,
+    .get_total_blocks = boundless_get_total_blocks};
+
+// Forgets the driver above whatever happens, so the registry the next case
+// sees is the built-in one.
+struct ScopedBoundlessDriver_t {
+  ScopedBoundlessDriver_t() { harddisk_loader_register(&g_boundless_driver); }
+  ~ScopedBoundlessDriver_t() { harddisk_loader_reset(); }
+  ScopedBoundlessDriver_t(const ScopedBoundlessDriver_t&) = delete;
+  auto operator=(const ScopedBoundlessDriver_t&)
+      -> ScopedBoundlessDriver_t& = delete;
+  ScopedBoundlessDriver_t(ScopedBoundlessDriver_t&&) = delete;
+  auto operator=(ScopedBoundlessDriver_t&&)
+      -> ScopedBoundlessDriver_t& = delete;
+};
+
+}  // namespace
+
+TEST_CASE(
+    "Harddisk firmware: the controller itself refuses the block one past the "
+    "volume's last with an I/O error, READ and WRITE alike, even when the "
+    "medium would serve it") {
+  const int slot = 7;
+  Machine_t machine(machine_with_card(slot));
+  require_card_in(slot);
+  const ScopedBoundlessDriver_t driver;
+  TestFixtures::ScopedTempDir_t dir("linapple_hdd_bound_");
+  const std::string path = dir.path() + "/volume.boundless";
+  {
+    FilePtr_t file{fopen(path.c_str(), "wb"), fclose};
+    REQUIRE(file != nullptr);
+  }
+  insert(slot, 0, path);
+  REQUIRE(status(slot).drive0_loaded == 1);
+
+  CallResult_t result =
+      call_card(slot, {prodos_status, unit_for(slot, 0), 0, 0});
+  REQUIRE_FALSE(result.carry());
+  REQUIRE(result.x == boundless_blocks);
+  REQUIRE(result.y == 0);
+
+  // The last block is served, the one past it is beyond the volume ProDOS
+  // was told about: $27 (ProDOS 8 Technical Reference Manual, 6.3.2).
+  fill(read_buffer, block_size, 0xEE);
+  result = call_card(slot, {prodos_read, unit_for(slot, 0), read_buffer,
+                            boundless_blocks - 1});
+  CHECK_FALSE(result.carry());
+  CHECK(result.a == prodos_ok);
+  CHECK(buffer_all(read_buffer, boundless_blocks - 1));
+
+  fill(read_buffer, block_size, 0xEE);
+  result = call_card(
+      slot, {prodos_read, unit_for(slot, 0), read_buffer, boundless_blocks});
+  CHECK(result.carry());
+  CHECK(result.a == prodos_io_error);
+  CHECK(buffer_all(read_buffer, 0xEE));
+
+  result = call_card(slot, {prodos_write, unit_for(slot, 0), write_buffer,
+                            boundless_blocks - 1});
+  CHECK_FALSE(result.carry());
+  CHECK(result.a == prodos_ok);
+
+  result = call_card(
+      slot, {prodos_write, unit_for(slot, 0), write_buffer, boundless_blocks});
+  CHECK(result.carry());
+  CHECK(result.a == prodos_io_error);
 }
