@@ -33,33 +33,27 @@ constexpr uint8_t every_line_pulled_down = 0x07;
 // One NTSC frame of scanner positions, every byte the undriven bus can hold.
 constexpr uint32_t scanner_positions = 17030;
 constexpr uint16_t text_page = 0x0400;
-// During horizontal blanking a II or II Plus fetches with A12 set, so its
-// undriven bus also shows $1400-$17FF (Sather, Understanding the Apple II,
-// 5-12 to 5-13).
+// During horizontal blanking a II fetches with A12 set, so its undriven bus
+// also shows $1400-$17FF (Sather, Understanding the Apple II, 5-12, 5-13).
 constexpr uint16_t text_page_hbl_mirror = 0x1400;
 constexpr uint16_t text_page_size = 0x0400;
 constexpr uint8_t normal_space = 0xA0;
 
-// A scanner byte with bit 7 clear shows the bus bits pass; one with bit 7 set
-// is what proves the level, not the bus, decides bit 7.
+// A byte with bit 7 set proves the level, not the bus, decides bit 7.
 constexpr uint8_t marker_low = 0x5A;
 constexpr uint8_t marker_high = 0xDA;
 
-// The Enhanced //e reset routine reads $C062 and, with bit 7 set, jumps to the
-// self-test at $C600 (bytes AD 62 C0 10 03 4C 00 C6 at $C2BB of
-// res/roms/Apple2e_Enhanced.rom; IIe Tech Ref pp. 93-95); with both Apple
-// keys up it reaches the power-up byte check at $C2E2.
+// The Enhanced //e reset reads $C062 and, with bit 7 set, jumps to the
+// self-test at $C600 (AD 62 C0 10 03 4C 00 C6 at $C2BB; IIe Tech Ref
+// pp. 93-95); with both Apple keys up it reaches the power-up check at $C2E2.
 constexpr uint16_t rom_self_test = 0xC600;
 constexpr uint16_t rom_cold_start_check = 0xC2E2;
 // The Monitor's reset routine is done inside a tenth of a second.
 constexpr uint32_t reset_routine_cycle_cap = 100000;
 
-// A machine as a frontend brings it up: the model and the configured
-// controller come from the configuration, as they do for every frontend. The
-// text page, and the page the II's blanking fetches land in, are filled with
-// normal spaces so that the undriven bus carries bit 7 at every scanner
-// position, and a default that fell through to the bus would show in the
-// sweep.
+// The text page and the II's blanking page are filled with normal spaces so
+// the undriven bus carries bit 7 at every scanner position, and a default
+// that fell through to the bus would show in the sweep.
 struct SwitchMachine_t {
   TestConfig_t config;
   HeadlessHarness_t harness;
@@ -76,8 +70,7 @@ struct SwitchMachine_t {
     TestFixtures::ScopedCore_t::poke(text_page_hbl_mirror, spaces);
   }
 
-  // One byte at the scanner's address for position 0, so a read there has
-  // known bits 0-6.
+  // A known byte at position 0's scanner address, so bits 0-6 are known.
   static auto place_bus_marker(uint8_t marker) -> void {
     TestFixtures::ScopedCore_t::poke(video_get_scanner_address(nullptr, 0),
                                      &marker, 1);
@@ -94,16 +87,13 @@ auto describe(TestConfig_t::MachineType_t model,
   return description;
 }
 
-// The command queue is drained by a think, as a running machine drains it
-// once a frame; the switch record itself needs none.
+// A think drains the command queue, as a running machine does once a frame.
 auto settle() -> void { peripheral_manager_think(0); }
 
 auto read_at(uint16_t addr, uint32_t position) -> uint8_t {
   return io_map_dispatch(0, addr, 0, 0, position);
 }
 
-// Bit 7 of an address through the memory map at one scanner position, as the
-// 6502 would read it.
 auto high_at(uint16_t addr, uint32_t position) -> bool {
   return (read_at(addr, position) & bit7) != 0;
 }
@@ -116,8 +106,6 @@ auto mirror_level(uint8_t line) -> int {
   return high_at(static_cast<uint16_t>(addr_mirror_switch0 + line), 0) ? 1 : 0;
 }
 
-// How many of a frame's scanner positions read the address with bit 7 as
-// asked.
 auto samples_with_bit7(uint16_t addr, bool set) -> uint32_t {
   uint32_t count = 0;
   for (uint32_t position = 0; position < scanner_positions; ++position) {
@@ -270,8 +258,7 @@ TEST_CASE(
   CHECK(line_level(2) == 0);
 
   // The frontend found the keypad for joystick 0 and nothing for joystick 1
-  // and reports that plug alone, as the SDL frontends do after their device
-  // open and on every hot-plug event.
+  // and reports that plug alone, as the SDL frontends do.
   linapple_set_game_pulldowns(joystick_config_pulldown_mask(2, 0));
   CHECK(line_level(0) == 0);
   CHECK(line_level(1) == 0);
@@ -489,9 +476,8 @@ TEST_CASE(
     "and a loaded game-port frame") {
   SwitchMachine_t machine(describe(TestConfig_t::machine_apple2e_enhanced));
 
-  // Soldered, not state: with every line pulled down and the jumper in, PB2
-  // reads 1 at rest and follows the shift key, and neither a reset nor a
-  // frame carries either setting away.
+  // Soldered, not state: neither a reset nor a frame carries the mask or the
+  // jumper away.
   linapple_set_game_pulldowns(every_line_pulled_down);
   linapple_set_shift_key_mod(true);
   hold_shift(true);
@@ -569,8 +555,7 @@ TEST_CASE(
     // A null out-pointer asks for nothing.
     linapple_get_modifiers(nullptr, nullptr, nullptr, nullptr);
 
-    // The Apple keys are switches a hand holds; a hand that has left the
-    // window has let go of them with the matrix keys.
+    // Focus loss lets go of the Apple keys with the matrix keys.
     linapple_set_modifiers(true, true, true, true);
     settle();
     REQUIRE(line_level(0) == 1);
@@ -621,10 +606,9 @@ TEST_CASE(
   constexpr uint32_t phase_step_cycles = 1931;
   constexpr int phase_count = 16;
 
-  // The record as the bridge would set it for a //e with no keyboard card:
-  // every plug mask and switch cleared with it, the keyboard's 470 ohm
-  // resistors gone, so the revision C board's 12 k pull-ups alone set the
-  // level (Technical Note #9). The next machine's bridge sets it back.
+  // The bridge's record for a //e with no keyboard card: every mask and switch
+  // cleared and the 470 ohm resistors gone, so the revision C board's 12 k
+  // pull-ups alone set the level (Technical Note #9).
   switch_inputs_reset_configuration(true, false);
   REQUIRE(line_level(0) == 1);
   REQUIRE(line_level(1) == 1);

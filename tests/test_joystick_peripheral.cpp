@@ -44,10 +44,9 @@ constexpr int slot0 = 0;
 // are the pushbuttons, the motherboard's, 4-7 the four NE558 timers, and A3
 // does not reach the part, so $C068-$C06F are $C060-$C067 again (Apple II
 // Reference Manual, 1979, p. 99; Sather, Understanding the Apple II, 7-8;
-// Apple IIe Technical Reference Manual, p. 189). Any access to the "7" line,
-// $C070-$C07F, triggers the timers (1979 manual pp. 78-79 and 99; IIe Tech
-// Ref pp. 29-30 and 187). $C07F stays the motherboard's: on the //e its read
-// is RDDHIRES.
+// Apple IIe Technical Reference Manual, p. 189). Any access to $C070-$C07F
+// triggers the timers (1979 pp. 78-79, 99; IIe Tech Ref pp. 29-30, 187);
+// $C07F stays the motherboard's, RDDHIRES on the //e.
 constexpr uint16_t addr_paddle0 = 0xC064;
 constexpr uint16_t addr_paddle1 = 0xC065;
 constexpr uint16_t addr_mirror_paddle0 = 0xC06C;
@@ -96,9 +95,8 @@ auto game_port() -> Peripheral_t* {
 using Frame_t = std::array<uint8_t, sizeof(JoystickSaveState_t)>;
 
 // Header: version 1, struct_size 56 ($38). A cold start has every timer
-// expired, so one strobe at cycle 1,000,000 ($0F4240) triggers all four. The
-// positions and trim are not the port's, nor are the switch levels, and all
-// go out as zeros. Bytes as a little-endian host lays the frame out.
+// expired, so one strobe at cycle 1,000,000 ($0F4240) triggers all four; the
+// rest goes out as zeros, little-endian.
 constexpr Frame_t frame_after_one_strobe = {{
     0x01, 0x00, 0x00, 0x00, 0x38, 0x00, 0x00, 0x00,  //
     0x40, 0x42, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00,  //
@@ -449,8 +447,7 @@ TEST_CASE(
   CHECK(descriptor->load_state != nullptr);
   CHECK(descriptor->command != nullptr);
   CHECK(descriptor->query != nullptr);
-  // RESET' does not reach the NE558 (its RESET pin is unused, Sather 7-11),
-  // and nothing in the port counts time on its own.
+  // RESET' does not reach the NE558 (its RESET pin is unused, Sather 7-11).
   CHECK(descriptor->reset == nullptr);
   CHECK(descriptor->think == nullptr);
   CHECK(descriptor->on_vblank == nullptr);
@@ -937,8 +934,7 @@ TEST_CASE("Game port: a joystick or axis out of range is refused") {
   void* port = bench.create();
   REQUIRE(port != nullptr);
 
-  // Two joysticks of two axes: the last value in range is taken and the
-  // first beyond it refused.
+  // The last value in range is taken and the first beyond it refused.
   JoystickAxisPayload_t axis = axis_payload(3, 0);
   CHECK(game_port()->command(port, JOYSTICK_CMD_SET_AXIS, &axis,
                              sizeof(axis)) == peripheral_ok);
@@ -957,8 +953,6 @@ TEST_CASE("Game port: every query is incompatible") {
   REQUIRE(port != nullptr);
 
   // The port has nothing to answer: its state is read through the timers.
-  // The command index 0, the retired index 1 and the reserved index 2 are
-  // among the ids asked.
   const std::initializer_list<uint32_t> queries = {
       PERIPHERAL_SUBSYSTEM_JOYSTICK | 0x0000,
       PERIPHERAL_SUBSYSTEM_JOYSTICK | 0x0001,

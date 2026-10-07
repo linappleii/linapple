@@ -99,12 +99,11 @@ auto HeadlessHarness_t::run_frames(uint32_t count) -> void {
 
 auto HeadlessHarness_t::type_string(const std::string& text,
                                     uint32_t frames_per_stroke) -> void {
-  // A keystroke sent to a machine with no keyboard card reaches nothing and
-  // the case would fail somewhere downstream for no visible reason.
+  // Without the card the case would fail downstream for no visible reason.
   REQUIRE(peripheral_present(0, "linapple.keyboard"));
-  // While a drive spins, one frame here is a hundred frames in the machine,
-  // and a key held for a hundred frames repeats on a //e as it does on the
-  // hardware; the strokes are counted in the machine's own frames instead.
+  // While a drive spins one frame here is a hundred in the machine, and a key
+  // held a hundred frames repeats on a //e, so strokes are counted in the
+  // machine's frames.
   const bool disk_turbo = linapple_set_disk_turbo(false);
   for (char c : text) {
     uint8_t key = static_cast<uint8_t>(c);

@@ -516,10 +516,9 @@ TEST_CASE(
 #endif
 }
 
-// The released levels below are a //e with its keyboard plugged in: PB0 and
-// PB1 rest low through the keyboard's 470 ohm pull-downs (Apple IIe Technical
-// Note #9; Sather, Understanding the Apple IIe, 7-8), and the timers are the
-// game port's.
+// A //e with its keyboard plugged in: PB0 and PB1 rest low through the
+// keyboard's 470 ohm pull-downs (Apple IIe Technical Note #9; Sather,
+// Understanding the Apple IIe, 7-8).
 #if defined(ENABLE_PERIPHERAL_KEYBOARD) && defined(ENABLE_PERIPHERAL_JOYSTICK)
 namespace {
 
@@ -574,10 +573,9 @@ TEST_CASE(
     TestFixtures::ScopedCore_t::poke(
         video_get_scanner_address(nullptr, probe_cycle), &marker, 1);
     g_cumulative_cycles = long_after_any_pulse;
-    // PB2 has no pull-down on the keyboard or in a two-button controller's
-    // plug, so its open TTL input reads high at rest (Sather, Understanding
-    // the Apple II, 7-9 and 7-11); PB0, PB1 and the four expired timers read
-    // low.
+    // PB2 has no pull-down on the keyboard or in a two-button plug, so its
+    // open TTL input reads high (Sather, Understanding the Apple II, 7-9 and
+    // 7-11); PB0, PB1 and the expired timers read low.
     constexpr uint16_t open_button = 0xC063;
     for (uint16_t addr = first_button; addr <= last_paddle; ++addr) {
       CAPTURE(addr);

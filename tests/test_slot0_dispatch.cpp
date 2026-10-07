@@ -39,8 +39,7 @@ constexpr uint64_t off_centre_pulse = 2210;
 constexpr uint64_t probe_counter = 1000000;
 constexpr uint32_t unknown_joystick_id = PERIPHERAL_SUBSYSTEM_JOYSTICK | 0x00FF;
 constexpr uint32_t unknown_keyboard_id = PERIPHERAL_SUBSYSTEM_KEYBOARD | 0x00FF;
-// A value the game port once answered and no longer knows: the right unknown
-// id inside its own subsystem.
+// An id the game port once answered and no longer knows.
 constexpr uint32_t retired_joystick_id = PERIPHERAL_SUBSYSTEM_JOYSTICK | 0x0001;
 constexpr uint32_t host_key_a = 4;
 
@@ -77,9 +76,8 @@ struct Slot0_t {
   explicit Slot0_t(Order_t order) {
     cpu_set_active_context(&cpu);
     current_apple2_type = A2TYPE_APPLE2EENHANCED;
-    // The machine is built by hand, so the motherboard's own I/O handlers,
-    // which answer the switch inputs, and its board are stated by hand too: a
-    // //e with its keyboard plugged in, whose resistors hold PB0 and PB1 low.
+    // A hand-built machine gets no motherboard I/O handlers, so they and the
+    // board are stated here: a //e with its keyboard in, PB0 and PB1 held low.
     mem_pre_initialize();
     REQUIRE(mem_initialize() == 0);
     switch_inputs_reset_configuration(true, true);
@@ -95,8 +93,7 @@ struct Slot0_t {
   }
 
   ~Slot0_t() {
-    // The bridge's modifier record outlives the machine; the next case starts
-    // from a host with every key up.
+    // The bridge's modifier record outlives the machine.
     linapple_set_modifiers(false, false, false, false);
     peripheral_manager_think(0);
     peripheral_manager_shutdown();
@@ -212,7 +209,6 @@ auto host_modifiers() -> HostModifiers_t {
   return mods;
 }
 
-// The latch under the strobe, as the 6502 reads $C000.
 auto keyboard_data() -> uint8_t {
   return io_map_dispatch(0, addr_keyboard_data, 0, 0, 0);
 }
@@ -373,9 +369,9 @@ TEST_CASE("Slot 0: a key reaches no switch line") {
     REQUIRE(slot0.keyboard_registered == 0);
     REQUIRE(slot0.joystick_registered == 0);
 
-    // PB0 and PB1 rest low through the keyboard's pull-downs; PB2 has none
-    // and its open TTL input rests high (Sather, Understanding the Apple IIe,
-    // 7-8; Understanding the Apple II, 7-9 and 7-11).
+    // PB0 and PB1 rest low through the keyboard's pull-downs; PB2 has none, so
+    // its open TTL input rests high (Sather IIe 7-8; Understanding the Apple
+    // II, 7-9 and 7-11).
     REQUIRE(line_level(0) == 0);
     REQUIRE(line_level(1) == 0);
     REQUIRE(line_level(2) == 1);
@@ -593,7 +589,6 @@ TEST_CASE("Slot 0: a command can name the peripheral it is for") {
     settle();
     CHECK(keyboard_data() == ('A' | strobe_bit));
 
-    // Verify rejection of invalid target peripheral names.
     const KeyboardKeyEvent_t other = key_event(5, 'B', true);
     CHECK(peripheral_command_by_id(0, "linapple.disk_II", keyboard_cmd_key,
                                    &other, sizeof(other)) == peripheral_error);

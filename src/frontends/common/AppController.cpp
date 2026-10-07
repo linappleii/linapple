@@ -259,9 +259,8 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   }
   s_initialized = true;
 
-  // The connector's pull-downs are the configured controller's, reported here
-  // so that every frontend and a headless machine start from the same plug;
-  // an SDL frontend reports again with the devices it actually opened.
+  // Reported here so every frontend and a headless machine start from the
+  // configured plug; an SDL frontend reports again with the devices it opened.
   linapple_set_game_pulldowns(joystick_config_pulldown_mask());
   linapple_set_shift_key_mod(joystick_config_shift_key_mod());
 

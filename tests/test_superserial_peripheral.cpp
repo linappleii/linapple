@@ -1764,8 +1764,7 @@ TEST_CASE(
   CHECK((mem[0x16] & 0x01) == 1);
 }
 
-// The sessions below type at the Applesoft prompt, which needs the keyboard
-// card.
+// The sessions type at the Applesoft prompt, which needs the keyboard card.
 #if defined(ENABLE_PERIPHERAL_KEYBOARD)
 namespace {
 

@@ -815,15 +815,12 @@ if(BUILD_TESTING)
         set_source_files_properties(tests/test_keyboard_abi_c.c PROPERTIES COMPILE_OPTIONS "-std=c99;-pedantic")
         add_linapple_test(keyboard-peripheral "tests/test_main.cpp;tests/HeadlessHarness.cpp;tests/test_keyboard_peripheral.cpp;tests/test_keyboard_abi_c.c")
         set_tests_properties(test-keyboard-peripheral PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
-        # A save state from an earlier build of the card; the loader's
-        # compatibility is proven against these bytes.
+        # From an earlier build of the card; the loader must still read it.
         add_test(NAME test-keyboard-fixtures-pinned COMMAND sh -c "sha1sum -c --quiet keyboard-fixtures.sha1"
             WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures")
         set_tests_properties(test-keyboard-fixtures-pinned PROPERTIES TIMEOUT 5)
     endif()
-    # The keyboard, switch-input and boot suites read these ROMs and this
-    # disk on the 6502; pinned so the bytes they are written against cannot
-    # drift.
+    # The suites' expectations are written against these bytes.
     add_test(NAME test-keyboard-roms-pinned COMMAND sh -c
     [=[
 sha1sum -c --quiet <<'EOF'
@@ -836,9 +833,8 @@ EOF
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
     set_tests_properties(test-keyboard-roms-pinned PROPERTIES TIMEOUT 5)
     # The switch inputs are the motherboard's and the key translation the
-    # host's, so their suites are built in every configuration, cards on or
-    # off; the minimal machine's boot needs a drive to boot from and the
-    # speaker it proves silent.
+    # host's, so their suites build in every configuration; the minimal boot
+    # needs a drive and the speaker it proves silent.
     add_linapple_test(switch-inputs "tests/test_main.cpp;tests/HeadlessHarness.cpp;tests/test_switch_inputs.cpp")
     set_tests_properties(test-switch-inputs PROPERTIES TIMEOUT ${PERIPHERAL_TEST_TIMEOUT})
     if(ENABLE_PERIPHERAL_KEYBOARD)
@@ -1078,8 +1074,7 @@ done
         add_linapple_test(disk-config-runtime-insert tests/test_disk_config_runtime_insert.cpp)
         add_linapple_test(disk-config-runtime-eject tests/test_disk_config_runtime_eject.cpp)
         add_linapple_test(headless-boot "tests/HeadlessHarness.cpp;tests/test_headless_boot.cpp")
-        # The DOS session that types and the boot cases that resolve the
-        # keyboard run against the plugin too, so the macro follows the card.
+        # The typing and keyboard-resolving cases need the card, plugin or not.
         if(ENABLE_PERIPHERAL_KEYBOARD)
             target_compile_definitions(test-disk-smoke PRIVATE ENABLE_PERIPHERAL_KEYBOARD)
             target_compile_definitions(test-headless-boot PRIVATE ENABLE_PERIPHERAL_KEYBOARD)
@@ -1253,9 +1248,8 @@ fi
     add_linapple_test(peripheral-lifecycle tests/test_peripheral_lifecycle.cpp)
     add_dependencies(test-peripheral-lifecycle test-plugin-slot0)
     target_compile_definitions(test-peripheral-lifecycle PRIVATE TEST_PLUGIN_DIR="${TEST_PLUGIN_DIR}")
-    # The direct I/O probe reads the switch lines a keyboard holds released
-    # and the timers the game port drives, and the declared machine names a
-    # Mockingboard, with any of the cards a plugin or not.
+    # The direct I/O probe reads the switch lines a keyboard holds released and
+    # the game port's timers, and the declared machine names a Mockingboard.
     foreach(card KEYBOARD JOYSTICK MOCKINGBOARD)
         if(ENABLE_PERIPHERAL_${card})
             target_compile_definitions(test-peripheral-lifecycle PRIVATE ENABLE_PERIPHERAL_${card})
@@ -1266,8 +1260,7 @@ fi
         add_linapple_test(harddisk-exhaustive tests/test_harddisk_exhaustive.cpp)
     endif()
     add_linapple_test(snapshot tests/test_snapshot.cpp)
-    # Each case that declares or names a card is compiled only with that
-    # card, plugin or built-in, so every configuration's suite is green.
+    # A case that names a card compiles only with that card, plugin or built-in.
     foreach(card MOUSE KEYBOARD JOYSTICK PRINTER SUPER_SERIAL MOCKINGBOARD DISK HARDDISK)
         if(ENABLE_PERIPHERAL_${card})
             target_compile_definitions(test-snapshot PRIVATE ENABLE_PERIPHERAL_${card})

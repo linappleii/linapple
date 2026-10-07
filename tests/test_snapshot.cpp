@@ -301,8 +301,8 @@ TEST_CASE("Snapshot: An impossible slot length refuses the file untouched") {
   CHECK(cpu_get_registers()->a == a_before);
 }
 
-// minimal.aws names a Parallel Printer, a Super Serial Card and a
-// Mockingboard, so the cases that load it need all three cards built.
+// minimal.aws names a Parallel Printer, an SSC and a Mockingboard, so the
+// cases that load it need all three cards.
 #if defined(ENABLE_PERIPHERAL_PRINTER) &&      \
     defined(ENABLE_PERIPHERAL_SUPER_SERIAL) && \
     defined(ENABLE_PERIPHERAL_MOCKINGBOARD)
@@ -346,11 +346,9 @@ TEST_CASE("Snapshot: A fixed-body file loads with its slots intact") {
 
   SS_PERIPHERAL_MANIFEST manifest;
   peripheral_get_manifest(&manifest);
-  // The manifest names the front device of each slot; slot 0 holds several
-  // internal devices, the built-ins registered before any module in the
-  // registry's descending-id order, so the front is the first built-in with
-  // default_slot 0: the speaker in a static build, and whichever built-in
-  // remains in a plugin build.
+  // The built-ins register before any module, in descending-id order, so slot
+  // 0's front is the first built-in with default_slot 0: the speaker in a
+  // static build, whichever built-in remains in a plugin build.
   const Peripheral_t* front = nullptr;
   for (const Peripheral_t* p : peripheral_get_builtin_registry()) {
     if (p != nullptr && p->default_slot == 0) {
@@ -600,12 +598,11 @@ constexpr uint16_t addr_keyboard_data = 0xC000;
 constexpr uint16_t addr_keyboard_strobe = 0xC010;
 constexpr uint8_t strobe_bit = 0x80;
 constexpr size_t keyboard_region_size = 552;
-// The CRC-32 of tests/fixtures/minimal.aws as shipped (gzip's trailer over the
-// file), so a rewrite of the fixture shows here as well as in the pin.
+// gzip's CRC-32 of tests/fixtures/minimal.aws as shipped, so a rewrite shows
+// here as well as in the pin.
 constexpr uint32_t minimal_aws_crc32 = 0x1DFDECD4;
 
-// The core takes the model from a process-wide variable that a harness-built
-// machine leaves behind; a core built without one states its own.
+// The model is process-wide and a harness-built machine leaves it behind.
 struct EnhancedIIe_t {
   struct Model_t {
     Apple2Type_t saved = current_apple2_type;
@@ -667,9 +664,8 @@ TEST_CASE(
   REQUIRE(stat(file.c_str(), &written) == 0);
   CHECK(static_cast<size_t>(written.st_size) == 134200);
 
-  // The key up and another typed: the file brings back Z under its strobe,
-  // read before $C010 since that read clears it, and no key down though one
-  // was held at the save.
+  // Z comes back under its strobe, read before $C010 since that read clears
+  // it, and no key is down though one was held at the save.
   release(0x5A);
   press(0x51);
   REQUIRE(keyboard_data() == (0x51 | strobe_bit));
@@ -679,9 +675,8 @@ TEST_CASE(
   CHECK_FALSE(any_key_down());
   CHECK(keyboard_data() == 0x5A);
 
-  // The same file with the keyboard's 552 bytes zeroed and no trailer: the
-  // card refuses a frame of version 0 and stays at reset, and the rest of the
-  // machine loads.
+  // The keyboard's 552 bytes zeroed and no trailer: the card refuses a
+  // version-0 frame and stays at reset while the rest of the machine loads.
   {
     std::fstream patch(file.path(),
                        std::ios::binary | std::ios::in | std::ios::out);

@@ -19,9 +19,8 @@ constexpr uint32_t hid_f1 = keyb_idx_f1;
 // A terminal reports no scancode.
 constexpr uint32_t no_scancode = keyb_idx_unknown;
 
-// The translator's state is process-wide, as the frontends keep it; each case
-// starts from a host whose configuration names nothing, caps down, the US
-// table, symbolic mode and the rocker off, and leaves it so.
+// The translator's state is process-wide, so each case starts from a host
+// whose configuration names nothing, caps down, US, symbolic, rocker off.
 struct ScopedTranslator_t {
   ScopedTranslator_t() { reset(); }
   ~ScopedTranslator_t() { reset(); }
@@ -123,8 +122,7 @@ TEST_CASE(
   CHECK(keyboard_custom_switch(hid_grave) == keyboard_custom_switch_rept);
   CHECK(translate(hid_f1, linapple_key_f1, false, false) == 0x0B);
   CHECK(keyboard_custom_switch(hid_f1) == keyboard_custom_switch_none);
-  // Scancode 5 is B positionally; the symbolic keycode says X, and symbolic
-  // is what it stays.
+  // Scancode 5 is B positionally; the symbolic keycode X is what stays.
   CHECK(translate(hid_b, 'x', false, false) == 0x58);
   CHECK(keyboard_custom_switch(hid_b) == keyboard_custom_switch_none);
   CHECK(keyboard_custom_switch(keyb_map_size) == keyboard_custom_switch_none);

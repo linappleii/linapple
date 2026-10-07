@@ -72,8 +72,8 @@ struct SsIoVideo_t {
   uint32_t vid_mode;
 };
 
-// The keyboard card's frame, carried as bytes: its layout is the card's own
-// ABI, and a build without the card writes zeros here and reads them past.
+// Opaque: the layout is the card's own ABI; a build without the card writes
+// zeros here.
 struct SsKeyboardRegion_t {
   uint8_t bytes[552];
 };

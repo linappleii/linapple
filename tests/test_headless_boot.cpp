@@ -36,9 +36,8 @@ TEST_CASE("Headless: [HL-01] Boot from --d1") {
   CHECK(status.drive0_loaded == true);
   CHECK(status.drive0_last_error == disk_err_none);
 
-  // The self-test screen also says "Apple //e", and its RAM patterns can put
-  // a "]" in column 0, so only a row holding the DOS prompt alone proves the
-  // disk booted.
+  // The self-test screen also says "Apple //e" and its RAM patterns can put a
+  // "]" in column 0, so only a row holding the prompt alone proves the boot.
   harness.boot();
   constexpr uint32_t prompt_frame_cap = 300;
   bool at_prompt = false;

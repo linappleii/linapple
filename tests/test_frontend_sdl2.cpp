@@ -943,12 +943,11 @@ constexpr uint16_t probe_address = 0x0200;
 constexpr uint16_t probe_result = 0x0010;
 constexpr uint32_t probe_cycle_cap = 1000;
 constexpr uint32_t ntsc_frame_cycles = 17030;
-// A II Plus REPT period is 68,032 cycles, four frames; ten frames hold two
-// of them and still fall short of the //e's 32-frame repeat delay.
+// A II Plus REPT period is 68,032 cycles, four frames: ten frames hold two and
+// fall short of the //e's 32-frame repeat delay.
 constexpr uint32_t rept_frames = 10;
 
-// The core takes the model from a process-wide variable a harness-built
-// machine leaves behind; a machine built here states its own first.
+// The model is process-wide and a harness-built machine leaves it behind.
 struct Model_t {
   Apple2Type_t saved = current_apple2_type;
   explicit Model_t(Apple2Type_t type) { current_apple2_type = type; }
@@ -959,10 +958,6 @@ struct Model_t {
   auto operator=(Model_t&&) -> Model_t& = delete;
 };
 
-// The frontend's keyboard on a machine with the internal cards alone: key and
-// window events go through sdl_handle_event as the window would send them,
-// the configuration's keyboard keys are applied as the frontend applies them
-// at start, and the card is read through the memory map as the 6502 reads it.
 struct KeyMachine_t {
   Model_t model;
   TestFixtures::ScopedTestConfig_t config;
@@ -1013,8 +1008,7 @@ struct KeyMachine_t {
   KeyMachine_t(KeyMachine_t&&) = delete;
   auto operator=(KeyMachine_t&&) -> KeyMachine_t& = delete;
 
-  // The command queue is drained by a think, as a running machine drains it
-  // once a frame.
+  // A think drains the command queue, as a running machine does once a frame.
   static auto settle() -> void { peripheral_manager_think(0); }
 
   static auto key(SDL_Scancode scancode, SDL_Keycode keycode, SDL_Keymod mod,
@@ -1075,9 +1069,9 @@ struct KeyMachine_t {
     }
   }
 
-  // After frames have run a direct dispatch would hand the card's bus bridge a
-  // stale cycle count, so the 6502 reads the keyboard itself: LDA $C000 / STA
-  // $10 / NOP, or BIT $C010 / NOP to clear the strobe.
+  // After frames a direct dispatch would hand the bus bridge a stale cycle
+  // count, so the 6502 reads the keyboard itself: LDA $C000 / STA $10 / NOP,
+  // or BIT $C010 / NOP.
   static auto stepped_latch() -> uint8_t {
     const std::array<uint8_t, 6> probe = {0xAD, 0x00, 0xC0, 0x85, 0x10, 0xEA};
     TestFixtures::ScopedCore_t::poke(probe_address, probe);

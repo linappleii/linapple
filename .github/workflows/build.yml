@@ -484,9 +484,7 @@ jobs:
           ldd build-nodisk/linapple
           ! ldd build-nodisk/linapple | grep -E 'libz\.so|libzip\.so'
 
-  # 9. Minimal Peripherals (a Disk II and the speaker, every other card off):
-  #    the headless test tree proves the keyboard-less machine boots a disk,
-  #    and the SDL3 binary a user would build this way compiles clean.
+  # 9. Minimal Peripherals (a Disk II and the speaker, every other card off)
   minimal-peripherals:
     name: Minimal Peripherals (Headless Tests + SDL3 Build)
     runs-on: ubuntu-24.04

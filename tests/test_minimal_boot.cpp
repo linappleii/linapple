@@ -36,27 +36,23 @@ constexpr uint16_t addr_switch1 = 0xC062;
 constexpr uint16_t addr_switch2 = 0xC063;
 constexpr uint16_t addr_paddle0 = 0xC064;
 constexpr uint8_t bit7 = 0x80;
-// The Monitor's cursor horizontal and vertical positions.
 constexpr uint16_t addr_ch = 0x0024;
 constexpr uint16_t addr_cv = 0x0025;
 
 // One NTSC frame of scanner positions, every byte the undriven bus can hold.
 constexpr uint32_t scanner_positions = 17030;
 
-// The Enhanced //e reset reads $C062 at $C2BB and branches at $C2BE: taken to
-// $C2C3 with PB1 low, else JMP $C600 into the self-test (res/roms/
-// Apple2e_Enhanced.rom bytes AD 62 C0 10 03 4C 00 C6; IIe Technical Reference
-// pp. 93-95). With PB0 low too the Open Apple check at $C2C6 falls to $C2E2.
+// The Enhanced //e reset reads $C062 at $C2BB and branches at $C2BE to $C2C3
+// with PB1 low, else JMP $C600 into the self-test (AD 62 C0 10 03 4C 00 C6;
+// IIe Technical Reference pp. 93-95); with PB0 low too $C2C6 falls to $C2E2.
 constexpr uint16_t rom_read_solid_apple = 0xC2BB;
 constexpr uint16_t rom_read_open_apple = 0xC2C3;
 constexpr uint16_t rom_past_apple_keys = 0xC2E2;
 constexpr uint32_t reset_routine_cycle_cap = 100000;
 
-// The prompt alone on a row, with the cursor beside it: the II's Monitor
-// draws the cursor as a flashing space, $60 (Apple II Reference Manual 1979
-// p. 15, codes $40-$7F flash), while the //e's cursor byte is one the harness
-// trims. The //e self-test's RAM patterns can put a "]" in column 0, so a
-// prefix would not do.
+// The II's Monitor draws the cursor as a flashing space, $60 (Apple II
+// Reference Manual 1979 p. 15); the //e's cursor byte the harness trims. The
+// self-test's RAM patterns can put a "]" in column 0, so no prefix would do.
 auto is_prompt_row(const std::string& text) -> bool {
   constexpr char flashing_space = 0x60;
   return text == "]" || text == std::string("]") + flashing_space;
@@ -71,8 +67,6 @@ auto has_prompt_row(const HeadlessHarness_t& harness) -> bool {
   return false;
 }
 
-// Runs one frame at a time until a text row holds the prompt or the cap is
-// spent.
 auto prompt_row_within(HeadlessHarness_t& harness, uint32_t cap) -> bool {
   for (uint32_t frame = 0; frame < cap; ++frame) {
     if (has_prompt_row(harness)) {
@@ -122,10 +116,9 @@ auto describe(TestConfig_t::MachineType_t model,
   return description;
 }
 
-// The sweep after frames have run: the bus bridge a card's handler sits
-// behind takes the cycle count the frame left, so each position is read as
-// that count plus the position, which walks every scanner position once and
-// never hands the bridge a count below the one it last saw.
+// A card's bus bridge takes the cycle count the frame left, so each position
+// is read as that count plus the position: every scanner position once, never
+// a count below the bridge's last.
 struct Sweep_t {
   uint32_t base;
 
@@ -179,9 +172,7 @@ TEST_CASE(
     }
     harness.run_frames(10);
 
-    // Idle at the prompt: the text page, the cursor and the drive stay put,
-    // the speaker's cone is at rest so no sample is delivered, and the video
-    // callback brings one picture a frame.
+    // Idle at the prompt the cone is at rest, so no sample is delivered.
     const std::vector<std::string> prompt_screen = screen(harness);
     const uint8_t ch = *mem_get_main_ptr(addr_ch);
     const uint8_t cv = *mem_get_main_ptr(addr_cv);
@@ -200,11 +191,10 @@ TEST_CASE(
     CHECK(harness.get_audio_sample_count() == audio_before);
     CHECK(g_video_frames == idle_frames);
 
-    // No phantom key: the keyboard reads no key at any scanner position, the
-    // //e's any-key-down flag is down, the II Plus's $C010 is the undriven
-    // bus the cassette input also shows, PB0 and PB1 rest low and PB2 high
-    // through the shipped two-button plug, and with no game port card every
-    // paddle reads high.
+    // No phantom key: the //e's any-key-down is down, the II Plus's $C010 is
+    // the undriven bus the cassette input also shows, PB0 and PB1 rest low and
+    // PB2 high through the shipped two-button plug, and with no game port card
+    // every paddle reads high.
     REQUIRE(last_frame_cycles >= scanner_positions);
     const Sweep_t sweep(last_frame_cycles);
     CHECK(sweep.samples_with_bit7(addr_keyboard_data, false) ==
@@ -228,8 +218,7 @@ TEST_CASE(
       CHECK(sweep.samples_with_bit7(addr_paddle0, true) == scanner_positions);
     }
 
-    // A soft reset brings the prompt back; on the //e the reset routine
-    // reads PB1 low at $C2BB and never enters the self-test.
+    // The //e reset reads PB1 low at $C2BB and skips the self-test.
     harness.reset_soft();
     if (apple2e) {
       TestFixtures::step_until_pc(rom_read_solid_apple,
@@ -259,16 +248,14 @@ constexpr uint16_t rom_self_test = 0xC600;
 constexpr uint16_t rom_loop_test = 0xC794;
 constexpr uint16_t rom_loop_test_restart = 0xC7A1;
 
-// One pass of the self-test, from $C600 to its loop test, is stepped whole so
-// the loop test's single instructions can be seen: 33,558,555 cycles when
-// first measured here, about half a second of host time.
+// One pass of the self-test, $C600 to its loop test, was 33,558,555 cycles
+// when first measured, about half a second of host time.
 constexpr uint32_t self_test_pass_cap = 40000000;
 
 constexpr uint32_t phase_step_cycles = 1931;
 constexpr int phase_count = 16;
 
-// The reset routine stepped to its Solid Apple read, then the read and the
-// branch; the program counter after the branch says which way it went.
+// The program counter after the Apple-key branch says which way it went.
 auto reset_to_apple_key_branch(HeadlessHarness_t& harness) -> uint16_t {
   harness.reset_soft();
   TestFixtures::step_until_pc(rom_read_solid_apple, reset_routine_cycle_cap);
@@ -300,8 +287,7 @@ TEST_CASE(
   cpu_execute(0);
   REQUIRE(cpu_get_registers()->pc == rom_self_test);
 
-  // Once: through a whole pass to the loop test, whose six instructions read
-  // both lines high and restart the test.
+  // The loop test reads both lines high and restarts the test.
   TestFixtures::step_until_pc(rom_loop_test, self_test_pass_cap);
   REQUIRE(cpu_get_registers()->pc == rom_loop_test);
   for (int instruction = 0; instruction < 6; ++instruction) {

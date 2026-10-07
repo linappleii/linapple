@@ -15,11 +15,9 @@ extern "C" {
 
 enum { JOYSTICK_STATE_VERSION = 1 };
 
-// 0x0002-0x0004 stay unassigned: senders built against older headers emit
-// them. 0x0001 (a switch level), 0x0005 (the shift-key mod jumper) and 0x0006
-// (the connector's pull-down mask) are retired and never reused: the three
-// pushbutton inputs are the motherboard's, which composes them from the
-// keyboard, the connector and the pull-downs itself.
+// 0x0001, 0x0005 and 0x0006 are retired, never reused: the pushbutton inputs
+// are the motherboard's now. 0x0002-0x0004 stay unassigned for senders built
+// against older headers.
 typedef enum {
   JOYSTICK_CMD_SET_AXIS = PERIPHERAL_SUBSYSTEM_JOYSTICK | 0x0000
 } JoystickCommand_t;
@@ -31,11 +29,9 @@ typedef struct {
   uint8_t padding;
 } JoystickAxisPayload_t;
 
-// The positions and trim are the player's hands and the host's calibration,
-// and the switch levels the motherboard's, not the port's state: x_pos, y_pos,
-// buttons, trim_x, trim_y and the reserved bytes are written as zeros and read
-// past, and keep their place so every frame ever written loads. A
-// trigger_cycle of 0 is a timer never triggered.
+// x_pos, y_pos, buttons, trim_x, trim_y and the reserved bytes are the host's
+// or the motherboard's, written as zeros and read past; they keep their place
+// so every frame ever written loads. A trigger_cycle of 0 is never triggered.
 typedef struct {
   uint32_t version;
   uint32_t struct_size;

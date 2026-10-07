@@ -31,8 +31,7 @@ static_assert(offsetof(KeyboardSaveState_t, auto_repeat_enabled) == 35,
 
 constexpr uint8_t key_strobe_bit = 0x80;
 constexpr uint8_t key_code_mask = 0x7F;
-// The frame's "no repeat armed" value, which every reader of the frame takes
-// as such; a zero there would arm their repeat for ever.
+// Older readers take a zero here as a repeat armed for ever.
 constexpr uint32_t frame_no_repeat_key = 0xFFFFFFFF;
 
 constexpr int8_t default_slot_internal = 0;
@@ -42,33 +41,26 @@ constexpr uint16_t addr_keyboard_data_hi = 0xC00F;
 constexpr uint16_t addr_keyboard_strobe = 0xC010;
 constexpr uint16_t addr_keyboard_strobe_hi = 0xC01F;
 
-// The IOU starts repeating a held key after 32 to 48 television scans and
-// then sets KEYSTROBE once every four (Sather, Understanding the Apple IIe,
-// 2-17). The delay generator is clocked by F3 of the flash counter (3-18), so
-// the first repeat falls on the F3 edge 32 or more frames after the press: 32
-// to 47 frames by the press frame's phase in F3's 16-frame period. The period
-// and the edge rule are inferred from the 267 ms spread Sather deduces from
-// F3, and the phase is counted in frames since power-on, where the counter
-// starts from its preset.
+// The IOU repeats a held key after 32 to 48 scans, then every four (Sather,
+// Understanding the Apple IIe, 2-17); its delay generator is clocked by F3 of
+// the flash counter (3-18), so the first repeat falls on the F3 edge 32 or
+// more frames after the press. F3's 16-frame period is inferred from Sather's
+// 267 ms spread, its phase counted in frames since power-on.
 constexpr uint64_t repeat_delay_frames = 32;
 constexpr uint64_t repeat_phase_frames = 16;
 constexpr uint64_t repeat_period_frames = 4;
 constexpr uint32_t ntsc_frame_cycles = 17030;
 
 // The II's REPT key runs the 555 at U3 (R3 = 220 k) at about ten presses a
-// second (Apple II Reference Manual 1979, pp. 7 and 102); the II Plus
-// keyboard's AY-5-3600 REPEAT oscillator is enabled by ANY KEY DOWN and REPT
-// together and runs at about 15 Hz (Sather, Understanding the Apple II, 7-46
-// and 7-47). RC oscillators run in wall time, so the period is taken from the
-// clock; the nominal rates and the one-period lead before the first strobe are
-// inferred from C8's short delay and the strobe on the REPEAT clock's fall.
+// second (Apple II Reference Manual 1979, pp. 7 and 102); the II Plus's
+// AY-5-3600 REPEAT oscillator, gated by ANY KEY DOWN, runs at about 15 Hz
+// (Sather, Understanding the Apple II, 7-46, 7-47). Both are RC oscillators,
+// so the period is wall time from the clock.
 constexpr double rept_rate_apple2_hz = 10.0;
 constexpr double rept_rate_apple2_plus_hz = 15.0;
 
 // The //e keyboard is N-key rollover (Sather, Understanding the Apple IIe,
-// 7-11), so no bound is the hardware's; sixteen is more than a hand, and the
-// oldest key is let go when a seventeenth arrives, its own release then
-// ignored.
+// 7-11), so no bound is the hardware's; sixteen is more than a hand.
 constexpr size_t held_key_capacity = 16;
 
 struct KeyboardHardware_t {
@@ -149,8 +141,7 @@ auto disarm(KeyboardPeripheral_t* kp) -> void {
   kp->host->ScheduleEvent(kp, 0);
 }
 
-// KSTRB restarts the delay generator, so every press, a second key's
-// included, counts its 32 frames afresh from its own frame.
+// KSTRB restarts the delay generator, so a second key counts 32 frames afresh.
 auto arm_auto_repeat(KeyboardPeripheral_t* kp) -> void {
   const uint64_t frame = frame_cycles(kp);
   const uint64_t press_frame = kp->host->GetCycles() / frame;
@@ -197,10 +188,9 @@ auto keyboard_io_read_data(void* instance, uint16_t pc, uint16_t addr,
   return data;
 }
 
-// On a //e KEYSTROBE is reset by any access to $C010 or a write to $C01X,
-// and a read of $C010 returns the any-key-down flag over the code (Sather,
-// Understanding the Apple IIe, 7-4 and 2-17; Apple IIe Technical Reference
-// Manual, pp. 12-13).
+// On a //e any access to $C010 or a write to $C01X resets KEYSTROBE, and a
+// read of $C010 returns any-key-down over the code (Sather, Understanding the
+// Apple IIe, 7-4, 2-17; IIe Technical Reference pp. 12-13).
 auto keyboard_io_strobe_apple2e(void* instance, uint16_t pc, uint16_t addr,
                                 uint8_t write, uint8_t val,
                                 uint32_t executed_cycles) -> uint8_t {
@@ -223,9 +213,9 @@ auto keyboard_io_strobe_apple2e(void* instance, uint16_t pc, uint16_t addr,
   return data;
 }
 
-// On a II or II Plus any access to $C01X, read or write, resets the strobe
-// flip-flop at B10, and nothing drives the bus on the read (Sather,
-// Understanding the Apple II, 7-4, 7-5 and 5-25).
+// On a II any access to $C01X resets the strobe flip-flop at B10 and nothing
+// drives the bus on the read (Sather, Understanding the Apple II, 7-4, 7-5,
+// 5-25).
 auto keyboard_io_strobe_apple2(void* instance, uint16_t pc, uint16_t addr,
                                uint8_t write, uint8_t val,
                                uint32_t executed_cycles) -> uint8_t {
@@ -242,9 +232,8 @@ auto keyboard_io_strobe_apple2(void* instance, uint16_t pc, uint16_t addr,
   return kp->host->ReadFloatingBus(executed_cycles);
 }
 
-// Better no card than a phantom one: without these members the keyboard
-// cannot be reached, timed or told which board it is on, and the log names
-// the missing one.
+// Better no card than a phantom one that cannot be reached, timed or told its
+// board; the log names the missing member.
 auto missing_host_member(const HostInterface_t* host) -> const char* {
   if (host->RegisterDirectIO == nullptr) {
     return "RegisterDirectIO";
@@ -319,13 +308,10 @@ auto keyboard_abi_init(int slot, HostInterface_t* host) -> void* {
   return kp_ptr.release();
 }
 
-// A hard reset is power-on: the power-up pulse resets the strobe flip-flop
-// (Sather, Understanding the Apple II, 7-15) and every soft switch appears
-// cleared (Understanding the Apple IIe, 7-5); what the latch holds then is
-// not documented, and 0 is taken. A key physically held through the reset is
-// gone from the set until its next press. The bridge never calls this for a
-// soft reset: RESET' leaves the keyboard latch alone (Understanding the Apple
-// II, 6-17) and the Monitor clears the strobe itself with BIT $C010.
+// A hard reset is power-on: the power-up pulse clears the strobe flip-flop
+// (Sather, Understanding the Apple II, 7-15) and the latch's contents are
+// undocumented, so 0. The bridge never calls this for a soft reset: RESET'
+// leaves the latch alone (6-17) and the Monitor clears the strobe itself.
 auto keyboard_abi_reset(void* instance) -> void {
   if (instance == nullptr) {
     return;
@@ -346,8 +332,8 @@ auto keyboard_abi_shutdown(void* instance) -> void {
       static_cast<KeyboardPeripheral_t*>(instance));
 }
 
-// A wake and a command drain's think look alike, so time is kept by GetCycles
-// against the armed cycle and never by the argument.
+// A wake and a command drain's think look alike, so time is GetCycles against
+// the armed cycle, never the argument.
 auto keyboard_abi_think(void* instance, uint32_t cycles) -> void {
   (void)cycles;
   if (instance == nullptr) {
@@ -403,10 +389,8 @@ auto release_key(KeyboardPeripheral_t* kp, uint32_t host_key) -> void {
 }
 
 // REPT alone on a II produces "a duplicate of the last code that was
-// generated" (Apple II Reference Manual 1979, p. 7), one strobe with the latch
-// unchanged, a reading Sather's account of the MM5740 keyboard never
-// mentions; on the II Plus keyboard the oscillator is gated by ANY KEY DOWN,
-// so REPT alone does nothing. A //e has no REPT key.
+// generated" (Apple II Reference Manual 1979, p. 7); the II Plus's oscillator
+// is gated by ANY KEY DOWN, so REPT alone does nothing. A //e has no REPT key.
 auto set_rept(KeyboardPeripheral_t* kp, bool down) -> void {
   kp->logic.rept_down = down;
   if (kp->machine == peripheral_machine_apple2e) {
@@ -501,10 +485,8 @@ auto keyboard_abi_save_state(void* instance, void* buffer, size_t* size)
   ss->current_latch = kp->logic.current_latch;
   ss->strobe = kp->logic.strobe ? 1U : 0U;
   // The held keys and a repeat in progress are the player's hands, not the
-  // machine's, so the frame says no key is down and no repeat is armed. A
-  // reader that still keeps caps lock and auto-repeat in this frame takes
-  // these bytes as its state; caps down and repeat on are what it starts
-  // with, so the file changes nothing for it.
+  // machine's. An older reader still keeps caps and auto-repeat here, and caps
+  // down and repeat on are what it starts with.
   ss->repeat_key = frame_no_repeat_key;
   ss->caps_lock = 1;
   ss->auto_repeat_enabled = 1;
@@ -513,8 +495,7 @@ auto keyboard_abi_save_state(void* instance, void* buffer, size_t* size)
   return peripheral_ok;
 }
 
-// A buffer longer than the frame is read up to the frame's own struct_size;
-// a frame of another version or size is refused with the card untouched.
+// A longer buffer loads up to struct_size; another version or size is refused.
 auto keyboard_abi_load_state(void* instance, const void* buffer, size_t size)
     -> PeripheralStatus_t {
   if (instance == nullptr || buffer == nullptr ||
@@ -527,9 +508,8 @@ auto keyboard_abi_load_state(void* instance, const void* buffer, size_t size)
     return peripheral_error;
   }
 
-  // The latch and the strobe are the bus-visible state; everything else in
-  // the frame is the hands of whoever wrote it or configuration that lives in
-  // the host, and is read past.
+  // Only the latch and the strobe are the machine's; the rest of the frame is
+  // the writer's hands or host configuration, read past.
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
   kp->logic.current_latch = ss->current_latch & key_code_mask;
   kp->logic.strobe = (ss->strobe != 0);

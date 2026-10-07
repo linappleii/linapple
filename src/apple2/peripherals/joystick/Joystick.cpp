@@ -18,12 +18,11 @@ namespace {
 
 // The 74LS251 behind $C060-$C06F puts one input on D7 alone, selected by
 // A0-A2; A3 is not decoded, so $C068-$C06F mirror $C060-$C067, and bits 0-6
-// are the undriven bus. Inputs 0-3, the cassette input and the three
-// pushbutton lines the keyboard and the connector drive together, are the
-// motherboard's; the card answers inputs 4-7, its four timers. Any access to
-// $C070-$C07F triggers all four. $C07F stays with the motherboard: on the //e
-// its read answers RDDHIRES. (Apple II Reference Manual 1979 pp. 78-79, 99;
-// Sather 7-8; IIe Tech Ref pp. 29, 41, 187.)
+// are the undriven bus. Inputs 0-3 are the motherboard's; the card answers
+// inputs 4-7, its four timers, and any access to $C070-$C07F triggers all
+// four. $C07F stays with the motherboard: on the //e it reads RDDHIRES (Apple
+// II Reference Manual 1979 pp. 78-79, 99; Sather 7-8; IIe Tech Ref pp. 29,
+// 41, 187).
 constexpr uint16_t addr_mux_first = 0xC060;
 constexpr uint16_t addr_mux_last = 0xC06F;
 constexpr uint16_t addr_trigger_first = 0xC070;
@@ -249,8 +248,8 @@ static_assert(offsetof(JoystickSaveState_t, trim_y) == 50,
 static_assert(offsetof(JoystickSaveState_t, reserved1) == 52,
               "the fields after the triggers keep their place");
 
-// Four trigger cycles are the whole state; positions and trim are the host's,
-// the switch levels the motherboard's, and all go out as zeros.
+// Positions, trim and switch levels are the host's or the motherboard's and go
+// out as zeros.
 auto joystick_abi_save_state(void* instance, void* state_buffer,
                              size_t* buffer_size) -> PeripheralStatus_t {
   if (buffer_size == nullptr) {
@@ -314,8 +313,7 @@ static const Peripheral_t joystick_peripheral = {
     .compatible_slots = PERIPHERAL_MASK_INTERNAL,
     .default_slot = 0,
     .init = joystick_abi_init,
-    // RESET' does not reach the NE558 (its RESET pin is unused, Sather 7-11),
-    // so a pulse in flight runs out on its own.
+    // RESET' does not reach the NE558 (its RESET pin is unused, Sather 7-11).
     .reset = nullptr,
     .shutdown = joystick_abi_shutdown,
     .think = nullptr,

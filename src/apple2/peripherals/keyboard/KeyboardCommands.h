@@ -18,11 +18,9 @@ enum { KEYBOARD_STATE_VERSION = 1, KEYBOARD_MAP_SIZE = 128 };
 
 /* The keyboard hands the motherboard a seven-bit code and a strobe (Apple II
  * Reference Manual 1979, p. 6; Apple IIe Technical Reference Manual, p. 13),
- * so that is what the card takes. Which host key means which code, under
- * which layout, caps state or custom table, is the host's business. Command
- * indices 0x0001 to 0x0008 and query indices 0x0001 and 0x0002 once carried
- * host keys and host configuration for the card to translate; they are
- * retired and never reused. */
+ * so that is what the card takes; translation is the host's. Command indices
+ * 0x0001-0x0008 and query indices 0x0001-0x0002 once carried host keys and
+ * are retired, never reused. */
 typedef enum {
   keyboard_cmd_key =
       PERIPHERAL_SUBSYSTEM_KEYBOARD | 0x0009, /**< data: KeyboardKeyEvent_t */
@@ -32,10 +30,9 @@ typedef enum {
   keyboard_cmd_rept = PERIPHERAL_SUBSYSTEM_KEYBOARD | 0x000B
 } KeyboardCmd_t;
 
-/* host_key is the host's own identity for the key, so that a release pairs
- * with its press whatever the modifiers did in between; the card never
- * interprets it. apple_code is the seven-bit code the keyboard would put on
- * the bus, 0..127; a value above is refused. */
+/* host_key is the host's identity for the key, so a release pairs with its
+ * press whatever the modifiers did in between; the card never interprets it.
+ * An apple_code above 127 is refused. */
 typedef struct {
   uint32_t host_key;
   uint8_t apple_code;
@@ -43,10 +40,9 @@ typedef struct {
   uint8_t reserved[6];
 } KeyboardKeyEvent_t;
 
-/* The 552-byte frame every .aws written so far carries. The card restores
- * current_latch and strobe and reads the rest past: the held keys and a
- * repeat in progress are the player's hands, and the custom maps, layout,
- * rocker and caps bytes are host configuration that lives in the host. */
+/* The 552-byte frame every .aws written so far carries. Only current_latch
+ * and strobe are restored; the held keys, the repeat and the map, layout,
+ * rocker and caps bytes are the player's hands or host configuration. */
 typedef struct {
   uint32_t version;
   uint32_t struct_size;

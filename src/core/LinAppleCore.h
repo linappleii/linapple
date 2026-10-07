@@ -176,9 +176,8 @@ auto linapple_get_frame_cycles() noexcept -> uint32_t;
 auto linapple_get_turbo() noexcept -> bool;
 auto linapple_set_turbo(bool turbo) noexcept -> void;
 // Whether a spinning drive runs the machine at full speed; returns the
-// previous setting. A key held across a full-speed batch is held for a
-// hundred frames, which a //e repeats, so a host that types by frames turns
-// this off while it types.
+// previous setting. A key held across a full-speed batch is held for a hundred
+// frames, which a //e repeats.
 auto linapple_set_disk_turbo(bool enabled) noexcept -> bool;
 auto linapple_toggle_turbo() noexcept -> bool;
 auto linapple_is_full_speed() noexcept -> bool;
@@ -213,30 +212,26 @@ auto peripheral_query_by_id(int slot, const char* peripheral_id,
                             uint32_t cmd_id, void* out, size_t* out_size)
     -> PeripheralStatus_t;
 
-// The keyboard as the motherboard sees it: a seven-bit code under a strobe.
-// host_key is the host's identity for the key, so that its release pairs with
-// its press whatever the modifiers did in between; linapple_set_key_state is
-// the convenience for a caller whose key is the code itself.
+// A seven-bit code under a strobe, as the motherboard sees it; host_key pairs
+// a release with its press whatever the modifiers did in between.
 auto linapple_set_key(uint32_t host_key, uint8_t apple_code, bool down) -> void;
 auto linapple_set_key_state(uint8_t apple_code, bool down) -> void;
 // The REPT key of a II or II Plus keyboard; a //e has none.
 auto linapple_set_rept(bool down) -> void;
-// Every key and switch the host held is let go, as when the window loses
-// focus and the releases never arrive.
+// Every key and switch the host held is let go, as on focus loss.
 auto linapple_set_key_release_all() -> void;
 auto linapple_set_modifiers(bool shift, bool ctrl, bool open_apple,
                             bool solid_apple) -> void;
 auto linapple_get_modifiers(bool* shift, bool* ctrl, bool* open_apple,
                             bool* solid_apple) -> void;
-// The //e keyboard's rocker switch selects the local half of the keyboard ROM
-// and of the character generator (Apple IIe Technical Reference Manual, p.
-// 10), so it is machine state the keyboard translation and the video share.
+// The rocker switch selects the local half of the keyboard ROM and of the
+// character generator (Apple IIe Technical Reference Manual, p. 10), so
+// keyboard translation and video share it.
 auto linapple_set_rocker_switch(bool local) -> void;
 auto linapple_get_rocker_switch() -> bool;
-// The game connector's side of the motherboard's switch inputs: a button on
-// line 0-2 (PB0-PB2), the lines a controller plug's resistors pull down, one
-// bit per line, and the //e board's shift-key mod jumper. The keyboard's side
-// of the same lines is linapple_set_modifiers.
+// The game connector's side of the switch inputs: a button on PB0-PB2, the
+// lines a plug's resistors pull down and the //e's shift-key mod jumper. The
+// keyboard's side is linapple_set_modifiers.
 auto linapple_set_game_switch(uint8_t line, bool down) -> void;
 auto linapple_set_game_pulldowns(uint8_t mask) -> void;
 auto linapple_set_shift_key_mod(bool jumper_in) -> void;

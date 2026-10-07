@@ -57,11 +57,9 @@ auto switch_inputs_override_pulldowns(int mask) -> void {
       mask < 0 ? override_none : (mask & pulldown_mask_all);
 }
 
-// The //e keyboard's 470 ohm resistors on PB0 and PB1 (Technical Note #9:
-// "the low level is ensured by the 470-ohm keyboard pulldown resistor alone";
-// Sather IIe 7-8, Figure 7.4) are on the keyboard, not the board, so they go
-// with it. A II or II Plus keyboard carries none. The plug's resistors add to
-// whatever the keyboard brings.
+// The 470 ohm pull-downs on PB0 and PB1 are on the //e keyboard, not the board
+// (Apple IIe Technical Note #9; Sather IIe 7-8, Figure 7.4), so they go with
+// it; a II or II Plus keyboard carries none.
 auto switch_inputs_pulldowns() -> uint8_t {
   if (g_switch_inputs.override_pulldowns != override_none) {
     return static_cast<uint8_t>(g_switch_inputs.override_pulldowns);
@@ -73,11 +71,9 @@ auto switch_inputs_pulldowns() -> uint8_t {
   return mask;
 }
 
-// A closed switch puts +5 V on the line, whichever device closes it. The
-// shift key reaches PB2 only through the mod, which grounds the line while
-// shift is down and leaves it at 1 k to +5 V otherwise, so with the jumper in
-// a connector button on PB2 changes nothing (IIe Technical Reference p. 41;
-// Sather IIe 7-31).
+// The shift-key mod grounds PB2 while shift is down and holds it at 1 k to
+// +5 V otherwise, so with the jumper in a connector button on PB2 changes
+// nothing (IIe Technical Reference p. 41; Sather IIe 7-31).
 auto switch_inputs_level(uint8_t line) -> bool {
   if (line >= switch_input_count) {
     return false;

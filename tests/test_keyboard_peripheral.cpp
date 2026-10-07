@@ -52,8 +52,7 @@ constexpr size_t frame_size = 552;
 constexpr uint32_t foreign_joystick_id = PERIPHERAL_SUBSYSTEM_JOYSTICK | 0x0001;
 constexpr uint32_t foreign_disk_id = PERIPHERAL_SUBSYSTEM_DISK | 0x0003;
 constexpr uint32_t unknown_keyboard_id = PERIPHERAL_SUBSYSTEM_KEYBOARD | 0x00FF;
-// A scanner byte with bit 7 set: what the bus holds while the text page is
-// full of normal spaces.
+// The bus byte while the text page is full of normal spaces: bit 7 set.
 constexpr uint8_t bus_marker = 0xA0;
 constexpr uint16_t program_base = 0x0300;
 constexpr uint32_t program_cycle_cap = 1000;
@@ -66,16 +65,15 @@ constexpr uint64_t repeat_period_cycles =
 // A strobe is seen within one observer iteration of its wake, and the wake
 // within one instruction of the armed cycle.
 constexpr int64_t observer_tolerance = 45;
-// The Monitor's reset routine, the Apple-key checks included, is done inside
-// a tenth of a second; the bell that follows them, WAIT $40 and 192 half
-// cycles of WAIT $0C, is another 117,000 cycles (Monitor listing, $FBDD).
+// The reset routine, Apple-key checks included, is done inside a tenth of a
+// second; the bell after it, WAIT $40 and 192 half cycles of WAIT $0C, is
+// another 117,000 cycles (Monitor listing, $FBDD).
 constexpr uint32_t reset_routine_cycle_cap = 100000;
 constexpr uint32_t reset_and_bell_cycle_cap = 250000;
 constexpr int text_rows = 24;
 
-// Monitor and Applesoft entry points, read from res/roms (Apple II Reference
-// Manual 1979, Monitor listing; Apple IIe Technical Reference Manual, Monitor
-// listings; both ROMs re-read with xxd).
+// Read from res/roms with xxd against the Monitor listings (Apple II
+// Reference Manual 1979; Apple IIe Technical Reference Manual).
 constexpr uint16_t rom_reset = 0xFA62;
 constexpr uint16_t rom_reset_clears_strobe = 0xFA7E;  // BIT $C010
 constexpr uint16_t rom_reset_bell = 0xFF3A;           // JSR $FF3A at $FA82
@@ -102,8 +100,7 @@ constexpr uint16_t rom_2e_scribble_pages = 0xC2C8;
 constexpr uint16_t rom_2e_past_apple_keys = 0xC2E2;
 constexpr uint16_t rom_2e_self_test = 0xC600;
 
-// The signed distance of a measured cycle from the one expected, so a failure
-// shows how far off it was.
+// Signed, so a failure shows how far off the cycle was.
 auto error_of(uint64_t value, uint64_t expected) -> int64_t {
   return static_cast<int64_t>(value) - static_cast<int64_t>(expected);
 }
@@ -115,9 +112,8 @@ auto describe(TestConfig_t::MachineType_t model)
   return description;
 }
 
-// Every program counter the 6502 visited, one instruction at a time, until
-// the sentinel or the cap: the branches a reset routine took are its order
-// of visits, not a cycle literal.
+// The branches a reset routine took are its order of visits, not a cycle
+// literal.
 struct Trace_t {
   std::vector<uint16_t> pcs;
   bool reached = false;
@@ -144,9 +140,9 @@ auto visited(const Trace_t& trace, uint16_t pc) -> bool {
   return false;
 }
 
-// A byte read by the 6502 itself, LDA addr / STA $10 / NOP at $0200, with the
-// registers put back afterwards: a direct dispatch after frames or a stepped
-// I/O instruction would hand the bus bridge a stale cycle count.
+// LDA addr / STA $10 / NOP at $0200, registers put back: a direct dispatch
+// after frames or a stepped I/O instruction would hand the bus bridge a stale
+// cycle count.
 auto peek(uint16_t addr) -> uint8_t {
   constexpr uint16_t probe_base = 0x0200;
   constexpr uint16_t probe_store = 0x0010;
@@ -196,8 +192,7 @@ auto boot_to_prompt(HeadlessHarness_t& harness) -> void {
   REQUIRE(find_row(harness, "]") >= 0);
 }
 
-// A key held for two frames and let go for two, through the bridge as the
-// harness types; the repeat delay is far longer.
+// Held two frames and released two; the repeat delay is far longer.
 auto tap(HeadlessHarness_t& harness, uint8_t code) -> void {
   linapple_set_key_state(code, true);
   harness.run_frames(2);
@@ -218,8 +213,8 @@ struct BenchHandler_t {
   PeripheralIOHandler write;
 };
 
-// A host built by hand, for what the real one cannot show: the handlers a
-// card registers, the status a call returns and the line it logs.
+// For what the real host cannot show: the handlers registered, the status
+// returned and the line logged.
 class BenchHost_t {
  public:
   explicit BenchHost_t(
@@ -355,8 +350,7 @@ class BenchHost_t {
 BenchHost_t* BenchHost_t::s_active = nullptr;
 PeripheralMachine_t BenchHost_t::s_machine = peripheral_machine_apple2e;
 
-// The command queue is drained by a think, as a running machine drains it
-// once a frame.
+// A think drains the command queue, as a running machine does once a frame.
 auto settle() -> void { peripheral_manager_think(0); }
 
 auto press(uint32_t host_key, uint8_t code) -> void {
@@ -377,8 +371,8 @@ auto keyboard_data() -> uint8_t {
   return io_map_dispatch(0, addr_keyboard_data, 0, 0, 0);
 }
 
-// A program poked at $0300 and stepped to its final NOP, as the Monitor would
-// run it; the byte after the program's last store is the sentinel.
+// Stepped to its final NOP, as the Monitor would run it; the byte after the
+// last store is the sentinel.
 template <size_t N>
 auto run_program(const std::array<uint8_t, N>& program) -> void {
   TestFixtures::ScopedCore_t::poke(program_base, program);
@@ -388,14 +382,12 @@ auto run_program(const std::array<uint8_t, N>& program) -> void {
   REQUIRE(cpu_get_registers()->pc == sentinel);
 }
 
-// A 6502 loop at $0300 that spins on $C000 bit 7, clears each strobe it sees
-// through $C010, and records the 24-bit iteration count it saw it at in a
-// table at $0380 (low byte), $03C0 (middle) and $0340 (high); the count runs
-// in $08-$0A and the number of strobes seen in $06. The idle iteration is 15
-// cycles, so each strobe's cycle is known to one iteration, which tells
-// 68,120 from 68,000 inside one interval. An iteration whose count carries
-// into the middle byte pays 7 cycles more, one that carries into the high
-// byte 11, and each recorded strobe 38, which the arithmetic puts back.
+// Spins on $C000 bit 7, clears each strobe through $C010 and records the
+// 24-bit iteration count at $0380 (low), $03C0 (middle) and $0340 (high); the
+// count runs in $08-$0A and the strobes seen in $06. The idle iteration is 15
+// cycles, so a strobe's cycle is known to one iteration, which tells 68,120
+// from 68,000; a carry into the middle byte costs 7 more, into the high byte
+// 11, and a recorded strobe 38, which the arithmetic puts back.
 struct StrobeObserver_t {
   static constexpr uint16_t table_low = 0x0380;
   static constexpr uint16_t table_middle = 0x03C0;
@@ -436,7 +428,6 @@ struct StrobeObserver_t {
     return low | (middle << 8) | (high << 16);
   }
 
-  // The cycle, since power-on, at which the k-th recorded strobe was read.
   auto read_cycle(size_t k) const -> uint64_t {
     const uint64_t n = iteration(k);
     return start_cycle + idle_iteration_cycles * (n - 1) +
@@ -452,8 +443,8 @@ struct StrobeObserver_t {
   static auto latch() -> uint8_t { return peek(addr_keyboard_data); }
 };
 
-// Runs whole frames until the machine stands at a frame boundary whose frame
-// number has the asked phase in the flash counter's sixteen-frame period.
+// Runs to a frame boundary whose frame number has the asked phase in F3's
+// sixteen-frame period.
 auto run_to_phase(HeadlessHarness_t& harness, uint64_t phase,
                   uint64_t frame_cycles) -> uint64_t {
   constexpr uint64_t phase_frames = 16;
@@ -468,9 +459,8 @@ auto run_to_phase(HeadlessHarness_t& harness, uint64_t phase,
   return 0;
 }
 
-// One press on a //e: the strobe the press itself sets is the table's first
-// entry, the first repeat lands on F3's edge 32 or more frames after the press
-// frame, and the repeats then come every four frames.
+// The press's own strobe is the first entry; the first repeat lands on F3's
+// edge 32 or more frames after the press frame, then every four.
 auto check_repeat_from_press(HeadlessHarness_t& harness,
                              StrobeObserver_t& observer, uint64_t press_frame,
                              uint64_t expected_delay_frames,
@@ -505,8 +495,7 @@ auto check_repeat_from_press(HeadlessHarness_t& harness,
   release(4);
 }
 
-// The core takes the model from a process-wide variable that a harness-built
-// machine leaves behind; a core built without one states its own.
+// The model is process-wide and a harness-built machine leaves it behind.
 struct EnhancedIIe_t {
   struct Model_t {
     Apple2Type_t saved = current_apple2_type;
@@ -524,8 +513,7 @@ struct EnhancedIIe_t {
 
 using Frame_t = std::array<uint8_t, frame_size>;
 
-// The frame this card writes after Z is held with the strobe set: the header,
-// no key down, the "no repeat armed" word, the latch and the strobe, and the
+// Header, no key down, the no-repeat word, the latch and strobe, and the
 // caps-down and repeat-on bytes an older reader takes as its state.
 auto frame_after_z_held() -> Frame_t {
   Frame_t frame{};
@@ -538,9 +526,9 @@ auto frame_after_z_held() -> Frame_t {
   return frame;
 }
 
-// The frame an earlier card wrote after the same Z with caps off, the rocker
-// on, the French table, repeat off and one custom key: one key counted, the
-// repeat armed on Z, and the configuration bytes that now live in the host.
+// An earlier card's frame after the same Z: caps off, rocker on, the French
+// table, repeat off and one custom key, with one key counted and the repeat
+// armed on Z.
 auto frame_from_earlier_card() -> Frame_t {
   Frame_t frame{};
   const std::array<uint8_t, 36> head = {
@@ -590,8 +578,7 @@ TEST_CASE(
   CHECK(descriptor->command != nullptr);
   CHECK(descriptor->query != nullptr);
 
-  // A machine brought up by the bridge has the keyboard in slot 0 beside the
-  // speaker, and the bridge's own probe finds it there.
+  // The bridge puts the keyboard in slot 0 beside the speaker.
   EnhancedIIe_t machine;
   CHECK(peripheral_present(0, "linapple.keyboard"));
   CHECK(peripheral_present(0, "linapple.speaker"));
@@ -869,9 +856,8 @@ TEST_CASE(
   press('a', 0x61);
 
   // LDA $C000 / STA $10 / LDA $C000 / STA $11 / BIT $C010 / LDA $C000 /
-  // STA $12 / NOP: KEYIN's own pattern, the strobe cleared only by the BIT
-  // (Apple IIe Technical Reference Manual, p. 13; Sather, Understanding the
-  // Apple IIe, 7-4).
+  // STA $12 / NOP: KEYIN's pattern, the strobe cleared only by the BIT (IIe
+  // Technical Reference p. 13; Sather IIe 7-4).
   const std::array<uint8_t, 19> read_twice_then_clear = {
       0xAD, 0x00, 0xC0, 0x85, 0x10, 0xAD, 0x00, 0xC0, 0x85, 0x11,
       0x2C, 0x10, 0xC0, 0xAD, 0x00, 0xC0, 0x85, 0x12, 0xEA};
@@ -985,8 +971,8 @@ TEST_CASE(
   StrobeObserver_t observer;
 
   // Sather's 32 to 48 scans (Understanding the Apple IIe, 2-17) with the
-  // delay generator clocked by F3 of the flash counter (3-18): the first
-  // repeat falls on F3's edge 32 or more frames after the press frame.
+  // delay generator clocked by F3 (3-18): the first repeat falls on F3's edge
+  // 32 or more frames after the press frame.
   struct Phase_t {
     uint64_t press_frame;
     uint64_t delay_frames;
@@ -1157,9 +1143,8 @@ TEST_CASE(
   harness.run_frames(120);
   CHECK(StrobeObserver_t::strobes() == 1);
 
-  // The 555 at U3 with R3 = 220 k runs at about ten presses a second (Apple
-  // II Reference Manual 1979, pp. 7 and 102), wall time, so the period is the
-  // clock over ten.
+  // The 555 at U3 with R3 = 220 k runs at about ten presses a second, wall
+  // time (Apple II Reference Manual 1979, pp. 7 and 102).
   const uint64_t rept_period =
       static_cast<uint64_t>(linapple_get_clock_hz() / 10.0);
   const uint64_t rept_cycle = cpu_get_cumulative_cycles();
@@ -1212,8 +1197,7 @@ TEST_CASE(
   HeadlessHarness_t harness(config);
   harness.boot();
 
-  // The text page full of normal spaces makes the undriven bus a literal $A0
-  // whatever the scanner is fetching.
+  // The text page full of normal spaces makes the undriven bus a literal $A0.
   const std::array<uint8_t, 0x0400> spaces = [] {
     std::array<uint8_t, 0x0400> page{};
     page.fill(0xA0);
@@ -1244,9 +1228,8 @@ TEST_CASE(
 
   // LDA $C083 / LDA $C011 / STA $10 / LDA $C000 / STA $11 / LDA $C08B /
   // LDA $C011 / STA $12 / LDA $C000 / STA $13 / NOP: $C080-$C087 select bank
-  // 2 and $C088-$C08F bank 1, and $C011 reports which (IIe Technical
-  // Reference p. 141; Sather, Understanding the Apple IIe, 5-24); the strobe
-  // is cleared by no read of $C011-$C01F (Sather IIe 7-4).
+  // 2 and $C088-$C08F bank 1, which $C011 reports (IIe Technical Reference
+  // p. 141; Sather IIe 5-24); no read of $C011-$C01F clears the strobe (7-4).
   const std::array<uint8_t, 27> program = {
       0xAD, 0x83, 0xC0, 0xAD, 0x11, 0xC0, 0x85, 0x10, 0xAD,
       0x00, 0xC0, 0x85, 0x11, 0xAD, 0x8B, 0xC0, 0xAD, 0x11,
@@ -1266,8 +1249,8 @@ TEST_CASE(
   HeadlessHarness_t harness(config);
   harness.boot();
 
-  // JSR $FD1B / NOP; the Monitor's BASL points the cursor store at the top of
-  // the text page, as it does after a cold start.
+  // JSR $FD1B / NOP; BASL points the cursor store at the top of the text
+  // page, as after a cold start.
   const std::array<uint8_t, 4> caller = {0x20, 0x1B, 0xFD, 0xEA};
   const uint16_t sentinel = program_base + 3;
   const std::array<uint8_t, 2> basl = {0x00, 0x04};
@@ -1311,8 +1294,7 @@ TEST_CASE(
   const uint32_t seed_after =
       *mem_get_main_ptr(0x4E) |
       (static_cast<uint32_t>(*mem_get_main_ptr(0x4F)) << 8);
-  // Each pass through the loop, INC $4E / BNE / BIT $C000 / BPL, is 15 cycles
-  // and counts once.
+  // Each pass, INC $4E / BNE / BIT $C000 / BPL, is 15 cycles and counts once.
   CHECK(seed_after >= spin_cap / 15 - 2);
 }
 
@@ -1417,9 +1399,9 @@ TEST_CASE(
 
   harness.type_string("FOR I=1 TO 500:PRINT I:NEXT\r", 2);
   harness.run_frames(3);
-  // COUT1 looks at $C000 for $93 after every carriage return and then waits
-  // at $FB85 for a fresh strobe (Monitor listing, $FB85-$FB94); the key is
-  // let go well inside the repeat delay, so nothing re-strobes by itself.
+  // After a carriage return COUT1 looks at $C000 for $93, clears the strobe
+  // at $FB85 and waits at $FB88 for a fresh one ($FB78-$FB94); the key is let
+  // go inside the repeat delay, so nothing re-strobes.
   linapple_set_key_state(0x13, true);
   harness.run_frames(3);
   linapple_set_key_state(0x13, false);
@@ -1529,9 +1511,8 @@ TEST_CASE(
   CHECK_FALSE(visited(released, rom_2e_self_test_jump));
   CHECK_FALSE(visited(released, rom_2e_scribble_pages));
 
-  // Open Apple held, then the host's hands leave the window: the release of
-  // every key lets go of the Apple keys as well, and the next reset reads them
-  // up.
+  // Open Apple held, then focus lost: the release of every key lets go of the
+  // Apple keys too, and the next reset reads them up.
   linapple_set_modifiers(false, false, true, false);
   settle();
   linapple_set_key_release_all();
@@ -1542,8 +1523,8 @@ TEST_CASE(
   CHECK_FALSE(visited(let_go, rom_2e_scribble_pages));
   CHECK_FALSE(visited(let_go, rom_2e_self_test_jump));
 
-  // Solid Apple: the self-test, which puts its title on the top row and then
-  // fills the screen with its RAM patterns, which no boot does.
+  // Solid Apple: the self-test titles the top row and fills the screen with
+  // its RAM patterns, which no boot does.
   linapple_set_modifiers(false, false, false, true);
   settle();
   harness.reset_soft();
@@ -1566,7 +1547,7 @@ TEST_CASE(
 namespace {
 
 // The national character ROM is chosen when the core comes up, so the
-// language is set before the machine and put back after it.
+// language is set before the machine.
 struct GermanCharacterRom_t {
   Apple2Language_t saved = linapple_get_language();
   GermanCharacterRom_t() { linapple_set_language(A2LANG_DE); }
@@ -1596,9 +1577,9 @@ TEST_CASE(
   EnhancedIIe_t machine;
   REQUIRE_FALSE(linapple_get_rocker_switch());
 
-  // Row 0, normal video: the letters and the seven code points the German
-  // keyboard ROM's local half gives umlauts and the sharp s ($40, $5B-$5D,
-  // $7B-$7E), with the top bit set for normal video.
+  // Row 0, normal video: the letters and the eight code points the German
+  // keyboard ROM's local half gives its own glyphs ($40, $5B-$5D, $7B-$7E),
+  // with the top bit set.
   const char* text = "ABCDEFGHIJKLMNOPQRSTUVWXYZ @[\\]{|}~ 1234";
   std::array<uint8_t, 40> row{};
   for (size_t i = 0; i < row.size(); ++i) {

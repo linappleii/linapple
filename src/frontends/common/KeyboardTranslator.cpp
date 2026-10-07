@@ -78,10 +78,9 @@ static auto is_lower_letter(uint32_t code) -> bool {
   return code >= 'a' && code <= 'z';
 }
 
-// The shift and control legs of a key once its three codes are known: the
-// shift column where the table has one, else the upper-case fold; CAPS LOCK
-// folds the unshifted letters (Apple IIe Technical Reference Manual, Table
-// 2-3); control clears bits 5 and 6 unless the table says otherwise.
+// Shift takes the table's column where it has one, else the upper-case fold;
+// CAPS LOCK folds the unshifted letters (Apple IIe Technical Reference Manual,
+// Table 2-3); control clears bits 5 and 6 unless the table says otherwise.
 static auto resolve(uint32_t base, uint32_t shift_val, uint32_t ctrl_val,
                     const KeyboardHostKey_t* key, uint8_t* apple_code) -> bool {
   if (base == 0) {
@@ -116,9 +115,9 @@ static auto translate_positional(const KeyboardHostKey_t* key,
                  key, apple_code);
 }
 
-// The US shift pairs, as printed on the //e keycaps (Apple IIe Technical
-// Reference Manual, Figure 2-1); a host whose layout differs still sends the
-// unshifted ASCII of the key, so the pairs are spelled out here.
+// The US shift pairs as printed on the //e keycaps (Apple IIe Technical
+// Reference Manual, Figure 2-1); a host of another layout still sends the
+// key's unshifted ASCII.
 static auto shifted_symbol(uint32_t key) -> uint32_t {
   switch (key) {
     case '1':

@@ -201,15 +201,11 @@ auto io_annunciator(uint16_t programcounter, uint16_t address, uint8_t write,
 
 auto mem_update_paging(bool initialize, bool updatewriteonly) -> void;
 
-// The bare motherboard's answer when no keyboard card has taken $C000-$C00F:
-// a machine with its keyboard unplugged. On the //e the encoder, the keyboard
-// ROM and the strobe logic are on the main board and the cable carries only
-// the key matrix, so with nothing plugged in no key is ever strobed and bit 7
-// stays 0 (IIe Technical Reference p. 187, Figure 7-14b); the ROM's idle output
-// in bits 0-6 is not documented and $00 is taken. On a II or II Plus the
-// encoder is on the keyboard and the 74LS257 data inputs are open LS-TTL
-// inputs, which read high, so $7F is inferred for bits 0-6 with the strobe
-// flip-flop clear after the power-up reset (Apple II Reference Manual 1979
+// With no keyboard card, $C000 answers as a machine with its keyboard
+// unplugged. The //e's encoder and strobe logic are on the main board, so
+// bit 7 never rises (IIe Technical Reference p. 187, Figure 7-14b); bits 0-6
+// are undocumented and taken as $00. A II's encoder is on the keyboard, so the
+// 74LS257's open LS-TTL inputs read $7F (Apple II Reference Manual 1979
 // p. 102; Sather, Understanding the Apple II, 7-13, 7-15).
 static auto io_read_c00x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
                          uint32_t executed_cycles) -> uint8_t {
@@ -233,11 +229,9 @@ static auto io_write_c00x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
 }
 
 // On a II or II Plus any access to $C01X clears the strobe flip-flop and a
-// read returns the undriven bus; the flags in bit 7 of $C011-$C01F are the
-// //e's MMU and IOU (Sather, Understanding the Apple II, 7-4, 7-5, 5-25). On
-// the //e $C010's bit 7 is any-key-down, which never rises with the keyboard
-// unplugged (IIe Technical Reference pp. 12-13), so a //e with no keyboard
-// card reads it as 0.
+// read returns the undriven bus (Sather, Understanding the Apple II, 7-4, 7-5,
+// 5-25). The //e's $C010 bit 7 is any-key-down, which never rises with the
+// keyboard unplugged (IIe Technical Reference pp. 12-13).
 static auto io_read_c01x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
                          uint32_t executed_cycles) -> uint8_t {
   if (is_apple2()) {
@@ -377,15 +371,12 @@ static auto io_write_c05x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
   return io_access_c05x(pc, addr, write, d, executed_cycles);
 }
 
-// The 74LS251 behind $C060-$C06F puts one input on D7 over the undriven bus
-// in bits 0-6; A3 is not decoded, so $C068-$C06F mirror $C060-$C067 (Apple II
-// Reference Manual 1979 p. 99; Sather, Understanding the Apple II, 7-8; IIe
-// Technical Reference p. 189). Input 0 is the cassette input. Inputs 1-3 are
-// the pushbutton lines, composed by the motherboard from the keyboard, the
-// connector and the pull-downs. Inputs 4-7 are the 558 timers; with no game
-// port card they answer as a channel whose timing pot is absent, whose output
-// once triggered never falls (1979 p. 99), an approximation since an
-// untriggered monostable rests low and PREAD always triggers first.
+// The 74LS251 behind $C060-$C06F puts one input on D7 over the undriven bus;
+// A3 is not decoded, so $C068-$C06F mirror $C060-$C067 (Apple II Reference
+// Manual 1979 p. 99; Sather, Understanding the Apple II, 7-8; IIe Technical
+// Reference p. 189). With no game port card the timer inputs 4-7 answer as a
+// channel whose output never falls (1979 p. 99), an approximation: an
+// untriggered 558 rests low, but PREAD always triggers first.
 static auto io_read_c06x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
                          uint32_t executed_cycles) -> uint8_t {
   constexpr uint8_t mux_select_mask = 0x07;

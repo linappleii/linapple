@@ -133,13 +133,9 @@ typedef struct {
   // serviced at the next frame's first pass; the debugger's single step
   // services nothing.
   void (*ScheduleEvent)(void* instance, uint64_t at_cycle);
-  // A //e's keyboard auto-repeat is clocked by television scans (Sather,
-  // Understanding the Apple IIe, 2-17 and 3-18), and how many cycles a scan
-  // holds is the IOU variant's: 262 lines on NTSC, 312 on PAL, 65 cycles each,
-  // 17,030 or 20,280 a frame. GetFrameCycles is that television frame; the
-  // host's speed setting never enters it. GetMachine says which board the card
-  // is on, since a II and a //e put different keyboard logic behind the same
-  // addresses. Appended last for the same reason as ReadFloatingBus.
+  // A //e's auto-repeat is clocked by television scans (Sather, Understanding
+  // the Apple IIe, 2-17, 3-18): 262 or 312 lines of 65 cycles by IOU variant,
+  // never the host's speed. Both appended last, as ReadFloatingBus was.
   PeripheralMachine_t (*GetMachine)(void);
   uint32_t (*GetFrameCycles)(void);
 } HostInterface_t;
@@ -222,7 +218,6 @@ PeripheralStatus_t peripheral_command_by_id(int slot, const char* peripheral_id,
 PeripheralStatus_t peripheral_query_by_id(int slot, const char* peripheral_id,
                                           uint32_t cmd_id, void* out,
                                           size_t* out_size);
-// Whether a card with this descriptor id is registered in the slot.
 bool peripheral_present(int slot, const char* peripheral_id);
 void peripheral_save_state(int slot, void* buffer, size_t* size);
 // peripheral_incompatible for an empty slot or a card that keeps no state,

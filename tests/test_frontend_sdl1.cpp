@@ -788,8 +788,6 @@ TEST_CASE(
 
 #if defined(ENABLE_PERIPHERAL_KEYBOARD)
 
-// The table SDL1 reads X11 keycodes through, pinned below against the
-// kernel's own key codes.
 extern auto sdl1_x11_keycode_to_hid(uint8_t keycode) -> uint8_t;
 
 namespace {
@@ -803,14 +801,13 @@ constexpr uint16_t probe_address = 0x0200;
 constexpr uint16_t probe_result = 0x0010;
 constexpr uint32_t probe_cycle_cap = 1000;
 constexpr uint32_t ntsc_frame_cycles = 17030;
-// A II Plus REPT period is 68,032 cycles, four frames; ten frames hold two
-// of them and still fall short of the //e's 32-frame repeat delay.
+// A II Plus REPT period is 68,032 cycles, four frames: ten frames hold two and
+// fall short of the //e's 32-frame repeat delay.
 constexpr uint32_t rept_frames = 10;
 // X11 reports a key as its evdev code plus the server's minimum keycode.
 constexpr int x11_min_keycode = 8;
 
-// The core takes the model from a process-wide variable a harness-built
-// machine leaves behind; a machine built here states its own first.
+// The model is process-wide and a harness-built machine leaves it behind.
 struct Model_t {
   Apple2Type_t saved = current_apple2_type;
   explicit Model_t(Apple2Type_t type) { current_apple2_type = type; }
@@ -821,12 +818,8 @@ struct Model_t {
   auto operator=(Model_t&&) -> Model_t& = delete;
 };
 
-// The frontend's keyboard on a machine with the internal cards alone: key and
-// window events go through sdl_handle_event as the window would send them,
-// the configuration's keyboard keys are applied as the frontend applies them
-// at start, and the card is read through the memory map as the 6502 reads it.
-// Under the dummy video driver the frontend reads a key's usage from its
-// keysym, so the scancode of a constructed event is whatever the case says.
+// Under the dummy video driver the usage comes from the keysym, so a
+// constructed event's scancode is whatever the case says.
 struct KeyMachine_t {
   Model_t model;
   TestFixtures::ScopedTestConfig_t config;
@@ -878,8 +871,7 @@ struct KeyMachine_t {
   KeyMachine_t(KeyMachine_t&&) = delete;
   auto operator=(KeyMachine_t&&) -> KeyMachine_t& = delete;
 
-  // The command queue is drained by a think, as a running machine drains it
-  // once a frame.
+  // A think drains the command queue, as a running machine does once a frame.
   static auto settle() -> void { peripheral_manager_think(0); }
 
   static auto key(uint8_t scancode, SDLKey keycode, SDLMod mod, bool down)
@@ -932,9 +924,9 @@ struct KeyMachine_t {
     }
   }
 
-  // After frames have run a direct dispatch would hand the card's bus bridge a
-  // stale cycle count, so the 6502 reads the keyboard itself: LDA $C000 / STA
-  // $10 / NOP, or BIT $C010 / NOP to clear the strobe.
+  // After frames a direct dispatch would hand the bus bridge a stale cycle
+  // count, so the 6502 reads the keyboard itself: LDA $C000 / STA $10 / NOP,
+  // or BIT $C010 / NOP.
   static auto stepped_latch() -> uint8_t {
     const std::array<uint8_t, 6> probe = {0xAD, 0x00, 0xC0, 0x85, 0x10, 0xEA};
     TestFixtures::ScopedCore_t::poke(probe_address, probe);
@@ -968,9 +960,8 @@ auto positional() -> TestFixtures::ScopedTestConfig_t::Description_t {
   return description;
 }
 
-// The kernel's evdev code for a key and the USB HID usage the kernel's HID
-// driver assigns it (drivers/hid/hid-input.c, hid_keyboard[]): the pairing is
-// typed in, the codes come from the kernel's own header.
+// The kernel's evdev code and the usage its HID driver assigns it
+// (drivers/hid/hid-input.c, hid_keyboard[]).
 struct KernelUsage_t {
   int evdev;
   int usage;
@@ -1089,8 +1080,7 @@ TEST_CASE(
               static_cast<uint8_t>(row.evdev + x11_min_keycode)) == row.usage);
   }
 
-  // Every usage the maps index but the non-US number sign is reached by some
-  // keycode; that one shares its key code with the backslash.
+  // Usage 50 shares its key code with the backslash, so no keycode reaches it.
   std::array<bool, keyb_map_size> reached{};
   for (int keycode = 0; keycode < 256; ++keycode) {
     reached.at(sdl1_x11_keycode_to_hid(static_cast<uint8_t>(keycode))) = true;

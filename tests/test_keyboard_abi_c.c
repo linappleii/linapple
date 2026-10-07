@@ -2,8 +2,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-// Included to prove the card header is C99 as the plugin ABI promises; the
-// unit calls nothing in it.
+// Included to prove the header is C99; nothing in it is called.
 #include "apple2/peripherals/keyboard/Keyboard.h"  // NOLINT(misc-include-cleaner)
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 

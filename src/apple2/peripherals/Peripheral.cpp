@@ -403,9 +403,8 @@ static auto host_get_machine() -> PeripheralMachine_t {
                                               : peripheral_machine_apple2_plus;
 }
 
-// The television frame as the video scanner counts it, never
-// linapple_get_frame_cycles(), which scales the run quantum by the host's
-// speed setting.
+// The scanner's frame, never linapple_get_frame_cycles(), which scales the run
+// quantum by the host's speed setting.
 static auto host_get_frame_cycles() -> uint32_t {
   constexpr uint32_t ntsc_frame_cycles = 17030;
   return system_state.clks_per_frame != 0 ? system_state.clks_per_frame

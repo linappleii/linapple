@@ -28,13 +28,11 @@
 
 namespace {
 
-// SDL 1.2 documents keysym.scancode as hardware specific, and the keyboard
-// maps index USB HID usages. Under X11 the scancode is the server's keycode:
-// the key's evdev code plus the server's minimum keycode of 8, and the
-// kernel's HID driver gives each usage its evdev code (drivers/hid/hid-input.c,
-// hid_keyboard[]). This is that assignment inverted for usages 4 to 82, the
-// range the maps index. Usage 50, the non-US number-sign key, shares
-// KEY_BACKSLASH with usage 49 and so reads as 49.
+// SDL 1.2's keysym.scancode is hardware specific; under X11 it is the key's
+// evdev code plus the server's minimum keycode of 8, and the kernel's HID
+// driver fixes each usage's evdev code (drivers/hid/hid-input.c,
+// hid_keyboard[]). This inverts that for usages 4 to 82, the range the maps
+// index; usage 50 shares KEY_BACKSLASH with 49 and so reads as 49.
 struct X11Usage_t {
   uint8_t evdev;
   uint8_t usage;
@@ -133,8 +131,8 @@ constexpr std::array<X11Usage_t, 78> k_x11_usages = {{
     {103, keyb_idx_up},
 }};
 
-// Under any other video driver the scancode is whatever that driver had, so
-// the usage is taken from the keysym instead, for the keys of the US layout.
+// Under any other video driver the usage comes from the keysym, for the US
+// layout's keys.
 auto keysym_to_hid(SDLKey sym) -> uint8_t {
   if (sym >= SDLK_a && sym <= SDLK_z) {
     return static_cast<uint8_t>(keyb_idx_a + (sym - SDLK_a));

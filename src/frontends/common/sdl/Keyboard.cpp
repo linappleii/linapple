@@ -53,8 +53,7 @@ auto frontend_dispatch_key_event(uint32_t scancode, uint32_t keycode,
                                  uint32_t mod, bool is_down) -> void {
   track_shift_and_ctrl(mod);
 
-  // A custom key mapped to a switch types nothing: an Apple key closes its
-  // side of the motherboard's line and REPT drives the II keyboard's repeat.
+  // A switch types nothing; an Apple key only closes its side of the line.
   switch (keyboard_custom_switch(scancode)) {
     case keyboard_custom_switch_open_apple:
       g_host_modifiers.open_apple = is_down;
@@ -81,8 +80,7 @@ auto frontend_dispatch_key_event(uint32_t scancode, uint32_t keycode,
   if (!keyboard_translate(&key, &apple_code)) {
     return;
   }
-  // The scancode is the key's identity across its press and release; a host
-  // that reports none leaves the keycode to stand for it.
+  // A host that reports no scancode leaves the keycode as the key's identity.
   const uint32_t host_key = scancode != 0 ? scancode : keycode;
   linapple_set_key(host_key, apple_code, is_down);
 }
@@ -123,7 +121,7 @@ auto frontend_handle_event(SdlKeycode_t key, bool is_down) -> bool {
   return frontend_handle_key_event(key, is_down);
 }
 
-// NOLINTBEGIN(misc-include-cleaner): The caps modifier bit (KMOD_CAPS) is provided across SDL1/2/3 backends via SdlBackend.h
+// NOLINTBEGIN(misc-include-cleaner): KMOD_CAPS comes from SdlBackend.h
 auto keyboard_sync_host_caps(uint32_t mod) -> void {
   if (keyboard_get_caps_mode() == caps_mode_host) {
     keyboard_set_caps((mod & KMOD_CAPS) != 0);
@@ -139,8 +137,7 @@ auto keyboard_press_caps_lock(uint32_t mod) -> void {
   keyboard_set_caps(!keyboard_get_caps());
 }
 
-// The Apple keys are switches a hand holds; a hand that has left the window
-// has left them, together with every matrix key.
+// Focus loss lets go of the Apple keys with the matrix keys.
 auto keyboard_release_host_modifiers() -> void {
   g_host_modifiers = HostModifiers_t{};
   linapple_set_key_release_all();

@@ -708,8 +708,7 @@ constexpr uint8_t bit7 = 0x80;
 constexpr uint8_t ascii_esc = 0x1B;
 constexpr uint8_t last_control_byte = 0x1F;
 
-// The core takes the model from a process-wide variable a harness-built
-// machine leaves behind; a machine built here states its own first.
+// The model is process-wide and a harness-built machine leaves it behind.
 struct Model_t {
   Apple2Type_t saved = current_apple2_type;
   explicit Model_t(Apple2Type_t type) { current_apple2_type = type; }
@@ -720,11 +719,8 @@ struct Model_t {
   auto operator=(Model_t&&) -> Model_t& = delete;
 };
 
-// The terminal's keyboard on a machine with the internal cards alone: bytes
-// arrive on stdin as a raw-mode terminal delivers them and the card is read
-// through the memory map as the 6502 reads it. A terminal reports no caps
-// state, so its caps is the emulated kind, down to start with. Whatever the
-// session writes to the terminal lands in a pipe, not in the report.
+// A terminal reports no caps state, so its caps is the emulated kind, down to
+// start with; whatever the session writes to the terminal lands in a pipe.
 struct TuiKeyboard_t {
   Model_t model;
   TuiMachine_t machine;
@@ -758,8 +754,7 @@ struct TuiKeyboard_t {
   TuiKeyboard_t(TuiKeyboard_t&&) = delete;
   auto operator=(TuiKeyboard_t&&) -> TuiKeyboard_t& = delete;
 
-  // The command queue is drained by a think, as a running machine drains it
-  // once a frame.
+  // A think drains the command queue, as a running machine does once a frame.
   static auto settle() -> void { peripheral_manager_think(0); }
 
   auto type(const std::string& bytes) -> void {
@@ -798,8 +793,8 @@ auto count_sigint(int signal) -> void {
   ++g_sigint_count;
 }
 
-// doctest wraps a case in handlers of its own, so SIGINT is taken over for
-// the case and handed back before it ends.
+// doctest installs signal handlers of its own, so SIGINT is taken over for
+// the case and handed back.
 struct ScopedSigintCounter_t {
   struct sigaction saved{};
 
@@ -935,9 +930,8 @@ TEST_CASE(
   CHECK(TuiKeyboard_t::pushbutton(0) == 0);
   TuiKeyboard_t::clear_strobe();
 
-  // A UTF-8 terminal sends Alt as the ESC prefix, so a valid UTF-8 sequence
-  // is a character the Apple cannot type and reaches nothing: neither key
-  // nor Open Apple.
+  // A UTF-8 terminal sends Alt as the ESC prefix, so a valid UTF-8 sequence is
+  // a character the Apple cannot type and reaches nothing.
   terminal.type("\xc3\xa9");
   CHECK(TuiKeyboard_t::latch() == 0x08);
   CHECK_FALSE(TuiKeyboard_t::any_key_down());

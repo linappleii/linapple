@@ -73,11 +73,9 @@ static constexpr size_t k_input_buffer_size = 256;
 static constexpr size_t k_max_escape_length = 32;
 static constexpr int k_esc_poll_timeout_ms = 3;
 
-// A key the terminal typed, held until the next poll. A terminal has no
-// key-up, so the release is made up: deferred by one poll, so that a program
-// which polls $C010 for a held key sees it for a frame. Alt+key arrives as a
-// meta prefix or an eighth bit and is Open Apple held around the key, let go
-// after it.
+// A terminal has no key-up, so the release is deferred one poll, long enough
+// for a program polling $C010 to see the key for a frame. Alt+key is Open
+// Apple held around the key.
 struct HeldKey_t {
   uint32_t host_key;
   uint8_t code;
@@ -96,8 +94,8 @@ static auto release_held_keys() -> void {
   g_held_keys.clear();
 }
 
-// A terminal has no scancodes, so its byte is read as a symbolic key, folded
-// as the SDL frontends' keys are, and doubles as the key's identity.
+// A terminal has no scancodes, so the byte is read symbolically and doubles
+// as the key's identity.
 static auto map_key(uint8_t a2_code, bool open_apple = false) -> void {
   const KeyboardHostKey_t key = {0, a2_code, false, false};
   uint8_t code = 0;
@@ -111,15 +109,14 @@ static auto map_key(uint8_t a2_code, bool open_apple = false) -> void {
   g_held_keys.push_back({a2_code, code, open_apple});
 }
 
-// The byte a terminal sends for a key, as the Apple keyboard would code it:
-// 0x7F is what most terminals send for the Backspace key, the Apple's left
-// arrow; every other seven-bit byte is its own code.
+// 0x7F is what most terminals send for Backspace, the Apple's left arrow;
+// every other seven-bit byte is its own code.
 static auto terminal_byte_to_apple(uint8_t byte) -> uint8_t {
   return byte == k_a2_key_delete ? k_a2_key_backspace : byte;
 }
 
-// A sequence a terminal sends as one keystroke can be split across reads;
-// a few milliseconds is what tells its tail from the next keystroke.
+// One keystroke can be split across reads; a few milliseconds tells its tail
+// from the next keystroke.
 static auto read_more_input() -> void {
   struct pollfd pfd{};
   pfd.fd = STDIN_FILENO;
@@ -143,8 +140,6 @@ static constexpr uint8_t k_utf8_lead4_max = 0xF4;
 static constexpr uint8_t k_utf8_continuation_min = 0x80;
 static constexpr uint8_t k_utf8_continuation_max = 0xBF;
 
-// How many continuation bytes a UTF-8 lead byte announces; 0 for a byte that
-// leads nothing.
 static auto utf8_continuation_count(uint8_t lead) -> size_t {
   if (lead < k_utf8_lead2_min) {
     return 0;
@@ -819,9 +814,9 @@ static auto process_sequences() -> void {
         break;
       }
 
-      // ESC followed by a byte that opens no sequence is what a terminal with
-      // metaSendsEscape sends for Alt+key: Open Apple with that key. A second
-      // ESC or a byte with its eighth bit set leaves this ESC a key of its own.
+      // A terminal with metaSendsEscape sends Alt+key as ESC then the byte:
+      // Open Apple with that key. A second ESC or an eighth-bit byte leaves
+      // this ESC a key of its own.
       const uint8_t after_esc = g_input_queue.at(i + 1);
       if (after_esc != k_a2_key_esc && after_esc < k_eighth_bit) {
         if (!tui_disk_select_is_active() && !tui_video_is_help_visible() &&
@@ -850,9 +845,8 @@ static auto process_sequences() -> void {
     uint8_t b = g_input_queue.at(i);
 
     // A UTF-8 terminal sends Alt+key as the ESC prefix, so a valid UTF-8
-    // sequence is a character the Apple has no code for and reaches nothing,
-    // neither key nor Open Apple; only a high byte that begins no sequence is
-    // a non-UTF-8 terminal's Alt+key, read below.
+    // sequence is a character the Apple has no code for; only a high byte that
+    // begins no sequence is a non-UTF-8 terminal's Alt+key.
     const size_t continuation = utf8_continuation_count(b);
     if (continuation > 0) {
       if (i + continuation >= g_input_queue.size()) {
@@ -888,13 +882,11 @@ static auto process_sequences() -> void {
       }
 #endif
     } else if (b >= k_eighth_bit) {
-      // Stock xterm outside UTF-8 sends Alt+key as the key with its eighth bit
-      // set.
+      // Stock xterm outside UTF-8 sends Alt+key with the eighth bit set.
       map_key(terminal_byte_to_apple(b & k_seven_bits), true);
     } else {
-      // Every control byte is an Apple control code, Ctrl-C included, so
-      // Applesoft's break, DOS's Ctrl-D and a game's control bindings work
-      // from a terminal; F12 is the way out. ESC alone never gets here.
+      // Every control byte reaches the Apple, Ctrl-C included, so Applesoft's
+      // break and DOS's Ctrl-D work from a terminal; F12 is the way out.
       map_key(terminal_byte_to_apple(b));
     }
 
@@ -914,10 +906,8 @@ auto tui_input_initialize() -> void {
   if (g_joy_fd == -1) {
     return;
   }
-  // The device is a second plug on the game connector, with a 560 ohm
-  // pull-down on each line it has a button for: PB0 and PB1, and PB2 when it
-  // reports a third button (Sather, Understanding the Apple II, 7-9 and
-  // 7-11). The configured controller's resistors stay in the mask beside it.
+  // A second plug on the connector, with a 560 ohm pull-down on each line it
+  // has a button for (Sather, Understanding the Apple II, 7-9 and 7-11).
   uint8_t buttons = 0;
   const bool three_buttons =
       ioctl(g_joy_fd, JSIOCGBUTTONS, &buttons) == 0 && buttons >= 3;

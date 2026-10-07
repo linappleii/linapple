@@ -43,10 +43,9 @@ auto joystick_config_mode(uint32_t type) -> JoystickMode_t {
   return type_info(type).mode;
 }
 
-// Joystick 0's first button is PB0 and its second PB1, the second only while
-// no device sits on joystick 1; joystick 1's one button is PB2 and PB1
-// together. One connector owner per line, so a device's poll never
-// overwrites a button the other device just pressed.
+// Joystick 0's second button is PB1 only while nothing sits on joystick 1,
+// whose one button is PB1 and PB2 together: one owner per line, so a poll
+// never overwrites the other device's press.
 auto joystick_config_button_lines(size_t joy_num, int button, uint32_t type0,
                                   uint32_t type1) -> uint8_t {
   (void)type0;

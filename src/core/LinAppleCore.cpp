@@ -214,11 +214,9 @@ auto linapple_init() -> int {
   peripheral_manager_init();
   peripheral_register_internal();
 
-  // The switch inputs' resting levels depend on the model and on whether a
-  // keyboard hangs on the board's connector: the bridge knows both, no card
-  // does. A //e with no keyboard reads PB0 and PB1 high through the board's
-  // pull-ups and its reset routine enters the self-test (IIe Technical Note
-  // #9), as the hardware does with the cable out.
+  // The resting levels depend on the model and on whether a keyboard hangs on
+  // the connector, which the bridge knows and no card does; a //e with none
+  // reads PB0 and PB1 high and self-tests at reset (IIe Technical Note #9).
   const bool keyboard_present = peripheral_present(0, "linapple.keyboard");
   switch_inputs_reset_configuration(!is_apple2(), keyboard_present);
   if (!is_apple2() && !keyboard_present) {
@@ -530,9 +528,8 @@ auto linapple_set_rept(bool down) -> void {
   peripheral_command(0, keyboard_cmd_rept, &level, sizeof(level));
 }
 
-// A hand that has left the window has left the Apple keys and shift too: they
-// are switches on the motherboard's lines, not codes in the card's latch, so
-// the card's release covers only the matrix keys.
+// The Apple keys and shift are switches on the motherboard's lines, not codes
+// in the card's latch, so the card's release covers only the matrix keys.
 auto linapple_set_key_release_all() -> void {
   peripheral_command(0, keyboard_cmd_release_all, nullptr, 0);
   linapple_set_modifiers(false, false, false, false);
@@ -575,15 +572,11 @@ auto linapple_set_rocker_switch(bool local) -> void {
 
 auto linapple_get_rocker_switch() -> bool { return g_rocker_switch; }
 
-// The host's modifier keys are switch inputs as much as keyboard modifiers:
-// the //e wires Open Apple and Solid Apple in parallel with the connector's
-// PB0 and PB1, and the shift-key mod runs the shift key to PB2 (Apple IIe
-// Technical Reference Manual, pp. 13 and 41). The levels reach the
-// motherboard's lines on every model as the keyboard's side of the wired-OR,
-// so they combine with a controller's buttons rather than overwrite them; on
-// a II or II Plus they are the host buttons the README promises, and the
-// shift level counts only while the jumper is in. Shift and control
-// themselves are translation inputs the host has already applied to the code.
+// The //e wires Open Apple and Solid Apple in parallel with the connector's
+// PB0 and PB1, and the shift-key mod runs shift to PB2 (Apple IIe Technical
+// Reference Manual, pp. 13 and 41), so the levels are the keyboard's side of
+// a wired-OR with a controller's buttons on every model. Shift and control
+// themselves are already in the code the host translated.
 auto linapple_set_modifiers(bool shift, bool ctrl, bool open_apple,
                             bool solid_apple) -> void {
   g_modifier_levels.shift = shift;
