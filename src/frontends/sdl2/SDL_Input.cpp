@@ -137,11 +137,7 @@ auto sdl_handle_event(SDL_Event* event) -> void {
         const uint32_t speed = linapple_speed_reset();
         std::printf("Now speed=%u\n", speed);
       } else if (key_sym == SDLK_CAPSLOCK) {
-        if (keyboard_get_caps_mode() == caps_mode_host) {
-          keyboard_set_caps((key_mod & KMOD_CAPS) != 0);
-        } else {
-          keyboard_set_caps(!keyboard_get_caps());
-        }
+        keyboard_press_caps_lock(key_mod);
       } else if (key_sym == SDLK_PAUSE) {
         mouse_input_release();
         switch (system_state.mode) {
@@ -209,9 +205,7 @@ auto sdl_handle_event(SDL_Event* event) -> void {
       } else if (frontend_handle_key_event(key_sym, false)) {
         break;
       } else if (key_sym == SDLK_CAPSLOCK) {
-        if (keyboard_get_caps_mode() == caps_mode_host) {
-          keyboard_set_caps((key_mod & KMOD_CAPS) != 0);
-        }
+        keyboard_sync_host_caps(key_mod);
       } else {
         const bool extended = is_extended_scancode(scancode);
         if (!joy_frontend_process_key(key_sym, extended, false, false)) {

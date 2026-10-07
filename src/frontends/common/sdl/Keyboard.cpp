@@ -122,3 +122,26 @@ auto frontend_handle_key_event(SdlKeycode_t key, bool is_down) -> bool {
 auto frontend_handle_event(SdlKeycode_t key, bool is_down) -> bool {
   return frontend_handle_key_event(key, is_down);
 }
+
+// NOLINTBEGIN(misc-include-cleaner): The caps modifier bit (KMOD_CAPS) is provided across SDL1/2/3 backends via SdlBackend.h
+auto keyboard_sync_host_caps(uint32_t mod) -> void {
+  if (keyboard_get_caps_mode() == caps_mode_host) {
+    keyboard_set_caps((mod & KMOD_CAPS) != 0);
+  }
+}
+// NOLINTEND(misc-include-cleaner)
+
+auto keyboard_press_caps_lock(uint32_t mod) -> void {
+  if (keyboard_get_caps_mode() == caps_mode_host) {
+    keyboard_sync_host_caps(mod);
+    return;
+  }
+  keyboard_set_caps(!keyboard_get_caps());
+}
+
+// The Apple keys are switches a hand holds; a hand that has left the window
+// has left them, together with every matrix key.
+auto keyboard_release_host_modifiers() -> void {
+  g_host_modifiers = HostModifiers_t{};
+  linapple_set_key_release_all();
+}

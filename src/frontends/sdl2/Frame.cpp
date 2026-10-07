@@ -41,8 +41,8 @@
 #include "core/Util_Text.h"
 #include "frontends/common/AppController.h"
 #include "frontends/common/AudioMixer.h"
+#include "frontends/common/Frontend.h"
 #include "frontends/common/HelpText.h"
-#include "frontends/common/KeyboardTranslator.h"
 #include "frontends/common/MouseFrontend.h"
 #include "frontends/common/SaveStateManager.h"
 #include "frontends/common/VideoStretch.h"
@@ -639,9 +639,10 @@ auto frame_on_resize(int width, int height) -> void {
 
 auto frame_on_focus(bool gained) -> void {
   s_app_active = gained;
-  if (s_app_active && keyboard_get_caps_mode() == caps_mode_host) {
-    const SDL_Keymod mod = SDL_GetModState();
-    keyboard_set_caps((mod & KMOD_CAPS) != 0);
+  if (gained) {
+    keyboard_sync_host_caps(SDL_GetModState());
+  } else {
+    keyboard_release_host_modifiers();
   }
 }
 

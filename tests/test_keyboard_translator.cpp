@@ -43,11 +43,18 @@ struct ScopedTranslator_t {
 
  private:
   static auto reset() -> void {
-    Configuration_t::instance().data.erase("Keyboard.Custom");
+    Configuration_t& config = Configuration_t::instance();
+    config.data.erase("Keyboard.Custom");
+    config.data.erase("Keyboard");
+    config.data["Configuration"].erase("Keyboard Type");
+    config.data["Configuration"].erase("Keyboard Rocker Switch");
     keyboard_apply_custom_mappings();
     keyboard_set_caps(true);
+    keyboard_set_caps_mode(caps_mode_host);
     keyboard_set_layout(keyboard_layout_us);
     keyboard_set_mapping_mode(KBD_MODE_SYMBOLIC);
+    keyboard_set_hotkeys_enabled(true);
+    keyboard_set_quicksave_mode(QUICKSAVE_MODE_ALT);
     linapple_set_rocker_switch(false);
   }
 };
@@ -157,4 +164,44 @@ TEST_CASE(
   keyboard_set_layout(12);
   CHECK(translate(hid_minus, '-', false, false) == '-');
   CHECK(keyboard_get_layout() == 12);
+}
+
+TEST_CASE(
+    "Keyboard translator: the configuration is applied at start, Mapping "
+    "Mode, Caps Lock Mode, Quick Save Modifier and Enable Hotkeys or its alias "
+    "from [Keyboard], Keyboard Type and the rocker switch from "
+    "[Configuration], and the custom section") {
+  ScopedTranslator_t translator;
+  Configuration_t& config = Configuration_t::instance();
+  config.set_int("Keyboard", "Mapping Mode", 1);
+  config.set_int("Keyboard", "Caps Lock Mode", 1);
+  config.set_string("Keyboard", "Quick Save Modifier", "Ctrl");
+  config.set_int("Keyboard", "Enable Hotkeys", 0);
+  config.set_int("Configuration", "Keyboard Type", 3);
+  config.set_int("Configuration", "Keyboard Rocker Switch", 1);
+  config.set_string("Keyboard.Custom", "f1", "0x0B");
+  frontend_update_keyboard_mapping();
+
+  CHECK(keyboard_get_mapping_mode() == KBD_MODE_POSITIONAL);
+  CHECK(keyboard_get_caps_mode() == caps_mode_emulated);
+  CHECK(keyboard_get_quicksave_mode() == QUICKSAVE_MODE_CTRL);
+  CHECK_FALSE(keyboard_get_hotkeys_enabled());
+  CHECK(keyboard_get_layout() == keyboard_layout_de);
+  CHECK(linapple_get_rocker_switch());
+  CHECK(translate(hid_minus, '-', false, false) == 0x7E);
+  CHECK(translate(hid_f1, linapple_key_f1, false, false) == 0x0B);
+
+  // Function Keys Enable is the older spelling of Enable Hotkeys.
+  config.data.erase("Keyboard");
+  keyboard_set_hotkeys_enabled(true);
+  config.set_int("Keyboard", "Function Keys Enable", 0);
+  frontend_update_keyboard_mapping();
+  CHECK_FALSE(keyboard_get_hotkeys_enabled());
+
+  // A key the configuration leaves out leaves the setting alone.
+  config.data.erase("Keyboard");
+  keyboard_set_hotkeys_enabled(true);
+  frontend_update_keyboard_mapping();
+  CHECK(keyboard_get_hotkeys_enabled());
+  CHECK(keyboard_get_mapping_mode() == KBD_MODE_POSITIONAL);
 }

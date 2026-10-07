@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <SDL/SDL.h>
+#include <linux/input-event-codes.h>
 #include <stdlib.h>
 
 #include <array>
@@ -7,12 +8,16 @@
 #include <cstdint>
 #include <string>
 
+#include "SDL_active.h"
 #include "SDL_events.h"
 #include "SDL_keyboard.h"
 #include "SDL_keysym.h"
 #include "SDL_mouse.h"
 #include "SDL_stdinc.h"
 #include "SDL_video.h"
+#include "apple2/Apple2Types.h"
+#include "apple2/CPU.h"
+#include "apple2/Memory.h"
 #include "apple2/Video.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Types.h"
@@ -23,7 +28,10 @@
 #include "doctest.h"
 #include "frontends/common/AppConfig.h"
 #include "frontends/common/Frontend.h"
+#include "frontends/common/KeyboardMaps.h"
+#include "frontends/common/KeyboardTranslator.h"
 #include "frontends/common/MouseFrontend.h"
+#include "frontends/common/SaveStateManager.h"
 #include "frontends/common/sdl/JoystickFrontend.h"
 #include "frontends/common/sdl/MouseInput.h"
 #include "frontends/sdl1/DiskChoose.h"
@@ -776,4 +784,503 @@ TEST_CASE(
   MouseInputMachine_t::move(1, 0, 6, 0);
   CHECK(mouse_position_x(4) == 2);
 }
+#endif
+
+#if defined(ENABLE_PERIPHERAL_KEYBOARD)
+
+// The table SDL1 reads X11 keycodes through, pinned below against the
+// kernel's own key codes.
+extern auto sdl1_x11_keycode_to_hid(uint8_t keycode) -> uint8_t;
+
+namespace {
+
+constexpr uint16_t addr_keyboard_data = 0xC000;
+constexpr uint16_t addr_keyboard_strobe = 0xC010;
+constexpr uint16_t addr_pushbutton0 = 0xC061;
+constexpr uint8_t bit7 = 0x80;
+constexpr uint16_t spin_address = 0x0300;
+constexpr uint16_t probe_address = 0x0200;
+constexpr uint16_t probe_result = 0x0010;
+constexpr uint32_t probe_cycle_cap = 1000;
+constexpr uint32_t ntsc_frame_cycles = 17030;
+// A II Plus REPT period is 68,032 cycles, four frames; ten frames hold two
+// of them and still fall short of the //e's 32-frame repeat delay.
+constexpr uint32_t rept_frames = 10;
+// X11 reports a key as its evdev code plus the server's minimum keycode.
+constexpr int x11_min_keycode = 8;
+
+// The core takes the model from a process-wide variable a harness-built
+// machine leaves behind; a machine built here states its own first.
+struct Model_t {
+  Apple2Type_t saved = current_apple2_type;
+  explicit Model_t(Apple2Type_t type) { current_apple2_type = type; }
+  ~Model_t() { current_apple2_type = saved; }
+  Model_t(const Model_t&) = delete;
+  auto operator=(const Model_t&) -> Model_t& = delete;
+  Model_t(Model_t&&) = delete;
+  auto operator=(Model_t&&) -> Model_t& = delete;
+};
+
+// The frontend's keyboard on a machine with the internal cards alone: key and
+// window events go through sdl_handle_event as the window would send them,
+// the configuration's keyboard keys are applied as the frontend applies them
+// at start, and the card is read through the memory map as the 6502 reads it.
+// Under the dummy video driver the frontend reads a key's usage from its
+// keysym, so the scancode of a constructed event is whatever the case says.
+struct KeyMachine_t {
+  Model_t model;
+  TestFixtures::ScopedTestConfig_t config;
+  TestFixtures::ScopedCore_t core;
+  AppMode_t saved_mode;
+
+  explicit KeyMachine_t(
+      const TestFixtures::ScopedTestConfig_t::Description_t& description,
+      Apple2Type_t type = A2TYPE_APPLE2EENHANCED)
+      : model(type),
+        config(description),
+        core(config),
+        saved_mode(system_state.mode) {
+    SDL_putenv(const_cast<char*>("SDL_VIDEODRIVER=dummy"));
+    REQUIRE(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK) == 0);
+    peripheral_manager_init();
+    linapple_register_peripherals();
+    linapple_reset_hard();
+    joy_frontend_initialize();
+    keyboard_set_caps(true);
+    keyboard_set_caps_mode(caps_mode_host);
+    keyboard_set_mapping_mode(KBD_MODE_SYMBOLIC);
+    keyboard_set_layout(keyboard_layout_us);
+    linapple_set_rocker_switch(false);
+    frontend_update_keyboard_mapping();
+    system_state.mode = app_mode_running;
+    g_buttondown = -1;
+    SDL_SetModState(KMOD_NONE);
+    settle();
+  }
+
+  ~KeyMachine_t() {
+    keyboard_release_host_modifiers();
+    settle();
+    Configuration_t::instance().data.erase("Keyboard.Custom");
+    keyboard_apply_custom_mappings();
+    keyboard_set_caps(true);
+    keyboard_set_caps_mode(caps_mode_host);
+    keyboard_set_mapping_mode(KBD_MODE_SYMBOLIC);
+    SDL_SetModState(KMOD_NONE);
+    g_buttondown = -1;
+    system_state.mode = saved_mode;
+    joy_frontend_shutdown();
+    SDL_Quit();
+  }
+
+  KeyMachine_t(const KeyMachine_t&) = delete;
+  auto operator=(const KeyMachine_t&) -> KeyMachine_t& = delete;
+  KeyMachine_t(KeyMachine_t&&) = delete;
+  auto operator=(KeyMachine_t&&) -> KeyMachine_t& = delete;
+
+  // The command queue is drained by a think, as a running machine drains it
+  // once a frame.
+  static auto settle() -> void { peripheral_manager_think(0); }
+
+  static auto key(uint8_t scancode, SDLKey keycode, SDLMod mod, bool down)
+      -> void {
+    SDL_Event event{};
+    event.type = down ? SDL_KEYDOWN : SDL_KEYUP;
+    event.key.keysym.scancode = scancode;
+    event.key.keysym.sym = keycode;
+    event.key.keysym.mod = mod;
+    event.key.state = down ? SDL_PRESSED : SDL_RELEASED;
+    sdl_handle_event(&event);
+    settle();
+  }
+
+  static auto focus(bool gained) -> void {
+    SDL_Event event{};
+    event.type = SDL_ACTIVEEVENT;
+    event.active.state = SDL_APPINPUTFOCUS;
+    event.active.gain = gained ? 1 : 0;
+    sdl_handle_event(&event);
+    settle();
+  }
+
+  static auto latch() -> uint8_t {
+    return io_map_dispatch(0, addr_keyboard_data, 0, 0, 0);
+  }
+
+  static auto any_key_down() -> bool {
+    return (io_map_dispatch(0, addr_keyboard_strobe, 0, 0, 0) & bit7) != 0;
+  }
+
+  // A read of $C010 clears the strobe on every model.
+  static auto clear_strobe() -> void {
+    (void)io_map_dispatch(0, addr_keyboard_strobe, 0, 0, 0);
+  }
+
+  static auto pushbutton(uint8_t line) -> int {
+    const auto addr = static_cast<uint16_t>(addr_pushbutton0 + line);
+    return (io_map_dispatch(0, addr, 0, 0, 0) & bit7) != 0 ? 1 : 0;
+  }
+
+  // The 6502 spins at $0300 while frames run, so no firmware reads the
+  // keyboard behind the test's back.
+  static auto run_frames(uint32_t count) -> void {
+    const std::array<uint8_t, 3> spin = {0x4C, 0x00, 0x03};
+    TestFixtures::ScopedCore_t::poke(spin_address, spin);
+    TestFixtures::enter_at({spin_address, 0, 0, 0});
+    for (uint32_t i = 0; i < count; ++i) {
+      linapple_run_frame(ntsc_frame_cycles);
+    }
+  }
+
+  // After frames have run a direct dispatch would hand the card's bus bridge a
+  // stale cycle count, so the 6502 reads the keyboard itself: LDA $C000 / STA
+  // $10 / NOP, or BIT $C010 / NOP to clear the strobe.
+  static auto stepped_latch() -> uint8_t {
+    const std::array<uint8_t, 6> probe = {0xAD, 0x00, 0xC0, 0x85, 0x10, 0xEA};
+    TestFixtures::ScopedCore_t::poke(probe_address, probe);
+    TestFixtures::enter_at({probe_address, 0, 0, 0});
+    TestFixtures::step_until_pc(probe_address + 5, probe_cycle_cap);
+    REQUIRE(cpu_get_registers()->pc == probe_address + 5);
+    return *mem_get_main_ptr(probe_result);
+  }
+
+  static auto stepped_clear_strobe() -> void {
+    const std::array<uint8_t, 4> probe = {0x2C, 0x10, 0xC0, 0xEA};
+    TestFixtures::ScopedCore_t::poke(probe_address, probe);
+    TestFixtures::enter_at({probe_address, 0, 0, 0});
+    TestFixtures::step_until_pc(probe_address + 3, probe_cycle_cap);
+    REQUIRE(cpu_get_registers()->pc == probe_address + 3);
+  }
+};
+
+auto custom_switches(TestFixtures::ScopedTestConfig_t::MachineType_t model)
+    -> TestFixtures::ScopedTestConfig_t::Description_t {
+  TestFixtures::ScopedTestConfig_t::Description_t description;
+  description.machine_type = model;
+  description.extras.push_back({"Keyboard.Custom", "Tab", "OpenApple"});
+  description.extras.push_back({"Keyboard.Custom", "Grave", "Rept"});
+  return description;
+}
+
+auto positional() -> TestFixtures::ScopedTestConfig_t::Description_t {
+  TestFixtures::ScopedTestConfig_t::Description_t description;
+  description.extras.push_back({"Keyboard", "Mapping Mode", "1"});
+  return description;
+}
+
+// The kernel's evdev code for a key and the USB HID usage the kernel's HID
+// driver assigns it (drivers/hid/hid-input.c, hid_keyboard[]): the pairing is
+// typed in, the codes come from the kernel's own header.
+struct KernelUsage_t {
+  int evdev;
+  int usage;
+};
+
+constexpr int usage_non_us_hash = 50;
+constexpr int usage_sysrq = 70;
+constexpr int usage_scroll_lock = 71;
+constexpr int usage_pause = 72;
+constexpr int usage_insert = 73;
+constexpr int usage_home = 74;
+constexpr int usage_page_up = 75;
+constexpr int usage_delete = 76;
+constexpr int usage_end = 77;
+constexpr int usage_page_down = 78;
+
+constexpr std::array<KernelUsage_t, 78> kernel_usages = {{
+    {KEY_A, keyb_idx_a},
+    {KEY_B, keyb_idx_b},
+    {KEY_C, keyb_idx_c},
+    {KEY_D, keyb_idx_d},
+    {KEY_E, keyb_idx_e},
+    {KEY_F, keyb_idx_f},
+    {KEY_G, keyb_idx_g},
+    {KEY_H, keyb_idx_h},
+    {KEY_I, keyb_idx_i},
+    {KEY_J, keyb_idx_j},
+    {KEY_K, keyb_idx_k},
+    {KEY_L, keyb_idx_l},
+    {KEY_M, keyb_idx_m},
+    {KEY_N, keyb_idx_n},
+    {KEY_O, keyb_idx_o},
+    {KEY_P, keyb_idx_p},
+    {KEY_Q, keyb_idx_q},
+    {KEY_R, keyb_idx_r},
+    {KEY_S, keyb_idx_s},
+    {KEY_T, keyb_idx_t},
+    {KEY_U, keyb_idx_u},
+    {KEY_V, keyb_idx_v},
+    {KEY_W, keyb_idx_w},
+    {KEY_X, keyb_idx_x},
+    {KEY_Y, keyb_idx_y},
+    {KEY_Z, keyb_idx_z},
+    {KEY_1, keyb_idx_1},
+    {KEY_2, keyb_idx_2},
+    {KEY_3, keyb_idx_3},
+    {KEY_4, keyb_idx_4},
+    {KEY_5, keyb_idx_5},
+    {KEY_6, keyb_idx_6},
+    {KEY_7, keyb_idx_7},
+    {KEY_8, keyb_idx_8},
+    {KEY_9, keyb_idx_9},
+    {KEY_0, keyb_idx_0},
+    {KEY_ENTER, keyb_idx_return},
+    {KEY_ESC, keyb_idx_escape},
+    {KEY_BACKSPACE, keyb_idx_backspace},
+    {KEY_TAB, keyb_idx_tab},
+    {KEY_SPACE, keyb_idx_space},
+    {KEY_MINUS, keyb_idx_minus},
+    {KEY_EQUAL, keyb_idx_equals},
+    {KEY_LEFTBRACE, keyb_idx_leftbracket},
+    {KEY_RIGHTBRACE, keyb_idx_rightbracket},
+    {KEY_BACKSLASH, keyb_idx_backslash},
+    {KEY_SEMICOLON, keyb_idx_semicolon},
+    {KEY_APOSTROPHE, keyb_idx_apostrophe},
+    {KEY_GRAVE, keyb_idx_grave},
+    {KEY_COMMA, keyb_idx_comma},
+    {KEY_DOT, keyb_idx_period},
+    {KEY_SLASH, keyb_idx_slash},
+    {KEY_CAPSLOCK, keyb_idx_capslock},
+    {KEY_F1, keyb_idx_f1},
+    {KEY_F2, keyb_idx_f2},
+    {KEY_F3, keyb_idx_f3},
+    {KEY_F4, keyb_idx_f4},
+    {KEY_F5, keyb_idx_f5},
+    {KEY_F6, keyb_idx_f6},
+    {KEY_F7, keyb_idx_f7},
+    {KEY_F8, keyb_idx_f8},
+    {KEY_F9, keyb_idx_f9},
+    {KEY_F10, keyb_idx_f10},
+    {KEY_F11, keyb_idx_f11},
+    {KEY_F12, keyb_idx_f12},
+    {KEY_SYSRQ, usage_sysrq},
+    {KEY_SCROLLLOCK, usage_scroll_lock},
+    {KEY_PAUSE, usage_pause},
+    {KEY_INSERT, usage_insert},
+    {KEY_HOME, usage_home},
+    {KEY_PAGEUP, usage_page_up},
+    {KEY_DELETE, usage_delete},
+    {KEY_END, usage_end},
+    {KEY_PAGEDOWN, usage_page_down},
+    {KEY_RIGHT, keyb_idx_right},
+    {KEY_LEFT, keyb_idx_left},
+    {KEY_DOWN, keyb_idx_down},
+    {KEY_UP, keyb_idx_up},
+}};
+
+}  // namespace
+
+TEST_CASE(
+    "SDL1 keys: the X11 keycode table gives every usage from 4 to 82 the "
+    "kernel's own key code plus 8, the non-US number sign reading as the "
+    "backslash, and any other keycode no usage") {
+  CHECK(sdl1_x11_keycode_to_hid(KEY_A + x11_min_keycode) == keyb_idx_a);
+  CHECK(sdl1_x11_keycode_to_hid(KEY_1 + x11_min_keycode) == keyb_idx_1);
+  CHECK(sdl1_x11_keycode_to_hid(KEY_ENTER + x11_min_keycode) ==
+        keyb_idx_return);
+  CHECK(sdl1_x11_keycode_to_hid(KEY_A + x11_min_keycode) == 4);
+  CHECK(sdl1_x11_keycode_to_hid(KEY_1 + x11_min_keycode) == 30);
+  CHECK(sdl1_x11_keycode_to_hid(KEY_ENTER + x11_min_keycode) == 40);
+
+  for (const KernelUsage_t& row : kernel_usages) {
+    CAPTURE(row.evdev);
+    CAPTURE(row.usage);
+    CHECK(sdl1_x11_keycode_to_hid(
+              static_cast<uint8_t>(row.evdev + x11_min_keycode)) == row.usage);
+  }
+
+  // Every usage the maps index but the non-US number sign is reached by some
+  // keycode; that one shares its key code with the backslash.
+  std::array<bool, keyb_map_size> reached{};
+  for (int keycode = 0; keycode < 256; ++keycode) {
+    reached.at(sdl1_x11_keycode_to_hid(static_cast<uint8_t>(keycode))) = true;
+  }
+  for (int usage = keyb_idx_a; usage <= keyb_idx_up; ++usage) {
+    CAPTURE(usage);
+    CHECK(reached.at(usage) == (usage != usage_non_us_hash));
+  }
+  CHECK(sdl1_x11_keycode_to_hid(0) == keyb_idx_unknown);
+  CHECK(sdl1_x11_keycode_to_hid(KEY_LEFTSHIFT + x11_min_keycode) ==
+        keyb_idx_unknown);
+  CHECK(sdl1_x11_keycode_to_hid(255) == keyb_idx_unknown);
+}
+
+TEST_CASE(
+    "SDL1 keys: under a driver other than X11 a key's usage comes from its "
+    "keysym, so positional mode types the keysym's key whatever the scancode") {
+  KeyMachine_t machine(positional());
+  REQUIRE(keyboard_get_mapping_mode() == KBD_MODE_POSITIONAL);
+  // The A key's X11 keycode with the A keysym: both paths agree.
+  KeyMachine_t::key(KEY_A + x11_min_keycode, SDLK_a, KMOD_NONE, true);
+  CHECK(KeyMachine_t::latch() == 0xC1);
+  KeyMachine_t::key(KEY_A + x11_min_keycode, SDLK_a, KMOD_NONE, false);
+  KeyMachine_t::clear_strobe();
+  // The B key's X11 keycode with the A keysym: the keysym wins here.
+  KeyMachine_t::key(KEY_B + x11_min_keycode, SDLK_a, KMOD_NONE, true);
+  CHECK(KeyMachine_t::latch() == 0xC1);
+  KeyMachine_t::key(KEY_B + x11_min_keycode, SDLK_a, KMOD_NONE, false);
+  KeyMachine_t::clear_strobe();
+  KeyMachine_t::key(0, SDLK_q, KMOD_NONE, true);
+  CHECK(KeyMachine_t::latch() == 0xD1);
+  KeyMachine_t::key(0, SDLK_q, KMOD_NONE, false);
+}
+
+TEST_CASE(
+    "SDL1 keys: A types $C1 with caps on and $E1 with it off, Left Alt is "
+    "Open Apple and Right Alt Solid Apple, and a focus loss lets go of the key "
+    "and the switch") {
+  KeyMachine_t machine(TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  REQUIRE(keyboard_get_caps());
+  REQUIRE_FALSE(KeyMachine_t::any_key_down());
+
+  KeyMachine_t::key(0, SDLK_a, KMOD_NONE, true);
+  CHECK(KeyMachine_t::latch() == 0xC1);
+  CHECK(KeyMachine_t::any_key_down());
+  KeyMachine_t::key(0, SDLK_a, KMOD_NONE, false);
+  CHECK_FALSE(KeyMachine_t::any_key_down());
+  KeyMachine_t::clear_strobe();
+
+  keyboard_set_caps(false);
+  KeyMachine_t::key(0, SDLK_a, KMOD_NONE, true);
+  CHECK(KeyMachine_t::latch() == 0xE1);
+  KeyMachine_t::key(0, SDLK_a, KMOD_NONE, false);
+  KeyMachine_t::clear_strobe();
+
+  CHECK(KeyMachine_t::pushbutton(0) == 0);
+  CHECK(KeyMachine_t::pushbutton(1) == 0);
+  KeyMachine_t::key(0, SDLK_LALT, KMOD_LALT, true);
+  CHECK(KeyMachine_t::pushbutton(0) == 1);
+  CHECK(KeyMachine_t::pushbutton(1) == 0);
+  KeyMachine_t::key(0, SDLK_LALT, KMOD_NONE, false);
+  CHECK(KeyMachine_t::pushbutton(0) == 0);
+  KeyMachine_t::key(0, SDLK_RALT, KMOD_RALT, true);
+  CHECK(KeyMachine_t::pushbutton(0) == 0);
+  CHECK(KeyMachine_t::pushbutton(1) == 1);
+  KeyMachine_t::key(0, SDLK_RALT, KMOD_NONE, false);
+  CHECK(KeyMachine_t::pushbutton(1) == 0);
+  // An Alt key is a switch, not a matrix key.
+  CHECK_FALSE(KeyMachine_t::any_key_down());
+
+  KeyMachine_t::key(0, SDLK_a, KMOD_NONE, true);
+  KeyMachine_t::key(0, SDLK_LALT, KMOD_LALT, true);
+  REQUIRE(KeyMachine_t::any_key_down());
+  REQUIRE(KeyMachine_t::pushbutton(0) == 1);
+  KeyMachine_t::focus(false);
+  CHECK_FALSE(KeyMachine_t::any_key_down());
+  CHECK(KeyMachine_t::pushbutton(0) == 0);
+  // The releases the window manager ate change nothing when they arrive.
+  KeyMachine_t::key(0, SDLK_a, KMOD_NONE, false);
+  KeyMachine_t::key(0, SDLK_LALT, KMOD_NONE, false);
+  CHECK_FALSE(KeyMachine_t::any_key_down());
+  CHECK(KeyMachine_t::pushbutton(0) == 0);
+}
+
+TEST_CASE(
+    "SDL1 keys: a custom Tab is Open Apple and types nothing, and a custom "
+    "Grave is the REPT key, which repeats a held key on a II Plus and does "
+    "nothing on a //e") {
+  using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+
+  SUBCASE("Enhanced //e") {
+    KeyMachine_t machine(
+        custom_switches(TestConfig_t::machine_apple2e_enhanced));
+    KeyMachine_t::key(0, SDLK_a, KMOD_NONE, true);
+    REQUIRE(KeyMachine_t::latch() == 0xC1);
+    KeyMachine_t::clear_strobe();
+
+    KeyMachine_t::key(0, SDLK_TAB, KMOD_NONE, true);
+    CHECK(KeyMachine_t::pushbutton(0) == 1);
+    CHECK(KeyMachine_t::latch() == 0x41);
+    KeyMachine_t::key(0, SDLK_TAB, KMOD_NONE, false);
+    CHECK(KeyMachine_t::pushbutton(0) == 0);
+
+    KeyMachine_t::key(0, SDLK_BACKQUOTE, KMOD_NONE, true);
+    CHECK(KeyMachine_t::latch() == 0x41);
+    KeyMachine_t::run_frames(rept_frames);
+    CHECK(KeyMachine_t::stepped_latch() == 0x41);
+    KeyMachine_t::key(0, SDLK_BACKQUOTE, KMOD_NONE, false);
+    KeyMachine_t::key(0, SDLK_a, KMOD_NONE, false);
+  }
+
+  SUBCASE("II Plus") {
+    KeyMachine_t machine(custom_switches(TestConfig_t::machine_apple2_plus),
+                         A2TYPE_APPLE2PLUS);
+    KeyMachine_t::key(0, SDLK_a, KMOD_NONE, true);
+    REQUIRE(KeyMachine_t::latch() == 0xC1);
+    KeyMachine_t::clear_strobe();
+    REQUIRE((KeyMachine_t::latch() & bit7) == 0);
+
+    // The first REPT strobe comes one period after the press, so the press
+    // itself latches nothing.
+    KeyMachine_t::key(0, SDLK_BACKQUOTE, KMOD_NONE, true);
+    CHECK(KeyMachine_t::latch() == 0x41);
+    KeyMachine_t::run_frames(rept_frames);
+    CHECK(KeyMachine_t::stepped_latch() == 0xC1);
+
+    KeyMachine_t::stepped_clear_strobe();
+    KeyMachine_t::key(0, SDLK_BACKQUOTE, KMOD_NONE, false);
+    KeyMachine_t::run_frames(rept_frames);
+    CHECK(KeyMachine_t::stepped_latch() == 0x41);
+    KeyMachine_t::key(0, SDLK_a, KMOD_NONE, false);
+  }
+}
+
+TEST_CASE(
+    "SDL1 keys: in host mode caps follows the host's lock state on focus gain "
+    "and at the key's edges, and in emulated mode a press toggles it") {
+  KeyMachine_t machine(TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  REQUIRE(keyboard_get_caps_mode() == caps_mode_host);
+
+  keyboard_set_caps(false);
+  SDL_SetModState(KMOD_CAPS);
+  KeyMachine_t::focus(true);
+  CHECK(keyboard_get_caps());
+  SDL_SetModState(KMOD_NONE);
+  KeyMachine_t::focus(true);
+  CHECK_FALSE(keyboard_get_caps());
+
+  // SDL reports the lock's new state in the event's modifiers.
+  KeyMachine_t::key(0, SDLK_CAPSLOCK, KMOD_CAPS, true);
+  CHECK(keyboard_get_caps());
+  KeyMachine_t::key(0, SDLK_CAPSLOCK, KMOD_NONE, false);
+  CHECK_FALSE(keyboard_get_caps());
+
+  keyboard_set_caps_mode(caps_mode_emulated);
+  KeyMachine_t::key(0, SDLK_CAPSLOCK, KMOD_NONE, true);
+  CHECK(keyboard_get_caps());
+  KeyMachine_t::key(0, SDLK_CAPSLOCK, KMOD_NONE, false);
+  CHECK(keyboard_get_caps());
+  KeyMachine_t::key(0, SDLK_CAPSLOCK, KMOD_NONE, true);
+  CHECK_FALSE(keyboard_get_caps());
+  // The host's lock state is not the emulated key's business.
+  SDL_SetModState(KMOD_CAPS);
+  KeyMachine_t::focus(true);
+  CHECK_FALSE(keyboard_get_caps());
+}
+
+TEST_CASE(
+    "SDL1 keys: a configured second joystick that is not plugged in leaves "
+    "PB2 open at rest") {
+  TestFixtures::ScopedTestConfig_t::Description_t description =
+      TestFixtures::ScopedTestConfig_t::enhanced_2e_only();
+  description.extras.push_back({"Configuration", "Joystick 1", "1"});
+  KeyMachine_t machine(description);
+  CHECK(KeyMachine_t::pushbutton(0) == 0);
+  CHECK(KeyMachine_t::pushbutton(1) == 0);
+  CHECK(KeyMachine_t::pushbutton(2) == 1);
+}
+
+TEST_CASE(
+    "SDL1 keys: Alt+1 with the shipped quick-save modifier names a snapshot "
+    "slot and reaches no card") {
+  KeyMachine_t machine(TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  KeyMachine_t::key(0, SDLK_1, KMOD_LALT, true);
+  CHECK((KeyMachine_t::latch() & bit7) == 0);
+  CHECK_FALSE(KeyMachine_t::any_key_down());
+  CHECK(std::string(save_state_get_filename()).find("SaveState1.aws") !=
+        std::string::npos);
+  KeyMachine_t::key(0, SDLK_1, KMOD_LALT, false);
+  CHECK_FALSE(KeyMachine_t::any_key_down());
+}
+
 #endif

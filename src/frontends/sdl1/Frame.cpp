@@ -5,6 +5,7 @@
 #include <SDL/SDL.h>
 #include <SDL/SDL_error.h>
 #include <SDL/SDL_events.h>
+#include <SDL/SDL_keyboard.h>
 #include <SDL/SDL_keysym.h>
 #include <SDL/SDL_mouse.h>
 #include <SDL/SDL_stdinc.h>
@@ -33,6 +34,7 @@
 #include "core/Registry.h"
 #include "frontends/common/AppController.h"
 #include "frontends/common/AudioMixer.h"
+#include "frontends/common/Frontend.h"
 #include "frontends/common/HelpText.h"
 #include "frontends/common/MouseFrontend.h"
 #include "frontends/common/SaveStateManager.h"
@@ -594,14 +596,16 @@ auto frame_on_resize(int width, int height) -> void {
 
 auto frame_on_focus(bool gained) -> void {
   s_app_active = gained;
-  if (s_app_active) {
-    if ((system_state.mode != app_mode_debug) &&
-        (system_state.mode != app_mode_stepping) &&
-        (system_state.mode != app_mode_paused)) {
-      audio_mixer_set_fade(fade_in);
-    }
-  } else {
+  if (!gained) {
+    keyboard_release_host_modifiers();
     audio_mixer_set_fade(fade_out);
+    return;
+  }
+  keyboard_sync_host_caps(SDL_GetModState());
+  if ((system_state.mode != app_mode_debug) &&
+      (system_state.mode != app_mode_stepping) &&
+      (system_state.mode != app_mode_paused)) {
+    audio_mixer_set_fade(fade_in);
   }
 }
 
