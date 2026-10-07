@@ -513,10 +513,12 @@ auto keyboard_abi_save_state(void* instance, void* buffer, size_t* size)
   return peripheral_ok;
 }
 
+// A buffer longer than the frame is read up to the frame's own struct_size;
+// a frame of another version or size is refused with the card untouched.
 auto keyboard_abi_load_state(void* instance, const void* buffer, size_t size)
     -> PeripheralStatus_t {
   if (instance == nullptr || buffer == nullptr ||
-      size != sizeof(KeyboardSaveState_t)) {
+      size < sizeof(KeyboardSaveState_t)) {
     return peripheral_error;
   }
   const auto* ss = static_cast<const KeyboardSaveState_t*>(buffer);
