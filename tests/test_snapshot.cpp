@@ -345,15 +345,20 @@ TEST_CASE("Snapshot: A fixed-body file loads with its slots intact") {
 
   SS_PERIPHERAL_MANIFEST manifest;
   peripheral_get_manifest(&manifest);
-  // The manifest names the front device of each slot; slot 0 holds three
-  // internal devices and the registry puts the highest id in front, which
-  // keeps the speaker there as older readers expect. In a plugin build the
-  // speaker is a module registered after every built-in.
-#if defined(ENABLE_PERIPHERAL_SPEAKER)
-  CHECK(std::string(manifest.peripherals[0].name) == "Speaker");
-#else
-  CHECK(std::string(manifest.peripherals[0].name) == "Keyboard");
-#endif
+  // The manifest names the front device of each slot; slot 0 holds several
+  // internal devices, the built-ins registered before any module in the
+  // registry's descending-id order, so the front is the first built-in with
+  // default_slot 0: the speaker in a static build, and whichever built-in
+  // remains in a plugin build.
+  const Peripheral_t* front = nullptr;
+  for (const Peripheral_t* p : peripheral_get_builtin_registry()) {
+    if (p != nullptr && p->default_slot == 0) {
+      front = p;
+      break;
+    }
+  }
+  REQUIRE(front != nullptr);
+  CHECK(std::string(manifest.peripherals[0].name) == front->name);
   CHECK(std::string(manifest.peripherals[1].name) == "Parallel Printer");
   CHECK(std::string(manifest.peripherals[2].name) == "Super Serial Card");
   CHECK(manifest.peripherals[3].name[0] == '\0');

@@ -631,7 +631,7 @@ endfunction()
 
 # Define all peripherals
 add_peripheral(speaker "built-in speaker" "src/apple2/peripherals/speaker/Speaker.cpp" "" "" FALSE)
-add_peripheral(keyboard "keyboard" "src/apple2/peripherals/keyboard/Keyboard.cpp" "" "" TRUE)
+add_peripheral(keyboard "keyboard" "src/apple2/peripherals/keyboard/Keyboard.cpp" "" "" FALSE)
 add_peripheral_library(image-container
     SOURCES src/apple2/media/image_container/ImageContainer.cpp
     EXTERNAL ZLIB LIBZIP)

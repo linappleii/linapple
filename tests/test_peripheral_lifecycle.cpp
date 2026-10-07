@@ -508,14 +508,11 @@ TEST_CASE(
   SS_PERIPHERAL_MANIFEST manifest;
   peripheral_get_manifest(&manifest);
   CHECK(std::string(manifest.peripherals[0].name) == front->name);
-  // In a plugin build the speaker is a module, registered after every
-  // built-in, so the keyboard is the first built-in there.
+  // In a plugin build the speaker and the keyboard are modules, registered
+  // after every built-in, so the front is whichever built-in remains.
 #if defined(ENABLE_PERIPHERAL_SPEAKER)
   CHECK(std::string(front->id) == "linapple.speaker");
   CHECK(std::string(manifest.peripherals[0].name) == "Speaker");
-#elif defined(ENABLE_PERIPHERAL_KEYBOARD)
-  CHECK(std::string(front->id) == "linapple.keyboard");
-  CHECK(std::string(manifest.peripherals[0].name) == "Keyboard");
 #endif
 }
 
