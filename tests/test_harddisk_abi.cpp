@@ -16,18 +16,18 @@
 #include "apple2/peripherals/Peripheral_Subsystems.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
+#include "apple2/peripherals/harddisk/HarddiskError.h"
 #include "core/LinAppleCore.h"
 #include "doctest.h"
 #include "test_fixtures.h"
 #include "test_fixtures_core.h"
 
 extern "C" unsigned harddisk_abi_c_frame_size(void);
-extern "C" unsigned harddisk_abi_c_frame_drives_offset(void);
-extern "C" unsigned harddisk_abi_c_frame_drive_size(void);
-extern "C" unsigned harddisk_abi_c_frame_unit_offset(void);
+extern "C" unsigned harddisk_abi_c_frame_offset(int field);
 extern "C" unsigned harddisk_abi_c_insert_size(void);
 extern "C" unsigned harddisk_abi_c_insert_path_offset(void);
 extern "C" unsigned harddisk_abi_c_insert_drive_offset(void);
+extern "C" unsigned harddisk_abi_c_insert_reserved_offset(void);
 extern "C" unsigned harddisk_abi_c_status_size(void);
 extern "C" unsigned harddisk_abi_c_state_version(void);
 extern "C" uint32_t harddisk_abi_c_insert_id(void);
@@ -36,6 +36,8 @@ extern "C" uint32_t harddisk_abi_c_set_protect_id(void);
 extern "C" uint32_t harddisk_abi_c_status_query_id(void);
 extern "C" uint32_t harddisk_abi_c_extensions_query_id(void);
 extern "C" int harddisk_abi_c_error_none(void);
+extern "C" int harddisk_abi_c_error_not_block_image(void);
+extern "C" unsigned harddisk_abi_c_prodos_codes(void);
 
 namespace {
 
@@ -188,17 +190,36 @@ BenchHost_t* BenchHost_t::s_active = nullptr;
 
 TEST_CASE("Harddisk ABI: the C99 view of the headers agrees with the C++ one") {
   CHECK(harddisk_abi_c_frame_size() == sizeof(HarddiskSaveState_t));
-  CHECK(harddisk_abi_c_frame_size() == 2160);
-  CHECK(harddisk_abi_c_frame_drives_offset() ==
-        offsetof(HarddiskSaveState_t, drives));
-  CHECK(harddisk_abi_c_frame_drives_offset() == 8);
-  CHECK(harddisk_abi_c_frame_drive_size() == sizeof(HarddiskDriveSaveState_t));
-  CHECK(harddisk_abi_c_frame_drives_offset() +
-            harddisk_abi_c_frame_drive_size() ==
-        1080);
-  CHECK(harddisk_abi_c_frame_unit_offset() ==
-        offsetof(HarddiskSaveState_t, unit_num));
-  CHECK(harddisk_abi_c_frame_unit_offset() == 2152);
+  CHECK(harddisk_abi_c_frame_size() == harddisk_save_state_size);
+  CHECK(harddisk_abi_c_frame_size() == 20);
+  CHECK(harddisk_abi_c_frame_offset(0) ==
+        offsetof(HarddiskSaveState_t, version));
+  CHECK(harddisk_abi_c_frame_offset(0) == 0);
+  CHECK(harddisk_abi_c_frame_offset(1) ==
+        offsetof(HarddiskSaveState_t, struct_size));
+  CHECK(harddisk_abi_c_frame_offset(1) == 4);
+  CHECK(harddisk_abi_c_frame_offset(2) == offsetof(HarddiskSaveState_t, unit));
+  CHECK(harddisk_abi_c_frame_offset(2) == 8);
+  CHECK(harddisk_abi_c_frame_offset(3) ==
+        offsetof(HarddiskSaveState_t, command));
+  CHECK(harddisk_abi_c_frame_offset(3) == 9);
+  CHECK(harddisk_abi_c_frame_offset(4) ==
+        offsetof(HarddiskSaveState_t, result));
+  CHECK(harddisk_abi_c_frame_offset(4) == 10);
+  CHECK(harddisk_abi_c_frame_offset(5) ==
+        offsetof(HarddiskSaveState_t, data_phase));
+  CHECK(harddisk_abi_c_frame_offset(5) == 11);
+  CHECK(harddisk_abi_c_frame_offset(6) == offsetof(HarddiskSaveState_t, block));
+  CHECK(harddisk_abi_c_frame_offset(6) == 12);
+  CHECK(harddisk_abi_c_frame_offset(7) ==
+        offsetof(HarddiskSaveState_t, data_index));
+  CHECK(harddisk_abi_c_frame_offset(7) == 14);
+  CHECK(harddisk_abi_c_frame_offset(8) ==
+        offsetof(HarddiskSaveState_t, block_count));
+  CHECK(harddisk_abi_c_frame_offset(8) == 16);
+  CHECK(harddisk_abi_c_frame_offset(9) ==
+        offsetof(HarddiskSaveState_t, reserved));
+  CHECK(harddisk_abi_c_frame_offset(9) == 18);
   CHECK(harddisk_abi_c_state_version() == HARDDISK_STATE_VERSION);
   CHECK(harddisk_abi_c_state_version() == 1);
 
@@ -206,6 +227,9 @@ TEST_CASE("Harddisk ABI: the C99 view of the headers agrees with the C++ one") {
   CHECK(harddisk_abi_c_insert_size() == PERIPHERAL_CMD_MAX_DATA);
   CHECK(harddisk_abi_c_insert_path_offset() == 0);
   CHECK(harddisk_abi_c_insert_drive_offset() == harddisk_insert_path_max);
+  CHECK(harddisk_abi_c_insert_reserved_offset() ==
+        offsetof(HarddiskInsertCmd_t, reserved));
+  CHECK(harddisk_abi_c_insert_reserved_offset() == 506);
   CHECK(harddisk_abi_c_status_size() == sizeof(HarddiskStatus_t));
   CHECK(harddisk_abi_c_status_size() == 1104);
 
@@ -216,6 +240,10 @@ TEST_CASE("Harddisk ABI: the C99 view of the headers agrees with the C++ one") {
   CHECK(harddisk_abi_c_status_query_id() == 0x00050001u);
   CHECK(harddisk_abi_c_extensions_query_id() == 0x00050002u);
   CHECK(harddisk_abi_c_error_none() == 0);
+  CHECK(harddisk_abi_c_error_not_block_image() == harddisk_err_not_block_image);
+  CHECK(harddisk_abi_c_error_not_block_image() == 5);
+  // ,  and B (ProDOS 8 Technical Reference Manual, 6.3.2).
+  CHECK(harddisk_abi_c_prodos_codes() == 0x27282Bu);
 }
 
 TEST_CASE(

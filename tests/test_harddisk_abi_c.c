@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
-/* Compiled as C99: the hard disk's command and format-driver headers are the
- * ABI a C consumer sees, so what they measure is handed back for the C++
- * suite to compare with its own view. */
+/* Compiled as C99: the hard disk's command, error, format-driver and loader
+ * headers are the ABI a C consumer sees, so what they measure is handed back
+ * for the C++ suite to compare with its own view. */
 /* Justification: a header this unit names nothing from is still under test,
    since compiling it as C99 is the point. */
 /* NOLINTBEGIN(misc-include-cleaner) */
@@ -18,16 +18,31 @@ unsigned harddisk_abi_c_frame_size(void) {
   return (unsigned)sizeof(HarddiskSaveState_t);
 }
 
-unsigned harddisk_abi_c_frame_drives_offset(void) {
-  return (unsigned)offsetof(HarddiskSaveState_t, drives);
-}
-
-unsigned harddisk_abi_c_frame_drive_size(void) {
-  return (unsigned)sizeof(HarddiskDriveSaveState_t);
-}
-
-unsigned harddisk_abi_c_frame_unit_offset(void) {
-  return (unsigned)offsetof(HarddiskSaveState_t, unit_num);
+unsigned harddisk_abi_c_frame_offset(int field) {
+  switch (field) {
+    case 0:
+      return (unsigned)offsetof(HarddiskSaveState_t, version);
+    case 1:
+      return (unsigned)offsetof(HarddiskSaveState_t, struct_size);
+    case 2:
+      return (unsigned)offsetof(HarddiskSaveState_t, unit);
+    case 3:
+      return (unsigned)offsetof(HarddiskSaveState_t, command);
+    case 4:
+      return (unsigned)offsetof(HarddiskSaveState_t, result);
+    case 5:
+      return (unsigned)offsetof(HarddiskSaveState_t, data_phase);
+    case 6:
+      return (unsigned)offsetof(HarddiskSaveState_t, block);
+    case 7:
+      return (unsigned)offsetof(HarddiskSaveState_t, data_index);
+    case 8:
+      return (unsigned)offsetof(HarddiskSaveState_t, block_count);
+    case 9:
+      return (unsigned)offsetof(HarddiskSaveState_t, reserved);
+    default:
+      return 0xFFFFu;
+  }
 }
 
 unsigned harddisk_abi_c_insert_size(void) {
@@ -40,6 +55,10 @@ unsigned harddisk_abi_c_insert_path_offset(void) {
 
 unsigned harddisk_abi_c_insert_drive_offset(void) {
   return (unsigned)offsetof(HarddiskInsertCmd_t, drive);
+}
+
+unsigned harddisk_abi_c_insert_reserved_offset(void) {
+  return (unsigned)offsetof(HarddiskInsertCmd_t, reserved);
 }
 
 unsigned harddisk_abi_c_status_size(void) {

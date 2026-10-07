@@ -89,41 +89,25 @@ typedef struct {
   char drive1_full_path[harddisk_status_path_max];
 } HarddiskStatus_t;
 
-// Why: 1072-byte naturally aligned POD representing per-drive state.
+/* The controller's registers, and nothing else: the image in each drive is
+   the host's to mount and the configuration's to name, and the 512-byte
+   buffer is re-read from the mounted image on load. data_phase is 0 idle, 1
+   read-out (the buffer holds the block the firmware is fetching), 2 write-in
+   (the firmware was pushing a WRITE, whose bytes a load cannot recover). */
 typedef struct {
-  char image_name[harddisk_status_name_max]; /* 32 bytes */
-  char full_path[harddisk_status_path_max];  /* 512 bytes */
-  int32_t last_error;                        /* 4 bytes */
-  uint16_t memory_address;                   /* 2 bytes */
-  uint16_t disk_block;                       /* 2 bytes */
-  uint16_t buffer_ptr;                       /* 2 bytes */
-  uint8_t error_code;                        /* 1 byte */
-  uint8_t is_loaded;                         /* 1 byte */
-  uint8_t os_readonly;                       /* 1 byte */
-  uint8_t user_write_protected;              /* 1 byte */
-  uint8_t padding[2];                        /* 2 bytes */
-  uint8_t data_buffer[512];                  /* 512 bytes */
-} HarddiskDriveSaveState_t;                  /* 1072 bytes */
+  uint32_t version;
+  uint32_t struct_size;
+  uint8_t unit;
+  uint8_t command;
+  uint8_t result;
+  uint8_t data_phase;
+  uint16_t block;
+  uint16_t data_index;
+  uint16_t block_count;
+  uint8_t reserved[2];
+} HarddiskSaveState_t;
 
-// Why: 2160-byte naturally aligned POD representing controller & drive state.
-// 8 + (2 * 1072) + 8 = 2160 bytes. (2160 % 8 == 0).
-typedef struct {
-  // --- Header (8 bytes) ---
-  uint32_t version;     /* 4 bytes */
-  uint32_t struct_size; /* 4 bytes */
-
-  // --- Drives (2 * 1072 = 2144 bytes) ---
-  HarddiskDriveSaveState_t drives[harddisk_drive_count];
-
-  // --- Controller Scalars (8 bytes) ---
-  uint8_t unit_num;
-  uint8_t command_reg;
-  uint8_t rom_active;
-  uint8_t is_enabled;
-  uint8_t activity_status;
-  uint8_t slot;
-  uint8_t padding[2];
-} HarddiskSaveState_t; /* 2160 bytes */
+enum { harddisk_save_state_size = 20 };
 
 #ifdef __cplusplus
 }

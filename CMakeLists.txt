@@ -1334,6 +1334,12 @@ EOF
 ]=]
             WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
         set_tests_properties(test-harddisk-roms-pinned PROPERTIES TIMEOUT 5)
+        # harddisk-read-out.aws carries the card's twenty-byte frame in its
+        # slot-7 trailer entry and harddisk-81d55907.aws, written before the
+        # card had a frame, an empty one; the loader is held to these bytes.
+        add_test(NAME test-harddisk-fixtures-pinned COMMAND sh -c "sha1sum -c --quiet harddisk-fixtures.sha1"
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures")
+        set_tests_properties(test-harddisk-fixtures-pinned PROPERTIES TIMEOUT 5)
     endif()
     add_linapple_test(snapshot tests/test_snapshot.cpp)
     # A case that names a card compiles only with that card, plugin or built-in.

@@ -893,6 +893,20 @@ auto harddisk_abi_query(void* instance, uint32_t cmd_id, void* data,
   return peripheral_ok;
 }
 
+static_assert(sizeof(HarddiskSaveState_t) == harddisk_save_state_size,
+              "the frame is twenty bytes");
+static_assert(offsetof(HarddiskSaveState_t, version) == 0 &&
+                  offsetof(HarddiskSaveState_t, struct_size) == 4 &&
+                  offsetof(HarddiskSaveState_t, unit) == 8 &&
+                  offsetof(HarddiskSaveState_t, command) == 9 &&
+                  offsetof(HarddiskSaveState_t, result) == 10 &&
+                  offsetof(HarddiskSaveState_t, data_phase) == 11 &&
+                  offsetof(HarddiskSaveState_t, block) == 12 &&
+                  offsetof(HarddiskSaveState_t, data_index) == 14 &&
+                  offsetof(HarddiskSaveState_t, block_count) == 16 &&
+                  offsetof(HarddiskSaveState_t, reserved) == 18,
+              "every field sits where a file written earlier put it");
+
 auto harddisk_abi_save_state(void* instance, void* buffer, size_t* size)
     -> PeripheralStatus_t {
   if (size == nullptr) {
@@ -920,35 +934,14 @@ auto harddisk_abi_save_state(void* instance, void* buffer, size_t* size)
 
   std::memset(ss, 0, required);
   ss->version = HARDDISK_STATE_VERSION;
-  ss->struct_size = sizeof(HarddiskSaveState_t);
-
-  // The controller has one register set; the frame's per-drive slots each
-  // carry a copy of it beside the drive's own state.
-  for (size_t i = 0; i < harddisk_drive_count; ++i) {
-    const auto& drive = card->drives.at(i);
-    auto& d_ss = ss->drives[i];
-
-    copy_string_to_buffer(drive.display_name, d_ss.image_name,
-                          harddisk_status_name_max);
-    copy_string_to_buffer(drive.full_path, d_ss.full_path,
-                          harddisk_status_path_max);
-    d_ss.last_error = static_cast<int32_t>(drive.last_error);
-    d_ss.memory_address = 0;
-    d_ss.disk_block = card->block;
-    d_ss.buffer_ptr = card->data_index;
-    d_ss.error_code = card->result;
-    d_ss.is_loaded = drive.is_loaded ? 1 : 0;
-    d_ss.os_readonly = 0;
-    d_ss.user_write_protected = drive.user_write_protected ? 1 : 0;
-    std::copy(card->buffer.begin(), card->buffer.end(), d_ss.data_buffer);
-  }
-
-  ss->unit_num = card->unit;
-  ss->command_reg = card->command;
-  ss->rom_active = 1;
-  ss->is_enabled = 1;
-  ss->activity_status = activity_status(card);
-  ss->slot = static_cast<uint8_t>(card->slot);
+  ss->struct_size = harddisk_save_state_size;
+  ss->unit = card->unit;
+  ss->command = card->command;
+  ss->result = card->result;
+  ss->data_phase = card->data_phase;
+  ss->block = card->block;
+  ss->data_index = card->data_index;
+  ss->block_count = card->block_count;
 
   *size = required;
   return peripheral_ok;
@@ -957,43 +950,64 @@ auto harddisk_abi_save_state(void* instance, void* buffer, size_t* size)
 auto harddisk_abi_load_state(void* instance, const void* buffer, size_t size)
     -> PeripheralStatus_t {
   if (instance == nullptr || buffer == nullptr ||
-      size != sizeof(HarddiskSaveState_t)) {
+      size < sizeof(HarddiskSaveState_t)) {
     return peripheral_error;
   }
 
-  const auto* ss = static_cast<const HarddiskSaveState_t*>(buffer);
-  if (ss->version != HARDDISK_STATE_VERSION ||
-      ss->struct_size != sizeof(HarddiskSaveState_t)) {
+  HarddiskSaveState_t ss{};
+  std::memcpy(&ss, buffer, sizeof(ss));
+  if (ss.version != HARDDISK_STATE_VERSION ||
+      ss.struct_size != harddisk_save_state_size ||
+      ss.data_phase > harddisk_phase_write_in) {
     return peripheral_error;
   }
 
   auto* card = static_cast<HarddiskPeripheral_t*>(instance);
+  card->unit = ss.unit;
+  card->command = ss.command;
+  card->result = ss.result;
+  card->block = ss.block;
+  card->data_index =
+      static_cast<uint16_t>(ss.data_index % physical::block_size);
+  card->block_count = ss.block_count;
+  card->data_phase = ss.data_phase;
+  card->buffer_poisoned = false;
+  card->buffer.fill(0);
 
-  for (int i = 0; i < harddisk_drive_count; ++i) {
-    const auto& d_ss = ss->drives[i];
-    auto& drive = card->drives.at(static_cast<size_t>(i));
-
-    // The image in a drive is the host's to mount; the frame names only the
-    // state the controller keeps about it.
-    drive.last_error = static_cast<HarddiskError_e>(d_ss.last_error);
-    drive.user_write_protected = d_ss.user_write_protected != 0;
+  // The frame names no image: whatever the host mounted from its
+  // configuration is what the saved session resumes against, and the log is
+  // the only record of which that was.
+  if (card->host != nullptr && card->host->Log != nullptr) {
+    const Harddisk_t& drive0 = card->drives.at(0);
+    const Harddisk_t& drive1 = card->drives.at(1);
+    card->host->Log(card, log_info,
+                    "Hard disk: resuming against drive 1 '%s' and drive 2 "
+                    "'%s'\n",
+                    drive0.is_loaded ? drive0.full_path.c_str() : "(empty)",
+                    drive1.is_loaded ? drive1.full_path.c_str() : "(empty)");
   }
 
-  card->unit = ss->unit_num;
-  card->command = ss->command_reg;
-  const auto& regs_ss =
-      ss->drives[(card->unit & physical::unit_drive_bit) != 0 ? 1 : 0];
-  card->block = regs_ss.disk_block;
-  card->data_index =
-      static_cast<uint16_t>(regs_ss.buffer_ptr % physical::block_size);
-  card->result = regs_ss.error_code;
-  std::copy(regs_ss.data_buffer, regs_ss.data_buffer + physical::block_size,
-            card->buffer.begin());
-  card->data_phase = harddisk_phase_idle;
-  card->buffer_poisoned = false;
+  // A read in flight is re-read from the block the frame names; an empty
+  // drive or a failed read leaves zeros, which is what an unplugged drive
+  // gives. A write in flight is gone with its bytes: the buffer is marked so
+  // the one WRITE that would have used it fails instead of writing zeros.
+  if (card->data_phase == harddisk_phase_read_out) {
+    Harddisk_t& drive = selected_drive(card);
+    if (drive.is_loaded &&
+        drive.driver->read_block(drive.driver_instance, card->block,
+                                 card->buffer.data()) != harddisk_err_none) {
+      card->buffer.fill(0);
+    }
+  } else if (card->data_phase == harddisk_phase_write_in) {
+    card->buffer_poisoned = true;
+    if (card->host != nullptr && card->host->Log != nullptr) {
+      card->host->Log(card, log_warn,
+                      "Hard disk: a block write in flight at the save was "
+                      "lost; the write fails with an I/O error\n");
+    }
+  }
 
   notify_status_changed(card);
-
   return peripheral_ok;
 }
 
