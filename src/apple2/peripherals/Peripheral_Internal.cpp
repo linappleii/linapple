@@ -183,7 +183,7 @@ auto peripheral_register_internal() -> void {
         g_legacy_override.displaced =
             displaced != nullptr ? displaced->name : "";
         if (displaced != nullptr) {
-          Logger::info(
+          Logger::warning(
               "Slot %d: Mouse in slot 4 installs the %s in place of %s\n", slot,
               mouse_key_card->name, displaced->name);
         }
