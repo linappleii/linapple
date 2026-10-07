@@ -30,6 +30,7 @@
 #include "core/Registry.h"
 #include "frontends/common/AppController.h"
 #include "frontends/common/AudioMixer.h"
+#include "frontends/common/HarddiskFrontend.h"
 #include "frontends/common/JoystickConfig.h"
 #include "frontends/common/KeyboardTranslator.h"
 #include "frontends/common/MouseFrontend.h"
@@ -597,7 +598,7 @@ static auto process_sequences() -> void {
                 g_input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
                 g_input_queue.begin() + static_cast<std::ptrdiff_t>(end));
             if (token.find(";2") != std::string::npos || token == "1;2") {
-              tui_disk_select_open(7, 0);
+              tui_disk_select_open(harddisk_frontend_slot(), 0);
             } else {
               tui_disk_select_open(6, 0);
             }
@@ -607,7 +608,7 @@ static auto process_sequences() -> void {
                 g_input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
                 g_input_queue.begin() + static_cast<std::ptrdiff_t>(end));
             if (token.find(";2") != std::string::npos || token == "1;2") {
-              tui_disk_select_open(7, 1);
+              tui_disk_select_open(harddisk_frontend_slot(), 1);
             } else {
               tui_disk_select_open(6, 1);
             }
@@ -653,10 +654,10 @@ static auto process_sequences() -> void {
               restart_machine();
             } else if (token == "13" || token == "25") {
               tui_video_close_help();
-              tui_disk_select_open(7, 0);
+              tui_disk_select_open(harddisk_frontend_slot(), 0);
             } else if (token == "14" || token == "26") {
               tui_video_close_help();
-              tui_disk_select_open(7, 1);
+              tui_disk_select_open(harddisk_frontend_slot(), 1);
             } else if (token == "17" || token == "28") {
               toggle_keyboard_rocker();
             } else if (token == "19" || token == "32") {
@@ -675,10 +676,10 @@ static auto process_sequences() -> void {
                 restart_machine();
               } else if (token == "13;2" || token == "25" || token == "25;2") {
                 tui_video_close_help();
-                tui_disk_select_open(7, 0);
+                tui_disk_select_open(harddisk_frontend_slot(), 0);
               } else if (token == "14;2" || token == "26" || token == "26;2") {
                 tui_video_close_help();
-                tui_disk_select_open(7, 1);
+                tui_disk_select_open(harddisk_frontend_slot(), 1);
               } else if (token == "17;2" || token == "28" || token == "28;2") {
                 toggle_keyboard_rocker();
               } else if (token == "19;2" || token == "32" || token == "32;2") {

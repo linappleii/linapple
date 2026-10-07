@@ -18,12 +18,24 @@
 
 namespace {
 
-constexpr uint8_t k_harddisk_slot = 7;
+// The chooser is a modal loop with nowhere to put its choice when the machine
+// has no hard disk, so it does not open.
+auto harddisk_slot_or_refuse(int drive) -> int {
+  const int slot = harddisk_frontend_slot();
+  if (slot == harddisk_frontend_no_card) {
+    Logger::error("hard disk drive %d: no hard disk is installed\n", drive + 1);
+  }
+  return slot;
+}
 
 }  // namespace
 
 auto harddisk_ui_ftp_select(int drive) -> void {
   if (drive < 0 || drive > 1) {
+    return;
+  }
+  const int slot = harddisk_slot_or_refuse(drive);
+  if (slot == harddisk_frontend_no_card) {
     return;
   }
 
@@ -42,9 +54,9 @@ auto harddisk_ui_ftp_select(int drive) -> void {
   }
 
   while (is_directory) {
-    if (!choose_an_image_ftp(
-            system_state.screen_width, system_state.screen_height, full_path,
-            k_harddisk_slot, filename, is_directory, file_index)) {
+    if (!choose_an_image_ftp(system_state.screen_width,
+                             system_state.screen_height, full_path, slot,
+                             filename, is_directory, file_index)) {
       draw_frame_window();
       return;
     }
@@ -122,6 +134,10 @@ auto harddisk_ui_select(int drive) -> void {
   if (drive < 0 || drive > 1) {
     return;
   }
+  const int slot = harddisk_slot_or_refuse(drive);
+  if (slot == harddisk_frontend_no_card) {
+    return;
+  }
 
   static size_t file_index = 0;
   static size_t back_idx = 0;
@@ -135,8 +151,7 @@ auto harddisk_ui_select(int drive) -> void {
 
   while (is_directory) {
     if (!choose_an_image(system_state.screen_width, system_state.screen_height,
-                         full_path, k_harddisk_slot, filename, is_directory,
-                         file_index)) {
+                         full_path, slot, filename, is_directory, file_index)) {
       draw_frame_window();
       return;
     }

@@ -24,19 +24,13 @@ typedef enum {
   harddisk_drive_count = 2
 } HarddiskDrive_t;
 
-typedef HarddiskDrive_t HarddiskDrive_e;
-
+/* 0x0005-0x0007 are retired ids, never reassigned, so a sender built against
+   them is answered incompatible. */
 typedef enum {
   harddisk_cmd_insert = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0001,
   harddisk_cmd_eject = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0002,
-  harddisk_cmd_set_protect = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0004,
-  harddisk_cmd_reset_status = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0006,
-  // Backward-compatibility aliases
-  harddisk_cmd_get_status = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0005,
-  harddisk_cmd_get_supported_extensions = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0007
+  harddisk_cmd_set_protect = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0004
 } HarddiskCmd_t;
-
-typedef HarddiskCmd_t HarddiskCmd_e;
 
 typedef enum {
   harddisk_query_status = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0001,

@@ -10,6 +10,10 @@ static DiskBrowser_t s_browser{};
 }
 
 auto tui_disk_select_open(int slot, int drive) -> void {
+  // A machine without the card asked for has no slot to browse for.
+  if (slot < 0) {
+    return;
+  }
   if (s_browser.is_active) {
     disk_browser_close(&s_browser);
   }

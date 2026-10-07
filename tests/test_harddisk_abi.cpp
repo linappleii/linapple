@@ -309,6 +309,19 @@ TEST_CASE(
   size = sizeof(out);
   CHECK(descriptor->query(instance, unknown_harddisk_id, out, &size) ==
         peripheral_incompatible);
+
+  // The ids retired from this subsystem are never reused, so a sender built
+  // against them hears incompatible, never a silent success.
+  for (const uint32_t retired : {PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0005u,
+                                 PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0006u,
+                                 PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0007u}) {
+    CAPTURE(retired);
+    CHECK(descriptor->command(instance, retired, nullptr, 0) ==
+          peripheral_incompatible);
+    size = sizeof(out);
+    CHECK(descriptor->query(instance, retired, out, &size) ==
+          peripheral_incompatible);
+  }
 }
 
 TEST_CASE(

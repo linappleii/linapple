@@ -369,7 +369,8 @@ auto disk_browser_open(DiskBrowser_t* b, int slot, int drive,
 
   if (start_dir != nullptr && start_dir[0] != '\0') {
     util_safe_strcpy(b->current_dir, start_dir, sizeof(b->current_dir));
-  } else if (b->slot == 7 && system_state.hdd_dir.at(0) != '\0') {
+  } else if (peripheral_present(b->slot, "linapple.harddisk") &&
+             system_state.hdd_dir.at(0) != '\0') {
     util_safe_strcpy(b->current_dir, system_state.hdd_dir.data(),
                      sizeof(b->current_dir));
   } else if (system_state.current_dir.at(0) != '\0') {
@@ -586,7 +587,7 @@ auto disk_browser_confirm(DiskBrowser_t* b) -> bool {
           ? (std::string(b->current_dir) + "/" + entry->name)
           : ("/" + std::string(entry->name));
 
-  if (b->slot == 7) {
+  if (peripheral_present(b->slot, "linapple.harddisk")) {
     util_safe_strcpy(system_state.hdd_dir.data(), b->current_dir,
                      system_state.hdd_dir.size());
     Configuration_t::instance().set_string("Preferences",

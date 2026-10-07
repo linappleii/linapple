@@ -423,6 +423,7 @@ auto draw_apple_content() -> void {
 }
 
 auto frame_refresh() -> void {
+  frame_poll_activity();
   if (g_texture != nullptr && g_screen != nullptr && g_renderer != nullptr) {
     SDL_UpdateTexture(g_texture.get(), nullptr, g_screen->pixels,
                       g_screen->pitch);
@@ -474,6 +475,11 @@ auto draw_frame_window() -> void {
 
   frame_refresh();
 }
+
+// The glyphs as last composed, so what the panel shows can be read back, and
+// an activity mark the poll took before the repaint it asked for.
+static std::array<char, 3> s_last_leds = {{1, 1, 1}};
+static bool s_harddisk_activity_seen = false;
 
 auto draw_status_area(int drawflags) -> void {
   if (g_status_surface == nullptr || g_status_surface->pixels == nullptr) {
@@ -531,25 +537,75 @@ auto draw_status_area(int drawflags) -> void {
       drive2_status = disk_status_prot;
     }
 
+    const int hd_slot = harddisk_frontend_slot();
     HarddiskStatus_t hstatus{};
     size_t hsize = sizeof(hstatus);
-    if (peripheral_query(harddisk_default_slot, harddisk_query_status, &hstatus,
-                         &hsize) == peripheral_ok) {
-      hdd_status = hstatus.activity_status;
+    if (hd_slot != harddisk_frontend_no_card &&
+        peripheral_query(hd_slot, harddisk_query_status, &hstatus, &hsize) ==
+            peripheral_ok) {
+      // The card reports a transfer still in flight; the manager remembers
+      // one that began and ended inside the frame.
+      const bool seen =
+          s_harddisk_activity_seen || peripheral_activity_poll(hd_slot);
+      s_harddisk_activity_seen = false;
+      if (seen || hstatus.activity_status != harddisk_status_off) {
+        hdd_status = (hstatus.activity_status == harddisk_status_write)
+                         ? harddisk_status_write
+                         : harddisk_status_read;
+      } else if ((hstatus.drive0_loaded != 0 &&
+                  hstatus.drive0_write_protected != 0) ||
+                 (hstatus.drive1_loaded != 0 &&
+                  hstatus.drive1_write_protected != 0)) {
+        hdd_status = harddisk_status_prot;
+      }
     }
 
-    leds.at(0) = static_cast<char>(led_char_base + drive1_status);
+    s_last_leds = {{static_cast<char>(led_char_base + drive1_status),
+                    static_cast<char>(led_char_base + drive2_status),
+                    static_cast<char>(led_char_base + hdd_status)}};
+
+    leds.at(0) = s_last_leds.at(0);
     font_print(8, 23, leds.data(), g_status_surface, 4.0f, 2.7f);
 
-    leds.at(0) = static_cast<char>(led_char_base + drive2_status);
+    leds.at(0) = s_last_leds.at(1);
     font_print(40, 23, leds.data(), g_status_surface, 4.0f, 2.7f);
 
-    leds.at(0) = static_cast<char>(led_char_base + hdd_status);
+    leds.at(0) = s_last_leds.at(2);
     font_print(71, 23, leds.data(), g_status_surface, 4.0f, 2.7f);
 
     if ((drive1_status | drive2_status | hdd_status) != 0) {
       g_status_cycle = k_show_cycles;
     }
+  }
+}
+
+auto frame_status_led(int index) -> char {
+  if (index < 0 || static_cast<size_t>(index) >= s_last_leds.size()) {
+    return 0;
+  }
+  return s_last_leds.at(static_cast<size_t>(index));
+}
+
+// No frontend repaints the panel each frame, so a transfer that began and
+// ended between two repaints would never light the lamp; one repaint per
+// frame of activity, and one more when the panel's hold runs out, so that a
+// lamp left lit goes dark.
+auto frame_poll_activity() -> void {
+  const int hd_slot = harddisk_frontend_slot();
+  if (hd_slot == harddisk_frontend_no_card) {
+    return;
+  }
+  if (peripheral_activity_poll(hd_slot)) {
+    s_harddisk_activity_seen = true;
+    frame_refresh_status(draw_leds);
+    return;
+  }
+  constexpr int led_char_base = 1;
+  const char lamp = s_last_leds.at(2);
+  const bool lit = lamp == led_char_base + harddisk_status_read ||
+                   lamp == led_char_base + harddisk_status_write;
+  if (lit && g_status_cycle == 0) {
+    frame_refresh_status(draw_leds);
   }
 }
 

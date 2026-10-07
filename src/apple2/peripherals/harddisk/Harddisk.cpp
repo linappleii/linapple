@@ -805,8 +805,6 @@ auto harddisk_abi_command(void* instance, uint32_t cmd_id, const void* payload,
       notify_status_changed(card);
       return peripheral_ok;
     }
-    case harddisk_cmd_reset_status:
-      return peripheral_ok;
     default:
       break;
   }
@@ -834,8 +832,7 @@ auto harddisk_abi_query(void* instance, uint32_t cmd_id, void* data,
     return peripheral_incompatible;
   }
 
-  if (cmd_id == harddisk_query_supported_extensions ||
-      cmd_id == harddisk_cmd_get_supported_extensions) {
+  if (cmd_id == harddisk_query_supported_extensions) {
     constexpr size_t required_ext_size = 256;
     if (data == nullptr || *size == 0) {
       *size = required_ext_size;
@@ -846,7 +843,7 @@ auto harddisk_abi_query(void* instance, uint32_t cmd_id, void* data,
     return peripheral_ok;
   }
 
-  if (cmd_id != harddisk_query_status && cmd_id != harddisk_cmd_get_status) {
+  if (cmd_id != harddisk_query_status) {
     return peripheral_incompatible;
   }
 

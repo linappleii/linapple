@@ -21,6 +21,7 @@
 #include "apple2/Video.h"
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Types.h"
+#include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "apple2/peripherals/mouse/MouseCommands.h"
 #include "core/Asset.h"
 #include "core/LinAppleCore.h"
@@ -28,6 +29,7 @@
 #include "doctest.h"
 #include "frontends/common/AppConfig.h"
 #include "frontends/common/Frontend.h"
+#include "frontends/common/HarddiskFrontend.h"
 #include "frontends/common/KeyboardMaps.h"
 #include "frontends/common/KeyboardTranslator.h"
 #include "frontends/common/MouseFrontend.h"
@@ -1271,6 +1273,129 @@ TEST_CASE(
         std::string::npos);
   KeyMachine_t::key(0, SDLK_1, KMOD_LALT, false);
   CHECK_FALSE(KeyMachine_t::any_key_down());
+}
+
+#endif
+
+#if defined(ENABLE_PERIPHERAL_HARDDISK)
+
+namespace {
+
+constexpr int harddisk_test_slot = 5;
+constexpr const char* harddisk_image_key = "Harddisk Image 1";
+
+auto harddisk_in_slot_5() -> TestFixtures::ScopedTestConfig_t::Description_t {
+  TestFixtures::ScopedTestConfig_t::Description_t description;
+  description.slots[harddisk_test_slot - 1] = "Harddisk";
+  return description;
+}
+
+auto harddisk_status() -> HarddiskStatus_t {
+  HarddiskStatus_t out{};
+  size_t size = sizeof(out);
+  REQUIRE(peripheral_query(harddisk_test_slot, harddisk_query_status, &out,
+                           &size) == peripheral_ok);
+  return out;
+}
+
+auto harddisk_saved_key() -> std::string {
+  return Configuration_t::instance().get_string("Preferences",
+                                                harddisk_image_key);
+}
+
+constexpr uint16_t harddisk_io_base = 0xC080 + (harddisk_test_slot << 4);
+
+// READ block 1 through the registers, as the firmware drives them.
+auto harddisk_read_block_1() -> void {
+  io_map_dispatch(0, harddisk_io_base + 1, 1, harddisk_test_slot << 4, 0);
+  io_map_dispatch(0, harddisk_io_base + 2, 1, 0x01, 0);
+  io_map_dispatch(0, harddisk_io_base + 3, 1, 0x00, 0);
+  io_map_dispatch(0, harddisk_io_base + 0, 1, 0x01, 0);
+  REQUIRE(io_map_dispatch(0, harddisk_io_base + 0, 0, 0, 0) == 0x00);
+}
+
+auto harddisk_drain_data_port() -> void {
+  for (int i = 0; i < 512; ++i) {
+    io_map_dispatch(0, harddisk_io_base + 4, 0, 0, 0);
+  }
+}
+
+constexpr char lamp_base = 1;
+constexpr int lamp_harddisk = 2;
+
+}  // namespace
+
+TEST_CASE(
+    "SDL1 hard disk: Ctrl+Shift+F3 ejects drive 1 of the card wherever the "
+    "manager finds it and the key is persisted empty; with no card the "
+    "chooser does not open and the log says so") {
+  SUBCASE("the card in slot 5") {
+    KeyMachine_t machine(harddisk_in_slot_5());
+    harddisk_frontend_initialize();
+    REQUIRE(harddisk_frontend_slot() == harddisk_test_slot);
+    const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
+    REQUIRE(harddisk_frontend_insert(0, image.c_str(), false) == 0);
+    REQUIRE(harddisk_status().drive0_loaded == 1);
+    REQUIRE(harddisk_saved_key() == image.path());
+
+    const auto chord = static_cast<SDLMod>(KMOD_CTRL | KMOD_SHIFT);
+    KeyMachine_t::key(KEY_F3 + x11_min_keycode, SDLK_F3, chord, true);
+    KeyMachine_t::key(KEY_F3 + x11_min_keycode, SDLK_F3, chord, false);
+    CHECK(harddisk_status().drive0_loaded == 0);
+    CHECK(harddisk_saved_key().empty());
+  }
+
+  SUBCASE("no card anywhere") {
+    KeyMachine_t machine(TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+    harddisk_frontend_initialize();
+    REQUIRE(harddisk_frontend_slot() == harddisk_frontend_no_card);
+    TestFixtures::ScopedLogCapture_t log;
+    KeyMachine_t::key(KEY_F3 + x11_min_keycode, SDLK_F3, KMOD_SHIFT, true);
+    KeyMachine_t::key(KEY_F3 + x11_min_keycode, SDLK_F3, KMOD_SHIFT, false);
+    CHECK(log.count_containing("no hard disk is installed") == 1);
+  }
+}
+
+TEST_CASE(
+    "SDL1 hard disk: the lamp lights on the frame after a read, shows prot "
+    "for a loaded protected drive, and goes out once the hold has run") {
+  KeyMachine_t machine(harddisk_in_slot_5());
+  harddisk_frontend_initialize();
+  REQUIRE(harddisk_frontend_slot() == harddisk_test_slot);
+  const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
+  REQUIRE(harddisk_frontend_insert(0, image.c_str(), false) == 0);
+  frame_refresh_status(draw_leds);
+  REQUIRE(frame_status_led(lamp_harddisk) == lamp_base + harddisk_status_off);
+
+  harddisk_read_block_1();
+  harddisk_drain_data_port();
+  frame_refresh();
+  CHECK(frame_status_led(lamp_harddisk) == lamp_base + harddisk_status_read);
+  CHECK(g_status_cycle == k_show_cycles);
+
+  // Nothing happened, so the frame leaves the lamp as it was.
+  frame_refresh();
+  CHECK(frame_status_led(lamp_harddisk) == lamp_base + harddisk_status_read);
+
+  g_status_cycle = 0;
+  frame_refresh();
+  CHECK(frame_status_led(lamp_harddisk) == lamp_base + harddisk_status_off);
+
+  HarddiskSetProtectCmd_t protect{};
+  protect.drive = harddisk_drive_0;
+  protect.write_protected = 1;
+  REQUIRE(peripheral_command(harddisk_test_slot, harddisk_cmd_set_protect,
+                             &protect, sizeof(protect)) == peripheral_ok);
+  KeyMachine_t::settle();
+  CHECK(frame_status_led(lamp_harddisk) == lamp_base + harddisk_status_prot);
+
+  harddisk_read_block_1();
+  harddisk_drain_data_port();
+  frame_refresh();
+  CHECK(frame_status_led(lamp_harddisk) == lamp_base + harddisk_status_read);
+  g_status_cycle = 0;
+  frame_refresh();
+  CHECK(frame_status_led(lamp_harddisk) == lamp_base + harddisk_status_prot);
 }
 
 #endif

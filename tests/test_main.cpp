@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 
-#include "apple2/peripherals/disk/DiskCommands.h"
+#include "apple2/peripherals/Peripheral_Internal.h"
 #include "core/LinAppleCore.h"
 #include "doctest.h"
 
@@ -60,13 +60,11 @@ TEST_CASE("Core: Turbo Mode Toggle") {
 }
 
 TEST_CASE("LinAppleCore: Extension matching bounds and edge cases") {
-  char floppy_exts[256] = {};
+  // The lists come from the descriptors, so a build without a card answers
+  // for the other card alone; the card decides which checks apply.
   const bool has_floppy =
-      linapple_get_supported_disk_extensions(disk_default_slot, floppy_exts,
-                                             sizeof(floppy_exts)) > 0;
-  char hd_exts[256] = {};
-  const bool has_hd =
-      linapple_get_supported_disk_extensions(7, hd_exts, sizeof(hd_exts)) > 0;
+      peripheral_find_internal("linapple.disk_II") != nullptr;
+  const bool has_hd = peripheral_find_internal("linapple.harddisk") != nullptr;
 
   if (has_floppy) {
     CHECK(linapple_is_supported_disk_image("test.dsk") == true);
