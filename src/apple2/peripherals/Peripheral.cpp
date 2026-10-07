@@ -15,6 +15,7 @@
 #include <stdexcept>
 #include <vector>
 
+#include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/SnapshotTypes.h"
@@ -393,6 +394,23 @@ static auto host_get_cycles() -> uint64_t {
 }
 
 static auto host_get_clock_hz() -> double { return current_clk_6502; }
+
+static auto host_get_machine() -> PeripheralMachine_t {
+  if ((current_apple2_type & APPLE2E_MASK) != 0) {
+    return peripheral_machine_apple2e;
+  }
+  return current_apple2_type == A2TYPE_APPLE2 ? peripheral_machine_apple2
+                                              : peripheral_machine_apple2_plus;
+}
+
+// The television frame as the video scanner counts it, never
+// linapple_get_frame_cycles(), which scales the run quantum by the host's
+// speed setting.
+static auto host_get_frame_cycles() -> uint32_t {
+  constexpr uint32_t ntsc_frame_cycles = 17030;
+  return system_state.clks_per_frame != 0 ? system_state.clks_per_frame
+                                          : ntsc_frame_cycles;
+}
 
 static auto host_get_config(const char* section, const char* key, char* buffer,
                             size_t buffer_size) -> bool {
@@ -823,7 +841,9 @@ static const HostInterface_t g_host_interface = {
     .SinkRead = host_sink_read,
     .SinkSetLine = host_sink_set_line,
     .SinkGetLines = host_sink_get_lines,
-    .ScheduleEvent = host_schedule_event};
+    .ScheduleEvent = host_schedule_event,
+    .GetMachine = host_get_machine,
+    .GetFrameCycles = host_get_frame_cycles};
 
 // --- Command Queue ---
 

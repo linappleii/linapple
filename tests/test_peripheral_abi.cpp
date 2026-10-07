@@ -231,6 +231,8 @@ TEST_CASE("Peripheral ABI: A host without a clock says so and writes nothing") {
 
 #include <cstddef>
 
+#include "apple2/Apple2Types.h"
+
 extern "C" int test_c_peripheral_sink_write(HostInterface_t* host, int slot,
                                             uint8_t byte);
 
@@ -264,8 +266,17 @@ static_assert(offsetof(HostInterface_t, SinkGetLines) == 28 * host_member_size,
               "SinkGetLines moved");
 static_assert(offsetof(HostInterface_t, ScheduleEvent) == 29 * host_member_size,
               "ScheduleEvent is not the first member after SinkGetLines");
-static_assert(sizeof(HostInterface_t) == 30 * host_member_size,
-              "HostInterface_t grew past ScheduleEvent");
+static_assert(offsetof(HostInterface_t, GetMachine) == 30 * host_member_size,
+              "GetMachine is not the first member after ScheduleEvent");
+static_assert(offsetof(HostInterface_t, GetFrameCycles) ==
+                  31 * host_member_size,
+              "GetFrameCycles moved");
+static_assert(sizeof(HostInterface_t) == 32 * host_member_size,
+              "HostInterface_t grew past GetFrameCycles");
+static_assert(peripheral_machine_apple2 == 0 &&
+                  peripheral_machine_apple2_plus == 1 &&
+                  peripheral_machine_apple2e == 2,
+              "PeripheralMachine_t values are part of the plugin ABI");
 static_assert(peripheral_sink_printer == 1 && peripheral_sink_serial == 2,
               "PeripheralSinkKind_t values are part of the plugin ABI");
 static_assert(sizeof(PeripheralSerialLine_t) == 12,
@@ -372,7 +383,7 @@ TEST_CASE(
         offsetof(HostInterface_t, GetLocalTime) + host_member_size);
   CHECK(offsetof(HostInterface_t, SinkRead) ==
         offsetof(HostInterface_t, SinkClose) + host_member_size);
-  CHECK(offsetof(HostInterface_t, ScheduleEvent) + host_member_size ==
+  CHECK(offsetof(HostInterface_t, GetFrameCycles) + host_member_size ==
         sizeof(HostInterface_t));
 
   peripheral_manager_init();
@@ -387,6 +398,8 @@ TEST_CASE(
   CHECK(g_captured_host->SinkSetLine != nullptr);
   CHECK(g_captured_host->SinkGetLines != nullptr);
   CHECK(g_captured_host->ScheduleEvent != nullptr);
+  CHECK(g_captured_host->GetMachine != nullptr);
+  CHECK(g_captured_host->GetFrameCycles != nullptr);
   // The printer and serial members keep their place in the layout with
   // nothing behind them.
   CHECK(g_captured_host->PrinterPutChar == nullptr);
@@ -394,6 +407,52 @@ TEST_CASE(
   CHECK(g_captured_host->SerialTransmitByte == nullptr);
   CHECK(g_captured_host->SerialUpdateState == nullptr);
   peripheral_manager_shutdown();
+}
+
+TEST_CASE(
+    "Peripheral ABI: GetMachine names the board by model and GetFrameCycles "
+    "is the television frame whatever the host's speed setting") {
+  const Apple2Type_t saved_type = current_apple2_type;
+  const uint32_t saved_frame = system_state.clks_per_frame;
+  const uint32_t saved_speed = system_state.speed;
+
+  peripheral_manager_init();
+  g_captured_host = nullptr;
+  REQUIRE(peripheral_register(&g_log_probe_peripheral, probe_slot) == 0);
+  REQUIRE(g_captured_host != nullptr);
+
+  current_apple2_type = A2TYPE_APPLE2;
+  CHECK(g_captured_host->GetMachine() == peripheral_machine_apple2);
+  for (Apple2Type_t plus :
+       {A2TYPE_APPLE2PLUS, A2TYPE_APPLE2JPLUS, A2TYPE_CLONE_PRAVETS82,
+        A2TYPE_CLONE_PRAVETS8M, A2TYPE_CLONE_BASE64A}) {
+    CAPTURE(static_cast<int>(plus));
+    current_apple2_type = plus;
+    CHECK(g_captured_host->GetMachine() == peripheral_machine_apple2_plus);
+  }
+  for (Apple2Type_t iie : {A2TYPE_APPLE2E, A2TYPE_APPLE2EENHANCED,
+                           A2TYPE_CLONE_PRAVETS8C, A2TYPE_CLONE_TK3000E}) {
+    CAPTURE(static_cast<int>(iie));
+    current_apple2_type = iie;
+    CHECK(g_captured_host->GetMachine() == peripheral_machine_apple2e);
+  }
+
+  system_state.clks_per_frame = 17030;
+  CHECK(g_captured_host->GetFrameCycles() == 17030);
+  system_state.clks_per_frame = 20280;
+  CHECK(g_captured_host->GetFrameCycles() == 20280);
+  // The run quantum follows the speed setting; the television frame does not.
+  linapple_set_speed(emulation_speed_max);
+  CHECK(linapple_get_frame_cycles() == 20280 * 4);
+  CHECK(g_captured_host->GetFrameCycles() == 20280);
+  linapple_speed_reset();
+  system_state.clks_per_frame = 0;
+  CHECK(g_captured_host->GetFrameCycles() == 17030);
+
+  peripheral_manager_shutdown();
+  current_apple2_type = saved_type;
+  system_state.clks_per_frame = saved_frame;
+  system_state.speed = saved_speed;
 }
 
 TEST_CASE(

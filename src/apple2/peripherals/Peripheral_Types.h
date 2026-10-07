@@ -52,6 +52,18 @@ typedef struct {
   uint8_t padding[2];
 } PeripheralSerialLine_t;
 
+// The board a slot-0 card sits on. The II and the //e keep different keyboard
+// logic behind the same addresses: the encoder is on the keyboard of a II
+// (Apple II Reference Manual 1979, p. 102) and on the main board of a //e
+// (Apple IIe Technical Reference Manual, p. 187), so a card modelling one has
+// to be told which it is in. The II Plus and the clones that share its ROM
+// are apple2_plus; every //e variant is apple2e.
+typedef enum {
+  peripheral_machine_apple2 = 0,
+  peripheral_machine_apple2_plus = 1,
+  peripheral_machine_apple2e = 2
+} PeripheralMachine_t;
+
 enum IrqSrc_t {
   is_6522 = 0,
   is_speech,

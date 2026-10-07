@@ -133,6 +133,15 @@ typedef struct {
   // serviced at the next frame's first pass; the debugger's single step
   // services nothing.
   void (*ScheduleEvent)(void* instance, uint64_t at_cycle);
+  // A //e's keyboard auto-repeat is clocked by television scans (Sather,
+  // Understanding the Apple IIe, 2-17 and 3-18), and how many cycles a scan
+  // holds is the IOU variant's: 262 lines on NTSC, 312 on PAL, 65 cycles each,
+  // 17,030 or 20,280 a frame. GetFrameCycles is that television frame; the
+  // host's speed setting never enters it. GetMachine says which board the card
+  // is on, since a II and a //e put different keyboard logic behind the same
+  // addresses. Appended last for the same reason as ReadFloatingBus.
+  PeripheralMachine_t (*GetMachine)(void);
+  uint32_t (*GetFrameCycles)(void);
 } HostInterface_t;
 
 // Forward declaration

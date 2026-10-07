@@ -135,8 +135,23 @@ typedef char
                                         29 * sizeof(void (*)(void))
                                     ? 1
                                     : -1];
-typedef char host_interface_has_30_members
-    [sizeof(HostInterface_t) == 30 * sizeof(void (*)(void)) ? 1 : -1];
+typedef char get_machine_is_member_30[offsetof(HostInterface_t, GetMachine) ==
+                                              30 * sizeof(void (*)(void))
+                                          ? 1
+                                          : -1];
+typedef char
+    get_frame_cycles_is_member_31[offsetof(HostInterface_t, GetFrameCycles) ==
+                                          31 * sizeof(void (*)(void))
+                                      ? 1
+                                      : -1];
+typedef char host_interface_has_32_members
+    [sizeof(HostInterface_t) == 32 * sizeof(void (*)(void)) ? 1 : -1];
+typedef char
+    machine_values_are_pinned[peripheral_machine_apple2 == 0 &&
+                                      peripheral_machine_apple2_plus == 1 &&
+                                      peripheral_machine_apple2e == 2
+                                  ? 1
+                                  : -1];
 typedef char sink_kinds_are_pinned
     [peripheral_sink_printer == 1 && peripheral_sink_serial == 2 ? 1 : -1];
 typedef char
