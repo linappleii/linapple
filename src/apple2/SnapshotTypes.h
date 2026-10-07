@@ -8,7 +8,6 @@
 #include "apple2/Apple2Types.h"
 #include "apple2/chips/AY8910.h"
 #include "apple2/chips/SSI263.h"
-#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "apple2/peripherals/speaker/Speaker.h"
 #include "core/LinAppleCore.h"
 
@@ -73,6 +72,12 @@ struct SsIoVideo_t {
   uint32_t vid_mode;
 };
 
+// The keyboard card's frame, carried as bytes: its layout is the card's own
+// ABI, and a build without the card writes zeros here and reads them past.
+struct SsKeyboardRegion_t {
+  uint8_t bytes[552];
+};
+
 constexpr uint32_t mem_main_size = 65536;
 constexpr uint32_t mem_aux_size = 65536;
 
@@ -88,11 +93,13 @@ struct SsApple2Unit_t {
   SsCpu6502_t cpu_6502;
   SsIoComms_t comms;
   SsIoJoystick_t joystick;
-  KeyboardSaveState_t keyboard;
+  SsKeyboardRegion_t keyboard;
   SsIoSpeaker_t speaker;
   SsIoVideo_t video;
   SsBaseMemory_t memory;
 };
+static_assert(offsetof(SsApple2Unit_t, keyboard) == 64,
+              "the keyboard region is where every .aws written has it");
 
 constexpr uint32_t max_peripheral_name = 32;
 

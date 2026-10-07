@@ -36,9 +36,7 @@ auto frontend_update_keyboard_mapping() -> void {
 
   uint32_t rocker = 0;
   if (config_load_int("Configuration", "Keyboard Rocker Switch", &rocker)) {
-    uint8_t rocker_val = static_cast<uint8_t>(rocker);
-    peripheral_command(0, keyboard_cmd_set_rocker, &rocker_val,
-                       sizeof(rocker_val));
+    linapple_set_rocker_switch(rocker != 0);
   }
 
   std::string qs_mod;

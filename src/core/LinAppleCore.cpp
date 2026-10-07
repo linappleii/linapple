@@ -506,11 +506,72 @@ auto linapple_set_language(Apple2Language_t lang) noexcept -> void {
   current_language = lang;
 }
 
+auto linapple_set_key(uint32_t host_key, uint8_t apple_code, bool down)
+    -> void {
+  const KeyboardKeyEvent_t ev = {host_key,
+                                 apple_code,
+                                 static_cast<uint8_t>(down ? 1 : 0),
+                                 {0, 0, 0, 0, 0, 0}};
+  peripheral_command(0, keyboard_cmd_key, &ev, sizeof(ev));
+}
+
 auto linapple_set_key_state(uint8_t apple_code, bool down) -> void {
   KeyboardEvent_t ev = {
       apple_code, static_cast<uint8_t>(down ? 1 : 0), 0, 0, 0, 0, {0, 0, 0}};
   peripheral_command(0, keyboard_cmd_event, &ev, sizeof(ev));
 }
+
+auto linapple_set_rept(bool down) -> void {
+  const uint8_t level = down ? 1 : 0;
+  peripheral_command(0, keyboard_cmd_rept, &level, sizeof(level));
+}
+
+// A hand that has left the window has left the Apple keys and shift too: they
+// are switches on the motherboard's lines, not codes in the card's latch, so
+// the card's release covers only the matrix keys.
+auto linapple_set_key_release_all() -> void {
+  peripheral_command(0, keyboard_cmd_release_all, nullptr, 0);
+  linapple_set_modifiers(false, false, false, false);
+}
+
+namespace {
+
+struct HostModifierLevels_t {
+  bool shift = false;
+  bool ctrl = false;
+  bool open_apple = false;
+  bool solid_apple = false;
+};
+
+HostModifierLevels_t g_modifier_levels;
+bool g_rocker_switch = false;
+
+}  // namespace
+
+auto linapple_get_modifiers(bool* shift, bool* ctrl, bool* open_apple,
+                            bool* solid_apple) -> void {
+  if (shift != nullptr) {
+    *shift = g_modifier_levels.shift;
+  }
+  if (ctrl != nullptr) {
+    *ctrl = g_modifier_levels.ctrl;
+  }
+  if (open_apple != nullptr) {
+    *open_apple = g_modifier_levels.open_apple;
+  }
+  if (solid_apple != nullptr) {
+    *solid_apple = g_modifier_levels.solid_apple;
+  }
+}
+
+auto linapple_set_rocker_switch(bool local) -> void {
+  g_rocker_switch = local;
+  video_set_rocker_switch(local);
+  const uint8_t level = local ? 1 : 0;
+  peripheral_command(0, keyboard_cmd_set_rocker, &level, sizeof(level));
+}
+
+auto linapple_get_rocker_switch() -> bool { return g_rocker_switch; }
 
 auto linapple_set_caps_lock_state(bool enabled) -> void {
   uint8_t caps = enabled ? 1 : 0;
@@ -541,6 +602,10 @@ auto linapple_toggle_caps_lock_state() -> bool {
 // shift level counts only while the jumper is in.
 auto linapple_set_modifiers(bool shift, bool ctrl, bool open_apple,
                             bool solid_apple) -> void {
+  g_modifier_levels.shift = shift;
+  g_modifier_levels.ctrl = ctrl;
+  g_modifier_levels.open_apple = open_apple;
+  g_modifier_levels.solid_apple = solid_apple;
   const KeyboardModifiers_t mods = {static_cast<uint8_t>(shift ? 1 : 0),
                                     static_cast<uint8_t>(ctrl ? 1 : 0),
                                     static_cast<uint8_t>(solid_apple ? 1 : 0),

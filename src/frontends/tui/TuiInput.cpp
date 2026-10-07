@@ -26,7 +26,6 @@
 #include "apple2/Video.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
-#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
 #include "frontends/common/AppController.h"
@@ -103,13 +102,7 @@ static auto swap_drives() -> void {
 static auto toggle_keyboard_rocker() -> void {
   if ((current_apple2_type == A2TYPE_APPLE2E) ||
       (current_apple2_type == A2TYPE_APPLE2EENHANCED)) {
-    uint8_t cur_rocker = 0;
-    size_t rocker_sz = sizeof(cur_rocker);
-    peripheral_query_by_id(0, "linapple.keyboard", keyboard_query_rocker,
-                           &cur_rocker, &rocker_sz);
-    uint8_t new_rocker = (cur_rocker != 0) ? 0 : 1;
-    peripheral_command_by_id(0, "linapple.keyboard", keyboard_cmd_set_rocker,
-                             &new_rocker, 1);
+    linapple_set_rocker_switch(!linapple_get_rocker_switch());
   }
 }
 

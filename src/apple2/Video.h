@@ -197,6 +197,9 @@ auto video_is_rendering_enabled() noexcept -> bool;
 auto video_redraw_screen() -> void;
 auto video_refresh_screen(uint32_t mode = 0, bool redraw_whole = false) -> void;
 auto video_perform_refresh() -> void;
+// The //e keyboard's rocker switch, which also selects the character
+// generator's local half on a machine whose video ROM carries one.
+auto video_set_rocker_switch(bool local) -> void;
 auto video_reinitialize() -> void;
 auto video_reset_state() -> void;
 

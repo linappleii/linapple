@@ -18,8 +18,6 @@
 #include "Debugger_Parser.h"
 #include "Debugger_Types.h"
 #include "apple2/Video.h"
-#include "apple2/peripherals/Peripheral.h"
-#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Text.h"
 
@@ -657,9 +655,9 @@ auto debugger_process_key(int keycode) -> void {
   } else if ((keycode >= ' ') && (keycode <= 127)) {
     debugger_input_console_char(keycode);
   } else {
-    KeyboardModifiers_t mods = {};
-    size_t mods_sz = sizeof(mods);
-    peripheral_query(0, keyboard_query_mods, &mods, &mods_sz);
+    bool shift = false;
+    bool ctrl = false;
+    linapple_get_modifiers(&shift, &ctrl, nullptr, nullptr);
 
     switch (keycode) {
       case linapple_key_tab: {
@@ -680,9 +678,9 @@ auto debugger_process_key(int keycode) -> void {
         break;
 
       case linapple_key_pageup:
-        if (mods.ctrl) {
+        if (ctrl) {
           bUpdateDisplay |= CmdCursorPageUp4K(0);
-        } else if (mods.shift) {
+        } else if (shift) {
           bUpdateDisplay |= CmdCursorPageUp256(0);
         } else {
           bUpdateDisplay |= CmdCursorPageUp(0);
@@ -690,9 +688,9 @@ auto debugger_process_key(int keycode) -> void {
         break;
 
       case linapple_key_pagedown:
-        if (mods.ctrl) {
+        if (ctrl) {
           bUpdateDisplay |= CmdCursorPageDown4K(0);
-        } else if (mods.shift) {
+        } else if (shift) {
           bUpdateDisplay |= CmdCursorPageDown256(0);
         } else {
           bUpdateDisplay |= CmdCursorPageDown(0);
@@ -728,14 +726,15 @@ auto debugger_mouse_click(int /*x*/, int /*y*/) -> void {
     return;
   }
 
-  KeyboardModifiers_t mods = {};
-  size_t mods_sz = sizeof(mods);
-  peripheral_query(0, keyboard_query_mods, &mods, &mods_sz);
+  bool shift = false;
+  bool ctrl = false;
+  bool solid_apple = false;
+  linapple_get_modifiers(&shift, &ctrl, nullptr, &solid_apple);
 
   int iAltCtrlShift = 0;
-  iAltCtrlShift |= mods.alt ? 1 << 0 : 0;
-  iAltCtrlShift |= mods.ctrl ? 1 << 1 : 0;
-  iAltCtrlShift |= mods.shift ? 1 << 2 : 0;
+  iAltCtrlShift |= solid_apple ? 1 << 0 : 0;
+  iAltCtrlShift |= ctrl ? 1 << 1 : 0;
+  iAltCtrlShift |= shift ? 1 << 2 : 0;
 
   // GH#462 disasm click #
   if (iAltCtrlShift != g_config_disasm_click) {

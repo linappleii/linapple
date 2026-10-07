@@ -241,9 +241,9 @@ auto snapshot_serialize(Snapshot_t* snapshot) noexcept -> void {
   static_cast<void>(video_get_snapshot(&snapshot->apple2_unit.video));
   static_cast<void>(mem_get_snapshot(&snapshot->apple2_unit.memory));
 
-  size_t kbd_size = sizeof(snapshot->apple2_unit.keyboard);
-  peripheral_save_state_by_name(0, "Keyboard", &snapshot->apple2_unit.keyboard,
-                                &kbd_size);
+  size_t kbd_size = sizeof(snapshot->apple2_unit.keyboard.bytes);
+  peripheral_save_state_by_name(
+      0, "Keyboard", snapshot->apple2_unit.keyboard.bytes, &kbd_size);
 
   for (int i = 0; i < NUM_SLOTS; ++i) {
     const SlotRegionDesc_t* desc = fixed_slot_desc(i);
@@ -304,8 +304,9 @@ auto snapshot_deserialize(const Snapshot_t* snapshot) -> bool {
   if (cpu_set_snapshot(&snapshot->apple2_unit.cpu_6502) != 0) {
     return false;
   }
-  peripheral_load_state_by_name(0, "Keyboard", &snapshot->apple2_unit.keyboard,
-                                sizeof(snapshot->apple2_unit.keyboard));
+  peripheral_load_state_by_name(0, "Keyboard",
+                                snapshot->apple2_unit.keyboard.bytes,
+                                sizeof(snapshot->apple2_unit.keyboard.bytes));
   if (video_set_snapshot(&snapshot->apple2_unit.video) != 0) {
     return false;
   }

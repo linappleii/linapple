@@ -470,6 +470,65 @@ TEST_CASE(
 }
 
 TEST_CASE(
+    "Switch inputs: the bridge records the host's four modifier levels, Open "
+    "Apple and Solid Apple reach PB0 and PB1 on both models, and letting go "
+    "of every key releases them") {
+  for (TestConfig_t::MachineType_t model : both_models) {
+    CAPTURE(model);
+    SwitchMachine_t machine(describe(model, "2"));
+    bool shift = true;
+    bool ctrl = true;
+    bool open_apple = true;
+    bool solid_apple = true;
+    linapple_get_modifiers(&shift, &ctrl, &open_apple, &solid_apple);
+    CHECK_FALSE(shift);
+    CHECK_FALSE(ctrl);
+    CHECK_FALSE(open_apple);
+    CHECK_FALSE(solid_apple);
+    REQUIRE(line_level(0) == 0);
+    REQUIRE(line_level(1) == 0);
+
+    linapple_set_modifiers(true, false, true, false);
+    settle();
+    linapple_get_modifiers(&shift, &ctrl, &open_apple, &solid_apple);
+    CHECK(shift);
+    CHECK_FALSE(ctrl);
+    CHECK(open_apple);
+    CHECK_FALSE(solid_apple);
+    CHECK(line_level(0) == 1);
+    CHECK(line_level(1) == 0);
+
+    linapple_set_modifiers(false, true, false, true);
+    settle();
+    linapple_get_modifiers(&shift, &ctrl, &open_apple, &solid_apple);
+    CHECK_FALSE(shift);
+    CHECK(ctrl);
+    CHECK_FALSE(open_apple);
+    CHECK(solid_apple);
+    CHECK(line_level(0) == 0);
+    CHECK(line_level(1) == 1);
+
+    // A null out-pointer asks for nothing.
+    linapple_get_modifiers(nullptr, nullptr, nullptr, nullptr);
+
+    // The Apple keys are switches a hand holds; a hand that has left the
+    // window has let go of them with the matrix keys.
+    linapple_set_modifiers(true, true, true, true);
+    settle();
+    REQUIRE(line_level(0) == 1);
+    linapple_set_key_release_all();
+    settle();
+    linapple_get_modifiers(&shift, &ctrl, &open_apple, &solid_apple);
+    CHECK_FALSE(shift);
+    CHECK_FALSE(ctrl);
+    CHECK_FALSE(open_apple);
+    CHECK_FALSE(solid_apple);
+    CHECK(line_level(0) == 0);
+    CHECK(line_level(1) == 0);
+  }
+}
+
+TEST_CASE(
     "Switch inputs: the Enhanced //e ROM run from its reset vector takes the "
     "self-test at $C600 with Solid Apple held and the cold-start check at "
     "$C2E2 with both Apple keys up") {

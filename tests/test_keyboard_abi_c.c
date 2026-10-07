@@ -2,6 +2,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+// Included to prove the card header is C99 as the plugin ABI promises; the
+// unit calls nothing in it.
+#include "apple2/peripherals/keyboard/Keyboard.h"  // NOLINT(misc-include-cleaner)
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
 
 /* C99 has no static_assert; an array of negative size fails the same way. */
@@ -18,6 +21,14 @@ typedef char keyboard_caps_lock_is_at_31
     [offsetof(KeyboardSaveState_t, caps_lock) == 31 ? 1 : -1];
 typedef char keyboard_auto_repeat_is_at_35
     [offsetof(KeyboardSaveState_t, auto_repeat_enabled) == 35 ? 1 : -1];
+typedef char
+    keyboard_key_event_is_12_bytes[sizeof(KeyboardKeyEvent_t) == 12 ? 1 : -1];
+typedef char keyboard_key_event_host_key_is_at_0
+    [offsetof(KeyboardKeyEvent_t, host_key) == 0 ? 1 : -1];
+typedef char keyboard_key_event_code_is_at_4
+    [offsetof(KeyboardKeyEvent_t, apple_code) == 4 ? 1 : -1];
+typedef char keyboard_key_event_down_is_at_5
+    [offsetof(KeyboardKeyEvent_t, is_down) == 5 ? 1 : -1];
 
 unsigned keyboard_abi_c_frame_size(void) {
   return (unsigned)sizeof(KeyboardSaveState_t);
@@ -45,4 +56,8 @@ unsigned keyboard_abi_c_caps_lock_offset(void) {
 
 unsigned keyboard_abi_c_auto_repeat_offset(void) {
   return (unsigned)offsetof(KeyboardSaveState_t, auto_repeat_enabled);
+}
+
+unsigned keyboard_abi_c_key_event_size(void) {
+  return (unsigned)sizeof(KeyboardKeyEvent_t);
 }

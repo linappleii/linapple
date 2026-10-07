@@ -28,7 +28,6 @@
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
-#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/Asset.h"
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
@@ -162,15 +161,10 @@ auto handle_btn_fullscreen(int mod) -> void {
     if ((current_language != A2LANG_US) &&
         ((current_apple2_type == A2TYPE_APPLE2E) ||
          (current_apple2_type == A2TYPE_APPLE2EENHANCED))) {
-      uint8_t cur_rocker = 0;
-      size_t rocker_sz = sizeof(cur_rocker);
-      peripheral_query_by_id(0, "linapple.keyboard", keyboard_query_rocker,
-                             &cur_rocker, &rocker_sz);
-      const uint8_t new_rocker = (cur_rocker != 0) ? 0 : 1;
-      peripheral_command_by_id(0, "linapple.keyboard", keyboard_cmd_set_rocker,
-                               &new_rocker, 1);
+      const bool local = !linapple_get_rocker_switch();
+      linapple_set_rocker_switch(local);
       printf("Toggling keyboard rocker switch. Selected character set: %s...\n",
-             (new_rocker != 0) ? "local" : "standard/US");
+             local ? "local" : "standard/US");
     }
     return;
   }

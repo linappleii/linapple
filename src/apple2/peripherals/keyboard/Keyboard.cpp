@@ -21,15 +21,25 @@ extern bool full_speed;
 namespace {
 
 static_assert(sizeof(KeyboardSaveState_t) == 552,
-              "KeyboardSaveState_t must be exactly 552 bytes");
+              "the version-1 frame is part of the plugin ABI");
+static_assert(offsetof(KeyboardSaveState_t, repeat_key) == 12,
+              "repeat_key is where every frame written has it");
+static_assert(offsetof(KeyboardSaveState_t, current_latch) == 24,
+              "current_latch is where every frame written has it");
+static_assert(offsetof(KeyboardSaveState_t, strobe) == 25,
+              "strobe is where every frame written has it");
+static_assert(offsetof(KeyboardSaveState_t, caps_lock) == 31,
+              "caps_lock is where every frame written has it");
+static_assert(offsetof(KeyboardSaveState_t, auto_repeat_enabled) == 35,
+              "auto_repeat_enabled is where every frame written has it");
 
-namespace kb {
 constexpr uint8_t key_strobe_bit = 0x80;
 constexpr uint8_t key_code_mask = 0x7F;
 
 // Standard Apple II repeat circuit delays (~0.5s initial, ~0.06s repeat)
 constexpr uint32_t key_repeat_initial_delay = 512000;
 constexpr uint32_t key_repeat_rate = 68000;
+constexpr uint32_t no_repeat_key = 0xFFFFFFFF;
 
 constexpr int8_t default_slot_internal = 0;
 
@@ -45,31 +55,27 @@ constexpr uint8_t key_right = 0x15;
 constexpr uint8_t key_delete = 0x7F;
 
 constexpr uint32_t positional_threshold = 0x500;
-}  // namespace kb
 
 struct KeyboardHardware_t {
-  // --- Register State ---
-  uint8_t current_latch = 0;   // $C000 bits 0-6
-  bool strobe = false;         // $C000 bit 7
-  bool rocker_switch = false;  // Language rocker switch (US=false, Local=true)
-  uint32_t keys_down_count = 0;  // Physical counter for Bit 7 of $C010
+  uint8_t current_latch = 0;
+  bool strobe = false;
+  bool rocker_switch = false;
+  uint32_t keys_down_count = 0;
   bool caps_lock = true;
   uint8_t alternate_layout = 0;
   bool auto_repeat_enabled = true;
+  bool rept_down = false;
 
-  // --- Modifiers ---
   bool shift_key = false;
   bool ctrl_key = false;
   bool open_apple = false;
-  bool closed_apple = false;
+  bool solid_apple = false;
 
-  // --- Auto-repeat State ---
-  uint32_t repeat_key = 0xFFFFFFFF;
+  uint32_t repeat_key = no_repeat_key;
   uint32_t repeat_scancode = 0;
   uint32_t repeat_delay_cycles = 0;
   bool repeating = false;
 
-  // --- Custom Map Overrides ---
   bool has_custom_keys = false;
   uint8_t custom_map[KEYBOARD_MAP_SIZE]{};
   uint8_t custom_shift_map[KEYBOARD_MAP_SIZE]{};
@@ -91,16 +97,14 @@ auto keyboard_io_read_data(void* instance, uint16_t pc, uint16_t addr,
   (void)write;
   (void)val;
 
-  namespace kp_const = kb;
-
   if (instance == nullptr) {
     return mem_read_floating_bus(executed_cycles);
   }
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
 
-  uint8_t data = kp->logic.current_latch & kp_const::key_code_mask;
+  uint8_t data = kp->logic.current_latch & key_code_mask;
   if (kp->logic.strobe) {
-    data |= kp_const::key_strobe_bit;
+    data |= key_strobe_bit;
   }
 
   return data;
@@ -113,9 +117,6 @@ auto keyboard_io_strobe_action(void* instance, uint16_t pc, uint16_t addr,
   (void)addr;
   (void)write;
   (void)val;
-  (void)executed_cycles;
-
-  namespace kp_const = kb;
 
   if (instance == nullptr) {
     return mem_read_floating_bus(executed_cycles);
@@ -125,9 +126,9 @@ auto keyboard_io_strobe_action(void* instance, uint16_t pc, uint16_t addr,
   // Strobe latch is cleared by hardware on any access to the $C010-$C01F range.
   kp->logic.strobe = false;
 
-  uint8_t data = kp->logic.current_latch & kp_const::key_code_mask;
+  uint8_t data = kp->logic.current_latch & key_code_mask;
   if (kp->logic.keys_down_count > 0) {
-    data |= kp_const::key_strobe_bit;
+    data |= key_strobe_bit;
   }
 
   return data;
@@ -137,7 +138,6 @@ auto keyboard_abi_init(int slot, HostInterface_t* host) -> void* {
   if (host == nullptr || host->RegisterDirectIO == nullptr) {
     return nullptr;
   }
-  namespace kp_const = kb;
 
   std::unique_ptr<KeyboardPeripheral_t> kp_ptr(new (std::nothrow)
                                                    KeyboardPeripheral_t{});
@@ -147,26 +147,21 @@ auto keyboard_abi_init(int slot, HostInterface_t* host) -> void* {
   auto* kp = kp_ptr.get();
   kp->host = host;
   kp->slot = slot;
-  kp->logic.caps_lock = true;
-  kp->logic.auto_repeat_enabled = true;
 
-  if (host != nullptr && host->RegisterDirectIO != nullptr) {
-    for (uint32_t addr = kp_const::addr_keyboard_data_lo;
-         addr <= kp_const::addr_keyboard_data_hi; ++addr) {
-      host->RegisterDirectIO(kp, static_cast<uint16_t>(addr),
-                             keyboard_io_read_data, nullptr);
-    }
-    // $C010 (KBDSTRB): read and write both clear the strobe.
-    // $C011-$C01F: reads are soft-switch status (owned by Memory.cpp); writes
-    // clear the strobe. Register write-only here so reads are unaffected.
-    host->RegisterDirectIO(kp, kp_const::addr_keyboard_strobe,
-                           keyboard_io_strobe_action,
+  for (uint32_t addr = addr_keyboard_data_lo; addr <= addr_keyboard_data_hi;
+       ++addr) {
+    host->RegisterDirectIO(kp, static_cast<uint16_t>(addr),
+                           keyboard_io_read_data, nullptr);
+  }
+  // $C010 (KBDSTRB): read and write both clear the strobe.
+  // $C011-$C01F: reads are soft-switch status (owned by Memory.cpp); writes
+  // clear the strobe. Register write-only here so reads are unaffected.
+  host->RegisterDirectIO(kp, addr_keyboard_strobe, keyboard_io_strobe_action,
+                         keyboard_io_strobe_action);
+  for (uint32_t addr = addr_keyboard_strobe + 1;
+       addr <= addr_keyboard_strobe_hi; ++addr) {
+    host->RegisterDirectIO(kp, static_cast<uint16_t>(addr), nullptr,
                            keyboard_io_strobe_action);
-    for (uint32_t addr = kp_const::addr_keyboard_strobe + 1;
-         addr <= kp_const::addr_keyboard_strobe_hi; ++addr) {
-      host->RegisterDirectIO(kp, static_cast<uint16_t>(addr), nullptr,
-                             keyboard_io_strobe_action);
-    }
   }
 
   return kp_ptr.release();
@@ -180,21 +175,23 @@ auto keyboard_abi_reset(void* instance) -> void {
   kp->logic.current_latch = 0;
   kp->logic.strobe = false;
   kp->logic.keys_down_count = 0;
-  kp->logic.repeat_key = 0xFFFFFFFF;
+  kp->logic.repeat_key = no_repeat_key;
   kp->logic.repeat_delay_cycles = 0;
   kp->logic.repeating = false;
+  kp->logic.rept_down = false;
 
   kp->logic.shift_key = false;
   kp->logic.ctrl_key = false;
   kp->logic.open_apple = false;
-  kp->logic.closed_apple = false;
+  kp->logic.solid_apple = false;
 }
 
 auto keyboard_abi_shutdown(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
-  delete static_cast<KeyboardPeripheral_t*>(instance);
+  std::unique_ptr<KeyboardPeripheral_t> kp(
+      static_cast<KeyboardPeripheral_t*>(instance));
 }
 
 auto keyboard_abi_think(void* instance, uint32_t cycles) -> void {
@@ -207,43 +204,31 @@ auto keyboard_abi_think(void* instance, uint32_t cycles) -> void {
     return;
   }
 
-  if (kp->logic.repeat_key == 0xFFFFFFFF) {
+  if (kp->logic.repeat_key == no_repeat_key) {
     return;
   }
 
-  namespace kp_const = kb;
-
-  cycles = std::min(cycles, kp_const::key_repeat_initial_delay);
+  cycles = std::min(cycles, key_repeat_initial_delay);
   kp->logic.repeat_delay_cycles += cycles;
-  uint32_t delay = kp->logic.repeating ? kp_const::key_repeat_rate
-                                       : kp_const::key_repeat_initial_delay;
+  uint32_t delay =
+      kp->logic.repeating ? key_repeat_rate : key_repeat_initial_delay;
 
   if (kp->logic.repeat_delay_cycles >= delay) {
     kp->logic.repeating = true;
     kp->logic.repeat_delay_cycles -= delay;
     kp->logic.strobe = true;
-    kp->logic.repeat_delay_cycles %= kp_const::key_repeat_rate;
+    kp->logic.repeat_delay_cycles %= key_repeat_rate;
   }
 }
 
 auto keyboard_map_symbolic(uint32_t key) -> uint32_t {
-  namespace kp_const = kb;
-
   // Offset extended keys to fit in a small lookup table
   if (key < 0x100 || key >= 0x110) {
     return 0xFFFFFFFF;
   }
 
-  static constexpr uint8_t symbolic_map[] = {kp_const::key_up,
-                                             kp_const::key_down,
-                                             kp_const::key_left,
-                                             kp_const::key_right,
-                                             0,
-                                             0,
-                                             0,
-                                             0,
-                                             0,
-                                             kp_const::key_delete};
+  static constexpr uint8_t symbolic_map[] = {
+      key_up, key_down, key_left, key_right, 0, 0, 0, 0, 0, key_delete};
 
   const size_t idx = key - 0x100;
   if (idx < (sizeof(symbolic_map) / sizeof(symbolic_map[0]))) {
@@ -256,9 +241,7 @@ auto keyboard_map_symbolic(uint32_t key) -> uint32_t {
 
 auto keyboard_map_positional(KeyboardPeripheral_t* kp, uint32_t key, bool shift,
                              bool ctrl) -> uint32_t {
-  namespace kp_const = kb;
-
-  const int idx = static_cast<int>(key - kp_const::positional_threshold);
+  const int idx = static_cast<int>(key - positional_threshold);
   if (idx < 0 || idx >= KEYBOARD_MAP_SIZE) {
     return 0xFFFFFFFF;
   }
@@ -387,13 +370,36 @@ auto keyboard_apply_symbolic_shift(uint32_t key, bool shift, bool ctrl,
   return key;
 }
 
+// The strobe flip-flop is set by the encoder's KSTRB pulse, which also loads
+// the latch (Apple II Reference Manual 1979, p. 102; Sather, Understanding the
+// Apple IIe, 7-4).
+auto latch_key(KeyboardPeripheral_t* kp, uint32_t host_key, uint8_t code)
+    -> void {
+  kp->logic.current_latch = code;
+  kp->logic.strobe = true;
+  kp->logic.keys_down_count++;
+  kp->logic.repeat_key = code;
+  kp->logic.repeat_scancode = host_key;
+  kp->logic.repeat_delay_cycles = 0;
+  kp->logic.repeating = false;
+}
+
+auto release_key(KeyboardPeripheral_t* kp, uint32_t host_key) -> void {
+  if (kp->logic.keys_down_count > 0) {
+    kp->logic.keys_down_count--;
+  }
+  if (host_key == kp->logic.repeat_scancode || kp->logic.keys_down_count == 0) {
+    kp->logic.repeat_key = no_repeat_key;
+    kp->logic.repeating = false;
+  }
+}
+
 auto keyboard_abi_command(void* instance, uint32_t cmd_id, const void* data,
                           size_t size) -> PeripheralStatus_t {
   if (instance == nullptr) {
     return peripheral_error;
   }
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
-  namespace kp_const = kb;
 
   if (!peripheral_cmd_is_mine(cmd_id, PERIPHERAL_SUBSYSTEM_KEYBOARD)) {
     return peripheral_incompatible;  // another peripheral in the slot owns it
@@ -404,6 +410,37 @@ auto keyboard_abi_command(void* instance, uint32_t cmd_id, const void* data,
   }
 
   switch (static_cast<KeyboardCmd_t>(cmd_id)) {
+    case keyboard_cmd_key: {
+      if (size != sizeof(KeyboardKeyEvent_t)) {
+        return peripheral_error;
+      }
+      const auto* ev = static_cast<const KeyboardKeyEvent_t*>(data);
+      if (ev->apple_code > key_code_mask) {
+        return peripheral_error;
+      }
+      if (ev->is_down == 0U) {
+        release_key(kp, ev->host_key);
+      } else {
+        latch_key(kp, ev->host_key, ev->apple_code);
+      }
+      return peripheral_ok;
+    }
+    case keyboard_cmd_release_all: {
+      if (size != 0) {
+        return peripheral_error;
+      }
+      kp->logic.keys_down_count = 0;
+      kp->logic.repeat_key = no_repeat_key;
+      kp->logic.repeating = false;
+      return peripheral_ok;
+    }
+    case keyboard_cmd_rept: {
+      if (size != sizeof(uint8_t)) {
+        return peripheral_error;
+      }
+      kp->logic.rept_down = (*static_cast<const uint8_t*>(data) != 0);
+      return peripheral_ok;
+    }
     case keyboard_cmd_event: {
       if (size != sizeof(KeyboardEvent_t)) {
         return peripheral_error;
@@ -411,19 +448,12 @@ auto keyboard_abi_command(void* instance, uint32_t cmd_id, const void* data,
       const auto* ev = static_cast<const KeyboardEvent_t*>(data);
 
       if (ev->is_down == 0U) {
-        if (kp->logic.keys_down_count > 0) {
-          kp->logic.keys_down_count--;
-        }
-        if (ev->key == kp->logic.repeat_scancode ||
-            kp->logic.keys_down_count == 0) {
-          kp->logic.repeat_key = 0xFFFFFFFF;
-          kp->logic.repeating = false;
-        }
+        release_key(kp, ev->key);
         return peripheral_ok;
       }
 
       uint32_t key = ev->key;
-      if (key >= kp_const::positional_threshold) {
+      if (key >= positional_threshold) {
         key = keyboard_map_positional(kp, key, ev->mod_shift != 0U,
                                       ev->mod_ctrl != 0U);
       } else if (key >= 0x100) {
@@ -433,17 +463,11 @@ auto keyboard_abi_command(void* instance, uint32_t cmd_id, const void* data,
             key, ev->mod_shift != 0U, ev->mod_ctrl != 0U, kp->logic.caps_lock);
       }
 
-      if (key > kp_const::key_code_mask) {
+      if (key > key_code_mask) {
         return peripheral_ok;
       }
 
-      kp->logic.current_latch = static_cast<uint8_t>(key);
-      kp->logic.strobe = true;
-      kp->logic.keys_down_count++;
-      kp->logic.repeat_key = static_cast<uint8_t>(key);
-      kp->logic.repeat_scancode = ev->key;
-      kp->logic.repeat_delay_cycles = 0;
-      kp->logic.repeating = false;
+      latch_key(kp, ev->key, static_cast<uint8_t>(key));
       return peripheral_ok;
     }
     case keyboard_cmd_set_caps: {
@@ -470,9 +494,9 @@ auto keyboard_abi_command(void* instance, uint32_t cmd_id, const void* data,
 
       // The gui field carries Open Apple and alt Solid Apple. The two levels
       // live here only to answer keyboard_query_mods: the Apple keys' switch
-      // lines are the game port's, which the host feeds separately.
+      // lines are the motherboard's, which the bridge feeds separately.
       kp->logic.open_apple = (mods->gui != 0);
-      kp->logic.closed_apple = (mods->alt != 0);
+      kp->logic.solid_apple = (mods->alt != 0);
       return peripheral_ok;
     }
     case keyboard_cmd_set_layout: {
@@ -557,7 +581,7 @@ auto keyboard_abi_save_state(void* instance, void* buffer, size_t* size)
   ss->shift_key = kp->logic.shift_key ? 1U : 0U;
   ss->ctrl_key = kp->logic.ctrl_key ? 1U : 0U;
   ss->open_apple = kp->logic.open_apple ? 1U : 0U;
-  ss->closed_apple = kp->logic.closed_apple ? 1U : 0U;
+  ss->solid_apple = kp->logic.solid_apple ? 1U : 0U;
   ss->caps_lock = kp->logic.caps_lock ? 1U : 0U;
   ss->alternate_layout = kp->logic.alternate_layout;
   ss->repeating = kp->logic.repeating ? 1U : 0U;
@@ -598,7 +622,7 @@ auto keyboard_abi_load_state(void* instance, const void* buffer, size_t size)
   kp->logic.shift_key = (ss->shift_key != 0);
   kp->logic.ctrl_key = (ss->ctrl_key != 0);
   kp->logic.open_apple = (ss->open_apple != 0);
-  kp->logic.closed_apple = (ss->closed_apple != 0);
+  kp->logic.solid_apple = (ss->solid_apple != 0);
   kp->logic.caps_lock = (ss->caps_lock != 0);
   kp->logic.alternate_layout = ss->alternate_layout;
   kp->logic.repeating = (ss->repeating != 0);
@@ -637,7 +661,7 @@ auto keyboard_abi_query(void* instance, uint32_t cmd_id, void* out,
       auto* mods = static_cast<KeyboardModifiers_t*>(out);
       mods->shift = kp->logic.shift_key ? 1U : 0U;
       mods->ctrl = kp->logic.ctrl_key ? 1U : 0U;
-      mods->alt = kp->logic.closed_apple ? 1U : 0U;
+      mods->alt = kp->logic.solid_apple ? 1U : 0U;
       mods->gui = kp->logic.open_apple ? 1U : 0U;
       mods->caps = kp->logic.caps_lock ? 1U : 0U;
       *out_size = sizeof(KeyboardModifiers_t);
@@ -668,7 +692,7 @@ static const Peripheral_t g_keyboard_peripheral = {
     .author = "LinApple Contributors",
     .version = VERSIONSTRING,
     .compatible_slots = PERIPHERAL_MASK_INTERNAL,
-    .default_slot = kb::default_slot_internal,
+    .default_slot = default_slot_internal,
     .init = keyboard_abi_init,
     .reset = keyboard_abi_reset,
     .shutdown = keyboard_abi_shutdown,

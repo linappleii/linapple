@@ -19,8 +19,6 @@ extern auto frame_refresh_status(int) -> void;
 #include "Debugger_Display.h"
 #include "Debugger_Parser.h"
 #include "apple2/Memory.h"
-#include "apple2/peripherals/Peripheral.h"
-#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/Util_Path.h"
 #include "frontends/common/AudioMixer.h"
 
@@ -318,13 +316,8 @@ auto CmdKey(int nArgs) -> Update_t {
                                 : static_cast<uint8_t>(g_args[1].sArg[0]))
             : static_cast<uint8_t>(' ');
 
-  // Send key-down event
-  KeyboardEvent_t ev = {code, 1U, 0, 0, 0, 0, {0, 0, 0}};
-  peripheral_command(0, keyboard_cmd_event, &ev, sizeof(ev));
-
-  // Send key-up event immediately to simulate a momentary press
-  ev.is_down = 0U;
-  peripheral_command(0, keyboard_cmd_event, &ev, sizeof(ev));
+  linapple_set_key_state(code, true);
+  linapple_set_key_state(code, false);
 
   return UPDATE_CONSOLE_DISPLAY;
 }

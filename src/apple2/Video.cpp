@@ -16,9 +16,7 @@
 #include <thread>
 
 #include "apple2/Apple2Types.h"
-#include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
-#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/Asset.h"
 #include "core/LinAppleCore.h"
 #include "frontends/common/VideoSurface.h"
@@ -47,6 +45,10 @@ static uint32_t g_video_output[video_width * video_height] = {};
 static bool s_language_rocker_switch = false;
 
 auto video_get_output_buffer() -> uint32_t* { return g_video_output; }
+
+auto video_set_rocker_switch(bool local) -> void {
+  s_language_rocker_switch = local;
+}
 
 static inline auto get_r_value(uint32_t rgb) -> uint8_t {
   return static_cast<uint8_t>(rgb & 0xFF);
@@ -1686,13 +1688,6 @@ auto video_update_output_buffer() -> void {
 
 auto video_perform_refresh() -> void {
   const std::lock_guard<std::recursive_mutex> lock(g_video_draw_mutex);
-
-  uint8_t rocker = 0;
-  size_t rocker_sz = sizeof(rocker);
-  if (peripheral_query_by_id(0, "linapple.keyboard", keyboard_query_rocker,
-                             &rocker, &rocker_sz) == peripheral_ok) {
-    s_language_rocker_switch = (rocker != 0);
-  }
 
   displaypage2_latched = displaypage2;
   vidmode_latched = g_video_mode;
