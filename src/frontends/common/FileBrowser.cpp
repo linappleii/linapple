@@ -18,12 +18,12 @@
 #include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
-#include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 #include "frontends/common/AppController.h"
+#include "frontends/common/HarddiskFrontend.h"
 
 static constexpr uint64_t size_k = 1000U;
 static constexpr uint64_t size_m = 1000000U;
@@ -594,17 +594,7 @@ auto disk_browser_confirm(DiskBrowser_t* b) -> bool {
                                            system_state.hdd_dir.data());
     Configuration_t::instance().save();
 
-    HarddiskInsertCmd_t hcmd{};
-    hcmd.drive = static_cast<uint8_t>(b->drive);
-    util_safe_strcpy(hcmd.path, full_path.c_str(), sizeof(hcmd.path));
-    if (peripheral_command(harddisk_default_slot, harddisk_cmd_insert, &hcmd,
-                           sizeof(hcmd)) == peripheral_ok) {
-      const char* key =
-          (b->drive != 0) ? REGVALUE_HDD_IMAGE2 : REGVALUE_HDD_IMAGE1;
-      Configuration_t::instance().set_string("Preferences", key,
-                                             full_path.c_str());
-      Configuration_t::instance().save();
-    }
+    harddisk_frontend_insert(b->drive, full_path.c_str(), false);
 
     disk_browser_close(b);
     return true;

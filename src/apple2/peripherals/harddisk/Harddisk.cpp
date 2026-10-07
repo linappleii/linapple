@@ -3,7 +3,6 @@
 
 #include <algorithm>
 #include <array>
-#include <cctype>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -23,7 +22,6 @@ namespace {
 namespace physical {
 constexpr int block_size = 512;
 constexpr size_t rom_size = 256;
-constexpr size_t path_max = 512;
 // The unit byte is DSSS0000: the drive in bit 7, the slot in bits 6-4
 // (ProDOS 8 Technical Reference Manual, 6.3.2); the firmware takes the slot
 // from it, the card only the drive.
@@ -383,8 +381,8 @@ auto end_data_phase(HarddiskPeripheral_t* card) -> void {
   card->data_phase = harddisk_phase_idle;
 }
 
-// Shouty 8.3 names from a ProDOS volume read better in a window title in
-// lower case; the extension carries no information the drive label needs.
+// How a name is shown is the frontend's choice; the card hands over the
+// file's own.
 auto update_image_metadata(Harddisk_t* drive, const char* path) -> void {
   if (drive == nullptr || path == nullptr) {
     return;
@@ -392,40 +390,12 @@ auto update_image_metadata(Harddisk_t* drive, const char* path) -> void {
 
   drive->full_path = path;
 
-  const char* start_pos = path;
-  const char* last_sep = strrchr(start_pos, '/');
-  if (last_sep != nullptr) {
-    start_pos = last_sep + 1;
+  const char* last_sep = strrchr(path, '/');
+  std::string name = (last_sep != nullptr) ? last_sep + 1 : path;
+  if (name.length() > harddisk_status_name_max) {
+    name.resize(harddisk_status_name_max);
   }
-
-  std::string title = start_pos;
-
-  bool found_lower = false;
-  for (unsigned char ch : title) {
-    if (std::islower(ch)) {
-      found_lower = true;
-      break;
-    }
-  }
-
-  constexpr size_t min_title_len_for_format = 3;
-  if (!found_lower && title.length() >= min_title_len_for_format) {
-    for (size_t i = 1; i < title.length(); ++i) {
-      title[i] =
-          static_cast<char>(std::tolower(static_cast<unsigned char>(title[i])));
-    }
-  }
-
-  const size_t dot_pos = title.rfind('.');
-  if (dot_pos != std::string::npos && dot_pos > 0) {
-    title.erase(dot_pos);
-  }
-
-  if (title.length() > harddisk_status_name_max) {
-    title.resize(harddisk_status_name_max);
-  }
-
-  drive->display_name = title;
+  drive->display_name = name;
 }
 
 auto eject_harddisk_from_drive(HarddiskPeripheral_t* card, int drive_index)
@@ -468,12 +438,6 @@ auto insert_harddisk_into_drive(HarddiskPeripheral_t* card, int drive_index,
 
   drive.is_loaded = true;
   update_image_metadata(&drive, path);
-
-  if (card->host != nullptr && card->host->SetConfig != nullptr) {
-    const char* key = (drive_index == harddisk_drive_0) ? "Harddisk Image 1"
-                                                        : "Harddisk Image 2";
-    card->host->SetConfig("Preferences", key, path);
-  }
   notify_status_changed(card);
 
   return harddisk_err_none;
@@ -751,22 +715,6 @@ auto harddisk_abi_init(int slot, HostInterface_t* host) -> void* {
   host->RegisterCxROM(slot, card->rom.data());
   host->RegisterIO(slot, harddisk_io_read, harddisk_io_write, nullptr, nullptr);
 
-  std::array<char, physical::path_max> path{};
-  if (host->GetConfig != nullptr &&
-      host->GetConfig("Preferences", "Harddisk Image 1", path.data(),
-                      path.size()) &&
-      path.at(0) != '\0') {
-    insert_harddisk_into_drive(card.get(), harddisk_drive_0, path.data(),
-                               false);
-  }
-  if (host->GetConfig != nullptr &&
-      host->GetConfig("Preferences", "Harddisk Image 2", path.data(),
-                      path.size()) &&
-      path.at(0) != '\0') {
-    insert_harddisk_into_drive(card.get(), harddisk_drive_1, path.data(),
-                               false);
-  }
-
   return card.release();
 }
 
@@ -810,8 +758,13 @@ auto harddisk_abi_command(void* instance, uint32_t cmd_id, const void* payload,
           memchr(cmd->path, '\0', sizeof(cmd->path)) == nullptr) {
         return peripheral_error;
       }
-      insert_harddisk_into_drive(card, cmd->drive, cmd->path,
-                                 cmd->write_protected != 0);
+      // A refusal is the caller's to hear; through the queue it reaches the
+      // status as the drive's last error.
+      if (insert_harddisk_into_drive(card, cmd->drive, cmd->path,
+                                     cmd->write_protected != 0) !=
+          harddisk_err_none) {
+        return peripheral_error;
+      }
       return peripheral_ok;
     }
     case harddisk_cmd_eject: {
@@ -823,11 +776,6 @@ auto harddisk_abi_command(void* instance, uint32_t cmd_id, const void* payload,
         return peripheral_error;
       }
       eject_harddisk_from_drive(card, cmd->drive);
-      if (card->host->SetConfig != nullptr) {
-        const char* key = (cmd->drive == harddisk_drive_0) ? "Harddisk Image 1"
-                                                           : "Harddisk Image 2";
-        card->host->SetConfig("Preferences", key, "");
-      }
       notify_status_changed(card);
       return peripheral_ok;
     }
@@ -1013,18 +961,8 @@ auto harddisk_abi_load_state(void* instance, const void* buffer, size_t size)
     const auto& d_ss = ss->drives[i];
     auto& drive = card->drives.at(static_cast<size_t>(i));
 
-    if (drive.is_loaded) {
-      eject_harddisk_from_drive(card, i);
-    }
-
-    if (d_ss.is_loaded != 0 && d_ss.full_path[0] != '\0') {
-      const auto* end_path = std::find(
-          d_ss.full_path, d_ss.full_path + sizeof(d_ss.full_path), '\0');
-      const std::string safe_path(
-          d_ss.full_path, static_cast<size_t>(end_path - d_ss.full_path));
-      insert_harddisk_into_drive(card, i, safe_path.c_str(),
-                                 d_ss.user_write_protected != 0);
-    }
+    // The image in a drive is the host's to mount; the frame names only the
+    // state the controller keeps about it.
     drive.last_error = static_cast<HarddiskError_e>(d_ss.last_error);
     drive.user_write_protected = d_ss.user_write_protected != 0;
   }

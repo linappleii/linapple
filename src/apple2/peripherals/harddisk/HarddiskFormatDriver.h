@@ -11,6 +11,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "apple2/peripherals/harddisk/HarddiskError.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -27,14 +29,6 @@ typedef enum {
   harddisk_probe_possible = 1,
   harddisk_probe_definite = 2
 } HarddiskProbe_e;
-
-typedef enum {
-  harddisk_err_none = 0,
-  harddisk_err_io = 1,
-  harddisk_err_not_found = 2,
-  harddisk_err_read_only = 3,
-  harddisk_err_invalid_format = 4
-} HarddiskError_e;
 
 typedef struct HarddiskFormatDriver_t {
   int abi_version;

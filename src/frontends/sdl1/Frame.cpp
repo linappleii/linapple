@@ -35,6 +35,7 @@
 #include "frontends/common/AppController.h"
 #include "frontends/common/AudioMixer.h"
 #include "frontends/common/Frontend.h"
+#include "frontends/common/HarddiskFrontend.h"
 #include "frontends/common/HelpText.h"
 #include "frontends/common/MouseFrontend.h"
 #include "frontends/common/SaveStateManager.h"
@@ -128,9 +129,7 @@ auto handle_btn_drive(int drive_idx, int mod) -> void {
   if ((mod & KMOD_CTRL) != 0) {
     if ((mod & KMOD_SHIFT) != 0) {
       printf("HDD  Eject Drive #%d\n", drive_idx + 1);
-      HarddiskEjectCmd_t ecmd{static_cast<uint8_t>(drive_idx)};
-      peripheral_command(harddisk_default_slot, harddisk_cmd_eject, &ecmd,
-                         sizeof(ecmd));
+      harddisk_frontend_eject(drive_idx);
     } else {
       printf("Disk Eject Drive #%d\n", drive_idx + 1);
       DiskEjectCmd_t ecmd{};

@@ -379,6 +379,7 @@ set(SOURCES_CORE
     src/frontends/common/PrinterFrontend.cpp
     src/frontends/common/HostSink.cpp
     src/frontends/common/MouseFrontend.cpp
+    src/frontends/common/HarddiskFrontend.cpp
     src/core/services/ftp/FtpParser.cpp
 )
 

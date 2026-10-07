@@ -29,6 +29,7 @@
 #include "core/Util_Text.h"
 #include "frontends/common/AppArgs.h"
 #include "frontends/common/AppEnvironment.h"
+#include "frontends/common/HarddiskFrontend.h"
 #include "frontends/common/HostSink.h"
 #include "frontends/common/JoystickConfig.h"
 #include "frontends/common/KeyboardTranslator.h"
@@ -361,6 +362,7 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
       peripheral_register(p, harddisk_default_slot);
     }
   }
+  harddisk_frontend_initialize();
 
   std::string sync_file = config->basic_sync_file.data();
   int line_mode = config->basic_line_mode < 0 ? 0 : config->basic_line_mode;
@@ -485,11 +487,7 @@ auto app_controller_load_initial_media(const AppConfig_t* config) -> void {
   for (size_t i = 0; i < config->harddisk_path.size(); ++i) {
     const char* path = config->harddisk_path.at(i).data();
     if (path != nullptr && *path != '\0') {
-      HarddiskInsertCmd_t hcmd{};
-      hcmd.drive = static_cast<uint8_t>(i);
-      util_safe_strcpy(&hcmd.path[0], path, sizeof(hcmd.path));
-      peripheral_command(harddisk_default_slot, harddisk_cmd_insert, &hcmd,
-                         sizeof(hcmd));
+      harddisk_frontend_insert(static_cast<int>(i), path, false);
     }
   }
 
@@ -536,6 +534,29 @@ auto app_controller_save_disk_config(int drive) -> void {
       (drive == disk_drive_0) ? REGVALUE_DISK_IMAGE1 : REGVALUE_DISK_IMAGE2,
       (drive == disk_drive_0) ? status.drive0_full_path
                               : status.drive1_full_path);
+}
+
+auto app_controller_save_harddisk_config(int drive) -> void {
+  if (drive != harddisk_drive_0 && drive != harddisk_drive_1) {
+    return;
+  }
+
+  peripheral_manager_think(0);
+
+  HarddiskStatus_t status{};
+  size_t size = sizeof(status);
+  if (peripheral_query(harddisk_frontend_slot(), harddisk_query_status, &status,
+                       &size) != peripheral_ok) {
+    return;
+  }
+
+  // set_string keeps the harddisk_path field in step with the key, so what
+  // the next save writes is what the drive holds.
+  Configuration_t::instance().set_string(
+      cfg_sec_preferences,
+      (drive == harddisk_drive_0) ? REGVALUE_HDD_IMAGE1 : REGVALUE_HDD_IMAGE2,
+      (drive == harddisk_drive_0) ? status.drive0_full_path
+                                  : status.drive1_full_path);
 }
 
 auto app_controller_should_restart() -> bool { return system_state.restart; }

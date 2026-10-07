@@ -43,6 +43,7 @@
 #include "frontends/common/AppController.h"
 #include "frontends/common/AudioMixer.h"
 #include "frontends/common/Frontend.h"
+#include "frontends/common/HarddiskFrontend.h"
 #include "frontends/common/HelpText.h"
 #include "frontends/common/MouseFrontend.h"
 #include "frontends/common/SaveStateManager.h"
@@ -178,9 +179,7 @@ auto handle_btn_drive(int drive_index, int mod) -> void {
   if ((mod & SDL_KMOD_CTRL) != 0) {
     if ((mod & SDL_KMOD_SHIFT) != 0) {
       std::printf("HDD  Eject Drive #%d\n", drive_index + 1);
-      HarddiskEjectCmd_t ecmd = {static_cast<uint8_t>(drive_index)};
-      peripheral_command(harddisk_default_slot, harddisk_cmd_eject, &ecmd,
-                         sizeof(ecmd));
+      harddisk_frontend_eject(drive_index);
     } else {
       std::printf("Disk Eject Drive #%d\n", drive_index + 1);
       DiskEjectCmd_t ecmd{};
