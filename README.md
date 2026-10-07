@@ -139,7 +139,18 @@ cmake --build build -j$(nproc)
   * **Headless Frontend:** Fast CLI execution for CI test automation and batch
     scripts.
   * **SDL2 & SDL1 Frontends:** Available for older distributions and vintage
-    embedded systems.
+    embedded systems. SDL 1.2 reads key positions (positional mode and
+    `[Keyboard.Custom]`) through X11 only; under another video driver it
+    falls back to the key's symbol.
+  * **Peripheral cards as plugins:** every card builds into the binary or,
+    with `BUILD_SHARED_PERIPHERALS`, as a plugin; a plugin and its host must
+    come from the same build. Any card can be compiled out
+    (`ENABLE_PERIPHERAL_<CARD>=OFF`). A //e built without the keyboard card
+    behaves like one with its keyboard unplugged: with no game controller
+    configured either (`Joystick 0 = 0`), the pull-up resistors of the
+    revision C logic board make it run its self-test at every reset and loop
+    in it, as the real board does; configure a controller or keep the
+    keyboard to boot a disk. A II Plus built that way boots regardless.
 
 * **Flexible Storage & Disk Formats:**
   * Full read/write support for standard floppy images (`.dsk`, `.do`, `.po`,
@@ -154,12 +165,20 @@ cmake --build build -j$(nproc)
     (`--basic-sync <file>`).
 
 * **Configurable Keyboard System:**
-  * **Symbolic & Positional** keyboard mapping modes.
+  * **Symbolic & Positional** keyboard mapping modes, with twelve national
+    tables (`Keyboard Type`, 0 US to 11 Japanese kana) read in positional
+    mode through the //e's rocker switch.
   * **Custom Key Mapping (`[Keyboard.Custom]`):** Remap any host physical key
-    to any Apple II character, control code, or Open/Closed Apple button.
+    to any Apple II character, control code, Open/Solid Apple button or the
+    REPT key of a II or II Plus keyboard; a remapped key applies whatever the
+    mode and leaves every other key as it was.
   * Configurable Quick Save hotkeys (`Alt+0..9`) to eliminate conflicts with
     Apple II games (like *Lode Runner*).
   * Virtual character-set Rocker Switch for international IIe models.
+  * The keyboard of each model: a //e repeats a held key after half a second,
+    fifteen times a second on NTSC and twelve and a half on PAL; a II or II
+    Plus types upper case and never repeats a key by itself, only through its
+    REPT key.
 
 * **Integrated Assembly Debugger & Diagnostics:**
   * Full-featured interactive disassembly viewer, memory inspector,
@@ -189,14 +208,28 @@ disk support, XDG compliance, and comprehensive automated test suites.
 
 ### Apple II Special Keys
 
-| Apple II Key                       | Host Keyboard Equivalent                |
-| :--------------------------------- | :-------------------------------------- |
-| **Open Apple (Paddle 0 Button)**   | `Left Alt` or `Left Super` / `GUI`      |
-| **Closed Apple (Paddle 1 Button)** | `Right Alt` or `Right Super` / `GUI`    |
-| **Reset (Ctrl + Reset)**           | `Ctrl + F10`                            |
+| Apple II Key                      | Host Keyboard Equivalent                                    |
+| :-------------------------------- | :---------------------------------------------------------- |
+| **Open Apple (Paddle 0 Button)**  | `Left Alt` or `Left Super` / `GUI`; terminal: `Alt + key`   |
+| **Solid Apple (Paddle 1 Button)** | `Right Alt` or `Right Super` / `GUI`; not in the terminal   |
+| **Reset (Ctrl + Reset)**          | `Ctrl + F10`                                                |
+| **REPT (II and II Plus)**         | Any key bound to `Rept` in `[Keyboard.Custom]`; none by default |
 
 The Super (Windows / Command) key is usually claimed by the window manager
 and may never reach the emulator, so Alt is the dependable choice.
+
+In the terminal frontend `Alt + key` is Open Apple held with that key. It
+arrives as `ESC` followed by the key in terminals that send a meta prefix
+(xterm with `metaSendsEscape`, and most terminal emulators by default) or as
+the key with its eighth bit set (stock xterm); a lone `ESC` still types
+Escape. The terminal has no Solid Apple yet. Every control key, `Ctrl + C`
+included, reaches the Apple from a terminal, so Applesoft's break and a
+game's control bindings work there; `F12` quits. On a II or II Plus the
+host's Alt keys are visible to a program only while a game controller is
+configured (`Joystick 0` other than `0`): with nothing plugged into the game
+connector its three pushbutton inputs float high and read as pressed, as on
+the hardware. A //e reads them released through its keyboard's pull-down
+resistors.
 
 ### Emulator Shortcuts
 
@@ -212,7 +245,7 @@ and may never reach the emulator, so Alt is the dependable choice.
 | **`Ctrl + Shift + F3 / F4`**    | Eject hard disk from Drive 1 / Drive 2                          |
 | **`F5`**                        | Swap Drive 1 and Drive 2 floppy disks                           |
 | **`F6`**                        | Toggle Fullscreen mode                                          |
-| **`Shift + F6`**                | Toggle international keyboard/video Rocker Switch               |
+| **`Shift + F6`**                | Toggle the keyboard rocker switch (TUI only, no visible effect in this release; does nothing in the SDL frontends yet) |
 | **`F7`**                        | Toggle integrated assembly debugger                             |
 | **`F8`**                        | Save screenshot (`.bmp`)                                        |
 | **`F9`**                        | Cycle video rendering modes (Monochrome, Color, Composite, RGB) |

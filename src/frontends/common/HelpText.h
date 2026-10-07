@@ -10,6 +10,8 @@ enum class HelpFeature_t {
   cold_reboot,
   reload_config,
   hot_reset,
+  open_apple,
+  solid_apple,
   quit,
   disk_slot6,
   swap_disks,
@@ -34,7 +36,7 @@ struct HelpLine_t {
 };
 
 constexpr size_t HELP_HEADER_LINE_COUNT = 3;
-constexpr size_t HELP_BODY_LINE_COUNT = 23;
+constexpr size_t HELP_BODY_LINE_COUNT = 25;
 constexpr size_t HELP_TOTAL_LINE_COUNT =
     HELP_HEADER_LINE_COUNT + HELP_BODY_LINE_COUNT;
 
@@ -49,6 +51,10 @@ constexpr std::array<HelpLine_t, HELP_BODY_LINE_COUNT> HELP_BODY_LINES = {{
     {HelpFeature_t::reload_config,
      "    Shift+F2 - Reload configuration file and cold reboot"},
     {HelpFeature_t::hot_reset, "    Ctrl+F10 - Hot Reset (Control+Reset)"},
+    {HelpFeature_t::open_apple,
+     "    Left Alt - Open Apple (terminal: Alt+key)"},
+    {HelpFeature_t::solid_apple,
+     "   Right Alt - Solid Apple (not in the terminal)"},
     {HelpFeature_t::quit, "         F12 - Quit LinApple"},
     {HelpFeature_t::separator, ""},
     {HelpFeature_t::disk_slot6,
