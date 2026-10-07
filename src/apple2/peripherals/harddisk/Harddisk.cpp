@@ -927,18 +927,18 @@ auto harddisk_abi_save_state(void* instance, void* buffer, size_t* size)
   }
 
   const auto* card = static_cast<const HarddiskPeripheral_t*>(instance);
-  auto* ss = static_cast<HarddiskSaveState_t*>(buffer);
+  auto* frame = static_cast<HarddiskSaveState_t*>(buffer);
 
-  std::memset(ss, 0, required);
-  ss->version = HARDDISK_STATE_VERSION;
-  ss->struct_size = harddisk_save_state_size;
-  ss->unit = card->unit;
-  ss->command = card->command;
-  ss->result = card->result;
-  ss->data_phase = card->data_phase;
-  ss->block = card->block;
-  ss->data_index = card->data_index;
-  ss->block_count = card->block_count;
+  std::memset(frame, 0, required);
+  frame->version = HARDDISK_STATE_VERSION;
+  frame->struct_size = harddisk_save_state_size;
+  frame->unit = card->unit;
+  frame->command = card->command;
+  frame->result = card->result;
+  frame->data_phase = card->data_phase;
+  frame->block = card->block;
+  frame->data_index = card->data_index;
+  frame->block_count = card->block_count;
 
   *size = required;
   return peripheral_ok;
@@ -951,23 +951,23 @@ auto harddisk_abi_load_state(void* instance, const void* buffer, size_t size)
     return peripheral_error;
   }
 
-  HarddiskSaveState_t ss{};
-  std::memcpy(&ss, buffer, sizeof(ss));
-  if (ss.version != HARDDISK_STATE_VERSION ||
-      ss.struct_size != harddisk_save_state_size ||
-      ss.data_phase > harddisk_phase_write_in) {
+  HarddiskSaveState_t frame{};
+  std::memcpy(&frame, buffer, sizeof(frame));
+  if (frame.version != HARDDISK_STATE_VERSION ||
+      frame.struct_size != harddisk_save_state_size ||
+      frame.data_phase > harddisk_phase_write_in) {
     return peripheral_error;
   }
 
   auto* card = static_cast<HarddiskPeripheral_t*>(instance);
-  card->unit = ss.unit;
-  card->command = ss.command;
-  card->result = ss.result;
-  card->block = ss.block;
+  card->unit = frame.unit;
+  card->command = frame.command;
+  card->result = frame.result;
+  card->block = frame.block;
   card->data_index =
-      static_cast<uint16_t>(ss.data_index % physical::block_size);
-  card->block_count = ss.block_count;
-  card->data_phase = ss.data_phase;
+      static_cast<uint16_t>(frame.data_index % physical::block_size);
+  card->block_count = frame.block_count;
+  card->data_phase = frame.data_phase;
   card->buffer_poisoned = false;
   card->buffer.fill(0);
 
@@ -1014,7 +1014,7 @@ static const Peripheral_t g_harddisk_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.harddisk",
     .name = "Harddisk",
-    .description = "SmartPort hard disk controller emulation",
+    .description = "ProDOS block-device hard disk controller (two volumes)",
     .author = "LinApple Contributors",
     .version = VERSIONSTRING,
     .compatible_slots = PERIPHERAL_MASK_EXPANSION,

@@ -155,8 +155,10 @@ cmake --build build -j$(nproc)
 * **Flexible Storage & Disk Formats:**
   * Full read/write support for standard floppy images (`.dsk`, `.do`, `.po`,
     `.nib`, `.woz` v2).
-  * Native SmartPort hard disk emulation with `.2mg` container parsing and raw
-    `.hdv` / `.po` block images.
+  * A ProDOS 8 block-device hard disk controller with firmware of its own,
+    serving `.hdv` / `.po` / `.img` block images, `.2mg` containers in ProDOS
+    or DOS order, and 140 K floppy images (`.dsk`, `.do`) decoded through
+    the DOS 3.3 sector map; nibble images are refused as holding no blocks.
   * Built-in direct FTP disk image streaming.
 
 * **Bidirectional Applesoft BASIC Live-Sync:**
@@ -238,9 +240,9 @@ resistors.
 | **`F1`**                        | Show in-emulator Help screen                                    |
 | **`F2`** / **`Ctrl + F2`**      | Restart emulator / Cold reboot                                  |
 | **`F3` / `F4`**                 | Insert disk into Floppy Drive 1 / Drive 2                       |
-| **`Shift + F3` / `Shift + F4`** | Insert hard disk into Drive 1 / Drive 2 (Slot 7)                |
+| **`Shift + F3` / `Shift + F4`** | Insert hard disk into Drive 1 / Drive 2 (the hard disk's slot) |
 | **`Alt + F3` / `Alt + F4`**     | Browse and insert floppy disk image via FTP                     |
-| **`Shift + Alt + F3 / F4`**     | Browse and insert hard disk image via FTP (Slot 7)              |
+| **`Shift + Alt + F3 / F4`**     | Browse and insert hard disk image via FTP (the hard disk's slot) |
 | **`Ctrl + F3` / `Ctrl + F4`**   | Eject floppy disk from Drive 1 / Drive 2                        |
 | **`Ctrl + Shift + F3 / F4`**    | Eject hard disk from Drive 1 / Drive 2                          |
 | **`F5`**                        | Swap Drive 1 and Drive 2 floppy disks                           |
@@ -273,8 +275,8 @@ linapple [options]
 | :---------------------------- | :-------------------------------------------------------------- |
 | **`-1`, `--d1 <file>`**       | Insert floppy disk image in Drive 1 (Slot 6)                    |
 | **`-2`, `--d2 <file>`**       | Insert floppy disk image in Drive 2 (Slot 6)                    |
-| **`--hd1 <file>`**            | Insert hard disk image in Drive 1 (Slot 7, e.g. `.2mg`, `.hdv`) |
-| **`--hd2 <file>`**            | Insert hard disk image in Drive 2 (Slot 7)                      |
+| **`--hd1 <file>`**            | Insert hard disk image in Drive 1 (e.g. `.2mg`, `.hdv`, `.po`)  |
+| **`--hd2 <file>`**            | Insert hard disk image in Drive 2 of the same card              |
 | **`-a`, `-b`, `--autoboot`**  | Automatically boot into inserted disk on startup                |
 | **`-c`, `--config <file>`**   | Load specific configuration file                                |
 | **`-f`, `--fullscreen`**      | Start in fullscreen mode                                        |

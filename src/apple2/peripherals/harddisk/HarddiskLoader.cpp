@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "apple2/media/image_container/ImageContainer.h"
+#include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "apple2/peripherals/harddisk/HarddiskError.h"
 #include "apple2/peripherals/harddisk/HarddiskFormatDriver.h"
 #include "apple2/peripherals/harddisk/formats/HarddiskFormatRegistration.h"
@@ -125,7 +126,7 @@ auto insert_by_name(std::vector<const HarddiskFormatDriver_t*>& drivers,
   drivers.insert(at, driver);
 }
 
-constexpr size_t path_max_len = 512;
+constexpr size_t path_max_len = harddisk_status_path_max;
 
 // 80 KiB holds track 17, where the DOS 3.3 catalog ends at 73,728 bytes, even
 // behind a 128-byte MacBinary wrapper. A ProDOS directory that chains past

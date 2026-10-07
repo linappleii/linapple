@@ -7,7 +7,7 @@ extern "C" {
 
 struct Peripheral_t;
 
-auto harddisk_get_descriptor() -> struct Peripheral_t*;
+struct Peripheral_t* harddisk_get_descriptor(void);
 
 #ifdef __cplusplus
 }

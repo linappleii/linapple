@@ -660,7 +660,7 @@ list(LENGTH HARDDISK_FORMAT_SOURCES HARDDISK_FORMAT_DRIVER_COUNT)
 set(HARDDISK_BACKEND_SOURCES
     src/apple2/peripherals/harddisk/formats/BlockDiskImage.cpp)
 
-add_peripheral(harddisk "Harddisk (SmartPort)" "src/apple2/peripherals/harddisk/Harddisk.cpp;src/apple2/peripherals/harddisk/HarddiskLoader.cpp;${HARDDISK_BACKEND_SOURCES};${HARDDISK_FORMAT_SOURCES}" "" "image-container" TRUE)
+add_peripheral(harddisk "Harddisk (ProDOS block device)" "src/apple2/peripherals/harddisk/Harddisk.cpp;src/apple2/peripherals/harddisk/HarddiskLoader.cpp;${HARDDISK_BACKEND_SOURCES};${HARDDISK_FORMAT_SOURCES}" "" "image-container" TRUE)
 add_peripheral(mouse "Mouse Interface" "src/apple2/peripherals/mouse/Mouse.cpp;src/apple2/chips/6821.cpp" "" "" FALSE)
 add_peripheral(mockingboard "Mockingboard" "src/apple2/peripherals/mockingboard/Mockingboard.cpp;src/apple2/chips/AY8910.cpp;src/apple2/chips/6522.cpp" "" "" FALSE)
 add_peripheral(super_serial "Super Serial Card" "src/apple2/peripherals/super_serial_card/SuperSerial.cpp;src/apple2/chips/6551.cpp" "" "" FALSE)
