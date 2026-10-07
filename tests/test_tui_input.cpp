@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include <fcntl.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <sys/poll.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 #include <array>
@@ -14,10 +14,12 @@
 #include <string>
 #include <vector>
 
+#include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "core/LinAppleCore.h"
 #include "doctest.h"
+#include "frontends/common/KeyboardTranslator.h"
 #include "frontends/common/MouseFrontend.h"
 #include "frontends/tui/TuiInput.h"
 #include "frontends/tui/TuiTerminal.h"
@@ -693,4 +695,289 @@ TEST_CASE(
   CHECK(reading.x == 142);
   CHECK(out.take().empty());
 }
+#endif
+
+#if defined(ENABLE_PERIPHERAL_KEYBOARD)
+
+namespace {
+
+constexpr uint16_t addr_keyboard_data = 0xC000;
+constexpr uint16_t addr_keyboard_strobe = 0xC010;
+constexpr uint16_t addr_pushbutton0 = 0xC061;
+constexpr uint8_t bit7 = 0x80;
+constexpr uint8_t ascii_esc = 0x1B;
+constexpr uint8_t last_control_byte = 0x1F;
+
+// The core takes the model from a process-wide variable a harness-built
+// machine leaves behind; a machine built here states its own first.
+struct Model_t {
+  Apple2Type_t saved = current_apple2_type;
+  explicit Model_t(Apple2Type_t type) { current_apple2_type = type; }
+  ~Model_t() { current_apple2_type = saved; }
+  Model_t(const Model_t&) = delete;
+  auto operator=(const Model_t&) -> Model_t& = delete;
+  Model_t(Model_t&&) = delete;
+  auto operator=(Model_t&&) -> Model_t& = delete;
+};
+
+// The terminal's keyboard on a machine with the internal cards alone: bytes
+// arrive on stdin as a raw-mode terminal delivers them and the card is read
+// through the memory map as the 6502 reads it. A terminal reports no caps
+// state, so its caps is the emulated kind, down to start with. Whatever the
+// session writes to the terminal lands in a pipe, not in the report.
+struct TuiKeyboard_t {
+  Model_t model;
+  TuiMachine_t machine;
+  ScopedStdoutPipe_t out;
+  ScopedStdinPipe_t in;
+  ScopedTuiSession_t tui;
+
+  explicit TuiKeyboard_t(
+      const TestFixtures::ScopedTestConfig_t::Description_t& description,
+      Apple2Type_t type = A2TYPE_APPLE2EENHANCED)
+      : model(type), machine(description) {
+    keyboard_set_caps(true);
+    keyboard_set_caps_mode(caps_mode_emulated);
+    keyboard_set_mapping_mode(KBD_MODE_SYMBOLIC);
+    keyboard_set_layout(0);
+    linapple_set_rocker_switch(false);
+    frontend_update_keyboard_mapping();
+    tui_input_initialize();
+    settle();
+  }
+
+  ~TuiKeyboard_t() {
+    linapple_set_key_release_all();
+    settle();
+    keyboard_set_caps(true);
+    keyboard_set_caps_mode(caps_mode_host);
+  }
+
+  TuiKeyboard_t(const TuiKeyboard_t&) = delete;
+  auto operator=(const TuiKeyboard_t&) -> TuiKeyboard_t& = delete;
+  TuiKeyboard_t(TuiKeyboard_t&&) = delete;
+  auto operator=(TuiKeyboard_t&&) -> TuiKeyboard_t& = delete;
+
+  // The command queue is drained by a think, as a running machine drains it
+  // once a frame.
+  static auto settle() -> void { peripheral_manager_think(0); }
+
+  auto type(const std::string& bytes) -> void {
+    in.feed(bytes);
+    settle();
+  }
+
+  // A poll with nothing to read is the next frame's poll.
+  static auto next_poll() -> void {
+    tui_input_poll();
+    settle();
+  }
+
+  static auto latch() -> uint8_t {
+    return io_map_dispatch(0, addr_keyboard_data, 0, 0, 0);
+  }
+
+  static auto any_key_down() -> bool {
+    return (io_map_dispatch(0, addr_keyboard_strobe, 0, 0, 0) & bit7) != 0;
+  }
+
+  static auto clear_strobe() -> void {
+    (void)io_map_dispatch(0, addr_keyboard_strobe, 0, 0, 0);
+  }
+
+  static auto pushbutton(uint8_t line) -> int {
+    const auto addr = static_cast<uint16_t>(addr_pushbutton0 + line);
+    return (io_map_dispatch(0, addr, 0, 0, 0) & bit7) != 0 ? 1 : 0;
+  }
+};
+
+volatile sig_atomic_t g_sigint_count = 0;
+
+auto count_sigint(int signal) -> void {
+  (void)signal;
+  ++g_sigint_count;
+}
+
+// doctest wraps a case in handlers of its own, so SIGINT is taken over for
+// the case and handed back before it ends.
+struct ScopedSigintCounter_t {
+  struct sigaction saved{};
+
+  ScopedSigintCounter_t() {
+    g_sigint_count = 0;
+    struct sigaction action{};
+    action.sa_handler = count_sigint;
+    sigemptyset(&action.sa_mask);
+    REQUIRE(sigaction(SIGINT, &action, &saved) == 0);
+  }
+
+  ~ScopedSigintCounter_t() { sigaction(SIGINT, &saved, nullptr); }
+
+  ScopedSigintCounter_t(const ScopedSigintCounter_t&) = delete;
+  auto operator=(const ScopedSigintCounter_t&)
+      -> ScopedSigintCounter_t& = delete;
+  ScopedSigintCounter_t(ScopedSigintCounter_t&&) = delete;
+  auto operator=(ScopedSigintCounter_t&&) -> ScopedSigintCounter_t& = delete;
+};
+
+auto ii_plus() -> TestFixtures::ScopedTestConfig_t::Description_t {
+  TestFixtures::ScopedTestConfig_t::Description_t description;
+  description.machine_type =
+      TestFixtures::ScopedTestConfig_t::machine_apple2_plus;
+  return description;
+}
+
+}  // namespace
+
+TEST_CASE(
+    "TUI keys: a byte types its key in upper case with the emulated caps down "
+    "and in lower case with it up, held through the poll that read it and let "
+    "go at the next") {
+  TuiKeyboard_t terminal(TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  REQUIRE(keyboard_get_caps());
+  REQUIRE_FALSE(TuiKeyboard_t::any_key_down());
+
+  terminal.type("a");
+  CHECK(TuiKeyboard_t::latch() == 0xC1);
+  CHECK(TuiKeyboard_t::any_key_down());
+  TuiKeyboard_t::next_poll();
+  CHECK_FALSE(TuiKeyboard_t::any_key_down());
+  TuiKeyboard_t::clear_strobe();
+  CHECK(TuiKeyboard_t::latch() == 0x41);
+
+  keyboard_set_caps(false);
+  terminal.type("a");
+  CHECK(TuiKeyboard_t::latch() == 0xE1);
+  TuiKeyboard_t::next_poll();
+  TuiKeyboard_t::clear_strobe();
+  terminal.type("A");
+  CHECK(TuiKeyboard_t::latch() == 0xC1);
+  TuiKeyboard_t::next_poll();
+}
+
+TEST_CASE(
+    "TUI keys: every control byte but ESC reaches the Apple as itself, Ctrl-C "
+    "included and raising no SIGINT, Return is $0D, the Backspace key's 0x7F "
+    "is the left arrow and the Delete key's CSI 3 ~ is $7F") {
+  TuiKeyboard_t terminal(TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  ScopedSigintCounter_t sigint;
+
+  terminal.type("\x03");
+  CHECK(TuiKeyboard_t::latch() == 0x83);
+  CHECK(g_sigint_count == 0);
+  TuiKeyboard_t::next_poll();
+  TuiKeyboard_t::clear_strobe();
+
+  for (int byte = 0x01; byte <= last_control_byte; ++byte) {
+    if (byte == ascii_esc) {
+      continue;
+    }
+    CAPTURE(byte);
+    terminal.type(std::string(1, static_cast<char>(byte)));
+    CHECK(TuiKeyboard_t::latch() == (bit7 | byte));
+    CHECK(TuiKeyboard_t::any_key_down());
+    TuiKeyboard_t::next_poll();
+    CHECK_FALSE(TuiKeyboard_t::any_key_down());
+    TuiKeyboard_t::clear_strobe();
+  }
+  CHECK(g_sigint_count == 0);
+
+  terminal.type("\r");
+  CHECK(TuiKeyboard_t::latch() == 0x8D);
+  TuiKeyboard_t::next_poll();
+  TuiKeyboard_t::clear_strobe();
+  terminal.type("\x7f");
+  CHECK(TuiKeyboard_t::latch() == 0x88);
+  TuiKeyboard_t::next_poll();
+  TuiKeyboard_t::clear_strobe();
+  terminal.type("\x1b[3~");
+  CHECK(TuiKeyboard_t::latch() == 0xFF);
+  TuiKeyboard_t::next_poll();
+}
+
+TEST_CASE(
+    "TUI keys: a lone ESC types $1B, and ESC before a key or a key with its "
+    "eighth bit set is Open Apple held around that key, both let go at the "
+    "next poll") {
+  TuiKeyboard_t terminal(TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  REQUIRE(TuiKeyboard_t::pushbutton(0) == 0);
+
+  terminal.type("\x1b");
+  CHECK(TuiKeyboard_t::latch() == 0x9B);
+  CHECK(TuiKeyboard_t::pushbutton(0) == 0);
+  TuiKeyboard_t::next_poll();
+  TuiKeyboard_t::clear_strobe();
+
+  terminal.type(
+      "\x1b"
+      "a");
+  CHECK(TuiKeyboard_t::latch() == 0xC1);
+  CHECK(TuiKeyboard_t::any_key_down());
+  CHECK(TuiKeyboard_t::pushbutton(0) == 1);
+  CHECK(TuiKeyboard_t::pushbutton(1) == 0);
+  TuiKeyboard_t::next_poll();
+  CHECK_FALSE(TuiKeyboard_t::any_key_down());
+  CHECK(TuiKeyboard_t::pushbutton(0) == 0);
+  TuiKeyboard_t::clear_strobe();
+
+  terminal.type("\xe1");
+  CHECK(TuiKeyboard_t::latch() == 0xC1);
+  CHECK(TuiKeyboard_t::pushbutton(0) == 1);
+  TuiKeyboard_t::next_poll();
+  CHECK(TuiKeyboard_t::pushbutton(0) == 0);
+  TuiKeyboard_t::clear_strobe();
+
+  // Alt+Backspace is Open Apple with the left arrow.
+  terminal.type("\x1b\x7f");
+  CHECK(TuiKeyboard_t::latch() == 0x88);
+  CHECK(TuiKeyboard_t::pushbutton(0) == 1);
+  TuiKeyboard_t::next_poll();
+  CHECK(TuiKeyboard_t::pushbutton(0) == 0);
+  TuiKeyboard_t::clear_strobe();
+
+  // A UTF-8 terminal sends Alt as the ESC prefix, so a valid UTF-8 sequence
+  // is a character the Apple cannot type and reaches nothing: neither key
+  // nor Open Apple.
+  terminal.type("\xc3\xa9");
+  CHECK(TuiKeyboard_t::latch() == 0x08);
+  CHECK_FALSE(TuiKeyboard_t::any_key_down());
+  CHECK(TuiKeyboard_t::pushbutton(0) == 0);
+  TuiKeyboard_t::next_poll();
+  CHECK(TuiKeyboard_t::pushbutton(0) == 0);
+
+  // A high byte that begins no UTF-8 sequence is the eighth-bit Alt form:
+  // $E1 before an ASCII byte is Open Apple with a, then that byte.
+  terminal.type(
+      "\xe1"
+      "b");
+  CHECK(TuiKeyboard_t::latch() == 0xC2);
+  CHECK(TuiKeyboard_t::any_key_down());
+  CHECK(TuiKeyboard_t::pushbutton(0) == 1);
+  TuiKeyboard_t::next_poll();
+  CHECK_FALSE(TuiKeyboard_t::any_key_down());
+  CHECK(TuiKeyboard_t::pushbutton(0) == 0);
+}
+
+TEST_CASE(
+    "TUI keys: Shift+F6 toggles the rocker switch on a //e and leaves it "
+    "alone on a II Plus") {
+  SUBCASE("Enhanced //e") {
+    TuiKeyboard_t terminal(
+        TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+    REQUIRE_FALSE(linapple_get_rocker_switch());
+    terminal.type("\x1b[17;2~");
+    CHECK(linapple_get_rocker_switch());
+    terminal.type("\x1b[17;2~");
+    CHECK_FALSE(linapple_get_rocker_switch());
+    CHECK_FALSE(TuiKeyboard_t::any_key_down());
+  }
+
+  SUBCASE("II Plus") {
+    TuiKeyboard_t terminal(ii_plus(), A2TYPE_APPLE2PLUS);
+    REQUIRE_FALSE(linapple_get_rocker_switch());
+    terminal.type("\x1b[17;2~");
+    CHECK_FALSE(linapple_get_rocker_switch());
+  }
+}
+
 #endif

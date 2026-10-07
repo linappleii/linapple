@@ -48,7 +48,8 @@ static constexpr uint8_t k_a2_key_esc = 0x1B;
 static constexpr uint8_t k_a2_key_enter = 0x0D;
 static constexpr uint8_t k_a2_key_backspace = 0x08;
 static constexpr uint8_t k_a2_key_delete = 0x7F;
-static constexpr uint8_t k_a2_key_ctrl_c = 0x03;
+static constexpr uint8_t k_eighth_bit = 0x80;
+static constexpr uint8_t k_seven_bits = 0x7F;
 
 static constexpr int k_f1_vt_code = 11;
 static constexpr int k_f2_vt_code = 12;
@@ -72,17 +73,105 @@ static constexpr size_t k_input_buffer_size = 256;
 static constexpr size_t k_max_escape_length = 32;
 static constexpr int k_esc_poll_timeout_ms = 3;
 
-// A terminal has no scancodes and no key-up, so its byte is read as a
-// symbolic key, folded as the SDL frontends' keys are, and doubles as the
-// key's identity for the release that follows at once.
-static auto map_key(uint8_t a2_code) -> void {
+// A key the terminal typed, held until the next poll. A terminal has no
+// key-up, so the release is made up: deferred by one poll, so that a program
+// which polls $C010 for a held key sees it for a frame. Alt+key arrives as a
+// meta prefix or an eighth bit and is Open Apple held around the key, let go
+// after it.
+struct HeldKey_t {
+  uint32_t host_key;
+  uint8_t code;
+  bool open_apple;
+};
+
+static std::vector<HeldKey_t> g_held_keys;
+
+static auto release_held_keys() -> void {
+  for (const HeldKey_t& key : g_held_keys) {
+    linapple_set_key(key.host_key, key.code, false);
+    if (key.open_apple) {
+      linapple_set_modifiers(false, false, false, false);
+    }
+  }
+  g_held_keys.clear();
+}
+
+// A terminal has no scancodes, so its byte is read as a symbolic key, folded
+// as the SDL frontends' keys are, and doubles as the key's identity.
+static auto map_key(uint8_t a2_code, bool open_apple = false) -> void {
   const KeyboardHostKey_t key = {0, a2_code, false, false};
   uint8_t code = 0;
   if (!keyboard_translate(&key, &code)) {
     return;
   }
+  if (open_apple) {
+    linapple_set_modifiers(false, false, true, false);
+  }
   linapple_set_key(a2_code, code, true);
-  linapple_set_key(a2_code, code, false);
+  g_held_keys.push_back({a2_code, code, open_apple});
+}
+
+// The byte a terminal sends for a key, as the Apple keyboard would code it:
+// 0x7F is what most terminals send for the Backspace key, the Apple's left
+// arrow; every other seven-bit byte is its own code.
+static auto terminal_byte_to_apple(uint8_t byte) -> uint8_t {
+  return byte == k_a2_key_delete ? k_a2_key_backspace : byte;
+}
+
+// A sequence a terminal sends as one keystroke can be split across reads;
+// a few milliseconds is what tells its tail from the next keystroke.
+static auto read_more_input() -> void {
+  struct pollfd pfd{};
+  pfd.fd = STDIN_FILENO;
+  pfd.events = POLLIN;
+  const int pr = poll(&pfd, 1, k_esc_poll_timeout_ms);
+  if (pr <= 0 || (pfd.revents & POLLIN) == 0) {
+    return;
+  }
+  std::array<uint8_t, k_input_buffer_size> extra_buf{};
+  const ssize_t extra_n =
+      read(STDIN_FILENO, extra_buf.data(), extra_buf.size());
+  for (ssize_t j = 0; j < extra_n; ++j) {
+    g_input_queue.push_back(extra_buf.at(static_cast<size_t>(j)));
+  }
+}
+
+static constexpr uint8_t k_utf8_lead2_min = 0xC2;
+static constexpr uint8_t k_utf8_lead2_max = 0xDF;
+static constexpr uint8_t k_utf8_lead3_max = 0xEF;
+static constexpr uint8_t k_utf8_lead4_max = 0xF4;
+static constexpr uint8_t k_utf8_continuation_min = 0x80;
+static constexpr uint8_t k_utf8_continuation_max = 0xBF;
+
+// How many continuation bytes a UTF-8 lead byte announces; 0 for a byte that
+// leads nothing.
+static auto utf8_continuation_count(uint8_t lead) -> size_t {
+  if (lead < k_utf8_lead2_min) {
+    return 0;
+  }
+  if (lead <= k_utf8_lead2_max) {
+    return 1;
+  }
+  if (lead <= k_utf8_lead3_max) {
+    return 2;
+  }
+  if (lead <= k_utf8_lead4_max) {
+    return 3;
+  }
+  return 0;
+}
+
+static auto utf8_sequence_at(size_t i, size_t continuation) -> bool {
+  if (i + continuation >= g_input_queue.size()) {
+    return false;
+  }
+  for (size_t k = 1; k <= continuation; ++k) {
+    const uint8_t byte = g_input_queue.at(i + k);
+    if (byte < k_utf8_continuation_min || byte > k_utf8_continuation_max) {
+      return false;
+    }
+  }
+  return true;
 }
 
 static auto reset_machine() -> void {
@@ -338,20 +427,7 @@ static auto process_sequences() -> void {
   while (i < g_input_queue.size()) {
     if (g_input_queue.at(i) == k_a2_key_esc) {
       if (i + 1 >= g_input_queue.size()) {
-        struct pollfd pfd{};
-        pfd.fd = STDIN_FILENO;
-        pfd.events = POLLIN;
-        int pr = poll(&pfd, 1, k_esc_poll_timeout_ms);
-        if (pr > 0 && (pfd.revents & POLLIN) != 0) {
-          std::array<uint8_t, k_input_buffer_size> extra_buf{};
-          ssize_t extra_n =
-              read(STDIN_FILENO, extra_buf.data(), extra_buf.size());
-          if (extra_n > 0) {
-            for (ssize_t j = 0; j < extra_n; ++j) {
-              g_input_queue.push_back(extra_buf.at(static_cast<size_t>(j)));
-            }
-          }
-        }
+        read_more_input();
       }
 
       if (i + 1 >= g_input_queue.size()) {
@@ -618,6 +694,17 @@ static auto process_sequences() -> void {
                 soft_reset_machine();
               } else if (token == "23;2" || token == "34" || token == "34;2") {
                 save_state_save();
+              } else if (token == "3") {  // Delete (\x1b[3~)
+                if (tui_disk_select_is_active()) {
+                } else if (tui_video_is_help_visible()) {
+                  tui_video_close_help();
+#if ENABLE_DEBUGGER
+                } else if (system_state.mode == app_mode_debug) {
+                  debugger_process_key(linapple_key_delete);
+#endif
+                } else {
+                  map_key(k_a2_key_delete);
+                }
               } else if (token == "5") {  // Page Up (\x1b[5~)
                 if (tui_disk_select_is_active())
                   tui_disk_select_page(-1, k_disk_select_page_size);
@@ -732,6 +819,19 @@ static auto process_sequences() -> void {
         break;
       }
 
+      // ESC followed by a byte that opens no sequence is what a terminal with
+      // metaSendsEscape sends for Alt+key: Open Apple with that key. A second
+      // ESC or a byte with its eighth bit set leaves this ESC a key of its own.
+      const uint8_t after_esc = g_input_queue.at(i + 1);
+      if (after_esc != k_a2_key_esc && after_esc < k_eighth_bit) {
+        if (!tui_disk_select_is_active() && !tui_video_is_help_visible() &&
+            system_state.mode != app_mode_debug) {
+          map_key(terminal_byte_to_apple(after_esc), true);
+        }
+        i += 2;
+        continue;
+      }
+
       if (tui_disk_select_is_active()) {
         tui_disk_select_close();
       } else if (tui_video_is_help_visible()) {
@@ -748,9 +848,23 @@ static auto process_sequences() -> void {
     }
 
     uint8_t b = g_input_queue.at(i);
-    if (b == k_a2_key_ctrl_c) {
-      raise(SIGINT);
-    } else if (tui_disk_select_is_active()) {
+
+    // A UTF-8 terminal sends Alt+key as the ESC prefix, so a valid UTF-8
+    // sequence is a character the Apple has no code for and reaches nothing,
+    // neither key nor Open Apple; only a high byte that begins no sequence is
+    // a non-UTF-8 terminal's Alt+key, read below.
+    const size_t continuation = utf8_continuation_count(b);
+    if (continuation > 0) {
+      if (i + continuation >= g_input_queue.size()) {
+        read_more_input();
+      }
+      if (utf8_sequence_at(i, continuation)) {
+        i += 1 + continuation;
+        continue;
+      }
+    }
+
+    if (tui_disk_select_is_active()) {
       if (b == k_a2_key_enter || b == '\n') {
         (void)tui_disk_select_confirm();
       } else if (b == k_a2_key_esc) {
@@ -773,12 +887,15 @@ static auto process_sequences() -> void {
         debugger_process_key(static_cast<int>(b));
       }
 #endif
-    } else if (b >= k_ascii_printable_min && b < k_ascii_printable_max) {
-      map_key(b);
-    } else if (b == k_a2_key_enter) {
-      map_key(k_a2_key_enter);
-    } else if (b == k_a2_key_backspace || b == k_a2_key_delete) {
-      map_key(k_a2_key_backspace);
+    } else if (b >= k_eighth_bit) {
+      // Stock xterm outside UTF-8 sends Alt+key as the key with its eighth bit
+      // set.
+      map_key(terminal_byte_to_apple(b & k_seven_bits), true);
+    } else {
+      // Every control byte is an Apple control code, Ctrl-C included, so
+      // Applesoft's break, DOS's Ctrl-D and a game's control bindings work
+      // from a terminal; F12 is the way out. ESC alone never gets here.
+      map_key(terminal_byte_to_apple(b));
     }
 
     i++;
@@ -826,9 +943,12 @@ auto tui_input_shutdown() -> void {
   }
   g_input_queue.clear();
   g_input_queue.shrink_to_fit();
+  g_held_keys.clear();
+  g_held_keys.shrink_to_fit();
 }
 
 auto tui_input_poll() -> void {
+  release_held_keys();
   std::array<uint8_t, k_input_buffer_size> buf{};
   ssize_t n = read(STDIN_FILENO, buf.data(), buf.size());
   if (n > 0) {
