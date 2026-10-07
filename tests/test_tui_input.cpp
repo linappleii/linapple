@@ -309,6 +309,8 @@ constexpr uint16_t indirect_jump = 0x0320;
 constexpr uint16_t entry_table = 0x12;
 constexpr int entry_set_mouse = 0;
 constexpr int entry_read_mouse = 2;
+constexpr int entry_pos_mouse = 4;
+constexpr int entry_clamp_mouse = 5;
 constexpr uint32_t firmware_cycle_cap = 200000;
 
 // The table at $Cn12 holds the low bytes of the entries, so every call goes
@@ -364,6 +366,34 @@ auto read_mouse(int slot) -> Reading_t {
   reading.y = static_cast<int16_t>(mem[0x4F8 + n] | (mem[0x5F8 + n] << 8));
   reading.status = mem[0x778 + n];
   return reading;
+}
+
+auto poke_byte(uint16_t at, uint8_t value) -> void {
+  const std::array<uint8_t, 1> byte = {value};
+  TestFixtures::ScopedCore_t::poke(at, byte);
+}
+
+// CLAMPMOUSE takes low minimum, low maximum, high minimum, high maximum from
+// the slot-0 holes (manual p. 48); here the hires screen, 0..279 by 0..191.
+auto clamp_to_hires(int slot) -> void {
+  poke_byte(0x478, 0x00);
+  poke_byte(0x4F8, 0x17);
+  poke_byte(0x578, 0x00);
+  poke_byte(0x5F8, 0x01);
+  call_firmware(slot, entry_clamp_mouse, 0);
+  poke_byte(0x4F8, 0xBF);
+  poke_byte(0x5F8, 0x00);
+  call_firmware(slot, entry_clamp_mouse, 1);
+}
+
+// POSMOUSE takes the position from the slot's holes (manual p. 47).
+auto pos_mouse(int slot, int16_t x, int16_t y) -> void {
+  const auto n = static_cast<uint16_t>(slot);
+  poke_byte(0x478 + n, static_cast<uint8_t>(x & 0xFF));
+  poke_byte(0x578 + n, static_cast<uint8_t>(static_cast<uint16_t>(x) >> 8));
+  poke_byte(0x4F8 + n, static_cast<uint8_t>(y & 0xFF));
+  poke_byte(0x5F8 + n, static_cast<uint8_t>(static_cast<uint16_t>(y) >> 8));
+  call_firmware(slot, entry_pos_mouse, 0);
 }
 
 auto mouse_in_slot_4() -> TestFixtures::ScopedTestConfig_t::Description_t {
@@ -463,46 +493,20 @@ TEST_CASE(
   }
 }
 
-TEST_CASE(
-    "TUI input: a motion report is differenced against the previous one in "
-    "cells and scaled to the box the renderer drew") {
-  TuiMachine_t machine(mouse_in_slot_4());
-  ScopedStdoutPipe_t out;
-  ScopedStdinPipe_t in;
-  ScopedTuiSession_t tui;
-  tui_video_initialize();
-  tui_input_initialize();
-  call_firmware(mouse_slot, entry_set_mouse, 0x01);
-  TuiMachine_t::show_text_80();
-  REQUIRE(tui_video_picture_box().w == 80);
-  REQUIRE(tui_video_picture_box().h == 24);
-
-  // The first report has nothing to differ from.
-  in.feed(sgr(35, 10, 5, 'M'));
-  Reading_t reading = read_mouse(mouse_slot);
-  CHECK(reading.x == 0);
-  CHECK(reading.y == 0);
-
-  // Two cells of an 80-cell box are 7 of 280 counts; one row of 24 is 8 of
-  // 192.
-  in.feed(sgr(35, 12, 5, 'M'));
-  reading = read_mouse(mouse_slot);
-  CHECK(reading.x == 7);
-  CHECK(reading.y == 0);
-  in.feed(sgr(35, 12, 6, 'M'));
-  reading = read_mouse(mouse_slot);
-  CHECK(reading.x == 7);
-  CHECK(reading.y == 8);
-
-  // A report outside the box still moves the pointer; the box is the scale,
-  // not a fence.
-  in.feed(sgr(35, 82, 6, 'M'));
-  CHECK(read_mouse(mouse_slot).x == 252);
+// The 80-column text screen fills the 80 by 24 fallback terminal exactly, so a
+// one-based report column c is offset c - 1 of the 79 steps across the box and
+// row r is offset r - 1 of 23 down it.
+auto require_text_box_fills_terminal() -> void {
+  const MousePictureRect_t box = tui_video_picture_box();
+  REQUIRE(box.x == 0);
+  REQUIRE(box.y == 0);
+  REQUIRE(box.w == 80);
+  REQUIRE(box.h == 24);
 }
 
 TEST_CASE(
-    "TUI input: pixel reports are scaled by the cell size, the first report "
-    "after the switch sends nothing, and a graphics frame changes the box") {
+    "TUI input: a motion report puts the card's pointer where the host's is "
+    "within the box the renderer drew, in cells") {
   TuiMachine_t machine(mouse_in_slot_4());
   ScopedStdoutPipe_t out;
   ScopedStdinPipe_t in;
@@ -511,31 +515,137 @@ TEST_CASE(
   tui_input_initialize();
   call_firmware(mouse_slot, entry_set_mouse, 0x01);
   TuiMachine_t::show_text_80();
+  require_text_box_fills_terminal();
 
-  in.feed(sgr(35, 10, 5, 'M'));
-  in.feed(sgr(35, 11, 5, 'M'));
-  REQUIRE(read_mouse(mouse_slot).x == 3);
+  // Under the power-on 0..1023 window the box's last cell is the far corner
+  // and its first the near one.
+  in.feed(sgr(35, 80, 24, 'M'));
+  Reading_t reading = read_mouse(mouse_slot);
+  CHECK(reading.x == 1023);
+  CHECK(reading.y == 1023);
+  in.feed(sgr(35, 1, 1, 'M'));
+  reading = read_mouse(mouse_slot);
+  CHECK(reading.x == 0);
+  CHECK(reading.y == 0);
+  // Column 41 is offset 40: 40 * 1023 / 79 = 518.0, so 518; row 13 is offset
+  // 12: 12 * 1023 / 23 = 533.7, so 534.
+  in.feed(sgr(35, 41, 13, 'M'));
+  reading = read_mouse(mouse_slot);
+  CHECK(reading.x == 518);
+  CHECK(reading.y == 534);
+
+  // Column 40 is offset 39: 39 * 279 / 79 = 137.7, so 138; row 12 is offset
+  // 11: 11 * 191 / 23 = 91.3, so 91.
+  clamp_to_hires(mouse_slot);
+  in.feed(sgr(35, 40, 12, 'M'));
+  reading = read_mouse(mouse_slot);
+  CHECK(reading.x == 138);
+  CHECK(reading.y == 91);
+
+  // A report past the box's edge holds the pointer at the window's edge.
+  in.feed(sgr(35, 82, 12, 'M'));
+  reading = read_mouse(mouse_slot);
+  CHECK(reading.x == 279);
+  CHECK(reading.y == 91);
+}
+
+TEST_CASE(
+    "TUI input: pixel reports place the pointer within a cell, and a graphics "
+    "frame changes the box") {
+  TuiMachine_t machine(mouse_in_slot_4());
+  ScopedStdoutPipe_t out;
+  ScopedStdinPipe_t in;
+  ScopedTuiSession_t tui;
+  tui_video_initialize();
+  tui_input_initialize();
+  call_firmware(mouse_slot, entry_set_mouse, 0x01);
+  clamp_to_hires(mouse_slot);
+  TuiMachine_t::show_text_80();
+  require_text_box_fills_terminal();
 
   in.feed(k_pixel_mode_reset_reply);
   in.feed(k_cell_size_reply);
   REQUIRE(out.take().find(k_pixel_mode_set) != std::string::npos);
 
-  // The last cell position must not be differenced against a pixel one.
-  in.feed(sgr(35, 400, 80, 'M'));
+  // In 8 by 16 pixel cells the box is 640 by 384. One cell is 3.5 counts;
+  // pixel 3 is offset 2 of 639: 2 * 279 / 639 = 0.87, so 1; pixel 5 is 1.75,
+  // so 2; pixel 8 is 3.06, so 3.
+  in.feed(sgr(35, 3, 1, 'M'));
+  CHECK(read_mouse(mouse_slot).x == 1);
+  in.feed(sgr(35, 5, 1, 'M'));
+  CHECK(read_mouse(mouse_slot).x == 2);
+  in.feed(sgr(35, 8, 1, 'M'));
   CHECK(read_mouse(mouse_slot).x == 3);
+  in.feed(sgr(35, 640, 384, 'M'));
+  Reading_t reading = read_mouse(mouse_slot);
+  CHECK(reading.x == 279);
+  CHECK(reading.y == 191);
 
-  // 16 pixels of a 640-pixel box are 7 counts.
-  in.feed(sgr(35, 416, 80, 'M'));
-  CHECK(read_mouse(mouse_slot).x == 10);
+  // Pixel 100 is offset 99 of the text box: 99 * 279 / 639 = 43.2, so 43.
+  in.feed(sgr(35, 100, 1, 'M'));
+  CHECK(read_mouse(mouse_slot).x == 43);
 
-  // In graphics mode the box is 64 cells, 512 pixels, wide: 16 pixels are
-  // 8.75 counts, so 8 then 9.
+  // The graphics box is 64 cells from cell 8, 512 pixels from pixel 64, so
+  // the same host pixel is offset 35 of 511: 35 * 279 / 511 = 19.1, so 19.
   TuiMachine_t::show_graphics();
+  REQUIRE(tui_video_picture_box().x == 8);
   REQUIRE(tui_video_picture_box().w == 64);
-  in.feed(sgr(35, 432, 80, 'M'));
-  CHECK(read_mouse(mouse_slot).x == 18);
-  in.feed(sgr(35, 448, 80, 'M'));
-  CHECK(read_mouse(mouse_slot).x == 27);
+  in.feed(sgr(35, 100, 1, 'M'));
+  CHECK(read_mouse(mouse_slot).x == 19);
+}
+
+TEST_CASE(
+    "TUI input: a program's POSMOUSE holds until the next report puts the "
+    "pointer back under the host's") {
+  TuiMachine_t machine(mouse_in_slot_4());
+  ScopedStdoutPipe_t out;
+  ScopedStdinPipe_t in;
+  ScopedTuiSession_t tui;
+  tui_video_initialize();
+  tui_input_initialize();
+  call_firmware(mouse_slot, entry_set_mouse, 0x01);
+  clamp_to_hires(mouse_slot);
+  TuiMachine_t::show_text_80();
+  require_text_box_fills_terminal();
+
+  in.feed(sgr(35, 40, 12, 'M'));
+  Reading_t reading = read_mouse(mouse_slot);
+  REQUIRE(reading.x == 138);
+  REQUIRE(reading.y == 91);
+
+  pos_mouse(mouse_slot, 20, 30);
+  reading = read_mouse(mouse_slot);
+  CHECK(reading.x == 20);
+  CHECK(reading.y == 30);
+
+  // The host pointer has not moved, so the same report is repeated.
+  in.feed(sgr(35, 40, 12, 'M'));
+  reading = read_mouse(mouse_slot);
+  CHECK(reading.x == 138);
+  CHECK(reading.y == 91);
+}
+
+TEST_CASE("TUI input: with the mouse off a motion report moves nothing") {
+  TuiMachine_t machine(mouse_in_slot_4());
+  ScopedStdoutPipe_t out;
+  ScopedStdinPipe_t in;
+  ScopedTuiSession_t tui;
+  tui_video_initialize();
+  tui_input_initialize();
+  TuiMachine_t::show_text_80();
+  require_text_box_fills_terminal();
+
+  in.feed(sgr(35, 80, 24, 'M'));
+  Reading_t reading = read_mouse(mouse_slot);
+  CHECK(reading.x == 0);
+  CHECK(reading.y == 0);
+  CHECK(reading.status == 0x00);
+
+  call_firmware(mouse_slot, entry_set_mouse, 0x01);
+  in.feed(sgr(35, 80, 24, 'M'));
+  reading = read_mouse(mouse_slot);
+  CHECK(reading.x == 1023);
+  CHECK(reading.y == 1023);
 }
 
 TEST_CASE(
@@ -552,29 +662,35 @@ TEST_CASE(
   REQUIRE(out.take() == k_tracking_request);
   call_firmware(mouse_slot, entry_set_mouse, 0x01);
   TuiMachine_t::show_text_80();
+  require_text_box_fills_terminal();
 
+  // Column 10 is offset 9: 9 * 1023 / 79 = 116.5, so 117. The read clears the
+  // movement bit so the press is read alone.
   in.feed(sgr(35, 10, 5, 'M'));
-  in.feed(sgr(0, 10, 5, 'M'));
   Reading_t reading = read_mouse(mouse_slot);
+  REQUIRE(reading.x == 117);
+  in.feed(sgr(0, 10, 5, 'M'));
+  reading = read_mouse(mouse_slot);
   CHECK(reading.status == 0x80);
-  CHECK(reading.x == 0);
+  CHECK(reading.x == 117);
 
+  // Column 12 is offset 11: 11 * 1023 / 79 = 142.4, so 142.
   in.feed(sgr(32, 12, 5, 'M'));
   reading = read_mouse(mouse_slot);
   CHECK(reading.status == 0xE0);
-  CHECK(reading.x == 7);
+  CHECK(reading.x == 142);
 
   in.feed(sgr(0, 12, 5, 'm'));
   reading = read_mouse(mouse_slot);
   CHECK(reading.status == 0x40);
-  CHECK(reading.x == 7);
+  CHECK(reading.x == 142);
 
   in.feed(sgr(1, 12, 5, 'M'));
   in.feed(sgr(2, 12, 5, 'M'));
   in.feed(sgr(64, 12, 5, 'M'));
   reading = read_mouse(mouse_slot);
   CHECK(reading.status == 0x00);
-  CHECK(reading.x == 7);
+  CHECK(reading.x == 142);
   CHECK(out.take().empty());
 }
 #endif

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "frontends/common/MouseFrontend.h"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -32,6 +33,20 @@ auto counts_for(int* carry, int delta, int counts_per_picture, int picture)
   const int sent = *carry / picture;
   *carry -= sent * picture;
   return sent;
+}
+
+// A position outside the picture is held at its edge, so the result never
+// leaves the window; with a minimum above the maximum the card pins at the
+// minimum, and so does this.
+auto follow_axis(int offset, int extent, int low, int high) -> int {
+  if (extent <= 1) {
+    return low;
+  }
+  const int span = extent - 1;
+  const int at = std::max(0, std::min(span, offset));
+  const int64_t scaled = static_cast<int64_t>(at) * (high - low);
+  const int target = low + static_cast<int>((scaled + (span / 2)) / span);
+  return std::max(low, std::min(high, target));
 }
 
 constexpr uint8_t k_escape = 0x1B;
@@ -142,6 +157,30 @@ auto mouse_frontend_motion(int dx, int dy, int picture_w, int picture_h)
   MouseMovePayload_t payload{
       counts_for(&g_carry_x, dx, k_mouse_counts_across, picture_w),
       counts_for(&g_carry_y, dy, k_mouse_counts_down, picture_h)};
+  if (payload.dx == 0 && payload.dy == 0) {
+    return;
+  }
+  peripheral_command_by_id(g_card_slot, k_mouse_card_id, mouse_cmd_move,
+                           &payload, sizeof(payload));
+}
+
+auto mouse_frontend_follow(int host_x, int host_y, MousePictureRect_t picture)
+    -> void {
+  if (g_card_slot == 0) {
+    return;
+  }
+  MousePositionReport_t card{};
+  size_t size = sizeof(card);
+  if (peripheral_query_by_id(g_card_slot, k_mouse_card_id, mouse_query_position,
+                             &card, &size) != peripheral_ok ||
+      card.tracking == 0) {
+    return;
+  }
+  const MouseMovePayload_t payload{
+      follow_axis(host_x - picture.x, picture.w, card.min_x, card.max_x) -
+          card.x,
+      follow_axis(host_y - picture.y, picture.h, card.min_y, card.max_y) -
+          card.y};
   if (payload.dx == 0 && payload.dy == 0) {
     return;
   }

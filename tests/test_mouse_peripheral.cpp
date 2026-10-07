@@ -36,6 +36,8 @@ extern "C" unsigned mouse_abi_c_move_payload_size(void);
 extern "C" uint32_t mouse_abi_c_set_button_id(void);
 extern "C" uint32_t mouse_abi_c_move_id(void);
 extern "C" uint32_t mouse_abi_c_is_active_query_id(void);
+extern "C" uint32_t mouse_abi_c_position_query_id(void);
+extern "C" unsigned mouse_abi_c_position_report_size(void);
 
 namespace {
 
@@ -447,6 +449,8 @@ TEST_CASE(
   CHECK(mouse_abi_c_button_payload_size() == sizeof(MouseButtonPayload_t));
   CHECK(mouse_abi_c_move_id() == mouse_cmd_move);
   CHECK(mouse_abi_c_move_payload_size() == sizeof(MouseMovePayload_t));
+  CHECK(mouse_abi_c_position_query_id() == mouse_query_position);
+  CHECK(mouse_abi_c_position_report_size() == sizeof(MousePositionReport_t));
 
   size_t size = 0;
   CHECK(desc->query(card.instance(), mouse_query_is_active, nullptr, &size) ==
@@ -463,6 +467,23 @@ TEST_CASE(
   CHECK(desc->query(card.instance(), mouse_query_is_active, &active, &size) ==
         peripheral_ok);
   CHECK(active == 1);
+
+  size = 0;
+  CHECK(desc->query(card.instance(), mouse_query_position, nullptr, &size) ==
+        peripheral_ok);
+  CHECK(size == sizeof(MousePositionReport_t));
+
+  MousePositionReport_t report{};
+  size = sizeof(report) - 1;
+  CHECK(desc->query(card.instance(), mouse_query_position, &report, &size) ==
+        peripheral_error);
+  CHECK(size == sizeof(MousePositionReport_t));
+
+  size = sizeof(report);
+  CHECK(desc->query(card.instance(), mouse_query_position, &report, &size) ==
+        peripheral_ok);
+  CHECK(size == sizeof(MousePositionReport_t));
+  CHECK(report.tracking == 0);
 }
 
 TEST_CASE(

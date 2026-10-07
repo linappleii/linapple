@@ -31,6 +31,14 @@ auto mouse_frontend_button(bool down) -> void;
 // left over carries to the next call, sign and all.
 auto mouse_frontend_motion(int dx, int dy, int picture_w, int picture_h)
     -> void;
+// Puts the card's pointer under the host's: the host position within the
+// picture maps proportionally onto the card's clamp window, the picture's first
+// cell or pixel on the window's low edge and its last on the high edge, and the
+// difference from the card's own counters goes out as motion. Nothing is sent
+// while SETMOUSE has motion off. For a host that cannot hide its pointer, where
+// relative motion would leave the two pointers visibly apart.
+auto mouse_frontend_follow(int host_x, int host_y, MousePictureRect_t picture)
+    -> void;
 
 // One xterm SGR mouse report, CSI < Cb ; Cx ; Cy M or m, under any-event
 // tracking (?1003) with SGR encoding (?1006). Cb's low two bits name the button

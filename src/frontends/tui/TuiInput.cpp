@@ -174,17 +174,16 @@ static auto toggle_pause() -> void {
 
 static auto toggle_scroll_lock() -> void { linapple_toggle_turbo(); }
 
-// The terminal's mouse is asked for only while a card can take it. Reports are
-// absolute, so successive ones are differenced: in pixels once the terminal has
-// said it reports them and a cell size is known, in cells otherwise.
+// The terminal's mouse is asked for only while a card can take it. A terminal
+// cannot hide its pointer, so the card's pointer is put under the host's: each
+// report's position within the drawn Apple screen is mapped onto the card's
+// clamp window, in pixels once the terminal has said it reports them and a
+// cell size is known, in cells otherwise.
 static bool g_tracking = false;
 static bool g_pixel_reports = false;
 static int g_pixel_mode_setting = -1;
 static int g_cell_width_px = 0;
 static int g_cell_height_px = 0;
-static bool g_have_last_report = false;
-static int g_last_report_x = 0;
-static int g_last_report_y = 0;
 static bool g_left_held = false;
 
 static constexpr int k_sgr_left_button = 0;
@@ -228,11 +227,9 @@ static auto decide_report_unit() -> void {
     if (g_pixel_mode_setting == k_mode_reset) {
       write_terminal("\x1b[?1016h");
       g_pixel_reports = true;
-      g_have_last_report = false;
     } else if (g_pixel_mode_setting == k_mode_set ||
                g_pixel_mode_setting == k_mode_set_permanently) {
       g_pixel_reports = true;
-      g_have_last_report = false;
     }
     return;
   }
@@ -251,7 +248,6 @@ static auto start_tracking() -> void {
   g_pixel_mode_setting = -1;
   g_cell_width_px = 0;
   g_cell_height_px = 0;
-  g_have_last_report = false;
   g_left_held = false;
   read_cell_size_from_window();
   write_terminal("\x1b[?1003h\x1b[?1006h\x1b[?1016$p\x1b[16t");
@@ -268,7 +264,6 @@ static auto stop_tracking() -> void {
   write_terminal("\x1b[?1016l\x1b[?1006l\x1b[?1003l");
   g_tracking = false;
   g_pixel_reports = false;
-  g_have_last_report = false;
 }
 
 static auto follow_machine() -> void {
@@ -299,15 +294,12 @@ static auto picture_in_report_units() -> MousePictureRect_t {
   return box;
 }
 
-// A press or release re-anchors without moving the pointer: under any-event
-// tracking its travel to that spot has already arrived as motion reports.
+// A press or release moves nothing: under any-event tracking the pointer's
+// travel to that spot has already arrived as motion reports. Coordinates are
+// one-based.
 static auto handle_mouse_report(const MouseSgrEvent_t& event) -> void {
   if (event.motion) {
-    if (g_have_last_report) {
-      const MousePictureRect_t picture = picture_in_report_units();
-      mouse_frontend_motion(event.x - g_last_report_x,
-                            event.y - g_last_report_y, picture.w, picture.h);
-    }
+    mouse_frontend_follow(event.x - 1, event.y - 1, picture_in_report_units());
   } else if (event.button == k_sgr_left_button) {
     if (event.pressed && !g_left_held) {
       g_left_held = true;
@@ -317,9 +309,6 @@ static auto handle_mouse_report(const MouseSgrEvent_t& event) -> void {
       mouse_frontend_button(false);
     }
   }
-  g_have_last_report = true;
-  g_last_report_x = event.x;
-  g_last_report_y = event.y;
 }
 
 static auto handle_terminal_reply(const uint8_t* seq, size_t len) -> void {
@@ -336,9 +325,6 @@ static auto handle_terminal_reply(const uint8_t* seq, size_t len) -> void {
   int height = 0;
   if (mouse_frontend_decode_cell_size_report(seq, len, &width, &height) &&
       width > 0 && height > 0) {
-    if (width != g_cell_width_px || height != g_cell_height_px) {
-      g_have_last_report = false;
-    }
     g_cell_width_px = width;
     g_cell_height_px = height;
     decide_report_unit();
@@ -812,7 +798,6 @@ auto tui_input_on_resize() -> void {
   if (!g_tracking) {
     return;
   }
-  g_have_last_report = false;
   read_cell_size_from_window();
   decide_report_unit();
   write_terminal("\x1b[16t");

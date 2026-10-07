@@ -1056,11 +1056,15 @@ auto mouse_abi_query(void* instance, uint32_t query_id, void* out,
   if (!peripheral_cmd_is_mine(query_id, PERIPHERAL_SUBSYSTEM_MOUSE)) {
     return peripheral_incompatible;  // another peripheral in the slot owns it
   }
-  if (query_id != mouse_query_is_active) {
+  size_t required = 0;
+  if (query_id == mouse_query_is_active) {
+    required = sizeof(uint8_t);
+  } else if (query_id == mouse_query_position) {
+    required = sizeof(MousePositionReport_t);
+  } else {
     return peripheral_incompatible;
   }
 
-  const size_t required = sizeof(uint8_t);
   if (out == nullptr) {
     *out_size = required;
     return peripheral_ok;
@@ -1069,8 +1073,22 @@ auto mouse_abi_query(void* instance, uint32_t query_id, void* out,
     *out_size = required;
     return peripheral_error;
   }
-  *static_cast<uint8_t*>(out) = 1;
   *out_size = required;
+  if (query_id == mouse_query_is_active) {
+    *static_cast<uint8_t*>(out) = 1;
+    return peripheral_ok;
+  }
+
+  const auto* card = static_cast<const MouseCard_t*>(instance);
+  MousePositionReport_t report{};
+  report.x = static_cast<int32_t>(card->position_x);
+  report.y = static_cast<int32_t>(card->position_y);
+  report.min_x = static_cast<int32_t>(card->min_x);
+  report.max_x = static_cast<int32_t>(card->max_x);
+  report.min_y = static_cast<int32_t>(card->min_y);
+  report.max_y = static_cast<int32_t>(card->max_y);
+  report.tracking = (card->mode & mode::tracking) != 0 ? 1 : 0;
+  std::memcpy(out, &report, sizeof(report));
   return peripheral_ok;
 }
 

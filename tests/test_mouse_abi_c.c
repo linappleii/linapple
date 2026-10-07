@@ -55,6 +55,9 @@ typedef char
 typedef char
     mouse_move_payload_is_8_bytes[sizeof(MouseMovePayload_t) == 8 ? 1 : -1];
 typedef char
+    mouse_position_report_is_28_bytes[sizeof(MousePositionReport_t) == 28 ? 1
+                                                                          : -1];
+typedef char
     mouse_button_payload_is_4_bytes[sizeof(MouseButtonPayload_t) == 4 ? 1 : -1];
 /* Never called: in the shared build the card is a plugin reached through the
  * registry, so only the declaration is pinned, under sizeof. */
@@ -84,4 +87,12 @@ uint32_t mouse_abi_c_move_id(void) { return (uint32_t)mouse_cmd_move; }
 
 uint32_t mouse_abi_c_is_active_query_id(void) {
   return (uint32_t)mouse_query_is_active;
+}
+
+uint32_t mouse_abi_c_position_query_id(void) {
+  return (uint32_t)mouse_query_position;
+}
+
+unsigned mouse_abi_c_position_report_size(void) {
+  return (unsigned)sizeof(MousePositionReport_t);
 }

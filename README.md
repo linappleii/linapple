@@ -119,10 +119,11 @@ cmake --build build -j$(nproc)
     (the legacy `Mouse in slot 4 = 1` key still puts it in slot 4); the host
     mouse is captured only while a mouse card or a mouse-emulated joystick
     is there to use it. In the TUI the terminal's mouse drives the card, in
-    pixels where the terminal reports them and in character cells otherwise;
-    motion is relative, so the Apple pointer moves as far as the host pointer
-    can before the terminal's edge, and you move back and come in again as
-    with a real mouse.
+    pixels where the terminal reports them and in character cells otherwise,
+    and the Apple pointer follows the host pointer: it sits where the host
+    pointer points within the Apple screen, to about one hires pixel in a
+    terminal that reports pixels and about 3.5 hires pixels per cell
+    otherwise.
   * Mockingboard / Phasor multi-channel sound, and a ThunderClock-compatible
     ProDOS clock card.
   * Super Serial Card (SSC) running Apple's firmware, its RS-232 line cabled
