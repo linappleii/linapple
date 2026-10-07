@@ -145,6 +145,10 @@ struct Configuration_t {
   AppIntent_t intent = INTENT_RUN;
   std::array<std::array<char, path_max_len>, disk_drive_count> disk_path = {};
   std::array<std::array<char, path_max_len>, 2> harddisk_path = {};
+  // Set by the command line alone. harddisk_path is also filled from the
+  // saved key, and only a path the user named for this run may install a
+  // hard disk the configuration does not define.
+  std::array<bool, 2> harddisk_path_from_args = {};
   std::array<char, path_max_len> program_path = {};
   std::array<char, path_max_len> config_path = {};
   std::array<char, path_max_len> snapshot_path = {};

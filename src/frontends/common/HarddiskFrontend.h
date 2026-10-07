@@ -7,8 +7,9 @@
 // after a command is what the configuration records.
 
 // Told of an insert or eject the card refused: the drive, the HarddiskError_e
-// code and the text harddisk_frontend_error_message gives for it. The default
-// reporter writes the log; a windowed frontend points it at a dialog.
+// code and the text harddisk_frontend_error_message gives for it. Every
+// refusal is logged whatever the reporter; a windowed frontend installs one
+// to show it in a dialog as well, and nullptr removes it.
 using HarddiskErrorReporter_t = auto (*)(int drive, int error,
                                          const char* message) -> void;
 
@@ -28,6 +29,11 @@ auto harddisk_frontend_slot() -> int;
 auto harddisk_frontend_insert(int drive, const char* path, bool write_protected)
     -> int;
 auto harddisk_frontend_eject(int drive) -> int;
+
+// An image the command line named is this run's request: it is inserted and
+// reported as any other, but never recorded, so the configuration file keeps
+// the image chosen through the dialogs.
+auto harddisk_frontend_insert_for_run(int drive, const char* path) -> int;
 
 auto harddisk_frontend_error_message(int error) -> const char*;
 auto harddisk_frontend_set_error_reporter(HarddiskErrorReporter_t reporter)

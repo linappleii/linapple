@@ -36,7 +36,6 @@ eApple2Language current_language = A2LANG_US;
 
 uint32_t emul_msec = 0;
 bool full_speed = false;
-bool hdd_enabled = false;
 
 SystemState_t system_state = {app_mode_logo,
                               false,

@@ -34,6 +34,7 @@
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
+#include "apple2/peripherals/harddisk/HarddiskError.h"
 #include "core/Asset.h"
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
@@ -75,6 +76,26 @@ bool s_app_active = false;
 DiskStatus_t s_last_disk_status{};
 int s_drive0_last_reported_error = disk_err_none;
 int s_drive1_last_reported_error = disk_err_none;
+std::array<int, harddisk_drive_count> s_harddisk_last_reported_error{};
+
+// Refusals arrive from the helper, not from the status poll; like the Disk
+// II's they are shown once per distinct error per drive, until the card
+// reports the drive clear again.
+auto report_harddisk_error(int drive, int error, const char* message) -> void {
+  if (drive < 0 || drive >= harddisk_drive_count) {
+    return;
+  }
+  int& last_reported =
+      s_harddisk_last_reported_error.at(static_cast<size_t>(drive));
+  if (error == last_reported) {
+    return;
+  }
+  const char* title =
+      (drive == harddisk_drive_0) ? "Hard Disk 1 error" : "Hard Disk 2 error";
+  SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title, message,
+                           g_window.get());
+  last_reported = error;
+}
 
 bool s_is_fullscreen = false;
 uint32_t s_windowed_width = 0;
@@ -411,6 +432,12 @@ auto draw_status_area(int drawflags) -> void {
     if (hd_slot != harddisk_frontend_no_card &&
         peripheral_query(hd_slot, harddisk_query_status, &hstatus, &hsize) ==
             peripheral_ok) {
+      if (hstatus.drive0_last_error == harddisk_err_none) {
+        s_harddisk_last_reported_error.at(0) = harddisk_err_none;
+      }
+      if (hstatus.drive1_last_error == harddisk_err_none) {
+        s_harddisk_last_reported_error.at(1) = harddisk_err_none;
+      }
       // The card reports a transfer still in flight; the manager remembers
       // one that began and ended inside the frame.
       const bool seen =
@@ -1024,10 +1051,12 @@ auto frame_create_window() -> int {
   }
   std::printf("Screen size is %ux%u\n", system_state.screen_width,
               system_state.screen_height);
+  harddisk_frontend_set_error_reporter(report_harddisk_error);
   return 0;
 }
 
 auto frame_destroy_window() -> void {
+  harddisk_frontend_set_error_reporter(nullptr);
   g_texture.reset();
   g_screen.reset();
   g_renderer.reset();

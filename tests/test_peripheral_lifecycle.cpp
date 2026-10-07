@@ -3,6 +3,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <fstream>
+#include <ios>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -925,6 +928,117 @@ TEST_CASE(
     TestFixtures::ScopedCore_t core(config);
     CHECK_FALSE(peripheral_present(7, harddisk_id));
     CHECK(linapple_requested_slot() == -1);
+  }
+}
+
+namespace {
+
+constexpr const char* harddisk_key_line = "Harddisk Enable is set, but [Slots]";
+
+// The fixture writes every slot; a file saved without a Slot 7 line leaves it
+// out, which is the only case Harddisk Enable decides.
+auto drop_slot_line(const TestFixtures::ScopedTestConfig_t& config, int slot)
+    -> void {
+  std::ifstream in(config.path());
+  std::stringstream kept;
+  const std::string prefix = "Slot " + std::to_string(slot) + " ";
+  std::string line;
+  while (std::getline(in, line)) {
+    if (line.rfind(prefix, 0) != 0) {
+      kept << line << "\n";
+    }
+  }
+  in.close();
+  std::ofstream out(config.path(), std::ios::trunc);
+  out << kept.str();
+}
+
+}  // namespace
+
+TEST_CASE(
+    "Peripheral Manager: a Slot 7 line naming the hard disk gives the card "
+    "whatever Harddisk Enable says, and logs nothing") {
+  for (const char* key : {"0", "1"}) {
+    CAPTURE(key);
+    TestFixtures::ScopedTestConfig_t::Description_t description;
+    description.slots[6] = "Harddisk";
+    description.extras.push_back({"Configuration", "Harddisk Enable", key});
+    TestFixtures::ScopedTestConfig_t config(description);
+    TestFixtures::ScopedLogCapture_t log;
+    TestFixtures::ScopedCore_t core(config);
+
+    CHECK(peripheral_present(7, harddisk_id));
+    CHECK(log.count_containing(harddisk_key_line) == 0);
+  }
+}
+
+TEST_CASE(
+    "Peripheral Manager: Harddisk Enable = 1 beside a Slot 7 line naming no "
+    "card installs nothing and says why once") {
+  TestFixtures::ScopedTestConfig_t::Description_t description;
+  description.extras.push_back({"Configuration", "Harddisk Enable", "1"});
+  TestFixtures::ScopedTestConfig_t config(description);
+  TestFixtures::ScopedLogCapture_t log;
+  TestFixtures::ScopedCore_t core(config);
+
+  CHECK(peripheral_slot_of(harddisk_id) == -1);
+  CHECK(log.count_containing(
+            "Harddisk Enable is set, but [Slots] names None for slot 7") == 1);
+}
+
+#ifdef ENABLE_PERIPHERAL_CLOCK
+TEST_CASE(
+    "Peripheral Manager: Harddisk Enable = 1 beside a Slot 7 line naming "
+    "another card keeps that card and says why once") {
+  TestFixtures::ScopedTestConfig_t::Description_t description;
+  description.slots[6] = "Clock Card";
+  description.extras.push_back({"Preferences", "Harddisk Enable", "1"});
+  TestFixtures::ScopedTestConfig_t config(description);
+  TestFixtures::ScopedLogCapture_t log;
+  TestFixtures::ScopedCore_t core(config);
+
+  CHECK(peripheral_present(7, "linapple.clock"));
+  CHECK(peripheral_slot_of(harddisk_id) == -1);
+  CHECK(log.count_containing("Harddisk Enable is set, but [Slots] names Clock "
+                             "Card for slot 7") == 1);
+}
+#endif
+
+TEST_CASE(
+    "Peripheral Manager: with no Slot 7 line Harddisk Enable decides, "
+    "[Preferences] before [Configuration]") {
+  struct Row_t {
+    const char* preferences;
+    const char* configuration;
+    bool installed;
+  };
+  // An empty value leaves the key out of that section.
+  const std::array<Row_t, 6> rows = {{{"1", "", true},
+                                      {"", "1", true},
+                                      {"1", "0", true},
+                                      {"0", "1", false},
+                                      {"", "0", false},
+                                      {"", "", false}}};
+  for (const Row_t& row : rows) {
+    CAPTURE(row.preferences);
+    CAPTURE(row.configuration);
+    TestFixtures::ScopedTestConfig_t::Description_t description;
+    if (*row.preferences != '\0') {
+      description.extras.push_back(
+          {"Preferences", "Harddisk Enable", row.preferences});
+    }
+    if (*row.configuration != '\0') {
+      description.extras.push_back(
+          {"Configuration", "Harddisk Enable", row.configuration});
+    }
+    TestFixtures::ScopedTestConfig_t config(description);
+    drop_slot_line(config, 7);
+    TestFixtures::ScopedLogCapture_t log;
+    TestFixtures::ScopedCore_t core(config);
+
+    CHECK(peripheral_present(7, harddisk_id) == row.installed);
+    CHECK(peripheral_slot_of(harddisk_id) == (row.installed ? 7 : -1));
+    CHECK(log.count_containing(harddisk_key_line) == 0);
   }
 }
 

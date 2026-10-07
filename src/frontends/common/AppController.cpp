@@ -43,6 +43,18 @@ static constexpr float k_min_screen_factor = 0.25F;
 static constexpr float k_max_screen_factor = 8.0F;
 static constexpr uint32_t k_clks_per_frame_pal = 20280;
 static constexpr uint32_t k_clks_per_frame_ntsc = 17030;
+static constexpr const char* k_harddisk_card_id = "linapple.harddisk";
+
+// The drive index of the first hard disk image the command line named, or -1.
+static auto first_harddisk_from_args(const AppConfig_t& config) -> int {
+  for (size_t i = 0; i < config.harddisk_path.size(); ++i) {
+    if (config.harddisk_path_from_args.at(i) &&
+        config.harddisk_path.at(i).at(0) != '\0') {
+      return static_cast<int>(i);
+    }
+  }
+  return -1;
+}
 
 // Reads [Slots] the way the card registration does: a slot the file leaves
 // out keeps its factory card, and slot 1's factory card is the printer. The
@@ -254,6 +266,12 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
     return -1;
   }
 
+  // Made before the cards are placed, and on every restart, since a request
+  // lasts one registration.
+  if (first_harddisk_from_args(*config) >= 0) {
+    linapple_request_card_for_run(k_harddisk_card_id);
+  }
+
   if (linapple_init() != 0) {
     mem_set_custom_rom_data(nullptr, 0);
     return -1;
@@ -345,23 +363,6 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   system_state.fullscreen = config->is_fullscreen;
   system_state.disable_debugger = config->disable_debugger;
 
-  if (config->harddisk_path.at(0).at(0) != '\0' ||
-      config->harddisk_path.at(1).at(0) != '\0') {
-    hdd_enabled = true;
-    config->set_int(cfg_sec_preferences, cfg_hdd_enabled, 1);
-    if (config->harddisk_path.at(0).at(0) != '\0') {
-      config->set_string(cfg_sec_preferences, cfg_hdd_image1,
-                         config->harddisk_path.at(0).data());
-    }
-    if (config->harddisk_path.at(1).at(0) != '\0') {
-      config->set_string(cfg_sec_preferences, cfg_hdd_image2,
-                         config->harddisk_path.at(1).data());
-    }
-    Peripheral_t* p = peripheral_find_internal("linapple.harddisk");
-    if (p != nullptr) {
-      peripheral_register(p, harddisk_default_slot);
-    }
-  }
   harddisk_frontend_initialize();
 
   std::string sync_file = config->basic_sync_file.data();
@@ -467,6 +468,51 @@ static auto load_initial_disk(int drive, const char* path) -> void {
   }
 }
 
+// Both drives belong to the one card, so a missing card is reported once
+// whichever drives were named. Only the command line installs a card for the
+// run, so a saved image with no card to go into stays unmounted. An error
+// reaches the terminal through the log, so it is logged once and not printed.
+static auto load_initial_harddisks(const AppConfig_t& config) -> void {
+  int first_named = -1;
+  for (size_t i = 0; i < config.harddisk_path.size(); ++i) {
+    if (config.harddisk_path.at(i).at(0) != '\0') {
+      first_named = static_cast<int>(i);
+      break;
+    }
+  }
+  if (first_named < 0) {
+    return;
+  }
+
+  if (peripheral_slot_of(k_harddisk_card_id) < 0) {
+    const int from_args = first_harddisk_from_args(config);
+    if (from_args < 0) {
+      Logger::warning(
+          "Harddisk Image %d is set but no hard disk is configured; not "
+          "mounted\n",
+          first_named + 1);
+      return;
+    }
+    Logger::error("--hd%d: %s; image not mounted\n", from_args + 1,
+                  peripheral_find_internal(k_harddisk_card_id) == nullptr
+                      ? "this build has no Harddisk card"
+                      : "no free slot for the Harddisk");
+    return;
+  }
+
+  for (size_t i = 0; i < config.harddisk_path.size(); ++i) {
+    const char* path = config.harddisk_path.at(i).data();
+    if (*path == '\0') {
+      continue;
+    }
+    if (config.harddisk_path_from_args.at(i)) {
+      harddisk_frontend_insert_for_run(static_cast<int>(i), path);
+    } else {
+      harddisk_frontend_insert(static_cast<int>(i), path, false);
+    }
+  }
+}
+
 auto app_controller_load_initial_media(const AppConfig_t* config) -> void {
   if (config == nullptr) {
     return;
@@ -484,12 +530,7 @@ auto app_controller_load_initial_media(const AppConfig_t* config) -> void {
     }
   }
 
-  for (size_t i = 0; i < config->harddisk_path.size(); ++i) {
-    const char* path = config->harddisk_path.at(i).data();
-    if (path != nullptr && *path != '\0') {
-      harddisk_frontend_insert(static_cast<int>(i), path, false);
-    }
-  }
+  load_initial_harddisks(*config);
 
   if (config->is_boot) {
     cpu_reset();

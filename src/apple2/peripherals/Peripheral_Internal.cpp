@@ -40,6 +40,12 @@ static constexpr int k_mouse_key_slot = 4;
 static constexpr const char* k_mouse_card_id = "linapple.mouse";
 static LegacyOverride_t g_legacy_override;
 
+// Harddisk Enable is the legacy key that puts the hard disk in slot 7,
+// honoured only where [Slots] has no Slot 7 line: the shipped conf pairs Slot
+// 7 = Harddisk with Harddisk Enable = 0, and the slot table must win there.
+static constexpr int k_harddisk_key_slot = 7;
+static constexpr const char* k_harddisk_card_id = "linapple.harddisk";
+
 // The //e pages its internal 80-column firmware over $C300 unless SLOTC3ROM is
 // set (Apple IIe Technical Reference Manual, pp. 134-136), so a card put there
 // for a run would never be reached by the Monitor's scan or by PR#3; the II
@@ -217,6 +223,14 @@ auto peripheral_register_internal() -> void {
     }
   }
 
+  // [Preferences] is read first: a saved file carries the key there as 1
+  // beside the template's [Configuration] 0, and with no Slot 7 line that
+  // file means a hard disk.
+  uint32_t harddisk_key = 0;
+  if (!config_load_int(cfg_sec_preferences, cfg_hdd_enabled, &harddisk_key)) {
+    config_load_int(cfg_sec_configuration, cfg_hdd_enabled, &harddisk_key);
+  }
+
   for (int slot = 1; slot < NUM_SLOTS; ++slot) {
     constexpr size_t key_size = 16;
     char key[key_size];
@@ -226,6 +240,15 @@ auto peripheral_register_internal() -> void {
     bool in_config = config_load_string("Slots", key, &name);
 
     if (in_config) {
+      if (slot == k_harddisk_key_slot && harddisk_key != 0) {
+        const Peripheral_t* named = peripheral_find_internal(name.c_str());
+        if (named == nullptr || strcmp(named->id, k_harddisk_card_id) != 0) {
+          Logger::info(
+              "Harddisk Enable is set, but [Slots] names %s for slot %d; the "
+              "slot table governs\n",
+              name.empty() ? "None" : name.c_str(), slot);
+        }
+      }
       if (name == "None") {
         name.clear();
       }
@@ -238,15 +261,8 @@ auto peripheral_register_internal() -> void {
         name = "linapple.mockingboard";
       } else if (slot == 6) {
         name = "linapple.disk_II";
-      } else if (slot == 7) {
-        uint32_t hdd_val = 0;
-        if (config_load_int("Preferences", "Harddisk Enable", &hdd_val) ||
-            config_load_int("Configuration", "Harddisk Enable", &hdd_val)) {
-          hdd_enabled = (hdd_val != 0);
-        }
-        if (hdd_enabled) {
-          name = "linapple.harddisk";
-        }
+      } else if (slot == k_harddisk_key_slot && harddisk_key != 0) {
+        name = k_harddisk_card_id;
       }
     }
 

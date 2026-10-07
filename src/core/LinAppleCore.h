@@ -137,7 +137,6 @@ extern "C" {
 extern const char* app_title;
 extern uint32_t emul_msec;
 extern bool full_speed;
-extern bool hdd_enabled;
 extern double current_clk_6502;
 
 using LinappleVideoCallback_t = void (*)(const uint32_t* pixels, int width,

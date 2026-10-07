@@ -150,9 +150,11 @@ auto apply_option(OptId_t id, const char* val, AppConfig_t* config) -> int {
       break;
     case k_opt_hd1:
       util_safe_strcpy(config->harddisk_path.at(0).data(), val, path_max_len);
+      config->harddisk_path_from_args.at(0) = true;
       break;
     case k_opt_hd2:
       util_safe_strcpy(config->harddisk_path.at(1).data(), val, path_max_len);
+      config->harddisk_path_from_args.at(1) = true;
       break;
     case k_opt_autoboot:
     case k_opt_boot:
