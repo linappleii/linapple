@@ -484,6 +484,12 @@ auto linapple_toggle_turbo() noexcept -> bool {
   return user_turbo;
 }
 
+auto linapple_set_disk_turbo(bool enabled) noexcept -> bool {
+  const bool previous = disk_turbo_enabled;
+  disk_turbo_enabled = enabled;
+  return previous;
+}
+
 auto linapple_is_full_speed() noexcept -> bool { return full_speed; }
 
 auto linapple_get_app_title() noexcept -> const char* { return app_title; }

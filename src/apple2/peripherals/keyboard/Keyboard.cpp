@@ -2,7 +2,7 @@
 
 #include "apple2/peripherals/keyboard/Keyboard.h"
 
-#include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -13,9 +13,6 @@
 #include "apple2/peripherals/Peripheral_Subsystems.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
-
-auto mem_read_floating_bus(uint32_t executed_cycles) -> uint8_t;
-extern bool full_speed;
 
 namespace {
 
@@ -34,13 +31,9 @@ static_assert(offsetof(KeyboardSaveState_t, auto_repeat_enabled) == 35,
 
 constexpr uint8_t key_strobe_bit = 0x80;
 constexpr uint8_t key_code_mask = 0x7F;
-
-// Standard Apple II repeat circuit delays (~0.5s initial, ~0.06s repeat)
-constexpr uint32_t key_repeat_initial_delay = 512000;
-constexpr uint32_t key_repeat_rate = 68000;
-// The frame's "no repeat armed" value, which every reader of the frame
-// takes as such; a zero there would arm their repeat for ever.
-constexpr uint32_t no_repeat_key = 0xFFFFFFFF;
+// The frame's "no repeat armed" value, which every reader of the frame takes
+// as such; a zero there would arm their repeat for ever.
+constexpr uint32_t frame_no_repeat_key = 0xFFFFFFFF;
 
 constexpr int8_t default_slot_internal = 0;
 
@@ -49,23 +42,139 @@ constexpr uint16_t addr_keyboard_data_hi = 0xC00F;
 constexpr uint16_t addr_keyboard_strobe = 0xC010;
 constexpr uint16_t addr_keyboard_strobe_hi = 0xC01F;
 
+// The IOU starts repeating a held key after 32 to 48 television scans and
+// then sets KEYSTROBE once every four (Sather, Understanding the Apple IIe,
+// 2-17). The delay generator is clocked by F3 of the flash counter (3-18), so
+// the first repeat falls on the F3 edge 32 or more frames after the press: 32
+// to 47 frames by the press frame's phase in F3's 16-frame period. The period
+// and the edge rule are inferred from the 267 ms spread Sather deduces from
+// F3, and the phase is counted in frames since power-on, where the counter
+// starts from its preset.
+constexpr uint64_t repeat_delay_frames = 32;
+constexpr uint64_t repeat_phase_frames = 16;
+constexpr uint64_t repeat_period_frames = 4;
+constexpr uint32_t ntsc_frame_cycles = 17030;
+
+// The II's REPT key runs the 555 at U3 (R3 = 220 k) at about ten presses a
+// second (Apple II Reference Manual 1979, pp. 7 and 102); the II Plus
+// keyboard's AY-5-3600 REPEAT oscillator is enabled by ANY KEY DOWN and REPT
+// together and runs at about 15 Hz (Sather, Understanding the Apple II, 7-46
+// and 7-47). RC oscillators run in wall time, so the period is taken from the
+// clock; the nominal rates and the one-period lead before the first strobe are
+// inferred from C8's short delay and the strobe on the REPEAT clock's fall.
+constexpr double rept_rate_apple2_hz = 10.0;
+constexpr double rept_rate_apple2_plus_hz = 15.0;
+
+// The //e keyboard is N-key rollover (Sather, Understanding the Apple IIe,
+// 7-11), so no bound is the hardware's; sixteen is more than a hand, and the
+// oldest key is let go when a seventeenth arrives, its own release then
+// ignored.
+constexpr size_t held_key_capacity = 16;
+
 struct KeyboardHardware_t {
   uint8_t current_latch = 0;
   bool strobe = false;
-  uint32_t keys_down_count = 0;
+  std::array<uint32_t, held_key_capacity> held{};
+  size_t held_count = 0;
   bool rept_down = false;
-
-  uint32_t repeat_key = no_repeat_key;
-  uint32_t repeat_scancode = 0;
-  uint32_t repeat_delay_cycles = 0;
-  bool repeating = false;
+  // The cycle of the next repeat strobe; 0 when none is armed.
+  uint64_t next_strobe = 0;
 };
 
 struct KeyboardPeripheral_t {
   KeyboardHardware_t logic{};
   HostInterface_t* host = nullptr;
   int slot = 0;
+  PeripheralMachine_t machine = peripheral_machine_apple2e;
 };
+
+auto any_key_down(const KeyboardPeripheral_t* kp) -> bool {
+  return kp->logic.held_count > 0;
+}
+
+auto held_index(const KeyboardPeripheral_t* kp, uint32_t host_key) -> size_t {
+  for (size_t i = 0; i < kp->logic.held_count; ++i) {
+    if (kp->logic.held.at(i) == host_key) {
+      return i;
+    }
+  }
+  return kp->logic.held_count;
+}
+
+auto hold_key(KeyboardPeripheral_t* kp, uint32_t host_key) -> void {
+  if (held_index(kp, host_key) < kp->logic.held_count) {
+    return;
+  }
+  if (kp->logic.held_count == held_key_capacity) {
+    for (size_t i = 1; i < held_key_capacity; ++i) {
+      kp->logic.held.at(i - 1) = kp->logic.held.at(i);
+    }
+    kp->logic.held_count--;
+  }
+  kp->logic.held.at(kp->logic.held_count) = host_key;
+  kp->logic.held_count++;
+}
+
+auto let_go_key(KeyboardPeripheral_t* kp, uint32_t host_key) -> void {
+  const size_t index = held_index(kp, host_key);
+  if (index == kp->logic.held_count) {
+    return;
+  }
+  for (size_t i = index + 1; i < kp->logic.held_count; ++i) {
+    kp->logic.held.at(i - 1) = kp->logic.held.at(i);
+  }
+  kp->logic.held_count--;
+}
+
+auto frame_cycles(const KeyboardPeripheral_t* kp) -> uint64_t {
+  const uint32_t cycles = kp->host->GetFrameCycles();
+  return cycles != 0 ? cycles : ntsc_frame_cycles;
+}
+
+auto rept_period(const KeyboardPeripheral_t* kp) -> uint64_t {
+  const double rate = kp->machine == peripheral_machine_apple2
+                          ? rept_rate_apple2_hz
+                          : rept_rate_apple2_plus_hz;
+  const auto period = static_cast<uint64_t>(kp->host->GetClockHz() / rate);
+  return period != 0 ? period : 1;
+}
+
+auto arm(KeyboardPeripheral_t* kp, uint64_t at_cycle) -> void {
+  kp->logic.next_strobe = at_cycle;
+  kp->host->ScheduleEvent(kp, at_cycle);
+}
+
+auto disarm(KeyboardPeripheral_t* kp) -> void {
+  kp->logic.next_strobe = 0;
+  kp->host->ScheduleEvent(kp, 0);
+}
+
+// KSTRB restarts the delay generator, so every press, a second key's
+// included, counts its 32 frames afresh from its own frame.
+auto arm_auto_repeat(KeyboardPeripheral_t* kp) -> void {
+  const uint64_t frame = frame_cycles(kp);
+  const uint64_t press_frame = kp->host->GetCycles() / frame;
+  const uint64_t phase =
+      (repeat_phase_frames - press_frame % repeat_phase_frames) %
+      repeat_phase_frames;
+  arm(kp, (press_frame + repeat_delay_frames + phase) * frame);
+}
+
+auto arm_rept(KeyboardPeripheral_t* kp) -> void {
+  arm(kp, kp->host->GetCycles() + rept_period(kp));
+}
+
+// The repeat sets KEYSTROBE alone, so the latch keeps the last code pressed
+// while any matrix key is held (Apple IIe Technical Reference Manual, p. 10).
+auto repeat_strobe(KeyboardPeripheral_t* kp, uint64_t now, uint64_t period)
+    -> void {
+  kp->logic.strobe = true;
+  // A wake far past due collapses into one strobe with the phase kept.
+  do {
+    kp->logic.next_strobe += period;
+  } while (kp->logic.next_strobe <= now);
+  kp->host->ScheduleEvent(kp, kp->logic.next_strobe);
+}
 
 auto keyboard_io_read_data(void* instance, uint16_t pc, uint16_t addr,
                            uint8_t write, uint8_t val, uint32_t executed_cycles)
@@ -74,21 +183,50 @@ auto keyboard_io_read_data(void* instance, uint16_t pc, uint16_t addr,
   (void)addr;
   (void)write;
   (void)val;
+  (void)executed_cycles;
 
   if (instance == nullptr) {
-    return mem_read_floating_bus(executed_cycles);
+    return 0;
   }
-  auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
+  const auto* kp = static_cast<const KeyboardPeripheral_t*>(instance);
 
   uint8_t data = kp->logic.current_latch & key_code_mask;
   if (kp->logic.strobe) {
     data |= key_strobe_bit;
   }
-
   return data;
 }
 
-auto keyboard_io_strobe_action(void* instance, uint16_t pc, uint16_t addr,
+// On a //e KEYSTROBE is reset by any access to $C010 or a write to $C01X,
+// and a read of $C010 returns the any-key-down flag over the code (Sather,
+// Understanding the Apple IIe, 7-4 and 2-17; Apple IIe Technical Reference
+// Manual, pp. 12-13).
+auto keyboard_io_strobe_apple2e(void* instance, uint16_t pc, uint16_t addr,
+                                uint8_t write, uint8_t val,
+                                uint32_t executed_cycles) -> uint8_t {
+  (void)pc;
+  (void)addr;
+  (void)write;
+  (void)val;
+  (void)executed_cycles;
+
+  if (instance == nullptr) {
+    return 0;
+  }
+  auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
+  kp->logic.strobe = false;
+
+  uint8_t data = kp->logic.current_latch & key_code_mask;
+  if (any_key_down(kp)) {
+    data |= key_strobe_bit;
+  }
+  return data;
+}
+
+// On a II or II Plus any access to $C01X, read or write, resets the strobe
+// flip-flop at B10, and nothing drives the bus on the read (Sather,
+// Understanding the Apple II, 7-4, 7-5 and 5-25).
+auto keyboard_io_strobe_apple2(void* instance, uint16_t pc, uint16_t addr,
                                uint8_t write, uint8_t val,
                                uint32_t executed_cycles) -> uint8_t {
   (void)pc;
@@ -97,23 +235,51 @@ auto keyboard_io_strobe_action(void* instance, uint16_t pc, uint16_t addr,
   (void)val;
 
   if (instance == nullptr) {
-    return mem_read_floating_bus(executed_cycles);
+    return 0;
   }
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
-
-  // Strobe latch is cleared by hardware on any access to the $C010-$C01F range.
   kp->logic.strobe = false;
+  return kp->host->ReadFloatingBus(executed_cycles);
+}
 
-  uint8_t data = kp->logic.current_latch & key_code_mask;
-  if (kp->logic.keys_down_count > 0) {
-    data |= key_strobe_bit;
+// Better no card than a phantom one: without these members the keyboard
+// cannot be reached, timed or told which board it is on, and the log names
+// the missing one.
+auto missing_host_member(const HostInterface_t* host) -> const char* {
+  if (host->RegisterDirectIO == nullptr) {
+    return "RegisterDirectIO";
   }
-
-  return data;
+  if (host->ReadFloatingBus == nullptr) {
+    return "ReadFloatingBus";
+  }
+  if (host->GetCycles == nullptr) {
+    return "GetCycles";
+  }
+  if (host->ScheduleEvent == nullptr) {
+    return "ScheduleEvent";
+  }
+  if (host->GetClockHz == nullptr) {
+    return "GetClockHz";
+  }
+  if (host->GetMachine == nullptr) {
+    return "GetMachine";
+  }
+  if (host->GetFrameCycles == nullptr) {
+    return "GetFrameCycles";
+  }
+  return nullptr;
 }
 
 auto keyboard_abi_init(int slot, HostInterface_t* host) -> void* {
-  if (host == nullptr || host->RegisterDirectIO == nullptr) {
+  if (host == nullptr) {
+    return nullptr;
+  }
+  const char* missing = missing_host_member(host);
+  if (missing != nullptr) {
+    if (host->Log != nullptr) {
+      host->Log(nullptr, log_error,
+                "Keyboard in slot %d: the host offers no %s\n", slot, missing);
+    }
     return nullptr;
   }
 
@@ -125,26 +291,41 @@ auto keyboard_abi_init(int slot, HostInterface_t* host) -> void* {
   auto* kp = kp_ptr.get();
   kp->host = host;
   kp->slot = slot;
+  kp->machine = host->GetMachine();
 
   for (uint32_t addr = addr_keyboard_data_lo; addr <= addr_keyboard_data_hi;
        ++addr) {
     host->RegisterDirectIO(kp, static_cast<uint16_t>(addr),
                            keyboard_io_read_data, nullptr);
   }
-  // $C010 (KBDSTRB): read and write both clear the strobe.
-  // $C011-$C01F: reads are soft-switch status (owned by Memory.cpp); writes
-  // clear the strobe. Register write-only here so reads are unaffected.
-  host->RegisterDirectIO(kp, addr_keyboard_strobe, keyboard_io_strobe_action,
-                         keyboard_io_strobe_action);
-  for (uint32_t addr = addr_keyboard_strobe + 1;
-       addr <= addr_keyboard_strobe_hi; ++addr) {
-    host->RegisterDirectIO(kp, static_cast<uint16_t>(addr), nullptr,
-                           keyboard_io_strobe_action);
+  if (kp->machine == peripheral_machine_apple2e) {
+    // $C011-$C01F read as MMU and IOU flags, which the motherboard answers.
+    host->RegisterDirectIO(kp, addr_keyboard_strobe, keyboard_io_strobe_apple2e,
+                           keyboard_io_strobe_apple2e);
+    for (uint32_t addr = addr_keyboard_strobe + 1;
+         addr <= addr_keyboard_strobe_hi; ++addr) {
+      host->RegisterDirectIO(kp, static_cast<uint16_t>(addr), nullptr,
+                             keyboard_io_strobe_apple2e);
+    }
+  } else {
+    for (uint32_t addr = addr_keyboard_strobe; addr <= addr_keyboard_strobe_hi;
+         ++addr) {
+      host->RegisterDirectIO(kp, static_cast<uint16_t>(addr),
+                             keyboard_io_strobe_apple2,
+                             keyboard_io_strobe_apple2);
+    }
   }
 
   return kp_ptr.release();
 }
 
+// A hard reset is power-on: the power-up pulse resets the strobe flip-flop
+// (Sather, Understanding the Apple II, 7-15) and every soft switch appears
+// cleared (Understanding the Apple IIe, 7-5); what the latch holds then is
+// not documented, and 0 is taken. A key physically held through the reset is
+// gone from the set until its next press. The bridge never calls this for a
+// soft reset: RESET' leaves the keyboard latch alone (Understanding the Apple
+// II, 6-17) and the Monitor clears the strobe itself with BIT $C010.
 auto keyboard_abi_reset(void* instance) -> void {
   if (instance == nullptr) {
     return;
@@ -152,11 +333,9 @@ auto keyboard_abi_reset(void* instance) -> void {
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
   kp->logic.current_latch = 0;
   kp->logic.strobe = false;
-  kp->logic.keys_down_count = 0;
-  kp->logic.repeat_key = no_repeat_key;
-  kp->logic.repeat_delay_cycles = 0;
-  kp->logic.repeating = false;
+  kp->logic.held_count = 0;
   kp->logic.rept_down = false;
+  disarm(kp);
 }
 
 auto keyboard_abi_shutdown(void* instance) -> void {
@@ -167,50 +346,80 @@ auto keyboard_abi_shutdown(void* instance) -> void {
       static_cast<KeyboardPeripheral_t*>(instance));
 }
 
+// A wake and a command drain's think look alike, so time is kept by GetCycles
+// against the armed cycle and never by the argument.
 auto keyboard_abi_think(void* instance, uint32_t cycles) -> void {
-  if (instance == nullptr || full_speed) {
+  (void)cycles;
+  if (instance == nullptr) {
     return;
   }
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
-
-  if (kp->logic.repeat_key == no_repeat_key) {
+  if (kp->logic.next_strobe == 0) {
     return;
   }
-
-  cycles = std::min(cycles, key_repeat_initial_delay);
-  kp->logic.repeat_delay_cycles += cycles;
-  uint32_t delay =
-      kp->logic.repeating ? key_repeat_rate : key_repeat_initial_delay;
-
-  if (kp->logic.repeat_delay_cycles >= delay) {
-    kp->logic.repeating = true;
-    kp->logic.repeat_delay_cycles -= delay;
-    kp->logic.strobe = true;
-    kp->logic.repeat_delay_cycles %= key_repeat_rate;
+  const uint64_t now = kp->host->GetCycles();
+  if (now < kp->logic.next_strobe) {
+    return;
   }
+  if (kp->machine == peripheral_machine_apple2e) {
+    if (!any_key_down(kp)) {
+      disarm(kp);
+      return;
+    }
+    repeat_strobe(kp, now, repeat_period_frames * frame_cycles(kp));
+    return;
+  }
+  if (!kp->logic.rept_down || !any_key_down(kp)) {
+    disarm(kp);
+    return;
+  }
+  repeat_strobe(kp, now, rept_period(kp));
 }
 
-// The strobe flip-flop is set by the encoder's KSTRB pulse, which also loads
-// the latch (Apple II Reference Manual 1979, p. 102; Sather, Understanding the
-// Apple IIe, 7-4).
-auto latch_key(KeyboardPeripheral_t* kp, uint32_t host_key, uint8_t code)
+// The encoder's KSTRB pulse loads the latch and sets the strobe (Apple II
+// Reference Manual 1979, p. 102; Sather, Understanding the Apple IIe, 7-4).
+auto press_key(KeyboardPeripheral_t* kp, uint32_t host_key, uint8_t code)
     -> void {
+  // The II and II Plus keyboards produce upper-case ASCII only (Apple II
+  // Reference Manual 1979, p. 5; Sather, Understanding the Apple II, 7-13).
+  if (kp->machine != peripheral_machine_apple2e && code >= 'a' && code <= 'z') {
+    code = static_cast<uint8_t>(code - 'a' + 'A');
+  }
   kp->logic.current_latch = code;
   kp->logic.strobe = true;
-  kp->logic.keys_down_count++;
-  kp->logic.repeat_key = code;
-  kp->logic.repeat_scancode = host_key;
-  kp->logic.repeat_delay_cycles = 0;
-  kp->logic.repeating = false;
+  hold_key(kp, host_key);
+  if (kp->machine == peripheral_machine_apple2e) {
+    arm_auto_repeat(kp);
+  } else if (kp->logic.rept_down) {
+    arm_rept(kp);
+  }
 }
 
 auto release_key(KeyboardPeripheral_t* kp, uint32_t host_key) -> void {
-  if (kp->logic.keys_down_count > 0) {
-    kp->logic.keys_down_count--;
+  let_go_key(kp, host_key);
+  if (!any_key_down(kp)) {
+    disarm(kp);
   }
-  if (host_key == kp->logic.repeat_scancode || kp->logic.keys_down_count == 0) {
-    kp->logic.repeat_key = no_repeat_key;
-    kp->logic.repeating = false;
+}
+
+// REPT alone on a II produces "a duplicate of the last code that was
+// generated" (Apple II Reference Manual 1979, p. 7), one strobe with the latch
+// unchanged, a reading Sather's account of the MM5740 keyboard never
+// mentions; on the II Plus keyboard the oscillator is gated by ANY KEY DOWN,
+// so REPT alone does nothing. A //e has no REPT key.
+auto set_rept(KeyboardPeripheral_t* kp, bool down) -> void {
+  kp->logic.rept_down = down;
+  if (kp->machine == peripheral_machine_apple2e) {
+    return;
+  }
+  if (!down) {
+    disarm(kp);
+    return;
+  }
+  if (any_key_down(kp)) {
+    arm_rept(kp);
+  } else if (kp->machine == peripheral_machine_apple2) {
+    kp->logic.strobe = true;
   }
 }
 
@@ -241,7 +450,7 @@ auto keyboard_abi_command(void* instance, uint32_t cmd_id, const void* data,
       if (ev->is_down == 0U) {
         release_key(kp, ev->host_key);
       } else {
-        latch_key(kp, ev->host_key, ev->apple_code);
+        press_key(kp, ev->host_key, ev->apple_code);
       }
       return peripheral_ok;
     }
@@ -249,16 +458,15 @@ auto keyboard_abi_command(void* instance, uint32_t cmd_id, const void* data,
       if (size != 0) {
         return peripheral_error;
       }
-      kp->logic.keys_down_count = 0;
-      kp->logic.repeat_key = no_repeat_key;
-      kp->logic.repeating = false;
+      kp->logic.held_count = 0;
+      disarm(kp);
       return peripheral_ok;
     }
     case keyboard_cmd_rept: {
       if (size != sizeof(uint8_t)) {
         return peripheral_error;
       }
-      kp->logic.rept_down = (*static_cast<const uint8_t*>(data) != 0);
+      set_rept(kp, *static_cast<const uint8_t*>(data) != 0);
       return peripheral_ok;
     }
     default:
@@ -284,22 +492,20 @@ auto keyboard_abi_save_state(void* instance, void* buffer, size_t* size)
     return peripheral_error;
   }
 
-  auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
+  const auto* kp = static_cast<const KeyboardPeripheral_t*>(instance);
   auto* ss = static_cast<KeyboardSaveState_t*>(buffer);
   std::memset(ss, 0, sizeof(KeyboardSaveState_t));
 
   ss->version = KEYBOARD_STATE_VERSION;
   ss->struct_size = static_cast<uint32_t>(sizeof(KeyboardSaveState_t));
-  ss->keys_down_count = kp->logic.keys_down_count;
-  ss->repeat_key = kp->logic.repeat_key;
-  ss->repeat_scancode = kp->logic.repeat_scancode;
-  ss->repeat_delay_cycles = kp->logic.repeat_delay_cycles;
   ss->current_latch = kp->logic.current_latch;
   ss->strobe = kp->logic.strobe ? 1U : 0U;
-  ss->repeating = kp->logic.repeating ? 1U : 0U;
-  // A reader that still keeps caps lock and auto-repeat in this frame takes
+  // The held keys and a repeat in progress are the player's hands, not the
+  // machine's, so the frame says no key is down and no repeat is armed. A
+  // reader that still keeps caps lock and auto-repeat in this frame takes
   // these bytes as its state; caps down and repeat on are what it starts
   // with, so the file changes nothing for it.
+  ss->repeat_key = frame_no_repeat_key;
   ss->caps_lock = 1;
   ss->auto_repeat_enabled = 1;
 
@@ -319,14 +525,15 @@ auto keyboard_abi_load_state(void* instance, const void* buffer, size_t size)
     return peripheral_error;
   }
 
+  // The latch and the strobe are the bus-visible state; everything else in
+  // the frame is the hands of whoever wrote it or configuration that lives in
+  // the host, and is read past.
   auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
-  kp->logic.keys_down_count = ss->keys_down_count;
-  kp->logic.repeat_key = ss->repeat_key;
-  kp->logic.repeat_scancode = ss->repeat_scancode;
-  kp->logic.repeat_delay_cycles = ss->repeat_delay_cycles;
-  kp->logic.current_latch = ss->current_latch;
+  kp->logic.current_latch = ss->current_latch & key_code_mask;
   kp->logic.strobe = (ss->strobe != 0);
-  kp->logic.repeating = (ss->repeating != 0);
+  kp->logic.held_count = 0;
+  kp->logic.rept_down = false;
+  disarm(kp);
 
   return peripheral_ok;
 }

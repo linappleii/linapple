@@ -103,6 +103,10 @@ auto HeadlessHarness_t::type_string(const std::string& text,
   // A keystroke sent to a machine with no keyboard card reaches nothing and
   // the case would fail somewhere downstream for no visible reason.
   REQUIRE(peripheral_find_internal("linapple.keyboard") != nullptr);
+  // While a drive spins, one frame here is a hundred frames in the machine,
+  // and a key held for a hundred frames repeats on a //e as it does on the
+  // hardware; the strokes are counted in the machine's own frames instead.
+  const bool disk_turbo = linapple_set_disk_turbo(false);
   for (char c : text) {
     uint8_t key = static_cast<uint8_t>(c);
     if (c == '\n' || c == '\r') {
@@ -113,6 +117,7 @@ auto HeadlessHarness_t::type_string(const std::string& text,
     linapple_set_key_state(key, false);
     run_frames(frames_per_stroke);
   }
+  linapple_set_disk_turbo(disk_turbo);
 }
 
 auto HeadlessHarness_t::get_frame_crc32() const -> uint32_t {

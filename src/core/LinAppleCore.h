@@ -175,6 +175,11 @@ auto linapple_get_frame_cycles() noexcept -> uint32_t;
 
 auto linapple_get_turbo() noexcept -> bool;
 auto linapple_set_turbo(bool turbo) noexcept -> void;
+// Whether a spinning drive runs the machine at full speed; returns the
+// previous setting. A key held across a full-speed batch is held for a
+// hundred frames, which a //e repeats, so a host that types by frames turns
+// this off while it types.
+auto linapple_set_disk_turbo(bool enabled) noexcept -> bool;
 auto linapple_toggle_turbo() noexcept -> bool;
 auto linapple_is_full_speed() noexcept -> bool;
 auto linapple_get_app_title() noexcept -> const char*;
