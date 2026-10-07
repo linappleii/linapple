@@ -274,9 +274,13 @@ auto app_args_print_help() -> void {
   printf("  -1, --d1 <file>        Insert disk image in drive 1\n");
   printf("  -2, --d2 <file>        Insert disk image in drive 2\n");
   printf(
-      "  --hd1 <file>           Insert hard disk image in drive 1 (Slot 7)\n");
+      "  --hd1 <file>           Insert hard disk image in drive 1, installing "
+      "the\n"
+      "                         card for this run if none is configured\n");
   printf(
-      "  --hd2 <file>           Insert hard disk image in drive 2 (Slot 7)\n");
+      "  --hd2 <file>           Insert hard disk image in drive 2, installing "
+      "the\n"
+      "                         card as --hd1 does\n");
   printf("  -a, --autoboot         Boot the computer immediately\n");
   printf("  -b, --boot             Synonym for --autoboot\n");
   printf("  -c, --config <file>    Use specified configuration file\n");
