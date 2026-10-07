@@ -31,6 +31,7 @@
 #include "frontends/common/AppController.h"
 #include "frontends/common/AudioMixer.h"
 #include "frontends/common/JoystickConfig.h"
+#include "frontends/common/KeyboardTranslator.h"
 #include "frontends/common/MouseFrontend.h"
 #include "frontends/common/SaveStateManager.h"
 
@@ -71,9 +72,17 @@ static constexpr size_t k_input_buffer_size = 256;
 static constexpr size_t k_max_escape_length = 32;
 static constexpr int k_esc_poll_timeout_ms = 3;
 
+// A terminal has no scancodes and no key-up, so its byte is read as a
+// symbolic key, folded as the SDL frontends' keys are, and doubles as the
+// key's identity for the release that follows at once.
 static auto map_key(uint8_t a2_code) -> void {
-  linapple_set_key_state(a2_code, true);
-  linapple_set_key_state(a2_code, false);
+  const KeyboardHostKey_t key = {0, a2_code, false, false};
+  uint8_t code = 0;
+  if (!keyboard_translate(&key, &code)) {
+    return;
+  }
+  linapple_set_key(a2_code, code, true);
+  linapple_set_key(a2_code, code, false);
 }
 
 static auto reset_machine() -> void {

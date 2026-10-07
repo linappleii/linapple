@@ -17,16 +17,57 @@ enum QuickSaveMode_t : uint8_t {
   QUICKSAVE_MODE_DISABLED = 3
 };
 
+// A host key as the frontend saw it. scancode is the USB HID usage the maps
+// index (SDL's scancode); 0 says the host has none, as a terminal does, and
+// such a key is always read symbolically. keycode is printable ASCII or a
+// LinAppleKey_t value.
+struct KeyboardHostKey_t {
+  uint32_t scancode;
+  uint32_t keycode;
+  bool shift;
+  bool ctrl;
+};
+
+// What a [Keyboard.Custom] entry turns its host key into when it is a switch
+// rather than a character: an Apple key on the motherboard's lines or the
+// REPT key of a II or II Plus keyboard.
+enum KeyboardCustomSwitch_t : uint8_t {
+  keyboard_custom_switch_none = 0,
+  keyboard_custom_switch_open_apple,
+  keyboard_custom_switch_solid_apple,
+  keyboard_custom_switch_rept
+};
+
+// The seven-bit code the Apple keyboard would produce for the host key, or
+// false for a key with no Apple meaning, which is then not a matrix key and
+// must not reach the card. The custom table is consulted first, then the
+// positional or the symbolic reading by Mapping Mode.
+auto keyboard_translate(const KeyboardHostKey_t* key, uint8_t* apple_code)
+    -> bool;
+auto keyboard_custom_switch(uint32_t scancode) -> KeyboardCustomSwitch_t;
+
 auto keyboard_symbolic_to_core(int key, uint32_t mod) -> LinAppleKey_t;
-auto keyboard_scancode_to_positional(uint32_t scancode) -> LinAppleKey_t;
+
+// CAPS LOCK is a locking key whose level selects the upper-case half of the
+// keyboard ROM (Apple IIe Technical Reference Manual, Table 2-3), a
+// translation input and not bus-visible state; it starts down, as a //e is
+// used, since Applesoft takes no lower-case keywords.
+auto keyboard_set_caps(bool on) -> void;
+auto keyboard_get_caps() -> bool;
+auto keyboard_get_caps_mode() -> int;
+auto keyboard_set_caps_mode(int mode) -> void;
+auto keyboard_set_mapping_mode(KeyboardMappingMode_t mode) -> void;
+auto keyboard_get_mapping_mode() -> KeyboardMappingMode_t;
+// The national table Keyboard Type names, read in positional mode while the
+// rocker switch is on; a blank entry falls back to the US table.
+auto keyboard_set_layout(uint8_t layout) -> void;
+auto keyboard_get_layout() -> uint8_t;
 
 auto keyboard_parse_host_key(const char* name) -> uint32_t;
 auto keyboard_parse_apple2_val(const char* name, uint8_t* out_flags) -> uint8_t;
 auto keyboard_apply_custom_mappings() -> void;
 auto keyboard_has_custom_mappings() -> bool;
-// The game-port switch line a [Keyboard.Custom] entry turns its host key
-// into: 0 for Open Apple, 1 for Solid Apple, -1 for a key that types.
-auto keyboard_custom_apple_line(uint32_t scancode) -> int;
+auto frontend_update_keyboard_mapping() -> void;
 
 auto keyboard_get_quicksave_mode() -> QuickSaveMode_t;
 auto keyboard_set_quicksave_mode(QuickSaveMode_t mode) -> void;

@@ -1,11 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
-#include "apple2/peripherals/keyboard/Keyboard_Maps.h"
-
-// NOLINTBEGIN(modernize-use-using, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-constant-array-index,
-// modernize-use-designated-initializers) Justification: This file implements
-// C99-compatible structures and types for the keyboard mapping system.
+#include "frontends/common/KeyboardMaps.h"
 
 const Apple2KeyboardMap_t map_us = {
     "US",
@@ -259,7 +254,3 @@ const Apple2KeyboardMap_t map_jp_kana = {
      [keyb_idx_y] = 'n', [keyb_idx_z] = 't'},
     {0},
     {0}};
-
-// NOLINTEND(modernize-use-using, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays, cppcoreguidelines-pro-bounds-constant-array-index,
-// modernize-use-designated-initializers)

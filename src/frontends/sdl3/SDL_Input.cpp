@@ -10,8 +10,6 @@
 #include <cstdio>
 
 #include "apple2/Video.h"
-#include "apple2/peripherals/Peripheral.h"
-#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/LinAppleCore.h"
 #include "frontends/common/AudioMixer.h"
 #include "frontends/common/Frontend.h"
@@ -150,10 +148,9 @@ auto sdl_handle_event(SDL_Event* event) -> void {
         std::printf("Now speed=%u\n", speed);
       } else if (mysym == SDLK_CAPSLOCK) {
         if (keyboard_get_caps_mode() == caps_mode_host) {
-          const uint8_t caps = ((mymod & SDL_KMOD_CAPS) != 0) ? 1 : 0;
-          peripheral_command(0, keyboard_cmd_set_caps, &caps, 1);
+          keyboard_set_caps((mymod & SDL_KMOD_CAPS) != 0);
         } else {
-          linapple_toggle_caps_lock_state();
+          keyboard_set_caps(!keyboard_get_caps());
         }
       } else if (mysym == SDLK_PAUSE) {
         mouse_input_release();
@@ -223,8 +220,7 @@ auto sdl_handle_event(SDL_Event* event) -> void {
         break;
       } else if (mysym == SDLK_CAPSLOCK) {
         if (keyboard_get_caps_mode() == caps_mode_host) {
-          const uint8_t caps = ((mymod & SDL_KMOD_CAPS) != 0) ? 1 : 0;
-          peripheral_command(0, keyboard_cmd_set_caps, &caps, 1);
+          keyboard_set_caps((mymod & SDL_KMOD_CAPS) != 0);
         }
       } else {
         const bool extended = is_extended_scancode(myscancode);

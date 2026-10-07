@@ -1,70 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <cctype>
 #include <cstdint>
-#include <string>
 
 #include "SdlBackend.h"
-#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/LinAppleCore.h"
-#include "core/Registry.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/common/KeyboardTranslator.h"
-
-static int g_keyboard_mapping_mode = 0;
-static int g_keyboard_caps_mode = caps_mode_host;
-
-auto keyboard_get_caps_mode() -> int { return g_keyboard_caps_mode; }
-auto keyboard_set_caps_mode(int mode) -> void { g_keyboard_caps_mode = mode; }
-
-auto frontend_update_keyboard_mapping() -> void {
-  uint32_t mode = 0;
-  if (config_load_int("Keyboard", "Mapping Mode", &mode)) {
-    g_keyboard_mapping_mode = static_cast<int>(mode);
-  }
-
-  uint32_t caps_mode = 0;
-  if (config_load_int("Keyboard", "Caps Lock Mode", &caps_mode)) {
-    g_keyboard_caps_mode = static_cast<int>(caps_mode);
-  }
-
-  uint32_t layout = 0;
-  if (config_load_int("Configuration", "Keyboard Type", &layout)) {
-    uint8_t layout_val = static_cast<uint8_t>(layout);
-    peripheral_command(0, keyboard_cmd_set_layout, &layout_val,
-                       sizeof(layout_val));
-  }
-
-  uint32_t rocker = 0;
-  if (config_load_int("Configuration", "Keyboard Rocker Switch", &rocker)) {
-    linapple_set_rocker_switch(rocker != 0);
-  }
-
-  std::string qs_mod;
-  if (config_load_string("Keyboard", "Quick Save Modifier", &qs_mod)) {
-    for (char& c : qs_mod) {
-      c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-    }
-    if (qs_mod == "ctrl" || qs_mod == "control") {
-      keyboard_set_quicksave_mode(QUICKSAVE_MODE_CTRL);
-    } else if (qs_mod == "altctrl" || qs_mod == "ctrlalt" ||
-               qs_mod == "alt+ctrl" || qs_mod == "ctrl+alt") {
-      keyboard_set_quicksave_mode(QUICKSAVE_MODE_ALT_CTRL);
-    } else if (qs_mod == "none" || qs_mod == "disabled" || qs_mod == "0" ||
-               qs_mod == "off") {
-      keyboard_set_quicksave_mode(QUICKSAVE_MODE_DISABLED);
-    } else {
-      keyboard_set_quicksave_mode(QUICKSAVE_MODE_ALT);
-    }
-  }
-
-  uint32_t hotkeys_val = 1;
-  if (config_load_int("Keyboard", "Enable Hotkeys", &hotkeys_val) ||
-      config_load_int("Keyboard", "Function Keys Enable", &hotkeys_val)) {
-    keyboard_set_hotkeys_enabled(hotkeys_val != 0);
-  }
-
-  keyboard_apply_custom_mappings();
-}
 
 // NOLINTBEGIN(misc-include-cleaner): Keycodes (SDLK_*) are provided across SDL1/2/3 backends via SdlBackend.h
 auto frontend_to_core_key(int key, uint32_t mod) -> LinAppleKey_t {
@@ -113,42 +53,38 @@ auto frontend_dispatch_key_event(uint32_t scancode, uint32_t keycode,
                                  uint32_t mod, bool is_down) -> void {
   track_shift_and_ctrl(mod);
 
-  // A custom key mapped to an Apple key is a switch on the game port and
-  // types nothing: sending its key event would latch a NUL with the strobe
-  // set.
-  const int apple_line = keyboard_custom_apple_line(scancode);
-  if (apple_line == 0) {
-    g_host_modifiers.open_apple = is_down;
-  } else if (apple_line == 1) {
-    g_host_modifiers.solid_apple = is_down;
+  // A custom key mapped to a switch types nothing: an Apple key closes its
+  // side of the motherboard's line and REPT drives the II keyboard's repeat.
+  switch (keyboard_custom_switch(scancode)) {
+    case keyboard_custom_switch_open_apple:
+      g_host_modifiers.open_apple = is_down;
+      send_host_modifiers();
+      return;
+    case keyboard_custom_switch_solid_apple:
+      g_host_modifiers.solid_apple = is_down;
+      send_host_modifiers();
+      return;
+    case keyboard_custom_switch_rept:
+      send_host_modifiers();
+      linapple_set_rept(is_down);
+      return;
+    case keyboard_custom_switch_none:
+      break;
   }
   send_host_modifiers();
-  if (apple_line >= 0) {
+
+  const KeyboardHostKey_t key = {scancode,
+                                 static_cast<uint32_t>(frontend_to_core_key(
+                                     static_cast<int>(keycode), mod)),
+                                 g_host_modifiers.shift, g_host_modifiers.ctrl};
+  uint8_t apple_code = 0;
+  if (!keyboard_translate(&key, &apple_code)) {
     return;
   }
-
-  LinAppleKey_t core_key = linapple_key_unknown;
-
-  if (g_keyboard_mapping_mode == KBD_MODE_POSITIONAL ||
-      keyboard_has_custom_mappings()) {
-    core_key = keyboard_scancode_to_positional(scancode);
-  } else {
-    core_key = frontend_to_core_key(static_cast<int>(keycode), mod);
-  }
-
-  if (core_key == linapple_key_unknown) {
-    return;
-  }
-
-  KeyboardEvent_t ev = {
-      static_cast<uint32_t>(core_key),
-      static_cast<uint8_t>(is_down ? 1 : 0),
-      static_cast<uint8_t>(g_host_modifiers.shift ? 1 : 0),
-      static_cast<uint8_t>(g_host_modifiers.ctrl ? 1 : 0),
-      static_cast<uint8_t>(g_host_modifiers.solid_apple ? 1 : 0),
-      static_cast<uint8_t>(g_host_modifiers.open_apple ? 1 : 0),
-      {0, 0, 0}};
-  peripheral_command(0, keyboard_cmd_event, &ev, sizeof(ev));
+  // The scancode is the key's identity across its press and release; a host
+  // that reports none leaves the keycode to stand for it.
+  const uint32_t host_key = scancode != 0 ? scancode : keycode;
+  linapple_set_key(host_key, apple_code, is_down);
 }
 
 // Left Alt or Left GUI is Open Apple and Right Alt or Right GUI is Solid

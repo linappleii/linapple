@@ -219,9 +219,6 @@ auto linapple_set_rept(bool down) -> void;
 // Every key and switch the host held is let go, as when the window loses
 // focus and the releases never arrive.
 auto linapple_set_key_release_all() -> void;
-auto linapple_set_caps_lock_state(bool enabled) -> void;
-auto linapple_get_caps_lock_state() -> bool;
-auto linapple_toggle_caps_lock_state() -> bool;
 auto linapple_set_modifiers(bool shift, bool ctrl, bool open_apple,
                             bool solid_apple) -> void;
 auto linapple_get_modifiers(bool* shift, bool* ctrl, bool* open_apple,

@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// cppcoreguidelines-use-enum-class) Justification: This header defines
-// C-compatible structures and types for the keyboard mapping system to ensure
-// interoperability across different frontends.
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using)
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class)
+// Justification: a C99 header shared by the frontends' C and C++ compilation
+// units; stdint.h, typedefs and plain enums are what C has.
 
 #include <stdint.h>
 
@@ -17,6 +16,23 @@ enum {
   keyb_name_size = 32
 };
 
+// The national tables in the order Keyboard Type numbers them.
+typedef enum {
+  keyboard_layout_us = 0,
+  keyboard_layout_uk = 1,
+  keyboard_layout_fr = 2,
+  keyboard_layout_de = 3,
+  keyboard_layout_es = 4,
+  keyboard_layout_it = 5,
+  keyboard_layout_se = 6,
+  keyboard_layout_dk = 7,
+  keyboard_layout_ch = 8,
+  keyboard_layout_ca = 9,
+  keyboard_layout_jp_roman = 10,
+  keyboard_layout_jp_kana = 11
+} KeyboardLayout_t;
+
+// USB HID keyboard usage ids, which are SDL's scancodes.
 typedef enum {
   keyb_idx_unknown = 0,
   keyb_idx_a = 4,
@@ -120,4 +136,4 @@ extern const Apple2KeyboardMap_t map_jp_kana;
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using)
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class)

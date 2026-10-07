@@ -34,7 +34,6 @@
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
-#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/Asset.h"
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
@@ -42,8 +41,8 @@
 #include "core/Util_Text.h"
 #include "frontends/common/AppController.h"
 #include "frontends/common/AudioMixer.h"
-#include "frontends/common/Frontend.h"
 #include "frontends/common/HelpText.h"
+#include "frontends/common/KeyboardTranslator.h"
 #include "frontends/common/MouseFrontend.h"
 #include "frontends/common/SaveStateManager.h"
 #include "frontends/common/VideoStretch.h"
@@ -642,8 +641,7 @@ auto frame_on_focus(bool gained) -> void {
   s_app_active = gained;
   if (s_app_active && keyboard_get_caps_mode() == caps_mode_host) {
     const SDL_Keymod mod = SDL_GetModState();
-    const uint8_t caps = ((mod & KMOD_CAPS) != 0) ? 1 : 0;
-    peripheral_command(0, keyboard_cmd_set_caps, &caps, 1);
+    keyboard_set_caps((mod & KMOD_CAPS) != 0);
   }
 }
 

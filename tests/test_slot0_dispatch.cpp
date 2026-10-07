@@ -198,14 +198,6 @@ auto joystick_state() -> JoystickSaveState_t {
   return state;
 }
 
-auto keyboard_mods() -> KeyboardModifiers_t {
-  KeyboardModifiers_t mods{};
-  size_t size = sizeof(mods);
-  REQUIRE(peripheral_query_by_id(0, "linapple.keyboard", keyboard_query_mods,
-                                 &mods, &size) == peripheral_ok);
-  return mods;
-}
-
 struct HostModifiers_t {
   bool shift = false;
   bool ctrl = false;
@@ -289,27 +281,6 @@ TEST_CASE("Slot 0: a key and a button under one slot") {
   }
 }
 
-TEST_CASE("Slot 0: the rocker switch and a button under one slot") {
-  for (Order_t order : both_orders) {
-    CAPTURE(order);
-    Slot0_t slot0(order);
-    REQUIRE(slot0.keyboard_registered == 0);
-    REQUIRE(slot0.joystick_registered == 0);
-
-    const uint8_t on = 1;
-    send(keyboard_cmd_set_rocker, &on, sizeof(on));
-    press_button(0);
-
-    uint8_t rocker = 0;
-    size_t size = sizeof(rocker);
-    CHECK(peripheral_query(0, keyboard_query_rocker, &rocker, &size) ==
-          peripheral_ok);
-    CHECK(rocker == 1);
-    CHECK(line_level(0) == 1);
-    release_button(0);
-  }
-}
-
 TEST_CASE("Slot 0: a stick move and the host's modifiers under one id") {
   for (Order_t order : both_orders) {
     CAPTURE(order);
@@ -324,8 +295,6 @@ TEST_CASE("Slot 0: a stick move and the host's modifiers under one id") {
     CHECK(line_level(0) == 1);
     CHECK_FALSE(host_modifiers().shift);
     CHECK_FALSE(host_modifiers().ctrl);
-    CHECK(keyboard_mods().shift == 0);
-    CHECK(keyboard_mods().ctrl == 0);
     release_button(0);
   }
 }
@@ -351,28 +320,6 @@ TEST_CASE("Slot 0: a key leaves the sticks where they are") {
   }
 }
 
-TEST_CASE("Slot 0: flipping the rocker leaves the sticks where they are") {
-  for (Order_t order : both_orders) {
-    CAPTURE(order);
-    Slot0_t slot0(order);
-    REQUIRE(slot0.keyboard_registered == 0);
-    REQUIRE(slot0.joystick_registered == 0);
-
-    move_axis(0, 0, joy_off_centre);
-    press_button(0);
-    REQUIRE(paddle_pulse_is(0, off_centre_pulse));
-    REQUIRE(line_level(0) == 1);
-
-    const uint8_t on = 1;
-    send(keyboard_cmd_set_rocker, &on, sizeof(on));
-
-    CHECK(paddle_pulse_is(0, off_centre_pulse));
-    CHECK(line_level(0) == 1);
-    CHECK(keyboard_state().rocker_switch == 1);
-    release_button(0);
-  }
-}
-
 TEST_CASE("Slot 0: a connector button latches no key and reaches no modifier") {
   for (Order_t order : both_orders) {
     CAPTURE(order);
@@ -381,7 +328,6 @@ TEST_CASE("Slot 0: a connector button latches no key and reaches no modifier") {
     REQUIRE(slot0.joystick_registered == 0);
 
     const HostModifiers_t before = host_modifiers();
-    const KeyboardModifiers_t card_before = keyboard_mods();
     press_button(1);
     settle();
 
@@ -390,7 +336,6 @@ TEST_CASE("Slot 0: a connector button latches no key and reaches no modifier") {
     CHECK(after.ctrl == before.ctrl);
     CHECK(after.open_apple == before.open_apple);
     CHECK(after.solid_apple == before.solid_apple);
-    CHECK(keyboard_mods().caps == card_before.caps);
     CHECK((keyboard_data() & strobe_bit) == 0);
     CHECK(line_level(1) == 1);
     release_button(1);
@@ -413,8 +358,6 @@ TEST_CASE("Slot 0: setting modifiers does not move the stick") {
 
     CHECK(host_modifiers().shift);
     CHECK(host_modifiers().ctrl);
-    CHECK(keyboard_mods().shift == 1);
-    CHECK(keyboard_mods().ctrl == 1);
     const JoystickSaveState_t after = joystick_state();
     CHECK(line_level(0) == 1);
     CHECK(std::memcmp(&before, &after, sizeof(JoystickSaveState_t)) == 0);
@@ -443,54 +386,6 @@ TEST_CASE("Slot 0: a key reaches no switch line") {
     CHECK(line_level(1) == 0);
     CHECK(line_level(2) == 1);
     release_key(host_key_a);
-  }
-}
-
-TEST_CASE("Slot 0: a button press does not toggle caps lock") {
-  for (Order_t order : both_orders) {
-    CAPTURE(order);
-    Slot0_t slot0(order);
-    REQUIRE(slot0.keyboard_registered == 0);
-    REQUIRE(slot0.joystick_registered == 0);
-
-    const uint8_t caps_off = 0;
-    send(keyboard_cmd_set_caps, &caps_off, sizeof(caps_off));
-    REQUIRE(keyboard_state().caps_lock == 0);
-
-    // With nothing pulling PB2 down the line rests high, so a pull-down is
-    // installed first to make the press visible.
-    linapple_set_game_pulldowns(all_lines_pulled_down);
-    REQUIRE(line_level(2) == 0);
-    press_button(2);
-
-    CHECK(keyboard_state().caps_lock == 0);
-    CHECK(line_level(2) == 1);
-    release_button(2);
-    linapple_set_game_pulldowns(0);
-  }
-}
-
-TEST_CASE(
-    "Slot 0: the keyboard card's modifier command answers its query and "
-    "reaches no switch line") {
-  for (Order_t order : both_orders) {
-    CAPTURE(order);
-    Slot0_t slot0(order);
-    REQUIRE(slot0.keyboard_registered == 0);
-    REQUIRE(slot0.joystick_registered == 0);
-
-    CHECK(line_level(0) == 0);
-    CHECK(line_level(1) == 0);
-    CHECK(line_level(2) == 1);
-
-    KeyboardModifiers_t mods{};
-    mods.gui = 1;
-    mods.alt = 1;
-    send(keyboard_cmd_set_mods, &mods, sizeof(mods));
-    CHECK(keyboard_mods().gui == 1);
-    CHECK(keyboard_mods().alt == 1);
-    CHECK(line_level(0) == 0);
-    CHECK(line_level(1) == 0);
   }
 }
 
@@ -524,10 +419,6 @@ TEST_CASE("Slot 0: a payload of the wrong size changes nothing") {
     REQUIRE(peripheral_command(0, keyboard_cmd_key, &key,
                                sizeof(KeyboardKeyEvent_t) + 1) ==
             peripheral_ok);
-    KeyboardModifiers_t mods{};
-    mods.shift = 1;
-    REQUIRE(peripheral_command(0, keyboard_cmd_set_mods, &mods,
-                               sizeof(mods) - 1) == peripheral_ok);
     settle();
 
     const KeyboardSaveState_t keyboard_after = keyboard_state();
@@ -578,18 +469,6 @@ TEST_CASE("Slot 0: a dispatcher says peripheral_error to the wrong size") {
         peripheral_error);
   CHECK(keyboard->command(kbd, keyboard_cmd_rept, nullptr, 1) ==
         peripheral_error);
-  CHECK(keyboard->command(kbd, keyboard_cmd_set_rocker, &byte, sizeof(byte)) ==
-        peripheral_ok);
-  CHECK(keyboard->command(kbd, keyboard_cmd_set_rocker, &byte, 0) ==
-        peripheral_error);
-  CHECK(keyboard->command(kbd, keyboard_cmd_set_rocker, &two_bytes, 2) ==
-        peripheral_error);
-  CHECK(keyboard->command(kbd, keyboard_cmd_set_rocker, nullptr, 1) ==
-        peripheral_error);
-  CHECK(keyboard->command(kbd, keyboard_cmd_clear_custom_keys, &byte,
-                          sizeof(byte)) == peripheral_error);
-  CHECK(keyboard->command(kbd, keyboard_cmd_clear_custom_keys, nullptr, 0) ==
-        peripheral_ok);
 
   const OneByteLong_t<JoystickAxisPayload_t> axis{{0, 0, joy_off_centre, 0}, 0};
   constexpr size_t axis_size = sizeof(JoystickAxisPayload_t);
@@ -666,17 +545,14 @@ TEST_CASE("Slot 0: a foreign id is incompatible, never an error") {
   size = sizeof(answer);
   CHECK(joystick->query(joy, unknown_keyboard_id, &answer, &size) ==
         peripheral_incompatible);
-  size = sizeof(answer);
-  CHECK(joystick->query(joy, keyboard_query_rocker, &answer, &size) ==
-        peripheral_incompatible);
   const std::array<uint8_t, 4> button{{0, 1, 0, 0}};
   CHECK(keyboard->command(kbd, retired_joystick_id, button.data(),
                           button.size()) == peripheral_incompatible);
   const KeyboardKeyEvent_t key = key_event(host_key_a, 'A', true);
   CHECK(joystick->command(joy, keyboard_cmd_key, &key, sizeof(key)) ==
         peripheral_incompatible);
-  CHECK(joystick->command(joy, keyboard_cmd_set_rocker, &answer,
-                          sizeof(answer)) == peripheral_incompatible);
+  CHECK(joystick->command(joy, keyboard_cmd_release_all, nullptr, 0) ==
+        peripheral_incompatible);
 
   // An id inside the card's own subsystem that it does not know is
   // incompatible too, so a neighbour in the slot still gets asked.
@@ -738,33 +614,5 @@ TEST_CASE("Slot 0: a command can name the peripheral it is for") {
     CHECK(peripheral_query_by_id(0, "linapple.joystick", unknown_keyboard_id,
                                  &answer, &size) == peripheral_incompatible);
     release_key(host_key_a);
-  }
-}
-
-TEST_CASE("Slot 0: a command can name the keyboard for its rocker switch") {
-  for (Order_t order : both_orders) {
-    CAPTURE(order);
-    Slot0_t slot0(order);
-    REQUIRE(slot0.keyboard_registered == 0);
-    REQUIRE(slot0.joystick_registered == 0);
-
-    const uint8_t on = 1;
-    REQUIRE(peripheral_command_by_id(0, "linapple.keyboard",
-                                     keyboard_cmd_set_rocker, &on,
-                                     sizeof(on)) == peripheral_ok);
-    settle();
-    CHECK(keyboard_state().rocker_switch == 1);
-
-    const uint8_t off = 0;
-    CHECK(peripheral_command_by_id(0, "linapple.disk_II",
-                                   keyboard_cmd_set_rocker, &off,
-                                   sizeof(off)) == peripheral_error);
-    settle();
-    CHECK(keyboard_state().rocker_switch == 1);
-
-    uint8_t rocker = 0;
-    size_t size = sizeof(rocker);
-    CHECK(peripheral_query_by_id(0, "linapple.joystick", keyboard_query_rocker,
-                                 &rocker, &size) == peripheral_incompatible);
   }
 }

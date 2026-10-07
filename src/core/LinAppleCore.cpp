@@ -516,9 +516,7 @@ auto linapple_set_key(uint32_t host_key, uint8_t apple_code, bool down)
 }
 
 auto linapple_set_key_state(uint8_t apple_code, bool down) -> void {
-  KeyboardEvent_t ev = {
-      apple_code, static_cast<uint8_t>(down ? 1 : 0), 0, 0, 0, 0, {0, 0, 0}};
-  peripheral_command(0, keyboard_cmd_event, &ev, sizeof(ev));
+  linapple_set_key(apple_code, apple_code, down);
 }
 
 auto linapple_set_rept(bool down) -> void {
@@ -567,52 +565,25 @@ auto linapple_get_modifiers(bool* shift, bool* ctrl, bool* open_apple,
 auto linapple_set_rocker_switch(bool local) -> void {
   g_rocker_switch = local;
   video_set_rocker_switch(local);
-  const uint8_t level = local ? 1 : 0;
-  peripheral_command(0, keyboard_cmd_set_rocker, &level, sizeof(level));
 }
 
 auto linapple_get_rocker_switch() -> bool { return g_rocker_switch; }
 
-auto linapple_set_caps_lock_state(bool enabled) -> void {
-  uint8_t caps = enabled ? 1 : 0;
-  peripheral_command(0, keyboard_cmd_set_caps, &caps, 1);
-  peripheral_manager_think(0);
-}
-
-auto linapple_get_caps_lock_state() -> bool {
-  KeyboardModifiers_t mods = {};
-  size_t sz = sizeof(mods);
-  peripheral_query(0, keyboard_query_mods, &mods, &sz);
-  return mods.caps != 0;
-}
-
-auto linapple_toggle_caps_lock_state() -> bool {
-  bool new_state = !linapple_get_caps_lock_state();
-  linapple_set_caps_lock_state(new_state);
-  return new_state;
-}
-
-// The host's modifier keys are both keyboard modifiers and switch inputs: the
-// //e wires Open Apple and Solid Apple in parallel with the connector's PB0
-// and PB1, and the shift-key mod runs the shift key to PB2 (Apple IIe
+// The host's modifier keys are switch inputs as much as keyboard modifiers:
+// the //e wires Open Apple and Solid Apple in parallel with the connector's
+// PB0 and PB1, and the shift-key mod runs the shift key to PB2 (Apple IIe
 // Technical Reference Manual, pp. 13 and 41). The levels reach the
 // motherboard's lines on every model as the keyboard's side of the wired-OR,
 // so they combine with a controller's buttons rather than overwrite them; on
 // a II or II Plus they are the host buttons the README promises, and the
-// shift level counts only while the jumper is in.
+// shift level counts only while the jumper is in. Shift and control
+// themselves are translation inputs the host has already applied to the code.
 auto linapple_set_modifiers(bool shift, bool ctrl, bool open_apple,
                             bool solid_apple) -> void {
   g_modifier_levels.shift = shift;
   g_modifier_levels.ctrl = ctrl;
   g_modifier_levels.open_apple = open_apple;
   g_modifier_levels.solid_apple = solid_apple;
-  const KeyboardModifiers_t mods = {static_cast<uint8_t>(shift ? 1 : 0),
-                                    static_cast<uint8_t>(ctrl ? 1 : 0),
-                                    static_cast<uint8_t>(solid_apple ? 1 : 0),
-                                    static_cast<uint8_t>(open_apple ? 1 : 0),
-                                    0,
-                                    {0, 0, 0}};
-  peripheral_command(0, keyboard_cmd_set_mods, &mods, sizeof(mods));
   switch_inputs_set_level(0, switch_source_keyboard, open_apple);
   switch_inputs_set_level(1, switch_source_keyboard, solid_apple);
   switch_inputs_set_level(2, switch_source_keyboard, shift);

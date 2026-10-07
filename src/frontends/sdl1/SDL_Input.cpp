@@ -14,8 +14,6 @@
 #include "Debugger/Debug.h"
 #endif
 #include "apple2/Video.h"
-#include "apple2/peripherals/Peripheral.h"
-#include "apple2/peripherals/keyboard/KeyboardCommands.h"
 #include "core/LinAppleCore.h"
 #include "frontends/common/AudioMixer.h"
 #include "frontends/common/Frontend.h"
@@ -129,10 +127,9 @@ auto handle_key_down(SDLKey key_sym, SDLMod key_mod, uint8_t scancode) -> void {
 
   if (key_sym == SDLK_CAPSLOCK) {
     if (keyboard_get_caps_mode() == caps_mode_host) {
-      const uint8_t caps = ((key_mod & KMOD_CAPS) != 0) ? 1 : 0;
-      peripheral_command(0, keyboard_cmd_set_caps, &caps, 1);
+      keyboard_set_caps((key_mod & KMOD_CAPS) != 0);
     } else {
-      linapple_toggle_caps_lock_state();
+      keyboard_set_caps(!keyboard_get_caps());
     }
     return;
   }
@@ -188,8 +185,7 @@ auto handle_key_up(SDLKey key_sym, SDLMod key_mod, uint8_t scancode) -> void {
 
   if (key_sym == SDLK_CAPSLOCK) {
     if (keyboard_get_caps_mode() == caps_mode_host) {
-      const uint8_t caps = ((key_mod & KMOD_CAPS) != 0) ? 1 : 0;
-      peripheral_command(0, keyboard_cmd_set_caps, &caps, 1);
+      keyboard_set_caps((key_mod & KMOD_CAPS) != 0);
     }
     return;
   }

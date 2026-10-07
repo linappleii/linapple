@@ -5,19 +5,6 @@
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
 #include "core/LinAppleCore.h"
-#include "frontends/common/Frontend.h"
-
-[[gnu::weak]] auto frontend_update_keyboard_mapping() -> void {}
-[[gnu::weak]] auto keyboard_get_caps_mode() -> int { return 0; }
-[[gnu::weak]] auto keyboard_set_caps_mode(int /*mode*/) -> void {}
-[[gnu::weak]] auto frontend_dispatch_key_event(uint32_t /*scancode*/,
-                                               uint32_t /*keycode*/,
-                                               uint32_t /*mod*/,
-                                               bool /*is_down*/) -> void {}
-[[gnu::weak]] auto frontend_to_core_key(int /*key*/, uint32_t /*mod*/)
-    -> LinAppleKey_t {
-  return linapple_key_unknown;
-}
 
 [[gnu::weak]] auto frame_refresh_status(int /*drawflags*/) -> void {}
 
