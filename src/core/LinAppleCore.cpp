@@ -229,6 +229,12 @@ auto linapple_init() -> int {
 
 auto linapple_register_peripherals() -> void { peripheral_register_internal(); }
 
+auto linapple_request_card_for_run(const char* id) -> void {
+  peripheral_request_card_for_run(id);
+}
+
+auto linapple_requested_slot() -> int { return peripheral_requested_slot(); }
+
 auto linapple_shutdown() -> void {
   basic_sync_shutdown();
   peripheral_manager_shutdown();

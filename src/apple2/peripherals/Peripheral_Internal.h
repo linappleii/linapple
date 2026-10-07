@@ -27,6 +27,17 @@ auto peripheral_is_any_active() -> bool;
 auto peripheral_legacy_override(int* slot, const char** key_card,
                                 const char** displaced) -> bool;
 
+// A card a frontend wants for this run only, by descriptor id. The next
+// peripheral_register_internal applies it after the slot table and the legacy
+// keys and then forgets it: a card the configuration already placed satisfies
+// the request where it is; otherwise the card goes into its default slot if
+// that is empty, else the highest free slot below it, never displacing another
+// card. Nothing is written to the configuration.
+auto peripheral_request_card_for_run(const char* id) -> void;
+// The slot holding the requested card after the last registration, or -1 when
+// nothing was requested, no slot was free or the build has no such card.
+auto peripheral_requested_slot() -> int;
+
 // Test hook: inject frozen host clock provider.
 typedef bool (*LocalTimeProvider_t)(void* ctx, HostLocalTime_t* out);
 auto linapple_set_local_time_provider(LocalTimeProvider_t provider, void* ctx)

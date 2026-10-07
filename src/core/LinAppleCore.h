@@ -154,6 +154,13 @@ using LinappleTitleCallback_t = void (*)(const char* title);
 
 auto linapple_init() -> int;
 auto linapple_register_peripherals() -> void;
+// A card wanted for this run only, by descriptor id, placed by the next
+// linapple_init or linapple_register_peripherals after the configured slots:
+// into a slot the configuration already gave it, else its default slot, else
+// the highest free slot below that. linapple_requested_slot says where it
+// landed, -1 for nowhere.
+auto linapple_request_card_for_run(const char* id) -> void;
+auto linapple_requested_slot() -> int;
 auto linapple_shutdown() -> void;
 auto linapple_cpu_test(const char* test_file, uint16_t trap_addr) -> void;
 auto linapple_get_ticks() noexcept -> uint32_t;

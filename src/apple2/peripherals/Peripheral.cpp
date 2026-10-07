@@ -91,6 +91,9 @@ struct DirectIoHandler_t {
 static std::array<std::vector<ActivePeripheral_t>, NUM_SLOTS>
     g_active_peripherals;
 static std::array<bool, NUM_SLOTS> g_peripheral_activity_state;
+// Set when a card reports activity and cleared by the frontend's poll, so a
+// burst that starts and ends between two polls still shows on the next one.
+static std::array<bool, NUM_SLOTS> g_peripheral_activity_seen;
 // Cached so the frame loop compares one number per slice.
 static uint64_t g_next_event_cycle = no_event;
 
@@ -471,6 +474,9 @@ static auto host_notify_status_changed(int slot) -> void {
 static auto host_notify_activity_changed(int slot, bool active) -> void {
   if (slot >= 0 && slot < static_cast<int>(NUM_SLOTS)) {
     g_peripheral_activity_state.at(static_cast<size_t>(slot)) = active;
+    if (active) {
+      g_peripheral_activity_seen.at(static_cast<size_t>(slot)) = true;
+    }
   }
 }
 
@@ -900,6 +906,7 @@ static auto clear_all_peripherals() -> void {
       frontend_audio_unregister_cb(static_cast<int>(i));
     }
     g_peripheral_activity_state.at(i) = false;
+    g_peripheral_activity_seen.at(i) = false;
     for (auto& ap : g_active_peripherals.at(i)) {
       if (ap.api != nullptr && ap.api->shutdown != nullptr) {
         ap.api->shutdown(ap.instance);
@@ -930,6 +937,7 @@ auto peripheral_manager_reset() -> void {
   // Before the cards' reset entries, so a reset that schedules keeps its
   // event.
   clear_all_events();
+  g_peripheral_activity_seen.fill(false);
   for (size_t i = 0; i < NUM_SLOTS; ++i) {
     for (auto& ap : g_active_peripherals.at(i)) {
       if (ap.api != nullptr && ap.api->reset != nullptr) {
@@ -943,6 +951,7 @@ auto peripheral_manager_shutdown() -> void {
   clear_all_peripherals();
   memset(g_peripheral_activity_state.data(), 0,
          sizeof(g_peripheral_activity_state));
+  g_peripheral_activity_seen.fill(false);
 
   {
     std::lock_guard<std::mutex> lock(g_command_queue_mutex);
@@ -1109,6 +1118,28 @@ static auto peripheral_by_id(int slot, const char* peripheral_id)
 
 auto peripheral_present(int slot, const char* peripheral_id) -> bool {
   return peripheral_by_id(slot, peripheral_id) != nullptr;
+}
+
+auto peripheral_slot_of(const char* peripheral_id) -> int {
+  if (peripheral_id == nullptr) {
+    return -1;
+  }
+  for (int slot = 0; slot < static_cast<int>(NUM_SLOTS); ++slot) {
+    if (peripheral_by_id(slot, peripheral_id) != nullptr) {
+      return slot;
+    }
+  }
+  return -1;
+}
+
+auto peripheral_activity_poll(int slot) -> bool {
+  if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) {
+    return false;
+  }
+  bool& seen = g_peripheral_activity_seen.at(static_cast<size_t>(slot));
+  const bool was_seen = seen;
+  seen = false;
+  return was_seen;
 }
 
 auto peripheral_command_by_id(int slot, const char* peripheral_id,
