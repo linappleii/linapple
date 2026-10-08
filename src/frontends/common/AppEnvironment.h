@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-struct Configuration_t;
-using AppConfig_t = Configuration_t;
-auto app_env_resolve_paths(AppConfig_t* config) -> void;
+struct Configuration;
+using AppConfig = Configuration;
+auto app_env_resolve_paths(AppConfig* config) -> void;

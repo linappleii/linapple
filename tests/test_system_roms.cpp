@@ -239,7 +239,7 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
     TestConfig_t machine(TestConfig_t::enhanced_2e_only());
 #if ENABLE_ROM_APPLE2
     {
-      AppConfig_t config = {};
+      AppConfig config = {};
       app_config_default(&config);
       util_safe_strcpy(config.config_path.data(), machine.c_str(),
                        config.config_path.size());
@@ -255,7 +255,7 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
 
 #if ENABLE_ROM_APPLE2PLUS
     {
-      AppConfig_t config = {};
+      AppConfig config = {};
       app_config_default(&config);
       util_safe_strcpy(config.config_path.data(), machine.c_str(),
                        config.config_path.size());
@@ -271,7 +271,7 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
 
 #if ENABLE_ROM_APPLE2_JPLUS
     {
-      AppConfig_t config = {};
+      AppConfig config = {};
       app_config_default(&config);
       util_safe_strcpy(config.config_path.data(), machine.c_str(),
                        config.config_path.size());
@@ -287,7 +287,7 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
 
 #if ENABLE_ROM_APPLE2E
     {
-      AppConfig_t config = {};
+      AppConfig config = {};
       app_config_default(&config);
       util_safe_strcpy(config.config_path.data(), machine.c_str(),
                        config.config_path.size());
@@ -303,7 +303,7 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
 
 #if ENABLE_ROM_APPLE2ENHANCED
     {
-      AppConfig_t config = {};
+      AppConfig config = {};
       app_config_default(&config);
       util_safe_strcpy(config.config_path.data(), machine.c_str(),
                        config.config_path.size());
@@ -319,7 +319,7 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
 
 #if ENABLE_ROM_CLONE_PRAVETS
     {
-      AppConfig_t config = {};
+      AppConfig config = {};
       app_config_default(&config);
       util_safe_strcpy(config.config_path.data(), machine.c_str(),
                        config.config_path.size());
@@ -332,7 +332,7 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
       app_controller_shutdown();
     }
     {
-      AppConfig_t config = {};
+      AppConfig config = {};
       app_config_default(&config);
       util_safe_strcpy(config.config_path.data(), machine.c_str(),
                        config.config_path.size());
@@ -348,7 +348,7 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
 
 #if ENABLE_ROM_CLONE_TK3000E
     {
-      AppConfig_t config = {};
+      AppConfig config = {};
       app_config_default(&config);
       util_safe_strcpy(config.config_path.data(), machine.c_str(),
                        config.config_path.size());
@@ -365,7 +365,7 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
 
   TEST_CASE("Custom Runtime ROM File Override") {
     TestConfig_t machine(TestConfig_t::enhanced_2e_only());
-    AppConfig_t config = {};
+    AppConfig config = {};
     app_config_default(&config);
     util_safe_strcpy(config.config_path.data(), machine.c_str(),
                      config.config_path.size());

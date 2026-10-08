@@ -17,7 +17,7 @@
 namespace TestFixtures {
 
 /**
- * @brief Loads a configuration file into the Configuration_t singleton.
+ * @brief Loads a configuration file into the Configuration singleton.
  *
  * Declared rather than defined because this header is also included by test
  * targets that deliberately do not link the core (test-fixtures,
@@ -478,7 +478,7 @@ class ScopedTestConfig_t {
   auto path() const -> const std::string& { return path_; }
   auto c_str() const -> const char* { return path_.c_str(); }
 
-  // For fixtures that populate the Configuration_t singleton themselves
+  // For fixtures that populate the Configuration singleton themselves
   // rather than going through AppController.
   auto load() const -> bool { return load_configuration_file(path_); }
 

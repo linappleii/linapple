@@ -70,9 +70,9 @@ struct ScopedCwd_t {
 };
 
 struct ScopedConfigPath_t {
-  std::string original_path{Configuration_t::instance().get_path()};
+  std::string original_path{Configuration::instance().get_path()};
 
-  ~ScopedConfigPath_t() { Configuration_t::instance().set_path(original_path); }
+  ~ScopedConfigPath_t() { Configuration::instance().set_path(original_path); }
 
   ScopedConfigPath_t() = default;
   ScopedConfigPath_t(const ScopedConfigPath_t&) = delete;
@@ -190,11 +190,11 @@ TEST_CASE("Configuration: Save and Load Runtime Settings") {
   ScopedConfigPath_t config_path_guard;
 
   std::string test_conf = temp_dir.path() + "/test_runtime_save.conf";
-  Configuration_t::instance().set_path(test_conf);
-  Configuration_t::instance().set_int("Configuration", "Fullscreen", 1);
-  Configuration_t::instance().set_int("Configuration", "Emulation Speed", 20);
+  Configuration::instance().set_path(test_conf);
+  Configuration::instance().set_int("Configuration", "Fullscreen", 1);
+  Configuration::instance().set_int("Configuration", "Emulation Speed", 20);
 
-  bool saved = Configuration_t::instance().save();
+  bool saved = Configuration::instance().save();
   CHECK(saved);
 
   struct stat st{};

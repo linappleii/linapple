@@ -61,7 +61,7 @@ static_assert(sector_map_offset + sectors_per_track <=
 }  // namespace iie
 
 struct IieInstance_t {
-  FilePtr_t file{nullptr, fclose};
+  FilePtr file{nullptr, fclose};
   std::array<uint8_t, iie::header_size> header{};
   std::array<uint8_t, sectors_per_track> sector_order{};
   std::array<uint8_t, disk_encoding_scratch_size> scratch{};

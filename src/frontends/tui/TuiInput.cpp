@@ -213,13 +213,13 @@ static auto toggle_debugger() -> void {
 }
 
 static auto save_configuration() -> void {
-  Configuration_t::instance().set_int("Configuration", "Video Emulation",
+  Configuration::instance().set_int("Configuration", "Video Emulation",
                                       static_cast<int>(g_videotype));
-  Configuration_t::instance().set_int("Configuration", "Emulation Speed",
+  Configuration::instance().set_int("Configuration", "Emulation Speed",
                                       system_state.speed);
-  Configuration_t::instance().set_int("Configuration", "Fullscreen",
+  Configuration::instance().set_int("Configuration", "Fullscreen",
                                       system_state.fullscreen ? 1 : 0);
-  Configuration_t::instance().save();
+  Configuration::instance().save();
 }
 
 static auto cycle_video_mode() -> void {

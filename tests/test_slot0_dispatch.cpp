@@ -109,7 +109,7 @@ struct Slot0_t {
 };
 
 // Dedicated test fixture for inspecting synchronous dispatcher status.
-void bare_log(void*, PeripheralLogLevel_t, const char*, ...) {}
+void bare_log(void*, PeripheralLogLevel, const char*, ...) {}
 void bare_register_direct_io(void*, uint16_t, PeripheralIOHandler,
                              PeripheralIOHandler) {}
 void bare_register_direct_io_strobe(void*, uint16_t,

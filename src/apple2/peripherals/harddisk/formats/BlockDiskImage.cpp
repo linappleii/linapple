@@ -17,7 +17,7 @@
 // signatures.
 
 struct BlockDiskImage_t {
-  FilePtr_t file{nullptr, fclose};
+  FilePtr file{nullptr, fclose};
   uint32_t data_offset = 0;
   uint32_t total_blocks = 0;
   bool os_readonly = false;

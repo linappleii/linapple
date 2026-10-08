@@ -75,7 +75,7 @@ auto file_exists(const std::string& path) -> bool {
 std::string g_watched_file;
 std::vector<std::string> g_lines_naming_the_file;
 
-auto capture_log(LogLevel_t level, const char* message) -> void {
+auto capture_log(LogLevel level, const char* message) -> void {
   (void)level;
   if (message != nullptr &&
       std::strstr(message, g_watched_file.c_str()) != nullptr) {

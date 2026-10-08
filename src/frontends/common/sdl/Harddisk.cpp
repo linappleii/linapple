@@ -80,9 +80,9 @@ auto harddisk_ui_ftp_select(int drive) -> void {
 
   util_safe_strcpy(system_state.ftp_server_hdd.data(), full_path.c_str(),
                    system_state.ftp_server_hdd.size());
-  Configuration_t::instance().set_string("Preferences", REGVALUE_FTP_HDD_DIR,
+  Configuration::instance().set_string("Preferences", cfg_ftp_hdd_dir,
                                          system_state.ftp_server_hdd.data());
-  Configuration_t::instance().save();
+  Configuration::instance().save();
 
   std::string safe_filename = Path::sanitize_filename(filename);
   if (safe_filename.empty()) {
@@ -98,11 +98,11 @@ auto harddisk_ui_ftp_select(int drive) -> void {
     full_path += "/" + safe_filename;
   }
 
-  FtpClient_t client;
-  const FtpStatus_t status =
+  FtpClient client;
+  const FtpStatus status =
       client.download_file(full_path, system_state.ftp_local_dir.data(),
                            safe_filename, system_state.ftp_user_pass.data());
-  if (status != FtpStatus_t::ok) {
+  if (status != FtpStatus::ok) {
     Logger::error(
         "FTP: Failed downloading harddisk image from %s (status %u)\n",
         full_path.c_str(), static_cast<unsigned>(status));
@@ -119,10 +119,10 @@ auto harddisk_ui_ftp_select(int drive) -> void {
 
   if (peripheral_command(k_harddisk_slot, harddisk_cmd_insert, &cmd,
                          sizeof(cmd)) == peripheral_ok) {
-    const char* key = (drive != 0) ? REGVALUE_HDD_IMAGE2 : REGVALUE_HDD_IMAGE1;
-    Configuration_t::instance().set_string("Preferences", key,
+    const char* key = (drive != 0) ? cfg_hdd_image2 : cfg_hdd_image1;
+    Configuration::instance().set_string("Preferences", key,
                                            local_path.c_str());
-    Configuration_t::instance().save();
+    Configuration::instance().save();
   }
   back_idx = file_index;
   draw_frame_window();
@@ -176,9 +176,9 @@ auto harddisk_ui_select(int drive) -> void {
 
   util_safe_strcpy(system_state.hdd_dir.data(), full_path.c_str(),
                    system_state.hdd_dir.size());
-  Configuration_t::instance().set_string(
-      "Preferences", REGVALUE_PREF_HDD_START_DIR, system_state.hdd_dir.data());
-  Configuration_t::instance().save();
+  Configuration::instance().set_string(
+      "Preferences", cfg_pref_hdd_start_dir, system_state.hdd_dir.data());
+  Configuration::instance().save();
 
   const std::string file_path =
       (full_path == "/") ? ("/" + filename) : (full_path + "/" + filename);
@@ -189,10 +189,10 @@ auto harddisk_ui_select(int drive) -> void {
 
   if (peripheral_command(k_harddisk_slot, harddisk_cmd_insert, &cmd,
                          sizeof(cmd)) == peripheral_ok) {
-    const char* key = (drive != 0) ? REGVALUE_HDD_IMAGE2 : REGVALUE_HDD_IMAGE1;
-    Configuration_t::instance().set_string("Preferences", key,
+    const char* key = (drive != 0) ? cfg_hdd_image2 : cfg_hdd_image1;
+    Configuration::instance().set_string("Preferences", key,
                                            file_path.c_str());
-    Configuration_t::instance().save();
+    Configuration::instance().save();
     Logger::info("HDD disk image %s inserted\n", file_path.c_str());
   }
   back_idx = file_index;

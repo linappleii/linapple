@@ -143,7 +143,7 @@ auto harddisk_loader_open(const char* path, bool* out_os_readonly,
     temp_guard.reset(new TemporaryFileGuard(load_path));
   }
 
-  FilePtr_t file{fopen(load_path, "rb"), fclose};
+  FilePtr file{fopen(load_path, "rb"), fclose};
   if (file == nullptr) {
     return harddisk_err_not_found;
   }

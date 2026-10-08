@@ -46,7 +46,7 @@ auto two_img_open(const char* path, uint32_t file_offset, bool* out_os_readonly,
     return harddisk_err_io;
   }
 
-  FilePtr_t file{fopen(path, "rb"), fclose};
+  FilePtr file{fopen(path, "rb"), fclose};
   if (file == nullptr) {
     return harddisk_err_not_found;
   }

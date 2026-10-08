@@ -62,7 +62,7 @@ static auto frontend_set_window_title(const char* title) -> void {
   sdl_compat_set_window_title(title);
 }
 
-auto session_init(AppConfig_t* config) -> int {
+auto session_init(AppConfig* config) -> int {
   if (app_controller_initialize(config) != 0) {
     return 1;
   }

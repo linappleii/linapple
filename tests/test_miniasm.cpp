@@ -18,10 +18,10 @@ struct MiniAsmHarness_t {
   bool is_initialized = false;
 
   // The machine type comes from the declared config rather than from
-  // AppConfig_t: app_controller_initialize lets the config file win unless
+  // AppConfig: app_controller_initialize lets the config file win unless
   // apple2_type_explicit is set, and a ][+ has no mini-assembler at all.
   explicit MiniAsmHarness_t(const TestConfig_t& test_config) {
-    AppConfig_t config = {};
+    AppConfig config = {};
     app_config_default(&config);
     util_safe_strcpy(config.config_path.data(), test_config.c_str(),
                      path_max_len);

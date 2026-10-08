@@ -116,7 +116,7 @@ struct ParsedLine_t {
       : line_number(num), token_bytes(std::move(bytes)) {}
 };
 
-static BasicSyncConfig_t sync_config;
+static BasicSyncConfig sync_config;
 static std::string watch_dir;
 static std::string watch_filename;
 static uint32_t last_exported_hash = 0;
@@ -526,7 +526,7 @@ static auto check_file_mtime_changed() -> bool {
   return (last_file_mtime != 0 && st.st_mtime > last_file_mtime);
 }
 
-static auto append_line_prefix(std::ostringstream& ss, BasicLineMode_t mode,
+static auto append_line_prefix(std::ostringstream& ss, BasicLineMode mode,
                                uint16_t line_num,
                                uint32_t* expected_positional_line) -> void {
   if (mode != basic_line_mode_positional) {
@@ -544,7 +544,7 @@ static auto append_line_prefix(std::ostringstream& ss, BasicLineMode_t mode,
 
 }  // namespace
 
-auto basic_sync_init(const char* file_path, BasicLineMode_t mode) -> void {
+auto basic_sync_init(const char* file_path, BasicLineMode mode) -> void {
   basic_sync_shutdown();
   if (file_path == nullptr || file_path[0] == '\0') {
     return;
@@ -595,16 +595,16 @@ auto basic_sync_shutdown() noexcept -> void {
   last_file_mtime = 0;
   initial_import_pending = false;
   frame_counter = 0;
-  sync_config = BasicSyncConfig_t{};
+  sync_config = BasicSyncConfig{};
 }
 
 auto basic_sync_is_active() noexcept -> bool { return sync_config.enabled; }
 
-auto basic_sync_get_config() noexcept -> const BasicSyncConfig_t& {
+auto basic_sync_get_config() noexcept -> const BasicSyncConfig& {
   return sync_config;
 }
 
-auto basic_sync_export_to_string(BasicLineMode_t mode) -> std::string {
+auto basic_sync_export_to_string(BasicLineMode mode) -> std::string {
   uint16_t txttab = read_zero_page_16(addr_txttab, default_txttab);
   uint16_t vartab = read_zero_page_16(addr_vartab, default_txttab);
   uint16_t himem = read_zero_page_16(addr_himem, default_himem);
@@ -649,7 +649,7 @@ auto basic_sync_export_to_string(BasicLineMode_t mode) -> std::string {
 }
 
 auto basic_sync_import_from_string(const std::string& text,
-                                   BasicLineMode_t mode) -> bool {
+                                   BasicLineMode mode) -> bool {
   uint16_t himem = read_zero_page_16(addr_himem, default_himem);
   if (himem == 0 || himem > hard_himem_ceiling) {
     himem = default_himem;
@@ -720,7 +720,7 @@ auto basic_sync_import_from_string(const std::string& text,
 }
 
 auto basic_sync_import_from_string(const char* text, size_t length,
-                                   BasicLineMode_t mode) -> bool {
+                                   BasicLineMode mode) -> bool {
   if (text == nullptr) {
     return false;
   }

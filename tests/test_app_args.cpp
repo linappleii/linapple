@@ -11,7 +11,7 @@ TEST_CASE("AppArgs: Basic Parsing") {
   char* argv[] = {(char*)"linapple", (char*)"--d1", (char*)"disk1.dsk",
                   (char*)"--boot"};
   int argc = 4;
-  AppConfig_t config = {};
+  AppConfig config = {};
   int res = app_args_parse(argc, argv, &config);
 
   CHECK(res == 0);
@@ -23,7 +23,7 @@ TEST_CASE("AppArgs: Basic Parsing") {
 TEST_CASE("AppArgs: Diagnostic Intent") {
   char* argv[] = {(char*)"linapple", (char*)"--list-hardware"};
   int argc = 2;
-  AppConfig_t config = {};
+  AppConfig config = {};
   int res = app_args_parse(argc, argv, &config);
 
   CHECK(res == 0);
@@ -37,7 +37,7 @@ TEST_CASE("AppArgs: Frontend Pass-through") {
   char* argv[] = {(char*)"linapple", (char*)"--boot", (char*)"--wayland",
                   (char*)"pos1"};
   int argc = 4;
-  AppConfig_t config = {};
+  AppConfig config = {};
   int res = app_args_parse(argc, argv, &config);
 
   CHECK(res == 0);
@@ -50,7 +50,7 @@ TEST_CASE("AppArgs: Frontend Pass-through") {
 TEST_CASE("AppArgs: Help Intent") {
   char* argv[] = {(char*)"linapple", (char*)"-h"};
   int argc = 2;
-  AppConfig_t config = {};
+  AppConfig config = {};
   int res = app_args_parse(argc, argv, &config);
 
   CHECK(res == 0);
@@ -62,7 +62,7 @@ TEST_CASE("AppArgs: Missing Argument error") {
   // an error.
   char* argv[] = {(char*)"linapple", (char*)"--config"};
   int argc = 2;
-  AppConfig_t config = {};
+  AppConfig config = {};
   int res = app_args_parse(argc, argv, &config);
 
   CHECK(res != 0);
@@ -72,7 +72,7 @@ TEST_CASE("AppArgs: Missing Argument error") {
 TEST_CASE("AppArgs: Caps Lock Mode Arguments") {
   SUBCASE("--caps-mode=emulated") {
     char* argv[] = {(char*)"linapple", (char*)"--caps-mode=emulated"};
-    AppConfig_t config = {};
+    AppConfig config = {};
     int res = app_args_parse(2, argv, &config);
     CHECK(res == 0);
     CHECK(config.caps_lock_mode == caps_mode_emulated);
@@ -80,7 +80,7 @@ TEST_CASE("AppArgs: Caps Lock Mode Arguments") {
 
   SUBCASE("--caps-mode host") {
     char* argv[] = {(char*)"linapple", (char*)"--caps-mode", (char*)"host"};
-    AppConfig_t config = {};
+    AppConfig config = {};
     int res = app_args_parse(3, argv, &config);
     CHECK(res == 0);
     CHECK(config.caps_lock_mode == caps_mode_host);

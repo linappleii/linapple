@@ -159,7 +159,7 @@ auto enter_message_loop() -> void {
 }
 
 auto main(int argc, char** argv) -> int {
-  AppConfig_t& config = Configuration_t::instance();
+  AppConfig& config = Configuration::instance();
   if (app_args_parse(argc, argv, &config) != 0) {
     return 1;
   }
@@ -168,7 +168,7 @@ auto main(int argc, char** argv) -> int {
     return 0;
   }
 
-  // Store the audio dump file name explicitly since AppConfig_t only holds it
+  // Store the audio dump file name explicitly since AppConfig only holds it
   // in a buffer and ds_init needs it later.
   if (config.audio_dump_path.at(0) != '\0') {
     g_audio_dump_file = config.audio_dump_path.data();

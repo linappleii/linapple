@@ -38,7 +38,7 @@ constexpr size_t first_data_field_at = first_address_field_at + 14 + 6;
 constexpr uint8_t zero_sector_nibble = 0x96;
 
 auto read_file(const std::string& path) -> std::vector<uint8_t> {
-  FilePtr_t f(fopen(path.c_str(), "rb"), fclose);
+  FilePtr f(fopen(path.c_str(), "rb"), fclose);
   REQUIRE(f != nullptr);
   std::vector<uint8_t> data;
   std::array<uint8_t, 16384> chunk{};

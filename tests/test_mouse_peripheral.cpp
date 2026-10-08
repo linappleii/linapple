@@ -103,7 +103,7 @@ class BenchHost_t {
     return static_cast<uint16_t>(0xC080 + (io_slot_ << 4) + offset);
   }
 
-  static auto bench_log(void* instance, PeripheralLogLevel_t level,
+  static auto bench_log(void* instance, PeripheralLogLevel level,
                         const char* fmt, ...) -> void {
     (void)instance;
     (void)level;
@@ -2479,7 +2479,7 @@ struct LogLines_t {
   std::vector<std::string> lines;
 };
 
-auto collect_log_line(LogLevel_t level, const char* message, void* user_data)
+auto collect_log_line(LogLevel level, const char* message, void* user_data)
     -> void {
   (void)level;
   auto* lines = static_cast<LogLines_t*>(user_data);
@@ -2491,7 +2491,7 @@ auto collect_log_line(LogLevel_t level, const char* message, void* user_data)
 class ScopedLogCapture_t {
  public:
   ScopedLogCapture_t() : verbosity_(Logger::get_verbosity()) {
-    Logger::set_verbosity(LogLevel_t::info);
+    Logger::set_verbosity(LogLevel::info);
     Logger::set_callback_with_context(collect_log_line, &lines_);
   }
   ~ScopedLogCapture_t() {
@@ -2514,7 +2514,7 @@ class ScopedLogCapture_t {
   }
 
  private:
-  LogLevel_t verbosity_;
+  LogLevel verbosity_;
   LogLines_t lines_;
 };
 

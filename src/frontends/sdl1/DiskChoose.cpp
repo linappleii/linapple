@@ -420,7 +420,7 @@ auto choose_image_dialog(int sx, int sy, const string& dir, int slot,
   g_diskChooseState.cancelled = false;
   g_diskChooseState.index_file_out = &index_file;
 
-  const AppMode_t old_mode = system_state.mode;
+  const AppMode old_mode = system_state.mode;
   system_state.mode = app_mode_disk_choose;
 
   while (g_diskChooseState.active) {

@@ -57,7 +57,7 @@ auto save_state_load() -> bool {
   auto snapshot = std::unique_ptr<Snapshot_t>(new Snapshot_t());
   const char* filename = resolve_snapshot_filename();
 
-  FilePtr_t file{fopen(filename, "rb"), fclose};
+  FilePtr file{fopen(filename, "rb"), fclose};
   if (!file) {
     Logger::error("Failed to open save state file for reading: %s\n", filename);
     return false;
@@ -115,7 +115,7 @@ auto save_state_save() -> void {
   const char* filename = resolve_snapshot_filename();
   const std::string temp_filename = std::string(filename) + ".tmp";
 
-  FilePtr_t file{fopen(temp_filename.c_str(), "wb"), fclose};
+  FilePtr file{fopen(temp_filename.c_str(), "wb"), fclose};
   if (!file) {
     Logger::error("Failed to open save state file for writing: %s\n",
                   temp_filename.c_str());

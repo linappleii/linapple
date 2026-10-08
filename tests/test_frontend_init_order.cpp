@@ -116,7 +116,7 @@ class ScopedFrontend_t {
 
  private:
   TestFixtures::ScopedCpuContext_t cpu_;
-  AppConfig_t app_config_{};
+  AppConfig app_config_{};
   bool initialized_ = false;
 };
 

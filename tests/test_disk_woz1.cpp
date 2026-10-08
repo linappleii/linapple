@@ -39,7 +39,7 @@ constexpr long track1_record_offset = 6912;
 
 auto patch(const std::string& path, long offset, const uint8_t* bytes,
            size_t len) -> void {
-  FilePtr_t f(fopen(path.c_str(), "r+b"), fclose);
+  FilePtr f(fopen(path.c_str(), "r+b"), fclose);
   REQUIRE(f != nullptr);
   REQUIRE(fseek(f.get(), offset, SEEK_SET) == 0);
   REQUIRE(fwrite(bytes, 1, len, f.get()) == len);
@@ -58,7 +58,7 @@ auto read_quarter_track(const DiskFormatDriver_t& driver, void* instance,
 
 auto load_header(const std::string& path, size_t len) -> std::vector<uint8_t> {
   std::vector<uint8_t> header(len, 0);
-  FilePtr_t f(fopen(path.c_str(), "rb"), fclose);
+  FilePtr f(fopen(path.c_str(), "rb"), fclose);
   REQUIRE(f != nullptr);
   REQUIRE(fread(header.data(), 1, len, f.get()) == len);
   return header;
@@ -257,7 +257,7 @@ constexpr uint32_t macbinary_header_size = 128;
 constexpr uint32_t v1_fixture_bytes = 13568;
 
 auto file_size_of(const std::string& path) -> uint32_t {
-  FilePtr_t f(fopen(path.c_str(), "rb"), fclose);
+  FilePtr f(fopen(path.c_str(), "rb"), fclose);
   REQUIRE(f != nullptr);
   return static_cast<uint32_t>(Path::file_size(f.get()));
 }
@@ -414,7 +414,7 @@ constexpr size_t meta_chunk_data_size = 32;
 constexpr size_t woz_file_header_size = 12;
 
 auto read_file(const std::string& path) -> std::vector<uint8_t> {
-  FilePtr_t f(fopen(path.c_str(), "rb"), fclose);
+  FilePtr f(fopen(path.c_str(), "rb"), fclose);
   REQUIRE(f != nullptr);
   std::vector<uint8_t> data(static_cast<size_t>(Path::file_size(f.get())), 0);
   REQUIRE(fread(data.data(), 1, data.size(), f.get()) == data.size());
@@ -443,7 +443,7 @@ auto append_meta_with_crc(const std::string& path) -> void {
   out[crc32_field_offset + 2] = static_cast<uint8_t>((crc >> 16) & 0xFF);
   out[crc32_field_offset + 3] = static_cast<uint8_t>(crc >> 24);
 
-  FilePtr_t f(fopen(path.c_str(), "wb"), fclose);
+  FilePtr f(fopen(path.c_str(), "wb"), fclose);
   REQUIRE(f != nullptr);
   REQUIRE(fwrite(out.data(), 1, out.size(), f.get()) == out.size());
 }

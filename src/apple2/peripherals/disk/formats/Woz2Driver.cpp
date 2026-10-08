@@ -44,7 +44,7 @@ constexpr uint32_t max_track_blocks = max_track_bits / bits_per_block;
 }  // namespace woz2
 
 struct Woz2Instance_t {
-  FilePtr_t file{nullptr, fclose};
+  FilePtr file{nullptr, fclose};
   std::array<uint8_t, woz2::header_size> header{};
   uint32_t tmap_offset = 0;
   uint32_t trks_offset = 0;

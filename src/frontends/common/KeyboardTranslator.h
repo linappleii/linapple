@@ -19,7 +19,7 @@ enum QuickSaveMode_t : uint8_t {
 
 // scancode is the USB HID usage the maps index (SDL's scancode); 0 says the
 // host has none, as a terminal does, and such a key is read symbolically.
-// keycode is printable ASCII or a LinAppleKey_t value.
+// keycode is printable ASCII or a LinAppleKey value.
 struct KeyboardHostKey_t {
   uint32_t scancode;
   uint32_t keycode;
@@ -41,7 +41,7 @@ auto keyboard_translate(const KeyboardHostKey_t* key, uint8_t* apple_code)
     -> bool;
 auto keyboard_custom_switch(uint32_t scancode) -> KeyboardCustomSwitch_t;
 
-auto keyboard_symbolic_to_core(int key, uint32_t mod) -> LinAppleKey_t;
+auto keyboard_symbolic_to_core(int key, uint32_t mod) -> LinAppleKey;
 
 // CAPS LOCK selects the upper-case half of the keyboard ROM (Apple IIe
 // Technical Reference Manual, Table 2-3), a translation input and not

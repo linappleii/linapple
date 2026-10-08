@@ -37,7 +37,13 @@ uint32_t emul_msec = 0;
 bool full_speed = false;
 bool hdd_enabled = false;
 
-SystemState_t system_state = {
+constexpr uint32_t default_cycles_per_frame = 17030;
+constexpr int bytes_per_pixel = 4;
+constexpr double speed_subnormal_base = 0.5;
+constexpr double speed_subnormal_scale = 0.05;
+constexpr double speed_normal_divisor = 10.0;
+
+SystemState system_state = {
     app_mode_logo,
     false,
     false,
@@ -55,7 +61,7 @@ SystemState_t system_state = {
     {"anonymous:mymail@hotmail.com"},
     {""},
     true,
-    17030,
+    default_cycles_per_frame,
     false,
 };
 
@@ -75,13 +81,13 @@ namespace {
 constexpr uint64_t cpu_test_max_cycles = 100000000;
 constexpr int full_speed_disk_iterations = 100;
 
-static LinappleVideoCallback_t video_cb = nullptr;
-static LinappleTitleCallback_t title_cb = nullptr;
+LinappleVideoCallback video_cb = nullptr;
+LinappleTitleCallback title_cb = nullptr;
 
-static uint32_t turbo_start_ms = 0;
-static bool was_turbo = false;
-static bool user_turbo = false;
-static bool disk_turbo_enabled = true;
+uint32_t turbo_start_ms = 0;
+bool was_turbo = false;
+bool user_turbo = false;
+bool disk_turbo_enabled = true;
 
 auto is_disk_turbo() -> bool {
   return disk_turbo_enabled && peripheral_is_any_active();
@@ -92,16 +98,16 @@ auto is_user_turbo() -> bool {
 }
 
 auto should_run_full_speed() -> bool {
-  bool disk_turbo = is_disk_turbo();
-  bool user_turbo_active = is_user_turbo();
-  bool should_turbo = disk_turbo || user_turbo_active;
+  const bool disk_turbo = is_disk_turbo();
+  const bool user_turbo_active = is_user_turbo();
+  const bool should_turbo = disk_turbo || user_turbo_active;
 
   if (should_turbo && !was_turbo) {
     turbo_start_ms = linapple_get_ticks();
     Logger::perf("Full-speed mode engaged (disk=%d, user=%d)\n",
                  disk_turbo ? 1 : 0, user_turbo_active ? 1 : 0);
   } else if (!should_turbo && was_turbo) {
-    uint32_t elapsed = linapple_get_ticks() - turbo_start_ms;
+    const uint32_t elapsed = linapple_get_ticks() - turbo_start_ms;
     Logger::perf("Full-speed mode disengaged after %ums\n", elapsed);
   }
 
@@ -143,21 +149,21 @@ auto extension_matches_list(const char* ext, const char* list) -> bool {
 
 }  // namespace
 
-extern FrontendAudioChannelCallback_t frontend_audio_channel_cb;
-extern FrontendAudioSourceRegisterCallback_t frontend_audio_register_cb;
-extern FrontendAudioSourceUnregisterCallback_t frontend_audio_unregister_cb;
+extern FrontendAudioChannelCallback frontend_audio_channel_cb;
+extern FrontendAudioSourceRegisterCallback frontend_audio_register_cb;
+extern FrontendAudioSourceUnregisterCallback frontend_audio_unregister_cb;
 
-auto linapple_set_video_callback(LinappleVideoCallback_t cb) -> void {
+auto linapple_set_video_callback(LinappleVideoCallback cb) -> void {
   video_cb = cb;
 }
 
-auto linapple_set_audio_channel_callback(FrontendAudioChannelCallback_t cb)
+auto linapple_set_audio_channel_callback(FrontendAudioChannelCallback cb)
     -> void {
   frontend_audio_channel_cb = cb;
 }
 
 auto linapple_set_audio_source_register_callback(
-    FrontendAudioSourceRegisterCallback_t cb) -> void {
+    FrontendAudioSourceRegisterCallback cb) -> void {
   frontend_audio_register_cb = cb;
   // A late subscriber is the normal case, not the exception: every frontend
   // installs this callback from its audio init, which runs after
@@ -170,11 +176,11 @@ auto linapple_set_audio_source_register_callback(
 }
 
 auto linapple_set_audio_source_unregister_callback(
-    FrontendAudioSourceUnregisterCallback_t cb) -> void {
+    FrontendAudioSourceUnregisterCallback cb) -> void {
   frontend_audio_unregister_cb = cb;
 }
 
-auto linapple_set_title_callback(LinappleTitleCallback_t cb) -> void {
+auto linapple_set_title_callback(LinappleTitleCallback cb) -> void {
   title_cb = cb;
 }
 
@@ -302,30 +308,29 @@ auto linapple_get_supported_disk_extensions(int slot, char* out_buffer,
   }
   out_buffer[0] = '\0';
   size_t exts_size = buffer_size;
-  if (slot == 7) {
-    if (peripheral_query(7, harddisk_query_supported_extensions, out_buffer,
+  if (slot == harddisk_default_slot) {
+    if (peripheral_query(harddisk_default_slot,
+                         harddisk_query_supported_extensions, out_buffer,
                          &exts_size) == peripheral_ok) {
       return std::strlen(out_buffer);
     }
-    auto* p = peripheral_find_internal("linapple.harddisk");
-    if (p != nullptr && p->query != nullptr) {
-      if (p->query(nullptr, harddisk_query_supported_extensions, out_buffer,
-                   &exts_size) == peripheral_ok) {
-        return std::strlen(out_buffer);
-      }
+    const auto* p = peripheral_find_internal("linapple.harddisk");
+    if (p != nullptr && p->query != nullptr &&
+        p->query(nullptr, harddisk_query_supported_extensions, out_buffer,
+                 &exts_size) == peripheral_ok) {
+      return std::strlen(out_buffer);
     }
   } else {
-    int target_slot = (slot > 0) ? slot : disk_default_slot;
+    const int target_slot = (slot > 0) ? slot : disk_default_slot;
     if (peripheral_query(target_slot, disk_query_supported_extensions,
                          out_buffer, &exts_size) == peripheral_ok) {
       return std::strlen(out_buffer);
     }
-    auto* p = peripheral_find_internal("linapple.disk_II");
-    if (p != nullptr && p->query != nullptr) {
-      if (p->query(nullptr, disk_query_supported_extensions, out_buffer,
-                   &exts_size) == peripheral_ok) {
-        return std::strlen(out_buffer);
-      }
+    const auto* p = peripheral_find_internal("linapple.disk_II");
+    if (p != nullptr && p->query != nullptr &&
+        p->query(nullptr, disk_query_supported_extensions, out_buffer,
+                 &exts_size) == peripheral_ok) {
+      return std::strlen(out_buffer);
     }
   }
   return 0;
@@ -347,7 +352,8 @@ auto linapple_is_supported_disk_image(const char* path) -> bool {
     return true;
   }
   char hdd_exts[buf_size] = {};
-  linapple_get_supported_disk_extensions(7, hdd_exts, sizeof(hdd_exts));
+  linapple_get_supported_disk_extensions(harddisk_default_slot, hdd_exts,
+                                         sizeof(hdd_exts));
   return extension_matches_list(ext, hdd_exts);
 }
 
@@ -360,7 +366,7 @@ auto linapple_load_program(const char* path) -> int {
     return static_cast<int>(program_load_not_a_program);
   }
 
-  auto res = program_loader_try_load(path);
+  const auto res = program_loader_try_load(path);
   if (res == program_load_ok) {
     return 0;
   }
@@ -368,7 +374,7 @@ auto linapple_load_program(const char* path) -> int {
     return static_cast<int>(res);
   }
 
-  auto raw_res = program_loader_load_raw(path, 0x0800);
+  const auto raw_res = program_loader_load_raw(path, 0x0800);
   if (raw_res == program_load_ok) {
     return 0;
   }
@@ -417,14 +423,14 @@ auto linapple_run_frame(uint32_t cycles) -> uint32_t {
     return 0;
   }
 
-  uint32_t executed = run_frame_cycles(cycles);
+  const uint32_t executed = run_frame_cycles(cycles);
 
   peripheral_manager_on_vblank(true);
   basic_sync_update();
 
   if (video_cb != nullptr && video_is_frame_ready()) {
-    uint32_t* output = video_get_output_buffer();
-    video_cb(output, video_width, video_height, video_width * 4);
+    const uint32_t* output = video_get_output_buffer();
+    video_cb(output, video_width, video_height, video_width * bytes_per_pixel);
     video_clear_frame_ready();
   }
   return executed;
@@ -433,18 +439,11 @@ auto linapple_run_frame(uint32_t cycles) -> uint32_t {
 auto linapple_get_speed() noexcept -> uint32_t { return system_state.speed; }
 
 auto linapple_set_speed(uint32_t speed) noexcept -> void {
-  if (speed > emulation_speed_max) {
-    speed = emulation_speed_max;
-  }
-  system_state.speed = speed;
+  system_state.speed = std::min(speed, emulation_speed_max);
 }
 
 auto linapple_speed_increase() noexcept -> uint32_t {
-  uint32_t next_speed = system_state.speed + 2;
-  if (next_speed > emulation_speed_max) {
-    next_speed = emulation_speed_max;
-  }
-  system_state.speed = next_speed;
+  system_state.speed = std::min(system_state.speed + 2, emulation_speed_max);
   return system_state.speed;
 }
 
@@ -461,16 +460,20 @@ auto linapple_speed_reset() noexcept -> uint32_t {
 }
 
 auto linapple_get_frame_cycles() noexcept -> uint32_t {
-  uint32_t base_cycles =
-      (system_state.clks_per_frame > 0) ? system_state.clks_per_frame : 17030;
+  const uint32_t base_cycles = (system_state.clks_per_frame > 0)
+                                   ? system_state.clks_per_frame
+                                   : default_cycles_per_frame;
   if (system_state.speed == emulation_speed_normal) {
     return base_cycles;
   }
   double multiplier = 1.0;
   if (system_state.speed < emulation_speed_normal) {
-    multiplier = 0.5 + static_cast<double>(system_state.speed) * 0.05;
+    multiplier = speed_subnormal_base +
+                 (static_cast<double>(system_state.speed) *
+                  speed_subnormal_scale);
   } else {
-    multiplier = static_cast<double>(system_state.speed) / 10.0;
+    multiplier = static_cast<double>(system_state.speed) /
+                 speed_normal_divisor;
   }
   return static_cast<uint32_t>(static_cast<double>(base_cycles) * multiplier);
 }
@@ -541,40 +544,40 @@ auto linapple_set_key_release_all() -> void {
 
 namespace {
 
-struct HostModifierLevels_t {
+struct HostModifierLevels {
   bool shift = false;
   bool ctrl = false;
   bool open_apple = false;
   bool solid_apple = false;
 };
 
-HostModifierLevels_t g_modifier_levels;
-bool g_rocker_switch = false;
+HostModifierLevels modifier_levels;
+bool rocker_switch = false;
 
 }  // namespace
 
 auto linapple_get_modifiers(bool* shift, bool* ctrl, bool* open_apple,
                             bool* solid_apple) -> void {
   if (shift != nullptr) {
-    *shift = g_modifier_levels.shift;
+    *shift = modifier_levels.shift;
   }
   if (ctrl != nullptr) {
-    *ctrl = g_modifier_levels.ctrl;
+    *ctrl = modifier_levels.ctrl;
   }
   if (open_apple != nullptr) {
-    *open_apple = g_modifier_levels.open_apple;
+    *open_apple = modifier_levels.open_apple;
   }
   if (solid_apple != nullptr) {
-    *solid_apple = g_modifier_levels.solid_apple;
+    *solid_apple = modifier_levels.solid_apple;
   }
 }
 
 auto linapple_set_rocker_switch(bool local) -> void {
-  g_rocker_switch = local;
+  rocker_switch = local;
   video_set_rocker_switch(local);
 }
 
-auto linapple_get_rocker_switch() -> bool { return g_rocker_switch; }
+auto linapple_get_rocker_switch() -> bool { return rocker_switch; }
 
 // The //e wires Open Apple and Solid Apple in parallel with the connector's
 // PB0 and PB1, and the shift-key mod runs shift to PB2 (Apple IIe Technical
@@ -583,10 +586,10 @@ auto linapple_get_rocker_switch() -> bool { return g_rocker_switch; }
 // themselves are already in the code the host translated.
 auto linapple_set_modifiers(bool shift, bool ctrl, bool open_apple,
                             bool solid_apple) -> void {
-  g_modifier_levels.shift = shift;
-  g_modifier_levels.ctrl = ctrl;
-  g_modifier_levels.open_apple = open_apple;
-  g_modifier_levels.solid_apple = solid_apple;
+  modifier_levels.shift = shift;
+  modifier_levels.ctrl = ctrl;
+  modifier_levels.open_apple = open_apple;
+  modifier_levels.solid_apple = solid_apple;
   switch_inputs_set_level(0, switch_source_keyboard, open_apple);
   switch_inputs_set_level(1, switch_source_keyboard, solid_apple);
   switch_inputs_set_level(2, switch_source_keyboard, shift);

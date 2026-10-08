@@ -12,7 +12,7 @@
 
 constexpr const char* k_config_file_name = "linapple.conf";
 
-auto app_env_resolve_paths(AppConfig_t* config) -> void {
+auto app_env_resolve_paths(AppConfig* config) -> void {
   if (config == nullptr) {
     return;
   }
@@ -47,17 +47,17 @@ auto app_env_resolve_paths(AppConfig_t* config) -> void {
                      path_max_len);
   }
 
-  if (config != &Configuration_t::instance()) {
-    Configuration_t::instance() = *config;
+  if (config != &Configuration::instance()) {
+    Configuration::instance() = *config;
   }
 
   Logger::initialize();
 
   if (config->is_verbose) {
-    Logger::set_verbosity(LogLevel_t::perf);
+    Logger::set_verbosity(LogLevel::perf);
   } else if (config->is_log) {
-    Logger::set_verbosity(LogLevel_t::info);
+    Logger::set_verbosity(LogLevel::info);
   } else {
-    Logger::set_verbosity(LogLevel_t::warning);
+    Logger::set_verbosity(LogLevel::warning);
   }
 }

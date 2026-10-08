@@ -79,7 +79,7 @@ TEST_CASE("Util_Path: file_size queries length and preserves seek position") {
 
   FILE* tmp = std::tmpfile();
   REQUIRE(tmp != nullptr);
-  FilePtr_t file(tmp, fclose);
+  FilePtr file(tmp, fclose);
 
   const char data[] = "0123456789abcdef";
   REQUIRE(std::fwrite(data, 1, sizeof(data), file.get()) == sizeof(data));

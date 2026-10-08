@@ -591,10 +591,10 @@ auto disk_browser_confirm(DiskBrowser_t* b) -> bool {
   if (b->slot == 7) {
     util_safe_strcpy(system_state.hdd_dir.data(), b->current_dir,
                      system_state.hdd_dir.size());
-    Configuration_t::instance().set_string("Preferences",
-                                           REGVALUE_PREF_HDD_START_DIR,
+    Configuration::instance().set_string("Preferences",
+                                           cfg_pref_hdd_start_dir,
                                            system_state.hdd_dir.data());
-    Configuration_t::instance().save();
+    Configuration::instance().save();
 
     HarddiskInsertCmd_t hcmd{};
     hcmd.drive = static_cast<uint8_t>(b->drive);
@@ -602,10 +602,10 @@ auto disk_browser_confirm(DiskBrowser_t* b) -> bool {
     if (peripheral_command(harddisk_default_slot, harddisk_cmd_insert, &hcmd,
                            sizeof(hcmd)) == peripheral_ok) {
       const char* key =
-          (b->drive != 0) ? REGVALUE_HDD_IMAGE2 : REGVALUE_HDD_IMAGE1;
-      Configuration_t::instance().set_string("Preferences", key,
+          (b->drive != 0) ? cfg_hdd_image2 : cfg_hdd_image1;
+      Configuration::instance().set_string("Preferences", key,
                                              full_path.c_str());
-      Configuration_t::instance().save();
+      Configuration::instance().save();
     }
 
     disk_browser_close(b);
@@ -614,9 +614,9 @@ auto disk_browser_confirm(DiskBrowser_t* b) -> bool {
 
   util_safe_strcpy(system_state.current_dir.data(), b->current_dir,
                    system_state.current_dir.size());
-  Configuration_t::instance().set_string("Preferences", REGVALUE_PREF_START_DIR,
+  Configuration::instance().set_string("Preferences", cfg_pref_start_dir,
                                          system_state.current_dir.data());
-  Configuration_t::instance().save();
+  Configuration::instance().save();
 
   DiskInsertCmd_t cmd{};
   cmd.drive = static_cast<uint8_t>(b->drive);

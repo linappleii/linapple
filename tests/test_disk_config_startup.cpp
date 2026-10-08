@@ -22,8 +22,8 @@ TEST_CASE("DiskIntegration: [INT-01] Startup Config Loading") {
   TestConfig_t machine(TestConfig_t::disk_ii_only());
   machine.load();
   linapple_init();
-  Configuration_t::instance().set_string(
-      "Slots", REGVALUE_DISK_IMAGE1,
+  Configuration::instance().set_string(
+      "Slots", cfg_disk_image1,
       TestFixtures::get_fixture_path("minimal.woz"));
 
   peripheral_manager_init();
@@ -45,7 +45,7 @@ TEST_CASE("DiskIntegration: [INT-02] Missing Startup Image") {
   TestConfig_t machine(TestConfig_t::disk_ii_only());
   machine.load();
   linapple_init();
-  Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
+  Configuration::instance().set_string("Slots", cfg_disk_image1,
                                          "nonexistent.dsk");
 
   peripheral_manager_init();

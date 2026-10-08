@@ -495,7 +495,7 @@ auto ParseSymbolTable(const std::string& pPathFileName,
   snprintf(sFormat1, sizeof(sFormat1), "%%x %%%ds", MAX_SYMBOLS_LEN);
   snprintf(sFormat2, sizeof(sFormat2), "%%%ds %%x", MAX_SYMBOLS_LEN);
 
-  FilePtr_t hFile(fopen(pPathFileName.c_str(), "rt"), fclose);
+  FilePtr hFile(fopen(pPathFileName.c_str(), "rt"), fclose);
 
   if (!hFile && g_symbols_display_missing_file) {
     // TODO: print filename! Bug #242 Help file (.chm) description for "Symbols"

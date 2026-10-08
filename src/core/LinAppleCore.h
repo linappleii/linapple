@@ -10,12 +10,12 @@
 
 struct PeripheralAudioInfo_t;
 
-enum CapsLockMode_t {
+enum CapsLockMode : uint8_t {
   caps_mode_host = 0,
   caps_mode_emulated = 1,
 };
 
-enum LinAppleKey_t {
+enum LinAppleKey : uint16_t {
   linapple_key_unknown = 0,
   linapple_key_return = 0x0D,
   linapple_key_escape = 0x1B,
@@ -79,7 +79,7 @@ enum LinAppleKey_t {
   linapple_key_menu,
 };
 
-enum AppMode_t {
+enum AppMode : uint8_t {
   app_mode_logo = 0,
   app_mode_paused,
   app_mode_running,
@@ -92,8 +92,8 @@ enum AppMode_t {
 constexpr size_t path_max_len = 260;
 constexpr size_t ftp_user_pass_max_len = 512;
 
-struct SystemState_t {
-  AppMode_t mode;
+struct SystemState {
+  AppMode mode;
   bool restart;
   bool fullscreen;
   uint32_t speed;
@@ -114,7 +114,7 @@ struct SystemState_t {
   bool disable_debugger;
 };
 
-extern SystemState_t system_state;
+extern SystemState system_state;
 
 constexpr uint32_t emulation_speed_min = 0;
 constexpr uint32_t emulation_speed_normal = 10;
@@ -140,17 +140,17 @@ extern bool full_speed;
 extern bool hdd_enabled;
 extern double current_clk_6502;
 
-using LinappleVideoCallback_t = void (*)(const uint32_t* pixels, int width,
+using LinappleVideoCallback = void (*)(const uint32_t* pixels, int width,
                                          int height, int pitch);
-using FrontendAudioChannelCallback_t = void (*)(const char* peripheral_id,
+using FrontendAudioChannelCallback = void (*)(const char* peripheral_id,
                                                 int slot,
                                                 const float* const* channels,
                                                 size_t num_channels,
                                                 size_t num_samples);
-using FrontendAudioSourceRegisterCallback_t = void (*)(
+using FrontendAudioSourceRegisterCallback = void (*)(
     int slot, const char* peripheral_id, const PeripheralAudioInfo_t* info);
-using FrontendAudioSourceUnregisterCallback_t = void (*)(int slot);
-using LinappleTitleCallback_t = void (*)(const char* title);
+using FrontendAudioSourceUnregisterCallback = void (*)(int slot);
+using LinappleTitleCallback = void (*)(const char* title);
 
 auto linapple_init() -> int;
 auto linapple_register_peripherals() -> void;
@@ -236,14 +236,14 @@ auto linapple_set_game_switch(uint8_t line, bool down) -> void;
 auto linapple_set_game_pulldowns(uint8_t mask) -> void;
 auto linapple_set_shift_key_mod(bool jumper_in) -> void;
 
-auto linapple_set_video_callback(LinappleVideoCallback_t cb) -> void;
-auto linapple_set_audio_channel_callback(FrontendAudioChannelCallback_t cb)
+auto linapple_set_video_callback(LinappleVideoCallback cb) -> void;
+auto linapple_set_audio_channel_callback(FrontendAudioChannelCallback cb)
     -> void;
 auto linapple_set_audio_source_register_callback(
-    FrontendAudioSourceRegisterCallback_t cb) -> void;
+    FrontendAudioSourceRegisterCallback cb) -> void;
 auto linapple_set_audio_source_unregister_callback(
-    FrontendAudioSourceUnregisterCallback_t cb) -> void;
-auto linapple_set_title_callback(LinappleTitleCallback_t cb) -> void;
+    FrontendAudioSourceUnregisterCallback cb) -> void;
+auto linapple_set_title_callback(LinappleTitleCallback cb) -> void;
 auto linapple_update_title(const char* title) -> void;
 
 auto get_title_apple_2() noexcept -> const char*;

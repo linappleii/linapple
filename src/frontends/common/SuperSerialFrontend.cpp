@@ -212,7 +212,7 @@ auto uses_modem_ioctls() -> bool {
   g_device.logged |= kind;
   va_list args;
   va_start(args, format);
-  Logger::log_message_v(LogLevel_t::warning, format, args);
+  Logger::log_message_v(LogLevel::warning, format, args);
   va_end(args);
 }
 

@@ -353,7 +353,7 @@ auto handle_key_down(SDLKey key_sym, SDLMod key_mod, uint8_t scancode) -> void {
 
 #if ENABLE_DEBUGGER
   if (system_state.mode == app_mode_debug) {
-    const LinAppleKey_t core_key = frontend_to_core_key(key_sym, key_mod);
+    const LinAppleKey core_key = frontend_to_core_key(key_sym, key_mod);
     if (core_key != linapple_key_unknown) {
       debugger_process_key(core_key);
     }

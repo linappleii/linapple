@@ -49,12 +49,12 @@
 [[gnu::weak]] auto Logger::error(const char*, ...) -> void {}
 [[gnu::weak]] auto Logger::initialize() -> void {}
 [[gnu::weak]] auto Logger::destroy() -> void {}
-[[gnu::weak]] auto Logger::set_verbosity(LogLevel_t) noexcept -> void {}
-[[gnu::weak]] auto Logger::get_verbosity() noexcept -> LogLevel_t {
-  return LogLevel_t::info;
+[[gnu::weak]] auto Logger::set_verbosity(LogLevel) noexcept -> void {}
+[[gnu::weak]] auto Logger::get_verbosity() noexcept -> LogLevel {
+  return LogLevel::info;
 }
 
 [[gnu::weak]] uint64_t g_cumulative_cycles = 0;
-[[gnu::weak]] SystemState_t system_state = {};
+[[gnu::weak]] SystemState system_state = {};
 [[gnu::weak]] eApple2Type current_apple2_type = A2TYPE_APPLE2EENHANCED;
 [[gnu::weak]] uint32_t g_videotype = 0;

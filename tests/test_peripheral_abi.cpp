@@ -74,7 +74,7 @@ Peripheral_t g_log_probe_peripheral = {LINAPPLE_ABI_VERSION,
 
 std::string g_last_logged_message;
 
-auto capture_log_message(LogLevel_t level, const char* message) -> void {
+auto capture_log_message(LogLevel level, const char* message) -> void {
   (void)level;
   g_last_logged_message = (message != nullptr) ? message : "";
 }

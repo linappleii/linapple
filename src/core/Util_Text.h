@@ -3,15 +3,17 @@
 
 #include <cstddef>
 #include <cstdint>
+constexpr uint8_t hex_alpha_base = 10;
+
 inline auto hex_char_to_val(char c) noexcept -> uint8_t {
   if (c >= '0' && c <= '9') {
     return static_cast<uint8_t>(c - '0');
   }
   if (c >= 'A' && c <= 'F') {
-    return static_cast<uint8_t>(c - 'A' + 10);
+    return static_cast<uint8_t>(c - 'A' + hex_alpha_base);
   }
   if (c >= 'a' && c <= 'f') {
-    return static_cast<uint8_t>(c - 'a' + 10);
+    return static_cast<uint8_t>(c - 'a' + hex_alpha_base);
   }
   return 0;
 }

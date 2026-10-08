@@ -41,7 +41,7 @@ constexpr size_t woz_data_block_size = 512;
 // 248, first data block 3.
 auto write_zero_track_woz2(const char* path, uint16_t block_count,
                            uint32_t bit_count) -> void {
-  FilePtr_t f(fopen(path, "wb"), fclose);
+  FilePtr f(fopen(path, "wb"), fclose);
   REQUIRE(f != nullptr);
 
   std::vector<uint8_t> hdr(woz_header_size, 0);
@@ -141,7 +141,7 @@ TEST_CASE(
     "DiskWOZ: [WOZ-1/2] Corrupted chunk size does not loop or crash open") {
   TestFixtures::ScopedTempFile_t corrupted_file(".woz");
   {
-    FilePtr_t f(fopen(corrupted_file.c_str(), "wb"), fclose);
+    FilePtr f(fopen(corrupted_file.c_str(), "wb"), fclose);
     REQUIRE(f != nullptr);
     std::vector<uint8_t> hdr(woz_header_size, 0);
     // Write WOZ2 header
@@ -179,7 +179,7 @@ const uint8_t track_fixture_pattern[] = {0x01, 0x08, 0x0F, 0x16,
                                          0x1D, 0x24, 0x2B, 0x32};
 
 auto read_file(const std::string& path) -> std::vector<uint8_t> {
-  FilePtr_t f(fopen(path.c_str(), "rb"), fclose);
+  FilePtr f(fopen(path.c_str(), "rb"), fclose);
   REQUIRE(f != nullptr);
   std::vector<uint8_t> data(static_cast<size_t>(Path::file_size(f.get())), 0);
   REQUIRE(fread(data.data(), 1, data.size(), f.get()) == data.size());
@@ -292,7 +292,7 @@ constexpr uint16_t widest_block_span = max_track_bits / (512 * 8);
 
 auto patch(const std::string& path, long offset, const uint8_t* bytes,
            size_t len) -> void {
-  FilePtr_t f(fopen(path.c_str(), "r+b"), fclose);
+  FilePtr f(fopen(path.c_str(), "r+b"), fclose);
   REQUIRE(f != nullptr);
   REQUIRE(fseek(f.get(), offset, SEEK_SET) == 0);
   REQUIRE(fwrite(bytes, 1, len, f.get()) == len);
@@ -491,7 +491,7 @@ TEST_CASE("DiskWOZ: one flipped cell byte under a CRC32 is corrupt") {
 TEST_CASE("DiskWOZ: bytes after the last chunk are outside the CRC32") {
   auto image = TestFixtures::create_ephemeral("minimal-crc.woz");
   {
-    FilePtr_t f(fopen(image.c_str(), "ab"), fclose);
+    FilePtr f(fopen(image.c_str(), "ab"), fclose);
     REQUIRE(f != nullptr);
     const std::vector<uint8_t> pad(macbinary_pad_bytes, 0);
     REQUIRE(fwrite(pad.data(), 1, pad.size(), f.get()) == pad.size());
@@ -745,7 +745,7 @@ auto build_track_image_with_meta_and_writ(const std::string& path) -> void {
   out[crc32_field_offset + 2] = static_cast<uint8_t>((crc >> 16) & 0xFF);
   out[crc32_field_offset + 3] = static_cast<uint8_t>(crc >> 24);
 
-  FilePtr_t f(fopen(path.c_str(), "wb"), fclose);
+  FilePtr f(fopen(path.c_str(), "wb"), fclose);
   REQUIRE(f != nullptr);
   REQUIRE(fwrite(out.data(), 1, out.size(), f.get()) == out.size());
 }

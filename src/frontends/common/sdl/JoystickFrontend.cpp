@@ -283,46 +283,46 @@ auto joy_frontend_initialize() -> void {
 
   g_joy_config = {};
   uint32_t val = 0;
-  if (load(REGVALUE_JOY_TYPE1, &val)) {
+  if (load(cfg_joy_type1, &val)) {
     g_joy_config.joy_type[0] = (val < joystick_config_type_count) ? val : 0;
   }
-  if (load(REGVALUE_JOY_TYPE2, &val)) {
+  if (load(cfg_joy_type2, &val)) {
     g_joy_config.joy_type[1] = (val < joystick_config_type_count) ? val : 0;
   }
-  if (load(REGVALUE_JOY_INDEX1, &val)) {
+  if (load(cfg_joy_index1, &val)) {
     g_joy_config.joy_index[0] = val;
   }
-  if (load(REGVALUE_JOY_INDEX2, &val)) {
+  if (load(cfg_joy_index2, &val)) {
     g_joy_config.joy_index[1] = val;
   }
-  if (load(REGVALUE_JOY_BUTTON1_1, &val)) {
+  if (load(cfg_joy_button1_1, &val)) {
     g_joy_config.joy0_button_map[0] = val;
   }
-  if (load(REGVALUE_JOY_BUTTON1_2, &val)) {
+  if (load(cfg_joy_button1_2, &val)) {
     g_joy_config.joy0_button_map[1] = val;
   }
-  if (load(REGVALUE_JOY_BUTTON2_1, &val)) {
+  if (load(cfg_joy_button2_1, &val)) {
     g_joy_config.joy1_button_map = val;
   }
-  if (load(REGVALUE_JOY_AXIS1_0, &val)) {
+  if (load(cfg_joy_axis1_0, &val)) {
     g_joy_config.joy_axis[0][0] = val;
   }
-  if (load(REGVALUE_JOY_AXIS1_1, &val)) {
+  if (load(cfg_joy_axis1_1, &val)) {
     g_joy_config.joy_axis[0][1] = val;
   }
-  if (load(REGVALUE_JOY_AXIS2_0, &val)) {
+  if (load(cfg_joy_axis2_0, &val)) {
     g_joy_config.joy_axis[1][0] = val;
   }
-  if (load(REGVALUE_JOY_AXIS2_1, &val)) {
+  if (load(cfg_joy_axis2_1, &val)) {
     g_joy_config.joy_axis[1][1] = val;
   }
 
-  g_trim_x = load_trim(REGVALUE_PDL_XTRIM);
-  g_trim_y = load_trim(REGVALUE_PDL_YTRIM);
+  g_trim_x = load_trim(cfg_pdl_xtrim);
+  g_trim_y = load_trim(cfg_pdl_ytrim);
 
   // The jumper is soldered in or out; it is read with the configuration and
   // never changes while the machine runs.
-  linapple_set_shift_key_mod(load(REGVALUE_SHIFT_KEY_MOD, &val) && val != 0);
+  linapple_set_shift_key_mod(load(cfg_shift_key_mod, &val) && val != 0);
 
   const int number_of_joysticks = sdl_compat_num_joysticks();
 

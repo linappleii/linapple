@@ -30,7 +30,7 @@
 // signatures.
 
 struct SectorDiskImage_t {
-  FilePtr_t file{nullptr, fclose};
+  FilePtr file{nullptr, fclose};
   uint32_t data_offset = 0;
   uint32_t track_count = 0;
   bool host_read_only = false;
@@ -119,7 +119,7 @@ auto sector_disk_image_open(const char* path, uint32_t file_offset,
   }
 
   bool host_read_only = read_only;
-  FilePtr_t file{nullptr, fclose};
+  FilePtr file{nullptr, fclose};
   if (!read_only) {
     file.reset(fopen(path, "r+b"));
   }
@@ -296,7 +296,7 @@ auto sector_disk_image_create(const char* path) -> DiskError_e {
   // fdopen is POSIX, declared by the <stdio.h> behind <cstdio>, which
   // include-cleaner does not credit.
   // NOLINTNEXTLINE(misc-include-cleaner)
-  FilePtr_t file{fdopen(fd, "wb"), fclose};
+  FilePtr file{fdopen(fd, "wb"), fclose};
   if (file == nullptr) {
     close(fd);
     unlink(path);

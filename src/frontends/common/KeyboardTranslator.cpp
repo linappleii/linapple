@@ -251,13 +251,13 @@ auto keyboard_custom_switch(uint32_t scancode) -> KeyboardCustomSwitch_t {
   return keyboard_custom_switch_none;
 }
 
-auto keyboard_symbolic_to_core(int key, uint32_t mod) -> LinAppleKey_t {
+auto keyboard_symbolic_to_core(int key, uint32_t mod) -> LinAppleKey {
   (void)mod;
 
   namespace kt = keyboard_translator;
 
   if (key >= kt::k_ascii_printable_min && key <= kt::k_ascii_printable_max) {
-    return static_cast<LinAppleKey_t>(key);
+    return static_cast<LinAppleKey>(key);
   }
 
   switch (key) {
@@ -561,7 +561,7 @@ auto keyboard_apply_custom_mappings() -> void {
   kt::g_custom_keys.fill(kt::CustomKey_t{});
 
   const auto* custom_section =
-      Configuration_t::instance().get_section("Keyboard.Custom");
+      Configuration::instance().get_section("Keyboard.Custom");
   if (custom_section == nullptr || custom_section->empty()) {
     return;
   }
@@ -614,7 +614,7 @@ auto keyboard_apply_custom_mappings() -> void {
 
 auto keyboard_has_custom_mappings() -> bool {
   const auto* custom_section =
-      Configuration_t::instance().get_section("Keyboard.Custom");
+      Configuration::instance().get_section("Keyboard.Custom");
   return (custom_section != nullptr && !custom_section->empty());
 }
 

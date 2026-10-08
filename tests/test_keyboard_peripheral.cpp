@@ -305,7 +305,7 @@ class BenchHost_t {
   static BenchHost_t* s_active;
   static PeripheralMachine_t s_machine;
 
-  static auto bench_log(void* instance, PeripheralLogLevel_t level,
+  static auto bench_log(void* instance, PeripheralLogLevel level,
                         const char* fmt, ...) -> void {
     (void)instance;
     (void)level;

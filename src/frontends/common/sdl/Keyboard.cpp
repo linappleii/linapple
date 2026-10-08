@@ -7,7 +7,7 @@
 #include "frontends/common/KeyboardTranslator.h"
 
 // NOLINTBEGIN(misc-include-cleaner): Keycodes (SDLK_*) are provided across SDL1/2/3 backends via SdlBackend.h
-auto frontend_to_core_key(int key, uint32_t mod) -> LinAppleKey_t {
+auto frontend_to_core_key(int key, uint32_t mod) -> LinAppleKey {
   switch (key) {
     case SDLK_UP:
       return linapple_key_up;

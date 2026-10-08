@@ -38,7 +38,7 @@ constexpr uint8_t info_version_1_0 = 1;
 }  // namespace woz1
 
 struct Woz1Instance_t {
-  FilePtr_t file{nullptr, fclose};
+  FilePtr file{nullptr, fclose};
   std::array<uint8_t, woz1::header_size> header{};
   uint32_t tmap_offset = 0;
   uint32_t trks_offset = 0;

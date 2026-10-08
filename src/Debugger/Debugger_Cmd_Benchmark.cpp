@@ -206,7 +206,7 @@ auto CmdProfileList(int nArgs) -> Update_t {
 
 auto ProfileSave() -> bool {
   bool bStatus = false;
-  FilePtr_t hFile(fopen(g_file_name_profile.c_str(), "w"), fclose);
+  FilePtr hFile(fopen(g_file_name_profile.c_str(), "w"), fclose);
 
   if (hFile) {
     ProfileFormat(true, 0);

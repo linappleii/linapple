@@ -19,15 +19,15 @@ namespace {
 
 constexpr const char* asset_master_dsk = "Master.dsk";
 
-std::unique_ptr<Assets_t> assets_ptr;
-AssetFreeIconFn_t free_icon_cb = nullptr;
+std::unique_ptr<Assets> assets_storage;
+AssetFreeIconFn free_icon_callback = nullptr;
 
 auto asset_find_master_disk(std::string* path_out) -> bool {
   if (path_out == nullptr) {
     return false;
   }
 
-  std::string full_path = Path::find_data_file(asset_master_dsk);
+  const std::string full_path = Path::find_data_file(asset_master_dsk);
   if (full_path.empty()) {
     Logger::warning("Could not find %s in any search path\n", asset_master_dsk);
     return false;
@@ -40,19 +40,19 @@ auto asset_find_master_disk(std::string* path_out) -> bool {
 
 }  // namespace
 
-Assets_t* assets = nullptr;
+Assets* assets = nullptr;
 
-auto asset_set_free_icon_callback(AssetFreeIconFn_t cb) noexcept -> void {
-  free_icon_cb = cb;
+auto asset_set_free_icon_callback(AssetFreeIconFn cb) noexcept -> void {
+  free_icon_callback = cb;
 }
 
 auto asset_init() -> bool {
-  if (assets_ptr != nullptr) {
+  if (assets_storage != nullptr) {
     asset_quit();
   }
 
-  assets_ptr.reset(new Assets_t());
-  assets = assets_ptr.get();
+  assets_storage.reset(new Assets());
+  assets = assets_storage.get();
 
   assets->font = video_load_xpm(font_xpm);
   if (assets->font == nullptr) {
@@ -74,8 +74,8 @@ auto asset_quit() noexcept -> void {
     return;
   }
 
-  if (free_icon_cb != nullptr) {
-    free_icon_cb();
+  if (free_icon_callback != nullptr) {
+    free_icon_callback();
   }
 
   assets->icon = nullptr;
@@ -90,7 +90,7 @@ auto asset_quit() noexcept -> void {
     assets->splash = nullptr;
   }
 
-  assets_ptr.reset();
+  assets_storage.reset();
   assets = nullptr;
 }
 
@@ -100,7 +100,7 @@ auto asset_insert_master_disk() -> int {
     return -1;
   }
 
-  Configuration_t::instance().set_string(cfg_sec_slots, cfg_disk_image1, path);
+  Configuration::instance().set_string(cfg_sec_slots, cfg_disk_image1, path);
 
   DiskInsertCmd_t cmd{};
   cmd.drive = disk_drive_0;

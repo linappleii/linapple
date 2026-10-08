@@ -26,9 +26,9 @@
 #include "core/Registry.h"
 #include "core/Util_Text.h"
 
-FrontendAudioChannelCallback_t frontend_audio_channel_cb = nullptr;
-FrontendAudioSourceRegisterCallback_t frontend_audio_register_cb = nullptr;
-FrontendAudioSourceUnregisterCallback_t frontend_audio_unregister_cb = nullptr;
+FrontendAudioChannelCallback frontend_audio_channel_cb = nullptr;
+FrontendAudioSourceRegisterCallback frontend_audio_register_cb = nullptr;
+FrontendAudioSourceUnregisterCallback frontend_audio_unregister_cb = nullptr;
 
 auto peripheral_get_builtin_registry() -> std::vector<Peripheral_t*>& {
   static std::vector<Peripheral_t*> registry;

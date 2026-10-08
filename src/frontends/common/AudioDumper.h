@@ -26,7 +26,7 @@ struct AudioDumper_t {
  private:
   auto finalize_unlocked() -> void;
 
-  FilePtr_t file_{nullptr, fclose};
+  FilePtr file_{nullptr, fclose};
   uint32_t total_offset_{0};
   uint32_t data_offset_{0};
   uint32_t total_bytes_written_{0};

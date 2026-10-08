@@ -81,11 +81,11 @@ auto joystick_config_pulldown_mask(uint32_t type0, uint32_t type1) -> uint8_t {
 }
 
 auto joystick_config_pulldown_mask() -> uint8_t {
-  return joystick_config_pulldown_mask(configured_type(REGVALUE_JOY_TYPE1),
-                                       configured_type(REGVALUE_JOY_TYPE2));
+  return joystick_config_pulldown_mask(configured_type(cfg_joy_type1),
+                                       configured_type(cfg_joy_type2));
 }
 
 auto joystick_config_shift_key_mod() -> bool {
   uint32_t jumper = 0;
-  return load(REGVALUE_SHIFT_KEY_MOD, &jumper) && jumper != 0;
+  return load(cfg_shift_key_mod, &jumper) && jumper != 0;
 }

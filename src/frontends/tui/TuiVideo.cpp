@@ -54,7 +54,7 @@ static constexpr int k_a2_text_rows = 24;
 static constexpr int k_mixed_mode_text_start = 20;
 static constexpr int k_refresh_full_divisor = 60;
 
-static TuiRenderMode_t g_render_mode = TUI_RENDER_SMART;
+static TuiRenderMode g_render_mode = TUI_RENDER_SMART;
 static bool g_show_help = false;
 static bool g_fullscreen = false;
 
@@ -75,7 +75,7 @@ auto tui_video_picture_box() -> MousePictureRect_t {
   return {0, 0, g_term_width, g_term_height};
 }
 
-auto tui_video_set_render_mode(TuiRenderMode_t mode) -> void {
+auto tui_video_set_render_mode(TuiRenderMode mode) -> void {
   g_render_mode = mode;
 }
 
@@ -84,7 +84,7 @@ auto tui_video_toggle_render_mode() -> void {
       (g_render_mode == TUI_RENDER_SMART) ? TUI_RENDER_BLOCK : TUI_RENDER_SMART;
 }
 
-auto tui_video_get_render_mode() -> TuiRenderMode_t { return g_render_mode; }
+auto tui_video_get_render_mode() -> TuiRenderMode { return g_render_mode; }
 
 auto tui_video_toggle_help() -> void { g_show_help = !g_show_help; }
 
@@ -1134,7 +1134,7 @@ auto tui_video_save_screenshot() -> void {
     }
   }
 
-  FilePtr_t fp_ans{fopen(ans_name.data(), "wb"), fclose};
+  FilePtr fp_ans{fopen(ans_name.data(), "wb"), fclose};
   if (fp_ans != nullptr) {
     bool ans_ok = true;
     TuiPixel_t curr_fg = {1, 1, 1};
@@ -1179,7 +1179,7 @@ auto tui_video_save_screenshot() -> void {
     }
   }
 
-  FilePtr_t fp_txt{fopen(txt_name.data(), "wb"), fclose};
+  FilePtr fp_txt{fopen(txt_name.data(), "wb"), fclose};
   if (fp_txt != nullptr) {
     bool txt_ok = true;
     for (int y = 0; y < g_term_height; ++y) {

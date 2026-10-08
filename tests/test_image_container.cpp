@@ -45,7 +45,7 @@ auto macbinary_crc16(const uint8_t* data, size_t length) -> uint16_t {
 }
 
 auto read_file(const std::string& path) -> std::vector<uint8_t> {
-  FilePtr_t f(fopen(path.c_str(), "rb"), fclose);
+  FilePtr f(fopen(path.c_str(), "rb"), fclose);
   REQUIRE(f != nullptr);
   std::vector<uint8_t> data;
   std::array<uint8_t, 16384> chunk{};
@@ -58,7 +58,7 @@ auto read_file(const std::string& path) -> std::vector<uint8_t> {
 
 auto write_file(const std::string& path, const std::vector<uint8_t>& data)
     -> void {
-  FilePtr_t f(fopen(path.c_str(), "wb"), fclose);
+  FilePtr f(fopen(path.c_str(), "wb"), fclose);
   REQUIRE(f != nullptr);
   REQUIRE(fwrite(data.data(), 1, data.size(), f.get()) == data.size());
   REQUIRE(fclose(f.release()) == 0);

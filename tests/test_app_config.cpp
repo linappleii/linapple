@@ -14,8 +14,8 @@
 #include "doctest.h"
 #include "frontends/common/AppConfig.h"
 
-TEST_CASE("AppConfig_t: Initialization") {
-  AppConfig_t config = {};
+TEST_CASE("AppConfig: Initialization") {
+  AppConfig config = {};
   app_config_default(&config);
 
   CHECK(config.intent == INTENT_RUN);
@@ -30,8 +30,8 @@ TEST_CASE("AppConfig_t: Initialization") {
   CHECK(config.hardware_info_name[0] == '\0');
 }
 
-TEST_CASE("AppConfig_t: Manual Population") {
-  AppConfig_t config = {};
+TEST_CASE("AppConfig: Manual Population") {
+  AppConfig config = {};
   app_config_default(&config);
 
   config.intent = INTENT_DIAGNOSTIC;
@@ -46,25 +46,25 @@ TEST_CASE("AppConfig_t: Manual Population") {
 }
 
 TEST_CASE("Registry: Mouse Capture Key Definition") {
-  CHECK(strcmp(REGVALUE_MOUSE_CAPTURE, "Mouse Capture") == 0);
-  CHECK(strcmp(REGVALUE_MOUSE_IN_SLOT4, "Mouse in slot 4") == 0);
+  CHECK(strcmp(cfg_mouse_capture, "Mouse Capture") == 0);
+  CHECK(strcmp(cfg_mouse_in_slot4, "Mouse in slot 4") == 0);
 }
 
 TEST_CASE("Registry: Joystick Config Aliases") {
-  auto& reg = Configuration_t::instance();
+  auto& reg = Configuration::instance();
   reg.set_int("Configuration", "Joy0Axis0", 4);
   reg.set_int("Configuration", "Joy0Axis1", 5);
   reg.set_int("Configuration", "Joy0Button1", 3);
 
   // Canonical queries should transparently resolve legacy alias keys
   uint32_t val = 0;
-  CHECK(config_load_int("Configuration", REGVALUE_JOY_AXIS1_0, &val));
+  CHECK(config_load_int("Configuration", cfg_joy_axis1_0, &val));
   CHECK(val == 4);
 
-  CHECK(config_load_int("Configuration", REGVALUE_JOY_AXIS1_1, &val));
+  CHECK(config_load_int("Configuration", cfg_joy_axis1_1, &val));
   CHECK(val == 5);
 
-  CHECK(config_load_int("Configuration", REGVALUE_JOY_BUTTON1_1, &val));
+  CHECK(config_load_int("Configuration", cfg_joy_button1_1, &val));
   CHECK(val == 3);
 
   // Setting canonical key should resolve when queried with legacy alias
@@ -74,7 +74,7 @@ TEST_CASE("Registry: Joystick Config Aliases") {
 }
 
 TEST_CASE("Registry: Caps Lock Mode Config") {
-  auto& reg = Configuration_t::instance();
+  auto& reg = Configuration::instance();
   reg.set_int("Keyboard", "Caps Lock Mode", 1);
   uint32_t val = 0;
   CHECK(config_load_int("Keyboard", "Caps Lock Mode", &val));
@@ -91,9 +91,9 @@ TEST_CASE("Registry: Snake-case cfg_* constants and section names") {
   CHECK(strcmp(cfg_disk_image2, "Disk Image 2") == 0);
 
   // Backward compatibility aliases match cfg_* constants
-  CHECK(REGVALUE_MOUSE_CAPTURE == cfg_mouse_capture);
-  CHECK(REGVALUE_DISK_IMAGE1 == cfg_disk_image1);
-  CHECK(REGVALUE_DISK_IMAGE2 == cfg_disk_image2);
+  CHECK(cfg_mouse_capture == cfg_mouse_capture);
+  CHECK(cfg_disk_image1 == cfg_disk_image1);
+  CHECK(cfg_disk_image2 == cfg_disk_image2);
 }
 
 TEST_CASE("Registry: Symmetric load and save free functions") {
@@ -127,7 +127,7 @@ TEST_CASE("Registry: Symmetric load and save free functions") {
 }
 
 TEST_CASE("Registry: Direct const char* overloads") {
-  auto& reg = Configuration_t::instance();
+  auto& reg = Configuration::instance();
   reg.set_string("CustomSection", "Greeting", "Hello");
   reg.set_int("CustomSection", "Count", 7);
   reg.set_bool("CustomSection", "Active", true);
@@ -142,9 +142,9 @@ TEST_CASE("Registry: Direct const char* overloads") {
   CHECK(reg.get_bool("MissingSection", "MissingActive", false) == false);
 }
 
-TEST_CASE("Registry: Procedural API and struct Configuration_t") {
-  Configuration_t& cfg = config_instance();
-  CHECK(&cfg == &Configuration_t::instance());
+TEST_CASE("Registry: Procedural API and struct Configuration") {
+  Configuration& cfg = config_instance();
+  CHECK(&cfg == &Configuration::instance());
 
   // Direct public struct member access (procedural C-style)
   CHECK(cfg.path == config_get_path());
@@ -205,7 +205,7 @@ TEST_CASE("Registry: Null-safety boundary conditions") {
   config_save_string("section", nullptr, "val");
   config_save_string("section", "key", nullptr);
 
-  auto& reg = Configuration_t::instance();
+  auto& reg = Configuration::instance();
   CHECK(reg.get_string(nullptr, nullptr, "Fallback") == "Fallback");
   CHECK(reg.get_int(nullptr, nullptr, 999) == 999);
   CHECK(reg.get_bool(nullptr, nullptr, true) == true);
@@ -215,14 +215,14 @@ TEST_CASE("Registry: Null-safety boundary conditions") {
   reg.set_bool(nullptr, nullptr, false);
 }
 
-TEST_CASE("AppConfig_t: Type equivalence to Configuration_t") {
-  static_assert(std::is_same<AppConfig_t, Configuration_t>::value,
-                "AppConfig_t must be an alias for Configuration_t");
-  CHECK((std::is_same<AppConfig_t, Configuration_t>::value));
+TEST_CASE("AppConfig: Type equivalence to Configuration") {
+  static_assert(std::is_same<AppConfig, Configuration>::value,
+                "AppConfig must be an alias for Configuration");
+  CHECK((std::is_same<AppConfig, Configuration>::value));
 }
 
-TEST_CASE("Configuration_t: Typed field synchronization via sync_to_data") {
-  Configuration_t cfg = {};
+TEST_CASE("Configuration: Typed field synchronization via sync_to_data") {
+  Configuration cfg = {};
   cfg.apple2_type = A2TYPE_APPLE2PLUS;
   cfg.is_fullscreen = true;
   cfg.is_pal = true;
@@ -252,8 +252,8 @@ TEST_CASE("Configuration_t: Typed field synchronization via sync_to_data") {
   CHECK(cfg.get_string(cfg_sec_configuration, cfg_tui_render_mode) == "block");
 }
 
-TEST_CASE("Configuration_t: Setter synchronization to typed fields") {
-  Configuration_t cfg = {};
+TEST_CASE("Configuration: Setter synchronization to typed fields") {
+  Configuration cfg = {};
   cfg.set_int(cfg_sec_configuration, cfg_computer_emulation, 2);
   CHECK(cfg.apple2_type == A2TYPE_APPLE2E);
 
@@ -283,7 +283,7 @@ TEST_CASE("Configuration_t: Setter synchronization to typed fields") {
   CHECK(cfg.disable_debugger == true);
 }
 
-TEST_CASE("Configuration_t: Load INI file populates typed fields") {
+TEST_CASE("Configuration: Load INI file populates typed fields") {
   const char* temp_filename = "test_config_sync.conf";
   {
     std::ofstream out(temp_filename);
@@ -302,7 +302,7 @@ TEST_CASE("Configuration_t: Load INI file populates typed fields") {
         << "Harddisk Image 1 = loaded_hd1.hdv\n";
   }
 
-  Configuration_t cfg = {};
+  Configuration cfg = {};
   bool loaded = cfg.load(temp_filename);
   std::remove(temp_filename);
 
@@ -320,7 +320,7 @@ TEST_CASE("Configuration_t: Load INI file populates typed fields") {
 }
 
 TEST_CASE(
-    "Configuration_t: Explicit CLI options take precedence over INI file") {
+    "Configuration: Explicit CLI options take precedence over INI file") {
   const char* temp_filename = "test_config_explicit.conf";
   {
     std::ofstream out(temp_filename);
@@ -329,7 +329,7 @@ TEST_CASE(
         << "Video Emulation = 1\n";
   }
 
-  Configuration_t cfg = {};
+  Configuration cfg = {};
   cfg.is_fullscreen = true;
   cfg.is_fullscreen_explicit = true;
   cfg.is_pal = true;
@@ -344,9 +344,9 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "Configuration_t: Failed load does not mutate path or clear existing "
+    "Configuration: Failed load does not mutate path or clear existing "
     "data") {
-  Configuration_t cfg = {};
+  Configuration cfg = {};
   cfg.set_path("/initial/path.conf");
   cfg.set_string("Section", "Key", "Value");
 
@@ -357,8 +357,8 @@ TEST_CASE(
   CHECK(cfg.get_string("Section", "Key") == "Value");
 }
 
-TEST_CASE("Configuration_t: load_defaults preserves configured path") {
-  Configuration_t cfg = {};
+TEST_CASE("Configuration: load_defaults preserves configured path") {
+  Configuration cfg = {};
   cfg.set_path("/saved/path.conf");
   cfg.load_defaults();
 
@@ -368,12 +368,12 @@ TEST_CASE("Configuration_t: load_defaults preserves configured path") {
 }
 
 TEST_CASE("Registry: Const Accessor Integrity") {
-  auto& reg = Configuration_t::instance();
+  auto& reg = Configuration::instance();
   reg.set_string("TestSection", "TestStr", "hello");
   reg.set_int("TestSection", "TestInt", 42);
   reg.set_bool("TestSection", "TestBool", true);
 
-  const Configuration_t& const_reg = reg;
+  const Configuration& const_reg = reg;
   CHECK(const_reg.get_string("TestSection", "TestStr", "") == "hello");
   CHECK(const_reg.get_int("TestSection", "TestInt", 0) == 42);
   CHECK(const_reg.get_bool("TestSection", "TestBool", false) == true);

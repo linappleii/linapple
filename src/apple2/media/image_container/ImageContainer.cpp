@@ -420,7 +420,7 @@ extern "C" auto image_container_prepare_compressed_path(
     return image_container_io;
   }
 
-  FilePtr_t temp_stream(fdopen(fd, "wb"), fclose);
+  FilePtr temp_stream(fdopen(fd, "wb"), fclose);
   if (temp_stream == nullptr) {
     close(fd);
     unlink(out_load_path);

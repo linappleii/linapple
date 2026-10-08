@@ -194,7 +194,7 @@ auto sdl_handle_event(SDL_Event* event) -> void {
         }
 #if ENABLE_DEBUGGER
       } else if (system_state.mode == app_mode_debug) {
-        const LinAppleKey_t core_key = frontend_to_core_key(mysym, mymod);
+        const LinAppleKey core_key = frontend_to_core_key(mysym, mymod);
         if (core_key != linapple_key_unknown) {
           debugger_process_key(core_key);
         }

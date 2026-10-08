@@ -92,7 +92,7 @@ constexpr OptionDef_t k_options[] = {
     {"tui-render", '\0', ArgType_t::req_arg, k_opt_tui_render},
 };
 
-auto parse_tui_render_mode(const char* arg, TuiRenderMode_t* out_mode) -> bool {
+auto parse_tui_render_mode(const char* arg, TuiRenderMode* out_mode) -> bool {
   if (arg == nullptr || out_mode == nullptr) {
     return false;
   }
@@ -107,11 +107,12 @@ auto parse_tui_render_mode(const char* arg, TuiRenderMode_t* out_mode) -> bool {
   return false;
 }
 
-auto append_extra_arg(AppConfig_t* config, const char* arg) -> void {
+auto append_extra_arg(AppConfig* config, const char* arg) -> void {
   if (config == nullptr || arg == nullptr) {
     return;
   }
-  if (config->argc_extra >= 0 && config->argc_extra < ARGV_EXTRA_MAX) {
+  if (config->argc_extra >= 0 &&
+      config->argc_extra < static_cast<int>(argv_extra_max)) {
     config->argv_extra.at(static_cast<size_t>(config->argc_extra)) = arg;
     config->argc_extra++;
   }
@@ -140,7 +141,7 @@ auto find_option_by_short_name(char c) -> const OptionDef_t* {
   return nullptr;
 }
 
-auto apply_option(OptId_t id, const char* val, AppConfig_t* config) -> int {
+auto apply_option(OptId_t id, const char* val, AppConfig* config) -> int {
   switch (id) {
     case k_opt_d1:
       util_safe_strcpy(config->disk_path.at(0).data(), val, path_max_len);
@@ -343,7 +344,7 @@ auto app_args_print_help() -> void {
 #endif
 }
 
-auto app_args_parse(int argc, char** argv, AppConfig_t* config) -> int {
+auto app_args_parse(int argc, char** argv, AppConfig* config) -> int {
   if (config == nullptr || argv == nullptr || argc < 1) {
     return -1;
   }

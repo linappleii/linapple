@@ -3,9 +3,9 @@
 
 #include "core/Registry.h"
 
-inline auto app_config_default(AppConfig_t* config) -> void {
+inline auto app_config_default(AppConfig* config) -> void {
   if (config == nullptr) {
     return;
   }
-  *config = AppConfig_t{};
+  *config = AppConfig{};
 }

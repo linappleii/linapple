@@ -51,7 +51,7 @@ TEST_CASE("Asset: Lifecycle initialization and shutdown") {
 TEST_CASE("Asset: Master disk insertion contract") {
   const int result = asset_insert_master_disk();
   CHECK(result == 0);
-  CHECK(!Configuration_t::instance()
+  CHECK(!Configuration::instance()
              .get_string(cfg_sec_slots, cfg_disk_image1, "")
              .empty());
 }

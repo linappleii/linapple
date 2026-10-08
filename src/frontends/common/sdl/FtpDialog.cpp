@@ -40,16 +40,16 @@ auto ftp_gen_generate(FileListGenerator_t* self) -> FileList_t* {
   }
 
 #if ENABLE_FTP
-  FtpClient_t client;
-  std::vector<FtpFileEntry_t> entries;
-  const FtpStatus_t status = client.fetch_directory_listing(
+  FtpClient client;
+  std::vector<FtpFileEntry> entries;
+  const FtpStatus status = client.fetch_directory_listing(
       ctx->directory, entries, system_state.ftp_user_pass.data());
 
-  if (status != FtpStatus_t::ok) {
-    if (status == FtpStatus_t::connect_error) {
+  if (status != FtpStatus::ok) {
+    if (status == FtpStatus::connect_error) {
       ctx->failure_message =
           "Failed to connect to FTP server: " + ctx->directory;
-    } else if (status == FtpStatus_t::timeout) {
+    } else if (status == FtpStatus::timeout) {
       ctx->failure_message = "FTP connection timed out: " + ctx->directory;
     } else {
       ctx->failure_message = "Failed getting FTP directory: " + ctx->directory;
@@ -78,11 +78,11 @@ auto ftp_gen_generate(FileListGenerator_t* self) -> FileList_t* {
     ui_entry.name[0] = '\0';
     util_safe_strcpy(ui_entry.name, safe_name.c_str(), sizeof(ui_entry.name));
 
-    if (entry.type == FtpEntryType_t::directory) {
+    if (entry.type == FtpEntryType::directory) {
       ui_entry.type = FILE_ENTRY_DIR;
       ui_entry.size = 0;
       file_browser_append_entry(list, &ui_entry);
-    } else if (entry.type == FtpEntryType_t::file &&
+    } else if (entry.type == FtpEntryType::file &&
                file_browser_is_extension_supported(
                    safe_name.c_str(), ctx->filter_extensions.c_str())) {
       ui_entry.type = FILE_ENTRY_FILE;

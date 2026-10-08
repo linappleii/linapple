@@ -180,7 +180,7 @@ auto ConfigSave_BufferToDisk(const char* pFileName, ConfigSave_t eConfigSave)
   std::string sFileName = system_state.current_dir.data();
   sFileName += pFileName;  // TODO: g_debug_dir
 
-  FilePtr_t h_file{fopen(pFileName, pMode), fclose};
+  FilePtr h_file{fopen(pFileName, pMode), fclose};
 
   if (h_file) {
     char* text = nullptr;

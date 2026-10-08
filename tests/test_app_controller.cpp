@@ -28,7 +28,7 @@ using TestConfig_t = TestFixtures::ScopedTestConfig_t;
 // wants. Left undeclared, the slots come from the fallbacks in
 // peripheral_register_internal -- a printer, a Super Serial Card, a
 // Mockingboard and a Disk II that no case here exercises.
-auto declare(const TestConfig_t& machine, AppConfig_t* config) -> void {
+auto declare(const TestConfig_t& machine, AppConfig* config) -> void {
   util_safe_strcpy(config->config_path.data(), machine.c_str(),
                    config->config_path.size());
 }
@@ -59,7 +59,7 @@ auto is_valid_directory(const char* path) -> bool {
 TEST_CASE("AppController: Initialize and Shutdown") {
   ScopedAppController_t controller_guard;
   TestConfig_t machine(TestConfig_t::enhanced_2e_only());
-  AppConfig_t config = {};
+  AppConfig config = {};
   app_config_default(&config);
   declare(machine, &config);
 
@@ -89,7 +89,7 @@ TEST_CASE("AppController: Initialize and Shutdown") {
 TEST_CASE("AppController: Video Mode Reset") {
   ScopedAppController_t controller_guard;
   TestConfig_t machine(TestConfig_t::enhanced_2e_only());
-  AppConfig_t config = {};
+  AppConfig config = {};
   app_config_default(&config);
   declare(machine, &config);
 
@@ -110,7 +110,7 @@ TEST_CASE("AppController: Video Mode Reset") {
 TEST_CASE("AppController: Media Loading") {
   ScopedAppController_t controller_guard;
   TestConfig_t machine(TestConfig_t::disk_ii_only());
-  AppConfig_t config = {};
+  AppConfig config = {};
   app_config_default(&config);
   declare(machine, &config);
   std::string disk_path = Path::find_data_file("Master.dsk");
@@ -139,7 +139,7 @@ TEST_CASE("AppController: Media Loading") {
 #endif
 
 TEST_CASE("AppController: Diagnostic Commands") {
-  AppConfig_t config = {};
+  AppConfig config = {};
   app_config_default(&config);
   config.intent = INTENT_HELP;
 
@@ -159,7 +159,7 @@ TEST_CASE(
   description.extras.push_back({"Configuration", "Screen factor", "2.0"});
   TestConfig_t machine(description);
 
-  AppConfig_t config = {};
+  AppConfig config = {};
   app_config_default(&config);
   declare(machine, &config);
 
@@ -174,7 +174,7 @@ TEST_CASE(
 TEST_CASE("AppController: Initialize Failure on Nonexistent ROM") {
   ScopedAppController_t controller_guard;
   TestConfig_t machine(TestConfig_t::enhanced_2e_only());
-  AppConfig_t config = {};
+  AppConfig config = {};
   app_config_default(&config);
   declare(machine, &config);
   util_safe_strcpy(config.rom_path.data(), "/nonexistent/nope.rom",
@@ -189,7 +189,7 @@ TEST_CASE("AppController: Initialize Failure on Nonexistent ROM") {
 TEST_CASE("AppController: Slot 6 Autoload Fallback to Master.dsk") {
   ScopedAppController_t controller_guard;
   TestConfig_t machine(TestConfig_t::disk_ii_only());
-  AppConfig_t config = {};
+  AppConfig config = {};
   app_config_default(&config);
   declare(machine, &config);
   app_env_resolve_paths(&config);
@@ -211,7 +211,7 @@ TEST_CASE("AppController: Slot 6 Autoload Fallback to Master.dsk") {
   CHECK(status.drive0_loaded == 1);
 
   std::string disk1_path =
-      Configuration_t::instance().get_string("Slots", REGVALUE_DISK_IMAGE1);
+      Configuration::instance().get_string("Slots", cfg_disk_image1);
   CHECK(disk1_path.find("Master.dsk") != std::string::npos);
 }
 
@@ -223,7 +223,7 @@ TEST_CASE("AppController: Slot 6 Autoload Enabled with Configured Image") {
   description.extras.push_back({"Configuration", "Disk Image 1", master_path});
   TestConfig_t machine(description);
 
-  AppConfig_t config = {};
+  AppConfig config = {};
   app_config_default(&config);
   declare(machine, &config);
 
@@ -255,7 +255,7 @@ TEST_CASE("AppController: FTP Configuration Defaults and Preferences") {
   description.extras.push_back({"Preferences", "FTP UserPass", "user:pass"});
   TestConfig_t machine(description);
 
-  AppConfig_t config = {};
+  AppConfig config = {};
   app_config_default(&config);
   declare(machine, &config);
 

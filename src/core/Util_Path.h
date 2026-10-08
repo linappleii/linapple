@@ -16,14 +16,14 @@
 #include <vector>
 
 // RAII wrapper for FILE*
-using FilePtr_t = std::unique_ptr<FILE, int (*)(FILE*)>;
+using FilePtr = std::unique_ptr<FILE, int (*)(FILE*)>;
 
 constexpr char file_separator = '/';
 constexpr char ftp_separator = '/';
 
 namespace Path {
 
-constexpr mode_t k_default_mkdir_mode = 0755;
+constexpr mode_t default_mkdir_mode = 0755;
 
 inline auto join(const std::string& dir, const std::string& filename)
     -> std::string {
@@ -49,25 +49,25 @@ inline auto ensure_dir_exists(const std::string& path) -> void {
   const std::string dir = (path.back() == '/') ? path : path + '/';
   size_t pos = dir.find_first_of('/');
   while (pos != std::string::npos) {
-    std::string subdir = dir.substr(0, pos);
+    const std::string subdir = dir.substr(0, pos);
     pos = dir.find_first_of('/', pos + 1);
     if (subdir.empty() || subdir == "/") {
       continue;
     }
     struct stat st{};
     if (stat(subdir.c_str(), &st) != 0) {
-      mkdir(subdir.c_str(), k_default_mkdir_mode);
+      mkdir(subdir.c_str(), default_mkdir_mode);
     }
   }
 }
 
 inline auto get_executable_dir() -> std::string {
   std::array<char, PATH_MAX> buf{};
-  ssize_t len = ::readlink("/proc/self/exe", buf.data(), buf.size() - 1);
+  const ssize_t len = ::readlink("/proc/self/exe", buf.data(), buf.size() - 1);
   if (len != -1) {
     buf.at(static_cast<size_t>(len)) = '\0';
-    std::string path(buf.data());
-    size_t pos = path.find_last_of('/');
+    const std::string path(buf.data());
+    const size_t pos = path.find_last_of('/');
     if (pos != std::string::npos) {
       return path.substr(0, pos + 1);
     }
@@ -145,7 +145,7 @@ inline auto get_data_search_paths() -> std::vector<std::string> {
   if (config_dirs == nullptr || config_dirs[0] == '\0') {
     paths.emplace_back("/etc/xdg/linapple/");
   } else {
-    std::string cd(config_dirs);
+    const std::string cd(config_dirs);
     size_t start = 0;
     while (start < cd.length()) {
       const size_t end = cd.find(':', start);
@@ -170,7 +170,7 @@ inline auto find_data_file(const std::string& filename) -> std::string {
     return "";
   }
   for (const auto& dir : get_data_search_paths()) {
-    std::string full_path = join(dir, filename);
+    const std::string full_path = join(dir, filename);
     if (access(full_path.c_str(), R_OK) == 0) {
       return full_path;
     }
@@ -190,9 +190,9 @@ inline auto sanitize_filename(const std::string& name) -> std::string {
     return "";
   }
   constexpr unsigned char ascii_del = 0x7F;
-  for (char c : name) {
-    auto uc = static_cast<unsigned char>(c);
-    if (std::iscntrl(uc) || uc == ascii_del) {
+  for (const char c : name) {
+    const auto uc = static_cast<unsigned char>(c);
+    if (std::iscntrl(uc) != 0 || uc == ascii_del) {
       return "";
     }
   }
@@ -205,7 +205,7 @@ inline auto file_size(FILE* file) -> int64_t {
   if (file == nullptr) {
     return -1;
   }
-  const long original_pos = ftell(file);
+  const auto original_pos = ftell(file);
   if (original_pos < 0) {
     return -1;
   }
@@ -213,7 +213,7 @@ inline auto file_size(FILE* file) -> int64_t {
     fseek(file, original_pos, SEEK_SET);
     return -1;
   }
-  const long end_pos = ftell(file);
+  const auto end_pos = ftell(file);
   if (fseek(file, original_pos, SEEK_SET) != 0 || end_pos < 0) {
     return -1;
   }

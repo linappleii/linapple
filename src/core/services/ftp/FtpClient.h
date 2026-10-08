@@ -9,51 +9,53 @@
 
 #if ENABLE_FTP
 using CURL = void;
-struct CurlDeleter_t {
+struct CurlDeleter {
   auto operator()(CURL* handle) const noexcept -> void;
 };
-using CurlHandlePtr_t = std::unique_ptr<CURL, CurlDeleter_t>;
+using CurlHandlePtr = std::unique_ptr<CURL, CurlDeleter>;
 
-struct CurlGlobalGuard_t {
-  CurlGlobalGuard_t();
-  ~CurlGlobalGuard_t();
-  CurlGlobalGuard_t(const CurlGlobalGuard_t&) = delete;
-  auto operator=(const CurlGlobalGuard_t&) -> CurlGlobalGuard_t& = delete;
-  CurlGlobalGuard_t(CurlGlobalGuard_t&&) noexcept = default;
-  auto operator=(CurlGlobalGuard_t&&) noexcept -> CurlGlobalGuard_t& = default;
+struct CurlGlobalGuard {
+  CurlGlobalGuard();
+  ~CurlGlobalGuard();
+  CurlGlobalGuard(const CurlGlobalGuard&) = delete;
+  auto operator=(const CurlGlobalGuard&) -> CurlGlobalGuard& = delete;
+  CurlGlobalGuard(CurlGlobalGuard&&) noexcept = default;
+  auto operator=(CurlGlobalGuard&&) noexcept -> CurlGlobalGuard& = default;
 };
 #else
-struct CurlGlobalGuard_t {
-  CurlGlobalGuard_t() = default;
-  ~CurlGlobalGuard_t() = default;
+struct CurlGlobalGuard {
+  CurlGlobalGuard() = default;
+  ~CurlGlobalGuard() = default;
 };
 #endif
 
-class FtpClient_t {
- public:
-  FtpClient_t();
-  ~FtpClient_t() = default;
+using CurlGlobalGuard_t = CurlGlobalGuard;
 
-  FtpClient_t(const FtpClient_t&) = delete;
-  auto operator=(const FtpClient_t&) -> FtpClient_t& = delete;
-  FtpClient_t(FtpClient_t&&) noexcept;
-  auto operator=(FtpClient_t&&) noexcept -> FtpClient_t&;
+class FtpClient {
+ public:
+  FtpClient();
+  ~FtpClient() = default;
+
+  FtpClient(const FtpClient&) = delete;
+  auto operator=(const FtpClient&) -> FtpClient& = delete;
+  FtpClient(FtpClient&&) noexcept;
+  auto operator=(FtpClient&&) noexcept -> FtpClient&;
 
   auto download_file(const std::string& remote_url,
                      const std::string& local_cache_dir,
                      const std::string& filename,
                      const std::string& user_pwd = "",
-                     FtpProgressCallback_t progress_cb = nullptr,
-                     void* user_data = nullptr) -> FtpStatus_t;
+                     FtpProgressCallback progress_cb = nullptr,
+                     void* user_data = nullptr) -> FtpStatus;
 
   auto fetch_directory_listing(const std::string& remote_dir_url,
-                               std::vector<FtpFileEntry_t>& entries,
-                               const std::string& user_pwd = "") -> FtpStatus_t;
+                               std::vector<FtpFileEntry>& entries,
+                               const std::string& user_pwd = "") -> FtpStatus;
 
  private:
 #if ENABLE_FTP
-  CurlHandlePtr_t curl_handle;
+  CurlHandlePtr curl_handle;
 #endif
 };
 
-auto ftp_status_to_string(FtpStatus_t status) noexcept -> const char*;
+auto ftp_status_to_string(FtpStatus status) noexcept -> const char*;

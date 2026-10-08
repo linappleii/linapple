@@ -20,21 +20,21 @@ namespace {
 
 constexpr size_t time_buffer_size = 32;
 
-std::atomic<LogLevel_t> current_verbosity{LogLevel_t::info};
+std::atomic<LogLevel> current_verbosity{LogLevel::info};
 std::atomic<bool> file_logging_enabled{true};
 std::string custom_log_path;
-LogCallback_t external_callback = nullptr;
-LogCallbackWithContext_t context_callback = nullptr;
+LogCallback external_callback = nullptr;
+LogCallbackWithContext context_callback = nullptr;
 void* callback_user_data = nullptr;
-FilePtr_t log_file{nullptr, std::fclose};
+FilePtr log_file{nullptr, std::fclose};
 std::mutex log_mutex;
 
-struct ConsoleConfig_t {
+struct ConsoleConfig {
   bool to_stderr;
   const char* prefix;
 };
 
-constexpr std::array<ConsoleConfig_t, 6> console_configs = {
+constexpr std::array<ConsoleConfig, 6> console_configs = {
     {
         {false, nullptr},   // silent (no console output)
         {true, "ERROR: "},  // error -> stderr
@@ -60,7 +60,7 @@ auto format_current_time(char* out_buf, size_t buf_size) -> void {
 
 }  // namespace
 
-auto log_level_to_string(LogLevel_t level) noexcept -> const char* {
+auto log_level_to_string(LogLevel level) noexcept -> const char* {
   static constexpr std::array<const char*, 6> level_names = {
       {"SILENT", "ERROR", "WARN", "INFO", "PERF", "DEBUG"},
   };
@@ -72,9 +72,9 @@ auto log_level_to_string(LogLevel_t level) noexcept -> const char* {
   return "UNKNOWN";
 }
 
-static auto output_log_message(LogLevel_t level, const char* format,
+static auto output_log_message(LogLevel level, const char* format,
                                va_list args) -> void {
-  if (format == nullptr || level == LogLevel_t::silent) {
+  if (format == nullptr || level == LogLevel::silent) {
     return;
   }
 
@@ -107,8 +107,8 @@ static auto output_log_message(LogLevel_t level, const char* format,
     final_message = heap_buffer.data();
   }
 
-  LogCallback_t active_external_callback = nullptr;
-  LogCallbackWithContext_t active_context_callback = nullptr;
+  LogCallback active_external_callback = nullptr;
+  LogCallbackWithContext active_context_callback = nullptr;
   void* active_user_data = nullptr;
 
   {
@@ -167,20 +167,20 @@ auto initialize() -> void {
   std::fflush(log_file.get());
 }
 
-auto set_verbosity(LogLevel_t level) noexcept -> void {
+auto set_verbosity(LogLevel level) noexcept -> void {
   current_verbosity.store(level, std::memory_order_relaxed);
 }
 
-auto get_verbosity() noexcept -> LogLevel_t {
+auto get_verbosity() noexcept -> LogLevel {
   return current_verbosity.load(std::memory_order_relaxed);
 }
 
-auto set_callback(LogCallback_t callback) -> void {
+auto set_callback(LogCallback callback) -> void {
   std::lock_guard<std::mutex> lock(log_mutex);
   external_callback = callback;
 }
 
-auto set_callback_with_context(LogCallbackWithContext_t callback,
+auto set_callback_with_context(LogCallbackWithContext callback,
                                void* user_data) -> void {
   std::lock_guard<std::mutex> lock(log_mutex);
   context_callback = callback;
@@ -207,42 +207,42 @@ auto is_file_logging_enabled() noexcept -> bool {
   return file_logging_enabled.load(std::memory_order_relaxed);
 }
 
-auto log_message_v(LogLevel_t level, const char* format, va_list args) -> void {
+auto log_message_v(LogLevel level, const char* format, va_list args) -> void {
   output_log_message(level, format, args);
 }
 
 auto error(const char* format, ...) -> void {
   va_list args;
   va_start(args, format);
-  output_log_message(LogLevel_t::error, format, args);
+  output_log_message(LogLevel::error, format, args);
   va_end(args);
 }
 
 auto warning(const char* format, ...) -> void {
   va_list args;
   va_start(args, format);
-  output_log_message(LogLevel_t::warning, format, args);
+  output_log_message(LogLevel::warning, format, args);
   va_end(args);
 }
 
 auto info(const char* format, ...) -> void {
   va_list args;
   va_start(args, format);
-  output_log_message(LogLevel_t::info, format, args);
+  output_log_message(LogLevel::info, format, args);
   va_end(args);
 }
 
 auto perf(const char* format, ...) -> void {
   va_list args;
   va_start(args, format);
-  output_log_message(LogLevel_t::perf, format, args);
+  output_log_message(LogLevel::perf, format, args);
   va_end(args);
 }
 
 auto debug(const char* format, ...) -> void {
   va_list args;
   va_start(args, format);
-  output_log_message(LogLevel_t::debug, format, args);
+  output_log_message(LogLevel::debug, format, args);
   va_end(args);
 }
 

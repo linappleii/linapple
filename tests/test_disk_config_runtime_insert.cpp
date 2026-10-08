@@ -28,7 +28,7 @@ TEST_CASE("DiskIntegration: [INT-04] Runtime Insert Leaves Config Alone") {
   linapple_register_peripherals();
 
   // Initial state: empty
-  Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1, "");
+  Configuration::instance().set_string("Slots", cfg_disk_image1, "");
 
   std::string fixture = TestFixtures::get_fixture_path("minimal.woz");
   DiskInsertCmd_t cmd{};
@@ -41,12 +41,12 @@ TEST_CASE("DiskIntegration: [INT-04] Runtime Insert Leaves Config Alone") {
   // The card models a drive. Which image the user keeps in it is the
   // frontend's to remember, so a mechanical insert writes nothing.
   std::string saved =
-      Configuration_t::instance().get_string("Slots", REGVALUE_DISK_IMAGE1);
+      Configuration::instance().get_string("Slots", cfg_disk_image1);
   CHECK(saved.empty());
 
   // The frontend acted on the user's behalf, so the frontend records it.
   app_controller_save_disk_config(0);
-  saved = Configuration_t::instance().get_string("Slots", REGVALUE_DISK_IMAGE1);
+  saved = Configuration::instance().get_string("Slots", cfg_disk_image1);
   CHECK(saved == fixture);
 
   DiskStatus_t status{};
@@ -67,7 +67,7 @@ TEST_CASE("DiskIntegration: [INT-04] Runtime Insert Leaves Config Alone") {
   peripheral_command(6, disk_cmd_insert, &second, sizeof(second));
 
   app_controller_save_disk_config(0);
-  saved = Configuration_t::instance().get_string("Slots", REGVALUE_DISK_IMAGE1);
+  saved = Configuration::instance().get_string("Slots", cfg_disk_image1);
   CHECK(saved == second_fixture);
 
   linapple_shutdown();

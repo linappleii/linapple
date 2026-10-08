@@ -45,11 +45,11 @@ struct SmokeTestFixture_t {
     config.load();
     linapple_init();
     if (!image_path1.empty()) {
-      Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE1,
+      Configuration::instance().set_string("Slots", cfg_disk_image1,
                                              image_path1);
     }
     if (!image_path2.empty()) {
-      Configuration_t::instance().set_string("Slots", REGVALUE_DISK_IMAGE2,
+      Configuration::instance().set_string("Slots", cfg_disk_image2,
                                              image_path2);
     }
     peripheral_manager_init();

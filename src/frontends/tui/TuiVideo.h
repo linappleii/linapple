@@ -9,9 +9,9 @@
 auto tui_video_initialize() -> void;
 auto tui_video_shutdown() -> void;
 
-auto tui_video_set_render_mode(TuiRenderMode_t mode) -> void;
+auto tui_video_set_render_mode(TuiRenderMode mode) -> void;
 auto tui_video_toggle_render_mode() -> void;
-auto tui_video_get_render_mode() -> TuiRenderMode_t;
+auto tui_video_get_render_mode() -> TuiRenderMode;
 
 auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
                             int pitch) -> void;

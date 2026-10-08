@@ -54,7 +54,7 @@ TEST_CASE("SDL1 Frontend Initialization") {
 }
 
 TEST_CASE("SDL1 Config Validation") {
-  AppConfig_t config{};
+  AppConfig config{};
   app_config_default(&config);
 
   CHECK(!config.is_fullscreen);
@@ -138,7 +138,7 @@ TEST_CASE("SDL1 Frontend Help Screen Quit Event Handling") {
   REQUIRE(init_result == 0);
   REQUIRE(asset_init());
 
-  AppConfig_t config{};
+  AppConfig config{};
   app_config_default(&config);
 
   int win_result = frame_create_window();
@@ -172,7 +172,7 @@ TEST_CASE("SDL1 Frontend Help Screen Key Down Dismissal") {
   REQUIRE(init_result == 0);
   REQUIRE(asset_init());
 
-  AppConfig_t config{};
+  AppConfig config{};
   app_config_default(&config);
 
   int win_result = frame_create_window();
@@ -367,7 +367,7 @@ TEST_CASE("SDL1 Frontend Help Screen F12 Event Handling") {
   REQUIRE(init_result == 0);
   REQUIRE(asset_init());
 
-  AppConfig_t config{};
+  AppConfig config{};
   app_config_default(&config);
 
   int win_result = frame_create_window();
@@ -405,7 +405,7 @@ TEST_CASE("SDL1 Frontend Disk Choose Quit Event Handling") {
   REQUIRE(init_result == 0);
   REQUIRE(asset_init());
 
-  AppConfig_t config{};
+  AppConfig config{};
   app_config_default(&config);
 
   int win_result = frame_create_window();
@@ -447,7 +447,7 @@ TEST_CASE("SDL1 Frontend Disk Choose Key Down Dismissal") {
   REQUIRE(init_result == 0);
   REQUIRE(asset_init());
 
-  AppConfig_t config{};
+  AppConfig config{};
   app_config_default(&config);
 
   int win_result = frame_create_window();
@@ -490,7 +490,7 @@ TEST_CASE("SDL1 Frontend Disk Choose F12 Event Handling") {
   REQUIRE(init_result == 0);
   REQUIRE(asset_init());
 
-  AppConfig_t config{};
+  AppConfig config{};
   app_config_default(&config);
 
   int win_result = frame_create_window();
@@ -532,8 +532,8 @@ TEST_CASE("SDL1 Frontend Joystick Config Out-of-Range Handling") {
   REQUIRE(init_result == 0);
 
   // Set out-of-bounds joy_type values in registry
-  save(REGVALUE_JOY_TYPE1, 9999);
-  save(REGVALUE_JOY_TYPE2, 8888);
+  save(cfg_joy_type1, 9999);
+  save(cfg_joy_type2, 8888);
 
   // joy_frontend_initialize should safely clamp / default to 0 without
   // out-of-bounds access
@@ -555,7 +555,7 @@ namespace {
 struct MouseInputMachine_t {
   TestFixtures::ScopedTestConfig_t config;
   TestFixtures::ScopedCore_t core;
-  AppMode_t saved_mode;
+  AppMode saved_mode;
 
   explicit MouseInputMachine_t(
       const TestFixtures::ScopedTestConfig_t::Description_t& description)
@@ -824,7 +824,7 @@ struct KeyMachine_t {
   Model_t model;
   TestFixtures::ScopedTestConfig_t config;
   TestFixtures::ScopedCore_t core;
-  AppMode_t saved_mode;
+  AppMode saved_mode;
 
   explicit KeyMachine_t(
       const TestFixtures::ScopedTestConfig_t::Description_t& description,
@@ -854,7 +854,7 @@ struct KeyMachine_t {
   ~KeyMachine_t() {
     keyboard_release_host_modifiers();
     settle();
-    Configuration_t::instance().data.erase("Keyboard.Custom");
+    Configuration::instance().data.erase("Keyboard.Custom");
     keyboard_apply_custom_mappings();
     keyboard_set_caps(true);
     keyboard_set_caps_mode(caps_mode_host);

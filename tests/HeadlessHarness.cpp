@@ -40,7 +40,7 @@ HeadlessHarness_t::HeadlessHarness_t(
     const TestFixtures::ScopedTestConfig_t& test_config) {
   s_active_harness = this;
 
-  AppConfig_t config = {};
+  AppConfig config = {};
   app_config_default(&config);
   util_safe_strcpy(config.config_path.data(), test_config.c_str(),
                    path_max_len);
@@ -69,8 +69,8 @@ HeadlessHarness_t::~HeadlessHarness_t() {
 auto HeadlessHarness_t::mount_disk(int slot, int drive, const std::string& path)
     -> void {
   const char* reg_key =
-      (drive == 0) ? REGVALUE_DISK_IMAGE1 : REGVALUE_DISK_IMAGE2;
-  Configuration_t::instance().set_string("Slots", reg_key, path);
+      (drive == 0) ? cfg_disk_image1 : cfg_disk_image2;
+  Configuration::instance().set_string("Slots", reg_key, path);
 
   DiskInsertCmd_t cmd{};
   cmd.drive = (drive == 0) ? disk_drive_0 : disk_drive_1;

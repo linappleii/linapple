@@ -21,11 +21,11 @@
 namespace {
 
 struct ScopedConfigPathReset_t {
-  std::string original_path_{Configuration_t::instance().get_path()};
+  std::string original_path_{Configuration::instance().get_path()};
 
   ScopedConfigPathReset_t() = default;
   ~ScopedConfigPathReset_t() {
-    Configuration_t::instance().set_path(original_path_);
+    Configuration::instance().set_path(original_path_);
   }
 
   ScopedConfigPathReset_t(const ScopedConfigPathReset_t&) = delete;
@@ -37,7 +37,7 @@ struct ScopedConfigPathReset_t {
 };
 
 struct ScopedLoggerReset_t {
-  LogLevel_t original_verbosity_{Logger::get_verbosity()};
+  LogLevel original_verbosity_{Logger::get_verbosity()};
 
   ScopedLoggerReset_t() = default;
   ~ScopedLoggerReset_t() {
@@ -86,10 +86,10 @@ class ScopedEnvVar_t {
   auto operator=(ScopedEnvVar_t&&) -> ScopedEnvVar_t& = delete;
 };
 
-LogLevel_t g_last_log_level = LogLevel_t::silent;
+LogLevel g_last_log_level = LogLevel::silent;
 int g_log_callback_count = 0;
 
-auto test_log_callback(LogLevel_t level, const char* /*message*/) -> void {
+auto test_log_callback(LogLevel level, const char* /*message*/) -> void {
   g_last_log_level = level;
   ++g_log_callback_count;
 }
@@ -106,20 +106,20 @@ TEST_CASE("AppEnvironment: Path Resolution Override") {
       out << "[Test]\nvalue=1\n";
     }
 
-    AppConfig_t config = {};
+    AppConfig config = {};
     util_safe_strcpy(config.config_path.data(), tmp_conf.c_str(),
                      config.config_path.size());
 
     app_env_resolve_paths(&config);
 
-    CHECK(Configuration_t::instance().get_path() == tmp_conf.path());
+    CHECK(Configuration::instance().get_path() == tmp_conf.path());
     CHECK(std::string(config.config_path.data()) == tmp_conf.path());
   }
 
   SUBCASE("Nullptr config pointer is handled safely") {
-    const std::string before = Configuration_t::instance().get_path();
+    const std::string before = Configuration::instance().get_path();
     app_env_resolve_paths(nullptr);
-    CHECK(Configuration_t::instance().get_path() == before);
+    CHECK(Configuration::instance().get_path() == before);
   }
 }
 
@@ -128,58 +128,58 @@ TEST_CASE("AppEnvironment: Logger Verbosity") {
   Logger::set_callback(test_log_callback);
 
   SUBCASE("Verbose mode sets perf verbosity and delivers perf logs") {
-    AppConfig_t config = {};
+    AppConfig config = {};
     config.is_verbose = true;
 
     app_env_resolve_paths(&config);
 
-    CHECK(Logger::get_verbosity() == LogLevel_t::perf);
+    CHECK(Logger::get_verbosity() == LogLevel::perf);
 
     g_log_callback_count = 0;
-    g_last_log_level = LogLevel_t::silent;
+    g_last_log_level = LogLevel::silent;
     Logger::perf("test perf\n");
     CHECK(g_log_callback_count == 1);
-    CHECK(g_last_log_level == LogLevel_t::perf);
+    CHECK(g_last_log_level == LogLevel::perf);
   }
 
   SUBCASE("Logging mode sets info verbosity and filters perf logs") {
-    AppConfig_t config = {};
+    AppConfig config = {};
     config.is_verbose = false;
     config.is_log = true;
 
     app_env_resolve_paths(&config);
 
-    CHECK(Logger::get_verbosity() == LogLevel_t::info);
+    CHECK(Logger::get_verbosity() == LogLevel::info);
 
     g_log_callback_count = 0;
-    g_last_log_level = LogLevel_t::silent;
+    g_last_log_level = LogLevel::silent;
     Logger::perf("test perf\n");
     CHECK(g_log_callback_count == 0);
-    CHECK(g_last_log_level == LogLevel_t::silent);
+    CHECK(g_last_log_level == LogLevel::silent);
 
     Logger::info("test info\n");
     CHECK(g_log_callback_count == 1);
-    CHECK(g_last_log_level == LogLevel_t::info);
+    CHECK(g_last_log_level == LogLevel::info);
   }
 
   SUBCASE("Default mode sets warning verbosity and filters info logs") {
-    AppConfig_t config = {};
+    AppConfig config = {};
     config.is_verbose = false;
     config.is_log = false;
 
     app_env_resolve_paths(&config);
 
-    CHECK(Logger::get_verbosity() == LogLevel_t::warning);
+    CHECK(Logger::get_verbosity() == LogLevel::warning);
 
     g_log_callback_count = 0;
-    g_last_log_level = LogLevel_t::silent;
+    g_last_log_level = LogLevel::silent;
     Logger::info("test info\n");
     CHECK(g_log_callback_count == 0);
-    CHECK(g_last_log_level == LogLevel_t::silent);
+    CHECK(g_last_log_level == LogLevel::silent);
 
     Logger::warning("test warning\n");
     CHECK(g_log_callback_count == 1);
-    CHECK(g_last_log_level == LogLevel_t::warning);
+    CHECK(g_last_log_level == LogLevel::warning);
   }
 }
 

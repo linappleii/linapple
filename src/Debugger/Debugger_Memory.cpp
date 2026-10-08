@@ -505,7 +505,7 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
     return ConsoleUpdate();
   }
 
-  FilePtr_t hFile(fopen(sLoadSaveFilePath.c_str(), "rb"), fclose);
+  FilePtr hFile(fopen(sLoadSaveFilePath.c_str(), "rb"), fclose);
   if (hFile) {
     size_t nFileBytes = debugger_get_file_size(hFile.get());
 
@@ -724,7 +724,7 @@ auto CmdMemorySave(int nArgs) -> Update_t {
         return ConsoleUpdate();
       }
 
-      FilePtr_t hFile(fopen(sLoadSaveFilePath.c_str(), "rb"), fclose);
+      FilePtr hFile(fopen(sLoadSaveFilePath.c_str(), "rb"), fclose);
       if (hFile) {
         ConsoleBufferPush("warning: File already exists.  Overwriting.");
         hFile.reset();
@@ -931,7 +931,7 @@ auto CmdTextSave(int nArgs) -> int {
 
   sLoadSaveFilePath += g_memory_load_save_file_name;
 
-  FilePtr_t hFile(fopen(sLoadSaveFilePath.c_str(), "rb"), fclose);
+  FilePtr hFile(fopen(sLoadSaveFilePath.c_str(), "rb"), fclose);
   if (hFile) {
     ConsoleBufferPush("warning: File already exists.  Overwriting.");
     hFile.reset();

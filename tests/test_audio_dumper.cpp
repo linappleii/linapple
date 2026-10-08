@@ -29,7 +29,7 @@ TEST_CASE("AudioDumper: [AUD-1] Explicit lifecycle generates valid WAV file") {
   }
 
   // Verify WAV header
-  FilePtr_t f(fopen(temp_wav.c_str(), "rb"), fclose);
+  FilePtr f(fopen(temp_wav.c_str(), "rb"), fclose);
   REQUIRE(f != nullptr);
   uint8_t header[44] = {0};
   REQUIRE(fread(header, 1, sizeof(header), f.get()) == 44);
@@ -71,7 +71,7 @@ TEST_CASE(
   }
 
   // Verify WAV header was patched on destruction
-  FilePtr_t f(fopen(temp_wav.c_str(), "rb"), fclose);
+  FilePtr f(fopen(temp_wav.c_str(), "rb"), fclose);
   REQUIRE(f != nullptr);
   uint8_t header[44] = {0};
   REQUIRE(fread(header, 1, sizeof(header), f.get()) == 44);
@@ -124,7 +124,7 @@ TEST_CASE(
   CHECK(dumper.is_active() == false);
 
   // Verify file integrity after concurrent termination
-  FilePtr_t f(fopen(temp_wav.c_str(), "rb"), fclose);
+  FilePtr f(fopen(temp_wav.c_str(), "rb"), fclose);
   REQUIRE(f != nullptr);
   uint8_t header[44] = {0};
   REQUIRE(fread(header, 1, sizeof(header), f.get()) == 44);
@@ -181,7 +181,7 @@ TEST_CASE("AudioDumper: [AUD-5] C API wrappers lifecycle and error handling") {
   CHECK(dumper.is_active() == false);
 
   // Verify WAV header for 22050 Hz mono
-  FilePtr_t f(fopen(temp_wav.c_str(), "rb"), fclose);
+  FilePtr f(fopen(temp_wav.c_str(), "rb"), fclose);
   REQUIRE(f != nullptr);
   uint8_t header[44] = {0};
   REQUIRE(fread(header, 1, sizeof(header), f.get()) == 44);
@@ -219,7 +219,7 @@ TEST_CASE("AudioDumper: [AUD-6] Move semantics transfer active state") {
   dumper3.finalize();
   CHECK(dumper3.is_active() == false);
 
-  FilePtr_t f(fopen(temp_wav.c_str(), "rb"), fclose);
+  FilePtr f(fopen(temp_wav.c_str(), "rb"), fclose);
   REQUIRE(f != nullptr);
   uint8_t header[44] = {0};
   REQUIRE(fread(header, 1, sizeof(header), f.get()) == 44);

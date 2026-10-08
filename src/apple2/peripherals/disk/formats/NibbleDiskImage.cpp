@@ -42,7 +42,7 @@ auto has_woz_magic(const uint8_t* header_data, size_t header_size) -> bool {
 // easily-swappable-parameters is mandated by the Disk Driver ABI signatures.
 
 struct NibbleDiskImage_t {
-  FilePtr_t file{nullptr, fclose};
+  FilePtr file{nullptr, fclose};
   uint32_t data_offset = 0;
   uint32_t track_size = 0;
   uint32_t track_count = 0;
@@ -94,7 +94,7 @@ extern "C" auto nibble_disk_image_open(const char* path, uint32_t file_offset,
     return disk_err_invalid_argument;
   }
 
-  FilePtr_t file{nullptr, fclose};
+  FilePtr file{nullptr, fclose};
   bool host_read_only = read_only;
   if (!read_only) {
     file.reset(fopen(path, "r+b"));
@@ -274,7 +274,7 @@ extern "C" auto nibble_disk_image_create(const char* path,
   // fdopen is POSIX, declared by the <stdio.h> behind <cstdio>, which
   // include-cleaner does not credit.
   // NOLINTNEXTLINE(misc-include-cleaner)
-  FilePtr_t file{fdopen(fd, "wb"), fclose};
+  FilePtr file{fdopen(fd, "wb"), fclose};
   if (file == nullptr) {
     close(fd);
     unlink(path);

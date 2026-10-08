@@ -522,7 +522,7 @@ TEST_CASE(
 #if defined(ENABLE_PERIPHERAL_KEYBOARD) && defined(ENABLE_PERIPHERAL_JOYSTICK)
 namespace {
 
-auto record_log_line(LogLevel_t level, const char* message, void* user_data)
+auto record_log_line(LogLevel level, const char* message, void* user_data)
     -> void {
   (void)level;
   auto* lines = static_cast<std::string*>(user_data);

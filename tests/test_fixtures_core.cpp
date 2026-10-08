@@ -7,7 +7,7 @@
 namespace TestFixtures {
 
 auto load_configuration_file(const std::string& path) -> bool {
-  return Configuration_t::instance().load(path);
+  return Configuration::instance().load(path);
 }
 
 }  // namespace TestFixtures

@@ -71,12 +71,12 @@ static auto lowest_configured_printer_slot() -> int {
 static auto configure_printer_sink() -> void {
   PrinterFrontendSettings_t settings{};
   settings.filename = "Printer.txt";
-  config_load_string("Configuration", REGVALUE_PPRINTER_FILENAME,
+  config_load_string("Configuration", cfg_pprinter_filename,
                      &settings.filename);
   uint32_t append = 1;
-  config_load_int("Configuration", REGVALUE_PRINTER_APPEND, &append);
+  config_load_int("Configuration", cfg_printer_append, &append);
   uint32_t eight_bit = 0;
-  config_load_int("Configuration", REGVALUE_PRINTER_EIGHT_BIT, &eight_bit);
+  config_load_int("Configuration", cfg_printer_eight_bit, &eight_bit);
   settings.append = append != 0;
   settings.eight_bit = eight_bit != 0;
   settings.base_dir = system_state.save_state_dir.data();
@@ -108,7 +108,7 @@ static auto install_host_sink() -> void {
 static auto initialize_directory(const char* reg_key, char* target_buffer,
                                  size_t buffer_size) -> void {
   std::string path =
-      Configuration_t::instance().get_string("Preferences", reg_key);
+      Configuration::instance().get_string("Preferences", reg_key);
   if (path.empty()) {
     path = Path::get_user_data_dir();
   }
@@ -132,12 +132,12 @@ static auto load_custom_rom(const char* rom_path) -> bool {
   }
 
   std::string path_to_open = rom_path;
-  FilePtr_t f{std::fopen(path_to_open.c_str(), "rb"), std::fclose};
+  FilePtr f{std::fopen(path_to_open.c_str(), "rb"), std::fclose};
   if (!f) {
     std::string resolved = Path::find_data_file(rom_path);
     if (!resolved.empty()) {
       path_to_open = resolved;
-      f = FilePtr_t{std::fopen(path_to_open.c_str(), "rb"), std::fclose};
+      f = FilePtr{std::fopen(path_to_open.c_str(), "rb"), std::fclose};
     }
   }
   if (!f) {
@@ -192,19 +192,19 @@ static auto apply_screen_factor() -> void {
   }
 }
 
-static auto autoload_startup_disks(const AppConfig_t* config) -> void {
+static auto autoload_startup_disks(const AppConfig* config) -> void {
   uint32_t autoload = 0;
   bool has_autoload =
-      config_load_int("Configuration", REGVALUE_SLOT6_AUTOLOAD, &autoload) ||
-      config_load_int("Preferences", REGVALUE_SLOT6_AUTOLOAD, &autoload) ||
-      config_load_int("Slots", REGVALUE_SLOT6_AUTOLOAD, &autoload);
+      config_load_int("Configuration", cfg_slot6_autoload, &autoload) ||
+      config_load_int("Preferences", cfg_slot6_autoload, &autoload) ||
+      config_load_int("Slots", cfg_slot6_autoload, &autoload);
 
   std::string disk1;
   bool has_disk1 =
       (config->disk_path.at(0).at(0) != '\0') ||
-      config_load_string("Slots", REGVALUE_DISK_IMAGE1, &disk1) ||
-      config_load_string("Configuration", REGVALUE_DISK_IMAGE1, &disk1) ||
-      config_load_string("Preferences", REGVALUE_DISK_IMAGE1, &disk1);
+      config_load_string("Slots", cfg_disk_image1, &disk1) ||
+      config_load_string("Configuration", cfg_disk_image1, &disk1) ||
+      config_load_string("Preferences", cfg_disk_image1, &disk1);
 
   if (config->disk_path.at(0).at(0) != '\0') {
     return;
@@ -222,9 +222,9 @@ static auto autoload_startup_disks(const AppConfig_t* config) -> void {
   peripheral_command(disk_default_slot, disk_cmd_insert, &cmd, sizeof(cmd));
 
   std::string disk2;
-  if (config_load_string("Slots", REGVALUE_DISK_IMAGE2, &disk2) ||
-      config_load_string("Configuration", REGVALUE_DISK_IMAGE2, &disk2) ||
-      config_load_string("Preferences", REGVALUE_DISK_IMAGE2, &disk2)) {
+  if (config_load_string("Slots", cfg_disk_image2, &disk2) ||
+      config_load_string("Configuration", cfg_disk_image2, &disk2) ||
+      config_load_string("Preferences", cfg_disk_image2, &disk2)) {
     if (!disk2.empty()) {
       DiskInsertCmd_t cmd2{};
       cmd2.drive = disk_drive_1;
@@ -236,7 +236,7 @@ static auto autoload_startup_disks(const AppConfig_t* config) -> void {
   }
 }
 
-auto app_controller_initialize(AppConfig_t* config) -> int {
+auto app_controller_initialize(AppConfig* config) -> int {
   if (config == nullptr) {
     return -1;
   }
@@ -278,7 +278,7 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
     current_clk_6502 = CLOCK_6502_NTSC;
   }
 
-  const int config_speed = Configuration_t::instance().get_int(
+  const int config_speed = Configuration::instance().get_int(
       "Configuration", "Emulation Speed",
       static_cast<int>(emulation_speed_normal));
   if (config_speed >= 0 &&
@@ -291,20 +291,20 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   }
   save_state_startup();
 
-  initialize_directory(REGVALUE_PREF_START_DIR, &system_state.current_dir[0],
+  initialize_directory(cfg_pref_start_dir, &system_state.current_dir[0],
                        sizeof(system_state.current_dir));
-  initialize_directory(REGVALUE_PREF_HDD_START_DIR, &system_state.hdd_dir[0],
+  initialize_directory(cfg_pref_hdd_start_dir, &system_state.hdd_dir[0],
                        sizeof(system_state.hdd_dir));
-  initialize_directory(REGVALUE_PREF_SAVESTATE_DIR,
+  initialize_directory(cfg_pref_savestate_dir,
                        &system_state.save_state_dir[0],
                        sizeof(system_state.save_state_dir));
-  initialize_directory(REGVALUE_FTP_LOCAL_DIR, &system_state.ftp_local_dir[0],
+  initialize_directory(cfg_ftp_local_dir, &system_state.ftp_local_dir[0],
                        sizeof(system_state.ftp_local_dir));
 
   install_host_sink();
 
-  std::string ftp_server = Configuration_t::instance().get_string(
-      "Preferences", REGVALUE_FTP_DIR,
+  std::string ftp_server = Configuration::instance().get_string(
+      "Preferences", cfg_ftp_dir,
       "ftp://ftp.apple.asimov.net/pub/apple_II/images/games/");
   if (ftp_server.empty()) {
     ftp_server = "ftp://ftp.apple.asimov.net/pub/apple_II/images/games/";
@@ -312,8 +312,8 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   util_safe_strcpy(system_state.ftp_server.data(), ftp_server.c_str(),
                    system_state.ftp_server.size());
 
-  std::string ftp_server_hdd = Configuration_t::instance().get_string(
-      "Preferences", REGVALUE_FTP_HDD_DIR,
+  std::string ftp_server_hdd = Configuration::instance().get_string(
+      "Preferences", cfg_ftp_hdd_dir,
       "ftp://ftp.apple.asimov.net/pub/apple_II/images/");
   if (ftp_server_hdd.empty()) {
     ftp_server_hdd = "ftp://ftp.apple.asimov.net/pub/apple_II/images/";
@@ -321,8 +321,8 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   util_safe_strcpy(system_state.ftp_server_hdd.data(), ftp_server_hdd.c_str(),
                    system_state.ftp_server_hdd.size());
 
-  std::string ftp_userpass = Configuration_t::instance().get_string(
-      "Preferences", REGVALUE_FTP_USERPASS, "anonymous:my-mail@mail.com");
+  std::string ftp_userpass = Configuration::instance().get_string(
+      "Preferences", cfg_ftp_userpass, "anonymous:my-mail@mail.com");
   if (ftp_userpass.empty()) {
     ftp_userpass = "anonymous:my-mail@mail.com";
   }
@@ -375,7 +375,7 @@ auto app_controller_initialize(AppConfig_t* config) -> int {
   return 0;
 }
 
-auto app_controller_handle_diagnostic_commands(const AppConfig_t* config)
+auto app_controller_handle_diagnostic_commands(const AppConfig* config)
     -> bool {
   if (config == nullptr) {
     return false;
@@ -465,7 +465,7 @@ static auto load_initial_disk(int drive, const char* path) -> void {
   }
 }
 
-auto app_controller_load_initial_media(const AppConfig_t* config) -> void {
+auto app_controller_load_initial_media(const AppConfig* config) -> void {
   if (config == nullptr) {
     return;
   }
@@ -533,7 +533,7 @@ auto app_controller_save_disk_config(int drive) -> void {
 
   config_save_string(
       "Slots",
-      (drive == disk_drive_0) ? REGVALUE_DISK_IMAGE1 : REGVALUE_DISK_IMAGE2,
+      (drive == disk_drive_0) ? cfg_disk_image1 : cfg_disk_image2,
       (drive == disk_drive_0) ? status.drive0_full_path
                               : status.drive1_full_path);
 }

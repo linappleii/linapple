@@ -11,14 +11,19 @@
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "core/LinAppleCore.h"
 
-enum AppIntent_t { INTENT_RUN, INTENT_DIAGNOSTIC, INTENT_HELP, INTENT_ERROR };
+enum AppIntent : uint8_t {
+  INTENT_RUN,
+  INTENT_DIAGNOSTIC,
+  INTENT_HELP,
+  INTENT_ERROR,
+};
 
-enum TuiRenderMode_t {
+enum TuiRenderMode : uint8_t {
   TUI_RENDER_SMART = 0,
   TUI_RENDER_BLOCK = 1,
 };
 
-enum { ARGV_EXTRA_MAX = 64 };
+constexpr size_t argv_extra_max = 64;
 
 constexpr const char* cfg_sec_configuration = "Configuration";
 constexpr const char* cfg_sec_slots = "Slots";
@@ -82,67 +87,13 @@ constexpr const char* cfg_ftp_hdd_dir = "FTP ServerHDD";
 constexpr const char* cfg_ftp_local_dir = "FTP Local Dir";
 constexpr const char* cfg_ftp_userpass = "FTP UserPass";
 
-// Backward-compatible aliases for legacy REGVALUE_* constants
-constexpr const char* REGVALUE_COMPUTER_EMULATION = cfg_computer_emulation;
-constexpr const char* REGVALUE_APPLE2_TYPE = cfg_apple2_type;
-constexpr const char* REGVALUE_SPKR_VOLUME = cfg_spkr_volume;
-constexpr const char* REGVALUE_MB_VOLUME = cfg_mb_volume;
-constexpr const char* REGVALUE_SOUNDCARD_TYPE = cfg_soundcard_type;
-constexpr const char* REGVALUE_KEYB_TYPE = cfg_keyb_type;
-constexpr const char* REGVALUE_KEYB_CHARSET_SWITCH = cfg_keyb_charset_switch;
-constexpr const char* REGVALUE_SAVESTATE_FILENAME = cfg_savestate_filename;
-constexpr const char* REGVALUE_SAVE_STATE_ON_EXIT = cfg_save_state_on_exit;
-constexpr const char* REGVALUE_HDD_ENABLED = cfg_hdd_enabled;
-constexpr const char* REGVALUE_HDD_IMAGE1 = cfg_hdd_image1;
-constexpr const char* REGVALUE_HDD_IMAGE2 = cfg_hdd_image2;
-constexpr const char* REGVALUE_DISK_IMAGE1 = cfg_disk_image1;
-constexpr const char* REGVALUE_DISK_IMAGE2 = cfg_disk_image2;
-constexpr const char* REGVALUE_SLOT6_AUTOLOAD = cfg_slot6_autoload;
 
-constexpr const char* REGVALUE_JOY_TYPE1 = cfg_joy_type1;
-constexpr const char* REGVALUE_JOY_TYPE2 = cfg_joy_type2;
-constexpr const char* REGVALUE_JOY_INDEX1 = cfg_joy_index1;
-constexpr const char* REGVALUE_JOY_INDEX2 = cfg_joy_index2;
-constexpr const char* REGVALUE_JOY_BUTTON1_1 = cfg_joy_button1_1;
-constexpr const char* REGVALUE_JOY_BUTTON1_2 = cfg_joy_button1_2;
-constexpr const char* REGVALUE_JOY_BUTTON2_1 = cfg_joy_button2_1;
-constexpr const char* REGVALUE_JOY_AXIS1_0 = cfg_joy_axis1_0;
-constexpr const char* REGVALUE_JOY_AXIS1_1 = cfg_joy_axis1_1;
-constexpr const char* REGVALUE_JOY_AXIS2_0 = cfg_joy_axis2_0;
-constexpr const char* REGVALUE_JOY_AXIS2_1 = cfg_joy_axis2_1;
 
-constexpr const char* REGVALUE_PPRINTER_FILENAME = cfg_pprinter_filename;
-constexpr const char* REGVALUE_PRINTER_APPEND = cfg_printer_append;
-constexpr const char* REGVALUE_PRINTER_EIGHT_BIT = cfg_printer_eight_bit;
-
-constexpr const char* REGVALUE_PDL_XTRIM = cfg_pdl_xtrim;
-constexpr const char* REGVALUE_PDL_YTRIM = cfg_pdl_ytrim;
-constexpr const char* REGVALUE_SHIFT_KEY_MOD = cfg_shift_key_mod;
-constexpr const char* REGVALUE_SCROLLLOCK_TOGGLE = cfg_scrolllock_toggle;
-constexpr const char* REGVALUE_MOUSE_IN_SLOT4 = cfg_mouse_in_slot4;
-constexpr const char* REGVALUE_MOUSE_CAPTURE = cfg_mouse_capture;
-constexpr const char* REGVALUE_BASIC_SYNC_FILE = cfg_basic_sync_file;
-constexpr const char* REGVALUE_BASIC_LINE_MODE = cfg_basic_line_mode;
-
-constexpr const char* REGVALUE_PREF_START_DIR = cfg_pref_start_dir;
-constexpr const char* REGVALUE_PREF_HDD_START_DIR = cfg_pref_hdd_start_dir;
-constexpr const char* REGVALUE_PREF_SAVESTATE_DIR = cfg_pref_savestate_dir;
-
-constexpr const char* REGVALUE_SHOW_LEDS = cfg_show_leds;
-constexpr const char* REGVALUE_DISABLE_DEBUGGER = cfg_disable_debugger;
-constexpr const char* REGVALUE_TUI_RENDER_MODE = cfg_tui_render_mode;
-
-constexpr const char* REGVALUE_FTP_DIR = cfg_ftp_dir;
-constexpr const char* REGVALUE_FTP_HDD_DIR = cfg_ftp_hdd_dir;
-
-constexpr const char* REGVALUE_FTP_LOCAL_DIR = cfg_ftp_local_dir;
-constexpr const char* REGVALUE_FTP_USERPASS = cfg_ftp_userpass;
-
-struct Configuration_t {
+struct Configuration {
   std::string path;
 
   // Application intent and options
-  AppIntent_t intent = INTENT_RUN;
+  AppIntent intent = INTENT_RUN;
   std::array<std::array<char, path_max_len>, disk_drive_count> disk_path = {};
   std::array<std::array<char, path_max_len>, 2> harddisk_path = {};
   std::array<char, path_max_len> program_path = {};
@@ -175,16 +126,16 @@ struct Configuration_t {
   std::array<char, path_max_len> basic_sync_file = {};
   int basic_line_mode = -1;
 
-  TuiRenderMode_t tui_render_mode = TUI_RENDER_SMART;
+  TuiRenderMode tui_render_mode = TUI_RENDER_SMART;
   bool tui_render_mode_explicit = false;
 
   // Extra args for frontend pass-through
   int argc_extra = 0;
-  std::array<const char*, ARGV_EXTRA_MAX> argv_extra = {};
+  std::array<const char*, argv_extra_max> argv_extra = {};
 
   std::map<std::string, std::map<std::string, std::string>> data;
 
-  static auto instance() -> Configuration_t&;
+  static auto instance() -> Configuration&;
 
   auto load(const std::string& config_path) -> bool;
   auto load_defaults() -> void;
@@ -228,9 +179,9 @@ struct Configuration_t {
   auto set_bool(const char* section, const char* key, bool value) -> void;
 };
 
-using AppConfig_t = Configuration_t;
+using AppConfig = Configuration;
 
-auto config_instance() -> Configuration_t&;
+auto config_instance() -> Configuration&;
 auto config_load_file(const char* path) -> bool;
 auto config_save_file() -> bool;
 auto config_load_defaults() -> void;

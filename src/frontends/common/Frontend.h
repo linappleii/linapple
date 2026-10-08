@@ -6,12 +6,12 @@
 #include "apple2/Video.h"
 #include "core/LinAppleCore.h"
 
-struct Configuration_t;
-using AppConfig_t = Configuration_t;
+struct Configuration;
+using AppConfig = Configuration;
 
 auto sys_init() -> int;
 auto sys_shutdown() -> void;
-auto session_init(AppConfig_t* config) -> int;
+auto session_init(AppConfig* config) -> int;
 auto session_shutdown() -> void;
 
 auto enter_message_loop() -> void;
@@ -22,7 +22,7 @@ auto ds_shutdown() -> void;
 auto single_step(bool is_reinit) -> void;
 auto frontend_dispatch_key_event(uint32_t scancode, uint32_t keycode,
                                  uint32_t mod, bool is_down) -> void;
-auto frontend_to_core_key(int key, uint32_t mod) -> LinAppleKey_t;
+auto frontend_to_core_key(int key, uint32_t mod) -> LinAppleKey;
 // In host mode the Apple's caps follows the host's lock state at each edge of
 // the key and on focus gain; in emulated mode a press toggles the Apple's own.
 auto keyboard_sync_host_caps(uint32_t mod) -> void;

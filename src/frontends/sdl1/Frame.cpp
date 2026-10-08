@@ -181,13 +181,13 @@ auto handle_btn_fullscreen(int mod) -> void {
 
 auto handle_btn_setup(int mod) -> void {
   if ((mod & KMOD_SHIFT) != 0) {
-    Configuration_t::instance().set_int("Configuration", "Video Emulation",
+    Configuration::instance().set_int("Configuration", "Video Emulation",
                                         static_cast<int>(g_videotype));
-    Configuration_t::instance().set_int("Configuration", "Emulation Speed",
+    Configuration::instance().set_int("Configuration", "Emulation Speed",
                                         static_cast<int>(system_state.speed));
-    Configuration_t::instance().set_int("Configuration", "Fullscreen",
+    Configuration::instance().set_int("Configuration", "Fullscreen",
                                         system_state.fullscreen ? 1 : 0);
-    Configuration_t::instance().save();
+    Configuration::instance().save();
   } else {
     frame_save_bmp();
   }

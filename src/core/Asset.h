@@ -3,16 +3,16 @@
 
 struct VideoSurface_t;
 
-struct Assets_t {
+struct Assets {
   void* icon{nullptr};
   VideoSurface_t* font{nullptr};
   VideoSurface_t* splash{nullptr};
 };
 
-extern Assets_t* assets;
+extern Assets* assets;
 
-using AssetFreeIconFn_t = void (*)();
-auto asset_set_free_icon_callback(AssetFreeIconFn_t cb) noexcept -> void;
+using AssetFreeIconFn = void (*)();
+auto asset_set_free_icon_callback(AssetFreeIconFn cb) noexcept -> void;
 
 auto asset_init() -> bool;
 auto asset_quit() noexcept -> void;

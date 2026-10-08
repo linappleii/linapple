@@ -32,9 +32,9 @@ struct ScopedTranslator_t {
   static auto custom(
       std::initializer_list<std::pair<const char*, const char*>> entries)
       -> void {
-    Configuration_t::instance().data.erase("Keyboard.Custom");
+    Configuration::instance().data.erase("Keyboard.Custom");
     for (const auto& entry : entries) {
-      Configuration_t::instance().set_string("Keyboard.Custom", entry.first,
+      Configuration::instance().set_string("Keyboard.Custom", entry.first,
                                              entry.second);
     }
     keyboard_apply_custom_mappings();
@@ -42,7 +42,7 @@ struct ScopedTranslator_t {
 
  private:
   static auto reset() -> void {
-    Configuration_t& config = Configuration_t::instance();
+    Configuration& config = Configuration::instance();
     config.data.erase("Keyboard.Custom");
     config.data.erase("Keyboard");
     config.data["Configuration"].erase("Keyboard Type");
@@ -170,7 +170,7 @@ TEST_CASE(
     "from [Keyboard], Keyboard Type and the rocker switch from "
     "[Configuration], and the custom section") {
   ScopedTranslator_t translator;
-  Configuration_t& config = Configuration_t::instance();
+  Configuration& config = Configuration::instance();
   config.set_int("Keyboard", "Mapping Mode", 1);
   config.set_int("Keyboard", "Caps Lock Mode", 1);
   config.set_string("Keyboard", "Quick Save Modifier", "Ctrl");

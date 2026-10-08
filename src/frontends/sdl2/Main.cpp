@@ -166,7 +166,7 @@ auto enter_message_loop() -> void {
 }
 
 auto main(int argc, char** argv) -> int {
-  AppConfig_t& config = Configuration_t::instance();
+  AppConfig& config = Configuration::instance();
   if (app_args_parse(argc, argv, &config) != 0) {
     return 1;
   }

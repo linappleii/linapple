@@ -22,7 +22,7 @@ constexpr uint8_t k_seven_bit_mask = 0x7F;
 constexpr uint8_t k_carriage_return = 0x0D;
 
 struct SlotSink_t {
-  FilePtr_t file{nullptr, std::fclose};
+  FilePtr file{nullptr, std::fclose};
   bool in_use = false;
   bool ready = true;
   // Overwrite means one truncation per run, at the first open; a file closed

@@ -284,7 +284,7 @@ auto disk_loader_open(const char* image_path,
 
   TemporaryFileGuard temp_guard(is_temporary ? load_path : nullptr);
 
-  FilePtr_t image_file(fopen(load_path, "rb"), fclose);
+  FilePtr image_file(fopen(load_path, "rb"), fclose);
   if (image_file == nullptr) {
     return disk_err_file_not_found;
   }

@@ -207,13 +207,13 @@ auto handle_btn_fullscreen(int mod) -> void {
 
 auto handle_btn_setup(int mod) -> void {
   if ((mod & KMOD_SHIFT) != 0) {
-    Configuration_t::instance().set_int("Configuration", "Video Emulation",
+    Configuration::instance().set_int("Configuration", "Video Emulation",
                                         static_cast<int>(g_videotype));
-    Configuration_t::instance().set_int("Configuration", "Emulation Speed",
+    Configuration::instance().set_int("Configuration", "Emulation Speed",
                                         static_cast<int>(system_state.speed));
-    Configuration_t::instance().set_int("Configuration", "Fullscreen",
+    Configuration::instance().set_int("Configuration", "Fullscreen",
                                         system_state.fullscreen ? 1 : 0);
-    Configuration_t::instance().save();
+    Configuration::instance().save();
   } else {
     frame_save_bmp();
   }
@@ -702,17 +702,17 @@ auto psp_save_state_select_image(bool saveit) -> bool {
   }
   util_safe_strcpy(system_state.save_state_dir.data(), full_path.c_str(),
                    system_state.save_state_dir.size());
-  Configuration_t::instance().set_string("Preferences", "Save State Directory",
+  Configuration::instance().set_string("Preferences", "Save State Directory",
                                          system_state.save_state_dir.data());
-  Configuration_t::instance().save();
+  Configuration::instance().save();
 
   s_backdx = static_cast<int>(s_file_index);
   full_path += "/" + filename;
 
   save_state_set_filename(full_path.c_str());
-  Configuration_t::instance().set_string(
-      "Preferences", REGVALUE_SAVESTATE_FILENAME, full_path.c_str());
-  Configuration_t::instance().save();
+  Configuration::instance().set_string(
+      "Preferences", cfg_savestate_filename, full_path.c_str());
+  Configuration::instance().save();
   draw_frame_window();
   return true;
 }

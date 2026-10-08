@@ -39,8 +39,8 @@ constexpr uint16_t k_dos33_bload_len = 0xAA60;
 
 }  // namespace
 
-auto program_loader_inspect(FILE* f, ProgramInfo_t* out_info) noexcept
-    -> ProgramLoadResult_t {
+auto program_loader_inspect(FILE* f, ProgramInfo* out_info) noexcept
+    -> ProgramLoadResult {
   if (f == nullptr || out_info == nullptr) {
     return program_load_file_error;
   }
@@ -67,7 +67,7 @@ auto program_loader_inspect(FILE* f, ProgramInfo_t* out_info) noexcept
     const auto magic = read_u32_le(&buf[0]);
     if (magic == k_prg_magic) {
       const auto word_len = read_u16_le(&buf[k_prg_word_len_offset]);
-      out_info->format = ProgramFormat_t::prg;
+      out_info->format = ProgramFormat::prg;
       out_info->load_addr = read_u16_le(&buf[k_prg_load_addr_offset]);
       out_info->length = static_cast<uint32_t>(word_len) * 2;
       out_info->offset = static_cast<uint32_t>(k_prg_header_size);
@@ -86,7 +86,7 @@ auto program_loader_inspect(FILE* f, ProgramInfo_t* out_info) noexcept
   const auto size_match =
       (exact_size == file_size) || (padded_size == file_size);
   if (size_match) {
-    out_info->format = ProgramFormat_t::apl;
+    out_info->format = ProgramFormat::apl;
     out_info->load_addr = read_u16_le(&buf[k_apl_load_addr_offset]);
     out_info->length = apl_len;
     out_info->offset = static_cast<uint32_t>(k_apl_header_size);
@@ -99,19 +99,19 @@ auto program_loader_inspect(FILE* f, ProgramInfo_t* out_info) noexcept
   return program_load_not_a_program;
 }
 
-auto program_loader_try_load(const char* path, ProgramInfo_t* out_info) noexcept
-    -> ProgramLoadResult_t {
+auto program_loader_try_load(const char* path, ProgramInfo* out_info) noexcept
+    -> ProgramLoadResult {
   if (path == nullptr || path[0] == '\0' || mem == nullptr ||
       memdirty == nullptr) {
     return program_load_file_error;
   }
 
-  FilePtr_t f{std::fopen(path, "rb"), std::fclose};
+  FilePtr f{std::fopen(path, "rb"), std::fclose};
   if (!f) {
     return program_load_file_error;
   }
 
-  ProgramInfo_t info{};
+  ProgramInfo info{};
   const auto res = program_loader_inspect(f.get(), &info);
   if (res != program_load_ok) {
     return res;
@@ -150,14 +150,14 @@ auto program_loader_try_load(const char* path, ProgramInfo_t* out_info) noexcept
 }
 
 auto program_loader_load_raw(const char* path, uint16_t load_addr,
-                             ProgramInfo_t* out_info) noexcept
-    -> ProgramLoadResult_t {
+                             ProgramInfo* out_info) noexcept
+    -> ProgramLoadResult {
   if (path == nullptr || path[0] == '\0' || mem == nullptr ||
       memdirty == nullptr) {
     return program_load_file_error;
   }
 
-  FilePtr_t f{std::fopen(path, "rb"), std::fclose};
+  FilePtr f{std::fopen(path, "rb"), std::fclose};
   if (!f) {
     return program_load_file_error;
   }
@@ -198,7 +198,7 @@ auto program_loader_load_raw(const char* path, uint16_t load_addr,
   }
 
   if (out_info != nullptr) {
-    out_info->format = ProgramFormat_t::raw_binary;
+    out_info->format = ProgramFormat::raw_binary;
     out_info->load_addr = actual_load_addr;
     out_info->length = static_cast<uint32_t>(size);
     out_info->offset = 0;
