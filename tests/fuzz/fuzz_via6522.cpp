@@ -16,14 +16,14 @@ constexpr size_t record_size = 5;
 // The interrupt line as the 6502 sees it: bit 7 of IFR, which the register
 // read derives rather than stores. Reading IFR and IER has no side effect, so
 // polling them cannot perturb what is being measured.
-auto bus_visible_irq(Via6522_t* v) -> bool {
+auto bus_visible_irq(Via6522* v) -> bool {
   return (via_read(v, via_reg::ifr) & 0x80) != 0;
 }
 
 }  // namespace
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
-  Via6522_t via;
+  Via6522 via;
   via_reset(&via);
 
   for (size_t offset = 0; offset + record_size <= size; offset += record_size) {

@@ -6,10 +6,8 @@
 #include <cstdint>
 #include <type_traits>
 
-constexpr size_t k_ay8910_num_registers = 16;
-constexpr size_t k_ay8910_num_voices = 3;
-constexpr size_t AY8910_NUM_REGISTERS = k_ay8910_num_registers;
-constexpr size_t AY8910_NUM_VOICES = k_ay8910_num_voices;
+constexpr size_t ay8910_num_registers = 16;
+constexpr size_t ay8910_num_voices = 3;
 
 // AY-3-8910 emulation, per the General Instrument data sheet.
 //
@@ -17,8 +15,8 @@ constexpr size_t AY8910_NUM_VOICES = k_ay8910_num_voices;
 // tone, noise and envelope counters all advance at clock / 8, and one sample
 // comes out per counter tick, so the caller -- which is the only party that
 // knows what the chip is wired to -- decides how many ticks elapsed.
-struct Ay8910_t {
-  std::array<uint8_t, AY8910_NUM_REGISTERS> regs = {};
+struct Ay8910 {
+  std::array<uint8_t, ay8910_num_registers> regs = {};
   uint16_t count_a = 0;
   uint16_t count_b = 0;
   uint16_t count_c = 0;
@@ -43,11 +41,11 @@ struct Ay8910_t {
   bool env_attack = false;
 };
 
-static_assert(std::is_standard_layout<Ay8910_t>::value,
-              "Ay8910_t must satisfy standard layout guarantees");
+static_assert(std::is_standard_layout<Ay8910>::value,
+              "Ay8910 must satisfy standard layout guarantees");
 
-auto ay8910_reset(Ay8910_t* p) noexcept -> void;
-auto ay8910_write(Ay8910_t* p, uint8_t reg, uint8_t val) noexcept -> void;
+auto ay8910_reset(Ay8910* p) noexcept -> void;
+auto ay8910_write(Ay8910* p, uint8_t reg, uint8_t val) noexcept -> void;
 
-auto ay8910_step(Ay8910_t* p, size_t ticks, float* const out[AY8910_NUM_VOICES],
+auto ay8910_step(Ay8910* p, size_t ticks, float* const out[ay8910_num_voices],
                  size_t max) noexcept -> void;

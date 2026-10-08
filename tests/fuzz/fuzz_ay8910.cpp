@@ -19,16 +19,18 @@ constexpr size_t max_ticks_per_step = 1024;
 // One register write and one run of the generators.
 constexpr size_t record_size = 4;
 
-std::array<std::array<float, max_ticks_per_step>, AY8910_NUM_VOICES> g_scratch;
+std::array<std::array<float, max_ticks_per_step>, ay8910_num_voices>
+    scratch_buffer;
 
 }  // namespace
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
-  Ay8910_t psg;
+  Ay8910 psg;
   ay8910_reset(&psg);
 
-  std::array<float*, AY8910_NUM_VOICES> voices = {
-      {g_scratch[0].data(), g_scratch[1].data(), g_scratch[2].data()}};
+  std::array<float*, ay8910_num_voices> voices = {
+      {scratch_buffer[0].data(), scratch_buffer[1].data(),
+       scratch_buffer[2].data()}};
 
   for (size_t offset = 0; offset + record_size <= size; offset += record_size) {
     const uint8_t* record = data + offset;

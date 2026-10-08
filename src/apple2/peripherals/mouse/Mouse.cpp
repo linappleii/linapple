@@ -208,7 +208,7 @@ struct MouseCard_t {
   HostInterface_t* host = nullptr;
   int slot = 0;
 
-  Pia6821_t pia{};
+  Pia6821 pia{};
   uint8_t port_a_shadow = 0;
   uint8_t port_b_shadow = 0;
 

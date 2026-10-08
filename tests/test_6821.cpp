@@ -52,7 +52,7 @@ TEST_CASE("6821 PIA: Null Instance Is Completely Inert") {
 
 TEST_CASE(
     "6821 PIA: Reset Establishes Datasheet Pull-Ups And Clears Registers") {
-  Pia6821_t pia;
+  Pia6821 pia;
   pia.ora = 0xAA;
   pia.orb = 0x55;
   pia.ddra = 0xFF;
@@ -76,7 +76,7 @@ TEST_CASE(
 }
 
 TEST_CASE("6821 PIA: DDR vs Port Selection via CRA/CRB Bit 2") {
-  Pia6821_t pia;
+  Pia6821 pia;
   pia_6821_reset(&pia);
 
   // When CRA bit 2 is 0, address 0 accesses DDRA
@@ -103,7 +103,7 @@ TEST_CASE("6821 PIA: DDR vs Port Selection via CRA/CRB Bit 2") {
 }
 
 TEST_CASE("6821 PIA: Output Listeners Receive Masked Values") {
-  Pia6821_t pia;
+  Pia6821 pia;
   pia_6821_reset(&pia);
 
   CallbackRecord_t rec_a{};
@@ -141,7 +141,7 @@ TEST_CASE("6821 PIA: Output Listeners Receive Masked Values") {
 TEST_CASE(
     "6821 PIA: Port B reads the latch for output bits and the pins for input "
     "bits") {
-  Pia6821_t pia;
+  Pia6821 pia;
   pia_6821_reset(&pia);
   pia_6821_write(&pia, 3, 0x00);
   pia_6821_write(&pia, 2, 0x3E);

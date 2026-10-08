@@ -35,7 +35,7 @@ struct Out_t {
 };
 
 struct Bench_t {
-  Acia6551_t acia;
+  Acia6551 acia;
   std::vector<Out_t> sent;
 
   Bench_t() {
@@ -72,8 +72,8 @@ struct Bench_t {
     return (read(acia_reg::status, now) & acia_status::tdre) != 0;
   }
 
-  auto line() -> AciaLine_t {
-    AciaLine_t out;
+  auto line() -> AciaLine {
+    AciaLine out;
     acia_line_view(&acia, &out);
     return out;
   }

@@ -10,7 +10,7 @@ namespace {
 constexpr uint8_t ier_set_timer1 = 0xC0;
 constexpr uint8_t ier_set_timer2 = 0xA0;
 
-auto armed_timer1(Via6522_t* v, uint16_t latch, uint8_t acr) -> void {
+auto armed_timer1(Via6522* v, uint16_t latch, uint8_t acr) -> void {
   via_write(v, via_reg::acr, acr);
   via_write(v, via_reg::ier, ier_set_timer1);
   via_write(v, via_reg::t1c_l, static_cast<uint8_t>(latch & 0xFF));
@@ -19,7 +19,7 @@ auto armed_timer1(Via6522_t* v, uint16_t latch, uint8_t acr) -> void {
 
 // Ticks the model one cycle at a time so a golden can name the exact cycle a
 // flag appears on; the arithmetic path is exercised separately.
-auto cycle_of_first_irq(Via6522_t* v, uint32_t limit) -> uint32_t {
+auto cycle_of_first_irq(Via6522* v, uint32_t limit) -> uint32_t {
   for (uint32_t t = 1; t <= limit; ++t) {
     via_step(v, 1);
     if (via_irq(v)) {
@@ -32,7 +32,7 @@ auto cycle_of_first_irq(Via6522_t* v, uint32_t limit) -> uint32_t {
 }  // namespace
 
 TEST_CASE("6522 VIA: Reset Clears Control Registers And Spares The Timers") {
-  Via6522_t v;
+  Via6522 v;
   via_write(&v, via_reg::t1c_l, 0x34);
   via_write(&v, via_reg::t1c_h, 0x12);
   via_write(&v, via_reg::t2c_l, 0x78);
@@ -64,7 +64,7 @@ TEST_CASE("6522 VIA: Reset Clears Control Registers And Spares The Timers") {
 }
 
 TEST_CASE("6522 VIA: An Unarmed Timer Never Interrupts") {
-  Via6522_t v;
+  Via6522 v;
   via_reset(&v);
   via_write(&v, via_reg::ier, ier_set_timer1);
   via_write(&v, via_reg::ier, ier_set_timer2);
@@ -77,7 +77,7 @@ TEST_CASE("6522 VIA: An Unarmed Timer Never Interrupts") {
 
 TEST_CASE("6522 VIA: One-Shot Timer 1 Fires Once At N Plus Two") {
   constexpr uint16_t latch = 1000;
-  Via6522_t v;
+  Via6522 v;
   via_reset(&v);
   armed_timer1(&v, latch, 0x00);
 
@@ -93,7 +93,7 @@ TEST_CASE("6522 VIA: One-Shot Timer 1 Fires Once At N Plus Two") {
 
 TEST_CASE("6522 VIA: Timer 1 Counter Reads N Minus K After The Flag") {
   constexpr uint16_t latch = 0x0100;
-  Via6522_t v;
+  Via6522 v;
   via_reset(&v);
   armed_timer1(&v, latch, via_acr::t1_free_run);
 
@@ -113,7 +113,7 @@ TEST_CASE("6522 VIA: Timer 1 Counter Reads N Minus K After The Flag") {
 TEST_CASE("6522 VIA: Free-Running Timer 1 Repeats Every N Plus Two") {
   constexpr uint16_t latch = 0x1000;
   constexpr uint32_t period = latch + 2;
-  Via6522_t v;
+  Via6522 v;
   via_reset(&v);
   armed_timer1(&v, latch, via_acr::t1_free_run);
 
@@ -125,7 +125,7 @@ TEST_CASE("6522 VIA: Free-Running Timer 1 Repeats Every N Plus Two") {
 }
 
 TEST_CASE("6522 VIA: A Latch Of Zero Free-Runs Every Two Cycles") {
-  Via6522_t v;
+  Via6522 v;
   via_reset(&v);
   armed_timer1(&v, 0x0000, via_acr::t1_free_run);
 
@@ -142,7 +142,7 @@ TEST_CASE("6522 VIA: A Latch Of Zero Free-Runs Every Two Cycles") {
 
 TEST_CASE("6522 VIA: Writing T1L-H Does Not Restart Timer 1") {
   constexpr uint16_t latch = 500;
-  Via6522_t v;
+  Via6522 v;
   via_reset(&v);
   armed_timer1(&v, latch, 0x00);
 
@@ -159,7 +159,7 @@ TEST_CASE("6522 VIA: Writing T1L-H Does Not Restart Timer 1") {
 
 TEST_CASE("6522 VIA: A Second T1C-H Write Rearms A Fired One-Shot") {
   constexpr uint16_t latch = 300;
-  Via6522_t v;
+  Via6522 v;
   via_reset(&v);
   armed_timer1(&v, latch, 0x00);
 
@@ -173,7 +173,7 @@ TEST_CASE("6522 VIA: A Second T1C-H Write Rearms A Fired One-Shot") {
 
 TEST_CASE("6522 VIA: Timer 2 Fires Once And Keeps Counting") {
   constexpr uint16_t latch = 700;
-  Via6522_t v;
+  Via6522 v;
   via_reset(&v);
   via_write(&v, via_reg::ier, ier_set_timer2);
   via_write(&v, via_reg::t2c_l, static_cast<uint8_t>(latch & 0xFF));
@@ -195,7 +195,7 @@ TEST_CASE("6522 VIA: Timer 2 Fires Once And Keeps Counting") {
 
 TEST_CASE("6522 VIA: Timer 2 Holds In Pulse-Count Mode") {
   constexpr uint16_t latch = 50;
-  Via6522_t v;
+  Via6522 v;
   via_reset(&v);
   via_write(&v, via_reg::acr, via_acr::t2_pulse_count);
   via_write(&v, via_reg::ier, ier_set_timer2);
@@ -209,7 +209,7 @@ TEST_CASE("6522 VIA: Timer 2 Holds In Pulse-Count Mode") {
 
 TEST_CASE("6522 VIA: A Counter Read Clears Its Own Flag Only") {
   constexpr uint16_t latch = 40;
-  Via6522_t v;
+  Via6522 v;
   via_reset(&v);
   via_write(&v, via_reg::ier, ier_set_timer1);
   via_write(&v, via_reg::ier, ier_set_timer2);
@@ -240,7 +240,7 @@ TEST_CASE("6522 VIA: A Counter Read Clears Its Own Flag Only") {
 
 TEST_CASE("6522 VIA: Both Timers Pending, Clearing One Leaves IRQ Asserted") {
   constexpr uint16_t latch = 64;
-  Via6522_t v;
+  Via6522 v;
   via_reset(&v);
   via_write(&v, via_reg::ier, ier_set_timer1);
   via_write(&v, via_reg::ier, ier_set_timer2);
@@ -262,7 +262,7 @@ TEST_CASE("6522 VIA: Both Timers Pending, Clearing One Leaves IRQ Asserted") {
 }
 
 TEST_CASE("6522 VIA: IFR And IER Masking Truth Table") {
-  Via6522_t v;
+  Via6522 v;
   via_reset(&v);
 
   // IER bit 7 selects set or clear of bits 0 through 6, and reads back set.
@@ -296,7 +296,7 @@ TEST_CASE("6522 VIA: IFR And IER Masking Truth Table") {
 
 TEST_CASE("6522 VIA: PB7 Output Is Visible In An ORB Read") {
   constexpr uint16_t latch = 20;
-  Via6522_t v;
+  Via6522 v;
   via_reset(&v);
   via_write(&v, via_reg::orb, 0xFF);
   CHECK(via_read(&v, via_reg::orb) == 0xFF);
@@ -316,7 +316,7 @@ TEST_CASE("6522 VIA: PB7 Output Is Visible In An ORB Read") {
 }
 
 TEST_CASE("6522 VIA: Transparent Registers Read Back What Was Written") {
-  Via6522_t v;
+  Via6522 v;
   via_reset(&v);
   via_write(&v, via_reg::sr, 0x5A);
   via_write(&v, via_reg::pcr, 0xA5);
@@ -332,7 +332,7 @@ TEST_CASE("6522 VIA: Transparent Registers Read Back What Was Written") {
 
 TEST_CASE("6522 VIA: Step Reports Only Real IRQ Line Changes") {
   constexpr uint16_t latch = 100;
-  Via6522_t v;
+  Via6522 v;
   via_reset(&v);
   armed_timer1(&v, latch, via_acr::t1_free_run);
 

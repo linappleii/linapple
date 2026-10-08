@@ -30,33 +30,35 @@ auto set_hi(uint16_t* w, uint8_t v) noexcept -> void {
 // Phi2 ticks from now until the counter's 0x0000 -> 0xFFFF transition. A
 // counter at c wraps c + 1 ticks from now, and each pending phase tick costs
 // one more.
-constexpr auto ticks_to_underflow(uint16_t counter, uint16_t latch,
-                                  ViaTimerPhase_t phase) noexcept -> uint32_t {
-  return (phase == ViaTimerPhase_t::load_delay)
-             ? static_cast<uint32_t>(counter) + 2U
-         : (phase == ViaTimerPhase_t::reload_pending)
-             ? static_cast<uint32_t>(latch) + 2U
-             : static_cast<uint32_t>(counter) + 1U;
+auto ticks_to_underflow(uint16_t counter, uint16_t latch,
+                        ViaTimerPhase phase) noexcept -> uint32_t {
+  if (phase == ViaTimerPhase::load_delay) {
+    return static_cast<uint32_t>(counter) + 2U;
+  }
+  if (phase == ViaTimerPhase::reload_pending) {
+    return static_cast<uint32_t>(latch) + 2U;
+  }
+  return static_cast<uint32_t>(counter) + 1U;
 }
 
 // Modular, so any tick count is correct; the caller decides where flags fall.
-auto advance(uint16_t* counter, uint16_t latch, ViaTimerPhase_t* phase,
+auto advance(uint16_t* counter, uint16_t latch, ViaTimerPhase* phase,
              uint32_t ticks) noexcept -> void {
   if (counter == nullptr || phase == nullptr || ticks == 0) {
     return;
   }
-  if (*phase == ViaTimerPhase_t::reload_pending) {
+  if (*phase == ViaTimerPhase::reload_pending) {
     *counter = latch;
-    *phase = ViaTimerPhase_t::running;
+    *phase = ViaTimerPhase::running;
     --ticks;
-  } else if (*phase == ViaTimerPhase_t::load_delay) {
-    *phase = ViaTimerPhase_t::running;
+  } else if (*phase == ViaTimerPhase::load_delay) {
+    *phase = ViaTimerPhase::running;
     --ticks;
   }
   *counter = static_cast<uint16_t>(*counter - ticks);
 }
 
-auto step_timer1(Via6522_t* v, uint32_t cycles) noexcept -> void {
+auto step_timer1(Via6522* v, uint32_t cycles) noexcept -> void {
   if (v == nullptr) {
     return;
   }
@@ -79,14 +81,14 @@ auto step_timer1(Via6522_t* v, uint32_t cycles) noexcept -> void {
     v->ifr |= via_ifr::timer1;
     v->t1_fired = true;
     v->t1_phase =
-        free_run ? ViaTimerPhase_t::reload_pending : ViaTimerPhase_t::running;
+        free_run ? ViaTimerPhase::reload_pending : ViaTimerPhase::running;
     if (pb7_driven) {
       v->pb7 = free_run ? !v->pb7 : true;
     }
   }
 }
 
-auto step_timer2(Via6522_t* v, uint32_t cycles) noexcept -> void {
+auto step_timer2(Via6522* v, uint32_t cycles) noexcept -> void {
   if (v == nullptr) {
     return;
   }
@@ -110,17 +112,17 @@ auto step_timer2(Via6522_t* v, uint32_t cycles) noexcept -> void {
     remaining -= span;
     v->ifr |= via_ifr::timer2;
     v->t2_fired = true;
-    v->t2_phase = ViaTimerPhase_t::running;
+    v->t2_phase = ViaTimerPhase::running;
   }
 }
 
 }  // namespace
 
-auto via_irq(const Via6522_t* v) noexcept -> bool {
+auto via_irq(const Via6522* v) noexcept -> bool {
   return v != nullptr && (v->ifr & v->ier & via_ifr::mask) != 0;
 }
 
-auto via_reset(Via6522_t* v) noexcept -> void {
+auto via_reset(Via6522* v) noexcept -> void {
   if (v == nullptr) {
     return;
   }
@@ -135,14 +137,14 @@ auto via_reset(Via6522_t* v) noexcept -> void {
   v->ifr = 0;
   v->ier = 0;
   v->ora_no_handshake = 0;
-  v->t1_phase = ViaTimerPhase_t::running;
-  v->t2_phase = ViaTimerPhase_t::running;
+  v->t1_phase = ViaTimerPhase::running;
+  v->t2_phase = ViaTimerPhase::running;
   v->t1_fired = true;
   v->t2_fired = true;
   v->pb7 = false;
 }
 
-auto via_write(Via6522_t* v, uint8_t reg, uint8_t val) noexcept -> void {
+auto via_write(Via6522* v, uint8_t reg, uint8_t val) noexcept -> void {
   if (v == nullptr) {
     return;
   }
@@ -166,7 +168,7 @@ auto via_write(Via6522_t* v, uint8_t reg, uint8_t val) noexcept -> void {
     case via_reg::t1c_h:
       set_hi(&v->t1_latch, val);
       v->t1_counter = v->t1_latch;
-      v->t1_phase = ViaTimerPhase_t::load_delay;
+      v->t1_phase = ViaTimerPhase::load_delay;
       v->t1_fired = false;
       v->ifr &= static_cast<uint8_t>(~via_ifr::timer1);
       if ((v->acr & via_acr::pb7_output) != 0) {
@@ -183,7 +185,7 @@ auto via_write(Via6522_t* v, uint8_t reg, uint8_t val) noexcept -> void {
     case via_reg::t2c_h:
       v->t2_counter = static_cast<uint16_t>((static_cast<uint16_t>(val) << 8) |
                                             lo(v->t2_latch));
-      v->t2_phase = ViaTimerPhase_t::load_delay;
+      v->t2_phase = ViaTimerPhase::load_delay;
       v->t2_fired = false;
       v->ifr &= static_cast<uint8_t>(~via_ifr::timer2);
       break;
@@ -214,7 +216,7 @@ auto via_write(Via6522_t* v, uint8_t reg, uint8_t val) noexcept -> void {
   }
 }
 
-auto via_read(Via6522_t* v, uint8_t reg) noexcept -> uint8_t {
+auto via_read(Via6522* v, uint8_t reg) noexcept -> uint8_t {
   if (v == nullptr) {
     return 0;
   }
@@ -262,7 +264,7 @@ auto via_read(Via6522_t* v, uint8_t reg) noexcept -> uint8_t {
   }
 }
 
-auto via_step(Via6522_t* v, uint32_t cycles) noexcept -> bool {
+auto via_step(Via6522* v, uint32_t cycles) noexcept -> bool {
   if (v == nullptr) {
     return false;
   }

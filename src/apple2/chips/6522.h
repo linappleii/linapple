@@ -41,7 +41,7 @@ constexpr uint8_t pb7_output = 0x80;
 // before the first decrement, and a free-running T1 spends one Phi2 cycle at
 // 0xFFFF before the latch reappears. Both are the data sheet's half-cycle,
 // quantized, and both are what puts the flag at N + 2 rather than N.
-enum class ViaTimerPhase_t : uint8_t {
+enum class ViaTimerPhase : uint8_t {
   running = 0,
   load_delay = 1,
   reload_pending = 2,
@@ -50,7 +50,7 @@ enum class ViaTimerPhase_t : uint8_t {
 // The shift register (0xA), the PCR (0xC) and the CA/CB handshake lines are
 // transparent storage: a plain Mockingboard wires none of them to anything, so
 // a write reads back and nothing else in the model observes it.
-struct Via6522_t {
+struct Via6522 {
   uint8_t orb = 0;
   uint8_t ora = 0;
   uint8_t ddrb = 0;
@@ -65,8 +65,8 @@ struct Via6522_t {
   uint16_t t1_latch = 0;
   uint16_t t2_counter = 0;
   uint16_t t2_latch = 0;
-  ViaTimerPhase_t t1_phase = ViaTimerPhase_t::running;
-  ViaTimerPhase_t t2_phase = ViaTimerPhase_t::running;
+  ViaTimerPhase t1_phase = ViaTimerPhase::running;
+  ViaTimerPhase t2_phase = ViaTimerPhase::running;
   // Set by an underflow and cleared by a T1C-H / T2C-H write. A one-shot timer
   // raises its flag only while the latch is clear, which is why a reset leaves
   // both set: a timer nobody has armed must not interrupt.
@@ -75,11 +75,11 @@ struct Via6522_t {
   bool pb7 = false;
 };
 
-static_assert(std::is_standard_layout<Via6522_t>::value,
-              "Via6522_t must satisfy standard layout guarantees");
+static_assert(std::is_standard_layout<Via6522>::value,
+              "Via6522 must satisfy standard layout guarantees");
 
-auto via_reset(Via6522_t* v) noexcept -> void;
-auto via_write(Via6522_t* v, uint8_t reg, uint8_t val) noexcept -> void;
-auto via_read(Via6522_t* v, uint8_t reg) noexcept -> uint8_t;
-auto via_step(Via6522_t* v, uint32_t cycles) noexcept -> bool;
-auto via_irq(const Via6522_t* v) noexcept -> bool;
+auto via_reset(Via6522* v) noexcept -> void;
+auto via_write(Via6522* v, uint8_t reg, uint8_t val) noexcept -> void;
+auto via_read(Via6522* v, uint8_t reg) noexcept -> uint8_t;
+auto via_step(Via6522* v, uint32_t cycles) noexcept -> bool;
+auto via_irq(const Via6522* v) noexcept -> bool;

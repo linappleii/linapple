@@ -162,8 +162,8 @@ struct DcBlock_t {
 };
 
 struct Mockingboard_t {
-  std::array<Via6522_t, chips_per_card> via = {};
-  std::array<Ay8910_t, chips_per_card> ay = {};
+  std::array<Via6522, chips_per_card> via = {};
+  std::array<Ay8910, chips_per_card> ay = {};
   std::array<uint8_t, chips_per_card> ay_latched_register = {};
   std::array<DcBlock_t, voices_per_card> dc = {};
   std::array<std::array<float, scratch_ticks>, voices_per_card> scratch = {};
@@ -208,7 +208,7 @@ auto run_dc_block(DcBlock_t* f, float* buffer, size_t count) -> bool {
 
 auto render_chunk(Mockingboard_t* mb, size_t count) -> void {
   for (size_t chip = 0; chip < chips_per_card; ++chip) {
-    std::array<float*, AY8910_NUM_VOICES> voices = {
+    std::array<float*, ay8910_num_voices> voices = {
         {
             mb->scratch[(chip * voices_per_chip) + 0].data(),
             mb->scratch[(chip * voices_per_chip) + 1].data(),
@@ -277,7 +277,7 @@ auto sync_to(Mockingboard_t* mb, uint32_t executed_cycles) -> void {
 }
 
 auto ay_bus_cycle(Mockingboard_t* mb, size_t chip, uint8_t orb) -> void {
-  Ay8910_t& psg = mb->ay[chip];
+  Ay8910& psg = mb->ay[chip];
   if ((orb & ay_bus::reset_n) == 0) {
     ay8910_reset(&psg);
     mb->ay_latched_register[chip] = 0;
@@ -291,7 +291,7 @@ auto ay_bus_cycle(Mockingboard_t* mb, size_t chip, uint8_t orb) -> void {
   if (bdir && bc1) {
     // A9 and A8 are grounded on this card, so an address above 15 selects no
     // chip and leaves the previous register latched.
-    if (port_a < AY8910_NUM_REGISTERS) {
+    if (port_a < ay8910_num_registers) {
       mb->ay_latched_register[chip] = port_a;
     }
     return;
@@ -410,7 +410,7 @@ auto mb_abi_think(void* instance, uint32_t cycles) -> void {
   mb->synced = 0;
 }
 
-auto pack_via_flags(const Via6522_t& v) -> uint8_t {
+auto pack_via_flags(const Via6522& v) -> uint8_t {
   uint8_t flags = 0;
   if (v.t1_fired) {
     flags |= via_flag::t1_fired;
@@ -428,14 +428,14 @@ auto pack_via_flags(const Via6522_t& v) -> uint8_t {
   return flags;
 }
 
-auto unpack_phase(uint8_t flags, uint8_t shift) -> ViaTimerPhase_t {
+auto unpack_phase(uint8_t flags, uint8_t shift) -> ViaTimerPhase {
   switch ((flags >> shift) & via_flag::phase_mask) {
     case 1:
-      return ViaTimerPhase_t::load_delay;
+      return ViaTimerPhase::load_delay;
     case 2:
-      return ViaTimerPhase_t::reload_pending;
+      return ViaTimerPhase::reload_pending;
     default:
-      return ViaTimerPhase_t::running;
+      return ViaTimerPhase::running;
   }
 }
 
@@ -463,8 +463,8 @@ auto mb_abi_save_state(void* instance, void* buffer, size_t* size)
   ss->struct_size = static_cast<uint32_t>(required);
 
   for (size_t i = 0; i < chips_per_card; ++i) {
-    const Via6522_t& v = mb->via[i];
-    const Ay8910_t& psg = mb->ay[i];
+    const Via6522& v = mb->via[i];
+    const Ay8910& psg = mb->ay[i];
     MockingboardChipSaveState_t& dst = ss->chips[i];
 
     dst.orb = v.orb;
@@ -526,8 +526,8 @@ auto mb_abi_load_state(void* instance, const void* buffer, size_t size)
 
   for (size_t i = 0; i < chips_per_card; ++i) {
     const MockingboardChipSaveState_t& src = ss->chips[i];
-    Via6522_t& v = mb->via[i];
-    Ay8910_t& psg = mb->ay[i];
+    Via6522& v = mb->via[i];
+    Ay8910& psg = mb->ay[i];
 
     v.orb = src.orb;
     v.ora = src.ora;
@@ -571,7 +571,7 @@ auto mb_abi_load_state(void* instance, const void* buffer, size_t size)
         psg.env_attack ? psg.envelope_step : (15U - psg.envelope_step));
 
     mb->ay_latched_register[i] = static_cast<uint8_t>(
-        src.ay_current_register & (AY8910_NUM_REGISTERS - 1));
+        src.ay_current_register & (ay8910_num_registers - 1));
   }
 
   mb->psg_remainder = ss->psg_remainder % cycles_per_ay_tick;

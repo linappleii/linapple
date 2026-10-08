@@ -9,38 +9,42 @@
 
 namespace {
 
-constexpr uint8_t CRA_IRQ1 = 0x80;
-constexpr uint8_t CRA_IRQ2 = 0x40;
-constexpr uint8_t CRA_CA2_OUT = 0x20;
-constexpr uint8_t CRA_CA2_SEL = 0x10;
-constexpr uint8_t CRA_CA2_LVL = 0x08;
-constexpr uint8_t CRA_DDR_SEL = 0x04;
-constexpr uint8_t CRA_CA1_SEL = 0x02;
-constexpr uint8_t CRA_CA1_EN = 0x01;
+namespace cra_mask {
+constexpr uint8_t irq1 = 0x80;
+constexpr uint8_t irq2 = 0x40;
+constexpr uint8_t ca2_out = 0x20;
+constexpr uint8_t ca2_sel = 0x10;
+constexpr uint8_t ca2_lvl = 0x08;
+constexpr uint8_t ddr_sel = 0x04;
+constexpr uint8_t ca1_sel = 0x02;
+constexpr uint8_t ca1_en = 0x01;
+}  // namespace cra_mask
 
-constexpr uint8_t CRB_IRQ1 = 0x80;
-constexpr uint8_t CRB_IRQ2 = 0x40;
-constexpr uint8_t CRB_CB2_OUT = 0x20;
-constexpr uint8_t CRB_CB2_SEL = 0x10;
-constexpr uint8_t CRB_CB2_LVL = 0x08;
-constexpr uint8_t CRB_DDR_SEL = 0x04;
-constexpr uint8_t CRB_CB1_SEL = 0x02;
-constexpr uint8_t CRB_CB1_EN = 0x01;
+namespace crb_mask {
+constexpr uint8_t irq1 = 0x80;
+constexpr uint8_t irq2 = 0x40;
+constexpr uint8_t cb2_out = 0x20;
+constexpr uint8_t cb2_sel = 0x10;
+constexpr uint8_t cb2_lvl = 0x08;
+constexpr uint8_t ddr_sel = 0x04;
+constexpr uint8_t cb1_sel = 0x02;
+constexpr uint8_t cb1_en = 0x01;
+}  // namespace crb_mask
 
-inline auto pia_call(const PiaWriteHandler_t& h, uint8_t val) noexcept -> void {
+inline auto pia_call(const PiaWriteHandler& h, uint8_t val) noexcept -> void {
   if (h.func != nullptr) {
     h.func(h.obj_to, val);
   }
 }
 
-auto update_interrupts(Pia6821_t* p) noexcept -> void {
+auto update_interrupts(Pia6821* p) noexcept -> void {
   if (p == nullptr) {
     return;
   }
   uint8_t irq_a = 0;
-  if (((p->cra & CRA_IRQ1) && (p->cra & CRA_CA1_EN)) ||
-      ((p->cra & CRA_IRQ2) && (!(p->cra & CRA_CA2_OUT)) &&
-       (p->cra & CRA_CA2_LVL))) {
+  if (((p->cra & cra_mask::irq1) != 0 && (p->cra & cra_mask::ca1_en) != 0) ||
+      ((p->cra & cra_mask::irq2) != 0 && (p->cra & cra_mask::ca2_out) == 0 &&
+       (p->cra & cra_mask::ca2_lvl) != 0)) {
     irq_a = 1;
   }
 
@@ -50,9 +54,9 @@ auto update_interrupts(Pia6821_t* p) noexcept -> void {
   }
 
   uint8_t irq_b = 0;
-  if (((p->crb & CRB_IRQ1) && (p->crb & CRB_CB1_EN)) ||
-      ((p->crb & CRB_IRQ2) && (!(p->crb & CRB_CB2_OUT)) &&
-       (p->crb & CRB_CB2_LVL))) {
+  if (((p->crb & crb_mask::irq1) != 0 && (p->crb & crb_mask::cb1_en) != 0) ||
+      ((p->crb & crb_mask::irq2) != 0 && (p->crb & crb_mask::cb2_out) == 0 &&
+       (p->crb & crb_mask::cb2_lvl) != 0)) {
     irq_b = 1;
   }
 
@@ -64,34 +68,34 @@ auto update_interrupts(Pia6821_t* p) noexcept -> void {
 
 }  // namespace
 
-auto pia_6821_reset(Pia6821_t* p) noexcept -> void {
+auto pia_6821_reset(Pia6821* p) noexcept -> void {
   if (p == nullptr) {
     return;
   }
-  *p = Pia6821_t{};
+  *p = Pia6821{};
   // Port A has internal pull-up devices
   p->port_a_in = 0xFF;
   p->port_b_in = 0xFF;
 }
 
-auto pia_6821_read(Pia6821_t* p, uint8_t addr) noexcept -> uint8_t {
+auto pia_6821_read(Pia6821* p, uint8_t addr) noexcept -> uint8_t {
   if (p == nullptr) {
     return 0;
   }
   switch (addr & 0x03) {
     case 0:
-      if (!(p->cra & CRA_DDR_SEL)) {
+      if ((p->cra & cra_mask::ddr_sel) == 0) {
         return p->ddra;
       }
-      p->cra &= ~(CRA_IRQ1 | CRA_IRQ2);
+      p->cra &= ~(cra_mask::irq1 | cra_mask::irq2);
       update_interrupts(p);
 
-      if ((p->cra & (CRA_CA2_OUT | CRA_CA2_SEL)) == CRA_CA2_OUT) {
+      if ((p->cra & (cra_mask::ca2_out | cra_mask::ca2_sel)) == cra_mask::ca2_out) {
         if (p->oca2 == 1) {
           p->oca2 = 0;
           pia_call(p->out_ca2, 0);
         }
-        if (p->cra & CRA_CA2_LVL) {
+        if ((p->cra & cra_mask::ca2_lvl) != 0) {
           p->oca2 = 1;
           pia_call(p->out_ca2, 1);
         }
@@ -102,27 +106,27 @@ auto pia_6821_read(Pia6821_t* p, uint8_t addr) noexcept -> uint8_t {
 
     case 1:
       // Datasheet Page 10: IRQA2=0 if CA2 is an output
-      return ((p->cra & CRA_CA2_OUT) != 0) ? (p->cra & ~CRA_IRQ2) : p->cra;
+      return ((p->cra & cra_mask::ca2_out) != 0) ? (p->cra & ~cra_mask::irq2) : p->cra;
 
     case 2:
-      if (!(p->crb & CRB_DDR_SEL)) {
+      if ((p->crb & crb_mask::ddr_sel) == 0) {
         return p->ddrb;
       }
       // Datasheet Page 8: "the B side read comes from an output latch"
-      p->crb &= ~(CRB_IRQ1 | CRB_IRQ2);
+      p->crb &= ~(crb_mask::irq1 | crb_mask::irq2);
       update_interrupts(p);
       return (p->orb & p->ddrb) | (p->port_b_in & ~p->ddrb);
 
     case 3:
       // Datasheet Page 10: IRQB2=0 if CB2 is an output
-      return ((p->crb & CRB_CB2_OUT) != 0) ? (p->crb & ~CRB_IRQ2) : p->crb;
+      return ((p->crb & crb_mask::cb2_out) != 0) ? (p->crb & ~crb_mask::irq2) : p->crb;
 
     default:
       return 0;
   }
 }
 
-auto pia_6821_write(Pia6821_t* p, uint8_t addr, uint8_t val) noexcept -> void {
+auto pia_6821_write(Pia6821* p, uint8_t addr, uint8_t val) noexcept -> void {
   if (p == nullptr) {
     return;
   }
@@ -130,7 +134,7 @@ auto pia_6821_write(Pia6821_t* p, uint8_t addr, uint8_t val) noexcept -> void {
 
   switch (addr) {
     case 0:
-      if (!(p->cra & CRA_DDR_SEL)) {
+      if ((p->cra & cra_mask::ddr_sel) == 0) {
         p->ddra = val;
         break;
       }
@@ -141,8 +145,8 @@ auto pia_6821_write(Pia6821_t* p, uint8_t addr, uint8_t val) noexcept -> void {
     case 1:
       p->cra = (p->cra & 0xC0) | (val & 0x3F);
 
-      if ((p->cra & CRA_CA2_OUT) && (p->cra & CRA_CA2_SEL)) {
-        uint8_t next_ca2 = (p->cra & CRA_CA2_LVL) ? 1 : 0;
+      if ((p->cra & cra_mask::ca2_out) != 0 && (p->cra & cra_mask::ca2_sel) != 0) {
+        const uint8_t next_ca2 = ((p->cra & cra_mask::ca2_lvl) != 0) ? 1 : 0;
         if (next_ca2 != p->oca2) {
           p->oca2 = next_ca2;
           pia_call(p->out_ca2, p->oca2);
@@ -152,19 +156,19 @@ auto pia_6821_write(Pia6821_t* p, uint8_t addr, uint8_t val) noexcept -> void {
       break;
 
     case 2:
-      if (!(p->crb & CRB_DDR_SEL)) {
+      if ((p->crb & crb_mask::ddr_sel) == 0) {
         p->ddrb = val;
         break;
       }
       p->orb = val;
       pia_call(p->out_b, p->orb & p->ddrb);
 
-      if ((p->crb & (CRB_CB2_OUT | CRB_CB2_SEL)) == CRB_CB2_OUT) {
+      if ((p->crb & (crb_mask::cb2_out | crb_mask::cb2_sel)) == crb_mask::cb2_out) {
         if (p->ocb2 == 1) {
           p->ocb2 = 0;
           pia_call(p->out_cb2, 0);
         }
-        if (p->crb & CRB_CB2_LVL) {
+        if ((p->crb & crb_mask::cb2_lvl) != 0) {
           p->ocb2 = 1;
           pia_call(p->out_cb2, 1);
         }
@@ -174,8 +178,8 @@ auto pia_6821_write(Pia6821_t* p, uint8_t addr, uint8_t val) noexcept -> void {
     case 3:
       p->crb = (p->crb & 0xC0) | (val & 0x3F);
 
-      if ((p->crb & CRB_CB2_OUT) && (p->crb & CRB_CB2_SEL)) {
-        uint8_t next_cb2 = (p->crb & CRB_CB2_LVL) ? 1 : 0;
+      if ((p->crb & crb_mask::cb2_out) != 0 && (p->crb & crb_mask::cb2_sel) != 0) {
+        const uint8_t next_cb2 = ((p->crb & crb_mask::cb2_lvl) != 0) ? 1 : 0;
         if (next_cb2 != p->ocb2) {
           p->ocb2 = next_cb2;
           pia_call(p->out_cb2, p->ocb2);
@@ -189,36 +193,36 @@ auto pia_6821_write(Pia6821_t* p, uint8_t addr, uint8_t val) noexcept -> void {
   }
 }
 
-auto pia_6821_set_port_a(Pia6821_t* p, uint8_t val) noexcept -> void {
+auto pia_6821_set_port_a(Pia6821* p, uint8_t val) noexcept -> void {
   if (p == nullptr) {
     return;
   }
   p->port_a_in = val;
 }
 
-auto pia_6821_set_port_b(Pia6821_t* p, uint8_t val) noexcept -> void {
+auto pia_6821_set_port_b(Pia6821* p, uint8_t val) noexcept -> void {
   if (p == nullptr) {
     return;
   }
   p->port_b_in = val;
 }
 
-auto pia_6821_set_ca1(Pia6821_t* p, bool level) noexcept -> void {
+auto pia_6821_set_ca1(Pia6821* p, bool level) noexcept -> void {
   if (p == nullptr) {
     return;
   }
   const bool old = p->ca1_in;
   p->ca1_in = level;
   const bool transition =
-      ((p->cra & CRA_CA1_SEL) != 0) ? (old && !level) : (!old && level);
+      ((p->cra & cra_mask::ca1_sel) != 0) ? (old && !level) : (!old && level);
   if (!transition) {
     return;
   }
 
-  p->cra |= CRA_IRQ1;
-  const bool ca2_handshake = ((p->cra & CRA_CA2_OUT) != 0) &&
-                             ((p->cra & CRA_CA2_SEL) == 0) &&
-                             ((p->cra & CRA_CA2_LVL) == 0);
+  p->cra |= cra_mask::irq1;
+  const bool ca2_handshake = ((p->cra & cra_mask::ca2_out) != 0) &&
+                             ((p->cra & cra_mask::ca2_sel) == 0) &&
+                             ((p->cra & cra_mask::ca2_lvl) == 0);
   if (ca2_handshake && p->oca2 == 0) {
     p->oca2 = 1;
     pia_call(p->out_ca2, 1);
@@ -226,40 +230,40 @@ auto pia_6821_set_ca1(Pia6821_t* p, bool level) noexcept -> void {
   update_interrupts(p);
 }
 
-auto pia_6821_set_ca2(Pia6821_t* p, bool level) noexcept -> void {
+auto pia_6821_set_ca2(Pia6821* p, bool level) noexcept -> void {
   if (p == nullptr) {
     return;
   }
   const bool old = p->ca2_in;
   p->ca2_in = level;
-  if ((p->cra & CRA_CA2_OUT) != 0) {
+  if ((p->cra & cra_mask::ca2_out) != 0) {
     return;
   }
   const bool transition =
-      ((p->cra & CRA_CA2_SEL) != 0) ? (old && !level) : (!old && level);
+      ((p->cra & cra_mask::ca2_sel) != 0) ? (old && !level) : (!old && level);
   if (!transition) {
     return;
   }
-  p->cra |= CRA_IRQ2;
+  p->cra |= cra_mask::irq2;
   update_interrupts(p);
 }
 
-auto pia_6821_set_cb1(Pia6821_t* p, bool level) noexcept -> void {
+auto pia_6821_set_cb1(Pia6821* p, bool level) noexcept -> void {
   if (p == nullptr) {
     return;
   }
   const bool old = p->cb1_in;
   p->cb1_in = level;
   const bool transition =
-      ((p->crb & CRB_CB1_SEL) != 0) ? (old && !level) : (!old && level);
+      ((p->crb & crb_mask::cb1_sel) != 0) ? (old && !level) : (!old && level);
   if (!transition) {
     return;
   }
 
-  p->crb |= CRB_IRQ1;
-  const bool cb2_handshake = ((p->crb & CRB_CB2_OUT) != 0) &&
-                             ((p->crb & CRB_CB2_SEL) == 0) &&
-                             ((p->crb & CRB_CB2_LVL) == 0);
+  p->crb |= crb_mask::irq1;
+  const bool cb2_handshake = ((p->crb & crb_mask::cb2_out) != 0) &&
+                             ((p->crb & crb_mask::cb2_sel) == 0) &&
+                             ((p->crb & crb_mask::cb2_lvl) == 0);
   if (cb2_handshake && p->ocb2 == 0) {
     p->ocb2 = 1;
     pia_call(p->out_cb2, 1);
@@ -267,40 +271,40 @@ auto pia_6821_set_cb1(Pia6821_t* p, bool level) noexcept -> void {
   update_interrupts(p);
 }
 
-auto pia_6821_set_cb2(Pia6821_t* p, bool level) noexcept -> void {
+auto pia_6821_set_cb2(Pia6821* p, bool level) noexcept -> void {
   if (p == nullptr) {
     return;
   }
   const bool old = p->cb2_in;
   p->cb2_in = level;
-  if ((p->crb & CRB_CB2_OUT) != 0) {
+  if ((p->crb & crb_mask::cb2_out) != 0) {
     return;
   }
   const bool transition =
-      ((p->crb & CRB_CB2_SEL) != 0) ? (old && !level) : (!old && level);
+      ((p->crb & crb_mask::cb2_sel) != 0) ? (old && !level) : (!old && level);
   if (!transition) {
     return;
   }
-  p->crb |= CRB_IRQ2;
+  p->crb |= crb_mask::irq2;
   update_interrupts(p);
 }
 
-auto pia_6821_get_port_a(const Pia6821_t* p) noexcept -> uint8_t {
+auto pia_6821_get_port_a(const Pia6821* p) noexcept -> uint8_t {
   if (p == nullptr) {
     return 0;
   }
   return p->ora & p->ddra;
 }
 
-auto pia_6821_get_port_b(const Pia6821_t* p) noexcept -> uint8_t {
+auto pia_6821_get_port_b(const Pia6821* p) noexcept -> uint8_t {
   if (p == nullptr) {
     return 0;
   }
   return p->orb & p->ddrb;
 }
 
-auto pia_6821_set_listener_a(Pia6821_t* p, void* obj_to,
-                             PiaOutputCallback_t func) noexcept -> void {
+auto pia_6821_set_listener_a(Pia6821* p, void* obj_to,
+                             PiaOutputCallback func) noexcept -> void {
   if (p == nullptr) {
     return;
   }
@@ -308,8 +312,8 @@ auto pia_6821_set_listener_a(Pia6821_t* p, void* obj_to,
   p->out_a.func = func;
 }
 
-auto pia_6821_set_listener_b(Pia6821_t* p, void* obj_to,
-                             PiaOutputCallback_t func) noexcept -> void {
+auto pia_6821_set_listener_b(Pia6821* p, void* obj_to,
+                             PiaOutputCallback func) noexcept -> void {
   if (p == nullptr) {
     return;
   }
@@ -317,8 +321,8 @@ auto pia_6821_set_listener_b(Pia6821_t* p, void* obj_to,
   p->out_b.func = func;
 }
 
-auto pia_6821_set_listener_ca2(Pia6821_t* p, void* obj_to,
-                               PiaOutputCallback_t func) noexcept -> void {
+auto pia_6821_set_listener_ca2(Pia6821* p, void* obj_to,
+                               PiaOutputCallback func) noexcept -> void {
   if (p == nullptr) {
     return;
   }
@@ -326,8 +330,8 @@ auto pia_6821_set_listener_ca2(Pia6821_t* p, void* obj_to,
   p->out_ca2.func = func;
 }
 
-auto pia_6821_set_listener_cb2(Pia6821_t* p, void* obj_to,
-                               PiaOutputCallback_t func) noexcept -> void {
+auto pia_6821_set_listener_cb2(Pia6821* p, void* obj_to,
+                               PiaOutputCallback func) noexcept -> void {
   if (p == nullptr) {
     return;
   }
@@ -335,8 +339,8 @@ auto pia_6821_set_listener_cb2(Pia6821_t* p, void* obj_to,
   p->out_cb2.func = func;
 }
 
-auto pia_6821_set_listener_irqa(Pia6821_t* p, void* obj_to,
-                                PiaOutputCallback_t func) noexcept -> void {
+auto pia_6821_set_listener_irqa(Pia6821* p, void* obj_to,
+                                PiaOutputCallback func) noexcept -> void {
   if (p == nullptr) {
     return;
   }
@@ -344,8 +348,8 @@ auto pia_6821_set_listener_irqa(Pia6821_t* p, void* obj_to,
   p->out_irqa.func = func;
 }
 
-auto pia_6821_set_listener_irqb(Pia6821_t* p, void* obj_to,
-                                PiaOutputCallback_t func) noexcept -> void {
+auto pia_6821_set_listener_irqb(Pia6821* p, void* obj_to,
+                                PiaOutputCallback func) noexcept -> void {
   if (p == nullptr) {
     return;
   }

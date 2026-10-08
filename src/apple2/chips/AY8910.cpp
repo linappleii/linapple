@@ -12,25 +12,25 @@ namespace {
 // card declares as its peak magnitude. The chip is unipolar: it really does
 // swing 0..Vmax, and the AC coupling that centres it is the card's output
 // stage.
-constexpr float k_vol_full_scale = 18776.0F;
-constexpr std::array<float, 16> k_vol_table = {
+constexpr float vol_full_scale = 18776.0F;
+constexpr std::array<float, 16> vol_table = {
     {
-        0.0F / k_vol_full_scale,
-        103.0F / k_vol_full_scale,
-        150.0F / k_vol_full_scale,
-        218.0F / k_vol_full_scale,
-        316.0F / k_vol_full_scale,
-        458.0F / k_vol_full_scale,
-        665.0F / k_vol_full_scale,
-        963.0F / k_vol_full_scale,
-        1396.0F / k_vol_full_scale,
-        2023.0F / k_vol_full_scale,
-        2933.0F / k_vol_full_scale,
-        4251.0F / k_vol_full_scale,
-        6163.0F / k_vol_full_scale,
-        8934.0F / k_vol_full_scale,
-        12952.0F / k_vol_full_scale,
-        18776.0F / k_vol_full_scale,
+        0.0F / vol_full_scale,
+        103.0F / vol_full_scale,
+        150.0F / vol_full_scale,
+        218.0F / vol_full_scale,
+        316.0F / vol_full_scale,
+        458.0F / vol_full_scale,
+        665.0F / vol_full_scale,
+        963.0F / vol_full_scale,
+        1396.0F / vol_full_scale,
+        2023.0F / vol_full_scale,
+        2933.0F / vol_full_scale,
+        4251.0F / vol_full_scale,
+        6163.0F / vol_full_scale,
+        8934.0F / vol_full_scale,
+        12952.0F / vol_full_scale,
+        18776.0F / vol_full_scale,
     },
 };
 
@@ -55,7 +55,7 @@ auto step_tone(uint16_t* count, uint8_t* out, uint16_t period) noexcept
   }
 }
 
-auto advance_noise(Ay8910_t* p) noexcept -> void {
+auto advance_noise(Ay8910* p) noexcept -> void {
   if (p == nullptr) {
     return;
   }
@@ -65,7 +65,7 @@ auto advance_noise(Ay8910_t* p) noexcept -> void {
   p->rng = (p->rng >> 1) | (((p->rng & 1) ^ ((p->rng >> 3) & 1)) << 16);
 }
 
-auto refresh_envelope_vol(Ay8910_t* p) noexcept -> void {
+auto refresh_envelope_vol(Ay8910* p) noexcept -> void {
   if (p == nullptr) {
     return;
   }
@@ -75,7 +75,7 @@ auto refresh_envelope_vol(Ay8910_t* p) noexcept -> void {
 
 // The step that produces `amplitude` depends on which way the sweep was
 // running, because the level is read off the step in opposite directions.
-auto hold_at(Ay8910_t* p, uint32_t amplitude) noexcept -> void {
+auto hold_at(Ay8910* p, uint32_t amplitude) noexcept -> void {
   if (p == nullptr) {
     return;
   }
@@ -83,7 +83,7 @@ auto hold_at(Ay8910_t* p, uint32_t amplitude) noexcept -> void {
   p->envelope_step = p->env_attack ? amplitude : (15U - amplitude);
 }
 
-auto step_envelope(Ay8910_t* p, bool cont, bool alt, bool hold) noexcept
+auto step_envelope(Ay8910* p, bool cont, bool alt, bool hold) noexcept
     -> void {
   if (p == nullptr) {
     return;
@@ -106,7 +106,7 @@ auto step_envelope(Ay8910_t* p, bool cont, bool alt, bool hold) noexcept
   refresh_envelope_vol(p);
 }
 
-auto voice_level(const Ay8910_t* p, uint8_t tone_out, bool tone_off,
+auto voice_level(const Ay8910* p, uint8_t tone_out, bool tone_off,
                  bool noise_off, uint8_t amplitude) noexcept -> float {
   if (p == nullptr) {
     return 0.0F;
@@ -118,20 +118,20 @@ auto voice_level(const Ay8910_t* p, uint8_t tone_out, bool tone_off,
   }
   const uint8_t vol =
       ((amplitude & 0x10) != 0) ? p->envelope_vol : (amplitude & 0x0F);
-  return k_vol_table[vol & 0x0F];
+  return vol_table[vol & 0x0F];
 }
 
 }  // namespace
 
-auto ay8910_reset(Ay8910_t* p) noexcept -> void {
+auto ay8910_reset(Ay8910* p) noexcept -> void {
   if (p == nullptr) {
     return;
   }
-  *p = Ay8910_t{};
+  *p = Ay8910{};
 }
 
-auto ay8910_write(Ay8910_t* p, uint8_t reg, uint8_t val) noexcept -> void {
-  if (p == nullptr || reg >= k_ay8910_num_registers) {
+auto ay8910_write(Ay8910* p, uint8_t reg, uint8_t val) noexcept -> void {
+  if (p == nullptr || reg >= ay8910_num_registers) {
     return;
   }
   p->regs[reg] = val;
@@ -160,7 +160,7 @@ auto ay8910_write(Ay8910_t* p, uint8_t reg, uint8_t val) noexcept -> void {
   }
 }
 
-auto ay8910_step(Ay8910_t* p, size_t ticks, float* const out[AY8910_NUM_VOICES],
+auto ay8910_step(Ay8910* p, size_t ticks, float* const out[ay8910_num_voices],
                  size_t max) noexcept -> void {
   if (p == nullptr || out == nullptr || out[0] == nullptr ||
       out[1] == nullptr || out[2] == nullptr) {

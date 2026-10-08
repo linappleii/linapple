@@ -149,8 +149,8 @@ static_assert(sizeof(SsVia6522Regs_t) == 18,
 
 struct MbUnit_t {
   SsVia6522Regs_t regs_sy6522;
-  uint8_t regs_ay8910[AY8910_NUM_REGISTERS];
-  Ssi263A_t regs_ssi263;
+  uint8_t regs_ay8910[ay8910_num_registers];
+  Ssi263A regs_ssi263;
   uint8_t ay_current_register;
   bool timer1_irq_pending;
   bool timer2_irq_pending;

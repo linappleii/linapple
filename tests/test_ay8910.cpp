@@ -17,14 +17,14 @@ constexpr size_t scratch_ticks = 4096;
 class Renderer {
  public:
   Renderer() {
-    for (size_t v = 0; v < AY8910_NUM_VOICES; ++v) {
+    for (size_t v = 0; v < ay8910_num_voices; ++v) {
       buffers_[v].resize(scratch_ticks, 0.0F);
       pointers_[v] = buffers_[v].data();
     }
     ay8910_reset(&chip_);
   }
 
-  auto chip() -> Ay8910_t* { return &chip_; }
+  auto chip() -> Ay8910* { return &chip_; }
 
   auto write(uint8_t reg, uint8_t val) -> void {
     ay8910_write(&chip_, reg, val);
@@ -62,9 +62,9 @@ class Renderer {
   }
 
  private:
-  Ay8910_t chip_;
-  std::array<std::vector<float>, AY8910_NUM_VOICES> buffers_;
-  std::array<float*, AY8910_NUM_VOICES> pointers_{};
+  Ay8910 chip_;
+  std::array<std::vector<float>, ay8910_num_voices> buffers_;
+  std::array<float*, ay8910_num_voices> pointers_{};
   std::vector<float> last_;
   std::vector<float> last_b_;
 };
@@ -147,7 +147,7 @@ TEST_CASE("AY-3-8910: Full Volume Is Exactly One And The Table Is Monotonic") {
 TEST_CASE("AY-3-8910: Noise LFSR Advances Every Two NP Ticks") {
   constexpr uint8_t noise_period = 5;
 
-  Ay8910_t reference;
+  Ay8910 reference;
   ay8910_reset(&reference);
   Renderer r;
   r.write(6, noise_period);
@@ -170,7 +170,7 @@ TEST_CASE("AY-3-8910: Noise LFSR Advances Every Two NP Ticks") {
 }
 
 TEST_CASE("AY-3-8910: Noise Period Zero Behaves As One") {
-  Ay8910_t reference;
+  Ay8910 reference;
   ay8910_reset(&reference);
   Renderer r;
   r.write(6, 0x00);
@@ -364,7 +364,7 @@ TEST_CASE("AY-3-8910: Mixer Bits Gate Tone And Noise Per Voice") {
 
 TEST_CASE("AY-3-8910: Register Writes Are Masked To Their Data-Sheet Width") {
   Renderer r;
-  for (uint8_t reg = 0; reg < AY8910_NUM_REGISTERS; ++reg) {
+  for (uint8_t reg = 0; reg < ay8910_num_registers; ++reg) {
     r.write(reg, 0xFF);
   }
   CHECK(r.chip()->regs[0] == 0xFF);
@@ -406,13 +406,13 @@ TEST_CASE("AY-3-8910: Every Output Stays Inside Zero To One") {
 }
 
 TEST_CASE("AY-3-8910: Step Never Writes Past The Buffer It Was Given") {
-  Ay8910_t chip;
+  Ay8910 chip;
   ay8910_reset(&chip);
   ay8910_write(&chip, 7, 0x3F);
   ay8910_write(&chip, 8, 0x0F);
 
-  std::array<std::array<float, 8>, AY8910_NUM_VOICES> small{};
-  std::array<float*, AY8910_NUM_VOICES> pointers = {
+  std::array<std::array<float, 8>, ay8910_num_voices> small{};
+  std::array<float*, ay8910_num_voices> pointers = {
       {small[0].data(), small[1].data(), small[2].data()}};
   ay8910_step(&chip, 1000, pointers.data(), 4);
 
@@ -422,11 +422,11 @@ TEST_CASE("AY-3-8910: Step Never Writes Past The Buffer It Was Given") {
 }
 
 TEST_CASE("AY-3-8910: Null Instance And Null Buffers Are Inert") {
-  Ay8910_t chip;
+  Ay8910 chip;
   ay8910_reset(&chip);
   ay8910_reset(nullptr);
   ay8910_write(nullptr, 0, 0xFF);
-  ay8910_write(&chip, AY8910_NUM_REGISTERS, 0xFF);
+  ay8910_write(&chip, ay8910_num_registers, 0xFF);
   ay8910_write(&chip, 0xFF, 0xFF);
   ay8910_step(nullptr, 10, nullptr, 0);
   ay8910_step(&chip, 10, nullptr, 0);
@@ -439,14 +439,14 @@ TEST_CASE("AY-3-8910: Null Instance And Null Buffers Are Inert") {
   std::array<float, 8> buf_c{};
   buf_b.fill(42.0F);
   buf_c.fill(42.0F);
-  float* bad_pointers[AY8910_NUM_VOICES] = {nullptr, buf_b.data(),
+  float* bad_pointers[ay8910_num_voices] = {nullptr, buf_b.data(),
                                             buf_c.data()};
   ay8910_step(&chip, 4, bad_pointers, 8);
   CHECK(buf_b[0] == 42.0F);
   CHECK(buf_c[0] == 42.0F);
 
   // Zero count or zero max leaves buffers untouched
-  float* valid_pointers[AY8910_NUM_VOICES] = {buf_b.data(), buf_b.data(),
+  float* valid_pointers[ay8910_num_voices] = {buf_b.data(), buf_b.data(),
                                               buf_c.data()};
   ay8910_step(&chip, 0, valid_pointers, 8);
   ay8910_step(&chip, 4, valid_pointers, 0);

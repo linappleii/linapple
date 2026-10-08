@@ -90,8 +90,8 @@ struct SuperSerialCard_t {
   void* sink = nullptr;
   int slot = 0;
   SuperSerialSwitches_t switches{default_switches_1, default_switches_2};
-  Acia6551_t acia;
-  AciaLine_t line_sent;
+  Acia6551 acia;
+  AciaLine line_sent;
   bool slot_irq = false;
 };
 
@@ -168,9 +168,9 @@ auto send_line(SuperSerialCard_t* card) -> void {
 }
 
 auto follow_line(SuperSerialCard_t* card) -> void {
-  AciaLine_t line;
+  AciaLine line;
   acia_line_view(&card->acia, &line);
-  const AciaLine_t& sent = card->line_sent;
+  const AciaLine& sent = card->line_sent;
   if (line.baud == sent.baud && line.data_bits == sent.data_bits &&
       line.parity == sent.parity &&
       line.stop_half_bits == sent.stop_half_bits && line.dtr == sent.dtr &&

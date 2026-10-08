@@ -44,24 +44,24 @@ constexpr uint8_t parity_odd = 1;
 constexpr uint8_t word_length_8 = 8;
 constexpr uint8_t word_length_5 = 5;
 
-auto divisor_of(const Acia6551_t* a) noexcept -> uint32_t {
+auto divisor_of(const Acia6551* a) noexcept -> uint32_t {
   if ((a->control & acia_control::receiver_clock_internal) == 0) {
     return 0;
   }
   return divisors.at(a->control & acia_control::baud_mask);
 }
 
-auto has_clock(const Acia6551_t* a) noexcept -> bool {
+auto has_clock(const Acia6551* a) noexcept -> bool {
   return a->clock_mhz != 0 && divisor_of(a) != 0;
 }
 
-auto data_bits(const Acia6551_t* a) noexcept -> uint8_t {
+auto data_bits(const Acia6551* a) noexcept -> uint8_t {
   return static_cast<uint8_t>(word_length_8 -
                               ((a->control & acia_control::word_length_mask) >>
                                acia_control::word_length_shift));
 }
 
-auto parity_of(const Acia6551_t* a) noexcept -> uint8_t {
+auto parity_of(const Acia6551* a) noexcept -> uint8_t {
   if ((a->command & acia_command::parity_enable) == 0) {
     return parity_none;
   }
@@ -72,7 +72,7 @@ auto parity_of(const Acia6551_t* a) noexcept -> uint8_t {
 
 // Bit 7 set means two stop bits, except one with 8 data bits and parity and
 // 1.5 with 5 data bits and no parity (SY6551 Fig. 6; IIc Tech Ref p. 262).
-auto stop_half_bits(const Acia6551_t* a) noexcept -> uint8_t {
+auto stop_half_bits(const Acia6551* a) noexcept -> uint8_t {
   if ((a->control & acia_control::two_stop_bits) == 0) {
     return 2;
   }
@@ -86,19 +86,19 @@ auto stop_half_bits(const Acia6551_t* a) noexcept -> uint8_t {
   return 4;
 }
 
-auto tic(const Acia6551_t* a) noexcept -> uint8_t {
+auto tic(const Acia6551* a) noexcept -> uint8_t {
   return static_cast<uint8_t>(a->command & acia_command::tic_mask);
 }
 
-auto dtr(const Acia6551_t* a) noexcept -> bool {
+auto dtr(const Acia6551* a) noexcept -> bool {
   return (a->command & acia_command::dtr) != 0;
 }
 
-auto latch(const Acia6551_t* a, uint8_t bit) noexcept -> bool {
+auto latch(const Acia6551* a, uint8_t bit) noexcept -> bool {
   return (a->status_latches & bit) != 0;
 }
 
-auto set_latch(Acia6551_t* a, uint8_t bit, bool on) noexcept -> void {
+auto set_latch(Acia6551* a, uint8_t bit, bool on) noexcept -> void {
   if (on) {
     a->status_latches |= bit;
   } else {
@@ -108,16 +108,16 @@ auto set_latch(Acia6551_t* a, uint8_t bit, bool on) noexcept -> void {
 
 // CTS deasserted disables the transmitter (SY6551 p. 3-174), as does TIC 00
 // (Fig. 7); a break holds the line.
-auto transmitter_sends(const Acia6551_t* a) noexcept -> bool {
+auto transmitter_sends(const Acia6551* a) noexcept -> bool {
   return has_clock(a) && tic(a) != acia_command::tic_off &&
          tic(a) != acia_command::tic_break && (a->lines & acia_line::cts) != 0;
 }
 
-auto frame_cycles(const Acia6551_t* a) noexcept -> uint64_t {
+auto frame_cycles(const Acia6551* a) noexcept -> uint64_t {
   return acia_cycles_for(a, acia_frame_sixteenths(a));
 }
 
-auto raise_irq(Acia6551_t* a, bool from_lines) noexcept -> void {
+auto raise_irq(Acia6551* a, bool from_lines) noexcept -> void {
   if (!a->irq) {
     a->irq_from_lines = from_lines;
   } else if (!from_lines) {
@@ -126,14 +126,14 @@ auto raise_irq(Acia6551_t* a, bool from_lines) noexcept -> void {
   a->irq = true;
 }
 
-auto emit(Acia6551_t* a, uint8_t byte) noexcept -> void {
+auto emit(Acia6551* a, uint8_t byte) noexcept -> void {
   a->pending_out = byte;
   a->has_pending_out = true;
 }
 
 // "A Start Bit immediately occurs" (W65C51S p. 17); with TIC 01 the interrupt
 // is raised "at the beginning of the Start Bit" (p. 16).
-auto start_transmit(Acia6551_t* a, uint64_t at) noexcept -> void {
+auto start_transmit(Acia6551* a, uint64_t at) noexcept -> void {
   emit(a, a->transmit_data);
   set_latch(a, acia_latch::tdr_full, false);
   set_latch(a, acia_latch::tx_busy, true);
@@ -144,7 +144,7 @@ auto start_transmit(Acia6551_t* a, uint64_t at) noexcept -> void {
   }
 }
 
-auto try_start_transmit(Acia6551_t* a, uint64_t at) noexcept -> void {
+auto try_start_transmit(Acia6551* a, uint64_t at) noexcept -> void {
   if (latch(a, acia_latch::tdr_full) && !latch(a, acia_latch::tx_busy) &&
       transmitter_sends(a)) {
     start_transmit(a, at);
@@ -154,7 +154,7 @@ auto try_start_transmit(Acia6551_t* a, uint64_t at) noexcept -> void {
 // With TIC 01 and nothing loaded "IRQB interrupts continue to occur at the
 // same rate as previously, yet no data is transmitted" (W65C51S p. 17); a
 // break begins at the next character boundary (p. 21).
-auto tx_boundary_armed(const Acia6551_t* a) noexcept -> bool {
+auto tx_boundary_armed(const Acia6551* a) noexcept -> bool {
   if (!has_clock(a) || frame_cycles(a) == 0) {
     return false;
   }
@@ -167,17 +167,17 @@ auto tx_boundary_armed(const Acia6551_t* a) noexcept -> bool {
   return tic(a) == acia_command::tic_break && !a->break_level;
 }
 
-auto next_tx_boundary(const Acia6551_t* a) noexcept -> uint64_t {
+auto next_tx_boundary(const Acia6551* a) noexcept -> uint64_t {
   if (latch(a, acia_latch::tx_busy)) {
     return a->tx_busy_until;
   }
   const uint64_t frame = frame_cycles(a);
   const uint64_t anchor = a->tx_anchor <= a->synced ? a->tx_anchor : a->synced;
   const uint64_t elapsed = a->synced - anchor;
-  return anchor + ((elapsed / frame) + 1) * frame;
+  return anchor + (((elapsed / frame) + 1) * frame);
 }
 
-auto on_tx_boundary(Acia6551_t* a, uint64_t at) noexcept -> void {
+auto on_tx_boundary(Acia6551* a, uint64_t at) noexcept -> void {
   set_latch(a, acia_latch::tx_busy, false);
   if (tic(a) == acia_command::tic_break) {
     a->break_level = true;
@@ -197,7 +197,7 @@ auto on_tx_boundary(Acia6551_t* a, uint64_t at) noexcept -> void {
 // the earlier byte (W65C51S p. 18). The error bits clear together on the
 // next clean byte (SY6551 Fig. 8; W65C51S p. 20). DTR gates the interrupt,
 // not the completion (W65C51S p. 23, note 2).
-auto on_rx_rdrf(Acia6551_t* a) noexcept -> void {
+auto on_rx_rdrf(Acia6551* a) noexcept -> void {
   a->rx_completed = true;
   const uint8_t byte = a->shift_data;
   a->shift_data = 0;
@@ -223,14 +223,14 @@ auto on_rx_rdrf(Acia6551_t* a) noexcept -> void {
   }
 }
 
-auto on_rx_free(Acia6551_t* a, uint64_t at) noexcept -> void {
+auto on_rx_free(Acia6551* a, uint64_t at) noexcept -> void {
   set_latch(a, acia_latch::rx_busy, false);
   a->rx_freed_cycle = at;
 }
 
 // Time went backwards (a restored snapshot, a swapped CPU context): nothing
 // elapsed, and whatever was in flight keeps the time it had left.
-auto rebase(Acia6551_t* a, uint64_t now) noexcept -> void {
+auto rebase(Acia6551* a, uint64_t now) noexcept -> void {
   const uint64_t back = a->synced - now;
   a->synced = now;
   a->previous_synced = now;
@@ -243,7 +243,7 @@ auto rebase(Acia6551_t* a, uint64_t now) noexcept -> void {
       a->rdr_emptied_cycle >= back ? a->rdr_emptied_cycle - back : 0;
 }
 
-auto advance(Acia6551_t* a, uint64_t now) noexcept -> void {
+auto advance(Acia6551* a, uint64_t now) noexcept -> void {
   if (now < a->synced) {
     rebase(a, now);
     return;
@@ -277,7 +277,7 @@ auto advance(Acia6551_t* a, uint64_t now) noexcept -> void {
 
 }  // namespace
 
-auto acia_cycles_for(const Acia6551_t* a, uint32_t sixteenths) noexcept
+auto acia_cycles_for(const Acia6551* a, uint32_t sixteenths) noexcept
     -> uint64_t {
   if (a == nullptr || !has_clock(a)) {
     return 0;
@@ -285,34 +285,34 @@ auto acia_cycles_for(const Acia6551_t* a, uint32_t sixteenths) noexcept
   // A bit is 16 x divisor crystal periods; the largest product (50 baud, an
   // 11-bit frame) is below 2^50.
   const uint64_t numerator = a->clock_mhz * divisor_of(a) * sixteenths;
-  return (numerator * 2 + crystal_millihertz) / (2 * crystal_millihertz);
+  return ((numerator * 2) + crystal_millihertz) / (2 * crystal_millihertz);
 }
 
-auto acia_frame_sixteenths(const Acia6551_t* a) noexcept -> uint32_t {
+auto acia_frame_sixteenths(const Acia6551* a) noexcept -> uint32_t {
   if (a == nullptr) {
     return 0;
   }
   const uint32_t parity_bits = parity_of(a) == parity_none ? 0 : 1;
-  return (1 + data_bits(a) + parity_bits) * sixteenths_per_bit +
-         stop_half_bits(a) * sixteenths_per_half_bit;
+  return ((1 + data_bits(a) + parity_bits) * sixteenths_per_bit) +
+         (stop_half_bits(a) * sixteenths_per_half_bit);
 }
 
-auto acia_rdrf_sixteenths(const Acia6551_t* a) noexcept -> uint32_t {
+auto acia_rdrf_sixteenths(const Acia6551* a) noexcept -> uint32_t {
   if (a == nullptr) {
     return 0;
   }
   const uint32_t parity_bits = parity_of(a) == parity_none ? 0 : 1;
-  return (1 + data_bits(a) + parity_bits) * sixteenths_per_bit +
+  return ((1 + data_bits(a) + parity_bits) * sixteenths_per_bit) +
          rdrf_sixteenths_into_stop;
 }
 
-auto acia_set_clock_mhz(Acia6551_t* a, uint64_t clock_mhz) noexcept -> void {
+auto acia_set_clock_mhz(Acia6551* a, uint64_t clock_mhz) noexcept -> void {
   if (a != nullptr) {
     a->clock_mhz = clock_mhz;
   }
 }
 
-auto acia_reset(Acia6551_t* a, uint64_t now) noexcept -> void {
+auto acia_reset(Acia6551* a, uint64_t now) noexcept -> void {
   if (a == nullptr) {
     return;
   }
@@ -331,7 +331,7 @@ auto acia_reset(Acia6551_t* a, uint64_t now) noexcept -> void {
   a->has_pending_out = false;
 }
 
-auto acia_programmed_reset(Acia6551_t* a, uint64_t now) noexcept -> void {
+auto acia_programmed_reset(Acia6551* a, uint64_t now) noexcept -> void {
   if (a == nullptr) {
     return;
   }
@@ -350,7 +350,7 @@ auto acia_programmed_reset(Acia6551_t* a, uint64_t now) noexcept -> void {
   }
 }
 
-auto acia_restart(Acia6551_t* a, uint64_t now) noexcept -> void {
+auto acia_restart(Acia6551* a, uint64_t now) noexcept -> void {
   if (a == nullptr) {
     return;
   }
@@ -378,7 +378,7 @@ auto acia_restart(Acia6551_t* a, uint64_t now) noexcept -> void {
   }
 }
 
-auto acia_step(Acia6551_t* a, uint64_t now, uint8_t* byte_out) noexcept
+auto acia_step(Acia6551* a, uint64_t now, uint8_t* byte_out) noexcept
     -> bool {
   if (a == nullptr) {
     return false;
@@ -396,11 +396,11 @@ auto acia_step(Acia6551_t* a, uint64_t now, uint8_t* byte_out) noexcept
   return true;
 }
 
-auto acia_irq(const Acia6551_t* a) noexcept -> bool {
+auto acia_irq(const Acia6551* a) noexcept -> bool {
   return a != nullptr && a->irq;
 }
 
-auto acia_read(Acia6551_t* a, uint8_t reg, uint64_t now) noexcept -> uint8_t {
+auto acia_read(Acia6551* a, uint8_t reg, uint64_t now) noexcept -> uint8_t {
   if (a == nullptr) {
     return 0;
   }
@@ -444,7 +444,7 @@ auto acia_read(Acia6551_t* a, uint8_t reg, uint64_t now) noexcept -> uint8_t {
   }
 }
 
-auto acia_write(Acia6551_t* a, uint8_t reg, uint8_t value, uint64_t now,
+auto acia_write(Acia6551* a, uint8_t reg, uint8_t value, uint64_t now,
                 uint8_t* byte_out) noexcept -> bool {
   if (a == nullptr) {
     return false;
@@ -488,7 +488,7 @@ auto acia_write(Acia6551_t* a, uint8_t reg, uint8_t value, uint64_t now,
   return acia_step(a, now, byte_out);
 }
 
-auto acia_set_lines(Acia6551_t* a, uint8_t lines, uint64_t now) noexcept
+auto acia_set_lines(Acia6551* a, uint8_t lines, uint64_t now) noexcept
     -> void {
   if (a == nullptr) {
     return;
@@ -503,7 +503,7 @@ auto acia_set_lines(Acia6551_t* a, uint8_t lines, uint64_t now) noexcept
   try_start_transmit(a, now);
 }
 
-auto acia_rx_ready(const Acia6551_t* a) noexcept -> bool {
+auto acia_rx_ready(const Acia6551* a) noexcept -> bool {
   if (a == nullptr) {
     return false;
   }
@@ -513,7 +513,7 @@ auto acia_rx_ready(const Acia6551_t* a) noexcept -> bool {
          !latch(a, acia_latch::rx_busy) && !latch(a, acia_latch::rdrf);
 }
 
-auto acia_rx_start(Acia6551_t* a, uint8_t byte, uint8_t errors,
+auto acia_rx_start(Acia6551* a, uint8_t byte, uint8_t errors,
                    uint64_t now) noexcept -> void {
   if (a == nullptr || !has_clock(a)) {
     return;
@@ -541,7 +541,7 @@ auto acia_rx_start(Acia6551_t* a, uint8_t byte, uint8_t errors,
   advance(a, now);
 }
 
-auto acia_line_view(const Acia6551_t* a, AciaLine_t* out) noexcept -> void {
+auto acia_line_view(const Acia6551* a, AciaLine* out) noexcept -> void {
   if (a == nullptr || out == nullptr) {
     return;
   }
@@ -555,7 +555,7 @@ auto acia_line_view(const Acia6551_t* a, AciaLine_t* out) noexcept -> void {
   out->brk = a->break_level ? 1 : 0;
 }
 
-auto acia_next_event(const Acia6551_t* a) noexcept -> uint64_t {
+auto acia_next_event(const Acia6551* a) noexcept -> uint64_t {
   if (a == nullptr) {
     return 0;
   }
