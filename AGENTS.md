@@ -113,7 +113,8 @@ More on building in <!-- Imported from: INSTALL.md -->
   development. Use `structs` and plain functions instead of `classes` and
   methods where possible to improve simplicity and portability.
 - **Naming Conventions:** Use strict `snake_case` for functions, variables,
-  and constants. Use `PascalCase_t` for types and structs. (Exception:
+  and constants. Use `PascalCase` for types and structs (no Hungarian notation
+  or `_t` suffix). (Exception:
   hardware register bitmasks, 6502 CPU status flags, and Apple II
   architecture vector definitions in hardware emulation layers may use
   `SCREAMING_SNAKE_CASE` to maintain 1:1 fidelity with hardware technical

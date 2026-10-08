@@ -237,15 +237,20 @@ HeaderFilterRegex: 'src/.*'
 
 CheckOptions:
   cppcoreguidelines-macro-usage.AllowedRegexp: '^(PERIPHERAL_|EXPORT_PERIPHERAL)'
+  readability-identifier-naming.ClassCase: CamelCase
+  readability-identifier-naming.ConstexprVariableCase: lower_case
+  readability-identifier-naming.ConstexprVariablePrefix: ''
   readability-identifier-naming.EnumCase: CamelCase
-  readability-identifier-naming.EnumSuffix: '_t'
   readability-identifier-naming.FunctionCase: lower_case
-  readability-identifier-naming.GlobalVariablePrefix: 'g_'
+  readability-identifier-naming.GlobalConstantCase: lower_case
+  readability-identifier-naming.GlobalConstantPrefix: ''
   readability-identifier-naming.ParameterCase: lower_case
+  readability-identifier-naming.StaticConstantCase: lower_case
+  readability-identifier-naming.StaticConstantPrefix: ''
   readability-identifier-naming.StructCase: CamelCase
-  readability-identifier-naming.StructSuffix: '_t'
   readability-identifier-naming.TypeAliasCase: CamelCase
-  readability-identifier-naming.TypeAliasSuffix: '_t'
+  readability-identifier-naming.TypedefCase: CamelCase
+  readability-identifier-naming.UnionCase: CamelCase
   readability-identifier-naming.VariableCase: lower_case
   readability-implicit-bool-conversion.AllowPointerConditions: true
   readability-magic-numbers.IgnorePowersOf2IntegerValues: true
