@@ -1,0 +1,10 @@
+---
+# Tier 4 Hardware Emulation: Disable magic numbers check.
+# Apple II hardware emulation inherently operates on hardware register addresses,
+# cycle counts, bit masks, and bus timing constants where symbolic constants can
+# obscure direct 1:1 hardware datasheet fidelity.
+
+InheritParentConfig: true
+
+Checks:
+  - '-readability-magic-numbers'

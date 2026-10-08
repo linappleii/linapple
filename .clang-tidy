@@ -1,20 +1,255 @@
 ---
-# LinApple .clang-tidy configuration
-#
-# This project favors a procedural, C-like C++11 style as mandated in AGENTS.md.
-# We utilize the following exclusions from standard C++ Core Guidelines:
-#
-# 1. pro-type-vararg & avoid-variadic-functions:
-#    Favoring printf-style formatting over iostream for performance,
-#    conciseness in hex-formatting, and C99 ABI compatibility.
-#
-# 3. avoid-magic-numbers & macro-usage:
-#    Hardware emulation uses address ranges, register masks, bitshifts,
-#    and compiler attribute formatting macros.
-#
-# 4. easily-swappable-parameters & use-enum-class:
-#    Procedural C/C++11 ABI APIs with integer IDs and primitive parameters.
+Checks:
+  - '-*'
 
-Checks: '-*,misc-include-cleaner,bugprone-use-after-move,bugprone-unhandled-self-assignment,bugprone-suspicious-string-compare,bugprone-sizeof-expression,bugprone-dangling-handle,bugprone-undefined-memory-manipulation'
+  # Header & namespace hygiene
+  - bugprone-forward-declaration-namespace
+  - bugprone-std-namespace-modification
+  - bugprone-suspicious-include
+  - google-build-using-namespace
+  - google-global-names-in-headers
+  - llvm-namespace-comment
+  - misc-anonymous-namespace-in-header
+  - misc-definitions-in-headers
+  - misc-header-include-cycle
+  - misc-include-cleaner
+  - misc-static-initialization-cycle
+  - readability-avoid-const-params-in-decls
+  - readability-duplicate-include
+  - readability-redundant-declaration
+  - readability-redundant-qualified-alias
+
+  # Preprocessor enforcement
+  - cppcoreguidelines-macro-usage
+  - readability-avoid-unconditional-preprocessor-if
+  - readability-redundant-preprocessor
+  - readability-use-concise-preprocessor-directives
+
+  # Typing & declaration syntax
+  - bugprone-bool-pointer-implicit-conversion
+  - bugprone-non-zero-enum-to-bool-conversion
+  - bugprone-reserved-identifier
+  - bugprone-string-integer-assignment
+  - bugprone-suspicious-enum-usage
+  - bugprone-suspicious-missing-comma
+  - bugprone-suspicious-semicolon
+  - cppcoreguidelines-avoid-const-or-ref-data-members
+  - cppcoreguidelines-explicit-constructor
+  - cppcoreguidelines-pro-type-const-cast
+  - cppcoreguidelines-pro-type-member-init
+  - google-runtime-int
+  - google-runtime-operator
+  - misc-unconventional-assign-operator
+  - misc-use-internal-linkage
+  - readability-identifier-naming
+  - readability-implicit-bool-conversion
+  - readability-isolate-declaration
+  - readability-make-member-function-const
+  - readability-named-parameter
+  - readability-non-const-parameter
+  - readability-operators-representation
+  - readability-qualified-auto
+  - readability-redundant-access-specifiers
+  - readability-redundant-casting
+  - readability-redundant-inline-specifier
+  - readability-redundant-member-init
+  - readability-redundant-typename
+
+  # Emulation & arithmetic safety
+  - bugprone-float-loop-counter
+  - bugprone-fold-init-type
+  - bugprone-implicit-widening-of-multiplication-result
+  - bugprone-incorrect-roundings
+  - bugprone-infinite-loop
+  - bugprone-integer-division
+  - bugprone-misplaced-widening-cast
+  - bugprone-nondeterministic-pointer-iteration-order
+  - bugprone-random-generator-seed
+  - bugprone-signed-char-misuse
+  - bugprone-too-small-loop-variable
+
+  # Logic & expression hygiene
+  - bugprone-chained-comparison
+  - misc-redundant-expression
+  - readability-else-after-return
+  - readability-redundant-control-flow
+  - readability-redundant-function-ptr-dereference
+  - readability-redundant-nested-if
+  - readability-redundant-parentheses
+  - readability-simplify-boolean-expr
+  - readability-simplify-subscript-expr
+  - readability-static-accessed-through-instance
+  - readability-static-definition-in-anonymous-namespace
+  - readability-string-compare
+  - readability-trailing-comma
+  - readability-trivial-switch
+  - readability-use-std-min-max
+
+  # Defensive coding & MISRA-C alignment
+  - bugprone-assert-side-effect
+  - bugprone-assignment-in-if-condition
+  - bugprone-branch-clone
+  - bugprone-empty-catch
+  - bugprone-inc-dec-in-conditions
+  - bugprone-missing-end-comparison
+  - bugprone-not-null-terminated-result
+  - bugprone-posix-return
+  - bugprone-redundant-branch-condition
+  - bugprone-signal-handler
+  - bugprone-spuriously-wake-up-functions
+  - bugprone-std-exception-baseclass
+  - bugprone-switch-missing-default-case
+  - bugprone-terminating-continue
+  - bugprone-throw-keyword-missing
+  - bugprone-unsafe-functions
+  - bugprone-unused-return-value
+  - cppcoreguidelines-avoid-goto
+  - cppcoreguidelines-init-variables
+  - cppcoreguidelines-slicing
+  - cppcoreguidelines-virtual-class-destructor
+  - misc-confusable-identifiers
+  - misc-const-correctness
+  - misc-misleading-bidirectional
+  - misc-misleading-identifier
+  - misc-misplaced-const
+  - misc-multiple-inheritance
+  - misc-non-copyable-objects
+  - misc-override-with-different-visibility
+  - misc-static-assert
+  - misc-throw-by-value-catch-by-reference
+  - misc-unused-parameters
+  - readability-ambiguous-smartptr-reset-call
+  - readability-avoid-nested-conditional-operator
+  - readability-avoid-return-with-void-value
+  - readability-braces-around-statements
+  - readability-const-return-type
+  - readability-delete-null-pointer
+  - readability-inconsistent-declaration-parameter-name
+  - readability-inconsistent-ifelse-braces
+  - readability-magic-numbers
+  - readability-math-missing-parentheses
+  - readability-misleading-indentation
+  - readability-misplaced-array-index
+  - readability-suspicious-call-argument
+  - readability-uppercase-literal-suffix
+
+  # Modern C++11 idioms & hygiene
+  - cppcoreguidelines-misleading-capture-default-by-value
+  - cppcoreguidelines-missing-std-forward
+  - cppcoreguidelines-prefer-member-initializer
+  - cppcoreguidelines-rvalue-reference-param-not-moved
+  - misc-unused-alias-decls
+  - misc-unused-using-decls
+  - modernize-avoid-bind
+  - modernize-avoid-setjmp-longjmp
+  - modernize-deprecated-ios-base-aliases
+  - modernize-loop-convert
+  - modernize-make-shared
+  - modernize-min-max-use-initializer-list
+  - modernize-pass-by-value
+  - modernize-raw-string-literal
+  - modernize-replace-auto-ptr
+  - modernize-replace-disallow-copy-and-assign-macro
+  - modernize-replace-random-shuffle
+  - modernize-return-braced-init-list
+  - modernize-shrink-to-fit
+  - modernize-use-bool-literals
+  - modernize-use-emplace
+  - modernize-use-equals-default
+  - modernize-use-equals-delete
+  - modernize-use-noexcept
+  - modernize-use-nullptr
+  - modernize-use-override
+  - modernize-use-trailing-return-type
+  - modernize-use-using
+  - readability-container-data-pointer
+  - readability-container-size-empty
+  - readability-convert-member-functions-to-static
+  - readability-redundant-smartptr-get
+  - readability-redundant-string-cstr
+  - readability-redundant-string-init
+  - readability-reference-to-constructed-temporary
+
+  # Memory & resource safety
+  - bugprone-dangling-handle
+  - bugprone-dynamic-static-initializers
+  - bugprone-exception-escape
+  - bugprone-inaccurate-erase
+  - bugprone-misplaced-operator-in-strlen-in-alloc
+  - bugprone-raw-memory-call-on-non-trivial-type
+  - bugprone-return-const-ref-from-parameter
+  - bugprone-shared-ptr-array-mismatch
+  - bugprone-sizeof-container
+  - bugprone-sizeof-expression
+  - bugprone-standalone-empty
+  - bugprone-string-constructor
+  - bugprone-string-literal-with-embedded-nul
+  - bugprone-stringview-nullptr
+  - bugprone-suspicious-memory-comparison
+  - bugprone-suspicious-memset-usage
+  - bugprone-suspicious-realloc-usage
+  - bugprone-suspicious-string-compare
+  - bugprone-suspicious-stringview-data-usage
+  - bugprone-throwing-static-initialization
+  - bugprone-unchecked-string-to-number-conversion
+  - bugprone-undefined-memory-manipulation
+  - bugprone-unhandled-self-assignment
+  - bugprone-unique-ptr-array-mismatch
+  - bugprone-unused-local-non-trivial-variable
+  - bugprone-unused-raii
+  - bugprone-use-after-move
+  - cppcoreguidelines-no-malloc
+  - cppcoreguidelines-special-member-functions
+  - misc-new-delete-overloads
+  - misc-uniqueptr-reset-release
+  - readability-uniqueptr-delete-release
+
+  # Performance & optimization
+  - performance-avoid-endl
+  - performance-enum-size
+  - performance-faster-string-find
+  - performance-for-range-copy
+  - performance-implicit-conversion-in-loop
+  - performance-inefficient-algorithm
+  - performance-inefficient-string-concatenation
+  - performance-inefficient-vector-operation
+  - performance-move-const-arg
+  - performance-move-constructor-init
+  - performance-no-automatic-move
+  - performance-noexcept-destructor
+  - performance-noexcept-move-constructor
+  - performance-noexcept-swap
+  - performance-prefer-single-char-overloads
+  - performance-trivially-destructible
+  - performance-type-promotion-in-math-fn
+  - performance-unnecessary-copy-initialization
+  - performance-unnecessary-value-param
+  - performance-use-std-move
+
+  # Portability across CPU architectures (x86, ARM, RISC-V)
+  - portability-no-assembler
+  - portability-simd-intrinsics
+  - portability-std-allocator-const
+  - portability-template-virtual-member-function
+
 WarningsAsErrors: 'misc-include-cleaner'
 HeaderFilterRegex: 'src/.*'
+
+CheckOptions:
+  cppcoreguidelines-macro-usage.AllowedRegexp: '^(PERIPHERAL_|EXPORT_PERIPHERAL)'
+  readability-identifier-naming.EnumCase: CamelCase
+  readability-identifier-naming.EnumSuffix: '_t'
+  readability-identifier-naming.FunctionCase: lower_case
+  readability-identifier-naming.GlobalVariablePrefix: 'g_'
+  readability-identifier-naming.ParameterCase: lower_case
+  readability-identifier-naming.StructCase: CamelCase
+  readability-identifier-naming.StructSuffix: '_t'
+  readability-identifier-naming.TypeAliasCase: CamelCase
+  readability-identifier-naming.TypeAliasSuffix: '_t'
+  readability-identifier-naming.VariableCase: lower_case
+  readability-implicit-bool-conversion.AllowPointerConditions: true
+  readability-magic-numbers.IgnorePowersOf2IntegerValues: true
+  readability-magic-numbers.IgnoredIntegerValues: '0;1;2;-1'
+  readability-operators-representation.BinaryOperators: '&&;||;!;!=;&;|;^;~'
+  readability-trailing-comma.MultiLineCommaPolicy: Append
+  readability-trailing-comma.SingleLineCommaPolicy: Remove

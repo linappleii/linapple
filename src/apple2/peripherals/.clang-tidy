@@ -1,0 +1,10 @@
+---
+# LinApple Peripherals Configuration
+# Peripherals implement standardized C ABI dispatch tables and callback signatures
+# (e.g. init(slot, host), command, query) where specific hardware implementations
+# intentionally leave slot/host parameters unused.
+
+InheritParentConfig: true
+
+Checks:
+  - '-misc-unused-parameters'

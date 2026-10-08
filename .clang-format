@@ -1,6 +1,7 @@
 ---
 BasedOnStyle: Google
-ColumnLimit: 80
-IndentWidth: 2
-CommentPragmas: '^ NOLINT'
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+InsertBraces: true
+CommentPragmas: '^ (NOLINT|IWYU pragma:)'
 ...
