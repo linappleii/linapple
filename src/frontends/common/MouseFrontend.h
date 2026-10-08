@@ -6,7 +6,7 @@
 
 // The Apple picture as last drawn, in the host's units: window pixels, or the
 // terminal's cells or pixels.
-struct MousePictureRect_t {
+struct MousePictureRect {
   int x;
   int y;
   int w;
@@ -16,8 +16,8 @@ struct MousePictureRect_t {
 // One count per hires pixel of the displayed picture, a frontend policy: a
 // program clamped to 0..279 tracks the host pointer one for one. The real mouse
 // makes about 50 counts an inch (AppleMouse II User's Manual p. 45).
-constexpr int k_mouse_counts_across = 280;
-constexpr int k_mouse_counts_down = 192;
+constexpr int mouse_counts_across = 280;
+constexpr int mouse_counts_down = 192;
 
 // Run once the cards exist, and again after a restart or a save-state load.
 auto mouse_frontend_initialize() -> void;
@@ -37,7 +37,7 @@ auto mouse_frontend_motion(int dx, int dy, int picture_w, int picture_h)
 // difference from the card's own counters goes out as motion. Nothing is sent
 // while SETMOUSE has motion off. For a host that cannot hide its pointer, where
 // relative motion would leave the two pointers visibly apart.
-auto mouse_frontend_follow(int host_x, int host_y, MousePictureRect_t picture)
+auto mouse_frontend_follow(int host_x, int host_y, MousePictureRect picture)
     -> void;
 
 // One xterm SGR mouse report, CSI < Cb ; Cx ; Cy M or m, under any-event
@@ -45,7 +45,7 @@ auto mouse_frontend_follow(int host_x, int host_y, MousePictureRect_t picture)
 // (3 for none), bit 5 marks motion, bit 6 the wheel; a drag's reports carry the
 // held button with the motion bit, so they are motion, not a press. Cx and Cy
 // are one-based cells or, under ?1016, pixels.
-struct MouseSgrEvent_t {
+struct MouseSgrEvent {
   int button;
   bool pressed;
   bool released;
@@ -58,7 +58,7 @@ struct MouseSgrEvent_t {
 // Each decoder takes the whole sequence, ESC to final byte, and answers false
 // for anything but exactly the report it names.
 auto mouse_frontend_sgr_decode(const uint8_t* seq, size_t len,
-                               MouseSgrEvent_t* out) -> bool;
+                               MouseSgrEvent* out) -> bool;
 // DECRPM, CSI ? Pd ; Ps $ y, the answer to a DECRQM query of private mode Pd:
 // Ps 1 or 3 set, 2 reset, 4 permanently reset, 0 unknown mode.
 auto mouse_frontend_decode_mode_report(const uint8_t* seq, size_t len,

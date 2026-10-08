@@ -172,7 +172,7 @@ auto write_wav_if_requested(const std::vector<int16_t>& stereo) -> void {
   if (path == nullptr || path[0] == '\0') {
     return;
   }
-  AudioDumper_t dumper;
+  AudioDumper dumper;
   if (audio_dumper_initialize(&dumper, path, DEVICE_RATE_HZ, 2) != 0) {
     return;
   }

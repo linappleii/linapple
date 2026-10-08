@@ -11,7 +11,7 @@
 #include "core/Util_Path.h"
 #include "frontends/sdl1/SdlPtr.h"
 
-auto sdl_asset_load_bmp(const char* filename) -> SdlSurfacePtr_t {
+auto sdl_asset_load_bmp(const char* filename) -> SdlSurfacePtr {
   if (filename == nullptr) {
     return nullptr;
   }
@@ -23,7 +23,7 @@ auto sdl_asset_load_bmp(const char* filename) -> SdlSurfacePtr_t {
     return nullptr;
   }
 
-  SdlSurfacePtr_t surf(SDL_LoadBMP(full_path.c_str()));
+  SdlSurfacePtr surf(SDL_LoadBMP(full_path.c_str()));
   if (surf == nullptr) {
     fprintf(stderr, "asset_load_bmp: Failed to load %s from %s: %s\n", filename,
             full_path.c_str(), SDL_GetError());
@@ -36,7 +36,7 @@ auto sdl_asset_load_bmp(const char* filename) -> SdlSurfacePtr_t {
 }
 
 namespace {
-static SdlSurfacePtr_t s_app_icon;
+static SdlSurfacePtr s_app_icon;
 }  // namespace
 
 auto sdl_asset_free_icon() -> void {

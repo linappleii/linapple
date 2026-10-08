@@ -8,7 +8,7 @@
 
 #include <memory>
 
-struct SdlWindowDeleter_t {
+struct SdlWindowDeleter {
   auto operator()(SDL_Window* ptr) const noexcept -> void {
     if (ptr != nullptr) {
       SDL_DestroyWindow(ptr);
@@ -16,7 +16,7 @@ struct SdlWindowDeleter_t {
   }
 };
 
-struct SdlRendererDeleter_t {
+struct SdlRendererDeleter {
   auto operator()(SDL_Renderer* ptr) const noexcept -> void {
     if (ptr != nullptr) {
       SDL_DestroyRenderer(ptr);
@@ -24,7 +24,7 @@ struct SdlRendererDeleter_t {
   }
 };
 
-struct SdlTextureDeleter_t {
+struct SdlTextureDeleter {
   auto operator()(SDL_Texture* ptr) const noexcept -> void {
     if (ptr != nullptr) {
       SDL_DestroyTexture(ptr);
@@ -32,7 +32,7 @@ struct SdlTextureDeleter_t {
   }
 };
 
-struct SdlSurfaceDeleter_t {
+struct SdlSurfaceDeleter {
   auto operator()(SDL_Surface* ptr) const noexcept -> void {
     if (ptr != nullptr) {
       SDL_FreeSurface(ptr);
@@ -40,7 +40,7 @@ struct SdlSurfaceDeleter_t {
   }
 };
 
-struct SdlJoystickDeleter_t {
+struct SdlJoystickDeleter {
   auto operator()(SDL_Joystick* ptr) const noexcept -> void {
     if (ptr != nullptr) {
       SDL_JoystickClose(ptr);
@@ -48,8 +48,8 @@ struct SdlJoystickDeleter_t {
   }
 };
 
-using SdlWindowPtr_t = std::unique_ptr<SDL_Window, SdlWindowDeleter_t>;
-using SdlRendererPtr_t = std::unique_ptr<SDL_Renderer, SdlRendererDeleter_t>;
-using SdlTexturePtr_t = std::unique_ptr<SDL_Texture, SdlTextureDeleter_t>;
-using SdlSurfacePtr_t = std::unique_ptr<SDL_Surface, SdlSurfaceDeleter_t>;
-using SdlJoystickPtr_t = std::unique_ptr<SDL_Joystick, SdlJoystickDeleter_t>;
+using SdlWindowPtr = std::unique_ptr<SDL_Window, SdlWindowDeleter>;
+using SdlRendererPtr = std::unique_ptr<SDL_Renderer, SdlRendererDeleter>;
+using SdlTexturePtr = std::unique_ptr<SDL_Texture, SdlTextureDeleter>;
+using SdlSurfacePtr = std::unique_ptr<SDL_Surface, SdlSurfaceDeleter>;
+using SdlJoystickPtr = std::unique_ptr<SDL_Joystick, SdlJoystickDeleter>;

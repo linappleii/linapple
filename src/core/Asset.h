@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-struct VideoSurface_t;
+struct VideoSurface;
 
 struct Assets {
   void* icon{nullptr};
-  VideoSurface_t* font{nullptr};
-  VideoSurface_t* splash{nullptr};
+  VideoSurface* font{nullptr};
+  VideoSurface* splash{nullptr};
 };
 
 extern Assets* assets;

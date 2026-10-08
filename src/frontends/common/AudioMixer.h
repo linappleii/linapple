@@ -6,7 +6,7 @@
 
 #include "apple2/peripherals/Peripheral_Audio.h"
 
-enum FadeType_t { fade_out = 0, fade_in = 1 };
+enum FadeType { fade_out = 0, fade_in = 1 };
 
 // Only the frontend knows the device's rate, because it opened the device.
 // Every source is resampled to it, so no rate constant lives in the mixer or
@@ -35,12 +35,12 @@ auto audio_mixer_reset_channel_pan(int slot) -> void;
 // attach.
 auto audio_mixer_set_source_gain(int slot, float gain) -> void;
 
-using AudioChannelTapCallback_t = void (*)(const char* peripheral_id, int slot,
-                                           const float* const* channels,
-                                           size_t num_channels,
-                                           size_t num_samples);
-auto audio_mixer_set_channel_tap_callback(AudioChannelTapCallback_t cb) -> void;
+using AudioChannelTapCallback = void (*)(const char* peripheral_id, int slot,
+                                         const float* const* channels,
+                                         size_t num_channels,
+                                         size_t num_samples);
+auto audio_mixer_set_channel_tap_callback(AudioChannelTapCallback cb) -> void;
 
 auto audio_mixer_get_samples(int16_t* out, size_t num_samples) -> void;
 
-auto audio_mixer_set_fade(FadeType_t fade_type) -> void;
+auto audio_mixer_set_fade(FadeType fade_type) -> void;

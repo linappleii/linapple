@@ -33,24 +33,24 @@ namespace {
 // driver fixes each usage's evdev code (drivers/hid/hid-input.c,
 // hid_keyboard[]). This inverts that for usages 4 to 82, the range the maps
 // index; usage 50 shares KEY_BACKSLASH with 49 and so reads as 49.
-struct X11Usage_t {
+struct X11Usage {
   uint8_t evdev;
   uint8_t usage;
 };
 
-constexpr uint8_t k_x11_min_keycode = 8;
+constexpr uint8_t x11_min_keycode = 8;
 
-constexpr uint8_t k_usage_sysrq = 70;
-constexpr uint8_t k_usage_scroll_lock = 71;
-constexpr uint8_t k_usage_pause = 72;
-constexpr uint8_t k_usage_insert = 73;
-constexpr uint8_t k_usage_home = 74;
-constexpr uint8_t k_usage_page_up = 75;
-constexpr uint8_t k_usage_delete = 76;
-constexpr uint8_t k_usage_end = 77;
-constexpr uint8_t k_usage_page_down = 78;
+constexpr uint8_t usage_sysrq = 70;
+constexpr uint8_t usage_scroll_lock = 71;
+constexpr uint8_t usage_pause = 72;
+constexpr uint8_t usage_insert = 73;
+constexpr uint8_t usage_home = 74;
+constexpr uint8_t usage_page_up = 75;
+constexpr uint8_t usage_delete = 76;
+constexpr uint8_t usage_end = 77;
+constexpr uint8_t usage_page_down = 78;
 
-constexpr std::array<X11Usage_t, 78> k_x11_usages = {{
+constexpr std::array<X11Usage, 78> x11_usages = {{
     {30, keyb_idx_a},
     {48, keyb_idx_b},
     {46, keyb_idx_c},
@@ -116,15 +116,15 @@ constexpr std::array<X11Usage_t, 78> k_x11_usages = {{
     {68, keyb_idx_f10},
     {87, keyb_idx_f11},
     {88, keyb_idx_f12},
-    {99, k_usage_sysrq},
-    {70, k_usage_scroll_lock},
-    {119, k_usage_pause},
-    {110, k_usage_insert},
-    {102, k_usage_home},
-    {104, k_usage_page_up},
-    {111, k_usage_delete},
-    {107, k_usage_end},
-    {109, k_usage_page_down},
+    {99, usage_sysrq},
+    {70, usage_scroll_lock},
+    {119, usage_pause},
+    {110, usage_insert},
+    {102, usage_home},
+    {104, usage_page_up},
+    {111, usage_delete},
+    {107, usage_end},
+    {109, usage_page_down},
     {106, keyb_idx_right},
     {105, keyb_idx_left},
     {108, keyb_idx_down},
@@ -203,8 +203,8 @@ auto video_driver_is_x11() -> bool {
 }  // namespace
 
 auto sdl1_x11_keycode_to_hid(uint8_t keycode) -> uint8_t {
-  for (const X11Usage_t& row : k_x11_usages) {
-    if (row.evdev + k_x11_min_keycode == keycode) {
+  for (const X11Usage& row : x11_usages) {
+    if (row.evdev + x11_min_keycode == keycode) {
       return row.usage;
     }
   }
@@ -218,18 +218,18 @@ auto sdl1_hid_usage(const SDL_keysym& keysym) -> uint8_t {
                                : keysym_to_hid(keysym.sym);
 }
 
-constexpr int k_user_event_reboot = 1;
+constexpr int user_event_reboot = 1;
 
-auto host_button(Uint8 button) -> MouseHostButton_t {
+auto host_button(Uint8 button) -> MouseHostButton {
   switch (button) {
     case SDL_BUTTON_LEFT:
-      return MouseHostButton_t::left;
+      return MouseHostButton::left;
     case SDL_BUTTON_MIDDLE:
-      return MouseHostButton_t::middle;
+      return MouseHostButton::middle;
     case SDL_BUTTON_RIGHT:
-      return MouseHostButton_t::right;
+      return MouseHostButton::right;
     default:
-      return MouseHostButton_t::other;
+      return MouseHostButton::other;
   }
 }
 
@@ -445,8 +445,8 @@ auto sdl_handle_event(SDL_Event* event) -> void {
       break;
 
     case SDL_USEREVENT:
-      if (event->user.code == k_user_event_reboot) {
-        process_button_click(k_btn_run, KMOD_LCTRL);
+      if (event->user.code == user_event_reboot) {
+        process_button_click(btn_run, KMOD_LCTRL);
       }
       break;
 

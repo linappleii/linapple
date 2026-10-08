@@ -259,7 +259,7 @@ TEST_CASE(
   TestFixtures::ScopedCore_t core(config);
   mouse_frontend_initialize();
   REQUIRE(mouse_frontend_card_slot() == 4);
-  constexpr MousePictureRect_t text_box{0, 0, 80, 24};
+  constexpr MousePictureRect text_box{0, 0, 80, 24};
 
   SUBCASE("a 0..279 by 0..191 window across an 80 by 24 box") {
     load_card(4, {1, 0, 0, 0, 279, 0, 191});
@@ -290,7 +290,7 @@ TEST_CASE(
     // The same box in 8 by 16 pixel cells. One cell is 3.5 counts; pixel
     // offset 2 is 2 * 279 / 639 = 0.87, so 1, offset 4 is 1.75, so 2, and
     // offset 7 is 3.06, so 3.
-    constexpr MousePictureRect_t pixel_box{0, 0, 640, 384};
+    constexpr MousePictureRect pixel_box{0, 0, 640, 384};
     mouse_frontend_follow(2, 0, pixel_box);
     CHECK(position(4) == std::array<int16_t, 2>{1, 0});
     mouse_frontend_follow(4, 0, pixel_box);
@@ -303,7 +303,7 @@ TEST_CASE(
 
   SUBCASE("a pointer outside the box is held at the window's edge") {
     load_card(4, {1, 0, 0, 100, 200, 50, 150});
-    constexpr MousePictureRect_t offset_box{10, 2, 80, 24};
+    constexpr MousePictureRect offset_box{10, 2, 80, 24};
     mouse_frontend_follow(5, 0, offset_box);
     CHECK(position(4) == std::array<int16_t, 2>{100, 50});
     mouse_frontend_follow(300, 100, offset_box);
@@ -335,7 +335,7 @@ TEST_CASE(
 
 namespace {
 
-auto decode(const char* text, MouseSgrEvent_t* out) -> bool {
+auto decode(const char* text, MouseSgrEvent* out) -> bool {
   return mouse_frontend_sgr_decode(reinterpret_cast<const uint8_t*>(text),
                                    strlen(text), out);
 }
@@ -345,7 +345,7 @@ auto decode(const char* text, MouseSgrEvent_t* out) -> bool {
 TEST_CASE(
     "Mouse frontend: the SGR decoder tells a press, a release, a motion and "
     "a drag apart and refuses a short report") {
-  MouseSgrEvent_t event{};
+  MouseSgrEvent event{};
 
   REQUIRE(decode("\x1b[<0;10;5M", &event));
   CHECK(event.button == 0);

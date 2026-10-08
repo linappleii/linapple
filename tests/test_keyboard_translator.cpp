@@ -35,7 +35,7 @@ struct ScopedTranslator_t {
     Configuration::instance().data.erase("Keyboard.Custom");
     for (const auto& entry : entries) {
       Configuration::instance().set_string("Keyboard.Custom", entry.first,
-                                             entry.second);
+                                           entry.second);
     }
     keyboard_apply_custom_mappings();
   }
@@ -51,16 +51,16 @@ struct ScopedTranslator_t {
     keyboard_set_caps(true);
     keyboard_set_caps_mode(caps_mode_host);
     keyboard_set_layout(keyboard_layout_us);
-    keyboard_set_mapping_mode(KBD_MODE_SYMBOLIC);
+    keyboard_set_mapping_mode(kbd_mode_symbolic);
     keyboard_set_hotkeys_enabled(true);
-    keyboard_set_quicksave_mode(QUICKSAVE_MODE_ALT);
+    keyboard_set_quicksave_mode(quicksave_mode_alt);
     linapple_set_rocker_switch(false);
   }
 };
 
 auto translate(uint32_t scancode, uint32_t keycode, bool shift, bool ctrl)
     -> int {
-  const KeyboardHostKey_t key = {scancode, keycode, shift, ctrl};
+  const KeyboardHostKey key = {scancode, keycode, shift, ctrl};
   uint8_t code = 0;
   if (!keyboard_translate(&key, &code)) {
     return -1;
@@ -98,7 +98,7 @@ TEST_CASE(
     "Keyboard translator: positional mode reads the US table by HID usage, "
     "and a key the table leaves blank types nothing") {
   ScopedTranslator_t translator;
-  keyboard_set_mapping_mode(KBD_MODE_POSITIONAL);
+  keyboard_set_mapping_mode(kbd_mode_positional);
   CHECK(translate(hid_a, 'q', false, false) == 0x41);
   keyboard_set_caps(false);
   CHECK(translate(hid_a, 'q', false, false) == 0x61);
@@ -128,7 +128,7 @@ TEST_CASE(
   CHECK(keyboard_custom_switch(keyb_map_size) == keyboard_custom_switch_none);
 
   // The override is read before the layout in positional mode too.
-  keyboard_set_mapping_mode(KBD_MODE_POSITIONAL);
+  keyboard_set_mapping_mode(kbd_mode_positional);
   CHECK(translate(hid_f1, linapple_key_f1, false, false) == 0x0B);
   CHECK(translate(hid_a, 'a', false, false) == -1);
 
@@ -142,7 +142,7 @@ TEST_CASE(
     "positional mode while the rocker is on, with the US table behind a "
     "blank entry") {
   ScopedTranslator_t translator;
-  keyboard_set_mapping_mode(KBD_MODE_POSITIONAL);
+  keyboard_set_mapping_mode(kbd_mode_positional);
 
   // The German table puts ß at the minus key and the French table a right
   // parenthesis; with the rocker off every table is the US one.
@@ -180,9 +180,9 @@ TEST_CASE(
   config.set_string("Keyboard.Custom", "f1", "0x0B");
   frontend_update_keyboard_mapping();
 
-  CHECK(keyboard_get_mapping_mode() == KBD_MODE_POSITIONAL);
+  CHECK(keyboard_get_mapping_mode() == kbd_mode_positional);
   CHECK(keyboard_get_caps_mode() == caps_mode_emulated);
-  CHECK(keyboard_get_quicksave_mode() == QUICKSAVE_MODE_CTRL);
+  CHECK(keyboard_get_quicksave_mode() == quicksave_mode_ctrl);
   CHECK_FALSE(keyboard_get_hotkeys_enabled());
   CHECK(keyboard_get_layout() == keyboard_layout_de);
   CHECK(linapple_get_rocker_switch());
@@ -201,5 +201,5 @@ TEST_CASE(
   keyboard_set_hotkeys_enabled(true);
   frontend_update_keyboard_mapping();
   CHECK(keyboard_get_hotkeys_enabled());
-  CHECK(keyboard_get_mapping_mode() == KBD_MODE_POSITIONAL);
+  CHECK(keyboard_get_mapping_mode() == kbd_mode_positional);
 }

@@ -11,11 +11,11 @@
 
 #include "core/Util_Text.h"
 
-auto video_create_surface(int w, int h, int bpp) -> VideoSurface_t* {
+auto video_create_surface(int w, int h, int bpp) -> VideoSurface* {
   if (w <= 0 || h <= 0 || bpp <= 0) {
     return nullptr;
   }
-  auto s = std::unique_ptr<VideoSurface_t>{new VideoSurface_t{}};
+  auto s = std::unique_ptr<VideoSurface>{new VideoSurface{}};
   s->w = w;
   s->h = h;
   s->bpp = bpp;
@@ -27,22 +27,22 @@ auto video_create_surface(int w, int h, int bpp) -> VideoSurface_t* {
   return s.release();
 }
 
-auto video_destroy_surface(VideoSurface_t* s) -> void { delete s; }
+auto video_destroy_surface(VideoSurface* s) -> void { delete s; }
 
 namespace {
 
-constexpr size_t k_color_str_size = 32;
-constexpr size_t k_hex_color_min_len = 7;
-constexpr uint8_t k_opaque_alpha = 255;
+constexpr size_t color_str_size = 32;
+constexpr size_t hex_color_min_len = 7;
+constexpr uint8_t opaque_alpha = 255;
 
-struct PaletteMapEntry_t {
+struct PaletteMapEntry {
   char c = 0;
-  VideoColor_t color{};
+  VideoColor color{};
 };
 
 }  // namespace
 
-auto video_load_xpm(const char* const* xpm) -> VideoSurface_t* {
+auto video_load_xpm(const char* const* xpm) -> VideoSurface* {
   if (xpm == nullptr || xpm[0] == nullptr) {
     return nullptr;
   }
@@ -53,38 +53,40 @@ auto video_load_xpm(const char* const* xpm) -> VideoSurface_t* {
   if (sscanf(xpm[0], "%d %d %d %d", &w, &h, &colors, &cpp) != 4) {
     return nullptr;
   }
-  if (cpp != 1 || colors < 0 ||
-      colors > static_cast<int>(k_video_palette_size) || w <= 0 || h <= 0) {
+  if (cpp != 1 || colors < 0 || colors > static_cast<int>(video_palette_size) ||
+      w <= 0 || h <= 0) {
     return nullptr;
   }
 
-  VideoSurface_t* s = video_create_surface(w, h, 1);
+  VideoSurface* s = video_create_surface(w, h, 1);
   if (s == nullptr) {
     return nullptr;
   }
 
-  std::array<PaletteMapEntry_t, k_video_palette_size> palette_map{};
+  std::array<PaletteMapEntry, video_palette_size> palette_map{};
   for (int i = 0; i < colors; ++i) {
     if (xpm[1 + i] == nullptr) {
       video_destroy_surface(s);
       return nullptr;
     }
     char c = 0;
-    char color_str[k_color_str_size] = {0};
+    char color_str[color_str_size] = {0};
     if (sscanf(xpm[1 + i], "%c c %31s", &c, color_str) != 2) {
       video_destroy_surface(s);
       return nullptr;
     }
     palette_map.at(static_cast<size_t>(i)).c = c;
-    if (color_str[0] == '#' && strlen(color_str) >= k_hex_color_min_len) {
+    if (color_str[0] == '#' && strlen(color_str) >= hex_color_min_len) {
       const uint8_t r = text_convert_2_chars_to_byte(&color_str[1]);
       const uint8_t g = text_convert_2_chars_to_byte(&color_str[3]);
       const uint8_t b = text_convert_2_chars_to_byte(&color_str[5]);
-      palette_map.at(static_cast<size_t>(i)).color = {r, g, b, k_opaque_alpha};
+      palette_map.at(static_cast<size_t>(i)).color =
+          VideoColor{r, g, b, opaque_alpha};
     } else if (strcmp(color_str, "None") == 0) {
-      palette_map.at(static_cast<size_t>(i)).color = {0, 0, 0, 0};
+      palette_map.at(static_cast<size_t>(i)).color = VideoColor{0, 0, 0, 0};
     } else {
-      palette_map.at(static_cast<size_t>(i)).color = {0, 0, 0, k_opaque_alpha};
+      palette_map.at(static_cast<size_t>(i)).color =
+          VideoColor{0, 0, 0, opaque_alpha};
     }
     s->palette.at(static_cast<size_t>(i)) =
         palette_map.at(static_cast<size_t>(i)).color;

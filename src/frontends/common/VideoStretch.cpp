@@ -96,9 +96,9 @@ static auto copy_row_or4(uint32_t* src, int src_w, uint32_t* dst, int dst_x,
 }
 
 static uint32_t g_palette_lut[256] = {};
-static const VideoColor_t* g_last_palette = nullptr;
+static const VideoColor* g_last_palette = nullptr;
 
-static auto update_palette_lut(const VideoColor_t* palette) -> void {
+static auto update_palette_lut(const VideoColor* palette) -> void {
   if (!palette) {
     return;
   }
@@ -114,7 +114,7 @@ static auto update_palette_lut(const VideoColor_t* palette) -> void {
 }
 
 static auto copy_row1to4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
-                         int dst_w, int max_w, const VideoColor_t* palette)
+                         int dst_w, int max_w, const VideoColor* palette)
     -> void {
   if (dst_w <= 0 || src_w <= 0 || !src || !dst) {
     return;
@@ -145,7 +145,7 @@ static auto copy_row1to4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
 }
 
 static auto copy_row_or1to4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
-                            int dst_w, int max_w, const VideoColor_t* palette)
+                            int dst_w, int max_w, const VideoColor* palette)
     -> void {
   if (dst_w <= 0 || src_w <= 0 || !src || !dst) {
     return;
@@ -285,7 +285,7 @@ static auto copy8mono4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
   }
 }
 
-static inline auto clip_source_rect(VideoSurfaceView_t src, VideoRect_t* rect)
+static inline auto clip_source_rect(VideoSurfaceView src, VideoRect* rect)
     -> bool {
   if (src.pixels == nullptr || rect == nullptr) {
     return false;
@@ -314,17 +314,17 @@ static inline auto clip_source_rect(VideoSurfaceView_t src, VideoRect_t* rect)
 }
 
 template <typename RowOp>
-static auto video_soft_stretch_impl(VideoSurfaceView_t src,
-                                    const VideoRect_t* srcrect,
-                                    VideoSurfaceView_t dst,
-                                    const VideoRect_t* dstrect, RowOp row_op)
+static auto video_soft_stretch_impl(VideoSurfaceView src,
+                                    const VideoRect* srcrect,
+                                    VideoSurfaceView dst,
+                                    const VideoRect* dstrect, RowOp row_op)
     -> int {
   if (!src.pixels || !dst.pixels) {
     return -1;
   }
 
-  VideoRect_t full_src = srcrect ? *srcrect : VideoRect_t{0, 0, src.w, src.h};
-  VideoRect_t full_dst = dstrect ? *dstrect : VideoRect_t{0, 0, dst.w, dst.h};
+  VideoRect full_src = srcrect ? *srcrect : VideoRect{0, 0, src.w, src.h};
+  VideoRect full_dst = dstrect ? *dstrect : VideoRect{0, 0, dst.w, dst.h};
 
   if (full_dst.h <= 0 || full_src.h <= 0 || full_dst.w <= 0 ||
       full_src.w <= 0) {
@@ -360,9 +360,8 @@ static auto video_soft_stretch_impl(VideoSurfaceView_t src,
   return 0;
 }
 
-auto video_soft_stretch(VideoSurfaceView_t src, const VideoRect_t* srcrect,
-                        VideoSurfaceView_t dst, const VideoRect_t* dstrect)
-    -> int {
+auto video_soft_stretch(VideoSurfaceView src, const VideoRect* srcrect,
+                        VideoSurfaceView dst, const VideoRect* dstrect) -> int {
   return video_soft_stretch_impl(
       src, srcrect, dst, dstrect,
       [&](uint8_t* srcp, int src_w, uint8_t* dst_row_base, int dst_x, int dst_w,
@@ -404,11 +403,9 @@ auto video_soft_stretch(VideoSurfaceView_t src, const VideoRect_t* srcrect,
       });
 }
 
-auto video_soft_stretch_mono8(VideoSurfaceView_t src,
-                              const VideoRect_t* srcrect,
-                              VideoSurfaceView_t dst,
-                              const VideoRect_t* dstrect, uint32_t fgbrush,
-                              uint32_t bgbrush) -> int {
+auto video_soft_stretch_mono8(VideoSurfaceView src, const VideoRect* srcrect,
+                              VideoSurfaceView dst, const VideoRect* dstrect,
+                              uint32_t fgbrush, uint32_t bgbrush) -> int {
   return video_soft_stretch_impl(
       src, srcrect, dst, dstrect,
       [&](uint8_t* srcp, int src_w, uint8_t* dst_row_base, int dst_x, int dst_w,
@@ -424,8 +421,8 @@ auto video_soft_stretch_mono8(VideoSurfaceView_t src,
       });
 }
 
-auto video_soft_stretch_or(VideoSurfaceView_t src, const VideoRect_t* srcrect,
-                           VideoSurfaceView_t dst, const VideoRect_t* dstrect)
+auto video_soft_stretch_or(VideoSurfaceView src, const VideoRect* srcrect,
+                           VideoSurfaceView dst, const VideoRect* dstrect)
     -> int {
   return video_soft_stretch_impl(
       src, srcrect, dst, dstrect,
@@ -468,7 +465,7 @@ auto video_soft_stretch_or(VideoSurfaceView_t src, const VideoRect_t* srcrect,
       });
 }
 
-VideoSurface_t* font_sfc = nullptr;
+VideoSurface* font_sfc = nullptr;
 
 auto fonts_initialization() -> bool { return true; }
 
@@ -480,10 +477,10 @@ auto fonts_termination() -> void {
   }
 }
 
-auto font_print(int x, int y, const char* text, VideoSurfaceView_t surface,
+auto font_print(int x, int y, const char* text, VideoSurfaceView surface,
                 double kx, double ky) -> void {
   int i = 0, c = 0;
-  VideoRect_t s{}, d{};
+  VideoRect s{}, d{};
 
   if (font_sfc == nullptr || text == nullptr || surface.pixels == nullptr ||
       y >= surface.h) {
@@ -520,9 +517,8 @@ auto font_print(int x, int y, const char* text, VideoSurfaceView_t surface,
   }
 }
 
-auto font_print_right(int x, int y, const char* text,
-                      VideoSurfaceView_t surface, double kx, double ky)
-    -> void {
+auto font_print_right(int x, int y, const char* text, VideoSurfaceView surface,
+                      double kx, double ky) -> void {
   if (text == nullptr) {
     return;
   }
@@ -531,7 +527,7 @@ auto font_print_right(int x, int y, const char* text,
 }
 
 auto font_print_centered(int x, int y, const char* text,
-                         VideoSurfaceView_t surface, double kx, double ky)
+                         VideoSurfaceView surface, double kx, double ky)
     -> void {
   if (text == nullptr) {
     return;
@@ -540,13 +536,12 @@ auto font_print_centered(int x, int y, const char* text,
   font_print(x - offset, y, text, surface, kx, ky);
 }
 
-auto surface_fader(VideoSurface_t* surface, float r_factor, float g_factor,
-                   float b_factor, float a_factor, const VideoRect_t* r)
-    -> void {
+auto surface_fader(VideoSurface* surface, float r_factor, float g_factor,
+                   float b_factor, float a_factor, const VideoRect* r) -> void {
   (void)a_factor;
   (void)r;
   int i = 0;
-  VideoColor_t* colors = nullptr;
+  VideoColor* colors = nullptr;
 
   if (!surface || surface->bpp != 1) {
     return;
@@ -560,8 +555,7 @@ auto surface_fader(VideoSurface_t* surface, float r_factor, float g_factor,
   }
 }
 
-auto putpixel(VideoSurfaceView_t surface, int x, int y, uint32_t pixel)
-    -> void {
+auto putpixel(VideoSurfaceView surface, int x, int y, uint32_t pixel) -> void {
   if (surface.pixels == nullptr || x < 0 || x >= surface.w || y < 0 ||
       y >= surface.h) {
     return;
@@ -585,7 +579,7 @@ auto putpixel(VideoSurfaceView_t surface, int x, int y, uint32_t pixel)
   }
 }
 
-auto rectangle(VideoSurfaceView_t surface, int x, int y, int w, int h,
+auto rectangle(VideoSurfaceView surface, int x, int y, int w, int h,
                uint32_t pixel) -> void {
   if (surface.pixels == nullptr) {
     return;
@@ -602,7 +596,7 @@ auto rectangle(VideoSurfaceView_t surface, int x, int y, int w, int h,
   }
 }
 
-auto fill_rectangle(VideoSurfaceView_t surface, int x, int y, int w, int h,
+auto fill_rectangle(VideoSurfaceView surface, int x, int y, int w, int h,
                     uint32_t pixel) -> void {
   if (surface.pixels == nullptr || w <= 0 || h <= 0) {
     return;

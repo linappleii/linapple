@@ -18,43 +18,42 @@
 
 namespace {
 
-struct GeneratorDeleter_t {
-  auto operator()(FileListGenerator_t* g) const -> void {
+struct GeneratorDeleter {
+  auto operator()(FileListGenerator* g) const -> void {
     if (g != nullptr && g->destroy != nullptr) {
       g->destroy(g);
     }
   }
 };
-using UniqueGenerator_t =
-    std::unique_ptr<FileListGenerator_t, GeneratorDeleter_t>;
+using UniqueGenerator = std::unique_ptr<FileListGenerator, GeneratorDeleter>;
 
-struct FileListDeleter_t {
-  auto operator()(FileList_t* l) const -> void {
+struct FileListDeleter {
+  auto operator()(FileList* l) const -> void {
     if (l != nullptr) {
       file_browser_free_list(l);
     }
   }
 };
-using UniqueFileList_t = std::unique_ptr<FileList_t, FileListDeleter_t>;
+using UniqueFileList = std::unique_ptr<FileList, FileListDeleter>;
 
-struct DiskBrowserGuard_t {
-  DiskBrowser_t* browser;
-  explicit DiskBrowserGuard_t(DiskBrowser_t* b) : browser(b) {}
-  ~DiskBrowserGuard_t() {
+struct DiskBrowserGuard {
+  DiskBrowser* browser;
+  explicit DiskBrowserGuard(DiskBrowser* b) : browser(b) {}
+  ~DiskBrowserGuard() {
     if (browser != nullptr && browser->is_active) {
       disk_browser_close(browser);
     }
   }
-  DiskBrowserGuard_t(const DiskBrowserGuard_t&) = delete;
-  auto operator=(const DiskBrowserGuard_t&) -> DiskBrowserGuard_t& = delete;
-  DiskBrowserGuard_t(DiskBrowserGuard_t&&) = delete;
-  auto operator=(DiskBrowserGuard_t&&) -> DiskBrowserGuard_t& = delete;
+  DiskBrowserGuard(const DiskBrowserGuard&) = delete;
+  auto operator=(const DiskBrowserGuard&) -> DiskBrowserGuard& = delete;
+  DiskBrowserGuard(DiskBrowserGuard&&) = delete;
+  auto operator=(DiskBrowserGuard&&) -> DiskBrowserGuard& = delete;
 };
 
-// Helper to construct a FileEntry_t for testing
-auto create_entry(const char* name, FileEntryType_t type, uint64_t size)
-    -> FileEntry_t {
-  FileEntry_t entry{};
+// Helper to construct a FileEntry for testing
+auto create_entry(const char* name, FileEntryType type, uint64_t size)
+    -> FileEntry {
+  FileEntry entry{};
   entry.name[0] = '\0';
   if (name != nullptr) {
     util_safe_strcpy(entry.name, name, sizeof(entry.name));
@@ -64,39 +63,39 @@ auto create_entry(const char* name, FileEntryType_t type, uint64_t size)
   return entry;
 }
 
-TEST_CASE("FileBrowser: FileEntry_t Properties") {
-  FileEntry_t entry = create_entry("test.dsk", FILE_ENTRY_FILE, 1024);
+TEST_CASE("FileBrowser: FileEntry Properties") {
+  FileEntry entry = create_entry("test.dsk", FILE_ENTRY_FILE, 1024);
   CHECK(strcmp(entry.name, "test.dsk") == 0);
   CHECK(entry.type == FILE_ENTRY_FILE);
   CHECK(entry.size == 1024);
   CHECK(file_entry_is_dir_type(&entry) == false);
 }
 
-TEST_CASE("FileBrowser: FileEntry_t Size Formatting") {
+TEST_CASE("FileBrowser: FileEntry Size Formatting") {
   char buf[32];
 
-  FileEntry_t f1 = create_entry("small", FILE_ENTRY_FILE, 500);
+  FileEntry f1 = create_entry("small", FILE_ENTRY_FILE, 500);
   file_entry_format_type_or_size(&f1, buf, sizeof(buf));
   CHECK(std::string(buf) == "500");
 
-  FileEntry_t f2 = create_entry("kb", FILE_ENTRY_FILE, 1024 * 5);
+  FileEntry f2 = create_entry("kb", FILE_ENTRY_FILE, 1024 * 5);
   file_entry_format_type_or_size(&f2, buf, sizeof(buf));
   CHECK(std::string(buf) == "5K");
 
-  FileEntry_t f3 = create_entry("mb", FILE_ENTRY_FILE, 1024 * 1024 * 2);
+  FileEntry f3 = create_entry("mb", FILE_ENTRY_FILE, 1024 * 1024 * 2);
   file_entry_format_type_or_size(&f3, buf, sizeof(buf));
   CHECK(std::string(buf) == "2M");
 
-  FileEntry_t f4 =
+  FileEntry f4 =
       create_entry("gb", FILE_ENTRY_FILE, 1024ULL * 1024ULL * 1024ULL * 3ULL);
   file_entry_format_type_or_size(&f4, buf, sizeof(buf));
   CHECK(std::string(buf) == "3G");
 
-  FileEntry_t d = create_entry("dir", FILE_ENTRY_DIR, 0);
+  FileEntry d = create_entry("dir", FILE_ENTRY_DIR, 0);
   file_entry_format_type_or_size(&d, buf, sizeof(buf));
   CHECK(std::string(buf) == "<DIR>");
 
-  FileEntry_t u = create_entry("up", FILE_ENTRY_UP, 0);
+  FileEntry u = create_entry("up", FILE_ENTRY_UP, 0);
   file_entry_format_type_or_size(&u, buf, sizeof(buf));
   CHECK(std::string(buf) == "<UP>");
 }
@@ -121,20 +120,20 @@ TEST_CASE("FileBrowser: LocalFileListGenerator") {
   create_dummy_file(test_dir + "/file2.po", 2048);
 
   SUBCASE("List Generation") {
-    UniqueGenerator_t gen(
+    UniqueGenerator gen(
         file_browser_create_local_generator(test_dir.c_str(), nullptr));
     REQUIRE(gen != nullptr);
 
-    UniqueFileList_t list(gen->generate_file_list(gen.get()));
+    UniqueFileList list(gen->generate_file_list(gen.get()));
     REQUIRE(list != nullptr);
 
     // Should have: .. (UP), subdir (DIR), file1 (FILE), file2 (FILE)
     REQUIRE(file_browser_get_count(list.get()) == 4);
 
-    const FileEntry_t* e0 = file_browser_get_entry(list.get(), 0);
-    const FileEntry_t* e1 = file_browser_get_entry(list.get(), 1);
-    const FileEntry_t* e2 = file_browser_get_entry(list.get(), 2);
-    const FileEntry_t* e3 = file_browser_get_entry(list.get(), 3);
+    const FileEntry* e0 = file_browser_get_entry(list.get(), 0);
+    const FileEntry* e1 = file_browser_get_entry(list.get(), 1);
+    const FileEntry* e2 = file_browser_get_entry(list.get(), 2);
+    const FileEntry* e3 = file_browser_get_entry(list.get(), 3);
 
     REQUIRE(e0 != nullptr);
     CHECK(e0->type == FILE_ENTRY_UP);
@@ -153,19 +152,19 @@ TEST_CASE("FileBrowser: LocalFileListGenerator") {
   }
 
   SUBCASE("List Generation with Filter") {
-    UniqueGenerator_t gen(
+    UniqueGenerator gen(
         file_browser_create_local_generator(test_dir.c_str(), "dsk"));
     REQUIRE(gen != nullptr);
 
-    UniqueFileList_t list(gen->generate_file_list(gen.get()));
+    UniqueFileList list(gen->generate_file_list(gen.get()));
     REQUIRE(list != nullptr);
 
     // Should have: .. (UP), subdir (DIR), file1 (FILE). file2.po filtered out.
     REQUIRE(file_browser_get_count(list.get()) == 3);
 
-    const FileEntry_t* e0 = file_browser_get_entry(list.get(), 0);
-    const FileEntry_t* e1 = file_browser_get_entry(list.get(), 1);
-    const FileEntry_t* e2 = file_browser_get_entry(list.get(), 2);
+    const FileEntry* e0 = file_browser_get_entry(list.get(), 0);
+    const FileEntry* e1 = file_browser_get_entry(list.get(), 1);
+    const FileEntry* e2 = file_browser_get_entry(list.get(), 2);
 
     REQUIRE(e0 != nullptr);
     CHECK(e0->type == FILE_ENTRY_UP);
@@ -180,11 +179,11 @@ TEST_CASE("FileBrowser: LocalFileListGenerator") {
   }
 
   SUBCASE("Failure Handling") {
-    UniqueGenerator_t gen(file_browser_create_local_generator(
+    UniqueGenerator gen(file_browser_create_local_generator(
         "non_existent_directory_xyz", nullptr));
     REQUIRE(gen != nullptr);
 
-    UniqueFileList_t list(gen->generate_file_list(gen.get()));
+    UniqueFileList list(gen->generate_file_list(gen.get()));
     REQUIRE(list != nullptr);
 
     CHECK(file_browser_get_count(list.get()) == 0);
@@ -233,8 +232,8 @@ TEST_CASE("DiskBrowser: Title Formatting") {
 
 TEST_CASE("DiskBrowser: Navigation Operations") {
   TestFixtures::ScopedTempDir_t temp_dir;
-  DiskBrowser_t browser{};
-  DiskBrowserGuard_t guard{&browser};
+  DiskBrowser browser{};
+  DiskBrowserGuard guard{&browser};
   CHECK(disk_browser_open(&browser, 6, 0, temp_dir.c_str()) == true);
   CHECK(browser.is_active == true);
   CHECK(browser.drive == 0);
@@ -257,14 +256,14 @@ TEST_CASE("DiskBrowser: Directory Navigation Logic Up Entry") {
   std::string sub_dir = temp_dir.path() + "/nested";
   mkdir(sub_dir.c_str(), 0755);
 
-  DiskBrowser_t browser{};
-  DiskBrowserGuard_t guard{&browser};
+  DiskBrowser browser{};
+  DiskBrowserGuard guard{&browser};
   REQUIRE(disk_browser_open(&browser, 6, 0, sub_dir.c_str()) == true);
   CHECK(std::string(browser.current_dir) == sub_dir);
 
   // In a sub-directory, entry 0 is the parent navigation entry ("..")
   browser.selected_index = 0;
-  const FileEntry_t* entry =
+  const FileEntry* entry =
       file_browser_get_entry(browser.list_handle, browser.selected_index);
   REQUIRE(entry != nullptr);
   CHECK(entry->type == FILE_ENTRY_UP);
@@ -277,7 +276,7 @@ TEST_CASE("DiskBrowser: Directory Navigation Logic Up Entry") {
   size_t count = file_browser_get_count(browser.list_handle);
   size_t nested_index = count;
   for (size_t i = 0; i < count; ++i) {
-    const FileEntry_t* item = file_browser_get_entry(browser.list_handle, i);
+    const FileEntry* item = file_browser_get_entry(browser.list_handle, i);
     if (item != nullptr && strcmp(item->name, "nested") == 0) {
       nested_index = i;
       break;

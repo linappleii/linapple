@@ -7,57 +7,55 @@
 #include <cstring>
 #include <string>
 
-using Uint4_t = uint32_t;
-
 namespace {
 
-constexpr int k_md5_block_size = 64;
-constexpr int k_md5_state_size = 4;
-constexpr int k_md5_digest_size = 16;
-constexpr int k_md5_hex_buffer_size = 33;
+constexpr int md5_block_size = 64;
+constexpr int md5_state_size = 4;
+constexpr int md5_digest_size = 16;
+constexpr int md5_hex_buffer_size = 33;
 
-constexpr uint32_t k_md5_init_0 = 0x67452301U;
-constexpr uint32_t k_md5_init_1 = 0xefcdab89U;
-constexpr uint32_t k_md5_init_2 = 0x98badcfeU;
-constexpr uint32_t k_md5_init_3 = 0x10325476U;
+constexpr uint32_t md5_init_0 = 0x67452301U;
+constexpr uint32_t md5_init_1 = 0xefcdab89U;
+constexpr uint32_t md5_init_2 = 0x98badcfeU;
+constexpr uint32_t md5_init_3 = 0x10325476U;
 
-constexpr std::array<Uint4_t, k_md5_state_size> k_md5_initstate = {
-    {k_md5_init_0, k_md5_init_1, k_md5_init_2, k_md5_init_3},
+constexpr std::array<uint32_t, md5_state_size> md5_initstate = {
+    {md5_init_0, md5_init_1, md5_init_2, md5_init_3},
 };
 
-struct Md5Context_t {
-  std::array<Uint4_t, k_md5_state_size> state = k_md5_initstate;
+struct Md5Context {
+  std::array<uint32_t, md5_state_size> state = md5_initstate;
   uint64_t total_length = 0;
-  std::array<uint8_t, k_md5_block_size> buffer{};
+  std::array<uint8_t, md5_block_size> buffer{};
 };
 
-static inline auto F(Uint4_t x, Uint4_t y, Uint4_t z) noexcept -> Uint4_t {
+static inline auto F(uint32_t x, uint32_t y, uint32_t z) noexcept -> uint32_t {
   return ((x & y) | ((~x) & z));
 }
 
-static inline auto G(Uint4_t x, Uint4_t y, Uint4_t z) noexcept -> Uint4_t {
+static inline auto G(uint32_t x, uint32_t y, uint32_t z) noexcept -> uint32_t {
   return ((x & z) | (y & (~z)));
 }
 
-static inline auto H(Uint4_t x, Uint4_t y, Uint4_t z) noexcept -> Uint4_t {
+static inline auto H(uint32_t x, uint32_t y, uint32_t z) noexcept -> uint32_t {
   return (x ^ y ^ z);
 }
 
-static inline auto I(Uint4_t x, Uint4_t y, Uint4_t z) noexcept -> Uint4_t {
+static inline auto I(uint32_t x, uint32_t y, uint32_t z) noexcept -> uint32_t {
   return (y ^ (x | (~z)));
 }
 
-static inline auto rotate_left(Uint4_t x, int n) noexcept -> Uint4_t {
+static inline auto rotate_left(uint32_t x, int n) noexcept -> uint32_t {
   constexpr int bits_in_uint4 = 32;
   return ((x << n) | (x >> (bits_in_uint4 - n)));
 }
 
-constexpr std::array<char, 4> k_s1 = {{7, 12, 17, 22}};
-constexpr std::array<char, 4> k_s2 = {{5, 9, 14, 20}};
-constexpr std::array<char, 4> k_s3 = {{4, 11, 16, 23}};
-constexpr std::array<char, 4> k_s4 = {{6, 10, 15, 21}};
+constexpr std::array<char, 4> md5_s1 = {{7, 12, 17, 22}};
+constexpr std::array<char, 4> md5_s2 = {{5, 9, 14, 20}};
+constexpr std::array<char, 4> md5_s3 = {{4, 11, 16, 23}};
+constexpr std::array<char, 4> md5_s4 = {{6, 10, 15, 21}};
 
-constexpr std::array<Uint4_t, k_md5_block_size> k_t = {
+constexpr std::array<uint32_t, md5_block_size> md5_t = {
     {
         0xd76aa478U, 0xe8c7b756U, 0x242070dbU, 0xc1bdceeeU, 0xf57c0fafU,
         0x4787c62aU, 0xa8304613U, 0xfd469501U, 0x698098d8U, 0x8b44f7afU,
@@ -75,19 +73,19 @@ constexpr std::array<Uint4_t, k_md5_block_size> k_t = {
     },
 };
 
-static auto md5_transform(Md5Context_t* ctx,
-                          const uint8_t block[k_md5_block_size]) -> void {
-  Uint4_t a = ctx->state.at(0);
-  Uint4_t b = ctx->state.at(1);
-  Uint4_t c = ctx->state.at(2);
-  Uint4_t d = ctx->state.at(3);
-  Uint4_t tmp = 0;
+static auto md5_transform(Md5Context* ctx, const uint8_t block[md5_block_size])
+    -> void {
+  uint32_t a = ctx->state.at(0);
+  uint32_t b = ctx->state.at(1);
+  uint32_t c = ctx->state.at(2);
+  uint32_t d = ctx->state.at(3);
+  uint32_t tmp = 0;
 
-  const auto* x = reinterpret_cast<const Uint4_t*>(block);
+  const auto* x = reinterpret_cast<const uint32_t*>(block);
 
   for (int i = 0; i < 16; i++) {
-    tmp = a + F(b, c, d) + x[i] + k_t.at(static_cast<size_t>(i));
-    tmp = rotate_left(tmp, k_s1.at(static_cast<size_t>(i & 3)));
+    tmp = a + F(b, c, d) + x[i] + md5_t.at(static_cast<size_t>(i));
+    tmp = rotate_left(tmp, md5_s1.at(static_cast<size_t>(i & 3)));
     tmp += b;
     a = d;
     d = c;
@@ -96,8 +94,8 @@ static auto md5_transform(Md5Context_t* ctx,
   }
 
   for (int i = 0, j = 1; i < 16; i++, j += 5) {
-    tmp = a + G(b, c, d) + x[j & 15] + k_t.at(static_cast<size_t>(i) + 16);
-    tmp = rotate_left(tmp, k_s2.at(static_cast<size_t>(i & 3)));
+    tmp = a + G(b, c, d) + x[j & 15] + md5_t.at(static_cast<size_t>(i) + 16);
+    tmp = rotate_left(tmp, md5_s2.at(static_cast<size_t>(i & 3)));
     tmp += b;
     a = d;
     d = c;
@@ -106,8 +104,8 @@ static auto md5_transform(Md5Context_t* ctx,
   }
 
   for (int i = 0, j = 5; i < 16; i++, j += 3) {
-    tmp = a + H(b, c, d) + x[j & 15] + k_t.at(static_cast<size_t>(i) + 32);
-    tmp = rotate_left(tmp, k_s3.at(static_cast<size_t>(i & 3)));
+    tmp = a + H(b, c, d) + x[j & 15] + md5_t.at(static_cast<size_t>(i) + 32);
+    tmp = rotate_left(tmp, md5_s3.at(static_cast<size_t>(i & 3)));
     tmp += b;
     a = d;
     d = c;
@@ -116,8 +114,8 @@ static auto md5_transform(Md5Context_t* ctx,
   }
 
   for (int i = 0, j = 0; i < 16; i++, j += 7) {
-    tmp = a + I(b, c, d) + x[j & 15] + k_t.at(static_cast<size_t>(i) + 48);
-    tmp = rotate_left(tmp, k_s4.at(static_cast<size_t>(i & 3)));
+    tmp = a + I(b, c, d) + x[j & 15] + md5_t.at(static_cast<size_t>(i) + 48);
+    tmp = rotate_left(tmp, md5_s4.at(static_cast<size_t>(i & 3)));
     tmp += b;
     a = d;
     d = c;
@@ -131,36 +129,36 @@ static auto md5_transform(Md5Context_t* ctx,
   ctx->state.at(3) += d;
 }
 
-static auto md5_update(Md5Context_t* ctx, const char* input, size_t inputlen)
+static auto md5_update(Md5Context* ctx, const char* input, size_t inputlen)
     -> void {
   const auto buflen = static_cast<size_t>(ctx->total_length & 63U);
   ctx->total_length += inputlen;
 
-  if (buflen + inputlen < k_md5_block_size) {
+  if (buflen + inputlen < md5_block_size) {
     memcpy(ctx->buffer.data() + buflen, input, inputlen);
     return;
   }
 
-  const size_t first_part = k_md5_block_size - buflen;
+  const size_t first_part = md5_block_size - buflen;
   memcpy(ctx->buffer.data() + buflen, input, first_part);
   md5_transform(ctx, ctx->buffer.data());
 
   size_t i = first_part;
-  for (; i + k_md5_block_size <= inputlen; i += k_md5_block_size) {
+  for (; i + md5_block_size <= inputlen; i += md5_block_size) {
     md5_transform(ctx, reinterpret_cast<const uint8_t*>(input + i));
   }
 
   memcpy(ctx->buffer.data(), input + i, inputlen - i);
 }
 
-static auto md5_final(Md5Context_t* ctx,
-                      std::array<uint8_t, k_md5_digest_size>& digest_out)
+static auto md5_final(Md5Context* ctx,
+                      std::array<uint8_t, md5_digest_size>& digest_out)
     -> void {
   auto buflen = static_cast<size_t>(ctx->total_length & 63U);
 
   ctx->buffer.at(buflen++) = 0x80U;
   if (buflen > 56) {
-    memset(ctx->buffer.data() + buflen, 0, k_md5_block_size - buflen);
+    memset(ctx->buffer.data() + buflen, 0, md5_block_size - buflen);
     md5_transform(ctx, ctx->buffer.data());
     memset(ctx->buffer.data(), 0, 56);
   } else {
@@ -181,15 +179,15 @@ auto md5str(const char* input) -> std::string {
     return {};
   }
 
-  Md5Context_t ctx{};
+  Md5Context ctx{};
   md5_update(&ctx, input, strlen(input));
 
-  std::array<uint8_t, k_md5_digest_size> digest{};
+  std::array<uint8_t, md5_digest_size> digest{};
   md5_final(&ctx, digest);
 
-  std::array<char, k_md5_hex_buffer_size> hex_str{};
-  for (size_t i = 0; i < k_md5_digest_size; i++) {
+  std::array<char, md5_hex_buffer_size> hex_str{};
+  for (size_t i = 0; i < md5_digest_size; i++) {
     snprintf(hex_str.data() + (2 * i), 3, "%02X", digest.at(i));
   }
-  return std::string(hex_str.data(), k_md5_hex_buffer_size - 1);
+  return std::string(hex_str.data(), md5_hex_buffer_size - 1);
 }

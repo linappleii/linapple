@@ -69,7 +69,7 @@ static auto lowest_configured_printer_slot() -> int {
 // because the first byte printed is what opens the file, and a relative
 // filename resolves against that directory.
 static auto configure_printer_sink() -> void {
-  PrinterFrontendSettings_t settings{};
+  PrinterFrontendSettings settings{};
   settings.filename = "Printer.txt";
   config_load_string("Configuration", cfg_pprinter_filename,
                      &settings.filename);
@@ -87,7 +87,7 @@ static auto configure_printer_sink() -> void {
 // After the cards exist: the switch rows go through a card's command queue,
 // and the device sits behind whichever slot took them.
 static auto configure_serial_port() -> void {
-  SuperSerialFrontendSettings_t settings{};
+  SuperSerialFrontendSettings settings{};
   config_load_string(cfg_sec_configuration, cfg_serial_port, &settings.port);
   config_load_string(cfg_sec_configuration, cfg_serial_switches_1,
                      &settings.switches_1);
@@ -295,8 +295,7 @@ auto app_controller_initialize(AppConfig* config) -> int {
                        sizeof(system_state.current_dir));
   initialize_directory(cfg_pref_hdd_start_dir, &system_state.hdd_dir[0],
                        sizeof(system_state.hdd_dir));
-  initialize_directory(cfg_pref_savestate_dir,
-                       &system_state.save_state_dir[0],
+  initialize_directory(cfg_pref_savestate_dir, &system_state.save_state_dir[0],
                        sizeof(system_state.save_state_dir));
   initialize_directory(cfg_ftp_local_dir, &system_state.ftp_local_dir[0],
                        sizeof(system_state.ftp_local_dir));
@@ -532,8 +531,7 @@ auto app_controller_save_disk_config(int drive) -> void {
   }
 
   config_save_string(
-      "Slots",
-      (drive == disk_drive_0) ? cfg_disk_image1 : cfg_disk_image2,
+      "Slots", (drive == disk_drive_0) ? cfg_disk_image1 : cfg_disk_image2,
       (drive == disk_drive_0) ? status.drive0_full_path
                               : status.drive1_full_path);
 }

@@ -15,81 +15,81 @@
 
 namespace {
 
-enum class ArgType_t {
+enum class ArgType {
   no_arg,
   req_arg,
 };
 
-enum OptId_t : int {
-  k_opt_unknown = 0,
-  k_opt_d1,
-  k_opt_d2,
-  k_opt_hd1,
-  k_opt_hd2,
-  k_opt_autoboot,
-  k_opt_boot,
-  k_opt_config,
-  k_opt_fullscreen,
-  k_opt_help,
-  k_opt_log,
-  k_opt_benchmark,
-  k_opt_pal,
-  k_opt_program,
-  k_opt_rom,
-  k_opt_snapshot,
-  k_opt_script,
-  k_opt_test_cpu,
-  k_opt_test_trap,
-  k_opt_test_6502,
-  k_opt_test_65c02,
-  k_opt_verbose,
-  k_opt_audio_dump,
-  k_opt_list_hardware,
-  k_opt_hardware_info,
-  k_opt_no_debugger,
-  k_opt_basic_sync,
-  k_opt_basic_line_mode,
-  k_opt_caps_mode,
-  k_opt_tui_render,
+enum OptId : int {
+  opt_unknown = 0,
+  opt_d1,
+  opt_d2,
+  opt_hd1,
+  opt_hd2,
+  opt_autoboot,
+  opt_boot,
+  opt_config,
+  opt_fullscreen,
+  opt_help,
+  opt_log,
+  opt_benchmark,
+  opt_pal,
+  opt_program,
+  opt_rom,
+  opt_snapshot,
+  opt_script,
+  opt_test_cpu,
+  opt_test_trap,
+  opt_test_6502,
+  opt_test_65c02,
+  opt_verbose,
+  opt_audio_dump,
+  opt_list_hardware,
+  opt_hardware_info,
+  opt_no_debugger,
+  opt_basic_sync,
+  opt_basic_line_mode,
+  opt_caps_mode,
+  opt_tui_render,
 };
 
-struct OptionDef_t {
+struct OptionDef {
   const char* long_name;
   char short_name;
-  ArgType_t arg_type;
-  OptId_t id;
+  ArgType arg_type;
+  OptId id;
 };
 
-constexpr OptionDef_t k_options[] = {
-    {"d1", '1', ArgType_t::req_arg, k_opt_d1},
-    {"d2", '2', ArgType_t::req_arg, k_opt_d2},
-    {"hd1", '\0', ArgType_t::req_arg, k_opt_hd1},
-    {"hd2", '\0', ArgType_t::req_arg, k_opt_hd2},
-    {"autoboot", 'a', ArgType_t::no_arg, k_opt_autoboot},
-    {"boot", 'b', ArgType_t::no_arg, k_opt_boot},
-    {"config", 'c', ArgType_t::req_arg, k_opt_config},
-    {"fullscreen", 'f', ArgType_t::no_arg, k_opt_fullscreen},
-    {"help", 'h', ArgType_t::no_arg, k_opt_help},
-    {"log", 'l', ArgType_t::no_arg, k_opt_log},
-    {"benchmark", 'm', ArgType_t::no_arg, k_opt_benchmark},
-    {"pal", 'p', ArgType_t::no_arg, k_opt_pal},
-    {"program", 'P', ArgType_t::req_arg, k_opt_program},
-    {"rom", 'R', ArgType_t::req_arg, k_opt_rom},
-    {"snapshot", 's', ArgType_t::req_arg, k_opt_snapshot},
-    {"script", 'x', ArgType_t::req_arg, k_opt_script},
-    {"test-cpu", 'T', ArgType_t::req_arg, k_opt_test_cpu},
-    {"test-trap", 'X', ArgType_t::req_arg, k_opt_test_trap},
-    {"test-6502", '6', ArgType_t::no_arg, k_opt_test_6502},
-    {"test-65c02", 'C', ArgType_t::no_arg, k_opt_test_65c02},
-    {"verbose", 'v', ArgType_t::no_arg, k_opt_verbose},
-    {"audio-dump", 'A', ArgType_t::req_arg, k_opt_audio_dump},
-    {"list-hardware", '\0', ArgType_t::no_arg, k_opt_list_hardware},
-    {"hardware-info", '\0', ArgType_t::req_arg, k_opt_hardware_info},
-    {"no-debugger", '\0', ArgType_t::no_arg, k_opt_no_debugger},
-    {"basic-sync", '\0', ArgType_t::req_arg, k_opt_basic_sync},
-    {"basic-line-mode", '\0', ArgType_t::req_arg, k_opt_basic_line_mode},
-    {"caps-mode", '\0', ArgType_t::req_arg, k_opt_caps_mode},
-    {"tui-render", '\0', ArgType_t::req_arg, k_opt_tui_render},
+constexpr OptionDef options[] = {
+    {"d1", '1', ArgType::req_arg, opt_d1},
+    {"d2", '2', ArgType::req_arg, opt_d2},
+    {"hd1", '\0', ArgType::req_arg, opt_hd1},
+    {"hd2", '\0', ArgType::req_arg, opt_hd2},
+    {"autoboot", 'a', ArgType::no_arg, opt_autoboot},
+    {"boot", 'b', ArgType::no_arg, opt_boot},
+    {"config", 'c', ArgType::req_arg, opt_config},
+    {"fullscreen", 'f', ArgType::no_arg, opt_fullscreen},
+    {"help", 'h', ArgType::no_arg, opt_help},
+    {"log", 'l', ArgType::no_arg, opt_log},
+    {"benchmark", 'm', ArgType::no_arg, opt_benchmark},
+    {"pal", 'p', ArgType::no_arg, opt_pal},
+    {"program", 'P', ArgType::req_arg, opt_program},
+    {"rom", 'R', ArgType::req_arg, opt_rom},
+    {"snapshot", 's', ArgType::req_arg, opt_snapshot},
+    {"script", 'x', ArgType::req_arg, opt_script},
+    {"test-cpu", 'T', ArgType::req_arg, opt_test_cpu},
+    {"test-trap", 'X', ArgType::req_arg, opt_test_trap},
+    {"test-6502", '6', ArgType::no_arg, opt_test_6502},
+    {"test-65c02", 'C', ArgType::no_arg, opt_test_65c02},
+    {"verbose", 'v', ArgType::no_arg, opt_verbose},
+    {"audio-dump", 'A', ArgType::req_arg, opt_audio_dump},
+    {"list-hardware", '\0', ArgType::no_arg, opt_list_hardware},
+    {"hardware-info", '\0', ArgType::req_arg, opt_hardware_info},
+    {"no-debugger", '\0', ArgType::no_arg, opt_no_debugger},
+    {"basic-sync", '\0', ArgType::req_arg, opt_basic_sync},
+    {"basic-line-mode", '\0', ArgType::req_arg, opt_basic_line_mode},
+    {"caps-mode", '\0', ArgType::req_arg, opt_caps_mode},
+    {"tui-render", '\0', ArgType::req_arg, opt_tui_render},
 };
 
 auto parse_tui_render_mode(const char* arg, TuiRenderMode* out_mode) -> bool {
@@ -119,8 +119,8 @@ auto append_extra_arg(AppConfig* config, const char* arg) -> void {
 }
 
 auto find_option_by_long_name(const char* name, size_t len)
-    -> const OptionDef_t* {
-  for (const auto& opt : k_options) {
+    -> const OptionDef* {
+  for (const auto& opt : options) {
     if (std::strncmp(opt.long_name, name, len) == 0 &&
         opt.long_name[len] == '\0') {
       return &opt;
@@ -129,11 +129,11 @@ auto find_option_by_long_name(const char* name, size_t len)
   return nullptr;
 }
 
-auto find_option_by_short_name(char c) -> const OptionDef_t* {
+auto find_option_by_short_name(char c) -> const OptionDef* {
   if (c == '\0') {
     return nullptr;
   }
-  for (const auto& opt : k_options) {
+  for (const auto& opt : options) {
     if (opt.short_name == c) {
       return &opt;
     }
@@ -141,108 +141,108 @@ auto find_option_by_short_name(char c) -> const OptionDef_t* {
   return nullptr;
 }
 
-auto apply_option(OptId_t id, const char* val, AppConfig* config) -> int {
+auto apply_option(OptId id, const char* val, AppConfig* config) -> int {
   switch (id) {
-    case k_opt_d1:
+    case opt_d1:
       util_safe_strcpy(config->disk_path.at(0).data(), val, path_max_len);
       break;
-    case k_opt_d2:
+    case opt_d2:
       util_safe_strcpy(config->disk_path.at(1).data(), val, path_max_len);
       break;
-    case k_opt_hd1:
+    case opt_hd1:
       util_safe_strcpy(config->harddisk_path.at(0).data(), val, path_max_len);
       break;
-    case k_opt_hd2:
+    case opt_hd2:
       util_safe_strcpy(config->harddisk_path.at(1).data(), val, path_max_len);
       break;
-    case k_opt_autoboot:
-    case k_opt_boot:
+    case opt_autoboot:
+    case opt_boot:
       config->is_boot = true;
       break;
-    case k_opt_config:
+    case opt_config:
       util_safe_strcpy(config->config_path.data(), val, path_max_len);
       break;
-    case k_opt_fullscreen:
+    case opt_fullscreen:
       config->is_fullscreen = true;
       config->is_fullscreen_explicit = true;
       break;
-    case k_opt_help:
+    case opt_help:
       config->intent = INTENT_HELP;
       return 1;
-    case k_opt_log:
+    case opt_log:
       config->is_log = true;
       break;
-    case k_opt_benchmark:
+    case opt_benchmark:
       config->is_benchmark = true;
       config->intent = INTENT_DIAGNOSTIC;
       break;
-    case k_opt_pal:
+    case opt_pal:
       config->is_pal = true;
       config->is_pal_explicit = true;
       break;
-    case k_opt_program:
+    case opt_program:
       util_safe_strcpy(config->program_path.data(), val, path_max_len);
       break;
-    case k_opt_rom:
+    case opt_rom:
       util_safe_strcpy(config->rom_path.data(), val, path_max_len);
       break;
-    case k_opt_snapshot:
+    case opt_snapshot:
       util_safe_strcpy(config->snapshot_path.data(), val, path_max_len);
       break;
-    case k_opt_script:
+    case opt_script:
       util_safe_strcpy(config->debugger_script.data(), val, path_max_len);
       break;
-    case k_opt_verbose:
+    case opt_verbose:
       config->is_verbose = true;
       break;
-    case k_opt_test_cpu:
+    case opt_test_cpu:
       util_safe_strcpy(config->test_cpu_file.data(), val, path_max_len);
       config->intent = INTENT_DIAGNOSTIC;
       break;
-    case k_opt_test_trap:
+    case opt_test_trap:
       config->test_cpu_trap =
           static_cast<uint16_t>(std::strtol(val, nullptr, 0));
       break;
-    case k_opt_test_6502:
+    case opt_test_6502:
       config->apple2_type = A2TYPE_APPLE2PLUS;
       config->apple2_type_explicit = true;
       break;
-    case k_opt_test_65c02:
+    case opt_test_65c02:
       config->apple2_type = A2TYPE_APPLE2EENHANCED;
       config->apple2_type_explicit = true;
       break;
-    case k_opt_audio_dump:
+    case opt_audio_dump:
       util_safe_strcpy(config->audio_dump_path.data(), val, path_max_len);
       break;
-    case k_opt_list_hardware:
+    case opt_list_hardware:
       config->is_list_hardware = true;
       config->intent = INTENT_DIAGNOSTIC;
       break;
-    case k_opt_hardware_info:
+    case opt_hardware_info:
       util_safe_strcpy(config->hardware_info_name.data(), val, path_max_len);
       config->intent = INTENT_DIAGNOSTIC;
       break;
-    case k_opt_no_debugger:
+    case opt_no_debugger:
       config->disable_debugger = true;
       break;
-    case k_opt_basic_sync:
+    case opt_basic_sync:
       util_safe_strcpy(config->basic_sync_file.data(), val, path_max_len);
       break;
-    case k_opt_basic_line_mode:
+    case opt_basic_line_mode:
       config->basic_line_mode =
           (val != nullptr &&
            (std::strcmp(val, "positional") == 0 || std::strcmp(val, "1") == 0))
               ? 1
               : 0;
       break;
-    case k_opt_caps_mode:
+    case opt_caps_mode:
       config->caps_lock_mode =
           (val != nullptr &&
            (std::strcmp(val, "emulated") == 0 || std::strcmp(val, "1") == 0))
               ? caps_mode_emulated
               : caps_mode_host;
       break;
-    case k_opt_tui_render:
+    case opt_tui_render:
       if (!parse_tui_render_mode(val, &config->tui_render_mode)) {
         fprintf(stderr,
                 "error: Invalid --tui-render mode '%s'. Expected 'smart' or "
@@ -253,7 +253,7 @@ auto apply_option(OptId_t id, const char* val, AppConfig* config) -> int {
       }
       config->tui_render_mode_explicit = true;
       break;
-    case k_opt_unknown:
+    case opt_unknown:
     default:
       break;
   }
@@ -368,14 +368,14 @@ auto app_args_parse(int argc, char** argv, AppConfig* config) -> int {
       const char* eq = std::strchr(opt_name, '=');
       size_t name_len = (eq != nullptr) ? static_cast<size_t>(eq - opt_name)
                                         : std::strlen(opt_name);
-      const OptionDef_t* opt = find_option_by_long_name(opt_name, name_len);
+      const OptionDef* opt = find_option_by_long_name(opt_name, name_len);
       if (opt == nullptr) {
         append_extra_arg(config, arg);
         continue;
       }
 
       const char* val = nullptr;
-      if (opt->arg_type == ArgType_t::req_arg) {
+      if (opt->arg_type == ArgType::req_arg) {
         if (eq != nullptr) {
           val = eq + 1;
         } else if (i + 1 < argc) {
@@ -400,7 +400,7 @@ auto app_args_parse(int argc, char** argv, AppConfig* config) -> int {
     if (arg[0] == '-' && arg[1] != '\0') {
       bool handled = false;
       for (size_t c = 1; arg[c] != '\0'; ++c) {
-        const OptionDef_t* opt = find_option_by_short_name(arg[c]);
+        const OptionDef* opt = find_option_by_short_name(arg[c]);
         if (opt == nullptr) {
           append_extra_arg(config, arg);
           handled = true;
@@ -408,7 +408,7 @@ auto app_args_parse(int argc, char** argv, AppConfig* config) -> int {
         }
 
         const char* val = nullptr;
-        if (opt->arg_type == ArgType_t::req_arg) {
+        if (opt->arg_type == ArgType::req_arg) {
           if (arg[c + 1] != '\0') {
             val = &arg[c + 1];
           } else if (i + 1 < argc) {

@@ -10,20 +10,20 @@
 auto stretch_blt_mem_to_frame_dc() -> void;
 
 // RAII guard that manages surface locking for direct pixel access and exposes
-// a non-owning VideoSurfaceView_t valid for the duration of the lock's
+// a non-owning VideoSurfaceView valid for the duration of the lock's
 // lifetime.
-class ScopedSurfaceLock_t {
+class ScopedSurfaceLock {
  public:
-  explicit ScopedSurfaceLock_t(SDL_Surface* surface);
-  ~ScopedSurfaceLock_t();
+  explicit ScopedSurfaceLock(SDL_Surface* surface);
+  ~ScopedSurfaceLock();
 
-  ScopedSurfaceLock_t(const ScopedSurfaceLock_t&) = delete;
-  auto operator=(const ScopedSurfaceLock_t&) -> ScopedSurfaceLock_t& = delete;
-  ScopedSurfaceLock_t(ScopedSurfaceLock_t&& other) noexcept;
-  auto operator=(ScopedSurfaceLock_t&& other) noexcept -> ScopedSurfaceLock_t&;
+  ScopedSurfaceLock(const ScopedSurfaceLock&) = delete;
+  auto operator=(const ScopedSurfaceLock&) -> ScopedSurfaceLock& = delete;
+  ScopedSurfaceLock(ScopedSurfaceLock&& other) noexcept;
+  auto operator=(ScopedSurfaceLock&& other) noexcept -> ScopedSurfaceLock&;
 
-  auto view() const noexcept -> VideoSurfaceView_t;
-  operator VideoSurfaceView_t() const noexcept { return view(); }
+  auto view() const noexcept -> VideoSurfaceView;
+  operator VideoSurfaceView() const noexcept { return view(); }
   auto surface() const noexcept -> SDL_Surface* { return surface_; }
   auto is_valid() const noexcept -> bool {
     return surface_ != nullptr && surface_->pixels != nullptr;
@@ -34,9 +34,9 @@ class ScopedSurfaceLock_t {
   bool locked_ = false;
   int bpp_ = 0;
   bool has_palette_ = false;
-  std::array<VideoColor_t, k_video_palette_size> palette_{};
+  std::array<VideoColor, video_palette_size> palette_{};
 };
 
-// Deprecated: Use ScopedSurfaceLock_t to obtain a safe, RAII-scoped
-// VideoSurfaceView_t.
-auto sdl_surface_to_video_surface(SDL_Surface* surface) -> VideoSurface_t;
+// Deprecated: Use ScopedSurfaceLock to obtain a safe, RAII-scoped
+// VideoSurfaceView.
+auto sdl_surface_to_video_surface(SDL_Surface* surface) -> VideoSurface;

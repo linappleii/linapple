@@ -34,12 +34,12 @@ static constexpr uint64_t size_block = 1024U;
 // to prevent OOM / DoS from huge directories (e.g. /proc or malicious mounts)
 static constexpr size_t max_directory_entries = 10000;
 
-struct FileList_t {
-  std::vector<FileEntry_t> entries;
+struct FileList {
+  std::vector<FileEntry> entries;
   std::string failure_message;
 };
 
-struct LocalGeneratorContext_t {
+struct LocalGeneratorContext {
   std::string directory;
   std::string filter_extensions;
   std::string failure_message;
@@ -79,7 +79,7 @@ static auto getstat(const char* catalog, const char* fname, uintmax_t* size)
 
 static auto get_sorted_directory(const char* incoming_dir,
                                  const char* filter_extensions,
-                                 std::vector<FileEntry_t>& file_list) -> bool {
+                                 std::vector<FileEntry>& file_list) -> bool {
   if (incoming_dir == nullptr) {
     return false;
   }
@@ -108,7 +108,7 @@ static auto get_sorted_directory(const char* incoming_dir,
     uintmax_t fsize = 0;
     const int what = getstat(incoming_dir, file_name, &fsize);
 
-    FileEntry_t new_entry = {};
+    FileEntry new_entry = {};
     new_entry.name[0] = '\0';
     util_safe_strcpy(new_entry.name, file_name, sizeof(new_entry.name));
 
@@ -126,7 +126,7 @@ static auto get_sorted_directory(const char* incoming_dir,
   closedir(dp);
 
   std::sort(file_list.begin(), file_list.end(),
-            [](const FileEntry_t& a, const FileEntry_t& b) -> bool {
+            [](const FileEntry& a, const FileEntry& b) -> bool {
               if (a.type < b.type) {
                 return true;
               }
@@ -138,19 +138,19 @@ static auto get_sorted_directory(const char* incoming_dir,
   return true;
 }
 
-static auto local_gen_generate(FileListGenerator_t* self) -> FileList_t* {
+static auto local_gen_generate(FileListGenerator* self) -> FileList* {
   if (self == nullptr || self->context == nullptr) {
     return nullptr;
   }
-  auto* ctx = static_cast<LocalGeneratorContext_t*>(self->context);
+  auto* ctx = static_cast<LocalGeneratorContext*>(self->context);
 
-  auto* list = new (std::nothrow) FileList_t();
+  auto* list = new (std::nothrow) FileList();
   if (list == nullptr) {
     return nullptr;
   }
 
   if (ctx->directory != "/") {
-    FileEntry_t up_entry = {};
+    FileEntry up_entry = {};
     util_safe_strcpy(up_entry.name, "..", sizeof(up_entry.name));
     up_entry.type = FILE_ENTRY_UP;
     up_entry.size = 0;
@@ -172,34 +172,34 @@ static auto local_gen_generate(FileListGenerator_t* self) -> FileList_t* {
   return list;
 }
 
-static auto local_gen_get_start_msg(FileListGenerator_t* self) -> const char* {
+static auto local_gen_get_start_msg(FileListGenerator* self) -> const char* {
   (void)self;
   return "Reading directory listing...";
 }
 
-static auto local_gen_get_fail_msg(FileListGenerator_t* self) -> const char* {
+static auto local_gen_get_fail_msg(FileListGenerator* self) -> const char* {
   if (self == nullptr || self->context == nullptr) {
     return "(no info)";
   }
-  auto* ctx = static_cast<LocalGeneratorContext_t*>(self->context);
+  auto* ctx = static_cast<LocalGeneratorContext*>(self->context);
   return ctx->failure_message.c_str();
 }
 
-static auto local_gen_destroy(FileListGenerator_t* self) -> void {
+static auto local_gen_destroy(FileListGenerator* self) -> void {
   if (self != nullptr) {
-    delete static_cast<LocalGeneratorContext_t*>(self->context);
+    delete static_cast<LocalGeneratorContext*>(self->context);
     delete self;
   }
 }
 
-auto file_entry_is_dir_type(const FileEntry_t* entry) -> bool {
+auto file_entry_is_dir_type(const FileEntry* entry) -> bool {
   if (entry == nullptr) {
     return false;
   }
   return entry->type == FILE_ENTRY_UP || entry->type == FILE_ENTRY_DIR;
 }
 
-auto file_entry_format_type_or_size(const FileEntry_t* entry, char* out_str,
+auto file_entry_format_type_or_size(const FileEntry* entry, char* out_str,
                                     size_t max_len) -> void {
   if (entry == nullptr || out_str == nullptr || max_len == 0) {
     return;
@@ -236,30 +236,28 @@ auto file_entry_format_type_or_size(const FileEntry_t* entry, char* out_str,
   }
 }
 
-auto file_browser_free_list(FileList_t* list) -> void { delete list; }
+auto file_browser_free_list(FileList* list) -> void { delete list; }
 
-auto file_browser_create_list(void) -> FileList_t* {
-  return new (std::nothrow) FileList_t();
+auto file_browser_create_list(void) -> FileList* {
+  return new (std::nothrow) FileList();
 }
 
-auto file_browser_append_entry(FileList_t* list, const FileEntry_t* entry)
-    -> void {
+auto file_browser_append_entry(FileList* list, const FileEntry* entry) -> void {
   if (list != nullptr && entry != nullptr) {
     list->entries.push_back(*entry);
   }
 }
 
-auto file_browser_set_failure_message(FileList_t* list, const char* msg)
-    -> void {
+auto file_browser_set_failure_message(FileList* list, const char* msg) -> void {
   if (list != nullptr && msg != nullptr) {
     list->failure_message = msg;
   }
 }
 
-auto file_browser_sort_list(FileList_t* list) -> void {
+auto file_browser_sort_list(FileList* list) -> void {
   if (list != nullptr) {
     std::sort(list->entries.begin(), list->entries.end(),
-              [](const FileEntry_t& a, const FileEntry_t& b) -> bool {
+              [](const FileEntry& a, const FileEntry& b) -> bool {
                 if (a.type < b.type) {
                   return true;
                 }
@@ -271,19 +269,19 @@ auto file_browser_sort_list(FileList_t* list) -> void {
   }
 }
 
-auto file_browser_get_count(const FileList_t* list) -> size_t {
+auto file_browser_get_count(const FileList* list) -> size_t {
   return list != nullptr ? list->entries.size() : 0;
 }
 
-auto file_browser_get_entry(const FileList_t* list, size_t index)
-    -> const FileEntry_t* {
+auto file_browser_get_entry(const FileList* list, size_t index)
+    -> const FileEntry* {
   if (list == nullptr || index >= list->entries.size()) {
     return nullptr;
   }
   return &list->entries.at(index);
 }
 
-auto file_browser_get_failure_message(const FileList_t* list) -> const char* {
+auto file_browser_get_failure_message(const FileList* list) -> const char* {
   return list != nullptr ? list->failure_message.c_str() : "Null list handle";
 }
 
@@ -325,17 +323,17 @@ auto file_browser_is_extension_supported(const char* filename,
 
 auto file_browser_create_local_generator(const char* directory,
                                          const char* filter_extensions)
-    -> FileListGenerator_t* {
+    -> FileListGenerator* {
   if (directory == nullptr) {
     return nullptr;
   }
 
-  auto* gen = new (std::nothrow) FileListGenerator_t();
+  auto* gen = new (std::nothrow) FileListGenerator();
   if (gen == nullptr) {
     return nullptr;
   }
 
-  auto* ctx = new (std::nothrow) LocalGeneratorContext_t();
+  auto* ctx = new (std::nothrow) LocalGeneratorContext();
   if (ctx == nullptr) {
     delete gen;
     return nullptr;
@@ -356,7 +354,7 @@ auto file_browser_create_local_generator(const char* directory,
   return gen;
 }
 
-auto disk_browser_open(DiskBrowser_t* b, int slot, int drive,
+auto disk_browser_open(DiskBrowser* b, int slot, int drive,
                        const char* start_dir) -> bool {
   if (b == nullptr) {
     return false;
@@ -391,7 +389,7 @@ auto disk_browser_open(DiskBrowser_t* b, int slot, int drive,
   return true;
 }
 
-auto disk_browser_close(DiskBrowser_t* b) -> void {
+auto disk_browser_close(DiskBrowser* b) -> void {
   if (b == nullptr) {
     return;
   }
@@ -406,7 +404,7 @@ auto disk_browser_close(DiskBrowser_t* b) -> void {
   }
 }
 
-auto disk_browser_refresh(DiskBrowser_t* b) -> void {
+auto disk_browser_refresh(DiskBrowser* b) -> void {
   if (b == nullptr) {
     return;
   }
@@ -432,7 +430,7 @@ auto disk_browser_refresh(DiskBrowser_t* b) -> void {
   b->first_visible_index = 0;
 }
 
-auto disk_browser_move(DiskBrowser_t* b, int delta, size_t page_size) -> void {
+auto disk_browser_move(DiskBrowser* b, int delta, size_t page_size) -> void {
   if (b == nullptr || !b->is_active || b->list_handle == nullptr ||
       delta == 0 || page_size == 0) {
     return;
@@ -460,7 +458,7 @@ auto disk_browser_move(DiskBrowser_t* b, int delta, size_t page_size) -> void {
   }
 }
 
-auto disk_browser_page(DiskBrowser_t* b, int direction, size_t page_size)
+auto disk_browser_page(DiskBrowser* b, int direction, size_t page_size)
     -> void {
   if (b == nullptr || !b->is_active || b->list_handle == nullptr ||
       page_size == 0 || direction == 0) {
@@ -486,7 +484,7 @@ auto disk_browser_page(DiskBrowser_t* b, int direction, size_t page_size)
   }
 }
 
-auto disk_browser_home(DiskBrowser_t* b) -> void {
+auto disk_browser_home(DiskBrowser* b) -> void {
   if (b == nullptr) {
     return;
   }
@@ -494,7 +492,7 @@ auto disk_browser_home(DiskBrowser_t* b) -> void {
   b->first_visible_index = 0;
 }
 
-auto disk_browser_end(DiskBrowser_t* b, size_t page_size) -> void {
+auto disk_browser_end(DiskBrowser* b, size_t page_size) -> void {
   if (b == nullptr || !b->is_active || b->list_handle == nullptr) {
     return;
   }
@@ -510,8 +508,7 @@ auto disk_browser_end(DiskBrowser_t* b, size_t page_size) -> void {
   }
 }
 
-auto disk_browser_jump_char(DiskBrowser_t* b, char ch, size_t page_size)
-    -> void {
+auto disk_browser_jump_char(DiskBrowser* b, char ch, size_t page_size) -> void {
   if (b == nullptr || !b->is_active || b->list_handle == nullptr ||
       page_size == 0) {
     return;
@@ -522,7 +519,7 @@ auto disk_browser_jump_char(DiskBrowser_t* b, char ch, size_t page_size)
   }
 
   for (size_t i = 0; i < count; ++i) {
-    const FileEntry_t* entry = file_browser_get_entry(b->list_handle, i);
+    const FileEntry* entry = file_browser_get_entry(b->list_handle, i);
     if (entry == nullptr || entry->name[0] == '\0') {
       continue;
     }
@@ -541,7 +538,7 @@ auto disk_browser_jump_char(DiskBrowser_t* b, char ch, size_t page_size)
   }
 }
 
-auto disk_browser_confirm(DiskBrowser_t* b) -> bool {
+auto disk_browser_confirm(DiskBrowser* b) -> bool {
   if (b == nullptr || !b->is_active || b->list_handle == nullptr) {
     return false;
   }
@@ -550,7 +547,7 @@ auto disk_browser_confirm(DiskBrowser_t* b) -> bool {
     return false;
   }
 
-  const FileEntry_t* entry =
+  const FileEntry* entry =
       file_browser_get_entry(b->list_handle, b->selected_index);
   if (entry == nullptr) {
     return false;
@@ -591,9 +588,8 @@ auto disk_browser_confirm(DiskBrowser_t* b) -> bool {
   if (b->slot == 7) {
     util_safe_strcpy(system_state.hdd_dir.data(), b->current_dir,
                      system_state.hdd_dir.size());
-    Configuration::instance().set_string("Preferences",
-                                           cfg_pref_hdd_start_dir,
-                                           system_state.hdd_dir.data());
+    Configuration::instance().set_string("Preferences", cfg_pref_hdd_start_dir,
+                                         system_state.hdd_dir.data());
     Configuration::instance().save();
 
     HarddiskInsertCmd_t hcmd{};
@@ -601,10 +597,9 @@ auto disk_browser_confirm(DiskBrowser_t* b) -> bool {
     util_safe_strcpy(hcmd.path, full_path.c_str(), sizeof(hcmd.path));
     if (peripheral_command(harddisk_default_slot, harddisk_cmd_insert, &hcmd,
                            sizeof(hcmd)) == peripheral_ok) {
-      const char* key =
-          (b->drive != 0) ? cfg_hdd_image2 : cfg_hdd_image1;
+      const char* key = (b->drive != 0) ? cfg_hdd_image2 : cfg_hdd_image1;
       Configuration::instance().set_string("Preferences", key,
-                                             full_path.c_str());
+                                           full_path.c_str());
       Configuration::instance().save();
     }
 
@@ -615,7 +610,7 @@ auto disk_browser_confirm(DiskBrowser_t* b) -> bool {
   util_safe_strcpy(system_state.current_dir.data(), b->current_dir,
                    system_state.current_dir.size());
   Configuration::instance().set_string("Preferences", cfg_pref_start_dir,
-                                         system_state.current_dir.data());
+                                       system_state.current_dir.data());
   Configuration::instance().save();
 
   DiskInsertCmd_t cmd{};

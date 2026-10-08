@@ -76,16 +76,16 @@ static constexpr int k_esc_poll_timeout_ms = 3;
 // A terminal has no key-up, so the release is deferred one poll, long enough
 // for a program polling $C010 to see the key for a frame. Alt+key is Open
 // Apple held around the key.
-struct HeldKey_t {
+struct HeldKey {
   uint32_t host_key;
   uint8_t code;
   bool open_apple;
 };
 
-static std::vector<HeldKey_t> g_held_keys;
+static std::vector<HeldKey> g_held_keys;
 
 static auto release_held_keys() -> void {
-  for (const HeldKey_t& key : g_held_keys) {
+  for (const HeldKey& key : g_held_keys) {
     linapple_set_key(key.host_key, key.code, false);
     if (key.open_apple) {
       linapple_set_modifiers(false, false, false, false);
@@ -97,7 +97,7 @@ static auto release_held_keys() -> void {
 // A terminal has no scancodes, so the byte is read symbolically and doubles
 // as the key's identity.
 static auto map_key(uint8_t a2_code, bool open_apple = false) -> void {
-  const KeyboardHostKey_t key = {0, a2_code, false, false};
+  const KeyboardHostKey key = {0, a2_code, false, false};
   uint8_t code = 0;
   if (!keyboard_translate(&key, &code)) {
     return;
@@ -214,11 +214,11 @@ static auto toggle_debugger() -> void {
 
 static auto save_configuration() -> void {
   Configuration::instance().set_int("Configuration", "Video Emulation",
-                                      static_cast<int>(g_videotype));
+                                    static_cast<int>(g_videotype));
   Configuration::instance().set_int("Configuration", "Emulation Speed",
-                                      system_state.speed);
+                                    system_state.speed);
   Configuration::instance().set_int("Configuration", "Fullscreen",
-                                      system_state.fullscreen ? 1 : 0);
+                                    system_state.fullscreen ? 1 : 0);
   Configuration::instance().save();
 }
 
@@ -369,8 +369,8 @@ static auto load_state() -> void {
   follow_machine();
 }
 
-static auto picture_in_report_units() -> MousePictureRect_t {
-  MousePictureRect_t box = tui_video_picture_box();
+static auto picture_in_report_units() -> MousePictureRect {
+  MousePictureRect box = tui_video_picture_box();
   if (g_pixel_reports) {
     box.x *= g_cell_width_px;
     box.y *= g_cell_height_px;
@@ -383,7 +383,7 @@ static auto picture_in_report_units() -> MousePictureRect_t {
 // A press or release moves nothing: under any-event tracking the pointer's
 // travel to that spot has already arrived as motion reports. Coordinates are
 // one-based.
-static auto handle_mouse_report(const MouseSgrEvent_t& event) -> void {
+static auto handle_mouse_report(const MouseSgrEvent& event) -> void {
   if (event.motion) {
     mouse_frontend_follow(event.x - 1, event.y - 1, picture_in_report_units());
   } else if (event.button == k_sgr_left_button) {
@@ -511,10 +511,13 @@ static auto process_sequences() -> void {
             map_key(k_a2_key_left);
           }
         } else if (ss3_cmd == 'H') {  // Home
-          if (tui_disk_select_is_active()) tui_disk_select_home();
+          if (tui_disk_select_is_active()) {
+            tui_disk_select_home();
+          }
         } else if (ss3_cmd == 'F') {  // End
-          if (tui_disk_select_is_active())
+          if (tui_disk_select_is_active()) {
             tui_disk_select_end(k_disk_select_page_size);
+          }
         } else if (tui_video_is_help_visible()) {
           tui_video_close_help();
         }
@@ -573,7 +576,7 @@ static auto process_sequences() -> void {
           uint8_t cmd = g_input_queue.at(end);
 
           if (g_input_queue.at(i + 2) == '<') {
-            MouseSgrEvent_t event{};
+            MouseSgrEvent event{};
             if (mouse_frontend_sgr_decode(&g_input_queue.at(i), end - i + 1,
                                           &event)) {
               handle_mouse_report(event);
@@ -632,10 +635,13 @@ static auto process_sequences() -> void {
           } else if (cmd == 'N') {  // Scroll Lock (\x1b[N)
             toggle_scroll_lock();
           } else if (cmd == 'H') {  // Home (\x1b[H)
-            if (tui_disk_select_is_active()) tui_disk_select_home();
+            if (tui_disk_select_is_active()) {
+              tui_disk_select_home();
+            }
           } else if (cmd == 'F') {  // End (\x1b[F)
-            if (tui_disk_select_is_active())
+            if (tui_disk_select_is_active()) {
               tui_disk_select_end(k_disk_select_page_size);
+            }
           } else if (cmd == '^') {  // rxvt Ctrl modifier
             const std::string token(
                 g_input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
@@ -701,8 +707,9 @@ static auto process_sequences() -> void {
                   map_key(k_a2_key_delete);
                 }
               } else if (token == "5") {  // Page Up (\x1b[5~)
-                if (tui_disk_select_is_active())
+                if (tui_disk_select_is_active()) {
                   tui_disk_select_page(-1, k_disk_select_page_size);
+                }
               } else if (token == "6") {  // Page Down (\x1b[6~)
                 if (tui_disk_select_is_active()) {
                   tui_disk_select_page(1, k_disk_select_page_size);

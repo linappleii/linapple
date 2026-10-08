@@ -26,9 +26,9 @@
 
 namespace {
 
-SdlAudioStreamPtr_t g_audio_stream;
+SdlAudioStreamPtr g_audio_stream;
 std::string g_audio_dump_file;
-AudioDumper_t g_audio_dumper;
+AudioDumper g_audio_dumper;
 
 auto SDLCALL sdl3_audio_callback(void* userdata, SDL_AudioStream* stream,
                                  int additional_amount, int total_amount)
@@ -39,13 +39,13 @@ auto SDLCALL sdl3_audio_callback(void* userdata, SDL_AudioStream* stream,
     return;
   }
 
-  constexpr size_t k_max_stack_samples = 4096;
-  std::array<int16_t, k_max_stack_samples> stack_buf{};
+  constexpr size_t max_stack_samples = 4096;
+  std::array<int16_t, max_stack_samples> stack_buf{};
   std::vector<int16_t> heap_buf;
   int16_t* temp_buf = stack_buf.data();
   const auto num_samples =
       static_cast<size_t>(additional_amount / sizeof(int16_t));
-  if (num_samples > k_max_stack_samples) {
+  if (num_samples > max_stack_samples) {
     heap_buf.resize(num_samples);
     temp_buf = heap_buf.data();
   }
@@ -149,7 +149,7 @@ auto sys_input() -> void {
 }
 
 auto enter_message_loop() -> void {
-  FramePacer_t pacer;
+  FramePacer pacer;
   while (system_state.mode != app_mode_exit) {
     sys_input();
     if (system_state.mode == app_mode_exit) {

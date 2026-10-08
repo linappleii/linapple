@@ -6,8 +6,8 @@
 #include <mutex>
 
 struct SsIoVideo_t;
-struct VideoSurface_t;
-struct VideoColor_t;
+struct VideoSurface;
+struct VideoColor;
 
 constexpr uint32_t apple2_visible_width = 280;
 constexpr uint32_t apple2_visible_height = 192;
@@ -163,14 +163,14 @@ extern uint32_t g_singlethreaded;
 extern std::recursive_mutex g_video_draw_mutex;
 extern std::atomic<bool> g_frame_ready;
 
-extern VideoSurface_t* g_logo_bitmap;
-extern VideoSurface_t* g_status_surface;
-extern VideoSurface_t* g_source_bitmap;
-extern VideoSurface_t* g_device_bitmap;
-extern VideoSurface_t* g_origscreen;
+extern VideoSurface* g_logo_bitmap;
+extern VideoSurface* g_status_surface;
+extern VideoSurface* g_source_bitmap;
+extern VideoSurface* g_device_bitmap;
+extern VideoSurface* g_origscreen;
 
 auto video_get_output_buffer() -> uint32_t*;
-auto video_get_output_palette() -> VideoColor_t*;
+auto video_get_output_palette() -> VideoColor*;
 inline auto video_is_frame_ready() noexcept -> bool {
   return g_frame_ready.load();
 }

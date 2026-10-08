@@ -24,23 +24,23 @@
 
 namespace {
 
-constexpr int k_user_event_reboot = 1;
+constexpr int user_event_reboot = 1;
 
 constexpr auto is_extended_scancode(SDL_Scancode scancode) noexcept -> bool {
   return (scancode >= SDL_SCANCODE_INSERT && scancode <= SDL_SCANCODE_UP) ||
          (scancode == SDL_SCANCODE_DELETE);
 }
 
-auto host_button(Uint8 button) -> MouseHostButton_t {
+auto host_button(Uint8 button) -> MouseHostButton {
   switch (button) {
     case SDL_BUTTON_LEFT:
-      return MouseHostButton_t::left;
+      return MouseHostButton::left;
     case SDL_BUTTON_MIDDLE:
-      return MouseHostButton_t::middle;
+      return MouseHostButton::middle;
     case SDL_BUTTON_RIGHT:
-      return MouseHostButton_t::right;
+      return MouseHostButton::right;
     default:
-      return MouseHostButton_t::other;
+      return MouseHostButton::other;
   }
 }
 
@@ -234,8 +234,8 @@ auto sdl_handle_event(SDL_Event* event) -> void {
       break;
 
     case SDL_USEREVENT:
-      if (event->user.code == k_user_event_reboot) {
-        process_button_click(k_btn_run, KMOD_LCTRL);
+      if (event->user.code == user_event_reboot) {
+        process_button_click(btn_run, KMOD_LCTRL);
       }
       break;
 

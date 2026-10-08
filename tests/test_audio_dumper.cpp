@@ -18,7 +18,7 @@ TEST_CASE("AudioDumper: [AUD-1] Explicit lifecycle generates valid WAV file") {
   TestFixtures::ScopedTempFile_t temp_wav(".wav");
 
   {
-    AudioDumper_t dumper;
+    AudioDumper dumper;
     REQUIRE(dumper.initialize(temp_wav.c_str(), 44100, 2) == true);
     CHECK(dumper.is_active() == true);
 
@@ -63,7 +63,7 @@ TEST_CASE(
   TestFixtures::ScopedTempFile_t temp_wav(".wav");
 
   {
-    AudioDumper_t dumper;
+    AudioDumper dumper;
     REQUIRE(dumper.initialize(temp_wav.c_str(), 44100, 2) == true);
     std::vector<int16_t> samples(512 * 2, 0x0505);
     REQUIRE(dumper.put_samples(samples.data(), samples.size()) == true);
@@ -102,7 +102,7 @@ TEST_CASE(
     "AudioDumper: [AUD-3] Thread safety during concurrent write and finalize") {
   TestFixtures::ScopedTempFile_t temp_wav(".wav");
 
-  AudioDumper_t dumper;
+  AudioDumper dumper;
   REQUIRE(dumper.initialize(temp_wav.c_str(), 44100, 2) == true);
 
   std::thread writer([&dumper]() {
@@ -146,7 +146,7 @@ TEST_CASE(
 TEST_CASE(
     "AudioDumper: [AUD-4] Invalid initialization parameters and boundary "
     "conditions") {
-  AudioDumper_t dumper;
+  AudioDumper dumper;
   CHECK(dumper.is_active() == false);
 
   int16_t dummy_sample = 0;
@@ -173,7 +173,7 @@ TEST_CASE("AudioDumper: [AUD-5] C API wrappers lifecycle and error handling") {
   CHECK(audio_dumper_finalize(nullptr) == 1);
 
   // Normal lifecycle via C API
-  AudioDumper_t dumper;
+  AudioDumper dumper;
   CHECK(audio_dumper_initialize(&dumper, temp_wav.c_str(), 22050, 1) == 0);
   CHECK(dumper.is_active() == true);
   CHECK(audio_dumper_put_samples(&dumper, &dummy_sample, 1) == 0);
@@ -201,19 +201,19 @@ TEST_CASE("AudioDumper: [AUD-5] C API wrappers lifecycle and error handling") {
 TEST_CASE("AudioDumper: [AUD-6] Move semantics transfer active state") {
   TestFixtures::ScopedTempFile_t temp_wav(".wav");
 
-  AudioDumper_t dumper1;
+  AudioDumper dumper1;
   REQUIRE(dumper1.initialize(temp_wav.c_str(), 44100, 2) == true);
   CHECK(dumper1.is_active() == true);
 
   // Move construct
-  AudioDumper_t dumper2(std::move(dumper1));
+  AudioDumper dumper2(std::move(dumper1));
   CHECK(dumper2.is_active() == true);
 
   std::vector<int16_t> samples(256 * 2, 0x0202);
   REQUIRE(dumper2.put_samples(samples.data(), samples.size()) == true);
 
   // Move assign
-  AudioDumper_t dumper3;
+  AudioDumper dumper3;
   dumper3 = std::move(dumper2);
   CHECK(dumper3.is_active() == true);
   dumper3.finalize();

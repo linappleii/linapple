@@ -13,15 +13,14 @@
 
 namespace {
 
-using UniqueSurface_t =
-    std::unique_ptr<VideoSurface_t, void (*)(VideoSurface_t*)>;
+using UniqueSurface_t = std::unique_ptr<VideoSurface, void (*)(VideoSurface*)>;
 
 auto make_surface(int width, int height, int bpp) -> UniqueSurface_t {
   return UniqueSurface_t(video_create_surface(width, height, bpp),
                          video_destroy_surface);
 }
 
-auto get_pixel32(const VideoSurface_t* s, int x, int y) -> uint32_t {
+auto get_pixel32(const VideoSurface* s, int x, int y) -> uint32_t {
   if (x < 0 || x >= s->w || y < 0 || y >= s->h) {
     return 0;
   }
@@ -30,7 +29,7 @@ auto get_pixel32(const VideoSurface_t* s, int x, int y) -> uint32_t {
   return row[x];
 }
 
-auto set_pixel32(VideoSurface_t* s, int x, int y, uint32_t val) -> void {
+auto set_pixel32(VideoSurface* s, int x, int y, uint32_t val) -> void {
   if (x < 0 || x >= s->w || y < 0 || y >= s->h) {
     return;
   }
@@ -99,8 +98,8 @@ TEST_CASE("VideoStretch - 1:2 and 1:3 Scaling to Window Resolutions") {
   set_pixel32(src.get(), 280, 192, 0x00FFFF00);
 
   // 1:2 scaling test
-  VideoRect_t src_rect = {0, 0, 560, 384};
-  VideoRect_t dst_rect_2x = {0, 0, 1120, 768};
+  VideoRect src_rect = {0, 0, 560, 384};
+  VideoRect dst_rect_2x = {0, 0, 1120, 768};
   int ret2 =
       video_soft_stretch(src.get(), &src_rect, dst_2x.get(), &dst_rect_2x);
   CHECK(ret2 == 0);
@@ -120,7 +119,7 @@ TEST_CASE("VideoStretch - 1:2 and 1:3 Scaling to Window Resolutions") {
   CHECK(get_pixel32(dst_2x.get(), 560, 384) == 0x00FFFF00);
 
   // 1:3 scaling test
-  VideoRect_t dst_rect_3x = {0, 0, 1680, 1152};
+  VideoRect dst_rect_3x = {0, 0, 1680, 1152};
   int ret3 =
       video_soft_stretch(src.get(), &src_rect, dst_3x.get(), &dst_rect_3x);
   CHECK(ret3 == 0);
@@ -142,8 +141,8 @@ TEST_CASE("VideoStretch - Sub-Rectangle and Viewport Positioning") {
 
   // Target a centered letterbox viewport in the destination: (100, 50, 800,
   // 600)
-  VideoRect_t src_rect = {0, 0, 560, 384};
-  VideoRect_t dst_rect = {100, 50, 800, 600};
+  VideoRect src_rect = {0, 0, 560, 384};
+  VideoRect dst_rect = {100, 50, 800, 600};
   int ret = video_soft_stretch(src.get(), &src_rect, dst.get(), &dst_rect);
   CHECK(ret == 0);
 
@@ -167,15 +166,15 @@ TEST_CASE("VideoStretch - Boundary and Null Safety Checks") {
   CHECK(video_soft_stretch(src.get(), nullptr, nullptr, nullptr) == -1);
 
   // Zero-sized rectangles safely return error
-  VideoRect_t zero_rect = {0, 0, 0, 0};
+  VideoRect zero_rect = {0, 0, 0, 0};
   CHECK(video_soft_stretch(src.get(), &zero_rect, dst.get(), nullptr) == -1);
 
   // Partial out of bounds rectangles are clipped without crashing
-  VideoRect_t out_of_bounds_src = {-10, -10, 200, 200};
+  VideoRect out_of_bounds_src = {-10, -10, 200, 200};
   CHECK(video_soft_stretch(src.get(), &out_of_bounds_src, dst.get(), nullptr) ==
         0);
 
-  VideoRect_t out_of_bounds_dst = {50, 50, 200, 200};
+  VideoRect out_of_bounds_dst = {50, 50, 200, 200};
   CHECK(video_soft_stretch(src.get(), nullptr, dst.get(), &out_of_bounds_dst) ==
         0);
 }

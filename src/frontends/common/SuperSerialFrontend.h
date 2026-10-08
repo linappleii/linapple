@@ -5,7 +5,7 @@
 
 #include "apple2/peripherals/Peripheral_Internal.h"
 
-struct SuperSerialFrontendSettings_t {
+struct SuperSerialFrontendSettings {
   // A device path, a regular file that must exist, "pty" for a pseudo-terminal
   // created here, "loopback" for a null-modem plug, or empty. A relative path
   // is taken against base_dir; "~" is not expanded.
@@ -20,7 +20,7 @@ struct SuperSerialFrontendSettings_t {
 // The lowest slot that took the switches gets the device; a second card is
 // unconnected and reads its own pull-ups.
 auto super_serial_frontend_configure(
-    const SuperSerialFrontendSettings_t& settings) -> void;
+    const SuperSerialFrontendSettings& settings) -> void;
 
 auto super_serial_frontend_sink() -> const ByteSink_t&;
 

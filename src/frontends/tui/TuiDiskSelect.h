@@ -3,7 +3,7 @@
 
 #include <cstddef>
 
-struct FileList_t;
+struct FileList;
 
 auto tui_disk_select_open(int slot, int drive) -> void;
 auto tui_disk_select_close() -> void;
@@ -11,7 +11,7 @@ auto tui_disk_select_is_active() -> bool;
 auto tui_disk_select_get_slot() -> int;
 auto tui_disk_select_get_drive() -> int;
 auto tui_disk_select_get_current_dir() -> const char*;
-auto tui_disk_select_get_file_list() -> const FileList_t*;
+auto tui_disk_select_get_file_list() -> const FileList*;
 auto tui_disk_select_get_selected_index() -> size_t;
 auto tui_disk_select_get_first_visible_index() -> size_t;
 

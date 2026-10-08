@@ -499,7 +499,7 @@ TEST_CASE(
 // one-based report column c is offset c - 1 of the 79 steps across the box and
 // row r is offset r - 1 of 23 down it.
 auto require_text_box_fills_terminal() -> void {
-  const MousePictureRect_t box = tui_video_picture_box();
+  const MousePictureRect box = tui_video_picture_box();
   REQUIRE(box.x == 0);
   REQUIRE(box.y == 0);
   REQUIRE(box.w == 80);

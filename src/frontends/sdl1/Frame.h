@@ -13,24 +13,24 @@ auto frontend_translate_key(SDLKey key, SDLMod mod) -> uint8_t;
 auto frontend_handle_key_event(SDLKey key, bool is_down) -> bool;
 auto sdl_handle_event(SDL_Event* event) -> void;
 
-constexpr int k_btn_help = 0;
-constexpr int k_btn_run = 1;
-constexpr int k_btn_drive1 = 2;
-constexpr int k_btn_drive2 = 3;
-constexpr int k_btn_driveswap = 4;
-constexpr int k_btn_fullscr = 5;
-constexpr int k_btn_debug = 6;
-constexpr int k_btn_setup = 7;
-constexpr int k_btn_cycle = 8;
-constexpr int k_btn_loadst = 9;
-constexpr int k_btn_savest = 10;
-constexpr int k_btn_quit = 11;
+constexpr int btn_help = 0;
+constexpr int btn_run = 1;
+constexpr int btn_drive1 = 2;
+constexpr int btn_drive2 = 3;
+constexpr int btn_driveswap = 4;
+constexpr int btn_fullscr = 5;
+constexpr int btn_debug = 6;
+constexpr int btn_setup = 7;
+constexpr int btn_cycle = 8;
+constexpr int btn_loadst = 9;
+constexpr int btn_savest = 10;
+constexpr int btn_quit = 11;
 
-constexpr int k_screen_bpp = 8;
+constexpr int screen_bpp = 8;
 extern SDL_Surface* g_screen;
-extern SdlSurfacePtr_t g_texture;
+extern SdlSurfacePtr g_texture;
 
-constexpr int k_show_cycles = 15;
+constexpr int show_cycles = 15;
 
 extern bool g_window_resized;
 extern int g_buttondown;

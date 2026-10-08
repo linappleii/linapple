@@ -16,27 +16,27 @@
 
 namespace keyboard_translator {
 
-static constexpr int k_ascii_printable_min = 32;   // ' '
-static constexpr int k_ascii_printable_max = 126;  // '~'
+static constexpr int ascii_printable_min = 32;   // ' '
+static constexpr int ascii_printable_max = 126;  // '~'
 
-static constexpr int k_ascii_cr = 0x0D;
-static constexpr int k_ascii_esc = 0x1B;
-static constexpr int k_ascii_bs = 0x08;
-static constexpr int k_ascii_tab = 0x09;
-static constexpr int k_ascii_del = 0x7F;
+static constexpr int ascii_cr = 0x0D;
+static constexpr int ascii_esc = 0x1B;
+static constexpr int ascii_bs = 0x08;
+static constexpr int ascii_tab = 0x09;
+static constexpr int ascii_del = 0x7F;
 
-static constexpr uint8_t k_apple_up = 0x0B;
-static constexpr uint8_t k_apple_down = 0x0A;
-static constexpr uint8_t k_apple_left = 0x08;
-static constexpr uint8_t k_apple_right = 0x15;
-static constexpr uint8_t k_apple_delete = 0x7F;
-static constexpr uint8_t k_apple_code_mask = 0x7F;
-static constexpr uint8_t k_control_mask = 0x1F;
+static constexpr uint8_t apple_up = 0x0B;
+static constexpr uint8_t apple_down = 0x0A;
+static constexpr uint8_t apple_left = 0x08;
+static constexpr uint8_t apple_right = 0x15;
+static constexpr uint8_t apple_delete = 0x7F;
+static constexpr uint8_t apple_code_mask = 0x7F;
+static constexpr uint8_t control_mask = 0x1F;
 
-static constexpr uint8_t k_custom_flag_active = 1;
-static constexpr uint8_t k_custom_flag_open_apple = 2;
-static constexpr uint8_t k_custom_flag_solid_apple = 4;
-static constexpr uint8_t k_custom_flag_rept = 8;
+static constexpr uint8_t custom_flag_active = 1;
+static constexpr uint8_t custom_flag_open_apple = 2;
+static constexpr uint8_t custom_flag_solid_apple = 4;
+static constexpr uint8_t custom_flag_rept = 8;
 
 static auto trim_str(const std::string& str) -> std::string {
   size_t first = str.find_first_not_of(" \t\r\n");
@@ -53,18 +53,18 @@ static auto to_lower_str(std::string s) -> std::string {
   return s;
 }
 
-struct CustomKey_t {
+struct CustomKey {
   uint8_t normal_val = 0;
   uint8_t shift_val = 0;
   uint8_t ctrl_val = 0;
   uint8_t flags = 0;
 };
 
-static std::array<CustomKey_t, keyb_map_size> g_custom_keys{};
-static bool g_caps_lock = true;
-static int g_caps_mode = caps_mode_host;
-static KeyboardMappingMode_t g_mapping_mode = KBD_MODE_SYMBOLIC;
-static uint8_t g_layout = keyboard_layout_us;
+static std::array<CustomKey, keyb_map_size> custom_keys{};
+static bool caps_lock = true;
+static int caps_mode = caps_mode_host;
+static KeyboardMappingMode mapping_mode = kbd_mode_symbolic;
+static uint8_t keyboard_layout = keyboard_layout_us;
 
 static auto layout_table(uint8_t layout) -> const Apple2KeyboardMap_t* {
   static const std::array<const Apple2KeyboardMap_t*, 12> tables = {
@@ -85,7 +85,7 @@ static auto is_lower_letter(uint32_t code) -> bool {
 // CAPS LOCK folds the unshifted letters (Apple IIe Technical Reference Manual,
 // Table 2-3); control clears bits 5 and 6 unless the table says otherwise.
 static auto resolve(uint32_t base, uint32_t shift_val, uint32_t ctrl_val,
-                    const KeyboardHostKey_t* key, uint8_t* apple_code) -> bool {
+                    const KeyboardHostKey* key, uint8_t* apple_code) -> bool {
   if (base == 0) {
     return false;
   }
@@ -95,21 +95,21 @@ static auto resolve(uint32_t base, uint32_t shift_val, uint32_t ctrl_val,
     } else if (is_lower_letter(base)) {
       base = base - 'a' + 'A';
     }
-  } else if (g_caps_lock && is_lower_letter(base)) {
+  } else if (caps_lock && is_lower_letter(base)) {
     base = base - 'a' + 'A';
   }
   if (key->ctrl) {
-    base = ctrl_val != 0 ? ctrl_val : (base & k_control_mask);
+    base = ctrl_val != 0 ? ctrl_val : (base & control_mask);
   }
-  *apple_code = static_cast<uint8_t>(base & k_apple_code_mask);
+  *apple_code = static_cast<uint8_t>(base & apple_code_mask);
   return true;
 }
 
-static auto translate_positional(const KeyboardHostKey_t* key,
+static auto translate_positional(const KeyboardHostKey* key,
                                  uint8_t* apple_code) -> bool {
   const uint32_t idx = key->scancode;
   const Apple2KeyboardMap_t* layout =
-      linapple_get_rocker_switch() ? layout_table(g_layout) : nullptr;
+      linapple_get_rocker_switch() ? layout_table(keyboard_layout) : nullptr;
   if (layout != nullptr && layout->map[idx] != 0) {
     return resolve(layout->map[idx], layout->shift_map[idx],
                    layout->ctrl_map[idx], key, apple_code);
@@ -170,33 +170,33 @@ static auto shifted_symbol(uint32_t key) -> uint32_t {
   }
 }
 
-static auto translate_symbolic(const KeyboardHostKey_t* key,
-                               uint8_t* apple_code) -> bool {
+static auto translate_symbolic(const KeyboardHostKey* key, uint8_t* apple_code)
+    -> bool {
   const uint32_t k = key->keycode;
-  if (k >= static_cast<uint32_t>(k_ascii_printable_min) &&
-      k <= static_cast<uint32_t>(k_ascii_printable_max)) {
+  if (k >= static_cast<uint32_t>(ascii_printable_min) &&
+      k <= static_cast<uint32_t>(ascii_printable_max)) {
     return resolve(k, shifted_symbol(k), 0, key, apple_code);
   }
-  if (k != 0 && k < static_cast<uint32_t>(k_ascii_printable_min)) {
+  if (k != 0 && k < static_cast<uint32_t>(ascii_printable_min)) {
     *apple_code = static_cast<uint8_t>(k);
     return true;
   }
   switch (k) {
-    case k_ascii_del:
+    case ascii_del:
     case linapple_key_delete:
-      *apple_code = k_apple_delete;
+      *apple_code = apple_delete;
       return true;
     case linapple_key_up:
-      *apple_code = k_apple_up;
+      *apple_code = apple_up;
       return true;
     case linapple_key_down:
-      *apple_code = k_apple_down;
+      *apple_code = apple_down;
       return true;
     case linapple_key_left:
-      *apple_code = k_apple_left;
+      *apple_code = apple_left;
       return true;
     case linapple_key_right:
-      *apple_code = k_apple_right;
+      *apple_code = apple_right;
       return true;
     default:
       return false;
@@ -205,7 +205,7 @@ static auto translate_symbolic(const KeyboardHostKey_t* key,
 
 }  // namespace keyboard_translator
 
-auto keyboard_translate(const KeyboardHostKey_t* key, uint8_t* apple_code)
+auto keyboard_translate(const KeyboardHostKey* key, uint8_t* apple_code)
     -> bool {
   namespace kt = keyboard_translator;
   if (key == nullptr || apple_code == nullptr) {
@@ -214,8 +214,8 @@ auto keyboard_translate(const KeyboardHostKey_t* key, uint8_t* apple_code)
   const bool has_scancode =
       key->scancode != keyb_idx_unknown && key->scancode < keyb_map_size;
   if (has_scancode) {
-    const kt::CustomKey_t& custom = kt::g_custom_keys.at(key->scancode);
-    if ((custom.flags & kt::k_custom_flag_active) != 0) {
+    const kt::CustomKey& custom = kt::custom_keys.at(key->scancode);
+    if ((custom.flags & kt::custom_flag_active) != 0) {
       if (keyboard_custom_switch(key->scancode) !=
           keyboard_custom_switch_none) {
         return false;
@@ -223,29 +223,29 @@ auto keyboard_translate(const KeyboardHostKey_t* key, uint8_t* apple_code)
       return kt::resolve(custom.normal_val, custom.shift_val, custom.ctrl_val,
                          key, apple_code);
     }
-    if (kt::g_mapping_mode == KBD_MODE_POSITIONAL) {
+    if (kt::mapping_mode == kbd_mode_positional) {
       return kt::translate_positional(key, apple_code);
     }
   }
   return kt::translate_symbolic(key, apple_code);
 }
 
-auto keyboard_custom_switch(uint32_t scancode) -> KeyboardCustomSwitch_t {
+auto keyboard_custom_switch(uint32_t scancode) -> KeyboardCustomSwitch {
   namespace kt = keyboard_translator;
   if (scancode >= keyb_map_size) {
     return keyboard_custom_switch_none;
   }
-  const uint8_t flags = kt::g_custom_keys.at(scancode).flags;
-  if ((flags & kt::k_custom_flag_active) == 0) {
+  const uint8_t flags = kt::custom_keys.at(scancode).flags;
+  if ((flags & kt::custom_flag_active) == 0) {
     return keyboard_custom_switch_none;
   }
-  if ((flags & kt::k_custom_flag_open_apple) != 0) {
+  if ((flags & kt::custom_flag_open_apple) != 0) {
     return keyboard_custom_switch_open_apple;
   }
-  if ((flags & kt::k_custom_flag_solid_apple) != 0) {
+  if ((flags & kt::custom_flag_solid_apple) != 0) {
     return keyboard_custom_switch_solid_apple;
   }
-  if ((flags & kt::k_custom_flag_rept) != 0) {
+  if ((flags & kt::custom_flag_rept) != 0) {
     return keyboard_custom_switch_rept;
   }
   return keyboard_custom_switch_none;
@@ -256,53 +256,51 @@ auto keyboard_symbolic_to_core(int key, uint32_t mod) -> LinAppleKey {
 
   namespace kt = keyboard_translator;
 
-  if (key >= kt::k_ascii_printable_min && key <= kt::k_ascii_printable_max) {
+  if (key >= kt::ascii_printable_min && key <= kt::ascii_printable_max) {
     return static_cast<LinAppleKey>(key);
   }
 
   switch (key) {
-    case kt::k_ascii_cr:
+    case kt::ascii_cr:
       return linapple_key_return;
-    case kt::k_ascii_esc:
+    case kt::ascii_esc:
       return linapple_key_escape;
-    case kt::k_ascii_bs:
+    case kt::ascii_bs:
       return linapple_key_backspace;
-    case kt::k_ascii_tab:
+    case kt::ascii_tab:
       return linapple_key_tab;
-    case kt::k_ascii_del:
+    case kt::ascii_del:
       return linapple_key_delete;
     default:
       return linapple_key_unknown;
   }
 }
 
-auto keyboard_set_caps(bool on) -> void {
-  keyboard_translator::g_caps_lock = on;
-}
+auto keyboard_set_caps(bool on) -> void { keyboard_translator::caps_lock = on; }
 
-auto keyboard_get_caps() -> bool { return keyboard_translator::g_caps_lock; }
+auto keyboard_get_caps() -> bool { return keyboard_translator::caps_lock; }
 
-auto keyboard_get_caps_mode() -> int {
-  return keyboard_translator::g_caps_mode;
-}
+auto keyboard_get_caps_mode() -> int { return keyboard_translator::caps_mode; }
 
 auto keyboard_set_caps_mode(int mode) -> void {
-  keyboard_translator::g_caps_mode = mode;
+  keyboard_translator::caps_mode = mode;
 }
 
-auto keyboard_set_mapping_mode(KeyboardMappingMode_t mode) -> void {
-  keyboard_translator::g_mapping_mode = mode;
+auto keyboard_set_mapping_mode(KeyboardMappingMode mode) -> void {
+  keyboard_translator::mapping_mode = mode;
 }
 
-auto keyboard_get_mapping_mode() -> KeyboardMappingMode_t {
-  return keyboard_translator::g_mapping_mode;
+auto keyboard_get_mapping_mode() -> KeyboardMappingMode {
+  return keyboard_translator::mapping_mode;
 }
 
 auto keyboard_set_layout(uint8_t layout) -> void {
-  keyboard_translator::g_layout = layout;
+  keyboard_translator::keyboard_layout = layout;
 }
 
-auto keyboard_get_layout() -> uint8_t { return keyboard_translator::g_layout; }
+auto keyboard_get_layout() -> uint8_t {
+  return keyboard_translator::keyboard_layout;
+}
 
 auto keyboard_parse_host_key(const char* name) -> uint32_t {
   if (name == nullptr) {
@@ -459,50 +457,50 @@ auto keyboard_parse_apple2_val(const char* name, uint8_t* out_flags)
 
   if (s == "openapple" || s == "open apple" || s == "open_apple" || s == "oa") {
     if (out_flags != nullptr) {
-      *out_flags |= kt::k_custom_flag_open_apple;
+      *out_flags |= kt::custom_flag_open_apple;
     }
     return 0;
   }
   if (s == "closedapple" || s == "closed apple" || s == "closed_apple" ||
       s == "solidapple" || s == "solid apple" || s == "ca") {
     if (out_flags != nullptr) {
-      *out_flags |= kt::k_custom_flag_solid_apple;
+      *out_flags |= kt::custom_flag_solid_apple;
     }
     return 0;
   }
   if (s == "rept" || s == "repeat") {
     if (out_flags != nullptr) {
-      *out_flags |= kt::k_custom_flag_rept;
+      *out_flags |= kt::custom_flag_rept;
     }
     return 0;
   }
 
   if (s == "up" || s == "uparrow" || s == "up arrow") {
-    return kt::k_apple_up;
+    return kt::apple_up;
   }
   if (s == "down" || s == "downarrow" || s == "down arrow") {
-    return kt::k_apple_down;
+    return kt::apple_down;
   }
   if (s == "left" || s == "leftarrow" || s == "left arrow") {
-    return kt::k_apple_left;
+    return kt::apple_left;
   }
   if (s == "right" || s == "rightarrow" || s == "right arrow") {
-    return kt::k_apple_right;
+    return kt::apple_right;
   }
   if (s == "return" || s == "enter") {
-    return kt::k_ascii_cr;
+    return kt::ascii_cr;
   }
   if (s == "escape" || s == "esc") {
-    return kt::k_ascii_esc;
+    return kt::ascii_esc;
   }
   if (s == "backspace" || s == "bs") {
-    return kt::k_ascii_del;
+    return kt::ascii_del;
   }
   if (s == "delete" || s == "del") {
-    return kt::k_ascii_del;
+    return kt::ascii_del;
   }
   if (s == "tab") {
-    return kt::k_ascii_tab;
+    return kt::ascii_tab;
   }
   if (s == "space" || s == "spacebar") {
     return ' ';
@@ -558,7 +556,7 @@ auto keyboard_parse_apple2_val(const char* name, uint8_t* out_flags)
 
 auto keyboard_apply_custom_mappings() -> void {
   namespace kt = keyboard_translator;
-  kt::g_custom_keys.fill(kt::CustomKey_t{});
+  kt::custom_keys.fill(kt::CustomKey{});
 
   const auto* custom_section =
       Configuration::instance().get_section("Keyboard.Custom");
@@ -583,8 +581,8 @@ auto keyboard_apply_custom_mappings() -> void {
       continue;
     }
 
-    kt::CustomKey_t custom;
-    custom.flags = kt::k_custom_flag_active;
+    kt::CustomKey custom;
+    custom.flags = kt::custom_flag_active;
 
     uint8_t flags0 = 0;
     custom.normal_val = keyboard_parse_apple2_val(tokens[0].c_str(), &flags0);
@@ -605,10 +603,10 @@ auto keyboard_apply_custom_mappings() -> void {
       custom.ctrl_val = keyboard_parse_apple2_val(tokens[2].c_str(), &flags2);
       custom.flags |= flags2;
     } else if (custom.normal_val != 0) {
-      custom.ctrl_val = custom.normal_val & kt::k_control_mask;
+      custom.ctrl_val = custom.normal_val & kt::control_mask;
     }
 
-    kt::g_custom_keys.at(scancode) = custom;
+    kt::custom_keys.at(scancode) = custom;
   }
 }
 
@@ -621,8 +619,8 @@ auto keyboard_has_custom_mappings() -> bool {
 auto frontend_update_keyboard_mapping() -> void {
   uint32_t mode = 0;
   if (config_load_int("Keyboard", "Mapping Mode", &mode)) {
-    keyboard_set_mapping_mode(mode == KBD_MODE_POSITIONAL ? KBD_MODE_POSITIONAL
-                                                          : KBD_MODE_SYMBOLIC);
+    keyboard_set_mapping_mode(mode == kbd_mode_positional ? kbd_mode_positional
+                                                          : kbd_mode_symbolic);
   }
 
   uint32_t caps_mode = 0;
@@ -646,15 +644,15 @@ auto frontend_update_keyboard_mapping() -> void {
       c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     }
     if (qs_mod == "ctrl" || qs_mod == "control") {
-      keyboard_set_quicksave_mode(QUICKSAVE_MODE_CTRL);
+      keyboard_set_quicksave_mode(quicksave_mode_ctrl);
     } else if (qs_mod == "altctrl" || qs_mod == "ctrlalt" ||
                qs_mod == "alt+ctrl" || qs_mod == "ctrl+alt") {
-      keyboard_set_quicksave_mode(QUICKSAVE_MODE_ALT_CTRL);
+      keyboard_set_quicksave_mode(quicksave_mode_alt_ctrl);
     } else if (qs_mod == "none" || qs_mod == "disabled" || qs_mod == "0" ||
                qs_mod == "off") {
-      keyboard_set_quicksave_mode(QUICKSAVE_MODE_DISABLED);
+      keyboard_set_quicksave_mode(quicksave_mode_disabled);
     } else {
-      keyboard_set_quicksave_mode(QUICKSAVE_MODE_ALT);
+      keyboard_set_quicksave_mode(quicksave_mode_alt);
     }
   }
 
@@ -667,21 +665,19 @@ auto frontend_update_keyboard_mapping() -> void {
   keyboard_apply_custom_mappings();
 }
 
-static QuickSaveMode_t g_quicksave_mode = QUICKSAVE_MODE_ALT;
-static bool g_hotkeys_enabled = true;
+static QuickSaveMode quicksave_mode = quicksave_mode_alt;
+static bool hotkeys_enabled = true;
 
-auto keyboard_get_quicksave_mode() -> QuickSaveMode_t {
-  return g_quicksave_mode;
+auto keyboard_get_quicksave_mode() -> QuickSaveMode { return quicksave_mode; }
+
+auto keyboard_set_quicksave_mode(QuickSaveMode mode) -> void {
+  quicksave_mode = mode;
 }
 
-auto keyboard_set_quicksave_mode(QuickSaveMode_t mode) -> void {
-  g_quicksave_mode = mode;
-}
-
-auto keyboard_get_hotkeys_enabled() -> bool { return g_hotkeys_enabled; }
+auto keyboard_get_hotkeys_enabled() -> bool { return hotkeys_enabled; }
 
 auto keyboard_set_hotkeys_enabled(bool enabled) -> void {
-  g_hotkeys_enabled = enabled;
+  hotkeys_enabled = enabled;
 }
 
 auto keyboard_is_quicksave_combo(uint32_t sym, uint32_t mod, int* out_slot,
@@ -699,17 +695,17 @@ auto keyboard_is_quicksave_combo(uint32_t sym, uint32_t mod, int* out_slot,
   const bool has_shift = (mod & kmod_shift) != 0;
 
   bool triggered = false;
-  switch (g_quicksave_mode) {
-    case QUICKSAVE_MODE_ALT:
+  switch (quicksave_mode) {
+    case quicksave_mode_alt:
       triggered = has_alt && !has_ctrl;
       break;
-    case QUICKSAVE_MODE_CTRL:
+    case quicksave_mode_ctrl:
       triggered = has_ctrl && !has_alt;
       break;
-    case QUICKSAVE_MODE_ALT_CTRL:
+    case quicksave_mode_alt_ctrl:
       triggered = has_alt && has_ctrl;
       break;
-    case QUICKSAVE_MODE_DISABLED:
+    case quicksave_mode_disabled:
       triggered = false;
       break;
   }

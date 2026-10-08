@@ -29,24 +29,23 @@ auto frontend_to_core_key(int key, uint32_t mod) -> LinAppleKey {
 // mask; the two Apple keys follow their own key edges, because the mask
 // folds both Alt keys into one bit and both GUI keys into another while the
 // //e has two distinct switches (Apple IIe Technical Reference Manual, p. 13).
-struct HostModifiers_t {
+struct HostModifiers {
   bool shift = false;
   bool ctrl = false;
   bool open_apple = false;
   bool solid_apple = false;
 };
 
-static HostModifiers_t g_host_modifiers;
+static HostModifiers host_modifiers;
 
 static auto send_host_modifiers() -> void {
-  linapple_set_modifiers(g_host_modifiers.shift, g_host_modifiers.ctrl,
-                         g_host_modifiers.open_apple,
-                         g_host_modifiers.solid_apple);
+  linapple_set_modifiers(host_modifiers.shift, host_modifiers.ctrl,
+                         host_modifiers.open_apple, host_modifiers.solid_apple);
 }
 
 static auto track_shift_and_ctrl(uint32_t mod) -> void {
-  g_host_modifiers.shift = (mod & SDL_COMPAT_KMOD_SHIFT) != 0;
-  g_host_modifiers.ctrl = (mod & SDL_COMPAT_KMOD_CTRL) != 0;
+  host_modifiers.shift = (mod & SDL_COMPAT_KMOD_SHIFT) != 0;
+  host_modifiers.ctrl = (mod & SDL_COMPAT_KMOD_CTRL) != 0;
 }
 
 auto frontend_dispatch_key_event(uint32_t scancode, uint32_t keycode,
@@ -56,11 +55,11 @@ auto frontend_dispatch_key_event(uint32_t scancode, uint32_t keycode,
   // A switch types nothing; an Apple key only closes its side of the line.
   switch (keyboard_custom_switch(scancode)) {
     case keyboard_custom_switch_open_apple:
-      g_host_modifiers.open_apple = is_down;
+      host_modifiers.open_apple = is_down;
       send_host_modifiers();
       return;
     case keyboard_custom_switch_solid_apple:
-      g_host_modifiers.solid_apple = is_down;
+      host_modifiers.solid_apple = is_down;
       send_host_modifiers();
       return;
     case keyboard_custom_switch_rept:
@@ -72,12 +71,12 @@ auto frontend_dispatch_key_event(uint32_t scancode, uint32_t keycode,
   }
   send_host_modifiers();
 
-  const KeyboardHostKey_t key = {
+  const KeyboardHostKey key = {
       scancode,
       static_cast<uint32_t>(
           frontend_to_core_key(static_cast<int>(keycode), mod)),
-      g_host_modifiers.shift,
-      g_host_modifiers.ctrl,
+      host_modifiers.shift,
+      host_modifiers.ctrl,
   };
   uint8_t apple_code = 0;
   if (!keyboard_translate(&key, &apple_code)) {
@@ -92,17 +91,17 @@ auto frontend_dispatch_key_event(uint32_t scancode, uint32_t keycode,
 // Apple. Alt is the key most desktops leave to applications; GUI (Super) is
 // usually the window manager's and may never arrive.
 // NOLINTBEGIN(misc-include-cleaner): Modifier keycodes (SDLK_*) are provided across SDL1/2/3 backends via SdlBackend.h
-auto frontend_handle_key_event(SdlKeycode_t key, bool is_down) -> bool {
+auto frontend_handle_key_event(SdlKeycode key, bool is_down) -> bool {
   switch (key) {
     case SDLK_LALT:
     case SDLK_LGUI:
-      g_host_modifiers.open_apple = is_down;
+      host_modifiers.open_apple = is_down;
       send_host_modifiers();
       return true;
 
     case SDLK_RALT:
     case SDLK_RGUI:
-      g_host_modifiers.solid_apple = is_down;
+      host_modifiers.solid_apple = is_down;
       send_host_modifiers();
       return true;
 
@@ -120,7 +119,7 @@ auto frontend_handle_key_event(SdlKeycode_t key, bool is_down) -> bool {
 }
 // NOLINTEND(misc-include-cleaner)
 
-auto frontend_handle_event(SdlKeycode_t key, bool is_down) -> bool {
+auto frontend_handle_event(SdlKeycode key, bool is_down) -> bool {
   return frontend_handle_key_event(key, is_down);
 }
 
@@ -142,6 +141,6 @@ auto keyboard_press_caps_lock(uint32_t mod) -> void {
 
 // Focus loss lets go of the Apple keys with the matrix keys.
 auto keyboard_release_host_modifiers() -> void {
-  g_host_modifiers = HostModifiers_t{};
+  host_modifiers = HostModifiers{};
   linapple_set_key_release_all();
 }

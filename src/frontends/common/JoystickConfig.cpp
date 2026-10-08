@@ -9,24 +9,23 @@
 
 namespace {
 
-struct JoystickTypeInfo_t {
-  JoystickDevice_t device;
-  JoystickMode_t mode;
+struct JoystickTypeInfo {
+  JoystickDevice device;
+  JoystickMode mode;
 };
 
-constexpr std::array<JoystickTypeInfo_t, joystick_config_type_count>
-    k_joy_info = {
-        {
-            {joystick_device_none, joystick_mode_none},
-            {joystick_device_joystick, joystick_mode_standard},
-            {joystick_device_keyboard, joystick_mode_standard},
-            {joystick_device_keyboard, joystick_mode_centering},
-            {joystick_device_mouse, joystick_mode_standard},
-        },
+constexpr std::array<JoystickTypeInfo, joystick_config_type_count> joy_info = {
+    {
+        {joystick_device_none, joystick_mode_none},
+        {joystick_device_joystick, joystick_mode_standard},
+        {joystick_device_keyboard, joystick_mode_standard},
+        {joystick_device_keyboard, joystick_mode_centering},
+        {joystick_device_mouse, joystick_mode_standard},
+    },
 };
 
-auto type_info(uint32_t type) -> const JoystickTypeInfo_t& {
-  return k_joy_info.at(type < joystick_config_type_count ? type : 0);
+auto type_info(uint32_t type) -> const JoystickTypeInfo& {
+  return joy_info.at(type < joystick_config_type_count ? type : 0);
 }
 
 auto configured_type(const char* key) -> uint32_t {
@@ -39,11 +38,11 @@ auto configured_type(const char* key) -> uint32_t {
 
 }  // namespace
 
-auto joystick_config_device(uint32_t type) -> JoystickDevice_t {
+auto joystick_config_device(uint32_t type) -> JoystickDevice {
   return type_info(type).device;
 }
 
-auto joystick_config_mode(uint32_t type) -> JoystickMode_t {
+auto joystick_config_mode(uint32_t type) -> JoystickMode {
   return type_info(type).mode;
 }
 

@@ -57,13 +57,13 @@
 
 #if ENABLE_DEBUGGER
 #include "Debugger/Debug.h"
-extern VideoSurface_t* g_debug_screen;
+extern VideoSurface* g_debug_screen;
 #endif
 
-SdlSurfacePtr_t g_screen;
-SdlWindowPtr_t g_window;
-SdlRendererPtr_t g_renderer;
-SdlTexturePtr_t g_texture;
+SdlSurfacePtr g_screen;
+SdlWindowPtr g_window;
+SdlRendererPtr g_renderer;
+SdlTexturePtr g_texture;
 SDL_Rect g_orig_rect;
 SDL_Rect g_new_rect;
 
@@ -81,8 +81,8 @@ DiskStatus_t s_last_disk_status{};
 int s_drive0_last_reported_error = disk_err_none;
 int s_drive1_last_reported_error = disk_err_none;
 
-inline auto to_video_rect(const SDL_Rect& r) noexcept -> VideoRect_t {
-  VideoRect_t vr{};
+inline auto to_video_rect(const SDL_Rect& r) noexcept -> VideoRect {
+  VideoRect vr{};
   vr.x = static_cast<int16_t>(r.x);
   vr.y = static_cast<int16_t>(r.y);
   vr.w = static_cast<uint16_t>(r.w);
@@ -91,18 +91,17 @@ inline auto to_video_rect(const SDL_Rect& r) noexcept -> VideoRect_t {
 }
 
 #if ENABLE_DEBUGGER
-auto draw_debugger_tui(VideoSurfaceView_t vs_screen, const SDL_Rect& r)
-    -> void {
+auto draw_debugger_tui(VideoSurfaceView vs_screen, const SDL_Rect& r) -> void {
   if (g_debug_screen == nullptr) {
     return;
   }
 
   if (!g_window_resized) {
-    VideoRect_t vr = to_video_rect(r);
+    VideoRect vr = to_video_rect(r);
     video_soft_stretch(g_debug_screen, &vr, vs_screen, &vr);
   } else {
-    VideoRect_t vor = to_video_rect(g_orig_rect);
-    VideoRect_t vnr = to_video_rect(g_new_rect);
+    VideoRect vor = to_video_rect(g_orig_rect);
+    VideoRect vnr = to_video_rect(g_new_rect);
     video_soft_stretch(g_debug_screen, &vor, vs_screen, &vnr);
   }
 }
@@ -233,11 +232,11 @@ auto handle_btn_fullscreen(int mod) -> void {
 auto handle_btn_setup(int mod) -> void {
   if ((mod & SDL_KMOD_SHIFT) != 0) {
     Configuration::instance().set_int("Configuration", "Video Emulation",
-                                        g_videotype);
+                                      g_videotype);
     Configuration::instance().set_int("Configuration", "Emulation Speed",
-                                        system_state.speed);
+                                      system_state.speed);
     Configuration::instance().set_int("Configuration", "Fullscreen",
-                                        system_state.fullscreen ? 1 : 0);
+                                      system_state.fullscreen ? 1 : 0);
     Configuration::instance().save();
   } else {
     frame_save_bmp();
@@ -318,15 +317,15 @@ auto psp_save_state_select_image(bool saveit) -> bool {
   util_safe_strcpy(system_state.save_state_dir.data(), full_path.c_str(),
                    system_state.save_state_dir.size());
   Configuration::instance().set_string("Preferences", "Save State Directory",
-                                         system_state.save_state_dir.data());
+                                       system_state.save_state_dir.data());
   Configuration::instance().save();
 
   s_backdx = static_cast<int>(s_file_index);
   full_path += "/" + filename;
 
   save_state_set_filename(full_path.c_str());
-  Configuration::instance().set_string(
-      "Preferences", cfg_savestate_filename, full_path.c_str());
+  Configuration::instance().set_string("Preferences", cfg_savestate_filename,
+                                       full_path.c_str());
   Configuration::instance().save();
   draw_frame_window();
   return true;
@@ -451,21 +450,21 @@ auto draw_frame_window() -> void {
     const SDL_Rect r = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
 
     if (system_state.mode != app_mode_debug) {
-      ScopedSurfaceLock_t lock_screen(g_screen.get());
-      const VideoSurfaceView_t vs_output(output, SCREEN_WIDTH, SCREEN_HEIGHT,
-                                         SCREEN_WIDTH * 4, 4);
+      ScopedSurfaceLock lock_screen(g_screen.get());
+      const VideoSurfaceView vs_output(output, SCREEN_WIDTH, SCREEN_HEIGHT,
+                                       SCREEN_WIDTH * 4, 4);
 
       if (!g_window_resized) {
-        VideoRect_t vr = to_video_rect(r);
+        VideoRect vr = to_video_rect(r);
         video_soft_stretch(vs_output, &vr, lock_screen.view(), &vr);
       } else {
-        VideoRect_t vor = to_video_rect(g_orig_rect);
-        VideoRect_t vnr = to_video_rect(g_new_rect);
+        VideoRect vor = to_video_rect(g_orig_rect);
+        VideoRect vnr = to_video_rect(g_new_rect);
         video_soft_stretch(vs_output, &vor, lock_screen.view(), &vnr);
       }
     } else {
 #if ENABLE_DEBUGGER
-      ScopedSurfaceLock_t lock_screen(g_screen.get());
+      ScopedSurfaceLock lock_screen(g_screen.get());
       draw_debugger_tui(lock_screen.view(), r);
 #endif
     }
@@ -486,11 +485,11 @@ auto draw_status_area(int drawflags) -> void {
   }
 
   if ((drawflags & draw_background) != 0) {
-    g_status_cycle = k_show_cycles;
+    g_status_cycle = show_cycles;
   }
 
   if ((drawflags & draw_leds) != 0) {
-    VideoRect_t srect{};
+    VideoRect srect{};
     const uint8_t mybluez = DARK_BLUE;
     srect.x = 4;
     srect.y = 22;
@@ -549,7 +548,7 @@ auto draw_status_area(int drawflags) -> void {
     font_print(71, 23, leds.data(), g_status_surface, 4.0F, 2.7F);
 
     if ((drive1_status | drive2_status | hdd_status) != 0) {
-      g_status_cycle = k_show_cycles;
+      g_status_cycle = show_cycles;
     }
   }
 }
@@ -564,7 +563,7 @@ auto frame_show_help_screen(int sx, int sy) -> void {
     return;
   }
 
-  VideoSurface_t* temp_surface = nullptr;
+  VideoSurface* temp_surface = nullptr;
   if (!g_window_resized) {
     temp_surface =
         (system_state.mode == app_mode_logo) ? g_logo_bitmap : g_device_bitmap;
@@ -573,17 +572,17 @@ auto frame_show_help_screen(int sx, int sy) -> void {
   }
 
   {
-    ScopedSurfaceLock_t lock_screen(g_screen.get());
-    const VideoSurfaceView_t view_temp =
+    ScopedSurfaceLock lock_screen(g_screen.get());
+    const VideoSurfaceView view_temp =
         (temp_surface != nullptr) ? *temp_surface : lock_screen.view();
     video_soft_stretch(view_temp, nullptr, lock_screen.view(), nullptr);
 
     const int blur_w = std::max(1, g_screen->w / 16);
     const int blur_h = std::max(1, g_screen->h / 16);
-    SdlSurfacePtr_t blur_temp(
+    SdlSurfacePtr blur_temp(
         SDL_CreateSurface(blur_w, blur_h, SDL_PIXELFORMAT_ARGB8888));
     if (blur_temp != nullptr) {
-      ScopedSurfaceLock_t lock_blur(blur_temp.get());
+      ScopedSurfaceLock lock_blur(blur_temp.get());
       video_soft_stretch(lock_screen.view(), nullptr, lock_blur.view(),
                          nullptr);
       video_soft_stretch(lock_blur.view(), nullptr, lock_screen.view(),
@@ -591,7 +590,7 @@ auto frame_show_help_screen(int sx, int sy) -> void {
     }
   }
 
-  SdlSurfacePtr_t dim_surface(
+  SdlSurfacePtr dim_surface(
       SDL_CreateSurface(g_screen->w, g_screen->h, SDL_PIXELFORMAT_ARGB8888));
   if (dim_surface != nullptr) {
     const Uint32 dim_color =
@@ -613,19 +612,19 @@ auto frame_show_help_screen(int sx, int sy) -> void {
   const int hdr_height = static_cast<int>(42.0F * facy_f);
 
   {
-    ScopedSurfaceLock_t lock_screen(g_screen.get());
+    ScopedSurfaceLock lock_screen(g_screen.get());
     rectangle(lock_screen.view(), static_cast<int>(4.0F * facx_f), hdr_top,
               static_cast<int>(system_state.screen_width - (8.0F * facx_f)),
               hdr_height, RGB(255, 255, 0));
 
     font_print_centered(sx / 2, hdr_top + static_cast<int>(4.0F * facy_f),
-                        HELP_HEADER_STRINGS.at(0), lock_screen.view(), scale_x,
+                        help_header_strings.at(0), lock_screen.view(), scale_x,
                         scale_y);
     font_print_centered(sx / 2, hdr_top + static_cast<int>(16.0F * facy_f),
-                        HELP_HEADER_STRINGS.at(1), lock_screen.view(), scale_x,
+                        help_header_strings.at(1), lock_screen.view(), scale_x,
                         scale_y);
     font_print_centered(sx / 2, hdr_top + static_cast<int>(28.0F * facy_f),
-                        HELP_HEADER_STRINGS.at(2), lock_screen.view(), scale_x,
+                        help_header_strings.at(2), lock_screen.view(), scale_x,
                         scale_y);
 
     const int body_top = hdr_top + hdr_height + static_cast<int>(4.0F * facy_f);
@@ -636,26 +635,26 @@ auto frame_show_help_screen(int sx, int sy) -> void {
               body_height, RGB(255, 255, 255));
 
     const float line_spacing = 13.0F * facy_f;
-    for (size_t i = 0; i < HELP_BODY_LINES.size(); ++i) {
-      if (HELP_BODY_LINES.at(i).text != nullptr &&
-          HELP_BODY_LINES.at(i).text[0] != '\0') {
+    for (size_t i = 0; i < help_body_lines.size(); ++i) {
+      if (help_body_lines.at(i).text != nullptr &&
+          help_body_lines.at(i).text[0] != '\0') {
         font_print(
             static_cast<int>(16.0F * facx_f),
             body_top + static_cast<int>(6.0F * facy_f +
                                         static_cast<float>(i) * line_spacing),
-            HELP_BODY_LINES.at(i).text, lock_screen.view(), scale_x, scale_y);
+            help_body_lines.at(i).text, lock_screen.view(), scale_x, scale_y);
       }
     }
 
     if (assets != nullptr && assets->icon != nullptr) {
-      ScopedSurfaceLock_t lock_icon(static_cast<SDL_Surface*>(assets->icon));
-      VideoRect_t logo{
+      ScopedSurfaceLock lock_icon(static_cast<SDL_Surface*>(assets->icon));
+      VideoRect logo{
           0,
           0,
           static_cast<int16_t>(lock_icon.view().w),
           static_cast<int16_t>(lock_icon.view().h),
       };
-      VideoRect_t scrr{
+      VideoRect scrr{
           static_cast<int16_t>(460.0F * facx_f),
           static_cast<int16_t>(270.0F * facy_f),
           static_cast<int16_t>(100.0F * facy_f),
@@ -804,48 +803,48 @@ auto process_button_click(int button, int mod) -> void {
   audio_mixer_set_fade(fade_out);
 
   switch (button) {
-    case k_btn_help:
+    case btn_help:
       handle_btn_help();
       break;
 
-    case k_btn_run:
+    case btn_run:
       handle_btn_run(mod);
       break;
 
-    case k_btn_drive1:
-    case k_btn_drive2:
-      handle_btn_drive(button - k_btn_drive1, mod);
+    case btn_drive1:
+    case btn_drive2:
+      handle_btn_drive(button - btn_drive1, mod);
       break;
 
-    case k_btn_driveswap:
+    case btn_driveswap:
       handle_btn_drive_swap();
       break;
 
-    case k_btn_fullscr:
+    case btn_fullscr:
       handle_btn_fullscreen(mod);
       break;
 
-    case k_btn_debug:
+    case btn_debug:
       handle_btn_debug();
       break;
 
-    case k_btn_setup:
+    case btn_setup:
       handle_btn_setup(mod);
       break;
 
-    case k_btn_cycle:
+    case btn_cycle:
       handle_btn_cycle(mod);
       break;
 
-    case k_btn_quit:
+    case btn_quit:
       handle_btn_quit();
       break;
 
-    case k_btn_savest:
+    case btn_savest:
       handle_btn_save_state(mod);
       break;
 
-    case k_btn_loadst:
+    case btn_loadst:
       handle_btn_load_state(mod);
       break;
 
@@ -921,7 +920,7 @@ auto frame_pointer_capture(bool captured, bool relative) -> void {
 }
 
 // g_new_rect is set only on a resize, so until one the picture is the window.
-auto frame_picture_rect() -> MousePictureRect_t {
+auto frame_picture_rect() -> MousePictureRect {
   if (g_window_resized) {
     return {g_new_rect.x, g_new_rect.y, g_new_rect.w, g_new_rect.h};
   }
@@ -1051,7 +1050,7 @@ auto refresh_disk_status() -> void {
 
   std::array<char, 512> title_buf{};
   if (s_last_disk_status.drive0_loaded != 0) {
-    std::array<char, k_disk_ui_display_name_max + 1> display_name{};
+    std::array<char, disk_ui_display_name_max + 1> display_name{};
     disk_ui_format_display_name(s_last_disk_status.drive0_name,
                                 display_name.data(), display_name.size());
     std::snprintf(title_buf.data(), title_buf.size(), "%s - %s", app_title,

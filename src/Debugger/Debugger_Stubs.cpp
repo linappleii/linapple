@@ -12,7 +12,7 @@ enum DebugVirtualTextScreen_e {
   DEBUG_VIRTUAL_TEXT_HEIGHT = 48
 };
 
-VideoSurface_t* g_debug_screen = nullptr;
+VideoSurface* g_debug_screen = nullptr;
 bool g_debugger_eat_key = false;
 
 char g_debugger_virtual_text_screen[DEBUG_VIRTUAL_TEXT_HEIGHT]

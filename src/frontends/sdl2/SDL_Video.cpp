@@ -20,20 +20,19 @@ auto stretch_blt_mem_to_frame_dc() -> void {
   video_set_frame_ready(true);
 }
 
-ScopedSurfaceLock_t::ScopedSurfaceLock_t(SDL_Surface* surface)
-    : surface_(surface) {
+ScopedSurfaceLock::ScopedSurfaceLock(SDL_Surface* surface) : surface_(surface) {
   if (surface_ == nullptr) {
     return;
   }
   locked_ = sdl_compat_lock_surface(surface_);
-  constexpr int k_default_bpp = 4;
+  constexpr int default_bpp = 4;
   bpp_ = (surface_->format != nullptr) ? surface_->format->BytesPerPixel
-                                       : k_default_bpp;
+                                       : default_bpp;
   if (surface_->format != nullptr && surface_->format->palette != nullptr &&
       surface_->format->palette->colors != nullptr) {
     const int ncolors =
         std::max(0, std::min(surface_->format->palette->ncolors,
-                             static_cast<int>(k_video_palette_size)));
+                             static_cast<int>(video_palette_size)));
     for (int i = 0; i < ncolors; ++i) {
       const auto idx = static_cast<size_t>(i);
       palette_.at(idx).r = surface_->format->palette->colors[i].r;
@@ -45,13 +44,13 @@ ScopedSurfaceLock_t::ScopedSurfaceLock_t(SDL_Surface* surface)
   }
 }
 
-ScopedSurfaceLock_t::~ScopedSurfaceLock_t() {
+ScopedSurfaceLock::~ScopedSurfaceLock() {
   if (locked_ && surface_ != nullptr) {
     sdl_compat_unlock_surface(surface_);
   }
 }
 
-ScopedSurfaceLock_t::ScopedSurfaceLock_t(ScopedSurfaceLock_t&& other) noexcept
+ScopedSurfaceLock::ScopedSurfaceLock(ScopedSurfaceLock&& other) noexcept
     : surface_(other.surface_),
       locked_(other.locked_),
       bpp_(other.bpp_),
@@ -62,8 +61,8 @@ ScopedSurfaceLock_t::ScopedSurfaceLock_t(ScopedSurfaceLock_t&& other) noexcept
   other.has_palette_ = false;
 }
 
-auto ScopedSurfaceLock_t::operator=(ScopedSurfaceLock_t&& other) noexcept
-    -> ScopedSurfaceLock_t& {
+auto ScopedSurfaceLock::operator=(ScopedSurfaceLock&& other) noexcept
+    -> ScopedSurfaceLock& {
   if (this != &other) {
     if (locked_ && surface_ != nullptr) {
       sdl_compat_unlock_surface(surface_);
@@ -80,22 +79,22 @@ auto ScopedSurfaceLock_t::operator=(ScopedSurfaceLock_t&& other) noexcept
   return *this;
 }
 
-auto ScopedSurfaceLock_t::view() const noexcept -> VideoSurfaceView_t {
+auto ScopedSurfaceLock::view() const noexcept -> VideoSurfaceView {
   if (surface_ == nullptr || surface_->pixels == nullptr) {
     return {};
   }
-  return VideoSurfaceView_t{static_cast<uint8_t*>(surface_->pixels),
-                            surface_->w,
-                            surface_->h,
-                            surface_->pitch,
-                            bpp_,
-                            has_palette_ ? palette_.data() : nullptr};
+  return VideoSurfaceView{static_cast<uint8_t*>(surface_->pixels),
+                          surface_->w,
+                          surface_->h,
+                          surface_->pitch,
+                          bpp_,
+                          has_palette_ ? palette_.data() : nullptr};
 }
 
-auto sdl_surface_to_video_surface(SDL_Surface* surface) -> VideoSurface_t {
-  ScopedSurfaceLock_t lock(surface);
-  VideoSurface_t video_surface{};
-  const VideoSurfaceView_t v = lock.view();
+auto sdl_surface_to_video_surface(SDL_Surface* surface) -> VideoSurface {
+  ScopedSurfaceLock lock(surface);
+  VideoSurface video_surface{};
+  const VideoSurfaceView v = lock.view();
   if (v.pixels == nullptr) {
     return video_surface;
   }
@@ -105,7 +104,7 @@ auto sdl_surface_to_video_surface(SDL_Surface* surface) -> VideoSurface_t {
   video_surface.pitch = v.pitch;
   video_surface.bpp = v.bpp;
   if (v.palette != nullptr) {
-    std::copy(v.palette, v.palette + k_video_palette_size,
+    std::copy(v.palette, v.palette + video_palette_size,
               video_surface.palette.begin());
   }
   return video_surface;

@@ -88,7 +88,7 @@ auto main(int argc, char** argv) -> int {
 
     app_controller_load_initial_media(&config);
 
-    FramePacer_t pacer;
+    FramePacer pacer;
 
     while (!tui_terminal_is_interrupted() && !app_controller_should_restart() &&
            system_state.mode != app_mode_exit) {

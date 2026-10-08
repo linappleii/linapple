@@ -7,7 +7,7 @@
 
 namespace {
 
-bool g_captured = false;
+bool mouse_captured = false;
 
 auto capture_allowed() -> bool {
   return mouse_frontend_capture_enabled() && mouse_input_consumer_present();
@@ -17,7 +17,7 @@ auto capture_allowed() -> bool {
 // position, which the joystick-as-mouse path reads in place of the pointer. The
 // capture state never waits on SDL's result, which the dummy driver may refuse.
 auto set_captured(bool captured) -> void {
-  g_captured = captured;
+  mouse_captured = captured;
   frame_pointer_capture(captured, captured && mouse_frontend_card_present());
 }
 
@@ -33,23 +33,23 @@ auto mouse_input_consumer_present() -> bool {
          joy_frontend_is_mouse_emulation_active();
 }
 
-auto mouse_input_is_captured() -> bool { return g_captured; }
+auto mouse_input_is_captured() -> bool { return mouse_captured; }
 
 auto mouse_input_release() -> void { set_captured(false); }
 
-auto mouse_input_button_down(MouseHostButton_t button, bool release_modifier,
+auto mouse_input_button_down(MouseHostButton button, bool release_modifier,
                              bool toolbar_key_held) -> bool {
-  if (button == MouseHostButton_t::middle) {
-    set_captured(!g_captured && capture_allowed());
+  if (button == MouseHostButton::middle) {
+    set_captured(!mouse_captured && capture_allowed());
     return false;
   }
-  if (button != MouseHostButton_t::left || toolbar_key_held) {
+  if (button != MouseHostButton::left || toolbar_key_held) {
     return false;
   }
   if (system_state.mode == app_mode_debug) {
     return true;
   }
-  if (!g_captured) {
+  if (!mouse_captured) {
     if (capture_allowed() && machine_is_live()) {
       set_captured(true);
     }
@@ -66,8 +66,8 @@ auto mouse_input_button_down(MouseHostButton_t button, bool release_modifier,
   return false;
 }
 
-auto mouse_input_button_up(MouseHostButton_t button) -> void {
-  if (!g_captured || button != MouseHostButton_t::left) {
+auto mouse_input_button_up(MouseHostButton button) -> void {
+  if (!mouse_captured || button != MouseHostButton::left) {
     return;
   }
   mouse_frontend_button(false);
@@ -77,10 +77,10 @@ auto mouse_input_button_up(MouseHostButton_t button) -> void {
 }
 
 auto mouse_input_motion(int dx, int dy, int x, int y) -> void {
-  if (!g_captured) {
+  if (!mouse_captured) {
     return;
   }
-  const MousePictureRect_t picture = frame_picture_rect();
+  const MousePictureRect picture = frame_picture_rect();
   mouse_frontend_motion(dx, dy, picture.w, picture.h);
   if (joy_frontend_is_mouse_emulation_active()) {
     joy_frontend_process_mouse_motion(x - picture.x, picture.w, y - picture.y,

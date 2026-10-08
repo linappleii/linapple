@@ -55,7 +55,7 @@ TEST_CASE("DiskUI: every disk error has a message of its own") {
 }
 
 TEST_CASE("DiskUI: display names lose the extension and the shouting") {
-  std::array<char, k_disk_ui_display_name_max + 1> name{};
+  std::array<char, disk_ui_display_name_max + 1> name{};
 
   disk_ui_format_display_name("MASTER.DSK", name.data(), name.size());
   CHECK(strcmp(name.data(), "Master") == 0);

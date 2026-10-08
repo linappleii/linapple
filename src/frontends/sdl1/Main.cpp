@@ -28,7 +28,7 @@ namespace {
 
 bool g_ds_available = false;
 std::string g_audio_dump_file;
-AudioDumper_t g_audio_dumper;
+AudioDumper g_audio_dumper;
 
 auto SDLCALL sdl1_audio_callback(void* userdata, Uint8* stream, int len)
     -> void {
@@ -132,7 +132,7 @@ auto sys_input() -> void {
 }
 
 auto enter_message_loop() -> void {
-  FramePacer_t pacer;
+  FramePacer pacer;
   while (system_state.mode != app_mode_exit) {
     sys_input();
     if (system_state.mode == app_mode_exit) {

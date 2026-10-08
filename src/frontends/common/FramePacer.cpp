@@ -10,10 +10,10 @@
 namespace {
 
 // The NTSC frame period (16.688 ms).
-constexpr int64_t k_fallback_period_ns = 16688000;
+constexpr int64_t fallback_period_ns = 16688000;
 
 // Maximum number of backlog frames to catch up on before re-synchronizing.
-constexpr int64_t k_resync_after_frames = 4;
+constexpr int64_t resync_after_frames = 4;
 
 auto steady_now_ns() -> int64_t {
   return std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -30,27 +30,26 @@ auto steady_sleep_until_ns(int64_t deadline_ns) -> void {
 
 }  // namespace
 
-FramePacer_t::FramePacer_t()
+FramePacer::FramePacer()
     : now_(steady_now_ns), sleep_until_(steady_sleep_until_ns) {}
 
-FramePacer_t::FramePacer_t(FrameClockNowFn_t now,
-                           FrameClockSleepUntilFn_t sleep_until)
+FramePacer::FramePacer(FrameClockNowFn now, FrameClockSleepUntilFn sleep_until)
     : now_(now != nullptr ? now : steady_now_ns),
       sleep_until_(sleep_until != nullptr ? sleep_until
                                           : steady_sleep_until_ns) {}
 
-auto FramePacer_t::frame_period_ns() const -> int64_t {
+auto FramePacer::frame_period_ns() const -> int64_t {
   const double cycles = static_cast<double>(system_state.clks_per_frame);
   const double clock_hz = current_clk_6502;
   if (!(cycles > 0.0) || !(clock_hz > 0.0)) {
-    return k_fallback_period_ns;
+    return fallback_period_ns;
   }
   return static_cast<int64_t>((cycles * 1e9) / clock_hz);
 }
 
-auto FramePacer_t::resync() -> void { armed_ = false; }
+auto FramePacer::resync() -> void { armed_ = false; }
 
-auto FramePacer_t::wait_for_next_frame() -> void {
+auto FramePacer::wait_for_next_frame() -> void {
   const int64_t period = frame_period_ns();
   const int64_t now = (now_ != nullptr) ? now_() : steady_now_ns();
 
@@ -61,7 +60,7 @@ auto FramePacer_t::wait_for_next_frame() -> void {
 
   deadline_ns_ += period;
 
-  if ((now - deadline_ns_) > (k_resync_after_frames * period)) {
+  if ((now - deadline_ns_) > (resync_after_frames * period)) {
     deadline_ns_ = now;
     return;
   }
@@ -71,31 +70,31 @@ auto FramePacer_t::wait_for_next_frame() -> void {
   }
 }
 
-auto frame_pacer_init(FramePacer_t* pacer, FrameClockNowFn_t now,
-                      FrameClockSleepUntilFn_t sleep_until) -> void {
+auto frame_pacer_init(FramePacer* pacer, FrameClockNowFn now,
+                      FrameClockSleepUntilFn sleep_until) -> void {
   if (pacer == nullptr) {
     return;
   }
-  *pacer = FramePacer_t(now, sleep_until);
+  *pacer = FramePacer(now, sleep_until);
 }
 
-auto frame_pacer_wait(FramePacer_t* pacer) -> void {
+auto frame_pacer_wait(FramePacer* pacer) -> void {
   if (pacer == nullptr) {
     return;
   }
   pacer->wait_for_next_frame();
 }
 
-auto frame_pacer_resync(FramePacer_t* pacer) -> void {
+auto frame_pacer_resync(FramePacer* pacer) -> void {
   if (pacer == nullptr) {
     return;
   }
   pacer->resync();
 }
 
-auto frame_pacer_period_ns(const FramePacer_t* pacer) -> int64_t {
+auto frame_pacer_period_ns(const FramePacer* pacer) -> int64_t {
   if (pacer == nullptr) {
-    return k_fallback_period_ns;
+    return fallback_period_ns;
   }
   return pacer->frame_period_ns();
 }

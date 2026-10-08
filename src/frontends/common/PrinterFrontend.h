@@ -5,7 +5,7 @@
 
 #include "apple2/peripherals/Peripheral_Internal.h"
 
-struct PrinterFrontendSettings_t {
+struct PrinterFrontendSettings {
   std::string filename;
   std::string base_dir;
   bool append;
@@ -13,8 +13,7 @@ struct PrinterFrontendSettings_t {
   int primary_slot;
 };
 
-auto printer_frontend_install(const PrinterFrontendSettings_t& settings)
-    -> void;
+auto printer_frontend_install(const PrinterFrontendSettings& settings) -> void;
 
 auto printer_frontend_sink() -> const ByteSink_t&;
 

@@ -17,9 +17,9 @@
 #include "core/Util_Text.h"
 #include "frontends/common/MouseFrontend.h"
 
-static constexpr const char* k_default_snapshot_name = "SaveState.aws";
+static constexpr const char* default_snapshot_name = "SaveState.aws";
 
-bool g_save_state_on_exit = false;
+bool save_state_on_exit = false;
 
 static std::array<char, path_max_len> s_save_state_filename{};
 
@@ -27,7 +27,7 @@ static auto resolve_snapshot_filename() -> const char* {
   if (s_save_state_filename[0] != '\0') {
     return s_save_state_filename.data();
   }
-  return k_default_snapshot_name;
+  return default_snapshot_name;
 }
 
 auto save_state_get_filename() -> const char* {
@@ -157,15 +157,15 @@ auto save_state_startup() -> void {
     return;
   }
 
-  if (g_save_state_on_exit && access(k_default_snapshot_name, F_OK) == 0) {
-    save_state_set_filename(k_default_snapshot_name);
+  if (save_state_on_exit && access(default_snapshot_name, F_OK) == 0) {
+    save_state_set_filename(default_snapshot_name);
     save_state_load();
   }
 }
 
 auto save_state_shutdown() -> void {
   static bool done = false;
-  if (done || !g_save_state_on_exit) {
+  if (done || !save_state_on_exit) {
     return;
   }
   done = true;

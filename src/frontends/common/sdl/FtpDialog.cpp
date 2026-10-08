@@ -20,21 +20,21 @@
 
 namespace {
 
-constexpr size_t k_ext_list_cap = 256;
+constexpr size_t ext_list_cap = 256;
 
-struct FtpGeneratorContext_t {
+struct FtpGeneratorContext {
   std::string directory;
   std::string filter_extensions;
   std::string failure_message;
 };
 
-auto ftp_gen_generate(FileListGenerator_t* self) -> FileList_t* {
+auto ftp_gen_generate(FileListGenerator* self) -> FileList* {
   if (self == nullptr || self->context == nullptr) {
     return nullptr;
   }
-  auto* ctx = static_cast<FtpGeneratorContext_t*>(self->context);
+  auto* ctx = static_cast<FtpGeneratorContext*>(self->context);
 
-  FileList_t* list = file_browser_create_list();
+  FileList* list = file_browser_create_list();
   if (list == nullptr) {
     return nullptr;
   }
@@ -60,7 +60,7 @@ auto ftp_gen_generate(FileListGenerator_t* self) -> FileList_t* {
   }
 
   if (ctx->directory != "ftp://" && ctx->directory != "ftp:///") {
-    FileEntry_t up_entry{};
+    FileEntry up_entry{};
     up_entry.name[0] = '\0';
     util_safe_strcpy(up_entry.name, "..", sizeof(up_entry.name));
     up_entry.type = FILE_ENTRY_UP;
@@ -74,7 +74,7 @@ auto ftp_gen_generate(FileListGenerator_t* self) -> FileList_t* {
       continue;
     }
 
-    FileEntry_t ui_entry{};
+    FileEntry ui_entry{};
     ui_entry.name[0] = '\0';
     util_safe_strcpy(ui_entry.name, safe_name.c_str(), sizeof(ui_entry.name));
 
@@ -101,22 +101,22 @@ auto ftp_gen_generate(FileListGenerator_t* self) -> FileList_t* {
 #endif
 }
 
-auto ftp_gen_get_start_msg(FileListGenerator_t* self) -> const char* {
+auto ftp_gen_get_start_msg(FileListGenerator* self) -> const char* {
   (void)self;
   return "Connecting to FTP server... Please wait.";
 }
 
-auto ftp_gen_get_fail_msg(FileListGenerator_t* self) -> const char* {
+auto ftp_gen_get_fail_msg(FileListGenerator* self) -> const char* {
   if (self == nullptr || self->context == nullptr) {
     return "(no info)";
   }
-  auto* ctx = static_cast<FtpGeneratorContext_t*>(self->context);
+  auto* ctx = static_cast<FtpGeneratorContext*>(self->context);
   return ctx->failure_message.c_str();
 }
 
-auto ftp_gen_destroy(FileListGenerator_t* self) -> void {
+auto ftp_gen_destroy(FileListGenerator* self) -> void {
   if (self != nullptr) {
-    delete static_cast<FtpGeneratorContext_t*>(self->context);
+    delete static_cast<FtpGeneratorContext*>(self->context);
     delete self;
   }
 }
@@ -125,17 +125,17 @@ auto ftp_gen_destroy(FileListGenerator_t* self) -> void {
 
 auto file_browser_create_ftp_generator(const char* directory,
                                        const char* filter_extensions)
-    -> FileListGenerator_t* {
+    -> FileListGenerator* {
   if (directory == nullptr) {
     return nullptr;
   }
 
-  auto* gen = new (std::nothrow) FileListGenerator_t();
+  auto* gen = new (std::nothrow) FileListGenerator();
   if (gen == nullptr) {
     return nullptr;
   }
 
-  auto* ctx = new (std::nothrow) FtpGeneratorContext_t();
+  auto* ctx = new (std::nothrow) FtpGeneratorContext();
   if (ctx == nullptr) {
     delete gen;
     return nullptr;
@@ -160,11 +160,11 @@ auto choose_an_image_ftp(int sx, int sy, const std::string& ftp_dir, int slot,
                          std::string& filename, bool& isdir, size_t& index_file)
     -> bool {
 #if ENABLE_FTP
-  char supported_exts[k_ext_list_cap] = {};
+  char supported_exts[ext_list_cap] = {};
   linapple_get_supported_disk_extensions(slot, supported_exts,
                                          sizeof(supported_exts));
 
-  FileListGenerator_t* generator =
+  FileListGenerator* generator =
       file_browser_create_ftp_generator(ftp_dir.c_str(), supported_exts);
   if (generator == nullptr) {
     return false;

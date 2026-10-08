@@ -66,12 +66,12 @@ const int SRCOFFS_HIRES = (SRCOFFS_LORES + 16);
 const int SRCOFFS_DHIRES = (SRCOFFS_HIRES + 512);
 const int SRCOFFS_TOTAL = (SRCOFFS_DHIRES + 2560);
 
-static inline auto soft_stretch_mono(VideoSurface_t* src, int src_x, int src_y,
-                                     int src_w, int src_h, VideoSurface_t* dst,
+static inline auto soft_stretch_mono(VideoSurface* src, int src_x, int src_y,
+                                     int src_w, int src_h, VideoSurface* dst,
                                      int dst_x, int dst_y, int dst_w, int dst_h,
                                      uint32_t brush) -> void {
-  VideoRect_t srcrect = {src_x, src_y, src_w, src_h};
-  VideoRect_t dstrect = {dst_x, dst_y, dst_w, dst_h};
+  VideoRect srcrect = {src_x, src_y, src_w, src_h};
+  VideoRect dstrect = {dst_x, dst_y, dst_w, dst_h};
   video_soft_stretch_mono8(src, &srcrect, dst, &dstrect, brush, 0);
 }
 
@@ -91,28 +91,28 @@ static uint8_t celldirty[text_columns][dirty_cell_rows] = {};
 static uint32_t customcolors[NUM_COLOR_PALETTE] =
     {};  // MONOCHROME is last custom color
 
-VideoSurface_t* g_device_bitmap;
+VideoSurface* g_device_bitmap;
 static uint8_t* framebufferbits;
-VideoColor_t framebufferinfo[max_palette_size] = {};
+VideoColor framebufferinfo[max_palette_size] = {};
 
-auto video_get_output_palette() -> VideoColor_t* { return framebufferinfo; }
+auto video_get_output_palette() -> VideoColor* { return framebufferinfo; }
 
 static uint8_t* frameoffsettable[video_height] = {};
 static uint8_t* g_hires_bank1;
 static uint8_t* g_hires_bank0;
 
-VideoSurface_t* g_logo_bitmap = nullptr;
-VideoSurface_t* charset40 = nullptr;
+VideoSurface* g_logo_bitmap = nullptr;
+VideoSurface* charset40 = nullptr;
 int multi_language_charset = false;
 
-VideoSurface_t* g_status_surface = nullptr;
+VideoSurface* g_status_surface = nullptr;
 int g_status_cycle = 0;
 
-VideoSurface_t* g_origscreen = nullptr;
-VideoSurface_t* g_source_bitmap = nullptr;
+VideoSurface* g_origscreen = nullptr;
+VideoSurface* g_source_bitmap = nullptr;
 
 static uint8_t* g_source_pixels;
-VideoColor_t g_source_header[max_palette_size] = {};
+VideoColor g_source_header[max_palette_size] = {};
 const int MAX_SOURCE_Y = 512 * 2;
 static uint8_t* g_source_start_of_line[MAX_SOURCE_Y] = {};
 static uint8_t* g_text_bank1;
@@ -194,9 +194,9 @@ auto draw_lores_source() -> void;
 auto draw_mono_dhires_source() -> void;
 auto draw_mono_hires_source() -> void;
 auto draw_mono_lores_source() -> void;
-auto draw_mono_text_source(VideoSurface_t* dc) -> void;
-auto draw_text_source(VideoSurface_t* dc) -> void;
-auto load_charset() -> VideoSurface_t*;
+auto draw_mono_text_source(VideoSurface* dc) -> void;
+auto draw_text_source(VideoSurface* dc) -> void;
+auto load_charset() -> VideoSurface*;
 
 auto video_init_worker() -> bool;
 
@@ -239,7 +239,7 @@ auto create_frame_offset_table(uint8_t* addr, int pitch) -> void {
 }
 
 auto create_identity_palette() -> void {
-  memset(framebufferinfo, 0, max_palette_size * sizeof(VideoColor_t));
+  memset(framebufferinfo, 0, max_palette_size * sizeof(VideoColor));
   set_frame_color(DEEP_RED, 0xD0, 0x00, 0x30);
   set_frame_color(LIGHT_BLUE, 0x60, 0xA0, 0xFF);
   set_frame_color(BROWN, 0x80, 0x50, 0x00);
@@ -305,7 +305,7 @@ auto video_init_buffers() -> void {
   const std::lock_guard<std::recursive_mutex> lock(g_video_draw_mutex);
 
   memcpy(g_source_header, framebufferinfo,
-         max_palette_size * sizeof(VideoColor_t));
+         max_palette_size * sizeof(VideoColor));
 
   if (g_device_bitmap) {
     video_destroy_surface(g_device_bitmap);
@@ -326,9 +326,9 @@ auto video_init_buffers() -> void {
 
   framebufferbits = g_device_bitmap->pixels;
   memcpy(g_device_bitmap->palette.data(), g_source_header,
-         max_palette_size * sizeof(VideoColor_t));
+         max_palette_size * sizeof(VideoColor));
   memcpy(g_origscreen->palette.data(), g_source_header,
-         max_palette_size * sizeof(VideoColor_t));
+         max_palette_size * sizeof(VideoColor));
 
   if (g_status_surface) {
     video_destroy_surface(g_status_surface);
@@ -339,9 +339,9 @@ auto video_init_buffers() -> void {
     return;
   }
   memcpy(g_status_surface->palette.data(), g_source_header,
-         max_palette_size * sizeof(VideoColor_t));
+         max_palette_size * sizeof(VideoColor));
 
-  VideoRect_t srect{};
+  VideoRect srect{};
   uint8_t mybluez = DARK_BLUE;
   uint8_t myyell = YELLOW;
 
@@ -376,7 +376,7 @@ auto video_init_buffers() -> void {
 
   g_source_pixels = g_source_bitmap->pixels;
   memcpy(g_source_bitmap->palette.data(), framebufferinfo,
-         256 * sizeof(VideoColor_t));
+         256 * sizeof(VideoColor));
 
   for (int y = 0; y < MAX_SOURCE_Y; y++) {
     g_source_start_of_line[y] =
@@ -796,7 +796,7 @@ auto draw_mono_lores_source() -> void {
   }
 }
 
-auto draw_mono_text_source(VideoSurface_t* hDstDC) -> void {
+auto draw_mono_text_source(VideoSurface* hDstDC) -> void {
   if (charset40 == nullptr) {
     return;
   }
@@ -848,7 +848,7 @@ auto draw_mono_text_source(VideoSurface_t* hDstDC) -> void {
   }
 }
 
-auto draw_text_source(VideoSurface_t* dc) -> void {
+auto draw_text_source(VideoSurface* dc) -> void {
   if (charset40 == nullptr) {
     return;
   }
@@ -1242,8 +1242,8 @@ auto update_dlores_cell(int x, int y, int xpixel, int ypixel, int offset)
   return false;
 }
 
-auto load_charset() -> VideoSurface_t* {
-  VideoSurface_t* result = nullptr;
+auto load_charset() -> VideoSurface* {
+  VideoSurface* result = nullptr;
 
   if ((current_apple2_type == A2TYPE_APPLE2) ||
       (current_apple2_type == A2TYPE_APPLE2PLUS) ||
@@ -1565,7 +1565,7 @@ auto video_destroy() -> void {
 }
 
 auto video_display_logo() -> void {
-  VideoRect_t drect{}, srect{};
+  VideoRect drect{}, srect{};
 
   if (!g_logo_bitmap) {
     return;
@@ -1690,8 +1690,8 @@ auto video_redraw_screen() -> void {
 }
 
 auto video_update_output_buffer() -> void {
-  VideoRect_t s = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
-  VideoSurface_t dst{};
+  VideoRect s = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
+  VideoSurface dst{};
   dst.pixels = reinterpret_cast<uint8_t*>(g_video_output);
   dst.w = SCREEN_WIDTH;
   dst.h = SCREEN_HEIGHT;
@@ -1707,8 +1707,8 @@ auto video_update_output_buffer() -> void {
 
   // If status panel is visible, overlay it
   if (g_status_cycle > 0 && g_show_leds && g_status_surface) {
-    VideoRect_t ss = {0, 0, STATUS_PANEL_W, STATUS_PANEL_H};
-    VideoRect_t ds = {
+    VideoRect ss = {0, 0, STATUS_PANEL_W, STATUS_PANEL_H};
+    VideoRect ds = {
         SCREEN_WIDTH - STATUS_PANEL_W - 5,
         SCREEN_HEIGHT - STATUS_PANEL_H - 5,
         STATUS_PANEL_W,

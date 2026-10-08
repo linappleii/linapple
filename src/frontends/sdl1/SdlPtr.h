@@ -7,10 +7,10 @@
 #include <memory>
 
 // Smart pointer deleters for SDL 1.2 resources.
-// Note: SdlSurfacePtr_t manages allocated surfaces (SDL_CreateRGBSurface,
+// Note: SdlSurfacePtr manages allocated surfaces (SDL_CreateRGBSurface,
 // SDL_LoadBMP), but must never be used with the screen surface from
 // SDL_SetVideoMode, which is managed directly by SDL.
-struct SdlSurfaceDeleter_t {
+struct SdlSurfaceDeleter {
   auto operator()(SDL_Surface* ptr) const noexcept -> void {
     if (ptr != nullptr) {
       SDL_FreeSurface(ptr);
@@ -18,7 +18,7 @@ struct SdlSurfaceDeleter_t {
   }
 };
 
-struct SdlJoystickDeleter_t {
+struct SdlJoystickDeleter {
   auto operator()(SDL_Joystick* ptr) const noexcept -> void {
     if (ptr != nullptr) {
       SDL_JoystickClose(ptr);
@@ -26,5 +26,5 @@ struct SdlJoystickDeleter_t {
   }
 };
 
-using SdlSurfacePtr_t = std::unique_ptr<SDL_Surface, SdlSurfaceDeleter_t>;
-using SdlJoystickPtr_t = std::unique_ptr<SDL_Joystick, SdlJoystickDeleter_t>;
+using SdlSurfacePtr = std::unique_ptr<SDL_Surface, SdlSurfaceDeleter>;
+using SdlJoystickPtr = std::unique_ptr<SDL_Joystick, SdlJoystickDeleter>;

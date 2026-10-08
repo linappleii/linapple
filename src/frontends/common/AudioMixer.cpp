@@ -16,24 +16,24 @@
 
 namespace {
 
-constexpr size_t k_max_audio_slots = 8;
-constexpr size_t k_max_channels_per_slot = 16;
-constexpr size_t k_mix_accumulator_samples = 4096;
+constexpr size_t max_audio_slots = 8;
+constexpr size_t max_channels_per_slot = 16;
+constexpr size_t mix_accumulator_samples = 4096;
 
 // Latency is defined in milliseconds so buffer duration is independent of
 // sample rate. The ring buffer holds interleaved stereo pairs, requiring two
 // samples per millisecond of audio.
-constexpr size_t k_mixer_capacity_ms = 185;
-constexpr size_t k_mixer_cushion_ms = 70;
+constexpr size_t mixer_capacity_ms = 185;
+constexpr size_t mixer_cushion_ms = 70;
 
-constexpr size_t k_resample_chunk_frames = 512;
+constexpr size_t resample_chunk_frames = 512;
 // Two extra frames of slack: a fractional step can complete an output frame
 // from the partial window left over by the previous chunk.
-constexpr size_t k_resample_scratch_frames = k_resample_chunk_frames + 2;
+constexpr size_t resample_scratch_frames = resample_chunk_frames + 2;
 
-static uint32_t g_output_rate_hz = 0;
-static size_t g_capacity_samples = 0;
-static size_t g_cushion_samples = 0;
+static uint32_t output_rate_hz = 0;
+static size_t capacity_samples = 0;
+static size_t cushion_samples = 0;
 
 // Symmetric rails: -1.0 and +1.0 map to -32767 and +32767, so a full-scale
 // signal stays symmetric instead of gaining a half-LSB bias from -32768.
@@ -50,15 +50,15 @@ static auto float_to_pcm16(float v) noexcept -> int16_t {
 
 // A float decaying toward zero lands in the denormal range, where arithmetic
 // is dramatically slower on some CPUs. Nothing audible lives this far down.
-constexpr float k_denormal_floor = 1e-20F;
+constexpr float denormal_floor = 1e-20F;
 
 static auto flush_denormal(float v) noexcept -> float {
-  return (v > -k_denormal_floor && v < k_denormal_floor) ? 0.0F : v;
+  return (v > -denormal_floor && v < denormal_floor) ? 0.0F : v;
 }
 
 // Normalized linear decay step toward 0 (approx 800 counts per frame at 16-bit
 // PCM scale).
-constexpr float k_fade_step = 800.0F / 32767.0F;
+constexpr float fade_step = 800.0F / 32767.0F;
 
 static inline auto decay_sample(float val, float step) noexcept -> float {
   if (val > 0.0F) {
@@ -73,7 +73,7 @@ static inline auto decay_sample(float val, float step) noexcept -> float {
 // Lock-free single-producer single-consumer (SPSC) ring buffer. The ring is
 // sized from the output rate, so it is allocated at initialize time and never
 // resized while the audio thread can see it.
-struct SampleBuffer_t {
+struct SampleBuffer {
   std::vector<float> buffer;
   std::atomic<size_t> read_index{0};
   std::atomic<size_t> write_index{0};
@@ -83,11 +83,11 @@ struct SampleBuffer_t {
   float last_right{0.0F};
 };
 
-static auto sample_buffer_reinit(SampleBuffer_t* sb) -> void {
+static auto sample_buffer_reinit(SampleBuffer* sb) -> void {
   if (sb == nullptr) {
     return;
   }
-  sb->buffer.assign(g_capacity_samples, 0.0F);
+  sb->buffer.assign(capacity_samples, 0.0F);
   sb->read_index.store(0, std::memory_order_relaxed);
   sb->write_index.store(0, std::memory_order_relaxed);
   sb->flush_gen.store(0, std::memory_order_relaxed);
@@ -96,14 +96,14 @@ static auto sample_buffer_reinit(SampleBuffer_t* sb) -> void {
   sb->last_right = 0.0F;
 }
 
-static auto sample_buffer_request_flush(SampleBuffer_t* sb) -> void {
+static auto sample_buffer_request_flush(SampleBuffer* sb) -> void {
   if (sb == nullptr) {
     return;
   }
   sb->flush_gen.fetch_add(1, std::memory_order_release);
 }
 
-static auto sample_buffer_check_flush(SampleBuffer_t* sb) -> void {
+static auto sample_buffer_check_flush(SampleBuffer* sb) -> void {
   if (sb == nullptr) {
     return;
   }
@@ -119,7 +119,7 @@ static auto sample_buffer_check_flush(SampleBuffer_t* sb) -> void {
   sb->last_right = 0.0F;
 }
 
-static auto sample_buffer_get_filled(const SampleBuffer_t* sb) -> size_t {
+static auto sample_buffer_get_filled(const SampleBuffer* sb) -> size_t {
   if (sb == nullptr || sb->buffer.empty()) {
     return 0;
   }
@@ -131,7 +131,7 @@ static auto sample_buffer_get_filled(const SampleBuffer_t* sb) -> size_t {
   return sb->buffer.size() + w - r;
 }
 
-static auto sample_buffer_get_free(const SampleBuffer_t* sb) -> size_t {
+static auto sample_buffer_get_free(const SampleBuffer* sb) -> size_t {
   if (sb == nullptr || sb->buffer.empty()) {
     return 0;
   }
@@ -142,7 +142,7 @@ static auto sample_buffer_get_free(const SampleBuffer_t* sb) -> size_t {
   return sb->buffer.size() - 1 - filled;
 }
 
-static auto sample_buffer_skip(SampleBuffer_t* sb, size_t len) -> void {
+static auto sample_buffer_skip(SampleBuffer* sb, size_t len) -> void {
   if (sb == nullptr) {
     return;
   }
@@ -157,8 +157,8 @@ static auto sample_buffer_skip(SampleBuffer_t* sb, size_t len) -> void {
                        std::memory_order_release);
 }
 
-static auto sample_buffer_upload(SampleBuffer_t* sb, const float* src,
-                                 size_t len) -> void {
+static auto sample_buffer_upload(SampleBuffer* sb, const float* src, size_t len)
+    -> void {
   if (sb == nullptr || src == nullptr || len == 0) {
     return;
   }
@@ -182,7 +182,7 @@ static auto sample_buffer_upload(SampleBuffer_t* sb, const float* src,
   }
 }
 
-static auto sample_buffer_drain_to(SampleBuffer_t* sb, float* dest, size_t len,
+static auto sample_buffer_drain_to(SampleBuffer* sb, float* dest, size_t len,
                                    bool mix) -> void {
   if (sb == nullptr || dest == nullptr || len == 0) {
     return;
@@ -224,8 +224,8 @@ static auto sample_buffer_drain_to(SampleBuffer_t* sb, float* dest, size_t len,
   if (num < len) {
     if (mix) {
       for (size_t i = num; i < len; i += 2) {
-        sb->last_left = decay_sample(sb->last_left, k_fade_step);
-        sb->last_right = decay_sample(sb->last_right, k_fade_step);
+        sb->last_left = decay_sample(sb->last_left, fade_step);
+        sb->last_right = decay_sample(sb->last_right, fade_step);
         dest[i] = flush_denormal(dest[i] + sb->last_left);
         if (i + 1 < len) {
           dest[i + 1] = flush_denormal(dest[i + 1] + sb->last_right);
@@ -233,8 +233,8 @@ static auto sample_buffer_drain_to(SampleBuffer_t* sb, float* dest, size_t len,
       }
     } else {
       for (size_t i = num; i < len; i += 2) {
-        sb->last_left = decay_sample(sb->last_left, k_fade_step);
-        sb->last_right = decay_sample(sb->last_right, k_fade_step);
+        sb->last_left = decay_sample(sb->last_left, fade_step);
+        sb->last_right = decay_sample(sb->last_right, fade_step);
         dest[i] = sb->last_left;
         if (i + 1 < len) {
           dest[i + 1] = sb->last_right;
@@ -244,16 +244,16 @@ static auto sample_buffer_drain_to(SampleBuffer_t* sb, float* dest, size_t len,
   }
 }
 
-struct ChannelPan_t {
+struct ChannelPan {
   float left{1.0F};
   float right{1.0F};
-  constexpr ChannelPan_t() = default;
-  constexpr ChannelPan_t(float l, float r) : left(l), right(r) {}
+  constexpr ChannelPan() = default;
+  constexpr ChannelPan(float l, float r) : left(l), right(r) {}
 };
 
 // Per-channel resampler state. An upload rarely ends on an output-frame
 // boundary, so the partial window has to survive between calls.
-struct ResamplerState_t {
+struct ResamplerState {
   double window_sum = 0.0;   // area accumulated into the frame in progress
   double window_span = 0.0;  // how much of that frame's window is covered
   double phase = 0.0;        // position between previous and current input
@@ -261,18 +261,18 @@ struct ResamplerState_t {
   bool primed = false;
 };
 
-struct AudioSourceSlot_t {
+struct AudioSourceSlot {
   // Read on the audio thread, written on the emulation thread.
   std::atomic<bool> active{false};
   PeripheralAudioInfo_t info{};
-  std::array<ChannelPan_t, k_max_channels_per_slot> pan{};
-  std::array<ResamplerState_t, k_max_channels_per_slot> resampler{};
+  std::array<ChannelPan, max_channels_per_slot> pan{};
+  std::array<ResamplerState, max_channels_per_slot> resampler{};
   float gain = 1.0F;
-  std::unique_ptr<SampleBuffer_t> buffer;
+  std::unique_ptr<SampleBuffer> buffer;
 };
 
-static std::array<AudioSourceSlot_t, k_max_audio_slots> g_slots;
-static AudioChannelTapCallback_t g_channel_tap_cb = nullptr;
+static std::array<AudioSourceSlot, max_audio_slots> mixer_slots;
+static AudioChannelTapCallback channel_tap_cb = nullptr;
 
 static auto source_rate_hz(const PeripheralAudioInfo_t& info) -> double {
   if (info.time_base == peripheral_audio_cpu_clocked) {
@@ -295,7 +295,7 @@ static auto default_source_gain(const PeripheralAudioInfo_t& info) -> float {
     return 1.0F;
   }
   const size_t channels =
-      std::min<size_t>(info.num_channels, k_max_channels_per_slot);
+      std::min<size_t>(info.num_channels, max_channels_per_slot);
   float left_sum = 0.0F;
   float right_sum = 0.0F;
   for (size_t c = 0; c < channels; ++c) {
@@ -306,7 +306,7 @@ static auto default_source_gain(const PeripheralAudioInfo_t& info) -> float {
   return 1.0F / (info.peak_magnitude * fan_in);
 }
 
-static auto resample_downsample(ResamplerState_t& state, double step,
+static auto resample_downsample(ResamplerState& state, double step,
                                 const float* in, size_t in_count, float* out,
                                 size_t out_capacity) -> size_t {
   size_t produced = 0;
@@ -328,7 +328,7 @@ static auto resample_downsample(ResamplerState_t& state, double step,
   return produced;
 }
 
-static auto resample_upsample(ResamplerState_t& state, double step,
+static auto resample_upsample(ResamplerState& state, double step,
                               const float* in, size_t in_count, float* out,
                               size_t out_capacity) -> size_t {
   size_t produced = 0;
@@ -355,7 +355,7 @@ static auto resample_upsample(ResamplerState_t& state, double step,
 // one-bit cone and a PSG, but both live behind this one function so the choice
 // can be upgraded without touching callers. An integer window or dropped
 // samples would alias audibly.
-static auto resample_channel(ResamplerState_t& state, double step,
+static auto resample_channel(ResamplerState& state, double step,
                              const float* in, size_t in_count, float* out,
                              size_t out_capacity) -> size_t {
   if (step >= 1.0) {
@@ -366,50 +366,50 @@ static auto resample_channel(ResamplerState_t& state, double step,
 
 }  // namespace
 
-auto audio_mixer_initialize(uint32_t output_rate_hz) -> void {
-  g_output_rate_hz = output_rate_hz;
-  if (output_rate_hz == 0) {
+auto audio_mixer_initialize(uint32_t output_rate_hz_val) -> void {
+  output_rate_hz = output_rate_hz_val;
+  if (output_rate_hz_val == 0) {
     Logger::error("Audio mixer initialized with a zero output rate\n");
-    g_capacity_samples = 0;
-    g_cushion_samples = 0;
+    capacity_samples = 0;
+    cushion_samples = 0;
   } else {
     // Two samples per frame, and several length computations round down to an
     // even count, so the capacity is even too.
-    g_capacity_samples =
-        (static_cast<size_t>(output_rate_hz) * k_mixer_capacity_ms / 1000 * 2) &
-        ~static_cast<size_t>(1);
-    g_cushion_samples =
-        static_cast<size_t>(output_rate_hz) * k_mixer_cushion_ms / 1000 * 2;
+    capacity_samples = (static_cast<size_t>(output_rate_hz_val) *
+                        mixer_capacity_ms / 1000 * 2) &
+                       ~static_cast<size_t>(1);
+    cushion_samples =
+        static_cast<size_t>(output_rate_hz_val) * mixer_cushion_ms / 1000 * 2;
   }
 
-  for (size_t i = 0; i < k_max_audio_slots; ++i) {
-    if (!g_slots[i].buffer) {
-      g_slots[i].buffer = std::unique_ptr<SampleBuffer_t>{new SampleBuffer_t{}};
+  for (size_t i = 0; i < max_audio_slots; ++i) {
+    if (!mixer_slots[i].buffer) {
+      mixer_slots[i].buffer = std::unique_ptr<SampleBuffer>{new SampleBuffer{}};
     }
-    sample_buffer_reinit(g_slots[i].buffer.get());
-    g_slots[i].active.store(false, std::memory_order_relaxed);
-    g_slots[i].info = PeripheralAudioInfo_t{};
-    g_slots[i].gain = 1.0F;
-    for (size_t c = 0; c < k_max_channels_per_slot; ++c) {
-      g_slots[i].pan[c] = {1.0F, 1.0F};
-      g_slots[i].resampler[c] = ResamplerState_t{};
+    sample_buffer_reinit(mixer_slots[i].buffer.get());
+    mixer_slots[i].active.store(false, std::memory_order_relaxed);
+    mixer_slots[i].info = PeripheralAudioInfo_t{};
+    mixer_slots[i].gain = 1.0F;
+    for (size_t c = 0; c < max_channels_per_slot; ++c) {
+      mixer_slots[i].pan[c] = {1.0F, 1.0F};
+      mixer_slots[i].resampler[c] = ResamplerState{};
     }
   }
 }
 
 auto audio_mixer_destroy() -> void {
-  for (auto& slot : g_slots) {
+  for (auto& slot : mixer_slots) {
     slot.buffer.reset();
     slot.active.store(false, std::memory_order_relaxed);
   }
-  g_channel_tap_cb = nullptr;
-  g_output_rate_hz = 0;
-  g_capacity_samples = 0;
-  g_cushion_samples = 0;
+  channel_tap_cb = nullptr;
+  output_rate_hz = 0;
+  capacity_samples = 0;
+  cushion_samples = 0;
 }
 
 auto audio_mixer_clear_buffers() -> void {
-  for (auto& slot : g_slots) {
+  for (auto& slot : mixer_slots) {
     if (slot.buffer) {
       sample_buffer_request_flush(slot.buffer.get());
     }
@@ -419,7 +419,7 @@ auto audio_mixer_clear_buffers() -> void {
 auto audio_mixer_register_source(int slot, const char* peripheral_id,
                                  const PeripheralAudioInfo_t* info) -> void {
   (void)peripheral_id;
-  if (slot < 0 || slot >= static_cast<int>(k_max_audio_slots) ||
+  if (slot < 0 || slot >= static_cast<int>(max_audio_slots) ||
       info == nullptr) {
     return;
   }
@@ -435,7 +435,7 @@ auto audio_mixer_register_source(int slot, const char* peripheral_id,
     return;
   }
 
-  auto& s = g_slots[static_cast<size_t>(slot)];
+  auto& s = mixer_slots[static_cast<size_t>(slot)];
 
   // A peripheral re-announcing an unchanged layout must not flush audio or
   // clobber a user pan or gain override. info is written only on the emulation
@@ -449,11 +449,11 @@ auto audio_mixer_register_source(int slot, const char* peripheral_id,
   s.info = *info;
   s.gain = default_source_gain(s.info);
   for (auto& state : s.resampler) {
-    state = ResamplerState_t{};
+    state = ResamplerState{};
   }
   // Pan assignments made against the old channel count are meaningless, so a
   // genuine layout change resets them.
-  for (size_t c = 0; c < k_max_channels_per_slot; ++c) {
+  for (size_t c = 0; c < max_channels_per_slot; ++c) {
     if (c < s.info.num_channels) {
       s.pan[c].left = s.info.channels[c].default_pan_left;
       s.pan[c].right = s.info.channels[c].default_pan_right;
@@ -462,7 +462,7 @@ auto audio_mixer_register_source(int slot, const char* peripheral_id,
     }
   }
   if (!s.buffer) {
-    s.buffer = std::unique_ptr<SampleBuffer_t>{new SampleBuffer_t{}};
+    s.buffer = std::unique_ptr<SampleBuffer>{new SampleBuffer{}};
   }
   if (reconfiguring) {
     // The audio thread owns read_index once the slot is live, so ask it to
@@ -475,10 +475,10 @@ auto audio_mixer_register_source(int slot, const char* peripheral_id,
 }
 
 auto audio_mixer_unregister_source(int slot) -> void {
-  if (slot < 0 || slot >= static_cast<int>(k_max_audio_slots)) {
+  if (slot < 0 || slot >= static_cast<int>(max_audio_slots)) {
     return;
   }
-  auto& s = g_slots[static_cast<size_t>(slot)];
+  auto& s = mixer_slots[static_cast<size_t>(slot)];
   s.active.store(false, std::memory_order_release);
   if (s.buffer) {
     sample_buffer_reinit(s.buffer.get());
@@ -490,8 +490,8 @@ auto audio_mixer_upload_channels(const char* peripheral_id, int slot,
                                  size_t num_channels, uint32_t num_samples)
     -> void {
   if (channels == nullptr || num_channels == 0 ||
-      num_channels > k_max_channels_per_slot || num_samples == 0 || slot < 0 ||
-      slot >= static_cast<int>(k_max_audio_slots)) {
+      num_channels > max_channels_per_slot || num_samples == 0 || slot < 0 ||
+      slot >= static_cast<int>(max_audio_slots)) {
     return;
   }
   for (size_t c = 0; c < num_channels; ++c) {
@@ -502,20 +502,20 @@ auto audio_mixer_upload_channels(const char* peripheral_id, int slot,
 
   // The tap sits ahead of gain, resampling and the output clip on purpose: it
   // is there to observe what the peripheral actually emitted.
-  if (g_channel_tap_cb != nullptr) {
-    g_channel_tap_cb(peripheral_id, slot, channels, num_channels, num_samples);
+  if (channel_tap_cb != nullptr) {
+    channel_tap_cb(peripheral_id, slot, channels, num_channels, num_samples);
   }
 
-  auto& s = g_slots[static_cast<size_t>(slot)];
+  auto& s = mixer_slots[static_cast<size_t>(slot)];
   // An unannounced source has no declared time base, so there is no rate to
   // resample from and nothing honest to do with its samples.
   if (!s.buffer || !s.active.load(std::memory_order_relaxed) ||
-      g_output_rate_hz == 0) {
+      output_rate_hz == 0) {
     return;
   }
 
   const double step =
-      source_rate_hz(s.info) / static_cast<double>(g_output_rate_hz);
+      source_rate_hz(s.info) / static_cast<double>(output_rate_hz);
   if (!(step > 0.0)) {
     return;
   }
@@ -524,13 +524,13 @@ auto audio_mixer_upload_channels(const char* peripheral_id, int slot,
   // which matters in the up-sampling direction where one input sample yields
   // several output frames.
   const size_t in_chunk = std::max<size_t>(
-      1, static_cast<size_t>(static_cast<double>(k_resample_chunk_frames) *
+      1, static_cast<size_t>(static_cast<double>(resample_chunk_frames) *
                              std::min(step, 1.0)));
 
   // Uploads only ever arrive on the emulation thread, so one scratch buffer
   // serves them all rather than putting 33 KB on the stack.
-  static std::array<std::array<float, k_resample_scratch_frames>,
-                    k_max_channels_per_slot>
+  static std::array<std::array<float, resample_scratch_frames>,
+                    max_channels_per_slot>
       resampled;
 
   size_t offset = 0;
@@ -542,10 +542,10 @@ auto audio_mixer_upload_channels(const char* peripheral_id, int slot,
     for (size_t c = 0; c < num_channels; ++c) {
       produced =
           resample_channel(s.resampler[c], step, channels[c] + offset, take,
-                           resampled[c].data(), k_resample_scratch_frames);
+                           resampled[c].data(), resample_scratch_frames);
     }
 
-    std::array<float, k_resample_scratch_frames * 2> stereo_chunk{};
+    std::array<float, resample_scratch_frames * 2> stereo_chunk{};
     for (size_t i = 0; i < produced; ++i) {
       float l_acc = 0.0F;
       float r_acc = 0.0F;
@@ -565,18 +565,18 @@ auto audio_mixer_upload_channels(const char* peripheral_id, int slot,
 
 auto audio_mixer_set_channel_pan(int slot, size_t channel, float left,
                                  float right) -> void {
-  if (slot >= 0 && slot < static_cast<int>(k_max_audio_slots) &&
-      channel < k_max_channels_per_slot) {
-    g_slots[static_cast<size_t>(slot)].pan[channel].left = left;
-    g_slots[static_cast<size_t>(slot)].pan[channel].right = right;
+  if (slot >= 0 && slot < static_cast<int>(max_audio_slots) &&
+      channel < max_channels_per_slot) {
+    mixer_slots[static_cast<size_t>(slot)].pan[channel].left = left;
+    mixer_slots[static_cast<size_t>(slot)].pan[channel].right = right;
   }
 }
 
 auto audio_mixer_get_channel_pan(int slot, size_t channel, float* left,
                                  float* right) -> void {
-  if (slot >= 0 && slot < static_cast<int>(k_max_audio_slots) &&
-      channel < k_max_channels_per_slot) {
-    const auto& s = g_slots[static_cast<size_t>(slot)];
+  if (slot >= 0 && slot < static_cast<int>(max_audio_slots) &&
+      channel < max_channels_per_slot) {
+    const auto& s = mixer_slots[static_cast<size_t>(slot)];
     if (left != nullptr) {
       *left = s.pan[channel].left;
     }
@@ -587,9 +587,9 @@ auto audio_mixer_get_channel_pan(int slot, size_t channel, float* left,
 }
 
 auto audio_mixer_reset_channel_pan(int slot) -> void {
-  if (slot >= 0 && slot < static_cast<int>(k_max_audio_slots)) {
-    auto& s = g_slots[static_cast<size_t>(slot)];
-    for (size_t c = 0; c < k_max_channels_per_slot; ++c) {
+  if (slot >= 0 && slot < static_cast<int>(max_audio_slots)) {
+    auto& s = mixer_slots[static_cast<size_t>(slot)];
+    for (size_t c = 0; c < max_channels_per_slot; ++c) {
       if (c < s.info.num_channels) {
         s.pan[c].left = s.info.channels[c].default_pan_left;
         s.pan[c].right = s.info.channels[c].default_pan_right;
@@ -601,20 +601,19 @@ auto audio_mixer_reset_channel_pan(int slot) -> void {
 }
 
 auto audio_mixer_set_source_gain(int slot, float gain) -> void {
-  if (slot >= 0 && slot < static_cast<int>(k_max_audio_slots)) {
-    g_slots[static_cast<size_t>(slot)].gain = gain;
+  if (slot >= 0 && slot < static_cast<int>(max_audio_slots)) {
+    mixer_slots[static_cast<size_t>(slot)].gain = gain;
   }
 }
 
-auto audio_mixer_set_channel_tap_callback(AudioChannelTapCallback_t cb)
-    -> void {
-  g_channel_tap_cb = cb;
+auto audio_mixer_set_channel_tap_callback(AudioChannelTapCallback cb) -> void {
+  channel_tap_cb = cb;
 }
 
-auto audio_mixer_set_fade(FadeType_t fade_type) -> void { (void)fade_type; }
+auto audio_mixer_set_fade(FadeType fade_type) -> void { (void)fade_type; }
 
 auto audio_mixer_get_samples(int16_t* out, size_t num_samples) -> void {
-  if (out == nullptr || num_samples == 0 || g_capacity_samples < 2) {
+  if (out == nullptr || num_samples == 0 || capacity_samples < 2) {
     if (out != nullptr && num_samples > 0) {
       std::memset(out, 0, num_samples * sizeof(int16_t));
     }
@@ -622,10 +621,10 @@ auto audio_mixer_get_samples(int16_t* out, size_t num_samples) -> void {
   }
 
   bool any_samples = false;
-  for (size_t slot = 0; slot < k_max_audio_slots; ++slot) {
-    if (g_slots[slot].active.load(std::memory_order_acquire) &&
-        g_slots[slot].buffer) {
-      if (sample_buffer_get_filled(g_slots[slot].buffer.get()) > 0) {
+  for (size_t slot = 0; slot < max_audio_slots; ++slot) {
+    if (mixer_slots[slot].active.load(std::memory_order_acquire) &&
+        mixer_slots[slot].buffer) {
+      if (sample_buffer_get_filled(mixer_slots[slot].buffer.get()) > 0) {
         any_samples = true;
         break;
       }
@@ -634,23 +633,23 @@ auto audio_mixer_get_samples(int16_t* out, size_t num_samples) -> void {
 
   if (!any_samples) {
     std::memset(out, 0, num_samples * sizeof(int16_t));
-    for (size_t slot = 0; slot < k_max_audio_slots; ++slot) {
-      if (g_slots[slot].buffer) {
-        g_slots[slot].buffer->last_left = 0.0F;
-        g_slots[slot].buffer->last_right = 0.0F;
+    for (size_t slot = 0; slot < max_audio_slots; ++slot) {
+      if (mixer_slots[slot].buffer) {
+        mixer_slots[slot].buffer->last_left = 0.0F;
+        mixer_slots[slot].buffer->last_right = 0.0F;
       }
     }
     return;
   }
 
   const size_t target_backlog =
-      std::min(num_samples + g_cushion_samples, g_capacity_samples - 2);
+      std::min(num_samples + cushion_samples, capacity_samples - 2);
 
-  for (size_t slot = 0; slot < k_max_audio_slots; ++slot) {
-    if (!g_slots[slot].active.load(std::memory_order_acquire)) {
+  for (size_t slot = 0; slot < max_audio_slots; ++slot) {
+    if (!mixer_slots[slot].active.load(std::memory_order_acquire)) {
       continue;
     }
-    auto* sb = g_slots[slot].buffer.get();
+    auto* sb = mixer_slots[slot].buffer.get();
     if (sb == nullptr) {
       continue;
     }
@@ -668,18 +667,18 @@ auto audio_mixer_get_samples(int16_t* out, size_t num_samples) -> void {
   // the conversion below is the only clip in the whole audio path. The
   // accumulator is chunked rather than sized to the request because it lives
   // on the audio thread, where allocating is not an option.
-  static std::array<float, k_mix_accumulator_samples> accumulator;
+  static std::array<float, mix_accumulator_samples> accumulator;
 
   size_t done = 0;
   while (done < num_samples) {
     const size_t chunk = std::min(num_samples - done, accumulator.size());
     std::fill_n(accumulator.begin(), chunk, 0.0F);
 
-    for (size_t slot = 0; slot < k_max_audio_slots; ++slot) {
-      if (!g_slots[slot].active.load(std::memory_order_acquire)) {
+    for (size_t slot = 0; slot < max_audio_slots; ++slot) {
+      if (!mixer_slots[slot].active.load(std::memory_order_acquire)) {
         continue;
       }
-      auto* sb = g_slots[slot].buffer.get();
+      auto* sb = mixer_slots[slot].buffer.get();
       if (sb == nullptr) {
         continue;
       }

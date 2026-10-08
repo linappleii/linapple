@@ -615,7 +615,7 @@ TEST_CASE(
           {"GetMachine", [](HostInterface_t* h) { h->GetMachine = nullptr; }},
           {"GetFrameCycles",
            [](HostInterface_t* h) { h->GetFrameCycles = nullptr; }},
-      };
+  };
   for (const auto& member : members) {
     CAPTURE(member.first);
     BenchHost_t bench;
@@ -1680,7 +1680,7 @@ TEST_CASE(
   CHECK_FALSE(linapple_get_rocker_switch());
   // The file's custom key 4 typed X; the host's table still knows nothing of
   // it, so A is A.
-  const KeyboardHostKey_t host_a = {4, 'a', false, false};
+  const KeyboardHostKey host_a = {4, 'a', false, false};
   uint8_t code = 0;
   REQUIRE(keyboard_translate(&host_a, &code));
   CHECK(code == 0x41);

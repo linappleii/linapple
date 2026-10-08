@@ -126,7 +126,7 @@ TEST_CASE("TuiDiskSelect: Navigation and Paging") {
   tui_disk_select_open(6, 0);
   REQUIRE(tui_disk_select_is_active());
 
-  const FileList_t* list = tui_disk_select_get_file_list();
+  const FileList* list = tui_disk_select_get_file_list();
   REQUIRE(list != nullptr);
 
   size_t count = file_browser_get_count(list);

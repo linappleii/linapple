@@ -40,9 +40,9 @@ auto fake_sleep_until(int64_t deadline_ns) -> void {
  * system_state and current_clk_6502 are process globals, and so is the fake
  * clock the pacer is handed, so every case goes through this.
  */
-class ScopedPacerWorld_t {
+class ScopedPacerWorld {
  public:
-  ScopedPacerWorld_t(uint32_t clks_per_frame, double clock_hz)
+  ScopedPacerWorld(uint32_t clks_per_frame, double clock_hz)
       : previous_cycles_(system_state.clks_per_frame),
         previous_clock_(current_clk_6502) {
     system_state.clks_per_frame = clks_per_frame;
@@ -51,17 +51,17 @@ class ScopedPacerWorld_t {
     g_sleeps.clear();
   }
 
-  ~ScopedPacerWorld_t() {
+  ~ScopedPacerWorld() {
     system_state.clks_per_frame = previous_cycles_;
     current_clk_6502 = previous_clock_;
     g_now_ns = 0;
     g_sleeps.clear();
   }
 
-  ScopedPacerWorld_t(const ScopedPacerWorld_t&) = delete;
-  auto operator=(const ScopedPacerWorld_t&) -> ScopedPacerWorld_t& = delete;
-  ScopedPacerWorld_t(ScopedPacerWorld_t&&) = delete;
-  auto operator=(ScopedPacerWorld_t&&) -> ScopedPacerWorld_t& = delete;
+  ScopedPacerWorld(const ScopedPacerWorld&) = delete;
+  auto operator=(const ScopedPacerWorld&) -> ScopedPacerWorld& = delete;
+  ScopedPacerWorld(ScopedPacerWorld&&) = delete;
+  auto operator=(ScopedPacerWorld&&) -> ScopedPacerWorld& = delete;
 
  private:
   uint32_t previous_cycles_;
@@ -75,22 +75,22 @@ TEST_CASE("Frame Pacer: The Period Comes From The Machine") {
   // the 16 ms that used to be hardcoded is short of NTSC by 0.69 ms, which is
   // four percent of the audio the device asks for.
   {
-    ScopedPacerWorld_t world(NTSC_FRAME_CYCLES, CLOCK_6502_NTSC);
-    FramePacer_t pacer(fake_now, fake_sleep_until);
+    ScopedPacerWorld world(NTSC_FRAME_CYCLES, CLOCK_6502_NTSC);
+    FramePacer pacer(fake_now, fake_sleep_until);
     CHECK(pacer.frame_period_ns() == NTSC_PERIOD_NS);
     CHECK(pacer.frame_period_ns() / 1000 == 16688);
   }
   {
-    ScopedPacerWorld_t world(PAL_FRAME_CYCLES, CLOCK_6502_PAL);
-    FramePacer_t pacer(fake_now, fake_sleep_until);
+    ScopedPacerWorld world(PAL_FRAME_CYCLES, CLOCK_6502_PAL);
+    FramePacer pacer(fake_now, fake_sleep_until);
     CHECK(pacer.frame_period_ns() == PAL_PERIOD_NS);
     CHECK(pacer.frame_period_ns() / 1000 == 20000);
   }
 }
 
 TEST_CASE("Frame Pacer: A Machine That Has Not Spoken Yet Still Paces") {
-  ScopedPacerWorld_t world(0, 0.0);
-  FramePacer_t pacer(fake_now, fake_sleep_until);
+  ScopedPacerWorld world(0, 0.0);
+  FramePacer pacer(fake_now, fake_sleep_until);
   CHECK(pacer.frame_period_ns() == 16688000);
 }
 
@@ -99,8 +99,8 @@ TEST_CASE("Frame Pacer: A Thousand Frames Accumulate Without Drift") {
   // round(period) would drift by the rounding every frame; against a deadline
   // the rounding cancels, so a thousand frames land exactly a thousand
   // periods later however the individual sleeps fall.
-  ScopedPacerWorld_t world(NTSC_FRAME_CYCLES, CLOCK_6502_NTSC);
-  FramePacer_t pacer(fake_now, fake_sleep_until);
+  ScopedPacerWorld world(NTSC_FRAME_CYCLES, CLOCK_6502_NTSC);
+  FramePacer pacer(fake_now, fake_sleep_until);
 
   constexpr int frames = 1000;
   const int64_t start = g_now_ns;
@@ -120,8 +120,8 @@ TEST_CASE("Frame Pacer: Work Inside The Frame Comes Out Of The Sleep") {
   // A frame that took eight milliseconds to emulate and draw sleeps for the
   // rest of the period, not for a whole one. This is what the flat
   // SDL_Delay(16) could not do: its period was the sleep plus the work.
-  ScopedPacerWorld_t world(NTSC_FRAME_CYCLES, CLOCK_6502_NTSC);
-  FramePacer_t pacer(fake_now, fake_sleep_until);
+  ScopedPacerWorld world(NTSC_FRAME_CYCLES, CLOCK_6502_NTSC);
+  FramePacer pacer(fake_now, fake_sleep_until);
 
   constexpr int64_t work_ns = 8000000;
   constexpr int frames = 100;
@@ -141,8 +141,8 @@ TEST_CASE("Frame Pacer: Work Inside The Frame Comes Out Of The Sleep") {
 TEST_CASE("Frame Pacer: A Frame Or Two Late Is Caught Up, Not Resynced") {
   // The deadline absorbs a hiccup by not sleeping until it has caught up,
   // which is how the average rate survives a slow frame.
-  ScopedPacerWorld_t world(NTSC_FRAME_CYCLES, CLOCK_6502_NTSC);
-  FramePacer_t pacer(fake_now, fake_sleep_until);
+  ScopedPacerWorld world(NTSC_FRAME_CYCLES, CLOCK_6502_NTSC);
+  FramePacer pacer(fake_now, fake_sleep_until);
 
   const int64_t start = g_now_ns;
   pacer.wait_for_next_frame();
@@ -162,8 +162,8 @@ TEST_CASE("Frame Pacer: A Frame Or Two Late Is Caught Up, Not Resynced") {
 TEST_CASE("Frame Pacer: Falling Far Behind Starts Again From Now") {
   // Past a few frames the backlog is not worth catching up: running the
   // emulation fast to make it up would raise the pitch of everything queued.
-  ScopedPacerWorld_t world(NTSC_FRAME_CYCLES, CLOCK_6502_NTSC);
-  FramePacer_t pacer(fake_now, fake_sleep_until);
+  ScopedPacerWorld world(NTSC_FRAME_CYCLES, CLOCK_6502_NTSC);
+  FramePacer pacer(fake_now, fake_sleep_until);
 
   pacer.wait_for_next_frame();
 
@@ -184,8 +184,8 @@ TEST_CASE("Frame Pacer: Falling Far Behind Starts Again From Now") {
 TEST_CASE("Frame Pacer: Resync Drops The Deadline") {
   // What turbo does on the way out: the accumulated deadline describes a
   // past that no longer applies, so the next frame starts a new grid.
-  ScopedPacerWorld_t world(NTSC_FRAME_CYCLES, CLOCK_6502_NTSC);
-  FramePacer_t pacer(fake_now, fake_sleep_until);
+  ScopedPacerWorld world(NTSC_FRAME_CYCLES, CLOCK_6502_NTSC);
+  FramePacer pacer(fake_now, fake_sleep_until);
 
   pacer.wait_for_next_frame();
   g_now_ns += 5 * NTSC_PERIOD_NS;
@@ -199,8 +199,8 @@ TEST_CASE("Frame Pacer: Resync Drops The Deadline") {
 TEST_CASE("Frame Pacer: A Machine Type Change Takes Effect Next Frame") {
   // The period is read every frame rather than captured, because switching
   // between NTSC and PAL changes it and the loop does not restart.
-  ScopedPacerWorld_t world(NTSC_FRAME_CYCLES, CLOCK_6502_NTSC);
-  FramePacer_t pacer(fake_now, fake_sleep_until);
+  ScopedPacerWorld world(NTSC_FRAME_CYCLES, CLOCK_6502_NTSC);
+  FramePacer pacer(fake_now, fake_sleep_until);
 
   pacer.wait_for_next_frame();
   const int64_t after_ntsc = g_now_ns;

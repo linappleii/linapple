@@ -5,8 +5,8 @@
 
 // Nanoseconds on a monotonic clock. Injected so the deadline arithmetic can
 // be tested without any real time passing.
-using FrameClockNowFn_t = int64_t (*)();
-using FrameClockSleepUntilFn_t = void (*)(int64_t deadline_ns);
+using FrameClockNowFn = int64_t (*)();
+using FrameClockSleepUntilFn = void (*)(int64_t deadline_ns);
 
 /**
  * @brief Holds the emulation loop to the machine's own frame time.
@@ -23,10 +23,10 @@ using FrameClockSleepUntilFn_t = void (*)(int64_t deadline_ns);
  * The period comes from the machine rather than a literal because the video
  * standard decides it: 16.688 ms at NTSC, 20.000 ms at PAL.
  */
-class FramePacer_t {
+class FramePacer {
  public:
-  FramePacer_t();
-  FramePacer_t(FrameClockNowFn_t now, FrameClockSleepUntilFn_t sleep_until);
+  FramePacer();
+  FramePacer(FrameClockNowFn now, FrameClockSleepUntilFn sleep_until);
 
   // One emulated frame of wall time, re-read every frame because a machine
   // type change moves it.
@@ -39,14 +39,14 @@ class FramePacer_t {
   auto resync() -> void;
 
  private:
-  FrameClockNowFn_t now_;
-  FrameClockSleepUntilFn_t sleep_until_;
+  FrameClockNowFn now_;
+  FrameClockSleepUntilFn sleep_until_;
   int64_t deadline_ns_ = 0;
   bool armed_ = false;
 };
 
-auto frame_pacer_init(FramePacer_t* pacer, FrameClockNowFn_t now = nullptr,
-                      FrameClockSleepUntilFn_t sleep_until = nullptr) -> void;
-auto frame_pacer_wait(FramePacer_t* pacer) -> void;
-auto frame_pacer_resync(FramePacer_t* pacer) -> void;
-auto frame_pacer_period_ns(const FramePacer_t* pacer) -> int64_t;
+auto frame_pacer_init(FramePacer* pacer, FrameClockNowFn now = nullptr,
+                      FrameClockSleepUntilFn sleep_until = nullptr) -> void;
+auto frame_pacer_wait(FramePacer* pacer) -> void;
+auto frame_pacer_resync(FramePacer* pacer) -> void;
+auto frame_pacer_period_ns(const FramePacer* pacer) -> int64_t;

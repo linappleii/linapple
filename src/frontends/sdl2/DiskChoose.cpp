@@ -33,15 +33,15 @@ using std::string;
 
 namespace {
 
-constexpr size_t k_files_in_screen = 21;
-constexpr uint32_t k_key_delay_ms = 25;
-constexpr size_t k_max_filename = 80;
-constexpr size_t k_normal_length = 60;
-constexpr int k_font_char_width = 8;
-constexpr int k_rect_width = 320;
-constexpr int k_rect_margin = 5;
+constexpr size_t files_in_screen = 21;
+constexpr uint32_t key_delay_ms = 25;
+constexpr size_t max_filename = 80;
+constexpr size_t normal_length = 60;
+constexpr int font_char_width = 8;
+constexpr int rect_width = 320;
+constexpr int rect_margin = 5;
 
-auto ensure_selection_visible(DiskChooseState_t& state,
+auto ensure_selection_visible(DiskChooseState& state,
                               size_t files_per_page) noexcept -> void {
   if (state.act_file < state.first_file) {
     state.first_file = state.act_file;
@@ -51,16 +51,16 @@ auto ensure_selection_visible(DiskChooseState_t& state,
 }
 
 auto disk_choose_cleanup() -> void {
-  g_diskChooseState.bg_screen.reset();
-  if (g_diskChooseState.list_handle != nullptr) {
-    file_browser_free_list(g_diskChooseState.list_handle);
-    g_diskChooseState.list_handle = nullptr;
+  g_disk_choose_state.bg_screen.reset();
+  if (g_disk_choose_state.list_handle != nullptr) {
+    file_browser_free_list(g_disk_choose_state.list_handle);
+    g_disk_choose_state.list_handle = nullptr;
   }
-  g_diskChooseState.index_file_out = nullptr;
+  g_disk_choose_state.index_file_out = nullptr;
 }
 
 auto wait_for_dismissal() -> void {
-  SDL_Delay(k_key_delay_ms);
+  SDL_Delay(key_delay_ms);
   SDL_Event event{};
   while (true) {
     while (SDL_PollEvent(&event) != 0) {
@@ -86,66 +86,67 @@ auto wait_for_dismissal() -> void {
 }
 
 auto prepare_dialog_background() -> bool {
-  VideoSurface_t* temp_surface =
+  VideoSurface* temp_surface =
       !g_window_resized
           ? ((system_state.mode == app_mode_logo) ? g_logo_bitmap
                                                   : g_device_bitmap)
           : g_origscreen;
 
-  ScopedSurfaceLock_t lock_screen(g_screen.get());
-  const VideoSurfaceView_t src_view =
+  ScopedSurfaceLock lock_screen(g_screen.get());
+  const VideoSurfaceView src_view =
       (temp_surface != nullptr) ? *temp_surface : lock_screen.view();
 
   if (src_view.w <= 0 || src_view.h <= 0) {
     return false;
   }
 
-  g_diskChooseState.bg_screen.reset(SDL_CreateRGBSurfaceWithFormat(
+  g_disk_choose_state.bg_screen.reset(SDL_CreateRGBSurfaceWithFormat(
       0, src_view.w, src_view.h, 32, SDL_PIXELFORMAT_ARGB8888));
-  if (g_diskChooseState.bg_screen == nullptr) {
+  if (g_disk_choose_state.bg_screen == nullptr) {
     return false;
   }
 
   {
-    ScopedSurfaceLock_t lock_bg(g_diskChooseState.bg_screen.get());
+    ScopedSurfaceLock lock_bg(g_disk_choose_state.bg_screen.get());
     video_soft_stretch(src_view, nullptr, lock_bg.view(), nullptr);
 
     const int blur_w = std::max(1, src_view.w / 16);
     const int blur_h = std::max(1, src_view.h / 16);
-    SdlSurfacePtr_t blur_temp(SDL_CreateRGBSurfaceWithFormat(
+    SdlSurfacePtr blur_temp(SDL_CreateRGBSurfaceWithFormat(
         0, blur_w, blur_h, 32, SDL_PIXELFORMAT_ARGB8888));
     if (blur_temp != nullptr) {
-      ScopedSurfaceLock_t lock_blur(blur_temp.get());
+      ScopedSurfaceLock lock_blur(blur_temp.get());
       video_soft_stretch(lock_bg.view(), nullptr, lock_blur.view(), nullptr);
       video_soft_stretch(lock_blur.view(), nullptr, lock_bg.view(), nullptr);
     }
   }
 
-  SdlSurfacePtr_t dim_surface(SDL_CreateRGBSurfaceWithFormat(
+  SdlSurfacePtr dim_surface(SDL_CreateRGBSurfaceWithFormat(
       0, src_view.w, src_view.h, 32, SDL_PIXELFORMAT_ARGB8888));
   if (dim_surface != nullptr) {
     const Uint32 dim_color = SDL_MapRGBA(dim_surface->format, 0, 0, 0, 160);
     SDL_FillRect(dim_surface.get(), nullptr, dim_color);
     SDL_SetSurfaceBlendMode(dim_surface.get(), SDL_BLENDMODE_BLEND);
     SDL_BlitSurface(dim_surface.get(), nullptr,
-                    g_diskChooseState.bg_screen.get(), nullptr);
+                    g_disk_choose_state.bg_screen.get(), nullptr);
   }
 
   return true;
 }
 }  // namespace
 
-DiskChooseState_t g_diskChooseState;
+DiskChooseState g_disk_choose_state;
 
 auto disk_choose_tick(SDL_Event* event) -> void {
-  if (event == nullptr || !g_diskChooseState.active ||
-      g_diskChooseState.list_handle == nullptr || event->type != SDL_KEYDOWN) {
+  if (event == nullptr || !g_disk_choose_state.active ||
+      g_disk_choose_state.list_handle == nullptr ||
+      event->type != SDL_KEYDOWN) {
     return;
   }
 
   const SDL_Keycode key = event->key.keysym.sym;
   const size_t list_count =
-      file_browser_get_count(g_diskChooseState.list_handle);
+      file_browser_get_count(g_disk_choose_state.list_handle);
   if (list_count == 0) {
     return;
   }
@@ -155,68 +156,68 @@ auto disk_choose_tick(SDL_Event* event) -> void {
   switch (key) {
     case SDLK_UP:
     case SDLK_LEFT:
-      if (g_diskChooseState.act_file > 0) {
-        --g_diskChooseState.act_file;
+      if (g_disk_choose_state.act_file > 0) {
+        --g_disk_choose_state.act_file;
         selection_changed = true;
       }
       break;
 
     case SDLK_DOWN:
     case SDLK_RIGHT:
-      if (g_diskChooseState.act_file + 1 < list_count) {
-        ++g_diskChooseState.act_file;
+      if (g_disk_choose_state.act_file + 1 < list_count) {
+        ++g_disk_choose_state.act_file;
         selection_changed = true;
       }
       break;
 
     case SDLK_PAGEUP:
-      g_diskChooseState.act_file =
-          (g_diskChooseState.act_file <= k_files_in_screen)
+      g_disk_choose_state.act_file =
+          (g_disk_choose_state.act_file <= files_in_screen)
               ? 0
-              : g_diskChooseState.act_file - k_files_in_screen;
+              : g_disk_choose_state.act_file - files_in_screen;
       selection_changed = true;
       break;
 
     case SDLK_PAGEDOWN:
-      g_diskChooseState.act_file = std::min(
-          g_diskChooseState.act_file + k_files_in_screen, list_count - 1);
+      g_disk_choose_state.act_file = std::min(
+          g_disk_choose_state.act_file + files_in_screen, list_count - 1);
       selection_changed = true;
       break;
 
     case SDLK_HOME:
-      g_diskChooseState.act_file = 0;
-      g_diskChooseState.first_file = 0;
+      g_disk_choose_state.act_file = 0;
+      g_disk_choose_state.first_file = 0;
       break;
 
     case SDLK_END:
-      g_diskChooseState.act_file = list_count - 1;
+      g_disk_choose_state.act_file = list_count - 1;
       selection_changed = true;
       break;
 
     case SDLK_RETURN: {
-      const FileEntry_t* file_entry = file_browser_get_entry(
-          g_diskChooseState.list_handle, g_diskChooseState.act_file);
+      const FileEntry* file_entry = file_browser_get_entry(
+          g_disk_choose_state.list_handle, g_disk_choose_state.act_file);
       if (file_entry == nullptr) {
         break;
       }
-      g_diskChooseState.result_filename = file_entry->name;
-      g_diskChooseState.result_isdir = file_entry_is_dir_type(file_entry);
-      if (g_diskChooseState.index_file_out != nullptr) {
-        *g_diskChooseState.index_file_out = g_diskChooseState.act_file;
+      g_disk_choose_state.result_filename = file_entry->name;
+      g_disk_choose_state.result_isdir = file_entry_is_dir_type(file_entry);
+      if (g_disk_choose_state.index_file_out != nullptr) {
+        *g_disk_choose_state.index_file_out = g_disk_choose_state.act_file;
       }
-      g_diskChooseState.finished = true;
-      g_diskChooseState.active = false;
+      g_disk_choose_state.finished = true;
+      g_disk_choose_state.active = false;
       break;
     }
 
     case SDLK_ESCAPE:
-      g_diskChooseState.active = false;
-      g_diskChooseState.cancelled = true;
+      g_disk_choose_state.active = false;
+      g_disk_choose_state.cancelled = true;
       break;
 
     case SDLK_F12: {
-      g_diskChooseState.active = false;
-      g_diskChooseState.cancelled = true;
+      g_disk_choose_state.active = false;
+      g_disk_choose_state.cancelled = true;
       system_state.mode = app_mode_exit;
       SDL_Event quit_event{};
       quit_event.type = SDL_QUIT;
@@ -231,15 +232,15 @@ auto disk_choose_tick(SDL_Event* event) -> void {
       const auto target_ch =
           static_cast<char>(std::toupper(static_cast<unsigned char>(key)));
       for (size_t i = 0; i < list_count; ++i) {
-        const FileEntry_t* entry =
-            file_browser_get_entry(g_diskChooseState.list_handle, i);
+        const FileEntry* entry =
+            file_browser_get_entry(g_disk_choose_state.list_handle, i);
         if (entry == nullptr || entry->name[0] == '\0') {
           continue;
         }
         const auto entry_ch = static_cast<char>(
             std::toupper(static_cast<unsigned char>(entry->name[0])));
         if (entry_ch == target_ch) {
-          g_diskChooseState.act_file = i;
+          g_disk_choose_state.act_file = i;
           selection_changed = true;
           break;
         }
@@ -249,12 +250,12 @@ auto disk_choose_tick(SDL_Event* event) -> void {
   }
 
   if (selection_changed) {
-    ensure_selection_visible(g_diskChooseState, k_files_in_screen);
+    ensure_selection_visible(g_disk_choose_state, files_in_screen);
   }
 }
 
 auto disk_choose_draw() -> void {
-  if (!g_diskChooseState.active || g_screen == nullptr ||
+  if (!g_disk_choose_state.active || g_screen == nullptr ||
       g_screen->format == nullptr) {
     return;
   }
@@ -267,17 +268,17 @@ auto disk_choose_draw() -> void {
   const int sx = static_cast<int>(system_state.screen_width);
 
   {
-    ScopedSurfaceLock_t lock_bg(g_diskChooseState.bg_screen.get());
-    ScopedSurfaceLock_t lock_screen(g_screen.get());
+    ScopedSurfaceLock lock_bg(g_disk_choose_state.bg_screen.get());
+    ScopedSurfaceLock lock_screen(g_screen.get());
 
     video_soft_stretch(lock_bg.view(), nullptr, lock_screen.view(), nullptr);
 
     font_print_centered(
         sx / 2, static_cast<int>(5 * facy),
-        g_diskChooseState.current_dir.substr(0, k_normal_length).c_str(),
+        g_disk_choose_state.current_dir.substr(0, normal_length).c_str(),
         lock_screen.view(), 1.5f * facx_f, 1.3f * facy_f);
 
-    const char* title = disk_browser_get_title(g_diskChooseState.slot);
+    const char* title = disk_browser_get_title(g_disk_choose_state.slot);
     if (title[0] != '\0') {
       font_print_centered(sx / 2, static_cast<int>(20 * facy), title,
                           lock_screen.view(), 1.0f * facx_f, 1.0f * facy_f);
@@ -289,19 +290,19 @@ auto disk_choose_draw() -> void {
 
     const int top_y = static_cast<int>(45 * facy);
     const size_t list_count =
-        g_diskChooseState.list_handle != nullptr
-            ? file_browser_get_count(g_diskChooseState.list_handle)
+        g_disk_choose_state.list_handle != nullptr
+            ? file_browser_get_count(g_disk_choose_state.list_handle)
             : 0;
 
     const Uint32 sel_color = SDL_MapRGB(g_screen->format, 64, 128, 190);
 
-    for (size_t j = 0; j < k_files_in_screen; ++j) {
-      const size_t i = g_diskChooseState.first_file + j;
+    for (size_t j = 0; j < files_in_screen; ++j) {
+      const size_t i = g_disk_choose_state.first_file + j;
       if (i >= list_count) {
         break;
       }
-      const FileEntry_t* file_entry =
-          file_browser_get_entry(g_diskChooseState.list_handle, i);
+      const FileEntry* file_entry =
+          file_browser_get_entry(g_disk_choose_state.list_handle, i);
       if (file_entry == nullptr) {
         continue;
       }
@@ -310,12 +311,12 @@ auto disk_choose_draw() -> void {
       const int item_y = static_cast<int>(static_cast<double>(top_y) +
                                           static_cast<double>(j) * 15.0 * facy);
 
-      if (i == g_diskChooseState.act_file) {
+      if (i == g_disk_choose_state.act_file) {
         const int rx = 2;
         const int ry = item_y - 1;
-        const auto display_len = std::min(file_name.size(), k_max_filename);
+        const auto display_len = std::min(file_name.size(), max_filename);
         const int rw = static_cast<int>(
-            static_cast<double>(display_len * k_font_char_width) *
+            static_cast<double>(display_len * font_char_width) *
             static_cast<double>(facx_f));
         const int rh = static_cast<int>(9.0 * facy);
         fill_rectangle(lock_screen.view(), rx, ry, rw, rh, sel_color);
@@ -325,18 +326,18 @@ auto disk_choose_draw() -> void {
       file_entry_format_type_or_size(file_entry, type_size_str.data(),
                                      type_size_str.size());
 
-      font_print(4, item_y, file_name.substr(0, k_max_filename).c_str(),
+      font_print(4, item_y, file_name.substr(0, max_filename).c_str(),
                  lock_screen.view(), 1.0f * facx_f, 1.0f * facy_f);
       font_print_right(sx - static_cast<int>(8.0 * static_cast<double>(facx_f)),
                        item_y, type_size_str.data(), lock_screen.view(),
                        1.0f * facx_f, 1.0f * facy_f);
     }
 
-    rectangle(lock_screen.view(), 0, top_y - k_rect_margin, sx - 1,
-              static_cast<int>(k_rect_width * facy), RGB(255, 255, 255));
+    rectangle(lock_screen.view(), 0, top_y - rect_margin, sx - 1,
+              static_cast<int>(rect_width * facy), RGB(255, 255, 255));
     rectangle(lock_screen.view(),
               static_cast<int>(480.0 * static_cast<double>(facx_f)),
-              top_y - k_rect_margin, 0, static_cast<int>(k_rect_width * facy),
+              top_y - rect_margin, 0, static_cast<int>(rect_width * facy),
               RGB(255, 255, 255));
   }
 
@@ -344,7 +345,7 @@ auto disk_choose_draw() -> void {
 }
 
 auto choose_image_dialog(int screen_w, int screen_h, const string& dir,
-                         int slot, FileListGenerator_t* file_list_generator,
+                         int slot, FileListGenerator* file_list_generator,
                          std::string& filename, bool& isdir, size_t& index_file)
     -> bool {
   (void)screen_h;
@@ -367,13 +368,13 @@ auto choose_image_dialog(int screen_w, int screen_h, const string& dir,
 
   {
     const std::lock_guard<std::recursive_mutex> lock(g_video_draw_mutex);
-    ScopedSurfaceLock_t lock_bg(g_diskChooseState.bg_screen.get());
-    ScopedSurfaceLock_t lock_screen(g_screen.get());
+    ScopedSurfaceLock lock_bg(g_disk_choose_state.bg_screen.get());
+    ScopedSurfaceLock lock_screen(g_screen.get());
 
     video_soft_stretch(lock_bg.view(), nullptr, lock_screen.view(), nullptr);
 
     font_print_centered(screen_w / 2, static_cast<int>(5 * facy),
-                        dir.substr(0, k_normal_length).c_str(),
+                        dir.substr(0, normal_length).c_str(),
                         lock_screen.view(), 1.5 * facx, 1.3 * facy);
     font_print_centered(
         screen_w / 2, static_cast<int>(20 * facy),
@@ -382,16 +383,16 @@ auto choose_image_dialog(int screen_w, int screen_h, const string& dir,
     frame_refresh();
   }
 
-  g_diskChooseState.list_handle =
+  g_disk_choose_state.list_handle =
       file_list_generator->generate_file_list(file_list_generator);
-  if (g_diskChooseState.list_handle == nullptr ||
-      file_browser_get_count(g_diskChooseState.list_handle) < 1) {
+  if (g_disk_choose_state.list_handle == nullptr ||
+      file_browser_get_count(g_disk_choose_state.list_handle) < 1) {
     std::printf("%s\n",
                 file_list_generator->get_failure_message(file_list_generator));
 
     {
       const std::lock_guard<std::recursive_mutex> lock(g_video_draw_mutex);
-      ScopedSurfaceLock_t lock_screen(g_screen.get());
+      ScopedSurfaceLock lock_screen(g_screen.get());
       font_print_centered(screen_w / 2, static_cast<int>(30 * facy),
                           "Failure. Press any key!", lock_screen.view(),
                           1.4 * facx, 1.1 * facy);
@@ -403,27 +404,27 @@ auto choose_image_dialog(int screen_w, int screen_h, const string& dir,
     return false;
   }
 
-  g_diskChooseState.slot = slot;
-  g_diskChooseState.current_dir = dir;
-  g_diskChooseState.act_file = index_file;
-  if (g_diskChooseState.act_file >=
-      file_browser_get_count(g_diskChooseState.list_handle)) {
-    g_diskChooseState.act_file = 0;
+  g_disk_choose_state.slot = slot;
+  g_disk_choose_state.current_dir = dir;
+  g_disk_choose_state.act_file = index_file;
+  if (g_disk_choose_state.act_file >=
+      file_browser_get_count(g_disk_choose_state.list_handle)) {
+    g_disk_choose_state.act_file = 0;
   }
-  g_diskChooseState.first_file =
-      (g_diskChooseState.act_file > static_cast<size_t>(k_files_in_screen / 2))
-          ? g_diskChooseState.act_file -
-                static_cast<size_t>(k_files_in_screen / 2)
+  g_disk_choose_state.first_file =
+      (g_disk_choose_state.act_file > static_cast<size_t>(files_in_screen / 2))
+          ? g_disk_choose_state.act_file -
+                static_cast<size_t>(files_in_screen / 2)
           : 0;
-  g_diskChooseState.active = true;
-  g_diskChooseState.finished = false;
-  g_diskChooseState.cancelled = false;
-  g_diskChooseState.index_file_out = &index_file;
+  g_disk_choose_state.active = true;
+  g_disk_choose_state.finished = false;
+  g_disk_choose_state.cancelled = false;
+  g_disk_choose_state.index_file_out = &index_file;
 
   const AppMode old_mode = system_state.mode;
   system_state.mode = app_mode_disk_choose;
 
-  while (g_diskChooseState.active) {
+  while (g_disk_choose_state.active) {
     SDL_Event event{};
     while (SDL_PollEvent(&event) != 0) {
       if (event.type == SDL_QUIT ||
@@ -431,8 +432,8 @@ auto choose_image_dialog(int screen_w, int screen_h, const string& dir,
            event.window.event == SDL_WINDOWEVENT_CLOSE)) {
         SDL_PushEvent(&event);
         system_state.mode = app_mode_exit;
-        g_diskChooseState.active = false;
-        g_diskChooseState.cancelled = true;
+        g_disk_choose_state.active = false;
+        g_disk_choose_state.cancelled = true;
         break;
       }
       disk_choose_tick(&event);
@@ -449,9 +450,9 @@ auto choose_image_dialog(int screen_w, int screen_h, const string& dir,
   }
   disk_choose_cleanup();
 
-  if (g_diskChooseState.finished) {
-    filename = g_diskChooseState.result_filename;
-    isdir = g_diskChooseState.result_isdir;
+  if (g_disk_choose_state.finished) {
+    filename = g_disk_choose_state.result_filename;
+    isdir = g_disk_choose_state.result_isdir;
     return true;
   }
 
@@ -466,7 +467,7 @@ auto choose_an_image(int screen_w, int screen_h,
   linapple_get_supported_disk_extensions(slot, supported_exts.data(),
                                          supported_exts.size());
 
-  FileListGenerator_t* generator = file_browser_create_local_generator(
+  FileListGenerator* generator = file_browser_create_local_generator(
       incoming_dir.c_str(), supported_exts.data());
   if (generator == nullptr) {
     return false;

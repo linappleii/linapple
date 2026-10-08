@@ -13,8 +13,8 @@
 
 #include "frontends/sdl1/SdlPtr.h"
 
-using SdlKeycode_t = SDLKey;
-using SdlKeymod_t = SDLMod;
+using SdlKeycode = SDLKey;
+using SdlKeymod = SDLMod;
 
 constexpr auto SDL_COMPAT_QUIT = SDL_QUIT;
 
@@ -40,13 +40,13 @@ constexpr auto SDL_COMPAT_KMOD_ALT = KMOD_ALT;
 constexpr auto SDL_COMPAT_KMOD_GUI = KMOD_META;
 
 inline auto sdl_compat_get_key_from_event(const SDL_Event& event)
-    -> SdlKeycode_t {
+    -> SdlKeycode {
   return event.key.keysym.sym;
 }
 
 inline auto sdl_compat_get_ticks() -> uint32_t { return SDL_GetTicks(); }
 
-inline auto sdl_compat_get_mod_state() -> SdlKeymod_t {
+inline auto sdl_compat_get_mod_state() -> SdlKeymod {
   return SDL_GetModState();
 }
 
@@ -58,8 +58,8 @@ inline auto sdl_compat_set_window_title(const char* title) -> void {
 
 inline auto sdl_compat_num_joysticks() -> int { return SDL_NumJoysticks(); }
 
-inline auto sdl_compat_open_joystick(int index) -> SdlJoystickPtr_t {
-  return SdlJoystickPtr_t(SDL_JoystickOpen(index));
+inline auto sdl_compat_open_joystick(int index) -> SdlJoystickPtr {
+  return SdlJoystickPtr(SDL_JoystickOpen(index));
 }
 
 inline auto sdl_compat_update_joysticks() -> void { SDL_JoystickUpdate(); }

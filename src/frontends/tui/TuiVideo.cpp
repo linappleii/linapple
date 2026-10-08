@@ -34,8 +34,8 @@ namespace {
 
 static int g_term_width = 0;
 static int g_term_height = 0;
-static std::vector<TuiState_t> g_back_buffer;
-static std::vector<TuiState_t> g_next_buffer;
+static std::vector<TuiState> g_back_buffer;
+static std::vector<TuiState> g_next_buffer;
 static std::vector<char> g_output_buffer;
 static uint32_t g_frame_count = 0;
 
@@ -58,7 +58,7 @@ static TuiRenderMode g_render_mode = TUI_RENDER_SMART;
 static bool g_show_help = false;
 static bool g_fullscreen = false;
 
-static MousePictureRect_t g_picture_box{};
+static MousePictureRect g_picture_box{};
 static bool g_picture_box_drawn = false;
 
 static auto record_picture_box(int x, int y, int w, int h) -> void {
@@ -68,7 +68,7 @@ static auto record_picture_box(int x, int y, int w, int h) -> void {
 
 }  // namespace
 
-auto tui_video_picture_box() -> MousePictureRect_t {
+auto tui_video_picture_box() -> MousePictureRect {
   if (g_picture_box_drawn) {
     return g_picture_box;
   }
@@ -99,9 +99,11 @@ auto tui_video_toggle_fullscreen() -> void {
 
 auto tui_video_is_fullscreen() -> bool { return g_fullscreen; }
 
-static auto set_glyph(TuiState_t& state, const char* str) -> void {
+static auto set_glyph(TuiState& state, const char* str) -> void {
   state.glyph.fill(0);
-  if (str == nullptr) return;
+  if (str == nullptr) {
+    return;
+  }
   for (size_t i = 0; i < state.glyph.size() - 1 && str[i] != '\0'; ++i) {
     state.glyph.at(i) = static_cast<uint8_t>(str[i]);
   }
@@ -112,18 +114,18 @@ static auto render_help_overlay() -> void {
   constexpr int box_w = box_inner_w + 2;
 
   // Features not supported in the TUI are excluded from the help overlay.
-  constexpr std::array<HelpFeature_t, 2> excluded = {
-      {HelpFeature_t::numpad_speed, HelpFeature_t::mouse_capture}};
+  constexpr std::array<HelpFeature, 2> excluded = {
+      {HelpFeature::numpad_speed, HelpFeature::mouse_capture}};
 
   const bool compact = (g_term_height < 28);
   std::vector<const char*> visible_body_lines;
-  visible_body_lines.reserve(HELP_BODY_LINES.size());
-  for (const HelpLine_t& line : HELP_BODY_LINES) {
-    if (compact && line.feature == HelpFeature_t::separator) {
+  visible_body_lines.reserve(help_body_lines.size());
+  for (const HelpLine& line : help_body_lines) {
+    if (compact && line.feature == HelpFeature::separator) {
       continue;
     }
     bool skip = false;
-    for (HelpFeature_t ex : excluded) {
+    for (HelpFeature ex : excluded) {
       if (line.feature == ex) {
         skip = true;
         break;
@@ -136,7 +138,7 @@ static auto render_help_overlay() -> void {
   }
 
   const int box_h =
-      static_cast<int>(HELP_HEADER_STRINGS.size() + visible_body_lines.size()) +
+      static_cast<int>(help_header_strings.size() + visible_body_lines.size()) +
       3;
 
   if (g_term_width < box_w || g_term_height < 20) {
@@ -147,11 +149,11 @@ static auto render_help_overlay() -> void {
   const int start_y =
       (g_term_height > box_h) ? (g_term_height - 1 - box_h) / 2 : 0;
 
-  const TuiPixel_t header_border = {255, 255, 0};  // Yellow header box
-  const TuiPixel_t header_fg = {255, 255, 100};    // Bright Yellow text
-  const TuiPixel_t body_border = {255, 255, 255};  // White body box
-  const TuiPixel_t body_fg = {240, 240, 240};      // Soft White text
-  const TuiPixel_t modal_bg = {10, 15, 25};  // Dimmed Blue-Black background
+  const TuiPixel header_border = {255, 255, 0};  // Yellow header box
+  const TuiPixel header_fg = {255, 255, 100};    // Bright Yellow text
+  const TuiPixel body_border = {255, 255, 255};  // White body box
+  const TuiPixel body_fg = {240, 240, 240};      // Soft White text
+  const TuiPixel modal_bg = {10, 15, 25};        // Dimmed Blue-Black background
 
   {
     auto& tl =
@@ -175,9 +177,11 @@ static auto render_help_overlay() -> void {
     tr.bg = modal_bg;
   }
 
-  for (size_t row_idx = 0; row_idx < HELP_HEADER_STRINGS.size(); ++row_idx) {
+  for (size_t row_idx = 0; row_idx < help_header_strings.size(); ++row_idx) {
     int cur_y = start_y + 1 + static_cast<int>(row_idx);
-    if (cur_y >= g_term_height) break;
+    if (cur_y >= g_term_height) {
+      break;
+    }
 
     auto& left_border =
         g_next_buffer.at(static_cast<size_t>(cur_y * g_term_width + start_x));
@@ -185,7 +189,7 @@ static auto render_help_overlay() -> void {
     left_border.fg = header_border;
     left_border.bg = modal_bg;
 
-    const char* line = HELP_HEADER_STRINGS.at(row_idx);
+    const char* line = help_header_strings.at(row_idx);
     int line_len = static_cast<int>(strlen(line));
     int pad = (box_inner_w > line_len) ? (box_inner_w - line_len) : 0;
     int l_pad = pad / 2;
@@ -211,7 +215,7 @@ static auto render_help_overlay() -> void {
   }
 
   {
-    int div_y = start_y + 1 + static_cast<int>(HELP_HEADER_STRINGS.size());
+    int div_y = start_y + 1 + static_cast<int>(help_header_strings.size());
     if (div_y < g_term_height) {
       auto& div_l =
           g_next_buffer.at(static_cast<size_t>(div_y * g_term_width + start_x));
@@ -237,8 +241,10 @@ static auto render_help_overlay() -> void {
 
   for (size_t row_idx = 0; row_idx < visible_body_lines.size(); ++row_idx) {
     int cur_y =
-        start_y + 2 + static_cast<int>(HELP_HEADER_STRINGS.size() + row_idx);
-    if (cur_y >= g_term_height) break;
+        start_y + 2 + static_cast<int>(help_header_strings.size() + row_idx);
+    if (cur_y >= g_term_height) {
+      break;
+    }
 
     auto& left_border =
         g_next_buffer.at(static_cast<size_t>(cur_y * g_term_width + start_x));
@@ -296,7 +302,9 @@ static auto render_help_overlay() -> void {
 }
 
 static auto render_disk_select_overlay() -> void {
-  if (!tui_disk_select_is_active()) return;
+  if (!tui_disk_select_is_active()) {
+    return;
+  }
 
   const FileList_t* list = tui_disk_select_get_file_list();
   const size_t total_count = list ? file_browser_get_count(list) : 0;
@@ -310,34 +318,40 @@ static auto render_disk_select_overlay() -> void {
   if (box_inner_w > g_term_width - 4) {
     box_inner_w = g_term_width - 4;
   }
-  if (box_inner_w < 40) return;
+  if (box_inner_w < 40) {
+    return;
+  }
 
   const int box_w = box_inner_w + 2;
 
   int max_visible_rows = 14;
   if (g_term_height < 24) {
     max_visible_rows = g_term_height - 10;
-    if (max_visible_rows < 4) max_visible_rows = 4;
+    if (max_visible_rows < 4) {
+      max_visible_rows = 4;
+    }
   } else if (g_term_height > 30) {
     max_visible_rows = g_term_height - 12;
   }
 
   const int box_h = max_visible_rows + 8;
-  if (g_term_height < box_h) return;
+  if (g_term_height < box_h) {
+    return;
+  }
 
   const int start_x = (g_term_width - box_w) / 2;
   const int start_y =
       (g_term_height > box_h) ? (g_term_height - 1 - box_h) / 2 : 0;
 
-  const TuiPixel_t border_color = {255, 255, 0};  // Yellow border (SDL parity)
-  const TuiPixel_t header_fg = {255, 255, 100};   // Bright Yellow text
-  const TuiPixel_t hint_fg = {200, 200, 200};     // Soft white hint
-  const TuiPixel_t item_fg = {230, 230, 230};     // White item text
-  const TuiPixel_t dir_fg = {100, 220, 255};      // Cyan directory text
-  const TuiPixel_t sel_bg = {50, 90, 170};        // Blue selection background
-  const TuiPixel_t sel_fg = {255, 255, 255};      // Bright white selected text
-  const TuiPixel_t modal_bg = {10, 15, 25};       // Dimmed dark background
-  const TuiPixel_t size_fg = {180, 180, 180};     // Gray size info
+  const TuiPixel border_color = {255, 255, 0};  // Yellow border (SDL parity)
+  const TuiPixel header_fg = {255, 255, 100};   // Bright Yellow text
+  const TuiPixel hint_fg = {200, 200, 200};     // Soft white hint
+  const TuiPixel item_fg = {230, 230, 230};     // White item text
+  const TuiPixel dir_fg = {100, 220, 255};      // Cyan directory text
+  const TuiPixel sel_bg = {50, 90, 170};        // Blue selection background
+  const TuiPixel sel_fg = {255, 255, 255};      // Bright white selected text
+  const TuiPixel modal_bg = {10, 15, 25};       // Dimmed dark background
+  const TuiPixel size_fg = {180, 180, 180};     // Gray size info
 
   {
     auto& tl =
@@ -371,7 +385,9 @@ static auto render_disk_select_overlay() -> void {
 
   for (size_t row_idx = 0; row_idx < 3; ++row_idx) {
     int cur_y = start_y + 1 + static_cast<int>(row_idx);
-    if (cur_y >= g_term_height) break;
+    if (cur_y >= g_term_height) {
+      break;
+    }
 
     auto& lb =
         g_next_buffer.at(static_cast<size_t>(cur_y * g_term_width + start_x));
@@ -437,7 +453,9 @@ static auto render_disk_select_overlay() -> void {
 
   for (int row = 0; row < max_visible_rows; ++row) {
     int cur_y = start_y + 5 + row;
-    if (cur_y >= g_term_height) break;
+    if (cur_y >= g_term_height) {
+      break;
+    }
 
     auto& lb =
         g_next_buffer.at(static_cast<size_t>(cur_y * g_term_width + start_x));
@@ -446,9 +464,9 @@ static auto render_disk_select_overlay() -> void {
     lb.bg = modal_bg;
 
     size_t item_idx = first_vis + static_cast<size_t>(row);
-    const FileEntry_t* entry = (item_idx < total_count)
-                                   ? file_browser_get_entry(list, item_idx)
-                                   : nullptr;
+    const FileEntry* entry = (item_idx < total_count)
+                                 ? file_browser_get_entry(list, item_idx)
+                                 : nullptr;
     const bool is_selected = (entry != nullptr && item_idx == selected_idx);
 
     char size_str[32] = {};
@@ -463,8 +481,8 @@ static auto render_disk_select_overlay() -> void {
           name_str.substr(0, static_cast<size_t>(name_max_w - 3)) + "...";
     }
 
-    TuiPixel_t row_bg = is_selected ? sel_bg : modal_bg;
-    TuiPixel_t row_fg =
+    TuiPixel row_bg = is_selected ? sel_bg : modal_bg;
+    TuiPixel row_fg =
         is_selected
             ? sel_fg
             : (entry && file_entry_is_dir_type(entry) ? dir_fg : item_fg);
@@ -491,7 +509,9 @@ static auto render_disk_select_overlay() -> void {
             col_idx < right_pos + static_cast<int>(strlen(size_str))) {
           cell.glyph.at(0) =
               static_cast<uint8_t>(size_str[col_idx - right_pos]);
-          if (!is_selected) cell.fg = size_fg;
+          if (!is_selected) {
+            cell.fg = size_fg;
+          }
         } else {
           cell.glyph.at(0) = ' ';
         }
@@ -633,7 +653,7 @@ auto tui_video_on_resize() -> void {
     g_term_width = k_default_term_width;
     g_term_height = k_default_term_height;
   }
-  TuiState_t empty_cell{};
+  TuiState empty_cell{};
   empty_cell.glyph.fill(0);
   empty_cell.glyph.at(0) = ' ';
   empty_cell.fg = {0, 0, 0};
@@ -655,8 +675,8 @@ static auto get_text_addr(int row, int col) -> uint16_t {
   return row_offsets.at(static_cast<size_t>(row)) + static_cast<uint16_t>(col);
 }
 
-static auto get_text_fg_color() -> TuiPixel_t {
-  const VideoColor_t* pal = video_get_output_palette();
+static auto get_text_fg_color() -> TuiPixel {
+  const VideoColor* pal = video_get_output_palette();
   if (pal != nullptr) {
     switch (g_videotype) {
       case VT_MONO_AMBER:
@@ -680,7 +700,7 @@ static auto get_text_fg_color() -> TuiPixel_t {
 
 static auto render_text_cell(int r, int c, bool is_80col, uint16_t page_offset,
                              bool alt_charset, bool flash_on, int hw_cursor_x,
-                             int hw_cursor_y, TuiState_t& cell) -> void {
+                             int hw_cursor_y, TuiState& cell) -> void {
   uint8_t code = 0;
   if (is_80col) {
     if (c % 2 == 0) {
@@ -719,8 +739,8 @@ static auto render_text_cell(int r, int c, bool is_80col, uint16_t page_offset,
   cell.glyph.fill(0);
   cell.glyph.at(0) =
       (ascii < 32 || ascii > 126) ? ' ' : static_cast<uint8_t>(ascii);
-  TuiPixel_t text_color = get_text_fg_color();
-  TuiPixel_t a2_black = {0, 0, 0};
+  TuiPixel text_color = get_text_fg_color();
+  TuiPixel a2_black = {0, 0, 0};
   cell.fg = text_color;
   cell.bg = a2_black;
   if (attr == 2 || (attr == 3 && !flash_on)) {
@@ -739,7 +759,7 @@ static auto render_text_cell(int r, int c, bool is_80col, uint16_t page_offset,
 
 static auto render_gfx_cell(const uint32_t* pixels, int pitch, int width,
                             int sample_height, int x, int y, int gfx_w,
-                            int gfx_h, TuiState_t& cell) -> void {
+                            int gfx_h, TuiState& cell) -> void {
   if (pixels == nullptr || pitch <= 0) {
     return;
   }
@@ -768,7 +788,7 @@ static auto render_gfx_cell(const uint32_t* pixels, int pitch, int width,
 
 #if ENABLE_DEBUGGER
 static auto render_debugger_text_screen() -> void {
-  const VideoColor_t* pal = video_get_output_palette();
+  const VideoColor* pal = video_get_output_palette();
 
   constexpr int target_w = DEBUG_VIRTUAL_TEXT_WIDTH;
   constexpr int disasm_max_rows = 32;
@@ -780,7 +800,9 @@ static auto render_debugger_text_screen() -> void {
   }
 
   int off_x = (g_term_width - target_w) / 2;
-  if (off_x < 0) off_x = 0;
+  if (off_x < 0) {
+    off_x = 0;
+  }
 
   int console_rows = 4;
   if (avail_rows < 16) {
@@ -813,7 +835,9 @@ static auto render_debugger_text_screen() -> void {
 
     for (int c = 0; c < target_w; ++c) {
       int tx = off_x + c;
-      if (tx >= g_term_width) break;
+      if (tx >= g_term_width) {
+        break;
+      }
 
       char ch = ' ';
       ColorRef_t fg_raw = WHITE;
@@ -825,7 +849,7 @@ static auto render_debugger_text_screen() -> void {
         bg_raw = g_debugger_virtual_text_screen_bg[src_r][c];
       }
 
-      TuiState_t& cell =
+      TuiState& cell =
           g_next_buffer.at(static_cast<size_t>(ty * g_term_width + tx));
       cell.glyph.fill(0);
       cell.glyph.at(0) =
@@ -879,7 +903,7 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
     avail_rows = g_term_height - 1;
   }
 
-  TuiPixel_t bg_letterbox = {10, 10, 10};
+  TuiPixel bg_letterbox = {10, 10, 10};
 
   for (auto& cell : g_next_buffer) {
     cell.glyph.fill(0);
@@ -897,18 +921,26 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
     int display_w = a2_w_cols;
     int off_x = (g_term_width - display_w) / 2;
     int off_y = (avail_rows - display_h) / 2;
-    if (off_x < 0) off_x = 0;
-    if (off_y < 0) off_y = 0;
+    if (off_x < 0) {
+      off_x = 0;
+    }
+    if (off_y < 0) {
+      off_y = 0;
+    }
     record_picture_box(off_x, off_y, display_w, display_h);
 
     for (int r = 0; r < display_h; ++r) {
       int ty = off_y + r;
-      if (ty >= avail_rows) break;
+      if (ty >= avail_rows) {
+        break;
+      }
       for (int c = 0; c < display_w; ++c) {
         int tx = off_x + c;
-        if (tx >= g_term_width) break;
+        if (tx >= g_term_width) {
+          break;
+        }
 
-        TuiState_t& cell =
+        TuiState& cell =
             g_next_buffer.at(static_cast<size_t>(ty * g_term_width + tx));
         render_text_cell(r, c, is_80col, page_offset, alt_charset, flash_on,
                          hw_cursor_x, hw_cursor_y, cell);
@@ -926,13 +958,19 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
 
     int total_display_h = gfx_h + mixed_text_lines;
     int off_y = (avail_rows - total_display_h) / 2;
-    if (off_y < 0) off_y = 0;
+    if (off_y < 0) {
+      off_y = 0;
+    }
 
     int gfx_off_x = (g_term_width - gfx_w) / 2;
-    if (gfx_off_x < 0) gfx_off_x = 0;
+    if (gfx_off_x < 0) {
+      gfx_off_x = 0;
+    }
 
     int text_off_x = (g_term_width - a2_w_cols) / 2;
-    if (text_off_x < 0) text_off_x = 0;
+    if (text_off_x < 0) {
+      text_off_x = 0;
+    }
     // The four text rows sit under the graphics box, so the picture is the
     // box's width by the whole screen's height.
     record_picture_box(gfx_off_x, off_y, gfx_w, total_display_h);
@@ -940,12 +978,16 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
     int gfx_sample_height = height * 20 / 24;
     for (int y = 0; y < gfx_h; ++y) {
       int ty = off_y + y;
-      if (ty >= avail_rows) break;
+      if (ty >= avail_rows) {
+        break;
+      }
       for (int x = 0; x < gfx_w; ++x) {
         int tx = gfx_off_x + x;
-        if (tx >= g_term_width) break;
+        if (tx >= g_term_width) {
+          break;
+        }
 
-        TuiState_t& cell =
+        TuiState& cell =
             g_next_buffer.at(static_cast<size_t>(ty * g_term_width + tx));
         render_gfx_cell(pixels, pitch, width, gfx_sample_height, x, y, gfx_w,
                         gfx_h, cell);
@@ -955,11 +997,15 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
     for (int i = 0; i < mixed_text_lines; ++i) {
       int r = k_mixed_mode_text_start + i;
       int ty = off_y + gfx_h + i;
-      if (ty >= avail_rows) break;
+      if (ty >= avail_rows) {
+        break;
+      }
       for (int c = 0; c < a2_w_cols; ++c) {
         int tx = text_off_x + c;
-        if (tx >= g_term_width) break;
-        TuiState_t& cell =
+        if (tx >= g_term_width) {
+          break;
+        }
+        TuiState& cell =
             g_next_buffer.at(static_cast<size_t>(ty * g_term_width + tx));
         render_text_cell(r, c, is_80col, page_offset, alt_charset, flash_on,
                          hw_cursor_x, hw_cursor_y, cell);
@@ -973,19 +1019,27 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
       gfx_h = gfx_w * 3 / 8;
     }
     int off_y = (avail_rows - gfx_h) / 2;
-    if (off_y < 0) off_y = 0;
+    if (off_y < 0) {
+      off_y = 0;
+    }
     int gfx_off_x = (g_term_width - gfx_w) / 2;
-    if (gfx_off_x < 0) gfx_off_x = 0;
+    if (gfx_off_x < 0) {
+      gfx_off_x = 0;
+    }
     record_picture_box(gfx_off_x, off_y, gfx_w, gfx_h);
 
     for (int y = 0; y < gfx_h; ++y) {
       int ty = off_y + y;
-      if (ty >= avail_rows) break;
+      if (ty >= avail_rows) {
+        break;
+      }
       for (int x = 0; x < gfx_w; ++x) {
         int tx = gfx_off_x + x;
-        if (tx >= g_term_width) break;
+        if (tx >= g_term_width) {
+          break;
+        }
 
-        TuiState_t& cell =
+        TuiState& cell =
             g_next_buffer.at(static_cast<size_t>(ty * g_term_width + tx));
         render_gfx_cell(pixels, pitch, width, height, x, y, gfx_w, gfx_h, cell);
       }
@@ -1002,8 +1056,8 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
   g_output_buffer.push_back('\x1b');
   g_output_buffer.push_back('[');
   g_output_buffer.push_back('H');
-  TuiPixel_t curr_fg = {1, 1, 1};
-  TuiPixel_t curr_bg = {1, 1, 1};
+  TuiPixel curr_fg = {1, 1, 1};
+  TuiPixel curr_bg = {1, 1, 1};
 
   for (int y = 0; y < g_term_height; ++y) {
     if (y == g_term_height - 1 && show_status) {
@@ -1029,9 +1083,9 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
       if (y == g_term_height - 1 && x == g_term_width - 1) {
         break;
       }
-      TuiState_t& next =
+      TuiState& next =
           g_next_buffer.at(static_cast<size_t>(y * g_term_width + x));
-      TuiState_t& prev =
+      TuiState& prev =
           g_back_buffer.at(static_cast<size_t>(y * g_term_width + x));
 
       if (next != prev || g_frame_count % k_refresh_full_divisor == 0) {
@@ -1115,7 +1169,7 @@ auto tui_video_save_screenshot() -> void {
     seq++;
   }
 
-  std::vector<TuiState_t> screen_buf = g_next_buffer;
+  std::vector<TuiState> screen_buf = g_next_buffer;
   if (show_status && g_term_height > 0) {
     int status_y = g_term_height - 1;
     const std::string status_text =
@@ -1123,7 +1177,9 @@ auto tui_video_save_screenshot() -> void {
         "F12: Quit ";
     for (int x = 0; x < g_term_width; ++x) {
       size_t idx = static_cast<size_t>(status_y * g_term_width + x);
-      if (idx >= screen_buf.size()) break;
+      if (idx >= screen_buf.size()) {
+        break;
+      }
       screen_buf.at(idx).glyph.fill(0);
       screen_buf.at(idx).glyph.at(0) =
           (static_cast<size_t>(x) < status_text.size())
@@ -1137,12 +1193,12 @@ auto tui_video_save_screenshot() -> void {
   FilePtr fp_ans{fopen(ans_name.data(), "wb"), fclose};
   if (fp_ans != nullptr) {
     bool ans_ok = true;
-    TuiPixel_t curr_fg = {1, 1, 1};
-    TuiPixel_t curr_bg = {1, 1, 1};
+    TuiPixel curr_fg = {1, 1, 1};
+    TuiPixel curr_bg = {1, 1, 1};
 
     for (int y = 0; y < g_term_height; ++y) {
       for (int x = 0; x < g_term_width; ++x) {
-        const TuiState_t& cell =
+        const TuiState& cell =
             screen_buf.at(static_cast<size_t>(y * g_term_width + x));
 
         if (cell.fg != curr_fg) {
@@ -1185,7 +1241,7 @@ auto tui_video_save_screenshot() -> void {
     for (int y = 0; y < g_term_height; ++y) {
       std::string line_str;
       for (int x = 0; x < g_term_width; ++x) {
-        const TuiState_t& cell =
+        const TuiState& cell =
             screen_buf.at(static_cast<size_t>(y * g_term_width + x));
         for (size_t i = 0; i < cell.glyph.size() && cell.glyph.at(i) != 0;
              ++i) {

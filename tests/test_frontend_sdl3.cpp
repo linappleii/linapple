@@ -45,7 +45,7 @@
 auto ds_init() -> bool { return true; }
 auto ds_shutdown() -> void {}
 extern void sdl_handle_event(SDL_Event* e);
-extern DiskChooseState_t g_diskChooseState;
+extern DiskChooseState g_disk_choose_state;
 
 TEST_CASE("SDL3 Frontend In-Window Session Restart") {
   SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
@@ -180,7 +180,7 @@ TEST_CASE("SDL3 Frontend Fullscreen Toggle Preserves Scaled Dimensions") {
   CHECK(g_new_rect.x == 172);
   CHECK(g_new_rect.y == 0);
 
-  const MousePictureRect_t letterbox = frame_picture_rect();
+  const MousePictureRect letterbox = frame_picture_rect();
   CHECK(letterbox.x == 172);
   CHECK(letterbox.y == 0);
   CHECK(letterbox.w == 1575);
@@ -199,7 +199,7 @@ TEST_CASE("SDL3 Frontend Fullscreen Toggle Preserves Scaled Dimensions") {
   CHECK(g_new_rect.x == 0);
   CHECK(g_new_rect.y == 0);
 
-  const MousePictureRect_t window = frame_picture_rect();
+  const MousePictureRect window = frame_picture_rect();
   CHECK(window.x == 0);
   CHECK(window.y == 0);
   CHECK(window.w == 1120);
@@ -410,7 +410,9 @@ TEST_CASE(
   int nonzero_left_margin = 0;
   for (int y = 0; y < 1080; ++y) {
     for (int x = 0; x < 172; ++x) {
-      if (screen_pixels[y * pitch_pixels + x] != 0) nonzero_left_margin++;
+      if (screen_pixels[y * pitch_pixels + x] != 0) {
+        nonzero_left_margin++;
+      }
     }
   }
   CHECK(nonzero_left_margin == 0);
@@ -418,7 +420,9 @@ TEST_CASE(
   int nonzero_right_margin = 0;
   for (int y = 0; y < 1080; ++y) {
     for (int x = 1747; x < 1920; ++x) {
-      if (screen_pixels[y * pitch_pixels + x] != 0) nonzero_right_margin++;
+      if (screen_pixels[y * pitch_pixels + x] != 0) {
+        nonzero_right_margin++;
+      }
     }
   }
   CHECK(nonzero_right_margin == 0);
@@ -445,11 +449,11 @@ TEST_CASE("SDL3 Frontend Disk Chooser Modal Outline Borders Rendered") {
   REQUIRE(g_screen != nullptr);
 
   // Set up disk choose state
-  g_diskChooseState.active = true;
-  g_diskChooseState.slot = 6;
-  g_diskChooseState.bg_screen.reset(
+  g_disk_choose_state.active = true;
+  g_disk_choose_state.slot = 6;
+  g_disk_choose_state.bg_screen.reset(
       SDL_CreateSurface(560, 384, SDL_PIXELFORMAT_ARGB8888));
-  g_diskChooseState.list_handle = nullptr;
+  g_disk_choose_state.list_handle = nullptr;
 
   disk_choose_draw();
 
@@ -481,8 +485,8 @@ TEST_CASE("SDL3 Frontend Disk Chooser Modal Outline Borders Rendered") {
   CHECK(screen_pixels[(box_y + 10) * pitch_pixels + 480] == 0x00FFFFFF);
 
   // Teardown
-  g_diskChooseState.active = false;
-  g_diskChooseState.bg_screen.reset();
+  g_disk_choose_state.active = false;
+  g_disk_choose_state.bg_screen.reset();
   frame_destroy_window();
   asset_quit();
   SDL_Quit();
@@ -1046,7 +1050,7 @@ TEST_CASE(
   }
 
   SUBCASE("a left click while a toolbar key is held is ignored") {
-    g_buttondown = k_btn_help;
+    g_buttondown = btn_help;
     MouseInputMachine_t::click(SDL_BUTTON_LEFT, true);
     MouseInputMachine_t::click(SDL_BUTTON_LEFT, false);
     CHECK_FALSE(mouse_input_is_captured());
@@ -1191,7 +1195,7 @@ struct KeyMachine_t {
     joy_frontend_initialize();
     keyboard_set_caps(true);
     keyboard_set_caps_mode(caps_mode_host);
-    keyboard_set_mapping_mode(KBD_MODE_SYMBOLIC);
+    keyboard_set_mapping_mode(kbd_mode_symbolic);
     keyboard_set_layout(keyboard_layout_us);
     linapple_set_rocker_switch(false);
     frontend_update_keyboard_mapping();

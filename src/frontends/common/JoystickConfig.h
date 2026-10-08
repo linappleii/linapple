@@ -6,14 +6,14 @@
 
 // Behind a configured Joystick type: 0 none, 1 gamepad, 2 keypad, 3 keypad
 // self-centring, 4 mouse.
-enum JoystickDevice_t : int {
+enum JoystickDevice : int {
   joystick_device_none = 0,
   joystick_device_joystick = 1,
   joystick_device_keyboard = 2,
   joystick_device_mouse = 3,
 };
 
-enum JoystickMode_t : int {
+enum JoystickMode : int {
   joystick_mode_none = 0,
   joystick_mode_standard = 1,
   joystick_mode_centering = 2,
@@ -26,8 +26,8 @@ constexpr uint8_t joystick_line_pb0 = 0x01;
 constexpr uint8_t joystick_line_pb1 = 0x02;
 constexpr uint8_t joystick_line_pb2 = 0x04;
 
-auto joystick_config_device(uint32_t type) -> JoystickDevice_t;
-auto joystick_config_mode(uint32_t type) -> JoystickMode_t;
+auto joystick_config_device(uint32_t type) -> JoystickDevice;
+auto joystick_config_mode(uint32_t type) -> JoystickMode;
 
 auto joystick_config_button_lines(size_t joy_num, int button, uint32_t type0,
                                   uint32_t type1) -> uint8_t;

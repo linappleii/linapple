@@ -15,8 +15,8 @@
 
 #include "frontends/sdl3/SdlPtr.h"
 
-using SdlKeycode_t = SDL_Keycode;
-using SdlKeymod_t = SDL_Keymod;
+using SdlKeycode = SDL_Keycode;
+using SdlKeymod = SDL_Keymod;
 
 constexpr auto SDL_COMPAT_QUIT = SDL_EVENT_QUIT;
 
@@ -33,10 +33,10 @@ constexpr auto SDL_COMPAT_KMOD_CTRL = SDL_KMOD_CTRL;
 constexpr auto SDL_COMPAT_KMOD_ALT = SDL_KMOD_ALT;
 constexpr auto SDL_COMPAT_KMOD_GUI = SDL_KMOD_GUI;
 
-extern SdlWindowPtr_t g_window;
+extern SdlWindowPtr g_window;
 
 inline auto sdl_compat_get_key_from_event(const SDL_Event& event)
-    -> SdlKeycode_t {
+    -> SdlKeycode {
   return event.key.key;
 }
 
@@ -44,7 +44,7 @@ inline auto sdl_compat_get_ticks() -> uint32_t {
   return static_cast<uint32_t>(SDL_GetTicks());
 }
 
-inline auto sdl_compat_get_mod_state() -> SdlKeymod_t {
+inline auto sdl_compat_get_mod_state() -> SdlKeymod {
   return SDL_GetModState();
 }
 
@@ -65,7 +65,7 @@ inline auto sdl_compat_num_joysticks() -> int {
   return count;
 }
 
-inline auto sdl_compat_open_joystick(int index) -> SdlJoystickPtr_t {
+inline auto sdl_compat_open_joystick(int index) -> SdlJoystickPtr {
   int count = 0;
   SDL_JoystickID* ids = SDL_GetJoysticks(&count);
   if (ids == nullptr) {
@@ -76,7 +76,7 @@ inline auto sdl_compat_open_joystick(int index) -> SdlJoystickPtr_t {
     joy = SDL_OpenJoystick(ids[index]);
   }
   SDL_free(ids);
-  return SdlJoystickPtr_t(joy);
+  return SdlJoystickPtr(joy);
 }
 
 inline auto sdl_compat_update_joysticks() -> void { SDL_UpdateJoysticks(); }

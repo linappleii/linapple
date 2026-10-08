@@ -27,8 +27,8 @@ enum { DEBUG_FORCE_DISPLAY = 0 };
 
 // Globals __________________________________________________________________
 
-VideoSurface_t* g_debug_screen = nullptr;
-VideoSurface_t* g_debug_charset = nullptr;
+VideoSurface* g_debug_screen = nullptr;
+VideoSurface* g_debug_charset = nullptr;
 
 ColorRef_t g_console_brush_fg = WHITE;
 ColorRef_t g_console_brush_bg = BLACK;
@@ -72,10 +72,10 @@ auto AllocateDebuggerMemDC() -> void {
   if (!g_debug_screen) {
     g_debug_screen = video_create_surface(DISPLAY_WIDTH, DISPLAY_HEIGHT, 1);
     if (g_debug_screen) {
-      VideoColor_t* pal = video_get_output_palette();
+      VideoColor* pal = video_get_output_palette();
       if (pal) {
         memcpy(g_debug_screen->palette.data(), pal,
-               VIDEO_PALETTE_SIZE * sizeof(VideoColor_t));
+               video_palette_size * sizeof(VideoColor));
       }
     }
     g_debug_charset = video_load_xpm(charset40_xpm);
@@ -187,8 +187,8 @@ auto PrintGlyph(const int x, const int y, const char glyph) -> void {
   uint32_t hBrush = g_console_brush_fg;
   uint32_t hBgBrush = g_console_brush_bg;
   if (g_debug_screen && g_debug_charset) {
-    VideoRect_t srcrect = {xSrc, ySrc, CONSOLE_FONT_WIDTH, CONSOLE_FONT_HEIGHT};
-    VideoRect_t dstrect = {x, y, CONSOLE_FONT_WIDTH, CONSOLE_FONT_HEIGHT};
+    VideoRect srcrect = {xSrc, ySrc, CONSOLE_FONT_WIDTH, CONSOLE_FONT_HEIGHT};
+    VideoRect dstrect = {x, y, CONSOLE_FONT_WIDTH, CONSOLE_FONT_HEIGHT};
     video_soft_stretch_mono8(g_debug_charset, &srcrect, g_debug_screen,
                              &dstrect, hBrush, hBgBrush);
   }
@@ -398,7 +398,7 @@ auto DrawConsoleInput() -> void {
 
   // Clear rest of line
   DebuggerSetColorFG(WHITE);
-  VideoRect_t r{};
+  VideoRect r{};
   r.x = g_window_config[WINDOW_CONSOLE].left +
         (g_console_input_chars + g_console_prompt_len + 1) * APPLE_FONT_WIDTH;
   r.y = g_window_config[WINDOW_CONSOLE].bottom - APPLE_FONT_HEIGHT;

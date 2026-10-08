@@ -6,7 +6,7 @@
 #include "frontends/common/FileBrowser.h"
 
 namespace {
-static DiskBrowser_t s_browser{};
+static DiskBrowser s_browser{};
 }
 
 auto tui_disk_select_open(int slot, int drive) -> void {
@@ -28,7 +28,7 @@ auto tui_disk_select_get_current_dir() -> const char* {
   return s_browser.current_dir;
 }
 
-auto tui_disk_select_get_file_list() -> const FileList_t* {
+auto tui_disk_select_get_file_list() -> const FileList* {
   return s_browser.list_handle;
 }
 

@@ -12,10 +12,10 @@
 #include "frontends/sdl3/SdlPtr.h"
 
 namespace {
-SdlSurfacePtr_t s_icon_surface;
+SdlSurfacePtr s_icon_surface;
 }  // namespace
 
-auto sdl_asset_load_bmp(const char* filename) -> SdlSurfacePtr_t {
+auto sdl_asset_load_bmp(const char* filename) -> SdlSurfacePtr {
   if (filename == nullptr) {
     return nullptr;
   }
@@ -28,7 +28,7 @@ auto sdl_asset_load_bmp(const char* filename) -> SdlSurfacePtr_t {
     return nullptr;
   }
 
-  SdlSurfacePtr_t surf(SDL_LoadBMP(full_path.c_str()));
+  SdlSurfacePtr surf(SDL_LoadBMP(full_path.c_str()));
   if (surf == nullptr) {
     std::fprintf(stderr, "sdl_asset_load_bmp: Failed to load %s from %s: %s\n",
                  filename, full_path.c_str(), SDL_GetError());
@@ -40,7 +40,7 @@ auto sdl_asset_load_bmp(const char* filename) -> SdlSurfacePtr_t {
   return surf;
 }
 
-auto asset_load_bmp(const char* filename) -> SdlSurfacePtr_t {
+auto asset_load_bmp(const char* filename) -> SdlSurfacePtr {
   return sdl_asset_load_bmp(filename);
 }
 

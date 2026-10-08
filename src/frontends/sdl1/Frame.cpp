@@ -48,7 +48,7 @@
 #include "frontends/sdl1/SdlPtr.h"
 
 SDL_Surface* g_screen = nullptr;
-SdlSurfacePtr_t g_texture;
+SdlSurfacePtr g_texture;
 SDL_Rect g_orig_rect{};
 SDL_Rect g_new_rect{};
 
@@ -65,7 +65,7 @@ static bool s_is_fullscreen = false;
 static uint32_t s_windowed_width = 0;
 static uint32_t s_windowed_height = 0;
 
-auto to_video_rect(const SDL_Rect& r) noexcept -> VideoRect_t {
+auto to_video_rect(const SDL_Rect& r) noexcept -> VideoRect {
   return {static_cast<int>(r.x), static_cast<int>(r.y), static_cast<int>(r.w),
           static_cast<int>(r.h)};
 }
@@ -182,11 +182,11 @@ auto handle_btn_fullscreen(int mod) -> void {
 auto handle_btn_setup(int mod) -> void {
   if ((mod & KMOD_SHIFT) != 0) {
     Configuration::instance().set_int("Configuration", "Video Emulation",
-                                        static_cast<int>(g_videotype));
+                                      static_cast<int>(g_videotype));
     Configuration::instance().set_int("Configuration", "Emulation Speed",
-                                        static_cast<int>(system_state.speed));
+                                      static_cast<int>(system_state.speed));
     Configuration::instance().set_int("Configuration", "Fullscreen",
-                                        system_state.fullscreen ? 1 : 0);
+                                      system_state.fullscreen ? 1 : 0);
     Configuration::instance().save();
   } else {
     frame_save_bmp();
@@ -280,10 +280,10 @@ auto draw_frame_window() -> void {
 
   {
     const SDL_Rect r{0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
-    ScopedSurfaceLock_t lock_texture(g_texture.get());
-    VideoRect_t src_rect =
+    ScopedSurfaceLock lock_texture(g_texture.get());
+    VideoRect src_rect =
         g_window_resized ? to_video_rect(g_orig_rect) : to_video_rect(r);
-    VideoRect_t dst_rect =
+    VideoRect dst_rect =
         g_window_resized ? to_video_rect(g_new_rect) : to_video_rect(r);
 
     if (system_state.mode != app_mode_debug) {
@@ -291,12 +291,12 @@ auto draw_frame_window() -> void {
       if (output == nullptr) {
         return;
       }
-      const VideoSurfaceView_t vs_output(output, SCREEN_WIDTH, SCREEN_HEIGHT,
-                                         SCREEN_WIDTH * 4, 4);
+      const VideoSurfaceView vs_output(output, SCREEN_WIDTH, SCREEN_HEIGHT,
+                                       SCREEN_WIDTH * 4, 4);
       video_soft_stretch(vs_output, &src_rect, lock_texture.view(), &dst_rect);
     } else {
 #if ENABLE_DEBUGGER
-      extern VideoSurface_t* g_debug_screen;
+      extern VideoSurface* g_debug_screen;
       if (g_debug_screen != nullptr) {
         video_soft_stretch(g_debug_screen, &src_rect, lock_texture.view(),
                            &dst_rect);
@@ -320,11 +320,11 @@ auto draw_status_area(int drawflags) -> void {
   }
 
   if ((drawflags & draw_background) != 0) {
-    g_status_cycle = k_show_cycles;
+    g_status_cycle = show_cycles;
   }
 
   if ((drawflags & draw_leds) != 0) {
-    VideoRect_t srect{};
+    VideoRect srect{};
     const uint8_t mybluez = DARK_BLUE;
     srect.x = 4;
     srect.y = 22;
@@ -383,7 +383,7 @@ auto draw_status_area(int drawflags) -> void {
     font_print(71, 23, leds.data(), g_status_surface, 4.0f, 2.7f);
 
     if ((drive1_status | drive2_status | hdd_status) != 0) {
-      g_status_cycle = k_show_cycles;
+      g_status_cycle = show_cycles;
     }
   }
 }
@@ -398,7 +398,7 @@ auto frame_show_help_screen(int sx, int sy) -> void {
     return;
   }
 
-  VideoSurface_t* temp_surface = nullptr;
+  VideoSurface* temp_surface = nullptr;
   if (!g_window_resized) {
     temp_surface =
         (system_state.mode == app_mode_logo) ? g_logo_bitmap : g_device_bitmap;
@@ -407,17 +407,17 @@ auto frame_show_help_screen(int sx, int sy) -> void {
   }
 
   {
-    ScopedSurfaceLock_t lock_screen(g_screen);
-    const VideoSurfaceView_t view_temp =
+    ScopedSurfaceLock lock_screen(g_screen);
+    const VideoSurfaceView view_temp =
         (temp_surface != nullptr) ? *temp_surface : lock_screen.view();
     video_soft_stretch(view_temp, nullptr, lock_screen.view(), nullptr);
 
     const int blur_w = std::max(1, g_screen->w / 16);
     const int blur_h = std::max(1, g_screen->h / 16);
-    SdlSurfacePtr_t blur_temp(SDL_CreateRGBSurface(
+    SdlSurfacePtr blur_temp(SDL_CreateRGBSurface(
         0, blur_w, blur_h, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000));
     if (blur_temp != nullptr) {
-      ScopedSurfaceLock_t lock_blur(blur_temp.get());
+      ScopedSurfaceLock lock_blur(blur_temp.get());
       video_soft_stretch(lock_screen.view(), nullptr, lock_blur.view(),
                          nullptr);
       video_soft_stretch(lock_blur.view(), nullptr, lock_screen.view(),
@@ -425,9 +425,9 @@ auto frame_show_help_screen(int sx, int sy) -> void {
     }
   }
 
-  SdlSurfacePtr_t dim_surface(SDL_CreateRGBSurface(0, g_screen->w, g_screen->h,
-                                                   32, 0x00FF0000, 0x0000FF00,
-                                                   0x000000FF, 0xFF000000));
+  SdlSurfacePtr dim_surface(SDL_CreateRGBSurface(0, g_screen->w, g_screen->h,
+                                                 32, 0x00FF0000, 0x0000FF00,
+                                                 0x000000FF, 0xFF000000));
   if (dim_surface != nullptr) {
     const Uint32 dim_color = SDL_MapRGBA(dim_surface->format, 0, 0, 0, 200);
     SDL_FillRect(dim_surface.get(), nullptr, dim_color);
@@ -446,19 +446,19 @@ auto frame_show_help_screen(int sx, int sy) -> void {
   const int hdr_height = static_cast<int>(42.0f * facy_f);
 
   {
-    ScopedSurfaceLock_t lock_screen(g_screen);
+    ScopedSurfaceLock lock_screen(g_screen);
     rectangle(lock_screen.view(), static_cast<int>(4.0f * facx_f), hdr_top,
               static_cast<int>(system_state.screen_width - (8.0f * facx_f)),
               hdr_height, 0xFFFF00);
 
     font_print_centered(sx / 2, hdr_top + static_cast<int>(4.0f * facy_f),
-                        HELP_HEADER_STRINGS.at(0), lock_screen.view(), scale_x,
+                        help_header_strings.at(0), lock_screen.view(), scale_x,
                         scale_y);
     font_print_centered(sx / 2, hdr_top + static_cast<int>(16.0f * facy_f),
-                        HELP_HEADER_STRINGS.at(1), lock_screen.view(), scale_x,
+                        help_header_strings.at(1), lock_screen.view(), scale_x,
                         scale_y);
     font_print_centered(sx / 2, hdr_top + static_cast<int>(28.0f * facy_f),
-                        HELP_HEADER_STRINGS.at(2), lock_screen.view(), scale_x,
+                        help_header_strings.at(2), lock_screen.view(), scale_x,
                         scale_y);
 
     const int body_top = hdr_top + hdr_height + static_cast<int>(4.0f * facy_f);
@@ -469,25 +469,25 @@ auto frame_show_help_screen(int sx, int sy) -> void {
               body_height, 0xFFFFFF);
 
     const float line_spacing = 13.0f * facy_f;
-    for (size_t i = 0; i < HELP_BODY_LINES.size(); ++i) {
-      if (HELP_BODY_LINES.at(i).text != nullptr &&
-          HELP_BODY_LINES.at(i).text[0] != '\0') {
+    for (size_t i = 0; i < help_body_lines.size(); ++i) {
+      if (help_body_lines.at(i).text != nullptr &&
+          help_body_lines.at(i).text[0] != '\0') {
         font_print(
             static_cast<int>(16.0f * facx_f),
             body_top + static_cast<int>(6.0f * facy_f +
                                         static_cast<float>(i) * line_spacing),
-            HELP_BODY_LINES.at(i).text, lock_screen.view(), scale_x, scale_y);
+            help_body_lines.at(i).text, lock_screen.view(), scale_x, scale_y);
       }
     }
 
     if (assets != nullptr && assets->icon != nullptr) {
-      ScopedSurfaceLock_t lock_icon(static_cast<SDL_Surface*>(assets->icon));
-      VideoRect_t logo{0, 0, static_cast<int16_t>(lock_icon.view().w),
-                       static_cast<int16_t>(lock_icon.view().h)};
-      VideoRect_t scrr{static_cast<int16_t>(460.0f * facx_f),
-                       static_cast<int16_t>(270.0f * facy_f),
-                       static_cast<int16_t>(100.0f * facy_f),
-                       static_cast<int16_t>(100.0f * facy_f)};
+      ScopedSurfaceLock lock_icon(static_cast<SDL_Surface*>(assets->icon));
+      VideoRect logo{0, 0, static_cast<int16_t>(lock_icon.view().w),
+                     static_cast<int16_t>(lock_icon.view().h)};
+      VideoRect scrr{static_cast<int16_t>(460.0f * facx_f),
+                     static_cast<int16_t>(270.0f * facy_f),
+                     static_cast<int16_t>(100.0f * facy_f),
+                     static_cast<int16_t>(100.0f * facy_f)};
       video_soft_stretch_or(lock_icon.view(), &logo, lock_screen.view(), &scrr);
     }
   }
@@ -690,48 +690,48 @@ auto process_button_click(int button, int mod) -> void {
   audio_mixer_set_fade(fade_out);
 
   switch (button) {
-    case k_btn_help:
+    case btn_help:
       handle_btn_help();
       break;
 
-    case k_btn_run:
+    case btn_run:
       handle_btn_run(mod);
       break;
 
-    case k_btn_drive1:
-    case k_btn_drive2:
-      handle_btn_drive(button - k_btn_drive1, mod);
+    case btn_drive1:
+    case btn_drive2:
+      handle_btn_drive(button - btn_drive1, mod);
       break;
 
-    case k_btn_driveswap:
+    case btn_driveswap:
       handle_btn_drive_swap();
       break;
 
-    case k_btn_fullscr:
+    case btn_fullscr:
       handle_btn_fullscreen(mod);
       break;
 
-    case k_btn_debug:
+    case btn_debug:
       handle_btn_debug();
       break;
 
-    case k_btn_setup:
+    case btn_setup:
       handle_btn_setup(mod);
       break;
 
-    case k_btn_cycle:
+    case btn_cycle:
       handle_btn_cycle(mod);
       break;
 
-    case k_btn_quit:
+    case btn_quit:
       handle_btn_quit();
       break;
 
-    case k_btn_savest:
+    case btn_savest:
       handle_btn_save_state(mod);
       break;
 
-    case k_btn_loadst:
+    case btn_loadst:
       handle_btn_load_state(mod);
       break;
 
@@ -799,7 +799,7 @@ auto frame_pointer_capture(bool captured, bool relative) -> void {
 }
 
 // g_new_rect is set only on a resize, so until one the picture is the window.
-auto frame_picture_rect() -> MousePictureRect_t {
+auto frame_picture_rect() -> MousePictureRect {
   if (g_window_resized) {
     return {g_new_rect.x, g_new_rect.y, g_new_rect.w, g_new_rect.h};
   }
@@ -896,7 +896,7 @@ auto refresh_disk_status() -> void {
 
   std::array<char, 512> title_buf{};
   if (s_last_disk_status.drive0_loaded != 0) {
-    std::array<char, k_disk_ui_display_name_max + 1> display_name{};
+    std::array<char, disk_ui_display_name_max + 1> display_name{};
     disk_ui_format_display_name(s_last_disk_status.drive0_name,
                                 display_name.data(), display_name.size());
     std::snprintf(title_buf.data(), title_buf.size(), "%s - %s", app_title,

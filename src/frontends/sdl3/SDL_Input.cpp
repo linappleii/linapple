@@ -29,16 +29,16 @@ constexpr auto is_extended_scancode(SDL_Scancode scancode) noexcept -> bool {
          (scancode == SDL_SCANCODE_DELETE);
 }
 
-auto host_button(Uint8 button) -> MouseHostButton_t {
+auto host_button(Uint8 button) -> MouseHostButton {
   switch (button) {
     case SDL_BUTTON_LEFT:
-      return MouseHostButton_t::left;
+      return MouseHostButton::left;
     case SDL_BUTTON_MIDDLE:
-      return MouseHostButton_t::middle;
+      return MouseHostButton::middle;
     case SDL_BUTTON_RIGHT:
-      return MouseHostButton_t::right;
+      return MouseHostButton::right;
     default:
-      return MouseHostButton_t::other;
+      return MouseHostButton::other;
   }
 }
 
@@ -239,7 +239,7 @@ auto sdl_handle_event(SDL_Event* event) -> void {
 
     case SDL_EVENT_USER:
       if (event->user.code == 1) {
-        process_button_click(k_btn_run, SDL_KMOD_LCTRL);
+        process_button_click(btn_run, SDL_KMOD_LCTRL);
       }
       break;
 
