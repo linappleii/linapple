@@ -7,7 +7,7 @@
 
 #include "apple2/peripherals/Peripheral_Types.h"
 
-// NOLINTBEGIN(modernize-use-using, cppcoreguidelines-use-enum-class, cppcoreguidelines-macro-usage, modernize-use-trailing-return-type, modernize-redundant-void-arg)
+// NOLINTBEGIN(modernize-use-using, cppcoreguidelines-use-enum-class, cppcoreguidelines-macro-usage, modernize-use-trailing-return-type, modernize-redundant-void-arg, readability-identifier-naming, readability-redundant-declaration)
 
 #ifdef __cplusplus
 extern "C" {
@@ -183,14 +183,13 @@ typedef struct Peripheral_t {
 #endif
 #else
 #ifdef __cplusplus
-#define PERIPHERAL_REGISTER(peripheral_struct)               \
-  namespace {                                                \
-  struct PeripheralRegistration_t##peripheral_struct {       \
-    PeripheralRegistration_t##peripheral_struct() noexcept { \
-      peripheral_register_builtin(                           \
-          const_cast<Peripheral_t*>(&(peripheral_struct)));  \
-    }                                                        \
-  } g_registration_##peripheral_struct;                      \
+#define PERIPHERAL_REGISTER(peripheral_struct)             \
+  namespace {                                              \
+  struct PeripheralRegistration_##peripheral_struct {      \
+    PeripheralRegistration_##peripheral_struct() noexcept { \
+      peripheral_register_builtin(&(peripheral_struct));   \
+    }                                                      \
+  } registration_##peripheral_struct;                      \
   }
 #else
 #define PERIPHERAL_REGISTER(peripheral_struct)                              \
@@ -235,4 +234,4 @@ bool peripheral_verify_manifest(const void* manifest);
 }
 #endif
 
-// NOLINTEND(modernize-use-using, cppcoreguidelines-use-enum-class, cppcoreguidelines-macro-usage, modernize-use-trailing-return-type, modernize-redundant-void-arg)
+// NOLINTEND(modernize-use-using, cppcoreguidelines-use-enum-class, cppcoreguidelines-macro-usage, modernize-use-trailing-return-type, modernize-redundant-void-arg, readability-identifier-naming, readability-redundant-declaration)

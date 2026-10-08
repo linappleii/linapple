@@ -18,14 +18,14 @@ auto peripheral_plugins_init(const char* plugin_dir = nullptr) -> void;
 auto peripheral_plugins_shutdown() -> void;
 auto peripheral_find_internal(const char* name) -> Peripheral_t*;
 auto peripheral_get_plugin_path(const char* name) -> const char*;
-auto peripheral_is_any_active() -> bool;
-
 // The slot the Mouse in slot 4 key took over, with the descriptor names of the
 // card it installed and of the card [Slots] would have put there ("" for none).
 // False when the key overrode nothing. A save state written while the key had
 // no reader names the displaced card, which is what lets such a file load.
 auto peripheral_legacy_override(int* slot, const char** key_card,
                                 const char** displaced) -> bool;
+
+// NOLINTBEGIN(modernize-use-using, cppcoreguidelines-use-enum-class, readability-identifier-naming)
 
 // Test hook: inject frozen host clock provider.
 typedef bool (*LocalTimeProvider_t)(void* ctx, HostLocalTime_t* out);
@@ -69,6 +69,8 @@ typedef struct {
 // is ready.
 auto linapple_set_byte_sink(const ByteSink_t* vtable, void* ctx)
     -> ByteSinkBinding_t;
+
+// NOLINTEND(modernize-use-using, cppcoreguidelines-use-enum-class, readability-identifier-naming)
 
 #ifdef __cplusplus
 }

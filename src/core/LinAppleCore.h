@@ -6,9 +6,8 @@
 #include <cstdint>
 
 #include "apple2/Apple2Types.h"
+#include "apple2/peripherals/Peripheral_Audio.h"
 #include "apple2/peripherals/Peripheral_Types.h"
-
-struct PeripheralAudioInfo_t;
 
 enum CapsLockMode : uint8_t {
   caps_mode_host = 0,

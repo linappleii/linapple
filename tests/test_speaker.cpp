@@ -213,7 +213,7 @@ struct SpeakerHarness_t {
 
   static SpeakerHarness_t* s_active_harness;
 
-  static auto mock_log(void* instance, PeripheralLogLevel level,
+  static auto mock_log(void* instance, PeripheralLogLevel_t level,
                        const char* fmt, ...) -> void {
     (void)instance;
     (void)level;

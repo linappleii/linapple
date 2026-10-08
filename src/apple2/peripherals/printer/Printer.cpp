@@ -355,7 +355,7 @@ auto printer_abi_load_state(void* instance, const void* state_buffer,
 
 }  // namespace
 
-static const Peripheral_t g_printer_peripheral = {
+static Peripheral_t printer_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.printer",
     .name = "Parallel Printer",
@@ -375,11 +375,9 @@ static const Peripheral_t g_printer_peripheral = {
     .query = printer_abi_query,
 };
 
-// peripheral_register and ActivePeripheral_t::api take a mutable
-// Peripheral_t*, so the immutable descriptor is cast the same way
-// PERIPHERAL_REGISTER casts it.
+// Peripheral registry requires non-const pointer.
 auto printer_get_descriptor() -> Peripheral_t* {
-  return const_cast<Peripheral_t*>(&g_printer_peripheral);
+  return &printer_peripheral;
 }
 
-PERIPHERAL_REGISTER(g_printer_peripheral)
+PERIPHERAL_REGISTER(printer_peripheral)

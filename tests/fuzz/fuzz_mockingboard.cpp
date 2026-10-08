@@ -88,7 +88,7 @@ auto mock_audio_push_channels(void* instance, const float* const* channels,
   }
 }
 
-auto mock_log(void* instance, PeripheralLogLevel level, const char* fmt, ...)
+auto mock_log(void* instance, PeripheralLogLevel_t level, const char* fmt, ...)
     -> void {
   (void)instance;
   (void)level;

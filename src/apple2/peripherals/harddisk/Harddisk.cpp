@@ -799,7 +799,7 @@ auto harddisk_abi_load_state(void* instance, const void* buffer, size_t size)
 
 }  // namespace
 
-static const Peripheral_t g_harddisk_peripheral = {
+static Peripheral_t harddisk_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.harddisk",
     .name = "Harddisk",
@@ -819,11 +819,9 @@ static const Peripheral_t g_harddisk_peripheral = {
     .query = harddisk_abi_query,
 };
 
-// peripheral_register and ActivePeripheral_t::api still take a mutable
-// Peripheral_t*, so the immutable descriptor is cast the same way
-// PERIPHERAL_REGISTER casts it.
+// Peripheral registry requires non-const pointer.
 extern "C" auto harddisk_get_descriptor() -> Peripheral_t* {
-  return const_cast<Peripheral_t*>(&g_harddisk_peripheral);
+  return &harddisk_peripheral;
 }
 
-PERIPHERAL_REGISTER(g_harddisk_peripheral)
+PERIPHERAL_REGISTER(harddisk_peripheral)

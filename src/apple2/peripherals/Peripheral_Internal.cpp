@@ -17,17 +17,18 @@
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 
-struct LoadedPlugin_t {
+namespace {
+struct LoadedPlugin {
   Peripheral_t* p;
   void* handle;
   std::string path;
 };
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-static std::vector<LoadedPlugin_t> g_loaded_plugins;
-static bool g_plugins_initialized = false;
+std::vector<LoadedPlugin> loaded_plugins;
+bool plugins_initialized = false;
 
-struct LegacyOverride_t {
+struct LegacyOverride {
   int slot = 0;
   const char* key_card = "";
   const char* displaced = "";
@@ -35,21 +36,22 @@ struct LegacyOverride_t {
 
 // The shipped conf documents the key as putting the mouse card in slot 4 in
 // place of whatever [Slots] names there.
-static constexpr int k_mouse_key_slot = 4;
-static constexpr const char* k_mouse_card_id = "linapple.mouse";
-static LegacyOverride_t g_legacy_override;
+constexpr int mouse_key_slot = 4;
+constexpr const char* mouse_card_id = "linapple.mouse";
+LegacyOverride legacy_override;
+}  // namespace
 
 auto peripheral_legacy_override(int* slot, const char** key_card,
                                 const char** displaced) -> bool {
   if (slot == nullptr || key_card == nullptr || displaced == nullptr) {
     return false;
   }
-  if (g_legacy_override.slot == 0) {
+  if (legacy_override.slot == 0) {
     return false;
   }
-  *slot = g_legacy_override.slot;
-  *key_card = g_legacy_override.key_card;
-  *displaced = g_legacy_override.displaced;
+  *slot = legacy_override.slot;
+  *key_card = legacy_override.key_card;
+  *displaced = legacy_override.displaced;
   return true;
 }
 
@@ -67,7 +69,7 @@ auto peripheral_find_internal(const char* name) -> Peripheral_t* {
     }
   }
 
-  for (auto const& lp : g_loaded_plugins) {
+  for (auto const& lp : loaded_plugins) {
     if (lp.p != nullptr &&
         (strcmp(lp.p->name, name) == 0 || strcmp(lp.p->id, name) == 0)) {
       return lp.p;
@@ -88,7 +90,7 @@ auto peripheral_get_plugin_path(const char* name) -> const char* {
 
   peripheral_plugins_init();
 
-  for (auto const& lp : g_loaded_plugins) {
+  for (auto const& lp : loaded_plugins) {
     if (lp.p != nullptr &&
         (strcmp(lp.p->name, name) == 0 || strcmp(lp.p->id, name) == 0)) {
       return lp.path.c_str();
@@ -100,7 +102,7 @@ auto peripheral_get_plugin_path(const char* name) -> const char* {
 auto peripheral_register_internal() -> void {
   peripheral_plugins_init();
   // A restart rebuilds the machine from the configuration; so does the record.
-  g_legacy_override = LegacyOverride_t{};
+  legacy_override = LegacyOverride{};
 
   for (auto* p : peripheral_get_builtin_registry()) {
     if (p != nullptr && p->default_slot == 0) {
@@ -112,7 +114,7 @@ auto peripheral_register_internal() -> void {
   // the only way a plugin can reach it is by declaring it. A builtin of the
   // same id wins: a statically linked card and its own .so are the same
   // device, and registering both would double every sample it produces.
-  for (auto const& lp : g_loaded_plugins) {
+  for (auto const& lp : loaded_plugins) {
     if (lp.p == nullptr || lp.p->default_slot != 0) {
       continue;
     }
@@ -130,14 +132,14 @@ auto peripheral_register_internal() -> void {
 
   uint32_t mouse_key = 0;
   config_load_int(cfg_sec_configuration, cfg_mouse_in_slot4, &mouse_key);
-  Peripheral_t* mouse_key_card = nullptr;
+  const Peripheral_t* mouse_key_card = nullptr;
   if (mouse_key != 0) {
-    mouse_key_card = peripheral_find_internal(k_mouse_card_id);
+    mouse_key_card = peripheral_find_internal(mouse_card_id);
     if (mouse_key_card == nullptr) {
       Logger::warning(
           "Mouse in slot 4 is set but the Mouse Interface is not built; Slot "
           "%d keeps its card\n",
-          k_mouse_key_slot);
+          mouse_key_slot);
     }
   }
 
@@ -147,7 +149,7 @@ auto peripheral_register_internal() -> void {
     snprintf(key, sizeof(key), "Slot %d", slot);
 
     std::string name;
-    bool in_config = config_load_string("Slots", key, &name);
+    const bool in_config = config_load_string("Slots", key, &name);
 
     if (in_config) {
       if (name == "None") {
@@ -174,13 +176,13 @@ auto peripheral_register_internal() -> void {
       }
     }
 
-    if (slot == k_mouse_key_slot && mouse_key_card != nullptr) {
-      Peripheral_t* displaced =
+    if (slot == mouse_key_slot && mouse_key_card != nullptr) {
+      const Peripheral_t* displaced =
           name.empty() ? nullptr : peripheral_find_internal(name.c_str());
       if (displaced != mouse_key_card) {
-        g_legacy_override.slot = slot;
-        g_legacy_override.key_card = mouse_key_card->name;
-        g_legacy_override.displaced =
+        legacy_override.slot = slot;
+        legacy_override.key_card = mouse_key_card->name;
+        legacy_override.displaced =
             displaced != nullptr ? displaced->name : "";
         if (displaced != nullptr) {
           Logger::warning(
@@ -188,7 +190,7 @@ auto peripheral_register_internal() -> void {
               mouse_key_card->name, displaced->name);
         }
       }
-      name = k_mouse_card_id;
+      name = mouse_card_id;
     }
 
     if (name.empty()) {
@@ -215,7 +217,7 @@ auto linapple_list_hardware() -> void {
       printf("  Slots:  ");
       bool first = true;
       for (int i = 0; i < NUM_SLOTS; ++i) {
-        if (p->compatible_slots & (1U << static_cast<uint32_t>(i))) {
+        if ((p->compatible_slots & (1U << static_cast<uint32_t>(i))) != 0U) {
           if (!first) {
             printf(", ");
           }
@@ -227,10 +229,10 @@ auto linapple_list_hardware() -> void {
     }
   }
 
-  if (!g_loaded_plugins.empty()) {
+  if (!loaded_plugins.empty()) {
     printf("Dynamically Loaded Peripherals:\n");
     printf("-------------------------------\n");
-    for (auto const& plugin : g_loaded_plugins) {
+    for (auto const& plugin : loaded_plugins) {
       printf("- %-24s [%s] v%s\n", plugin.p->name, plugin.p->id,
              plugin.p->version);
       printf("  Path:   %s\n", plugin.path.c_str());
@@ -239,7 +241,8 @@ auto linapple_list_hardware() -> void {
       printf("  Slots:  ");
       bool first = true;
       for (int i = 0; i < NUM_SLOTS; ++i) {
-        if (plugin.p->compatible_slots & (1U << static_cast<uint32_t>(i))) {
+        if ((plugin.p->compatible_slots & (1U << static_cast<uint32_t>(i))) !=
+            0U) {
           if (!first) {
             printf(", ");
           }
@@ -253,10 +256,10 @@ auto linapple_list_hardware() -> void {
 }
 
 auto peripheral_plugins_init(const char* plugin_dir) -> void {
-  if (g_plugins_initialized && plugin_dir == nullptr) {
+  if (plugins_initialized && plugin_dir == nullptr) {
     return;
   }
-  g_plugins_initialized = true;
+  plugins_initialized = true;
 
   std::vector<std::string> paths;
   if (plugin_dir != nullptr && *plugin_dir != '\0') {
@@ -272,13 +275,13 @@ auto peripheral_plugins_init(const char* plugin_dir) -> void {
 
     struct dirent* ent = nullptr;
     while ((ent = readdir(dir)) != nullptr) {
-      std::string filename = ent->d_name;
+      const std::string filename = ent->d_name;
       if (filename.length() > 3 &&
           filename.substr(filename.length() - 3) == ".so") {
         if (filename.find('/') != std::string::npos) {
           continue;
         }
-        std::string full_path = Path::join(path, filename);
+        const std::string full_path = Path::join(path, filename);
         void* handle = dlopen(full_path.c_str(), RTLD_NOW | RTLD_LOCAL);
         if (handle != nullptr) {
           auto* p = reinterpret_cast<Peripheral_t*>(
@@ -299,7 +302,7 @@ auto peripheral_plugins_init(const char* plugin_dir) -> void {
               dlclose(handle);
             } else {
               bool already_loaded = false;
-              for (const auto& existing : g_loaded_plugins) {
+              for (const auto& existing : loaded_plugins) {
                 if (existing.p == p ||
                     (existing.p != nullptr && existing.p->id != nullptr &&
                      strcmp(existing.p->id, p->id) == 0)) {
@@ -320,7 +323,7 @@ auto peripheral_plugins_init(const char* plugin_dir) -> void {
               } else {
                 Logger::info("Loaded plugin: %s from %s\n", p->name,
                              full_path.c_str());
-                g_loaded_plugins.push_back({p, handle, full_path});
+                loaded_plugins.push_back({p, handle, full_path});
               }
             }
           } else {
@@ -340,13 +343,13 @@ auto peripheral_plugins_init(const char* plugin_dir) -> void {
 }
 
 auto peripheral_plugins_shutdown() -> void {
-  for (auto& plugin : g_loaded_plugins) {
+  for (const auto& plugin : loaded_plugins) {
     if (plugin.handle != nullptr) {
       dlclose(plugin.handle);
     }
   }
-  g_loaded_plugins.clear();
-  g_plugins_initialized = false;
+  loaded_plugins.clear();
+  plugins_initialized = false;
 }
 
 // NOLINTEND(cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-pro-type-vararg, cppcoreguidelines-pro-type-reinterpret-cast, misc-include-cleaner, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-init-variables)

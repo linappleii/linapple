@@ -3,10 +3,10 @@
 
 #include <cstdint>
 
-struct Peripheral_t;
-
 // NOLINTBEGIN(readability-identifier-naming)
 // Justification: Legacy fields must match the stable .aws save-state format.
+struct Peripheral_t;
+
 struct SsIoSpeaker_t {
   uint64_t g_spkr_last_cycle =
       0;  // Legacy AppleWin field; scheduled for removal

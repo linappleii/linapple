@@ -347,7 +347,7 @@ auto speaker_query(void* instance, uint32_t cmd_id, void* out, size_t* out_size)
   return peripheral_incompatible;
 }
 
-static const Peripheral_t g_speaker_peripheral = {
+static Peripheral_t speaker_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.speaker",
     .name = "Speaker",
@@ -369,11 +369,9 @@ static const Peripheral_t g_speaker_peripheral = {
 
 }  // namespace
 
-// peripheral_register and ActivePeripheral_t::api still take a mutable
-// Peripheral_t*, so the immutable descriptor is cast the same way
-// PERIPHERAL_REGISTER casts it.
+// Peripheral registry requires non-const pointer.
 auto speaker_get_descriptor() -> Peripheral_t* {
-  return const_cast<Peripheral_t*>(&g_speaker_peripheral);
+  return &speaker_peripheral;
 }
 
-PERIPHERAL_REGISTER(g_speaker_peripheral)
+PERIPHERAL_REGISTER(speaker_peripheral)

@@ -39,8 +39,8 @@ static auto builtin_id(const Peripheral_t* p) -> const char* {
   return (p != nullptr && p->id != nullptr) ? p->id : "";
 }
 
-auto peripheral_register_builtin(Peripheral_t* p) -> void {
-  if (p == nullptr) {
+auto peripheral_register_builtin(Peripheral_t* api) -> void {
+  if (api == nullptr) {
     return;
   }
   // Static initialisers fill this registry in an order the language leaves
@@ -54,11 +54,11 @@ auto peripheral_register_builtin(Peripheral_t* p) -> void {
   // the files this build writes.
   auto& registry = peripheral_get_builtin_registry();
   const auto position =
-      std::lower_bound(registry.begin(), registry.end(), p,
+      std::lower_bound(registry.begin(), registry.end(), api,
                        [](const Peripheral_t* a, const Peripheral_t* b) {
                          return strcmp(builtin_id(a), builtin_id(b)) > 0;
                        });
-  registry.insert(position, p);
+  registry.insert(position, api);
 }
 
 // --- Internal Types ---
@@ -261,16 +261,16 @@ static auto host_log(void* instance, PeripheralLogLevel_t level,
   if (fmt == nullptr) {
     return;
   }
-  LogLevel_t mapped = LogLevel_t::perf;
+  LogLevel mapped = LogLevel::perf;
   switch (level) {
     case log_info:
-      mapped = LogLevel_t::info;
+      mapped = LogLevel::info;
       break;
     case log_warn:
-      mapped = LogLevel_t::warning;
+      mapped = LogLevel::warning;
       break;
     case log_error:
-      mapped = LogLevel_t::error;
+      mapped = LogLevel::error;
       break;
     case log_debug:
     default:
@@ -821,7 +821,7 @@ static auto sink_tick() -> void {
   }
 }
 
-static const HostInterface_t g_host_interface = {
+static HostInterface_t g_host_interface = {
     .Log = host_log,
     .AssertIrq = host_assert_irq,
     .RegisterIO = host_register_io,
@@ -957,7 +957,7 @@ auto peripheral_manager_shutdown() -> void {
          sizeof(g_peripheral_activity_state));
 
   {
-    std::lock_guard<std::mutex> lock(g_command_queue_mutex);
+    const std::lock_guard<std::mutex> lock(g_command_queue_mutex);
     while (!g_command_queue.empty()) {
       g_command_queue.pop();
     }
@@ -971,7 +971,7 @@ auto peripheral_manager_think(uint32_t cycles) -> void {
   // card waiting on it is released in the same batch the sink recovers.
   sink_tick();
   for (size_t i = 0; i < NUM_SLOTS; ++i) {
-    for (auto& ap : g_active_peripherals.at(i)) {
+    for (const auto& ap : g_active_peripherals.at(i)) {
       if (ap.api != nullptr && ap.api->think != nullptr) {
         ap.api->think(ap.instance, cycles);
       }
@@ -981,7 +981,7 @@ auto peripheral_manager_think(uint32_t cycles) -> void {
 
 auto peripheral_manager_on_vblank(bool vblank) -> void {
   for (size_t i = 0; i < NUM_SLOTS; ++i) {
-    for (auto& ap : g_active_peripherals.at(i)) {
+    for (const auto& ap : g_active_peripherals.at(i)) {
       if (ap.api != nullptr && ap.api->on_vblank != nullptr) {
         ap.api->on_vblank(ap.instance, vblank);
       }
@@ -1006,7 +1006,7 @@ auto peripheral_register(Peripheral_t* api, int slot) -> int {
     return -1;
   }
 
-  if (!(api->compatible_slots & (1U << static_cast<uint32_t>(slot)))) {
+  if ((api->compatible_slots & (1U << static_cast<uint32_t>(slot))) == 0U) {
     return -1;
   }
 
@@ -1024,8 +1024,7 @@ auto peripheral_register(Peripheral_t* api, int slot) -> int {
   ap.slot = slot;
   g_active_peripherals.at(static_cast<size_t>(slot)).push_back(ap);
 
-  void* instance =
-      api->init(slot, const_cast<HostInterface_t*>(&g_host_interface));
+  void* instance = api->init(slot, &g_host_interface);
   if (instance == nullptr) {
     g_active_peripherals.at(static_cast<size_t>(slot)).pop_back();
     return -1;
@@ -1038,7 +1037,8 @@ auto peripheral_register(Peripheral_t* api, int slot) -> int {
   return 0;
 }
 
-static auto remove_direct_io_handlers_for_instance(void* instance) -> void {
+static auto remove_direct_io_handlers_for_instance(const void* instance)
+    -> void {
   if (instance == nullptr) {
     return;
   }
@@ -1070,7 +1070,7 @@ auto peripheral_unregister(int slot) -> int {
     frontend_audio_unregister_cb(slot);
   }
   auto& slot_peripherals = g_active_peripherals.at(static_cast<size_t>(slot));
-  for (auto& ap : slot_peripherals) {
+  for (const auto& ap : slot_peripherals) {
     remove_direct_io_handlers_for_instance(ap.instance);
     if (ap.api != nullptr && ap.api->shutdown != nullptr) {
       ap.api->shutdown(ap.instance);
@@ -1105,7 +1105,7 @@ auto peripheral_command(int slot, uint32_t cmd_id, const void* data,
   if (size > 0) {
     memcpy(cmd.data, data, size);
   }
-  std::lock_guard<std::mutex> lock(g_command_queue_mutex);
+  const std::lock_guard<std::mutex> lock(g_command_queue_mutex);
   g_command_queue.push(cmd);
   return peripheral_ok;
 }
@@ -1153,7 +1153,7 @@ auto peripheral_command_by_id(int slot, const char* peripheral_id,
   if (size > 0) {
     memcpy(cmd.data, data, size);
   }
-  std::lock_guard<std::mutex> lock(g_command_queue_mutex);
+  const std::lock_guard<std::mutex> lock(g_command_queue_mutex);
   g_command_queue.push(cmd);
   return peripheral_ok;
 }
@@ -1164,7 +1164,7 @@ auto peripheral_query_by_id(int slot, const char* peripheral_id,
   if (out == nullptr || out_size == nullptr) {
     return peripheral_error;
   }
-  ActivePeripheral_t* ap = peripheral_by_id(slot, peripheral_id);
+  const ActivePeripheral_t* ap = peripheral_by_id(slot, peripheral_id);
   if (ap == nullptr || ap->api->query == nullptr) {
     return peripheral_error;
   }
@@ -1177,14 +1177,15 @@ auto peripheral_query(int slot, uint32_t cmd_id, void* out, size_t* out_size)
       out_size == nullptr) {
     return peripheral_error;
   }
-  auto& slot_peripherals = g_active_peripherals.at(static_cast<size_t>(slot));
+  const auto& slot_peripherals =
+      g_active_peripherals.at(static_cast<size_t>(slot));
   if (slot_peripherals.empty()) {
     return peripheral_error;
   }
 
-  for (auto& ap : slot_peripherals) {
+  for (const auto& ap : slot_peripherals) {
     if (ap.api != nullptr && ap.api->query != nullptr) {
-      PeripheralStatus_t status =
+      const PeripheralStatus_t status =
           ap.api->query(ap.instance, cmd_id, out, out_size);
       if (status != peripheral_incompatible) {
         return status;
@@ -1246,14 +1247,15 @@ auto peripheral_save_state(int slot, void* buffer, size_t* size) -> void {
   if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) {
     return;
   }
-  auto& slot_peripherals = g_active_peripherals.at(static_cast<size_t>(slot));
+  const auto& slot_peripherals =
+      g_active_peripherals.at(static_cast<size_t>(slot));
   if (slot_peripherals.empty()) {
     if (size != nullptr) {
       *size = 0;
     }
     return;
   }
-  auto& ap = slot_peripherals.front();
+  const auto& ap = slot_peripherals.front();
   if (ap.api != nullptr && ap.api->save_state != nullptr) {
     ap.api->save_state(ap.instance, buffer, size);
   } else if (size != nullptr) {
@@ -1266,12 +1268,13 @@ auto peripheral_load_state(int slot, const void* buffer, size_t size)
   if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS) || buffer == nullptr) {
     return peripheral_error;
   }
-  auto& slot_peripherals = g_active_peripherals.at(static_cast<size_t>(slot));
+  const auto& slot_peripherals =
+      g_active_peripherals.at(static_cast<size_t>(slot));
   if (slot_peripherals.empty()) {
     return peripheral_incompatible;
   }
 
-  auto& ap = slot_peripherals.front();
+  const auto& ap = slot_peripherals.front();
   if (ap.api == nullptr || ap.api->load_state == nullptr) {
     return peripheral_incompatible;
   }
@@ -1283,8 +1286,9 @@ auto peripheral_save_state_by_name(int slot, const char* name, void* buffer,
   if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS) || name == nullptr) {
     return;
   }
-  auto& slot_peripherals = g_active_peripherals.at(static_cast<size_t>(slot));
-  for (auto& ap : slot_peripherals) {
+  const auto& slot_peripherals =
+      g_active_peripherals.at(static_cast<size_t>(slot));
+  for (const auto& ap : slot_peripherals) {
     if (ap.api != nullptr && strcmp(ap.api->name, name) == 0) {
       if (ap.api->save_state != nullptr) {
         ap.api->save_state(ap.instance, buffer, size);
@@ -1303,8 +1307,9 @@ auto peripheral_load_state_by_name(int slot, const char* name,
       buffer == nullptr) {
     return;
   }
-  auto& slot_peripherals = g_active_peripherals.at(static_cast<size_t>(slot));
-  for (auto& ap : slot_peripherals) {
+  const auto& slot_peripherals =
+      g_active_peripherals.at(static_cast<size_t>(slot));
+  for (const auto& ap : slot_peripherals) {
     if (ap.api != nullptr && strcmp(ap.api->name, name) == 0) {
       if (ap.api->load_state != nullptr) {
         ap.api->load_state(ap.instance, buffer, size);

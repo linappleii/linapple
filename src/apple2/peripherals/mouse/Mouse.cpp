@@ -1095,7 +1095,7 @@ auto mouse_abi_query(void* instance, uint32_t query_id, void* out,
 
 }  // namespace
 
-static const Peripheral_t mouse_peripheral = {
+static Peripheral_t mouse_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.mouse",
     .name = "Mouse Interface",
@@ -1117,10 +1117,9 @@ static const Peripheral_t mouse_peripheral = {
     .query = mouse_abi_query,
 };
 
-// peripheral_register takes a mutable Peripheral_t*, so the descriptor is cast
-// as PERIPHERAL_REGISTER casts it.
+// Peripheral registry requires non-const pointer.
 auto mouse_get_descriptor() -> Peripheral_t* {
-  return const_cast<Peripheral_t*>(&mouse_peripheral);
+  return &mouse_peripheral;
 }
 
 PERIPHERAL_REGISTER(mouse_peripheral)

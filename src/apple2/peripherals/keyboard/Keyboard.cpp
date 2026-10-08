@@ -532,7 +532,7 @@ auto keyboard_abi_query(void* instance, uint32_t cmd_id, void* out,
   return peripheral_incompatible;
 }
 
-static const Peripheral_t g_keyboard_peripheral = {
+static Peripheral_t keyboard_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.keyboard",
     .name = "Keyboard",
@@ -554,11 +554,9 @@ static const Peripheral_t g_keyboard_peripheral = {
 
 }  // namespace
 
-// peripheral_register and ActivePeripheral_t::api still take a mutable
-// Peripheral_t*, so the immutable descriptor is cast the same way
-// PERIPHERAL_REGISTER casts it.
+// Peripheral registry requires non-const pointer.
 extern "C" auto keyboard_get_descriptor() -> Peripheral_t* {
-  return const_cast<Peripheral_t*>(&g_keyboard_peripheral);
+  return &keyboard_peripheral;
 }
 
-PERIPHERAL_REGISTER(g_keyboard_peripheral)
+PERIPHERAL_REGISTER(keyboard_peripheral)

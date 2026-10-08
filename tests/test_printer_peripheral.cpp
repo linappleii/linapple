@@ -433,7 +433,7 @@ class MockHost_t {
 
   // NOLINTBEGIN(cert-dcl50-cpp, cppcoreguidelines-pro-type-vararg)
   // Justification: Log is variadic in the HostInterface_t ABI.
-  static auto mock_log(void* instance, PeripheralLogLevel level,
+  static auto mock_log(void* instance, PeripheralLogLevel_t level,
                        const char* fmt, ...) -> void {
     (void)instance;
     (void)level;

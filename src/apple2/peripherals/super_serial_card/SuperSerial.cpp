@@ -512,7 +512,7 @@ auto super_serial_abi_load_state(void* instance, const void* state_buffer,
 
 }  // namespace
 
-static const Peripheral_t super_serial_peripheral = {
+static Peripheral_t super_serial_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.ssc",
     .name = "Super Serial Card",
@@ -533,11 +533,9 @@ static const Peripheral_t super_serial_peripheral = {
     .query = super_serial_abi_query,
 };
 
-// peripheral_register and ActivePeripheral_t::api take a mutable
-// Peripheral_t*, so the immutable descriptor is cast the same way
-// PERIPHERAL_REGISTER casts it.
+// Peripheral registry requires non-const pointer.
 auto super_serial_get_descriptor() -> Peripheral_t* {
-  return const_cast<Peripheral_t*>(&super_serial_peripheral);
+  return &super_serial_peripheral;
 }
 
 PERIPHERAL_REGISTER(super_serial_peripheral)

@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-// NOLINTBEGIN(modernize-use-using, cppcoreguidelines-use-enum-class)
+// NOLINTBEGIN(modernize-use-using, cppcoreguidelines-use-enum-class, readability-identifier-naming)
 
 enum {
   PERIPHERAL_AUDIO_NAME_MAX = 16,
@@ -60,7 +60,7 @@ typedef struct PeripheralAudioInfo_t {
   PeripheralAudioChannelInfo_t channels[PERIPHERAL_AUDIO_MAX_CHANNELS];
 } PeripheralAudioInfo_t;
 
-// NOLINTEND(modernize-use-using, cppcoreguidelines-use-enum-class)
+// NOLINTEND(modernize-use-using, cppcoreguidelines-use-enum-class, readability-identifier-naming)
 
 #ifdef __cplusplus
 }

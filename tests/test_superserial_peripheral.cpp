@@ -116,7 +116,7 @@ class BenchHost_t {
   }
 
  private:
-  static auto bench_log(void* instance, PeripheralLogLevel level,
+  static auto bench_log(void* instance, PeripheralLogLevel_t level,
                         const char* fmt, ...) -> void {
     (void)instance;
     (void)level;

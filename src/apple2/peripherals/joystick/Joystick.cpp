@@ -304,7 +304,7 @@ auto joystick_abi_load_state(void* instance, const void* state_buffer,
 
 }  // namespace
 
-static const Peripheral_t joystick_peripheral = {
+static Peripheral_t joystick_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.joystick",
     .name = "Joystick",
@@ -325,10 +325,9 @@ static const Peripheral_t joystick_peripheral = {
     .query = joystick_abi_query,
 };
 
-// peripheral_register takes a mutable Peripheral_t*, as PERIPHERAL_REGISTER's
-// own cast does.
+// Peripheral registry requires non-const pointer.
 auto joystick_get_descriptor() -> Peripheral_t* {
-  return const_cast<Peripheral_t*>(&joystick_peripheral);
+  return &joystick_peripheral;
 }
 
 PERIPHERAL_REGISTER(joystick_peripheral)

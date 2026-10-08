@@ -103,7 +103,7 @@ class BenchHost_t {
     return static_cast<uint16_t>(0xC080 + (io_slot_ << 4) + offset);
   }
 
-  static auto bench_log(void* instance, PeripheralLogLevel level,
+  static auto bench_log(void* instance, PeripheralLogLevel_t level,
                         const char* fmt, ...) -> void {
     (void)instance;
     (void)level;

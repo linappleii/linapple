@@ -18,10 +18,6 @@ using LogCallback = void (*)(LogLevel level, const char* message);
 using LogCallbackWithContext = void (*)(LogLevel level, const char* message,
                                           void* user_data);
 
-using LogLevel_t = LogLevel;
-using LogCallback_t = LogCallback;
-using LogCallbackWithContext_t = LogCallbackWithContext;
-
 namespace Logger {
 
 constexpr size_t max_stack_log_size = 1024;

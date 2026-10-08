@@ -8,7 +8,7 @@
 extern "C" {
 #endif
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class)
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, readability-identifier-naming, modernize-use-trailing-return-type)
 
 /* Upper 16 bits encode subsystem ID; lower 16 bits encode command index. */
 typedef enum {
@@ -33,7 +33,7 @@ static inline bool peripheral_cmd_is_mine(uint32_t cmd_id, uint32_t subsystem) {
   return owner == subsystem || owner == (uint32_t)PERIPHERAL_SUBSYSTEM_GENERIC;
 }
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class)
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, readability-identifier-naming, modernize-use-trailing-return-type)
 
 #ifdef __cplusplus
 }

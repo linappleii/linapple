@@ -630,7 +630,7 @@ auto mb_abi_query(void* instance, uint32_t cmd_id, void* out, size_t* out_size)
   return peripheral_incompatible;
 }
 
-static const Peripheral_t g_mockingboard_peripheral = {
+static Peripheral_t mockingboard_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.mockingboard",
     .name = "Mockingboard",
@@ -654,11 +654,9 @@ static const Peripheral_t g_mockingboard_peripheral = {
 
 }  // namespace
 
-// peripheral_register and ActivePeripheral_t::api still take a mutable
-// Peripheral_t*, so the immutable descriptor is cast the same way
-// PERIPHERAL_REGISTER casts it.
+// Peripheral registry requires non-const pointer.
 extern "C" auto mockingboard_get_descriptor() -> Peripheral_t* {
-  return const_cast<Peripheral_t*>(&g_mockingboard_peripheral);
+  return &mockingboard_peripheral;
 }
 
-PERIPHERAL_REGISTER(g_mockingboard_peripheral)
+PERIPHERAL_REGISTER(mockingboard_peripheral)

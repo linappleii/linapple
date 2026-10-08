@@ -62,7 +62,7 @@ constexpr int day_max = 31;
 constexpr int hour_max = 23;
 constexpr int minute_max = 59;
 
-struct ClockCard_t {
+struct ClockCard {
   std::array<uint8_t, latch_count> latches{};
   std::array<uint8_t, rom_size> rom{};
   HostInterface_t* host = nullptr;
@@ -70,7 +70,7 @@ struct ClockCard_t {
   bool reported_missing_time = false;
 };
 
-auto set_latch_pair(ClockCard_t* card, size_t index, int value) -> void {
+auto set_latch_pair(ClockCard* card, size_t index, int value) -> void {
   constexpr size_t index_mask = 0x0E;
   constexpr int value_max = 100;
 
@@ -87,7 +87,7 @@ auto set_latch_pair(ClockCard_t* card, size_t index, int value) -> void {
 }
 
 // Latch local time fields from host platform interface.
-auto update_latches(ClockCard_t* card) -> void {
+auto update_latches(ClockCard* card) -> void {
   HostLocalTime_t now{};
   if (!card->host->GetLocalTime(&now)) {
     if (!card->reported_missing_time && card->host->Log != nullptr) {
@@ -123,7 +123,7 @@ auto clockcard_io_read(void* instance, uint16_t program_counter,
   if (instance == nullptr) {
     return 0;
   }
-  auto* card = static_cast<ClockCard_t*>(instance);
+  auto* card = static_cast<ClockCard*>(instance);
 
   const size_t register_offset = memory_address & io_register_mask;
   if (register_offset < latch_count) {
@@ -165,7 +165,7 @@ auto clockcard_abi_init(int slot, HostInterface_t* host) -> void* {
     return nullptr;
   }
 
-  auto card = std::unique_ptr<ClockCard_t>(new (std::nothrow) ClockCard_t());
+  auto card = std::unique_ptr<ClockCard>(new (std::nothrow) ClockCard());
   if (!card) {
     return nullptr;
   }
@@ -188,7 +188,7 @@ auto clockcard_abi_shutdown(void* instance) -> void {
     return;
   }
 
-  std::unique_ptr<ClockCard_t> card(static_cast<ClockCard_t*>(instance));
+  std::unique_ptr<ClockCard> card(static_cast<ClockCard*>(instance));
 }
 
 // Clock card has no mutable commands or query endpoints.
@@ -245,7 +245,7 @@ auto clockcard_abi_save_state(void* instance, void* state_buffer,
     return peripheral_error;
   }
 
-  const auto* card = static_cast<const ClockCard_t*>(instance);
+  const auto* card = static_cast<const ClockCard*>(instance);
   ClockCardSaveState_t state{};
   state.version = CLOCKCARD_STATE_VERSION;
   state.struct_size = static_cast<uint32_t>(required_size);
@@ -293,14 +293,14 @@ auto clockcard_abi_load_state(void* instance, const void* state_buffer,
     return peripheral_error;
   }
 
-  auto* card = static_cast<ClockCard_t*>(instance);
+  auto* card = static_cast<ClockCard*>(instance);
   std::copy_n(state.latches, latch_count, card->latches.begin());
   return peripheral_ok;
 }
 
 }  // namespace
 
-static const Peripheral_t g_clockcard_peripheral = {
+static Peripheral_t clockcard_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.clock",
     .name = "Clock Card",
@@ -322,7 +322,7 @@ static const Peripheral_t g_clockcard_peripheral = {
 
 // Peripheral registry requires non-const pointer.
 auto clockcard_get_descriptor() -> Peripheral_t* {
-  return const_cast<Peripheral_t*>(&g_clockcard_peripheral);
+  return &clockcard_peripheral;
 }
 
-PERIPHERAL_REGISTER(g_clockcard_peripheral)
+PERIPHERAL_REGISTER(clockcard_peripheral)
