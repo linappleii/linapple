@@ -314,7 +314,7 @@ auto CmdConfigDisasm(int nArgs) -> Update_t {
               ,
               "Shift+Ctrl "  // 6
               ,
-              "Shift+Ctarl+Alt "  // 7
+              "Shift+Ctarl+Alt ",  // 7
           };
           ConsoleBufferPushFormat(sText, "Click: %d = %sLeft click",
                                   g_config_disasm_click,

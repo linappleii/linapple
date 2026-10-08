@@ -153,7 +153,8 @@ constexpr uint8_t phase_mask = 0x03;
 
 constexpr const char* channel_names[voices_per_card] = {
     "AY0 Voice A", "AY0 Voice B", "AY0 Voice C",
-    "AY1 Voice A", "AY1 Voice B", "AY1 Voice C"};
+    "AY1 Voice A", "AY1 Voice B", "AY1 Voice C",
+};
 
 struct DcBlock_t {
   double previous_input = 0.0;
@@ -208,9 +209,12 @@ auto run_dc_block(DcBlock_t* f, float* buffer, size_t count) -> bool {
 auto render_chunk(Mockingboard_t* mb, size_t count) -> void {
   for (size_t chip = 0; chip < chips_per_card; ++chip) {
     std::array<float*, AY8910_NUM_VOICES> voices = {
-        {mb->scratch[(chip * voices_per_chip) + 0].data(),
-         mb->scratch[(chip * voices_per_chip) + 1].data(),
-         mb->scratch[(chip * voices_per_chip) + 2].data()}};
+        {
+            mb->scratch[(chip * voices_per_chip) + 0].data(),
+            mb->scratch[(chip * voices_per_chip) + 1].data(),
+            mb->scratch[(chip * voices_per_chip) + 2].data(),
+        },
+    };
     ay8910_step(&mb->ay[chip], count, voices.data(), scratch_ticks);
   }
 
@@ -643,7 +647,8 @@ static const Peripheral_t g_mockingboard_peripheral = {
     .save_state = mb_abi_save_state,
     .load_state = mb_abi_load_state,
     .command = nullptr,
-    .query = mb_abi_query};
+    .query = mb_abi_query,
+};
 
 // NOLINTEND(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
 

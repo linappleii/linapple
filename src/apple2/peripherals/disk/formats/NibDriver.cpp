@@ -47,7 +47,8 @@ extern "C" const DiskFormatDriver_t g_nib_driver = {
     .is_write_protected = nibble_disk_image_is_write_protected,
     .read_track_bits = nibble_disk_image_read_track_bits,
     .write_track_bits = nibble_disk_image_write_track_bits,
-    .create = nib_create};
+    .create = nib_create,
+};
 
 static const DiskFormatRegistration_t registration{&g_nib_driver};
 

@@ -114,11 +114,15 @@ static auto get_machine_rom_info(Apple2Type_t type) -> MachineRomInfo_t {
 
 static auto set_mem(uint8_t* val) -> void {
   mem = val;
-  if (g_active_memory) g_active_memory->mem = val;
+  if (g_active_memory) {
+    g_active_memory->mem = val;
+  }
 }
 static auto set_mem_dirty(uint8_t* val) -> void {
   memdirty = val;
-  if (g_active_memory) g_active_memory->memdirty = val;
+  if (g_active_memory) {
+    g_active_memory->memdirty = val;
+  }
 }
 
 MemoryInstance_t::~MemoryInstance_t() {
@@ -132,7 +136,9 @@ auto mem_get_active_context() noexcept -> MemoryInstance_t* {
 }
 
 auto mem_set_active_context(MemoryInstance_t* context) noexcept -> void {
-  if (!context) return;
+  if (!context) {
+    return;
+  }
   g_active_memory = context;
   g_io_read = context->io_read;
   g_io_write = context->io_write;
@@ -659,11 +665,17 @@ auto register_io_handler(uint32_t slot, IoFunction_t io_read_c0,
 auto register_direct_io_handler(uint16_t addr, IoFunction_t read,
                                 IoFunction_t write, void* instance) noexcept
     -> void {
-  if ((addr & 0xFF00) != 0xC000) return;
+  if ((addr & 0xFF00) != 0xC000) {
+    return;
+  }
   uint8_t index = static_cast<uint8_t>(addr & 0xFF);
 
-  if (read) g_io_read[index] = read;
-  if (write) g_io_write[index] = write;
+  if (read) {
+    g_io_read[index] = read;
+  }
+  if (write) {
+    g_io_write[index] = write;
+  }
 
   (void)instance;
 }
@@ -1193,8 +1205,12 @@ auto mem_reset() noexcept -> void {
   memset(g_active_memory->memshadow, 0, NUM_PAGES_64K * sizeof(uint8_t*));
   memset(memwrite, 0, NUM_PAGES_64K * sizeof(uint8_t*));
 
-  if (g_active_memory->memaux) memset(g_active_memory->memaux, 0, MEMORY_64K);
-  if (g_active_memory->memmain) memset(g_active_memory->memmain, 0, MEMORY_64K);
+  if (g_active_memory->memaux) {
+    memset(g_active_memory->memaux, 0, MEMORY_64K);
+  }
+  if (g_active_memory->memmain) {
+    memset(g_active_memory->memmain, 0, MEMORY_64K);
+  }
 
   if (g_memory_init_pattern == MIP_FF_FF_00_00) {
     for (uint32_t byte = 0x0000; byte < IO_RANGE_BEGIN;) {

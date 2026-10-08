@@ -12,7 +12,9 @@
 #include "core/Util_Text.h"
 
 auto video_create_surface(int w, int h, int bpp) -> VideoSurface_t* {
-  if (w <= 0 || h <= 0 || bpp <= 0) return nullptr;
+  if (w <= 0 || h <= 0 || bpp <= 0) {
+    return nullptr;
+  }
   auto s = std::unique_ptr<VideoSurface_t>{new VideoSurface_t{}};
   s->w = w;
   s->h = h;
@@ -90,9 +92,13 @@ auto video_load_xpm(const char* const* xpm) -> VideoSurface_t* {
 
   for (int y = 0; y < h; ++y) {
     const char* line = xpm[1 + colors + y];
-    if (line == nullptr) continue;
+    if (line == nullptr) {
+      continue;
+    }
     for (int x = 0; x < w; ++x) {
-      if (line[x] == '\0') break;
+      if (line[x] == '\0') {
+        break;
+      }
       const char c = line[x];
       uint8_t color_idx = 0;
       for (int i = 0; i < colors; ++i) {

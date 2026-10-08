@@ -16,17 +16,17 @@ enum { MOUSE_STATE_VERSION = 1 };
 
 // Id 0x0000 carried an absolute host position and range; retired, never reused.
 typedef enum {
-  mouse_cmd_set_button =
-      PERIPHERAL_SUBSYSTEM_MOUSE | 0x0001, /**< data: MouseButtonPayload_t */
-  mouse_cmd_move =
-      PERIPHERAL_SUBSYSTEM_MOUSE | 0x0002 /**< data: MouseMovePayload_t */
+  mouse_cmd_set_button = PERIPHERAL_SUBSYSTEM_MOUSE |
+      0x0001, /**< data: MouseButtonPayload_t */
+  mouse_cmd_move = PERIPHERAL_SUBSYSTEM_MOUSE |
+      0x0002, /**< data: MouseMovePayload_t */
 } MouseCmd_t;
 
 typedef enum {
   mouse_query_is_active = PERIPHERAL_SUBSYSTEM_MOUSE |
-                          0x0001, /**< out: uint8_t (0=inactive, 1=active) */
-  mouse_query_position =
-      PERIPHERAL_SUBSYSTEM_MOUSE | 0x0002 /**< out: MousePositionReport_t */
+      0x0001, /**< out: uint8_t (0=inactive, 1=active) */
+  mouse_query_position = PERIPHERAL_SUBSYSTEM_MOUSE |
+      0x0002, /**< out: MousePositionReport_t */
 } MouseQuery_t;
 
 // Counts of the mouse's quadrature, about 0.020 inch a step (AppleMouse II

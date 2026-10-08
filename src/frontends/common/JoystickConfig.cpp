@@ -15,11 +15,15 @@ struct JoystickTypeInfo_t {
 };
 
 constexpr std::array<JoystickTypeInfo_t, joystick_config_type_count>
-    k_joy_info = {{{joystick_device_none, joystick_mode_none},
-                   {joystick_device_joystick, joystick_mode_standard},
-                   {joystick_device_keyboard, joystick_mode_standard},
-                   {joystick_device_keyboard, joystick_mode_centering},
-                   {joystick_device_mouse, joystick_mode_standard}}};
+    k_joy_info = {
+        {
+            {joystick_device_none, joystick_mode_none},
+            {joystick_device_joystick, joystick_mode_standard},
+            {joystick_device_keyboard, joystick_mode_standard},
+            {joystick_device_keyboard, joystick_mode_centering},
+            {joystick_device_mouse, joystick_mode_standard},
+        },
+};
 
 auto type_info(uint32_t type) -> const JoystickTypeInfo_t& {
   return k_joy_info.at(type < joystick_config_type_count ? type : 0);

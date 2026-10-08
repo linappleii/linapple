@@ -95,8 +95,9 @@ bool g_console_input_quoted = false;        // Allows lower-case to be entered
 int g_console_input_skip = 0;
 
 int g_console_color[NUM_CONSOLE_COLORS] = {
-    WHITE, RED,   GREEN,  YELLOW,     BLUE,      MAGENTA,
-    CYAN,  WHITE, ORANGE, LIGHT_GRAY, LIGHT_BLUE};
+    WHITE, RED,   GREEN,  YELLOW,     BLUE,       MAGENTA,
+    CYAN,  WHITE, ORANGE, LIGHT_GRAY, LIGHT_BLUE,
+};
 // Prototypes _______________________________________________________________
 
 // Console

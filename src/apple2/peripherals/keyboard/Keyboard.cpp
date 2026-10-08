@@ -549,7 +549,8 @@ static const Peripheral_t g_keyboard_peripheral = {
     .save_state = keyboard_abi_save_state,
     .load_state = keyboard_abi_load_state,
     .command = keyboard_abi_command,
-    .query = keyboard_abi_query};
+    .query = keyboard_abi_query,
+};
 
 }  // namespace
 

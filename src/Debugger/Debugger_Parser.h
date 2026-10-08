@@ -18,10 +18,14 @@ auto TextConvertTabsToSpaces(char* pDeTabified_, const char* text,
 inline auto SkipUntilToken(const char* src_ptr, const TokenTable_t* aTokens,
                            const int nTokens, ArgToken_e* pToken_) -> const
     char* {
-  if (pToken_) *pToken_ = NO_TOKEN;
+  if (pToken_) {
+    *pToken_ = NO_TOKEN;
+  }
 
   while (src_ptr && (*src_ptr)) {
-    if (ParserFindToken(src_ptr, aTokens, nTokens, pToken_)) return src_ptr;
+    if (ParserFindToken(src_ptr, aTokens, nTokens, pToken_)) {
+      return src_ptr;
+    }
 
     src_ptr++;
   }

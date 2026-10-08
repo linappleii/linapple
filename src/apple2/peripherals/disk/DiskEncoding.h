@@ -20,7 +20,7 @@ enum { disk_encoding_scratch_size = 0x1800 };
 
 typedef enum {
   disk_sector_order_dos = 0,
-  disk_sector_order_prodos = 1
+  disk_sector_order_prodos = 1,
 } DiskSectorOrder_e;
 
 /* The physical slot each of the sixteen logical sectors occupies. */

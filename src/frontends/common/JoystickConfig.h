@@ -10,14 +10,14 @@ enum JoystickDevice_t : int {
   joystick_device_none = 0,
   joystick_device_joystick = 1,
   joystick_device_keyboard = 2,
-  joystick_device_mouse = 3
+  joystick_device_mouse = 3,
 };
 
 enum JoystickMode_t : int {
   joystick_mode_none = 0,
   joystick_mode_standard = 1,
   joystick_mode_centering = 2,
-  joystick_mode_smooth = 3
+  joystick_mode_smooth = 3,
 };
 
 constexpr uint32_t joystick_config_type_count = 5;

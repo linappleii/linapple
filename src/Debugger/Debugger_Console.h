@@ -44,7 +44,7 @@ enum ConsoleColors_e {
   CONSOLE_COLOR_O,      // 8 Orange
   CONSOLE_COLOR_k,      // 9 Grey
   CONSOLE_COLOR_b,      // : Light Blue
-  NUM_CONSOLE_COLORS
+  NUM_CONSOLE_COLORS,
 };
 extern int g_console_color[NUM_CONSOLE_COLORS];
 
@@ -78,12 +78,16 @@ constexpr const char* CHC_PATH = "`:";  // Light Blue
 
 // ascii markup
 inline auto ConsoleColor_IsCharMeta(uint8_t c) -> bool {
-  if (CONSOLE_COLOR_ESCAPE_CHAR == c) return true;
+  if (CONSOLE_COLOR_ESCAPE_CHAR == c) {
+    return true;
+  }
   return false;
 }
 
 inline auto ConsoleColor_IsCharColor(uint8_t c) -> bool {
-  if ((c >= '0') && ((c - '0') < NUM_CONSOLE_COLORS)) return true;
+  if ((c >= '0') && ((c - '0') < NUM_CONSOLE_COLORS)) {
+    return true;
+  }
   return false;
 }
 
@@ -119,7 +123,9 @@ inline auto ConsoleColor_IsCharColor(uint8_t c) -> bool {
 //      cc Encoded Color / Mouse Text
 //
 inline auto ConsoleColor_IsColorOrMouse(conchar_t g) -> bool {
-  if (g > CONSOLE_COLOR_MASK) return true;
+  if (g > CONSOLE_COLOR_MASK) {
+    return true;
+  }
   return false;
 }
 
@@ -129,7 +135,9 @@ inline auto ConsoleColor_IsColor(conchar_t g) -> bool {
 
 inline auto ConsoleColor_GetColor(conchar_t g) -> uint32_t {
   const int iColor = (g >> CONSOLE_COLOR_SHIFT) - '0';
-  if (iColor < NUM_CONSOLE_COLORS) return g_console_color[iColor];
+  if (iColor < NUM_CONSOLE_COLORS) {
+    return g_console_color[iColor];
+  }
 
   return g_console_color[0];
 }

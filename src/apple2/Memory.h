@@ -156,7 +156,7 @@ extern MemoryInitPattern_t g_memory_init_pattern;
 enum ExpansionRomType_t {
   EXP_ROM_NULL = 0,
   EXP_ROM_INTERNAL,
-  EXP_ROM_PERIPHERAL
+  EXP_ROM_PERIPHERAL,
 };
 using eExpansionRomType = ExpansionRomType_t;
 constexpr ExpansionRomType_t eExpRomNull = EXP_ROM_NULL;

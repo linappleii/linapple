@@ -17,7 +17,7 @@ enum {
   LINAPPLE_ABI_VERSION = 1,
   PERIPHERAL_CMD_MAX_DATA = 512,
   PERIPHERAL_MASK_INTERNAL = 0x01,
-  PERIPHERAL_MASK_EXPANSION = 0xFE
+  PERIPHERAL_MASK_EXPANSION = 0xFE,
 };
 
 typedef uint8_t (*PeripheralIOHandler)(void* instance, uint16_t pc,

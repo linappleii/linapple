@@ -83,7 +83,7 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
     TS_IMMEDIATE,
     TS_BRANCH,
     TS_CHAR,
-    NUM_TAB_STOPS
+    NUM_TAB_STOPS,
   };
 
   float aTabs[NUM_TAB_STOPS] = {5, 14, 26, 41, 48, 49};
@@ -227,12 +227,16 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
   PrintTextCursorX(" ", linerect);
 
   if (line.bTargetImmediate) {
-    if (!bCursorLine) DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPERATOR));
+    if (!bCursorLine) {
+      DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPERATOR));
+    }
     PrintTextCursorX("#$", linerect);
   }
 
   if (line.bTargetIndexed || line.bTargetIndirect) {
-    if (!bCursorLine) DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPERATOR));
+    if (!bCursorLine) {
+      DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPERATOR));
+    }
     PrintTextCursorX("(", linerect);
   }
 
@@ -241,7 +245,9 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
 
   if (*pTarget == '$') {
     pTarget++;
-    if (!bCursorLine) DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPERATOR));
+    if (!bCursorLine) {
+      DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPERATOR));
+    }
     PrintTextCursorX("$", linerect);
   }
 
@@ -258,12 +264,18 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
   }
 
   int nMaxLen = MAX_TARGET_LEN;
-  if (!g_config_disasm_address_view) nMaxLen += 4;
-  if (!g_config_disasm_opcodes_view) nMaxLen += (MAX_OPCODES * 3);
+  if (!g_config_disasm_address_view) {
+    nMaxLen += 4;
+  }
+  if (!g_config_disasm_opcodes_view) {
+    nMaxLen += (MAX_OPCODES * 3);
+  }
 
   int nOverflow = 0;
   if (bDisasmFormatFlags & DISASM_FORMAT_OFFSET) {
-    if (line.nTargetOffset != 0) nOverflow++;
+    if (line.nTargetOffset != 0) {
+      nOverflow++;
+    }
     nOverflow += strlen(line.sTargetOffset);
   }
 
@@ -275,9 +287,13 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
     }
   }
 
-  if (line.bTargetIndexed || line.bTargetIndirect) nOverflow++;
+  if (line.bTargetIndexed || line.bTargetIndirect) {
+    nOverflow++;
+  }
   if (line.bTargetIndexed) {
-    if (line.bTargetY) nOverflow += 2;
+    if (line.bTargetY) {
+      nOverflow += 2;
+    }
   }
 
   if (bDisasmFormatFlags & DISASM_FORMAT_TARGET_POINTER) {
@@ -298,54 +314,76 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
   PrintTextCursorX(pTarget, linerect);
 
   if (bDisasmFormatFlags & DISASM_FORMAT_OFFSET) {
-    if (!bCursorLine) DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPERATOR));
+    if (!bCursorLine) {
+      DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPERATOR));
+    }
     if (line.nTargetOffset > 0) {
       PrintTextCursorX("+", linerect);
     } else if (line.nTargetOffset < 0) {
       PrintTextCursorX("-", linerect);
     }
-    if (!bCursorLine) DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPCODE));
+    if (!bCursorLine) {
+      DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPCODE));
+    }
     PrintTextCursorX(line.sTargetOffset, linerect);
   }
 
   if (line.bTargetIndirect || line.bTargetX || line.bTargetY) {
-    if (!bCursorLine) DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPERATOR));
+    if (!bCursorLine) {
+      DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPERATOR));
+    }
     if (line.bTargetX) {
       PrintTextCursorX(",", linerect);
-      if (!bCursorLine) DebuggerSetColorFG(DebuggerGetColor(FG_INFO_REG));
+      if (!bCursorLine) {
+        DebuggerSetColorFG(DebuggerGetColor(FG_INFO_REG));
+      }
       PrintTextCursorX("X", linerect);
     } else if ((line.bTargetY) && (!line.bTargetIndirect)) {
       PrintTextCursorX(",", linerect);
-      if (!bCursorLine) DebuggerSetColorFG(DebuggerGetColor(FG_INFO_REG));
+      if (!bCursorLine) {
+        DebuggerSetColorFG(DebuggerGetColor(FG_INFO_REG));
+      }
       PrintTextCursorX("Y", linerect);
     }
   }
 
   if (line.bTargetIndexed || line.bTargetIndirect) {
-    if (!bCursorLine) DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPERATOR));
+    if (!bCursorLine) {
+      DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPERATOR));
+    }
     PrintTextCursorX(")", linerect);
   }
 
   if (line.bTargetIndexed) {
     if (line.bTargetY) {
       PrintTextCursorX(",", linerect);
-      if (!bCursorLine) DebuggerSetColorFG(DebuggerGetColor(FG_INFO_REG));
+      if (!bCursorLine) {
+        DebuggerSetColorFG(DebuggerGetColor(FG_INFO_REG));
+      }
       PrintTextCursorX("Y", linerect);
     }
   }
 
-  if (data) return nOpbyte;
+  if (data) {
+    return nOpbyte;
+  }
 
   if (bDisasmFormatFlags & DISASM_FORMAT_TARGET_POINTER) {
     linerect.left = static_cast<int>(aTabs[TS_IMMEDIATE]);
-    if (!bCursorLine) DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_ADDRESS));
+    if (!bCursorLine) {
+      DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_ADDRESS));
+    }
     PrintTextCursorX(line.sTargetPointer, linerect);
     if (bDisasmFormatFlags & DISASM_FORMAT_TARGET_VALUE) {
-      if (!bCursorLine)
+      if (!bCursorLine) {
         DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPERATOR));
-      if (g_config_disasm_targets & DISASM_TARGET_BOTH)
+      }
+      if (g_config_disasm_targets & DISASM_TARGET_BOTH) {
         PrintTextCursorX(":", linerect);
-      if (!bCursorLine) DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPCODE));
+      }
+      if (!bCursorLine) {
+        DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPCODE));
+      }
       PrintTextCursorX(line.sTargetValue, linerect);
       PrintTextCursorX(" ", linerect);
     }
@@ -353,18 +391,25 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
 
   if (bDisasmFormatFlags & DISASM_FORMAT_CHAR) {
     linerect.left = static_cast<int>(aTabs[TS_CHAR]);
-    if (!bCursorLine) DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPERATOR));
-    if (!bCursorLine)
+    if (!bCursorLine) {
+      DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPERATOR));
+    }
+    if (!bCursorLine) {
       ColorizeSpecialChar(nullptr, line.nImmediate, MEM_VIEW_ASCII,
                           iBackground);
+    }
     PrintTextCursorX(line.sImmediate, linerect);
     DebuggerSetColorBG(DebuggerGetColor(iBackground));
-    if (!bCursorLine) DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPERATOR));
+    if (!bCursorLine) {
+      DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPERATOR));
+    }
   }
 
   if (bDisasmFormatFlags & DISASM_FORMAT_BRANCH) {
     linerect.left = static_cast<int>(aTabs[TS_BRANCH]);
-    if (!bCursorLine) DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_BRANCH));
+    if (!bCursorLine) {
+      DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_BRANCH));
+    }
     PrintText(line.sBranch, linerect);
   }
 
@@ -447,7 +492,9 @@ auto DrawFlags(int line, uint16_t nRegFlags, char* pFlagNames_) -> void {
     nRegFlags >>= 1;
   }
 
-  if (pFlagNames_) util_safe_strcpy(pFlagNames_, sFlagNames, 64);
+  if (pFlagNames_) {
+    util_safe_strcpy(pFlagNames_, sFlagNames, 64);
+  }
 }
 
 auto DrawStack(int line) -> void {

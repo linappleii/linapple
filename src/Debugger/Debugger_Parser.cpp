@@ -36,9 +36,11 @@ std::vector<int> g_potential_commands;
 // NOTE: ArgToken_e and g_tokens must match!
 const TokenTable_t g_tokens[NUM_TOKENS] = {
     // Input
-    {TOKEN_ALPHANUMERIC,
-     TYPE_STRING,
-     {0}},  // Default, if doen't match anything else
+    {
+        TOKEN_ALPHANUMERIC,
+        TYPE_STRING,
+        {0},
+    },  // Default, if doen't match anything else
     {TOKEN_AMPERSAND, TYPE_OPERATOR, "&"},  // bit-and
     {TOKEN_AT, TYPE_OPERATOR, "@"},         // reference results
     {TOKEN_BRACE_L, TYPE_STRING, "{"},

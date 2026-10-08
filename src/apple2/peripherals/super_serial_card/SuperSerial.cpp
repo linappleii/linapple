@@ -530,7 +530,8 @@ static const Peripheral_t super_serial_peripheral = {
     .save_state = super_serial_abi_save_state,
     .load_state = super_serial_abi_load_state,
     .command = super_serial_abi_command,
-    .query = super_serial_abi_query};
+    .query = super_serial_abi_query,
+};
 
 // peripheral_register and ActivePeripheral_t::api take a mutable
 // Peripheral_t*, so the immutable descriptor is cast the same way

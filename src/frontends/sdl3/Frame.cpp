@@ -540,13 +540,13 @@ auto draw_status_area(int drawflags) -> void {
     }
 
     leds.at(0) = static_cast<char>(led_char_base + drive1_status);
-    font_print(8, 23, leds.data(), g_status_surface, 4.0f, 2.7f);
+    font_print(8, 23, leds.data(), g_status_surface, 4.0F, 2.7F);
 
     leds.at(0) = static_cast<char>(led_char_base + drive2_status);
-    font_print(40, 23, leds.data(), g_status_surface, 4.0f, 2.7f);
+    font_print(40, 23, leds.data(), g_status_surface, 4.0F, 2.7F);
 
     leds.at(0) = static_cast<char>(led_char_base + hdd_status);
-    font_print(71, 23, leds.data(), g_status_surface, 4.0f, 2.7f);
+    font_print(71, 23, leds.data(), g_status_surface, 4.0F, 2.7F);
 
     if ((drive1_status | drive2_status | hdd_status) != 0) {
       g_status_cycle = k_show_cycles;
@@ -609,39 +609,39 @@ auto frame_show_help_screen(int sx, int sy) -> void {
   const float scale_x = facx_f;
   const float scale_y = facy_f;
 
-  const int hdr_top = static_cast<int>(4.0f * facy_f);
-  const int hdr_height = static_cast<int>(42.0f * facy_f);
+  const int hdr_top = static_cast<int>(4.0F * facy_f);
+  const int hdr_height = static_cast<int>(42.0F * facy_f);
 
   {
     ScopedSurfaceLock_t lock_screen(g_screen.get());
-    rectangle(lock_screen.view(), static_cast<int>(4.0f * facx_f), hdr_top,
-              static_cast<int>(system_state.screen_width - (8.0f * facx_f)),
+    rectangle(lock_screen.view(), static_cast<int>(4.0F * facx_f), hdr_top,
+              static_cast<int>(system_state.screen_width - (8.0F * facx_f)),
               hdr_height, RGB(255, 255, 0));
 
-    font_print_centered(sx / 2, hdr_top + static_cast<int>(4.0f * facy_f),
+    font_print_centered(sx / 2, hdr_top + static_cast<int>(4.0F * facy_f),
                         HELP_HEADER_STRINGS.at(0), lock_screen.view(), scale_x,
                         scale_y);
-    font_print_centered(sx / 2, hdr_top + static_cast<int>(16.0f * facy_f),
+    font_print_centered(sx / 2, hdr_top + static_cast<int>(16.0F * facy_f),
                         HELP_HEADER_STRINGS.at(1), lock_screen.view(), scale_x,
                         scale_y);
-    font_print_centered(sx / 2, hdr_top + static_cast<int>(28.0f * facy_f),
+    font_print_centered(sx / 2, hdr_top + static_cast<int>(28.0F * facy_f),
                         HELP_HEADER_STRINGS.at(2), lock_screen.view(), scale_x,
                         scale_y);
 
-    const int body_top = hdr_top + hdr_height + static_cast<int>(4.0f * facy_f);
+    const int body_top = hdr_top + hdr_height + static_cast<int>(4.0F * facy_f);
     const int body_height = static_cast<int>(system_state.screen_height -
-                                             body_top - (4.0f * facy_f));
-    rectangle(lock_screen.view(), static_cast<int>(4.0f * facx_f), body_top,
-              static_cast<int>(system_state.screen_width - (8.0f * facx_f)),
+                                             body_top - (4.0F * facy_f));
+    rectangle(lock_screen.view(), static_cast<int>(4.0F * facx_f), body_top,
+              static_cast<int>(system_state.screen_width - (8.0F * facx_f)),
               body_height, RGB(255, 255, 255));
 
-    const float line_spacing = 13.0f * facy_f;
+    const float line_spacing = 13.0F * facy_f;
     for (size_t i = 0; i < HELP_BODY_LINES.size(); ++i) {
       if (HELP_BODY_LINES.at(i).text != nullptr &&
           HELP_BODY_LINES.at(i).text[0] != '\0') {
         font_print(
-            static_cast<int>(16.0f * facx_f),
-            body_top + static_cast<int>(6.0f * facy_f +
+            static_cast<int>(16.0F * facx_f),
+            body_top + static_cast<int>(6.0F * facy_f +
                                         static_cast<float>(i) * line_spacing),
             HELP_BODY_LINES.at(i).text, lock_screen.view(), scale_x, scale_y);
       }
@@ -649,12 +649,18 @@ auto frame_show_help_screen(int sx, int sy) -> void {
 
     if (assets != nullptr && assets->icon != nullptr) {
       ScopedSurfaceLock_t lock_icon(static_cast<SDL_Surface*>(assets->icon));
-      VideoRect_t logo{0, 0, static_cast<int16_t>(lock_icon.view().w),
-                       static_cast<int16_t>(lock_icon.view().h)};
-      VideoRect_t scrr{static_cast<int16_t>(460.0f * facx_f),
-                       static_cast<int16_t>(270.0f * facy_f),
-                       static_cast<int16_t>(100.0f * facy_f),
-                       static_cast<int16_t>(100.0f * facy_f)};
+      VideoRect_t logo{
+          0,
+          0,
+          static_cast<int16_t>(lock_icon.view().w),
+          static_cast<int16_t>(lock_icon.view().h),
+      };
+      VideoRect_t scrr{
+          static_cast<int16_t>(460.0F * facx_f),
+          static_cast<int16_t>(270.0F * facy_f),
+          static_cast<int16_t>(100.0F * facy_f),
+          static_cast<int16_t>(100.0F * facy_f),
+      };
       video_soft_stretch_or(lock_icon.view(), &logo, lock_screen.view(), &scrr);
     }
   }
@@ -765,8 +771,12 @@ auto frame_on_resize(int width, int height) -> void {
   g_orig_rect = SDL_Rect{0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
   g_new_rect = s_is_fullscreen
                    ? compute_aspect_fit_rect(width, height)
-                   : SDL_Rect{0, 0, static_cast<int>(system_state.screen_width),
-                              static_cast<int>(system_state.screen_height)};
+                   : SDL_Rect{
+                         0,
+                         0,
+                         static_cast<int>(system_state.screen_width),
+                         static_cast<int>(system_state.screen_height),
+                     };
 
   if ((system_state.mode != app_mode_logo) &&
       (system_state.mode != app_mode_debug)) {
@@ -915,8 +925,12 @@ auto frame_picture_rect() -> MousePictureRect_t {
   if (g_window_resized) {
     return {g_new_rect.x, g_new_rect.y, g_new_rect.w, g_new_rect.h};
   }
-  return {0, 0, static_cast<int>(system_state.screen_width),
-          static_cast<int>(system_state.screen_height)};
+  return {
+      0,
+      0,
+      static_cast<int>(system_state.screen_width),
+      static_cast<int>(system_state.screen_height),
+  };
 }
 
 auto frame_create_window() -> int {
@@ -978,8 +992,12 @@ auto frame_create_window() -> int {
                      (system_state.screen_height != SCREEN_HEIGHT);
   if (g_window_resized) {
     g_orig_rect = SDL_Rect{0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
-    g_new_rect = SDL_Rect{0, 0, static_cast<int>(system_state.screen_width),
-                          static_cast<int>(system_state.screen_height)};
+    g_new_rect = SDL_Rect{
+        0,
+        0,
+        static_cast<int>(system_state.screen_width),
+        static_cast<int>(system_state.screen_height),
+    };
   }
   std::printf("Screen size is %dx%d\n", system_state.screen_width,
               system_state.screen_height);

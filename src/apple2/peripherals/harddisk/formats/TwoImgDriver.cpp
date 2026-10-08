@@ -141,8 +141,12 @@ auto two_img_get_total_blocks(void* instance_handle) -> uint32_t {
       static_cast<BlockDiskImage_t*>(instance_handle));
 }
 
-const char* const g_two_img_creatable_exts[] = {".2mg", ".2img", ".2meg",
-                                                nullptr};
+const char* const g_two_img_creatable_exts[] = {
+    ".2mg",
+    ".2img",
+    ".2meg",
+    nullptr,
+};
 const char* const g_two_img_supported_exts[] = {"2mg", "2img", "2meg", nullptr};
 }  // namespace
 

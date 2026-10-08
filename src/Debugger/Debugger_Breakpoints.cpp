@@ -31,12 +31,14 @@ Breakpoint_t g_breakpoints[MAX_BREAKPOINTS] = {};
 // NOTE: BreakpointSource_t and g_breakpoint_source must match!
 const char* g_breakpoint_source[NUM_BREAKPOINT_SOURCES] = {
     "A", "X", "Y", "PC", "S", "P",  "C", "Z", "I",
-    "D", "B", "R", "V",  "N", "OP", "M", "M", "M"};
+    "D", "B", "R", "V",  "N", "OP", "M", "M", "M",
+};
 
 // Note: BreakpointOperator_t, PARAM_BREAKPOINT_, and g_breakpoint_symbols must
 // stay in sync!
 const char* g_breakpoint_symbols[NUM_BREAKPOINT_OPERATORS] = {
-    "<=", "< ", "= ", "!=", "> ", ">=", "? ", "@ ", "* "};
+    "<=", "< ", "= ", "!=", "> ", ">=", "? ", "@ ", "* ",
+};
 
 auto IsDebugBreakOnInvalid(int iOpcodeType) -> bool {
   extern int g_debug_break_on_invalid;
@@ -236,27 +238,37 @@ auto CmdBreakpointAddCommonArg(int iArg, int nArg, BreakpointSource_t iSrc,
 }
 
 auto CmdBreakpointAddIO(int nArgs) -> Update_t {
-  if (nArgs < 1) return Help_Arg_1(CMD_BREAKPOINT_ADD_IO);
+  if (nArgs < 1) {
+    return Help_Arg_1(CMD_BREAKPOINT_ADD_IO);
+  }
   return UPDATE_BREAKPOINTS;
 }
 
 auto CmdBreakpointAddMemA(int nArgs) -> Update_t {
-  if (nArgs < 1) return Help_Arg_1(CMD_BREAKPOINT_ADD_MEM);
+  if (nArgs < 1) {
+    return Help_Arg_1(CMD_BREAKPOINT_ADD_MEM);
+  }
   return UPDATE_BREAKPOINTS;
 }
 
 auto CmdBreakpointAddMemR(int nArgs) -> Update_t {
-  if (nArgs < 1) return Help_Arg_1(CMD_BREAKPOINT_ADD_MEMR);
+  if (nArgs < 1) {
+    return Help_Arg_1(CMD_BREAKPOINT_ADD_MEMR);
+  }
   return UPDATE_BREAKPOINTS;
 }
 
 auto CmdBreakpointAddMemW(int nArgs) -> Update_t {
-  if (nArgs < 1) return Help_Arg_1(CMD_BREAKPOINT_ADD_MEMW);
+  if (nArgs < 1) {
+    return Help_Arg_1(CMD_BREAKPOINT_ADD_MEMW);
+  }
   return UPDATE_BREAKPOINTS;
 }
 
 auto CmdBreakpointEdit(int nArgs) -> Update_t {
-  if (nArgs < 1) return Help_Arg_1(CMD_BREAKPOINT_EDIT);
+  if (nArgs < 1) {
+    return Help_Arg_1(CMD_BREAKPOINT_EDIT);
+  }
   return UPDATE_BREAKPOINTS;
 }
 

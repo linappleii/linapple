@@ -156,7 +156,8 @@ auto mouse_frontend_motion(int dx, int dy, int picture_w, int picture_h)
   }
   MouseMovePayload_t payload{
       counts_for(&g_carry_x, dx, k_mouse_counts_across, picture_w),
-      counts_for(&g_carry_y, dy, k_mouse_counts_down, picture_h)};
+      counts_for(&g_carry_y, dy, k_mouse_counts_down, picture_h),
+  };
   if (payload.dx == 0 && payload.dy == 0) {
     return;
   }
@@ -180,7 +181,8 @@ auto mouse_frontend_follow(int host_x, int host_y, MousePictureRect_t picture)
       follow_axis(host_x - picture.x, picture.w, card.min_x, card.max_x) -
           card.x,
       follow_axis(host_y - picture.y, picture.h, card.min_y, card.max_y) -
-          card.y};
+          card.y,
+  };
   if (payload.dx == 0 && payload.dy == 0) {
     return;
   }

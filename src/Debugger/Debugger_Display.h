@@ -77,7 +77,7 @@ auto UpdateDisplay(Update_t bUpdate) -> void;
 
 enum DebugVirtualTextScreen_e {
   DEBUG_VIRTUAL_TEXT_WIDTH = 80,
-  DEBUG_VIRTUAL_TEXT_HEIGHT = 48
+  DEBUG_VIRTUAL_TEXT_HEIGHT = 48,
 };
 
 extern char g_debugger_virtual_text_screen[DEBUG_VIRTUAL_TEXT_HEIGHT]

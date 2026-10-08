@@ -451,6 +451,9 @@ extern "C" auto image_container_prepare_compressed_path(
 extern "C" auto image_container_supported_extensions(void) -> const
     char* const* {
   static constexpr const char* const supported_extensions[] = {
-      gzip_extension, zip_extension, nullptr};
+      gzip_extension,
+      zip_extension,
+      nullptr,
+  };
   return supported_extensions;
 }

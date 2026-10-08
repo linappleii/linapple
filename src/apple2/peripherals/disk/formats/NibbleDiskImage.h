@@ -24,7 +24,7 @@ typedef struct NibbleDiskImage_t NibbleDiskImage_t;
    is allocated for it. */
 enum {
   nibble_image_tracks = 35,
-  nibble_image_max_bytes = nibble_image_tracks * nibbles_per_track
+  nibble_image_max_bytes = nibble_image_tracks * nibbles_per_track,
 };
 
 /* The probe NIB and NB2 share, each passing the length of its whole image

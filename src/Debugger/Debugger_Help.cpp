@@ -94,25 +94,43 @@ static const HelpEntry_t g_help_table[] = {
     {CMD_UNASSEMBLE, HELP_TYPE_NOTE, "Disassembles memory."},
     {CMD_GO_NORMAL_SPEED, HELP_TYPE_USAGE, "address | symbol [Skip,Length]"},
     {CMD_GO_NORMAL_SPEED, HELP_TYPE_USAGE, "address | symbol [Start:End]"},
-    {CMD_GO_NORMAL_SPEED, HELP_TYPE_NOTE,
-     "Skip  : Start address to skip stepping"},
-    {CMD_GO_NORMAL_SPEED, HELP_TYPE_NOTE,
-     "Length: Range of bytes past start address to skip stepping"},
-    {CMD_GO_NORMAL_SPEED, HELP_TYPE_NOTE,
-     "End   : Inclusive end address to skip stepping"},
-    {CMD_GO_NORMAL_SPEED, HELP_TYPE_NOTE,
-     "If the Program Counter is outside the skip range, resumes "
-     "single-stepping."},
-    {CMD_GO_NORMAL_SPEED, HELP_TYPE_NOTE,
-     "Can be used to skip ROM/OS/user code."},
+    {
+        CMD_GO_NORMAL_SPEED,
+        HELP_TYPE_NOTE,
+        "Skip  : Start address to skip stepping",
+    },
+    {
+        CMD_GO_NORMAL_SPEED,
+        HELP_TYPE_NOTE,
+        "Length: Range of bytes past start address to skip stepping",
+    },
+    {
+        CMD_GO_NORMAL_SPEED,
+        HELP_TYPE_NOTE,
+        "End   : Inclusive end address to skip stepping",
+    },
+    {
+        CMD_GO_NORMAL_SPEED,
+        HELP_TYPE_NOTE,
+        "If the Program Counter is outside the skip range, resumes "
+        "single-stepping.",
+    },
+    {
+        CMD_GO_NORMAL_SPEED,
+        HELP_TYPE_NOTE,
+        "Can be used to skip ROM/OS/user code.",
+    },
     {CMD_GO_NORMAL_SPEED, HELP_TYPE_EXAMPLE, "G C600 FA00,600"},
     {CMD_GO_NORMAL_SPEED, HELP_TYPE_EXAMPLE, "G C600 F000:FFFF"},
     {CMD_GO_FULL_SPEED, HELP_TYPE_USAGE, "address | symbol [Skip,Length]"},
     {CMD_GO_FULL_SPEED, HELP_TYPE_USAGE, "address | symbol [Start:End]"},
     {CMD_GO_FULL_SPEED, HELP_TYPE_EXAMPLE, "GG C600 FA00,600"},
     {CMD_JSR, HELP_TYPE_USAGE, "[symbol | address]"},
-    {CMD_JSR, HELP_TYPE_NOTE,
-     "Pushes PC on stack; calls the named subroutine."},
+    {
+        CMD_JSR,
+        HELP_TYPE_NOTE,
+        "Pushes PC on stack; calls the named subroutine.",
+    },
     {CMD_NOP, HELP_TYPE_NOTE, "Puts a NOP opcode at current instruction"},
     {CMD_OUT, HELP_TYPE_USAGE, "[address8 | address16 | symbol] ## [##]"},
     {CMD_OUT, HELP_TYPE_NOTE, "Output a byte or word to the IO address $C0xx"},
@@ -135,59 +153,102 @@ static const HelpEntry_t g_help_table[] = {
     {CMD_TRACE, HELP_TYPE_NOTE, "JSR will be stepped into"},
     {CMD_TRACE_FILE, HELP_TYPE_USAGE, "\"[filename]\" [v]"},
     {CMD_TRACE_LINE, HELP_TYPE_USAGE, "[#]"},
-    {CMD_TRACE_LINE, HELP_TYPE_NOTE,
-     "Traces into current instruction with cycle counting."},
+    {
+        CMD_TRACE_LINE,
+        HELP_TYPE_NOTE,
+        "Traces into current instruction with cycle counting.",
+    },
     {CMD_BOOKMARK_ADD, HELP_TYPE_USAGE, "[address | symbol]"},
     {CMD_BOOKMARK_ADD, HELP_TYPE_USAGE, "# <address | symbol>"},
-    {CMD_BOOKMARK_ADD, HELP_TYPE_NOTE,
-     "If no address or symbol is specified, lists the current bookmarks."},
+    {
+        CMD_BOOKMARK_ADD,
+        HELP_TYPE_NOTE,
+        "If no address or symbol is specified, lists the current bookmarks.",
+    },
     {CMD_BOOKMARK_ADD, HELP_TYPE_NOTE, "Updates the specified bookmark (#)"},
     {CMD_BOOKMARK_ADD, HELP_TYPE_EXAMPLE, "BM RESET"},
     {CMD_BOOKMARK_CLEAR, HELP_TYPE_USAGE, "[# | *]"},
     {CMD_BOOKMARK_CLEAR, HELP_TYPE_NOTE, "Clears specified bookmark, or all."},
     {CMD_BREAK_INVALID, HELP_TYPE_USAGE, "[ON | OFF] | [ # | # ON | # OFF ]"},
-    {CMD_BREAK_INVALID, HELP_TYPE_NOTE,
-     "Where: # is 0=BRK, 1=Invalid Opcode_1, 2=Invalid Opcode_2, 3=Invalid "
-     "Opcode_3"},
+    {
+        CMD_BREAK_INVALID,
+        HELP_TYPE_NOTE,
+        "Where: # is 0=BRK, 1=Invalid Opcode_1, 2=Invalid Opcode_2, 3=Invalid "
+        "Opcode_3",
+    },
     {CMD_BREAKPOINT, HELP_TYPE_USAGE, "[LOAD | SAVE | RESET]"},
     {CMD_BREAKPOINT, HELP_TYPE_NOTE, "Set breakpoint at PC if no args."},
-    {CMD_BREAKPOINT_ADD_REG, HELP_TYPE_USAGE,
-     "[A|X|Y|PC|S] [op] <range | value>"},
-    {CMD_BREAKPOINT_ADD_REG, HELP_TYPE_NOTE,
-     "Set breakpoint when reg is [op] value"},
+    {
+        CMD_BREAKPOINT_ADD_REG,
+        HELP_TYPE_USAGE,
+        "[A|X|Y|PC|S] [op] <range | value>",
+    },
+    {
+        CMD_BREAKPOINT_ADD_REG,
+        HELP_TYPE_NOTE,
+        "Set breakpoint when reg is [op] value",
+    },
     {CMD_BREAKPOINT_ADD_REG, HELP_TYPE_SEE_ALSO, "OPERATORS"},
     {CMD_BREAKPOINT_ADD_REG, HELP_TYPE_EXAMPLE, "BRP PC < D000"},
     {CMD_BREAKPOINT_ADD_SMART, HELP_TYPE_USAGE, "[address | register]"},
-    {CMD_BREAKPOINT_ADD_SMART, HELP_TYPE_NOTE,
-     "If address, sets memory access and PC breakpoints."},
+    {
+        CMD_BREAKPOINT_ADD_SMART,
+        HELP_TYPE_NOTE,
+        "If address, sets memory access and PC breakpoints.",
+    },
     {CMD_BREAKPOINT_ADD_PC, HELP_TYPE_USAGE, "[address]"},
-    {CMD_BREAKPOINT_ADD_PC, HELP_TYPE_NOTE,
-     "Sets a breakpoint at the current PC or address."},
+    {
+        CMD_BREAKPOINT_ADD_PC,
+        HELP_TYPE_NOTE,
+        "Sets a breakpoint at the current PC or address.",
+    },
     {CMD_BREAKPOINT_CLEAR, HELP_TYPE_USAGE, "[# | *]"},
-    {CMD_BREAKPOINT_CLEAR, HELP_TYPE_NOTE,
-     "Clears specified breakpoint, or all."},
+    {
+        CMD_BREAKPOINT_CLEAR,
+        HELP_TYPE_NOTE,
+        "Clears specified breakpoint, or all.",
+    },
     {CMD_BREAKPOINT_ADD_MEM, HELP_TYPE_USAGE, "<range>"},
     {CMD_BREAKPOINT_ADD_MEM, HELP_TYPE_RANGE, ""},
     {CMD_CONFIG_LOAD, HELP_TYPE_USAGE, "[\"filename\"]"},
     {CMD_CONFIG_SAVE, HELP_TYPE_USAGE, "[\"filename\"]"},
-    {CMD_DEFINE_DATA_BYTE1, HELP_TYPE_USAGE,
-     "<address> | <symbol address> | <symbol range>"},
-    {CMD_DEFINE_DATA_BYTE1, HELP_TYPE_NOTE,
-     "Treat BYTES as data instead of code."},
-    {CMD_MEMORY_FILL, HELP_TYPE_USAGE,
-     "<address | symbol> <address | symbol> ##"},
-    {CMD_MEMORY_FILL, HELP_TYPE_NOTE,
-     "Fills the memory range with the specified byte"},
-    {CMD_MEMORY_SEARCH, HELP_TYPE_USAGE,
-     "range <\"ASCII text\" | 'apple text' | hex>"},
+    {
+        CMD_DEFINE_DATA_BYTE1,
+        HELP_TYPE_USAGE,
+        "<address> | <symbol address> | <symbol range>",
+    },
+    {
+        CMD_DEFINE_DATA_BYTE1,
+        HELP_TYPE_NOTE,
+        "Treat BYTES as data instead of code.",
+    },
+    {
+        CMD_MEMORY_FILL,
+        HELP_TYPE_USAGE,
+        "<address | symbol> <address | symbol> ##",
+    },
+    {
+        CMD_MEMORY_FILL,
+        HELP_TYPE_NOTE,
+        "Fills the memory range with the specified byte",
+    },
+    {
+        CMD_MEMORY_SEARCH,
+        HELP_TYPE_USAGE,
+        "range <\"ASCII text\" | 'apple text' | hex>",
+    },
     {CMD_MEMORY_SEARCH, HELP_TYPE_RANGE, ""},
     {CMD_CYCLES_INFO, HELP_TYPE_USAGE, "<abs|rel>"},
     {CMD_VIDEO_SCANNER_INFO, HELP_TYPE_USAGE, "<dec|hex|real|apple>"},
     {CMD_ZEROPAGE_POINTER_ADD, HELP_TYPE_USAGE, "<address | symbol>"},
-    {CMD_ZEROPAGE_POINTER_ADD, HELP_TYPE_USAGE,
-     "# <address | symbol> [address...]"},
+    {
+        CMD_ZEROPAGE_POINTER_ADD,
+        HELP_TYPE_USAGE,
+        "# <address | symbol> [address...]",
+    },
     {CMD_VERSION, HELP_TYPE_USAGE, "[*]"},
-    {0, NUM_HELP_TYPES, nullptr}};
+    {0, NUM_HELP_TYPES, nullptr},
+};
 
 // Help
 // ___________________________________________________________________________________________
@@ -419,9 +480,15 @@ auto ColorizeOperator(char*& pDst, const char*& src_ptr, const char* pOperator)
 }
 
 auto isHexDigit(char c) -> bool {
-  if ((c >= '0') && (c <= '9')) return true;
-  if ((c >= 'A') && (c <= 'F')) return true;
-  if ((c >= 'a') && (c <= 'f')) return true;
+  if ((c >= '0') && (c <= '9')) {
+    return true;
+  }
+  if ((c >= 'A') && (c <= 'F')) {
+    return true;
+  }
+  if ((c >= 'a') && (c <= 'f')) {
+    return true;
+  }
 
   return false;
 }
@@ -504,7 +571,9 @@ auto Colorize(char* pDst, const char* src_ptr) -> bool {
 // NOTE: This appends a new line
 inline auto ConsoleColorizePrint(char* colorizeBuf, size_t /*colorizeBufSz*/,
                                  const char* text) -> bool {
-  if (!Colorize(colorizeBuf, text)) return false;
+  if (!Colorize(colorizeBuf, text)) {
+    return false;
+  }
   return console_print(colorizeBuf);
 }
 

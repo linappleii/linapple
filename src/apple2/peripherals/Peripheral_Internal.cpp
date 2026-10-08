@@ -215,8 +215,10 @@ auto linapple_list_hardware() -> void {
       printf("  Slots:  ");
       bool first = true;
       for (int i = 0; i < NUM_SLOTS; ++i) {
-        if (p->compatible_slots & (1u << static_cast<uint32_t>(i))) {
-          if (!first) printf(", ");
+        if (p->compatible_slots & (1U << static_cast<uint32_t>(i))) {
+          if (!first) {
+            printf(", ");
+          }
           printf("%d", i);
           first = false;
         }
@@ -237,8 +239,10 @@ auto linapple_list_hardware() -> void {
       printf("  Slots:  ");
       bool first = true;
       for (int i = 0; i < NUM_SLOTS; ++i) {
-        if (plugin.p->compatible_slots & (1u << static_cast<uint32_t>(i))) {
-          if (!first) printf(", ");
+        if (plugin.p->compatible_slots & (1U << static_cast<uint32_t>(i))) {
+          if (!first) {
+            printf(", ");
+          }
           printf("%d", i);
           first = false;
         }

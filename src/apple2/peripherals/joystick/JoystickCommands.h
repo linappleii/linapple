@@ -19,7 +19,7 @@ enum { JOYSTICK_STATE_VERSION = 1 };
 // are the motherboard's now. 0x0002-0x0004 stay unassigned for senders built
 // against older headers.
 typedef enum {
-  JOYSTICK_CMD_SET_AXIS = PERIPHERAL_SUBSYSTEM_JOYSTICK | 0x0000
+  JOYSTICK_CMD_SET_AXIS = PERIPHERAL_SUBSYSTEM_JOYSTICK | 0x0000,
 } JoystickCommand_t;
 
 typedef struct {

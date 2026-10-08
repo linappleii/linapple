@@ -17,20 +17,62 @@ int g_color_scheme = SCHEME_COLOR;
 int g_color_palette[NUM_PALETTE] = {
     BLACK,
     // NOTE: See SetupColorRamp() if you want to programmatically set/change
-    RED, RED, RED, DARK_RED, DARK_RED, DARK_RED, DARK_RED,
+    RED,
+    RED,
+    RED,
+    DARK_RED,
+    DARK_RED,
+    DARK_RED,
+    DARK_RED,
     DARK_RED,  // 001 // Red
-    GREEN, GREEN, MONOCHROME_GREEN, MONOCHROME_GREEN, DARK_GREEN, DARKER_GREEN,
-    DARKER_GREEN, DARKEST_GREEN,  // 010 // Green
-    YELLOW, YELLOW, YELLOW, DARK_YELLOW, DARK_YELLOW, DARKER_YELLOW,
-    DARKER_YELLOW, DARKEST_YELLOW,  // 011 // Yellow
-    BLUE, BLUE, BLUE, BLUE, DARK_BLUE, DARK_BLUE, DARKER_BLUE,
+    GREEN,
+    GREEN,
+    MONOCHROME_GREEN,
+    MONOCHROME_GREEN,
+    DARK_GREEN,
+    DARKER_GREEN,
+    DARKER_GREEN,
+    DARKEST_GREEN,  // 010 // Green
+    YELLOW,
+    YELLOW,
+    YELLOW,
+    DARK_YELLOW,
+    DARK_YELLOW,
+    DARKER_YELLOW,
+    DARKER_YELLOW,
+    DARKEST_YELLOW,  // 011 // Yellow
+    BLUE,
+    BLUE,
+    BLUE,
+    BLUE,
+    DARK_BLUE,
+    DARK_BLUE,
+    DARKER_BLUE,
     DARKER_BLUE,  // 100 // Blue
-    MAGENTA, MAGENTA, MAGENTA, MAGENTA, HGR_MAGENTA, HGR_MAGENTA, HGR_MAGENTA,
+    MAGENTA,
+    MAGENTA,
+    MAGENTA,
+    MAGENTA,
+    HGR_MAGENTA,
+    HGR_MAGENTA,
+    HGR_MAGENTA,
     HGR_MAGENTA,  // 101 // Magenta
-    CYAN, CYAN, CYAN, CYAN, DARK_CYAN, DARK_CYAN, DARKER_CYAN,
+    CYAN,
+    CYAN,
+    CYAN,
+    CYAN,
+    DARK_CYAN,
+    DARK_CYAN,
+    DARKER_CYAN,
     DARKEST_CYAN,  // 110 // Cyan
-    WHITE, LIGHTEST_GRAY, LIGHT_GRAY, MEDIUM_GRAY, HGR_GREY1, HGR_GREY1,
-    HGR_GREY1, HGR_GREY1,  // 111 // White/Gray
+    WHITE,
+    LIGHTEST_GRAY,
+    LIGHT_GRAY,
+    MEDIUM_GRAY,
+    HGR_GREY1,
+    HGR_GREY1,
+    HGR_GREY1,
+    HGR_GREY1,  // 111 // White/Gray
 
     // Custom Colors
     LIGHT_SKY_BLUE,   // Light  Sky Blue // Used for console FG
@@ -38,9 +80,19 @@ int g_color_palette[NUM_PALETTE] = {
     DEEP_SKY_BLUE,    // Deep   Sky Blue
     ORANGE,           // Orange (Full)
     HALF_ORANGE,      // Orange (Half)
-    0, 0, 0,
+    0,
+    0,
+    0,
 
-    0, 0, 0, 0, 0, 0, 0, 0};
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+};
 
 // Index into "Palette" of colors
 int g_color_index[NUM_DEBUG_COLORS] = {

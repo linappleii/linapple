@@ -66,7 +66,7 @@ auto DrawSubWindow_IO(Update_t) -> void {}
 
 //===========================================================================
 
-constexpr float MIN_VIEWPORT_SCALE = 0.01f;
+constexpr float MIN_VIEWPORT_SCALE = 0.01F;
 
 auto AllocateDebuggerMemDC() -> void {
   if (!g_debug_screen) {
@@ -86,8 +86,8 @@ auto ReleaseDebuggerMemDC() -> void {}
 
 auto GetDebugViewPortScale(float* x, float* y) -> void {
   if (!g_debug_screen) {
-    *x = 1.0f;
-    *y = 1.0f;
+    *x = 1.0F;
+    *y = 1.0F;
     return;
   }
   float f = (static_cast<float>(g_debug_screen->w)) / SCREEN_WIDTH;
@@ -195,7 +195,9 @@ auto PrintGlyph(const int x, const int y, const char glyph) -> void {
 }
 
 auto DebuggerPrint(int x, int y, const char* text) -> void {
-  if (!text) return;
+  if (!text) {
+    return;
+  }
   const int nLeft = x;
   char c = 0;
   const char* p = text;
@@ -250,7 +252,9 @@ auto can_draw_debugger() -> bool {
 }
 
 auto PrintText(const char* text, Rect_t& rRect) -> int {
-  if (!text) return 0;
+  if (!text) {
+    return 0;
+  }
   int nLen = static_cast<int>(strlen(text));
 
   if (g_debug_screen) {
@@ -266,7 +270,9 @@ auto PrintText(const char* text, Rect_t& rRect) -> int {
 }
 
 auto PrintTextColor(const conchar_t* text, Rect_t& rRect) -> void {
-  if (!text) return;
+  if (!text) {
+    return;
+  }
   if (g_debug_screen) {
     int nLen = 0;
     const conchar_t* p = text;
@@ -345,7 +351,9 @@ auto DebuggerDrawChar(int x, int y, char ch) -> void { PrintGlyph(x, y, ch); }
 
 // Font: Apple Text
 auto DebuggerDrawText(int x, int y, const char* text) -> void {
-  if (!text) return;
+  if (!text) {
+    return;
+  }
   const char* src_ptr = text;
   int xCur = x;
   while (src_ptr && *src_ptr) {
@@ -494,22 +502,32 @@ auto ColorizeSpecialChar(char* sText, uint8_t nData, const MemoryView_e iView,
   bool bCtrlBit = false;
 
   uint8_t nByte = (nData & 0x7F);
-  if (nByte < 0x20) bCtrlBit = true;
+  if (nByte < 0x20) {
+    bCtrlBit = true;
+  }
 
   char nChar = static_cast<char>(nByte);
-  if (bCtrlBit) nChar += '@';
+  if (bCtrlBit) {
+    nChar += '@';
+  }
 
-  if (sText) snprintf(sText, 2, "%c", nChar);
+  if (sText) {
+    snprintf(sText, 2, "%c", nChar);
+  }
   return nChar;
 }
 
 auto FormatCharTxtHigh(const uint8_t b, bool* pWasHi_) -> char {
-  if (pWasHi_) *pWasHi_ = (b > 0x7F);
+  if (pWasHi_) {
+    *pWasHi_ = (b > 0x7F);
+  }
   return b & 0x7F;
 }
 
 auto FormatCharTxtCtrl(const uint8_t b, bool* pWasCtrl_) -> char {
-  if (pWasCtrl_) *pWasCtrl_ = (b < 0x20);
+  if (pWasCtrl_) {
+    *pWasCtrl_ = (b < 0x20);
+  }
   return (b < 0x20) ? b + '@' : b;
 }
 
@@ -518,12 +536,21 @@ auto FormatChar4Font(const uint8_t b, bool* pWasHi_, bool* pWasLo_) -> char {
   return FormatCharTxtCtrl(b1, pWasLo_);
 }
 
-const char* g_config_branch_indicator_up[NUM_DISASM_BRANCH_TYPES] = {" ", "^",
-                                                                     "\x8B"};
+const char* g_config_branch_indicator_up[NUM_DISASM_BRANCH_TYPES] = {
+    " ",
+    "^",
+    "\x8B",
+};
 const char* g_config_branch_indicator_equal[NUM_DISASM_BRANCH_TYPES] = {
-    " ", "=", "\x88"};
-const char* g_config_branch_indicator_down[NUM_DISASM_BRANCH_TYPES] = {" ", "v",
-                                                                       "\x8A"};
+    " ",
+    "=",
+    "\x88",
+};
+const char* g_config_branch_indicator_down[NUM_DISASM_BRANCH_TYPES] = {
+    " ",
+    "v",
+    "\x8A",
+};
 
 auto FormatCharCopy(char* pDst, const char* src_ptr, const int nLen) -> char* {
   for (int i = 0; i < nLen; i++) {

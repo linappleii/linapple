@@ -37,25 +37,27 @@ uint32_t emul_msec = 0;
 bool full_speed = false;
 bool hdd_enabled = false;
 
-SystemState_t system_state = {app_mode_logo,
-                              false,
-                              false,
-                              emulation_speed_normal,
-                              SCREEN_WIDTH,
-                              SCREEN_HEIGHT,
-                              false,
-                              {""},
-                              {""},
-                              {""},
-                              {""},
-                              {""},
-                              {""},
-                              {""},
-                              {"anonymous:mymail@hotmail.com"},
-                              {""},
-                              true,
-                              17030,
-                              false};
+SystemState_t system_state = {
+    app_mode_logo,
+    false,
+    false,
+    emulation_speed_normal,
+    SCREEN_WIDTH,
+    SCREEN_HEIGHT,
+    false,
+    {""},
+    {""},
+    {""},
+    {""},
+    {""},
+    {""},
+    {""},
+    {"anonymous:mymail@hotmail.com"},
+    {""},
+    true,
+    17030,
+    false,
+};
 
 double current_clk_6502 = CLOCK_6502;
 
@@ -512,10 +514,12 @@ auto linapple_set_language(Apple2Language_t lang) noexcept -> void {
 
 auto linapple_set_key(uint32_t host_key, uint8_t apple_code, bool down)
     -> void {
-  const KeyboardKeyEvent_t ev = {host_key,
-                                 apple_code,
-                                 static_cast<uint8_t>(down ? 1 : 0),
-                                 {0, 0, 0, 0, 0, 0}};
+  const KeyboardKeyEvent_t ev = {
+      host_key,
+      apple_code,
+      static_cast<uint8_t>(down ? 1 : 0),
+      {0, 0, 0, 0, 0, 0},
+  };
   peripheral_command(0, keyboard_cmd_key, &ev, sizeof(ev));
 }
 

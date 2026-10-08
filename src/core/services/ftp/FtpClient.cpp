@@ -320,18 +320,20 @@ auto FtpClient_t::fetch_directory_listing(const std::string&,
 #endif
 
 auto ftp_status_to_string(FtpStatus_t status) noexcept -> const char* {
-  constexpr std::array<const char*, 10> status_strings = {{
-      "OK",
-      "Invalid parameter",
-      "Failed initialization",
-      "Connection error",
-      "File not found",
-      "Write error",
-      "Path traversal rejected",
-      "Transfer failed",
-      "Operation timed out",
-      "FTP support disabled",
-  }};
+  constexpr std::array<const char*, 10> status_strings = {
+      {
+          "OK",
+          "Invalid parameter",
+          "Failed initialization",
+          "Connection error",
+          "File not found",
+          "Write error",
+          "Path traversal rejected",
+          "Transfer failed",
+          "Operation timed out",
+          "FTP support disabled",
+      },
+  };
 
   static_assert(
       status_strings.size() == static_cast<size_t>(FtpStatus_t::disabled) + 1,

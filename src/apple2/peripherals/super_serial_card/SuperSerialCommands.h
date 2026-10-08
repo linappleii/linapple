@@ -24,7 +24,7 @@ typedef struct {
 // Command and query ids 0x0001 and 0x0002 belonged to a retired host path
 // and are never reused.
 typedef enum {
-  SUPER_SERIAL_CMD_SET_SWITCHES = PERIPHERAL_SUBSYSTEM_SERIAL | 0x0003
+  SUPER_SERIAL_CMD_SET_SWITCHES = PERIPHERAL_SUBSYSTEM_SERIAL | 0x0003,
 } SuperSerialCmd_t;
 
 // The frame has ridden the slot trailer of every default .aws, so the fields

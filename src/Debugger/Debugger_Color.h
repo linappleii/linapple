@@ -12,7 +12,7 @@ enum Color_Schemes_e {
   SCHEME_MONO,   // NOTE: MUST match order in CMD_WINDOW_MONOCHROME
   SCHEME_BW,     // NOTE: MUST match order in CMD_WINDOW_BW
                  //		SCHEME_CUSTOM
-  NUM_COLOR_SCHEMES
+  NUM_COLOR_SCHEMES,
 };
 
 // Named, since they are easier to remember.
@@ -110,7 +110,7 @@ enum DebugPalette_e {
   G160 = W5,
   G192 = W6,
   G224 = W7,
-  G256 = W8
+  G256 = W8,
 };
 
 // Yeah, this was a PITA to organize.
@@ -254,7 +254,7 @@ enum DebugColors_e {
   FG_VIDEOSCANNER_VISIBLE  // green
 
   ,
-  NUM_DEBUG_COLORS
+  NUM_DEBUG_COLORS,
 };
 
 extern int g_color_scheme;

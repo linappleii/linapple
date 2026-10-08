@@ -13,7 +13,7 @@ enum HelpType_e {
   HELP_TYPE_EXAMPLE,
   HELP_TYPE_RANGE,
   HELP_TYPE_SEE_ALSO,
-  NUM_HELP_TYPES
+  NUM_HELP_TYPES,
 };
 
 struct HelpEntry_t {

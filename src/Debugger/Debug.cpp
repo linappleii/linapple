@@ -28,7 +28,9 @@ auto debug_display(bool bInitDisasm) -> void {
 
 auto debug_initialize() -> void {
   static bool bInitialized = false;
-  if (bInitialized) return;
+  if (bInitialized) {
+    return;
+  }
 
   AssemblerStartup();
   InitDisasm();

@@ -99,14 +99,16 @@ auto dispatch_get_lines(void* ctx, int slot, uint8_t* lines) -> bool {
          sink->get_lines(ctx, slot, lines);
 }
 
-const ByteSink_t g_host_sink = {.open = dispatch_open,
-                                .write = dispatch_write,
-                                .ready = dispatch_ready,
-                                .close = dispatch_close,
-                                .tick = dispatch_tick,
-                                .read = dispatch_read,
-                                .set_line = dispatch_set_line,
-                                .get_lines = dispatch_get_lines};
+const ByteSink_t g_host_sink = {
+    .open = dispatch_open,
+    .write = dispatch_write,
+    .ready = dispatch_ready,
+    .close = dispatch_close,
+    .tick = dispatch_tick,
+    .read = dispatch_read,
+    .set_line = dispatch_set_line,
+    .get_lines = dispatch_get_lines,
+};
 
 }  // namespace
 

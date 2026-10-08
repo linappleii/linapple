@@ -270,17 +270,17 @@ auto disk_choose_draw() -> void {
     font_print_centered(
         screen_w / 2, static_cast<int>(5 * facy),
         g_diskChooseState.current_dir.substr(0, k_normal_length).c_str(),
-        lock_screen.view(), 1.5f * facx_f, 1.3f * facy_f);
+        lock_screen.view(), 1.5F * facx_f, 1.3F * facy_f);
 
     const char* slot_title = disk_browser_get_title(g_diskChooseState.slot);
     if (slot_title[0] != '\0') {
       font_print_centered(screen_w / 2, static_cast<int>(20 * facy), slot_title,
-                          lock_screen.view(), 1.0f * facx_f, 1.0f * facy_f);
+                          lock_screen.view(), 1.0F * facx_f, 1.0F * facy_f);
     }
 
     font_print_centered(screen_w / 2, static_cast<int>(30 * facy),
                         "Press ENTER to choose, or ESC to cancel",
-                        lock_screen.view(), 1.0f * facx_f, 1.0f * facy_f);
+                        lock_screen.view(), 1.0F * facx_f, 1.0F * facy_f);
 
     const int top_y = static_cast<int>(45 * facy);
     const size_t list_count =
@@ -325,13 +325,13 @@ auto disk_choose_draw() -> void {
                  static_cast<int>(static_cast<double>(top_y) +
                                   static_cast<double>(j) * 15.0 * facy),
                  file_name.substr(0, k_max_filename).c_str(),
-                 lock_screen.view(), 1.0f * facx_f, 1.0f * facy_f);
+                 lock_screen.view(), 1.0F * facx_f, 1.0F * facy_f);
       font_print_right(
           screen_w - static_cast<int>(8.0 * static_cast<double>(facx_f)),
           static_cast<int>(static_cast<double>(top_y) +
                            static_cast<double>(j) * 15.0 * facy),
-          type_size_str.data(), lock_screen.view(), 1.0f * facx_f,
-          1.0f * facy_f);
+          type_size_str.data(), lock_screen.view(), 1.0F * facx_f,
+          1.0F * facy_f);
     }
 
     rectangle(lock_screen.view(), 0, top_y - 5, screen_w - 1,

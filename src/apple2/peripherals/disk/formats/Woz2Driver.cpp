@@ -290,7 +290,8 @@ extern "C" const DiskFormatDriver_t g_woz2_driver = {
     .is_write_protected = woz2_is_write_protected,
     .read_track_bits = woz2_read_track_bits,
     .write_track_bits = nullptr,
-    .create = nullptr};
+    .create = nullptr,
+};
 
 static const DiskFormatRegistration_t registration{&g_woz2_driver};
 

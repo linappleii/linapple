@@ -49,7 +49,7 @@ AddressingMode_t g_opmodes[NUM_ADDRESSING_MODES] = {
     {"(%02X,Y", 2, "(Zero Page),Y"},  // AM_NZY // ($%02X),Y
     {"(%02X", 2, "(Zero Page)"},      // AM_NZ  // ($%02X) -> $%02X
     {"(%04X", 3, "(Absolute)"},       // AM_NA  // (%04X) -> %s
-    {"", 1, "Data"}                   // AM_DATA
+    {"", 1, "Data"},                  // AM_DATA
 };
 
 // Assembler
@@ -217,7 +217,7 @@ const Opcodes_t g_opcodes65_c02[NUM_OPCODES] = {
     {"SED", 0, 0},       {"SBC", AM_AY, R_},
     {"PLX", 0, SR},      {"nop", 0, 0},  // F8 .. FB
     {"nop", AM_AX, 0},   {"SBC", AM_AX, R_},
-    {"INC", AM_AX, RW},  {"nop", 0, 0}  // FF .. FF
+    {"INC", AM_AX, RW},  {"nop", 0, 0},  // FF .. FF
 };
 
 const Opcodes_t g_opcodes6502[NUM_OPCODES] = {
@@ -418,7 +418,7 @@ const Opcodes_t g_opcodes6502[NUM_OPCODES] = {
     {"SED", 0, 0},      {"SBC", AM_AY, R_},
     {"nop", 0, 0},      {"ins", AM_AY, RW},  // F8 .. FB
     {"nop", AM_AX, 0},  {"SBC", AM_AX, R_},
-    {"INC", AM_AX, RW}, {"ins", AM_AX, RW}  // FF .. FF
+    {"INC", AM_AX, RW}, {"ins", AM_AX, RW},  // FF .. FF
 };
 
 // @reference: http://www.textfiles.com/apple/DOCUMENTATION/merlin.docs1
@@ -486,7 +486,8 @@ int g_assembler_first_directive[NUM_ASSEMBLERS] = {
     FIRST_MERLIN_DIRECTIVE,       FIRST_MICROSPARC_DIRECTIVE,
     FIRST_ORCA_DIRECTIVE,         FIRST_SC_DIRECTIVE,
     FIRST_TED_DIRECTIVE,          FIRST_WELLERS_DIRECTIVE,
-    FIRST_CUSTOM_DIRECTIVE};
+    FIRST_CUSTOM_DIRECTIVE,
+};
 
 // Assemblers
 
@@ -513,7 +514,7 @@ enum AssemblerState_e {
   AS_GET_TARGET,
   AS_GET_PAREN,
   AS_GET_INDEX,
-  AS_DONE
+  AS_DONE,
 };
 
 int g_asm_flags;

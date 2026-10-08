@@ -25,7 +25,7 @@ enum Apple2Type_t : uint8_t {
   A2TYPE_APPLE2EENHANCED,
   A2TYPE_CLONE_PRAVETS8C,
   A2TYPE_CLONE_TK3000E,
-  A2TYPE_MAX
+  A2TYPE_MAX,
 };
 using eApple2Type = Apple2Type_t;
 
@@ -35,7 +35,7 @@ enum Apple2Language_t : uint8_t {
   A2LANG_FR,
   A2LANG_DE,
   A2LANG_JP_ROMAN,
-  A2LANG_JP_KANA
+  A2LANG_JP_KANA,
 };
 using eApple2Language = Apple2Language_t;
 

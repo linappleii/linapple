@@ -21,7 +21,7 @@ enum { HARDDISK_STATE_VERSION = 1 };
 typedef enum {
   harddisk_drive_0 = 0,
   harddisk_drive_1 = 1,
-  harddisk_drive_count = 2
+  harddisk_drive_count = 2,
 } HarddiskDrive_t;
 
 typedef HarddiskDrive_t HarddiskDrive_e;
@@ -33,14 +33,15 @@ typedef enum {
   harddisk_cmd_reset_status = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0006,
   // Backward-compatibility aliases
   harddisk_cmd_get_status = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0005,
-  harddisk_cmd_get_supported_extensions = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0007
+  harddisk_cmd_get_supported_extensions = PERIPHERAL_SUBSYSTEM_HARDDISK |
+      0x0007,
 } HarddiskCmd_t;
 
 typedef HarddiskCmd_t HarddiskCmd_e;
 
 typedef enum {
   harddisk_query_status = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0001,
-  harddisk_query_supported_extensions = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0002
+  harddisk_query_supported_extensions = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0002,
 } HarddiskQuery_t;
 
 enum { harddisk_insert_path_max = 504, harddisk_default_slot = 7 };
@@ -68,7 +69,7 @@ typedef enum {
   harddisk_status_off = 0x00,
   harddisk_status_read = 0x01,
   harddisk_status_write = 0x02,
-  harddisk_status_prot = 0x04
+  harddisk_status_prot = 0x04,
 } HarddiskStatus_e;
 
 // Why: Uses natural alignment to ensure a deterministic binary layout without

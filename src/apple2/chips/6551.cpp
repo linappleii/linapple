@@ -10,10 +10,28 @@ namespace {
 // code 0 is the 16x external clock, which the SSC does not supply (1981
 // manual p. 54), so with it nothing moves.
 constexpr std::array<uint32_t, 16> divisors = {
-    {0, 2304, 1536, 1048, 856, 768, 384, 192, 96, 64, 48, 32, 24, 16, 12, 6}};
-constexpr std::array<uint32_t, 16> bauds = {{0, 50, 75, 110, 135, 150, 300, 600,
-                                             1200, 1800, 2400, 3600, 4800, 7200,
-                                             9600, 19200}};
+    {0, 2304, 1536, 1048, 856, 768, 384, 192, 96, 64, 48, 32, 24, 16, 12, 6},
+};
+constexpr std::array<uint32_t, 16> bauds = {
+    {
+        0,
+        50,
+        75,
+        110,
+        135,
+        150,
+        300,
+        600,
+        1200,
+        1800,
+        2400,
+        3600,
+        4800,
+        7200,
+        9600,
+        19200,
+    },
+};
 constexpr uint64_t crystal_millihertz = 1843200000;
 constexpr uint32_t sixteenths_per_bit = 16;
 constexpr uint32_t sixteenths_per_half_bit = 8;

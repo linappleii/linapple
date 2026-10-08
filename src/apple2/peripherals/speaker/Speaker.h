@@ -15,7 +15,7 @@ struct SsIoSpeaker_t {
   uint32_t state = 0;
   double next_sample_cycle = 0.0;
   uint32_t last_sample_state = 0;
-  float filter_state = 0.0f;
+  float filter_state = 0.0F;
 };
 // NOLINTEND(readability-identifier-naming)
 

@@ -12,7 +12,7 @@ extern "C" {
 enum {
   PERIPHERAL_AUDIO_NAME_MAX = 16,
   PERIPHERAL_AUDIO_MAX_CHANNELS = 16,
-  PERIPHERAL_QUERY_AUDIO_INFO = 0x00000010
+  PERIPHERAL_QUERY_AUDIO_INFO = 0x00000010,
 };
 
 // Enumerators start at 1 so that a zeroed PeripheralAudioInfo_t is invalid
@@ -22,6 +22,7 @@ typedef enum {
                                        cycles; sample_rate is unused */
   peripheral_audio_absolute = 2     /**< sample_rate is the rate in Hz; the card
                                        carries its own oscillator */
+  ,
 } PeripheralAudioTimeBase_t;
 
 typedef struct PeripheralAudioChannelInfo_t {

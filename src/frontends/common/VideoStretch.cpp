@@ -13,8 +13,12 @@
 template <typename T>
 static auto copy_row(T* src, int src_w, T* dst, int dst_x, int dst_w, int max_w)
     -> void {
-  if (dst_w <= 0 || src_w <= 0 || !src || !dst) return;
-  if (dst_x >= max_w || dst_x + dst_w <= 0) return;
+  if (dst_w <= 0 || src_w <= 0 || !src || !dst) {
+    return;
+  }
+  if (dst_x >= max_w || dst_x + dst_w <= 0) {
+    return;
+  }
   if (src_w == dst_w) {
     for (int i = 0; i < dst_w; ++i) {
       int cur_x = dst_x + i;
@@ -26,7 +30,9 @@ static auto copy_row(T* src, int src_w, T* dst, int dst_x, int dst_w, int max_w)
   }
   for (int i = 0; i < dst_w; ++i) {
     int src_x = static_cast<int>((static_cast<int64_t>(i) * src_w) / dst_w);
-    if (src_x >= src_w) src_x = src_w - 1;
+    if (src_x >= src_w) {
+      src_x = src_w - 1;
+    }
     int cur_x = dst_x + i;
     if (cur_x >= 0 && cur_x < max_w) {
       dst[cur_x] = src[src_x];
@@ -37,8 +43,12 @@ static auto copy_row(T* src, int src_w, T* dst, int dst_x, int dst_w, int max_w)
 template <typename T>
 static auto copy_row_or(T* src, int src_w, T* dst, int dst_x, int dst_w,
                         int max_w) -> void {
-  if (dst_w <= 0 || src_w <= 0 || !src || !dst) return;
-  if (dst_x >= max_w || dst_x + dst_w <= 0) return;
+  if (dst_w <= 0 || src_w <= 0 || !src || !dst) {
+    return;
+  }
+  if (dst_x >= max_w || dst_x + dst_w <= 0) {
+    return;
+  }
   if (src_w == dst_w) {
     for (int i = 0; i < dst_w; ++i) {
       int cur_x = dst_x + i;
@@ -50,7 +60,9 @@ static auto copy_row_or(T* src, int src_w, T* dst, int dst_x, int dst_w,
   }
   for (int i = 0; i < dst_w; ++i) {
     int src_x = static_cast<int>((static_cast<int64_t>(i) * src_w) / dst_w);
-    if (src_x >= src_w) src_x = src_w - 1;
+    if (src_x >= src_w) {
+      src_x = src_w - 1;
+    }
     int cur_x = dst_x + i;
     if (cur_x >= 0 && cur_x < max_w) {
       dst[cur_x] |= src[src_x];
@@ -87,8 +99,12 @@ static uint32_t g_palette_lut[256] = {};
 static const VideoColor_t* g_last_palette = nullptr;
 
 static auto update_palette_lut(const VideoColor_t* palette) -> void {
-  if (!palette) return;
-  if (palette == g_last_palette) return;
+  if (!palette) {
+    return;
+  }
+  if (palette == g_last_palette) {
+    return;
+  }
 
   for (int i = 0; i < 256; ++i) {
     g_palette_lut[i] =
@@ -100,8 +116,12 @@ static auto update_palette_lut(const VideoColor_t* palette) -> void {
 static auto copy_row1to4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
                          int dst_w, int max_w, const VideoColor_t* palette)
     -> void {
-  if (dst_w <= 0 || src_w <= 0 || !src || !dst) return;
-  if (dst_x >= max_w || dst_x + dst_w <= 0) return;
+  if (dst_w <= 0 || src_w <= 0 || !src || !dst) {
+    return;
+  }
+  if (dst_x >= max_w || dst_x + dst_w <= 0) {
+    return;
+  }
   update_palette_lut(palette);
   if (src_w == dst_w) {
     for (int i = 0; i < dst_w; ++i) {
@@ -114,7 +134,9 @@ static auto copy_row1to4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
   }
   for (int i = 0; i < dst_w; ++i) {
     int src_x = static_cast<int>((static_cast<int64_t>(i) * src_w) / dst_w);
-    if (src_x >= src_w) src_x = src_w - 1;
+    if (src_x >= src_w) {
+      src_x = src_w - 1;
+    }
     int cur_x = dst_x + i;
     if (cur_x >= 0 && cur_x < max_w) {
       dst[cur_x] = g_palette_lut[src[src_x]];
@@ -125,8 +147,12 @@ static auto copy_row1to4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
 static auto copy_row_or1to4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
                             int dst_w, int max_w, const VideoColor_t* palette)
     -> void {
-  if (dst_w <= 0 || src_w <= 0 || !src || !dst) return;
-  if (dst_x >= max_w || dst_x + dst_w <= 0) return;
+  if (dst_w <= 0 || src_w <= 0 || !src || !dst) {
+    return;
+  }
+  if (dst_x >= max_w || dst_x + dst_w <= 0) {
+    return;
+  }
   update_palette_lut(palette);
   if (src_w == dst_w) {
     for (int i = 0; i < dst_w; ++i) {
@@ -139,7 +165,9 @@ static auto copy_row_or1to4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
   }
   for (int i = 0; i < dst_w; ++i) {
     int src_x = static_cast<int>((static_cast<int64_t>(i) * src_w) / dst_w);
-    if (src_x >= src_w) src_x = src_w - 1;
+    if (src_x >= src_w) {
+      src_x = src_w - 1;
+    }
     int cur_x = dst_x + i;
     if (cur_x >= 0 && cur_x < max_w) {
       dst[cur_x] |= g_palette_lut[src[src_x]];
@@ -149,11 +177,17 @@ static auto copy_row_or1to4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
 
 static auto copy_row3(uint8_t* src, int src_w, uint8_t* dst, int dst_x,
                       int dst_w, int max_w) -> void {
-  if (dst_w <= 0 || src_w <= 0 || !src || !dst) return;
-  if (dst_x >= max_w || dst_x + dst_w <= 0) return;
+  if (dst_w <= 0 || src_w <= 0 || !src || !dst) {
+    return;
+  }
+  if (dst_x >= max_w || dst_x + dst_w <= 0) {
+    return;
+  }
   for (int i = 0; i < dst_w; ++i) {
     int src_x = static_cast<int>((static_cast<int64_t>(i) * src_w) / dst_w);
-    if (src_x >= src_w) src_x = src_w - 1;
+    if (src_x >= src_w) {
+      src_x = src_w - 1;
+    }
     int cur_x = dst_x + i;
     if (cur_x >= 0 && cur_x < max_w) {
       dst[cur_x * 3] = src[src_x * 3];
@@ -165,11 +199,17 @@ static auto copy_row3(uint8_t* src, int src_w, uint8_t* dst, int dst_x,
 
 static auto copy_row3to4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
                          int dst_w, int max_w) -> void {
-  if (dst_w <= 0 || src_w <= 0 || !src || !dst) return;
-  if (dst_x >= max_w || dst_x + dst_w <= 0) return;
+  if (dst_w <= 0 || src_w <= 0 || !src || !dst) {
+    return;
+  }
+  if (dst_x >= max_w || dst_x + dst_w <= 0) {
+    return;
+  }
   for (int i = 0; i < dst_w; ++i) {
     int src_x = static_cast<int>((static_cast<int64_t>(i) * src_w) / dst_w);
-    if (src_x >= src_w) src_x = src_w - 1;
+    if (src_x >= src_w) {
+      src_x = src_w - 1;
+    }
     int cur_x = dst_x + i;
     if (cur_x >= 0 && cur_x < max_w) {
       uint32_t r = src[src_x * 3];
@@ -182,11 +222,17 @@ static auto copy_row3to4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
 
 static auto copy_row_or3to4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
                             int dst_w, int max_w) -> void {
-  if (dst_w <= 0 || src_w <= 0 || !src || !dst) return;
-  if (dst_x >= max_w || dst_x + dst_w <= 0) return;
+  if (dst_w <= 0 || src_w <= 0 || !src || !dst) {
+    return;
+  }
+  if (dst_x >= max_w || dst_x + dst_w <= 0) {
+    return;
+  }
   for (int i = 0; i < dst_w; ++i) {
     int src_x = static_cast<int>((static_cast<int64_t>(i) * src_w) / dst_w);
-    if (src_x >= src_w) src_x = src_w - 1;
+    if (src_x >= src_w) {
+      src_x = src_w - 1;
+    }
     int cur_x = dst_x + i;
     if (cur_x >= 0 && cur_x < max_w) {
       uint32_t r = src[src_x * 3];
@@ -200,11 +246,17 @@ static auto copy_row_or3to4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
 static auto copy8mono(uint8_t* src, int src_w, uint8_t* dst, int dst_x,
                       int dst_w, int max_w, uint8_t fgbrush, uint8_t bgbrush)
     -> void {
-  if (dst_w <= 0 || src_w <= 0 || !src || !dst) return;
-  if (dst_x >= max_w || dst_x + dst_w <= 0) return;
+  if (dst_w <= 0 || src_w <= 0 || !src || !dst) {
+    return;
+  }
+  if (dst_x >= max_w || dst_x + dst_w <= 0) {
+    return;
+  }
   for (int i = 0; i < dst_w; ++i) {
     int src_x = static_cast<int>((static_cast<int64_t>(i) * src_w) / dst_w);
-    if (src_x >= src_w) src_x = src_w - 1;
+    if (src_x >= src_w) {
+      src_x = src_w - 1;
+    }
     int cur_x = dst_x + i;
     if (cur_x >= 0 && cur_x < max_w) {
       dst[cur_x] = src[src_x] ? fgbrush : bgbrush;
@@ -215,11 +267,17 @@ static auto copy8mono(uint8_t* src, int src_w, uint8_t* dst, int dst_x,
 static auto copy8mono4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
                        int dst_w, int max_w, uint32_t fgbrush, uint32_t bgbrush)
     -> void {
-  if (dst_w <= 0 || src_w <= 0 || !src || !dst) return;
-  if (dst_x >= max_w || dst_x + dst_w <= 0) return;
+  if (dst_w <= 0 || src_w <= 0 || !src || !dst) {
+    return;
+  }
+  if (dst_x >= max_w || dst_x + dst_w <= 0) {
+    return;
+  }
   for (int i = 0; i < dst_w; ++i) {
     int src_x = static_cast<int>((static_cast<int64_t>(i) * src_w) / dst_w);
-    if (src_x >= src_w) src_x = src_w - 1;
+    if (src_x >= src_w) {
+      src_x = src_w - 1;
+    }
     int cur_x = dst_x + i;
     if (cur_x >= 0 && cur_x < max_w) {
       dst[cur_x] = src[src_x] ? fgbrush : bgbrush;
@@ -280,13 +338,17 @@ static auto video_soft_stretch_impl(VideoSurfaceView_t src,
   const int sbpp = src.bpp;
   for (int row_idx = 0; row_idx < full_dst.h; ++row_idx) {
     int cur_dst_row = full_dst.y + row_idx;
-    if (cur_dst_row < 0 || cur_dst_row >= dst.h) continue;
+    if (cur_dst_row < 0 || cur_dst_row >= dst.h) {
+      continue;
+    }
 
     int cur_src_row =
         full_src.y +
         static_cast<int>((static_cast<int64_t>(row_idx) * full_src.h) /
                          full_dst.h);
-    if (cur_src_row < 0 || cur_src_row >= src.h) continue;
+    if (cur_src_row < 0 || cur_src_row >= src.h) {
+      continue;
+    }
 
     uint8_t* srcp = src.pixels + (cur_src_row * src.pitch) +
                     (static_cast<ptrdiff_t>(full_src.x * sbpp));
@@ -448,8 +510,12 @@ auto font_print(int x, int y, const char* text, VideoSurfaceView_t surface,
     d.w = static_cast<int>(s.w * kx);
     d.h = static_cast<int>(s.h * ky);
 
-    if (d.x >= surface.w) break;
-    if (d.x + d.w <= 0 || d.y + d.h <= 0) continue;
+    if (d.x >= surface.w) {
+      break;
+    }
+    if (d.x + d.w <= 0 || d.y + d.h <= 0) {
+      continue;
+    }
     video_soft_stretch_or(font_sfc, &s, surface, &d);
   }
 }

@@ -142,19 +142,23 @@ struct Speed_t {
 
 // The card's 109.92 and 134.58 baud arrive rounded; 3600 and 7200 have no
 // POSIX constant.
-constexpr std::array<Speed_t, 13> k_speeds = {{{50, B50},
-                                               {75, B75},
-                                               {110, B110},
-                                               {135, B134},
-                                               {150, B150},
-                                               {300, B300},
-                                               {600, B600},
-                                               {1200, B1200},
-                                               {1800, B1800},
-                                               {2400, B2400},
-                                               {4800, B4800},
-                                               {9600, B9600},
-                                               {19200, B19200}}};
+constexpr std::array<Speed_t, 13> k_speeds = {
+    {
+        {50, B50},
+        {75, B75},
+        {110, B110},
+        {135, B134},
+        {150, B150},
+        {300, B300},
+        {600, B600},
+        {1200, B1200},
+        {1800, B1800},
+        {2400, B2400},
+        {4800, B4800},
+        {9600, B9600},
+        {19200, B19200},
+    },
+};
 
 std::array<bool, k_slot_count> g_in_use{};
 int g_primary_slot = 0;
@@ -812,14 +816,16 @@ auto sink_get_lines(void* ctx, int slot, uint8_t* lines) -> bool {
   return true;
 }
 
-const ByteSink_t g_serial_sink = {.open = sink_open,
-                                  .write = sink_write,
-                                  .ready = sink_ready,
-                                  .close = sink_close,
-                                  .tick = sink_tick,
-                                  .read = sink_read,
-                                  .set_line = sink_set_line,
-                                  .get_lines = sink_get_lines};
+const ByteSink_t g_serial_sink = {
+    .open = sink_open,
+    .write = sink_write,
+    .ready = sink_ready,
+    .close = sink_close,
+    .tick = sink_tick,
+    .read = sink_read,
+    .set_line = sink_set_line,
+    .get_lines = sink_get_lines,
+};
 
 }  // namespace
 

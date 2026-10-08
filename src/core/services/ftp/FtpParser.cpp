@@ -67,20 +67,22 @@ constexpr int64_t k_days_per_year = 365;
 constexpr int k_base_year_tm = 1900;
 constexpr int64_t k_guess_max_days_past = 350;
 
-constexpr std::array<const char*, 12> k_months = {{
-    "jan",
-    "feb",
-    "mar",
-    "apr",
-    "may",
-    "jun",
-    "jul",
-    "aug",
-    "sep",
-    "oct",
-    "nov",
-    "dec",
-}};
+constexpr std::array<const char*, 12> k_months = {
+    {
+        "jan",
+        "feb",
+        "mar",
+        "apr",
+        "may",
+        "jun",
+        "jul",
+        "aug",
+        "sep",
+        "oct",
+        "nov",
+        "dec",
+    },
+};
 
 auto totai(int64_t year, int64_t month, int64_t mday) noexcept -> int64_t {
   int64_t result = 0;
@@ -432,33 +434,57 @@ auto parse_vms(FtpParsedEntry_t& fp, const char* buf, size_t len) -> bool {
   }
 
   size_t i = semicolon_pos;
-  if (!skip_until(buf, len, i, ' ')) return false;
-  if (!skip_matching(buf, len, i, ' ')) return false;
-  if (!skip_until(buf, len, i, ' ')) return false;
-  if (!skip_matching(buf, len, i, ' ')) return false;
+  if (!skip_until(buf, len, i, ' ')) {
+    return false;
+  }
+  if (!skip_matching(buf, len, i, ' ')) {
+    return false;
+  }
+  if (!skip_until(buf, len, i, ' ')) {
+    return false;
+  }
+  if (!skip_matching(buf, len, i, ' ')) {
+    return false;
+  }
 
   size_t j = i;
-  if (!skip_until(buf, len, j, '-')) return false;
+  if (!skip_until(buf, len, j, '-')) {
+    return false;
+  }
   const auto mday = static_cast<int64_t>(getlong(buf + i, j - i));
-  if (!skip_matching(buf, len, j, '-')) return false;
+  if (!skip_matching(buf, len, j, '-')) {
+    return false;
+  }
 
   i = j;
-  if (!skip_until(buf, len, j, '-')) return false;
+  if (!skip_until(buf, len, j, '-')) {
+    return false;
+  }
   const auto month = getmonth(buf + i, j - i);
   if (month < 0) {
     return false;
   }
-  if (!skip_matching(buf, len, j, '-')) return false;
+  if (!skip_matching(buf, len, j, '-')) {
+    return false;
+  }
 
   i = j;
-  if (!skip_until(buf, len, j, ' ')) return false;
+  if (!skip_until(buf, len, j, ' ')) {
+    return false;
+  }
   const auto year = static_cast<int64_t>(getlong(buf + i, j - i));
-  if (!skip_matching(buf, len, j, ' ')) return false;
+  if (!skip_matching(buf, len, j, ' ')) {
+    return false;
+  }
 
   i = j;
-  if (!skip_until(buf, len, j, ':')) return false;
+  if (!skip_until(buf, len, j, ':')) {
+    return false;
+  }
   const auto hour = static_cast<int64_t>(getlong(buf + i, j - i));
-  if (!skip_matching(buf, len, j, ':')) return false;
+  if (!skip_matching(buf, len, j, ':')) {
+    return false;
+  }
 
   i = j;
   while (j < len && buf[j] != ':' && buf[j] != ' ') {
@@ -485,17 +511,27 @@ auto parse_dos(FtpParsedEntry_t& fp, const char* buf, size_t len) -> bool {
 
   size_t i = 0;
   size_t j = 0;
-  if (!skip_until(buf, len, j, '-')) return false;
+  if (!skip_until(buf, len, j, '-')) {
+    return false;
+  }
   const auto month = static_cast<int64_t>(getlong(buf + i, j - i)) - 1;
-  if (!skip_matching(buf, len, j, '-')) return false;
+  if (!skip_matching(buf, len, j, '-')) {
+    return false;
+  }
 
   i = j;
-  if (!skip_until(buf, len, j, '-')) return false;
+  if (!skip_until(buf, len, j, '-')) {
+    return false;
+  }
   const auto mday = static_cast<int64_t>(getlong(buf + i, j - i));
-  if (!skip_matching(buf, len, j, '-')) return false;
+  if (!skip_matching(buf, len, j, '-')) {
+    return false;
+  }
 
   i = j;
-  if (!skip_until(buf, len, j, ' ')) return false;
+  if (!skip_until(buf, len, j, ' ')) {
+    return false;
+  }
   auto year = static_cast<int64_t>(getlong(buf + i, j - i));
   constexpr int64_t k_two_digit_cutoff = 50;
   constexpr int64_t k_year_2000 = 2000;
@@ -506,12 +542,18 @@ auto parse_dos(FtpParsedEntry_t& fp, const char* buf, size_t len) -> bool {
   } else if (year < k_three_digit_cutoff) {
     year += k_year_1900;
   }
-  if (!skip_matching(buf, len, j, ' ')) return false;
+  if (!skip_matching(buf, len, j, ' ')) {
+    return false;
+  }
 
   i = j;
-  if (!skip_until(buf, len, j, ':')) return false;
+  if (!skip_until(buf, len, j, ':')) {
+    return false;
+  }
   auto hour = static_cast<int64_t>(getlong(buf + i, j - i));
-  if (!skip_matching(buf, len, j, ':')) return false;
+  if (!skip_matching(buf, len, j, ':')) {
+    return false;
+  }
 
   i = j;
   while (j < len && buf[j] != 'A' && buf[j] != 'P') {
@@ -535,10 +577,14 @@ auto parse_dos(FtpParsedEntry_t& fp, const char* buf, size_t len) -> bool {
     return false;
   }
 
-  if (!skip_matching(buf, len, j, ' ')) return false;
+  if (!skip_matching(buf, len, j, ' ')) {
+    return false;
+  }
 
   const size_t token_start = j;
-  if (!skip_until(buf, len, j, ' ')) return false;
+  if (!skip_until(buf, len, j, ' ')) {
+    return false;
+  }
 
   if (buf[token_start] == '<') {
     fp.flagtrycwd = true;
@@ -548,7 +594,9 @@ auto parse_dos(FtpParsedEntry_t& fp, const char* buf, size_t len) -> bool {
     fp.flagtryretr = true;
   }
 
-  if (!skip_matching(buf, len, j, ' ')) return false;
+  if (!skip_matching(buf, len, j, ' ')) {
+    return false;
+  }
 
   fp.name = buf + j;
   fp.namelen = len - j;

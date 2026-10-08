@@ -185,11 +185,11 @@ static auto query_audio_info(void* out, size_t* out_size)
   info.cycle_divisor = 1;
   info.num_channels = 1;
   // A square-wave edge through the DC blocker is a step of exactly 2.0
-  info.peak_magnitude = 2.0f;
+  info.peak_magnitude = 2.0F;
   std::strncpy(info.channels[0].name, "Speaker",
                sizeof(info.channels[0].name) - 1);
-  info.channels[0].default_pan_left = 1.0f;
-  info.channels[0].default_pan_right = 1.0f;
+  info.channels[0].default_pan_left = 1.0F;
+  info.channels[0].default_pan_right = 1.0F;
   *out_size = required_size;
   return peripheral_ok;
 }
@@ -364,7 +364,8 @@ static const Peripheral_t g_speaker_peripheral = {
     .save_state = speaker_save_state,
     .load_state = speaker_load_state,
     .command = nullptr,
-    .query = speaker_query};
+    .query = speaker_query,
+};
 
 }  // namespace
 

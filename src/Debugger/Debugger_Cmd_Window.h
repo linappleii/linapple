@@ -70,7 +70,7 @@ auto CmdWindowViewCommon(int iNewWindow) -> Update_t;
 enum ViewVideoPage_t {
   VIEW_PAGE_1 = (1 << 0),
   VIEW_PAGE_2 = (1 << 1),
-  VIEW_PAGE_X = (1 << 2)  // XOR cycles Page 1 / Page 2
+  VIEW_PAGE_X = (1 << 2),  // XOR cycles Page 1 / Page 2
 };
 
 auto ViewOutput(ViewVideoPage_t iPage, int bVideoModeFlags) -> Update_t;

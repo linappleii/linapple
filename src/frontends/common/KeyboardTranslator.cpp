@@ -40,7 +40,9 @@ static constexpr uint8_t k_custom_flag_rept = 8;
 
 static auto trim_str(const std::string& str) -> std::string {
   size_t first = str.find_first_not_of(" \t\r\n");
-  if (first == std::string::npos) return "";
+  if (first == std::string::npos) {
+    return "";
+  }
   size_t last = str.find_last_not_of(" \t\r\n");
   return str.substr(first, (last - first + 1));
 }
@@ -67,7 +69,8 @@ static uint8_t g_layout = keyboard_layout_us;
 static auto layout_table(uint8_t layout) -> const Apple2KeyboardMap_t* {
   static const std::array<const Apple2KeyboardMap_t*, 12> tables = {
       &map_us, &map_uk, &map_fr, &map_de, &map_es,       &map_it,
-      &map_se, &map_dk, &map_ch, &map_ca, &map_jp_roman, &map_jp_kana};
+      &map_se, &map_dk, &map_ch, &map_ca, &map_jp_roman, &map_jp_kana,
+  };
   if (layout == keyboard_layout_us || layout >= tables.size()) {
     return nullptr;
   }
@@ -302,57 +305,129 @@ auto keyboard_set_layout(uint8_t layout) -> void {
 auto keyboard_get_layout() -> uint8_t { return keyboard_translator::g_layout; }
 
 auto keyboard_parse_host_key(const char* name) -> uint32_t {
-  if (name == nullptr) return keyb_idx_unknown;
+  if (name == nullptr) {
+    return keyb_idx_unknown;
+  }
 
   std::string s =
       keyboard_translator::to_lower_str(keyboard_translator::trim_str(name));
-  if (s.empty()) return keyb_idx_unknown;
+  if (s.empty()) {
+    return keyb_idx_unknown;
+  }
 
   if (s.length() == 1) {
     char c = s[0];
-    if (c >= 'a' && c <= 'z') return keyb_idx_a + (c - 'a');
-    if (c >= '1' && c <= '9') return keyb_idx_1 + (c - '1');
-    if (c == '0') return keyb_idx_0;
-    if (c == '-') return keyb_idx_minus;
-    if (c == '=') return keyb_idx_equals;
-    if (c == '[') return keyb_idx_leftbracket;
-    if (c == ']') return keyb_idx_rightbracket;
-    if (c == '\\') return keyb_idx_backslash;
-    if (c == ';') return keyb_idx_semicolon;
-    if (c == '\'') return keyb_idx_apostrophe;
-    if (c == '`') return keyb_idx_grave;
-    if (c == ',') return keyb_idx_comma;
-    if (c == '.') return keyb_idx_period;
-    if (c == '/') return keyb_idx_slash;
-    if (c == ' ') return keyb_idx_space;
+    if (c >= 'a' && c <= 'z') {
+      return keyb_idx_a + (c - 'a');
+    }
+    if (c >= '1' && c <= '9') {
+      return keyb_idx_1 + (c - '1');
+    }
+    if (c == '0') {
+      return keyb_idx_0;
+    }
+    if (c == '-') {
+      return keyb_idx_minus;
+    }
+    if (c == '=') {
+      return keyb_idx_equals;
+    }
+    if (c == '[') {
+      return keyb_idx_leftbracket;
+    }
+    if (c == ']') {
+      return keyb_idx_rightbracket;
+    }
+    if (c == '\\') {
+      return keyb_idx_backslash;
+    }
+    if (c == ';') {
+      return keyb_idx_semicolon;
+    }
+    if (c == '\'') {
+      return keyb_idx_apostrophe;
+    }
+    if (c == '`') {
+      return keyb_idx_grave;
+    }
+    if (c == ',') {
+      return keyb_idx_comma;
+    }
+    if (c == '.') {
+      return keyb_idx_period;
+    }
+    if (c == '/') {
+      return keyb_idx_slash;
+    }
+    if (c == ' ') {
+      return keyb_idx_space;
+    }
   }
 
-  if (s == "return" || s == "enter") return keyb_idx_return;
-  if (s == "escape" || s == "esc") return keyb_idx_escape;
-  if (s == "backspace" || s == "bs") return keyb_idx_backspace;
-  if (s == "tab") return keyb_idx_tab;
-  if (s == "space" || s == "spacebar") return keyb_idx_space;
-  if (s == "minus") return keyb_idx_minus;
-  if (s == "equals" || s == "equal") return keyb_idx_equals;
-  if (s == "leftbracket" || s == "bracketleft") return keyb_idx_leftbracket;
-  if (s == "rightbracket" || s == "bracketright") return keyb_idx_rightbracket;
-  if (s == "backslash") return keyb_idx_backslash;
-  if (s == "semicolon") return keyb_idx_semicolon;
-  if (s == "apostrophe" || s == "quote") return keyb_idx_apostrophe;
-  if (s == "grave" || s == "backquote") return keyb_idx_grave;
-  if (s == "comma") return keyb_idx_comma;
-  if (s == "period" || s == "dot") return keyb_idx_period;
-  if (s == "slash") return keyb_idx_slash;
-  if (s == "caps" || s == "capslock" || s == "caps lock")
+  if (s == "return" || s == "enter") {
+    return keyb_idx_return;
+  }
+  if (s == "escape" || s == "esc") {
+    return keyb_idx_escape;
+  }
+  if (s == "backspace" || s == "bs") {
+    return keyb_idx_backspace;
+  }
+  if (s == "tab") {
+    return keyb_idx_tab;
+  }
+  if (s == "space" || s == "spacebar") {
+    return keyb_idx_space;
+  }
+  if (s == "minus") {
+    return keyb_idx_minus;
+  }
+  if (s == "equals" || s == "equal") {
+    return keyb_idx_equals;
+  }
+  if (s == "leftbracket" || s == "bracketleft") {
+    return keyb_idx_leftbracket;
+  }
+  if (s == "rightbracket" || s == "bracketright") {
+    return keyb_idx_rightbracket;
+  }
+  if (s == "backslash") {
+    return keyb_idx_backslash;
+  }
+  if (s == "semicolon") {
+    return keyb_idx_semicolon;
+  }
+  if (s == "apostrophe" || s == "quote") {
+    return keyb_idx_apostrophe;
+  }
+  if (s == "grave" || s == "backquote") {
+    return keyb_idx_grave;
+  }
+  if (s == "comma") {
+    return keyb_idx_comma;
+  }
+  if (s == "period" || s == "dot") {
+    return keyb_idx_period;
+  }
+  if (s == "slash") {
+    return keyb_idx_slash;
+  }
+  if (s == "caps" || s == "capslock" || s == "caps lock") {
     return keyb_idx_capslock;
+  }
 
-  if (s == "up" || s == "uparrow" || s == "up arrow") return keyb_idx_up;
-  if (s == "down" || s == "downarrow" || s == "down arrow")
+  if (s == "up" || s == "uparrow" || s == "up arrow") {
+    return keyb_idx_up;
+  }
+  if (s == "down" || s == "downarrow" || s == "down arrow") {
     return keyb_idx_down;
-  if (s == "left" || s == "leftarrow" || s == "left arrow")
+  }
+  if (s == "left" || s == "leftarrow" || s == "left arrow") {
     return keyb_idx_left;
-  if (s == "right" || s == "rightarrow" || s == "right arrow")
+  }
+  if (s == "right" || s == "rightarrow" || s == "right arrow") {
     return keyb_idx_right;
+  }
 
   if (s.length() >= 2 && s[0] == 'f') {
     try {
@@ -370,39 +445,68 @@ auto keyboard_parse_host_key(const char* name) -> uint32_t {
 auto keyboard_parse_apple2_val(const char* name, uint8_t* out_flags)
     -> uint8_t {
   namespace kt = keyboard_translator;
-  if (out_flags != nullptr) *out_flags = 0;
-  if (name == nullptr) return 0;
+  if (out_flags != nullptr) {
+    *out_flags = 0;
+  }
+  if (name == nullptr) {
+    return 0;
+  }
 
   std::string s = kt::to_lower_str(kt::trim_str(name));
-  if (s.empty()) return 0;
+  if (s.empty()) {
+    return 0;
+  }
 
   if (s == "openapple" || s == "open apple" || s == "open_apple" || s == "oa") {
-    if (out_flags != nullptr) *out_flags |= kt::k_custom_flag_open_apple;
+    if (out_flags != nullptr) {
+      *out_flags |= kt::k_custom_flag_open_apple;
+    }
     return 0;
   }
   if (s == "closedapple" || s == "closed apple" || s == "closed_apple" ||
       s == "solidapple" || s == "solid apple" || s == "ca") {
-    if (out_flags != nullptr) *out_flags |= kt::k_custom_flag_solid_apple;
+    if (out_flags != nullptr) {
+      *out_flags |= kt::k_custom_flag_solid_apple;
+    }
     return 0;
   }
   if (s == "rept" || s == "repeat") {
-    if (out_flags != nullptr) *out_flags |= kt::k_custom_flag_rept;
+    if (out_flags != nullptr) {
+      *out_flags |= kt::k_custom_flag_rept;
+    }
     return 0;
   }
 
-  if (s == "up" || s == "uparrow" || s == "up arrow") return kt::k_apple_up;
-  if (s == "down" || s == "downarrow" || s == "down arrow")
+  if (s == "up" || s == "uparrow" || s == "up arrow") {
+    return kt::k_apple_up;
+  }
+  if (s == "down" || s == "downarrow" || s == "down arrow") {
     return kt::k_apple_down;
-  if (s == "left" || s == "leftarrow" || s == "left arrow")
+  }
+  if (s == "left" || s == "leftarrow" || s == "left arrow") {
     return kt::k_apple_left;
-  if (s == "right" || s == "rightarrow" || s == "right arrow")
+  }
+  if (s == "right" || s == "rightarrow" || s == "right arrow") {
     return kt::k_apple_right;
-  if (s == "return" || s == "enter") return kt::k_ascii_cr;
-  if (s == "escape" || s == "esc") return kt::k_ascii_esc;
-  if (s == "backspace" || s == "bs") return kt::k_ascii_del;
-  if (s == "delete" || s == "del") return kt::k_ascii_del;
-  if (s == "tab") return kt::k_ascii_tab;
-  if (s == "space" || s == "spacebar") return ' ';
+  }
+  if (s == "return" || s == "enter") {
+    return kt::k_ascii_cr;
+  }
+  if (s == "escape" || s == "esc") {
+    return kt::k_ascii_esc;
+  }
+  if (s == "backspace" || s == "bs") {
+    return kt::k_ascii_del;
+  }
+  if (s == "delete" || s == "del") {
+    return kt::k_ascii_del;
+  }
+  if (s == "tab") {
+    return kt::k_ascii_tab;
+  }
+  if (s == "space" || s == "spacebar") {
+    return ' ';
+  }
 
   // Hex values like 0x0B or $15
   if ((s.length() > 2 && (s.rfind("0x", 0) == 0)) ||
@@ -427,13 +531,27 @@ auto keyboard_parse_apple2_val(const char* name, uint8_t* out_flags)
   }
 
   // The code points the national character generators give these glyphs.
-  if (s == "ä" || s == "é") return 0x7B;
-  if (s == "ö" || s == "ù") return 0x7C;
-  if (s == "ü" || s == "è") return 0x7D;
-  if (s == "°") return 0x5B;
-  if (s == "ç") return 0x5C;
-  if (s == "§") return 0x5D;
-  if (s == "£") return 0x23;
+  if (s == "ä" || s == "é") {
+    return 0x7B;
+  }
+  if (s == "ö" || s == "ù") {
+    return 0x7C;
+  }
+  if (s == "ü" || s == "è") {
+    return 0x7D;
+  }
+  if (s == "°") {
+    return 0x5B;
+  }
+  if (s == "ç") {
+    return 0x5C;
+  }
+  if (s == "§") {
+    return 0x5D;
+  }
+  if (s == "£") {
+    return 0x23;
+  }
 
   return 0;
 }
@@ -461,7 +579,9 @@ auto keyboard_apply_custom_mappings() -> void {
       tokens.push_back(kt::trim_str(token));
     }
 
-    if (tokens.empty()) continue;
+    if (tokens.empty()) {
+      continue;
+    }
 
     kt::CustomKey_t custom;
     custom.flags = kt::k_custom_flag_active;

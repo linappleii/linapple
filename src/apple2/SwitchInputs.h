@@ -11,7 +11,7 @@
 // the Apple IIe, 7-8; Apple IIe Technical Note #9).
 enum SwitchInputSource_t : uint8_t {
   switch_source_keyboard = 0,
-  switch_source_connector = 1
+  switch_source_connector = 1,
 };
 
 constexpr uint8_t switch_input_count = 3;

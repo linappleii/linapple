@@ -47,14 +47,14 @@ enum {
   // alone.
   disk_create_path_max = 448,
   disk_status_name_max = 32,
-  disk_status_path_max = disk_path_max
+  disk_status_path_max = disk_path_max,
 };
 
 typedef enum {
   disk_status_off = 0x00,
   disk_status_read = 0x01,
   disk_status_write = 0x02,
-  disk_status_prot = 0x04
+  disk_status_prot = 0x04,
 } DiskStatus_e;
 
 typedef enum {
@@ -62,7 +62,7 @@ typedef enum {
   disk_cmd_eject = PERIPHERAL_SUBSYSTEM_DISK | 0x0002,
   disk_cmd_swap_drives = PERIPHERAL_SUBSYSTEM_DISK | 0x0003,
   disk_cmd_set_protect = PERIPHERAL_SUBSYSTEM_DISK | 0x0004,
-  disk_cmd_create_image = PERIPHERAL_SUBSYSTEM_DISK | 0x0007
+  disk_cmd_create_image = PERIPHERAL_SUBSYSTEM_DISK | 0x0007,
 } DiskCmd_t;
 
 // Query IDs are dispatched through the query ABI callback, separate from
@@ -71,7 +71,7 @@ enum {
   disk_query_status = PERIPHERAL_SUBSYSTEM_DISK | 0x0001,
   disk_query_supported_extensions = PERIPHERAL_SUBSYSTEM_DISK | 0x0002,
   disk_query_format_count = PERIPHERAL_SUBSYSTEM_DISK | 0x0003,
-  disk_query_format_name = PERIPHERAL_SUBSYSTEM_DISK | 0x0004
+  disk_query_format_name = PERIPHERAL_SUBSYSTEM_DISK | 0x0004,
 };
 
 typedef struct {

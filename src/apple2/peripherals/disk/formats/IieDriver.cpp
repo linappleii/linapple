@@ -35,7 +35,8 @@
 namespace {
 namespace iie {
 static constexpr std::array<uint8_t, 13> signature = {
-    'S', 'I', 'M', 'S', 'Y', 'S', 'T', 'E', 'M', '_', 'I', 'I', 'E'};
+    'S', 'I', 'M', 'S', 'Y', 'S', 'T', 'E', 'M', '_', 'I', 'I', 'E',
+};
 constexpr size_t signature_len = 13;
 constexpr int header_size = 88;
 constexpr int track_data_offset = 30;
@@ -291,7 +292,8 @@ extern "C" const DiskFormatDriver_t g_iie_driver = {
     .is_write_protected = iie_is_write_protected,
     .read_track_bits = iie_read_track_bits,
     .write_track_bits = nullptr,
-    .create = nullptr};
+    .create = nullptr,
+};
 
 static const DiskFormatRegistration_t registration{&g_iie_driver};
 

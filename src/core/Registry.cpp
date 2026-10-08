@@ -24,7 +24,9 @@ static auto trim(const std::string& s) -> std::string {
   while (start != s.end() && std::isspace(static_cast<uint8_t>(*start))) {
     start++;
   }
-  if (start == s.end()) return "";
+  if (start == s.end()) {
+    return "";
+  }
   auto end = s.end() - 1;
   while (end != start && std::isspace(static_cast<uint8_t>(*end))) {
     end--;
@@ -99,16 +101,24 @@ auto Configuration_t::sync_from_data() -> void {
 
   if (disk_path.at(0).at(0) == '\0') {
     std::string d1 = get_string(cfg_sec_slots, cfg_disk_image1);
-    if (d1.empty()) d1 = get_string(cfg_sec_configuration, cfg_disk_image1);
-    if (d1.empty()) d1 = get_string(cfg_sec_preferences, cfg_disk_image1);
+    if (d1.empty()) {
+      d1 = get_string(cfg_sec_configuration, cfg_disk_image1);
+    }
+    if (d1.empty()) {
+      d1 = get_string(cfg_sec_preferences, cfg_disk_image1);
+    }
     if (!d1.empty()) {
       util_safe_strcpy(disk_path.at(0).data(), d1.c_str(), path_max_len);
     }
   }
   if (disk_path.at(1).at(0) == '\0') {
     std::string d2 = get_string(cfg_sec_slots, cfg_disk_image2);
-    if (d2.empty()) d2 = get_string(cfg_sec_configuration, cfg_disk_image2);
-    if (d2.empty()) d2 = get_string(cfg_sec_preferences, cfg_disk_image2);
+    if (d2.empty()) {
+      d2 = get_string(cfg_sec_configuration, cfg_disk_image2);
+    }
+    if (d2.empty()) {
+      d2 = get_string(cfg_sec_preferences, cfg_disk_image2);
+    }
     if (!d2.empty()) {
       util_safe_strcpy(disk_path.at(1).data(), d2.c_str(), path_max_len);
     }
@@ -116,14 +126,18 @@ auto Configuration_t::sync_from_data() -> void {
 
   if (harddisk_path.at(0).at(0) == '\0') {
     std::string hd1 = get_string(cfg_sec_preferences, cfg_hdd_image1);
-    if (hd1.empty()) hd1 = get_string(cfg_sec_configuration, cfg_hdd_image1);
+    if (hd1.empty()) {
+      hd1 = get_string(cfg_sec_configuration, cfg_hdd_image1);
+    }
     if (!hd1.empty()) {
       util_safe_strcpy(harddisk_path.at(0).data(), hd1.c_str(), path_max_len);
     }
   }
   if (harddisk_path.at(1).at(0) == '\0') {
     std::string hd2 = get_string(cfg_sec_preferences, cfg_hdd_image2);
-    if (hd2.empty()) hd2 = get_string(cfg_sec_configuration, cfg_hdd_image2);
+    if (hd2.empty()) {
+      hd2 = get_string(cfg_sec_configuration, cfg_hdd_image2);
+    }
     if (!hd2.empty()) {
       util_safe_strcpy(harddisk_path.at(1).data(), hd2.c_str(), path_max_len);
     }
@@ -256,7 +270,9 @@ auto Configuration_t::load(const std::string& config_path) -> bool {
   std::string current_section = "Configuration";
   while (std::getline(file, line)) {
     line = trim(line);
-    if (line.empty() || line.front() == '#') continue;
+    if (line.empty() || line.front() == '#') {
+      continue;
+    }
 
     if (line.length() >= 2 && line.front() == '[' && line.back() == ']') {
       current_section = line.substr(1, line.length() - 2);
@@ -346,7 +362,9 @@ auto Configuration_t::save() -> bool {
 
 #ifdef REGISTRY_WRITEABLE
   std::ofstream file(path);
-  if (!file.is_open()) return false;
+  if (!file.is_open()) {
+    return false;
+  }
 
   for (auto const& section : data) {
     if (section.first != "Default") {
@@ -368,21 +386,23 @@ struct ConfigAlias_t {
   const char* legacy;
 };
 
-static constexpr std::array<ConfigAlias_t, 13> config_aliases = {{
-    {"Joystick 0 Index", "Joy0Index"},
-    {"Joystick 1 Index", "Joy1Index"},
-    {"Joystick 0 Button 1", "Joy0Button1"},
-    {"Joystick 0 Button 2", "Joy0Button2"},
-    {"Joystick 1 Button 1", "Joy1Button1"},
-    {"Joystick 0 Axis 0", "Joy0Axis0"},
-    {"Joystick 0 Axis 1", "Joy0Axis1"},
-    {"Joystick 1 Axis 0", "Joy1Axis0"},
-    {"Joystick 1 Axis 1", "Joy1Axis1"},
-    {"Mouse in slot 4", "Mouse in slot4"},
-    {"Mouse Capture", "MouseCapture"},
-    {"Basic Live Sync File", "BasicLiveSyncFile"},
-    {"Basic Line Numbering", "BasicLineNumbering"},
-}};
+static constexpr std::array<ConfigAlias_t, 13> config_aliases = {
+    {
+        {"Joystick 0 Index", "Joy0Index"},
+        {"Joystick 1 Index", "Joy1Index"},
+        {"Joystick 0 Button 1", "Joy0Button1"},
+        {"Joystick 0 Button 2", "Joy0Button2"},
+        {"Joystick 1 Button 1", "Joy1Button1"},
+        {"Joystick 0 Axis 0", "Joy0Axis0"},
+        {"Joystick 0 Axis 1", "Joy0Axis1"},
+        {"Joystick 1 Axis 0", "Joy1Axis0"},
+        {"Joystick 1 Axis 1", "Joy1Axis1"},
+        {"Mouse in slot 4", "Mouse in slot4"},
+        {"Mouse Capture", "MouseCapture"},
+        {"Basic Live Sync File", "BasicLiveSyncFile"},
+        {"Basic Line Numbering", "BasicLineNumbering"},
+    },
+};
 
 static auto find_alias(const std::string& key) -> const char* {
   for (const auto& entry : config_aliases) {
@@ -411,7 +431,9 @@ auto Configuration_t::get_string(const std::string& section,
 
   for (auto const& s : data) {
     auto key_it = s.second.find(key);
-    if (key_it != s.second.end()) return key_it->second;
+    if (key_it != s.second.end()) {
+      return key_it->second;
+    }
   }
 
   const char* alias = find_alias(key);
@@ -424,7 +446,9 @@ auto Configuration_t::get_string(const std::string& section,
     }
     for (auto const& s : data) {
       auto alias_it = s.second.find(alias);
-      if (alias_it != s.second.end()) return alias_it->second;
+      if (alias_it != s.second.end()) {
+        return alias_it->second;
+      }
     }
   }
 
@@ -436,7 +460,9 @@ auto Configuration_t::get_int(const std::string& section,
                               const std::string& key,
                               uint32_t default_value) const -> uint32_t {
   std::string val = get_string(section, key);
-  if (val.empty()) return default_value;
+  if (val.empty()) {
+    return default_value;
+  }
   try {
     return std::stoul(val, nullptr, 0);
   } catch (...) {
@@ -448,11 +474,17 @@ auto Configuration_t::get_bool(const std::string& section,
                                const std::string& key, bool default_value) const
     -> bool {
   std::string val = get_string(section, key);
-  if (val.empty()) return default_value;
+  if (val.empty()) {
+    return default_value;
+  }
   std::string low_val = val;
   std::transform(low_val.begin(), low_val.end(), low_val.begin(), ::tolower);
-  if (low_val == "true" || low_val == "1" || low_val == "yes") return true;
-  if (low_val == "false" || low_val == "0" || low_val == "no") return false;
+  if (low_val == "true" || low_val == "1" || low_val == "yes") {
+    return true;
+  }
+  if (low_val == "false" || low_val == "0" || low_val == "no") {
+    return false;
+  }
   return default_value;
 }
 
@@ -470,13 +502,17 @@ auto Configuration_t::get_string(const char* section, const char* key,
 
 auto Configuration_t::get_int(const char* section, const char* key,
                               uint32_t default_value) const -> uint32_t {
-  if (section == nullptr || key == nullptr) return default_value;
+  if (section == nullptr || key == nullptr) {
+    return default_value;
+  }
   return get_int(std::string(section), std::string(key), default_value);
 }
 
 auto Configuration_t::get_bool(const char* section, const char* key,
                                bool default_value) const -> bool {
-  if (section == nullptr || key == nullptr) return default_value;
+  if (section == nullptr || key == nullptr) {
+    return default_value;
+  }
   return get_bool(std::string(section), std::string(key), default_value);
 }
 
@@ -563,19 +599,25 @@ auto Configuration_t::set_bool(const std::string& section,
 
 auto Configuration_t::set_string(const char* section, const char* key,
                                  const char* value) -> void {
-  if (section == nullptr || key == nullptr || value == nullptr) return;
+  if (section == nullptr || key == nullptr || value == nullptr) {
+    return;
+  }
   set_string(std::string(section), std::string(key), std::string(value));
 }
 
 auto Configuration_t::set_int(const char* section, const char* key,
                               uint32_t value) -> void {
-  if (section == nullptr || key == nullptr) return;
+  if (section == nullptr || key == nullptr) {
+    return;
+  }
   set_int(std::string(section), std::string(key), value);
 }
 
 auto Configuration_t::set_bool(const char* section, const char* key, bool value)
     -> void {
-  if (section == nullptr || key == nullptr) return;
+  if (section == nullptr || key == nullptr) {
+    return;
+  }
   set_bool(std::string(section), std::string(key), value);
 }
 // NOLINTEND(bugprone-easily-swappable-parameters)
@@ -585,7 +627,9 @@ auto config_instance() -> Configuration_t& {
 }
 
 auto config_load_file(const char* path) -> bool {
-  if (path == nullptr) return false;
+  if (path == nullptr) {
+    return false;
+  }
   return Configuration_t::instance().load(path);
 }
 
@@ -596,7 +640,9 @@ auto config_load_defaults() -> void {
 }
 
 auto config_set_path(const char* path) -> void {
-  if (path == nullptr) return;
+  if (path == nullptr) {
+    return;
+  }
   Configuration_t::instance().set_path(path);
 }
 
@@ -621,24 +667,32 @@ auto config_get_bool(const char* section, const char* key, bool default_value)
 
 auto config_set_string(const char* section, const char* key, const char* value)
     -> void {
-  if (section == nullptr || key == nullptr || value == nullptr) return;
+  if (section == nullptr || key == nullptr || value == nullptr) {
+    return;
+  }
   Configuration_t::instance().set_string(section, key, value);
 }
 
 auto config_set_int(const char* section, const char* key, uint32_t value)
     -> void {
-  if (section == nullptr || key == nullptr) return;
+  if (section == nullptr || key == nullptr) {
+    return;
+  }
   Configuration_t::instance().set_int(section, key, value);
 }
 
 auto config_set_bool(const char* section, const char* key, bool value) -> void {
-  if (section == nullptr || key == nullptr) return;
+  if (section == nullptr || key == nullptr) {
+    return;
+  }
   Configuration_t::instance().set_bool(section, key, value);
 }
 
 auto config_load_int(const char* section, const char* key, uint32_t* value)
     -> bool {
-  if (section == nullptr || key == nullptr || value == nullptr) return false;
+  if (section == nullptr || key == nullptr || value == nullptr) {
+    return false;
+  }
   std::string s = Configuration_t::instance().get_string(section, key);
   if (s.empty()) {
     return false;
@@ -653,7 +707,9 @@ auto config_load_int(const char* section, const char* key, uint32_t* value)
 
 auto config_load_bool(const char* section, const char* key, bool* value)
     -> bool {
-  if (section == nullptr || key == nullptr || value == nullptr) return false;
+  if (section == nullptr || key == nullptr || value == nullptr) {
+    return false;
+  }
   std::string val = Configuration_t::instance().get_string(section, key);
   if (val.empty()) {
     return false;
@@ -672,27 +728,37 @@ auto config_load_bool(const char* section, const char* key, bool* value)
 
 auto config_load_string(const char* section, const char* key,
                         std::string* value) -> bool {
-  if (section == nullptr || key == nullptr || value == nullptr) return false;
+  if (section == nullptr || key == nullptr || value == nullptr) {
+    return false;
+  }
   std::string s = Configuration_t::instance().get_string(section, key);
-  if (s.empty()) return false;
+  if (s.empty()) {
+    return false;
+  }
   *value = std::move(s);
   return true;
 }
 
 auto config_save_int(const char* section, const char* key, uint32_t value)
     -> void {
-  if (section == nullptr || key == nullptr) return;
+  if (section == nullptr || key == nullptr) {
+    return;
+  }
   Configuration_t::instance().set_int(section, key, value);
 }
 
 auto config_save_bool(const char* section, const char* key, bool value)
     -> void {
-  if (section == nullptr || key == nullptr) return;
+  if (section == nullptr || key == nullptr) {
+    return;
+  }
   Configuration_t::instance().set_bool(section, key, value);
 }
 
 auto config_save_string(const char* section, const char* key, const char* value)
     -> void {
-  if (section == nullptr || key == nullptr || value == nullptr) return;
+  if (section == nullptr || key == nullptr || value == nullptr) {
+    return;
+  }
   Configuration_t::instance().set_string(section, key, value);
 }

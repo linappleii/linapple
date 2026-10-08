@@ -27,7 +27,7 @@ enum PrintState_e {
   PS_NEXT_ARG_BIN,
   PS_NEXT_ARG_HEX,
   PS_NEXT_ARG_DEC,
-  PS_NEXT_ARG_CHR
+  PS_NEXT_ARG_CHR,
 };
 
 struct PrintFormat_t {

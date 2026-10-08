@@ -13,7 +13,7 @@ extern "C" {
 
 enum {
   keyb_map_size = 128,  // Covers the physical scancode range (max index 82)
-  keyb_name_size = 32
+  keyb_name_size = 32,
 };
 
 // The national tables in the order Keyboard Type numbers them.
@@ -29,7 +29,7 @@ typedef enum {
   keyboard_layout_ch = 8,
   keyboard_layout_ca = 9,
   keyboard_layout_jp_roman = 10,
-  keyboard_layout_jp_kana = 11
+  keyboard_layout_jp_kana = 11,
 } KeyboardLayout_t;
 
 // USB HID keyboard usage ids, which are SDL's scancodes.
@@ -109,7 +109,7 @@ typedef enum {
   keyb_idx_right = 79,
   keyb_idx_left = 80,
   keyb_idx_down = 81,
-  keyb_idx_up = 82
+  keyb_idx_up = 82,
 } KeyboardIdx_t;
 
 typedef struct {

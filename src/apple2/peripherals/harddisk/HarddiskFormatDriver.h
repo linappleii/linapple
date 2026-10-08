@@ -19,13 +19,13 @@ enum { harddisk_format_abi_version = 0 };
 
 typedef enum {
   harddisk_driver_cap_none = 0x00,
-  harddisk_driver_cap_write = 0x01
+  harddisk_driver_cap_write = 0x01,
 } HarddiskDriverCap_e;
 
 typedef enum {
   harddisk_probe_no = 0,
   harddisk_probe_possible = 1,
-  harddisk_probe_definite = 2
+  harddisk_probe_definite = 2,
 } HarddiskProbe_e;
 
 typedef enum {
@@ -33,7 +33,7 @@ typedef enum {
   harddisk_err_io = 1,
   harddisk_err_not_found = 2,
   harddisk_err_read_only = 3,
-  harddisk_err_invalid_format = 4
+  harddisk_err_invalid_format = 4,
 } HarddiskError_e;
 
 typedef struct HarddiskFormatDriver_t {

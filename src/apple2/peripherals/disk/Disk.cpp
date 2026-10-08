@@ -978,7 +978,7 @@ constexpr std::array<DiskIoHandler_t, 16> k_disk_io_handlers = {
     disk_io_mode_switch,      // 0xC: Q6 clear
     disk_io_mode_switch,      // 0xD: Q6 set
     disk_io_mode_switch,      // 0xE: Q7 clear
-    disk_io_mode_switch       // 0xF: Q7 set
+    disk_io_mode_switch,      // 0xF: Q7 set
 };
 
 // A0 gates the data register onto the bus (UTAIIe Table 9.1), so what an
@@ -1473,7 +1473,8 @@ static const Peripheral_t g_disk_peripheral = {
     .save_state = disk_abi_save_state,
     .load_state = disk_abi_load_state,
     .command = disk_abi_command,
-    .query = disk_abi_query};
+    .query = disk_abi_query,
+};
 
 // peripheral_register and ActivePeripheral_t::api still take a mutable
 // Peripheral_t*, so the immutable descriptor is cast the same way

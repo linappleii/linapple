@@ -38,7 +38,7 @@ static size_t g_cushion_samples = 0;
 // Symmetric rails: -1.0 and +1.0 map to -32767 and +32767, so a full-scale
 // signal stays symmetric instead of gaining a half-LSB bias from -32768.
 static auto float_to_pcm16(float v) noexcept -> int16_t {
-  const long scaled = std::lroundf(v * 32767.0f);
+  const long scaled = std::lroundf(v * 32767.0F);
   if (scaled > 32767) {
     return 32767;
   }
@@ -50,24 +50,24 @@ static auto float_to_pcm16(float v) noexcept -> int16_t {
 
 // A float decaying toward zero lands in the denormal range, where arithmetic
 // is dramatically slower on some CPUs. Nothing audible lives this far down.
-constexpr float k_denormal_floor = 1e-20f;
+constexpr float k_denormal_floor = 1e-20F;
 
 static auto flush_denormal(float v) noexcept -> float {
-  return (v > -k_denormal_floor && v < k_denormal_floor) ? 0.0f : v;
+  return (v > -k_denormal_floor && v < k_denormal_floor) ? 0.0F : v;
 }
 
 // Normalized linear decay step toward 0 (approx 800 counts per frame at 16-bit
 // PCM scale).
-constexpr float k_fade_step = 800.0f / 32767.0f;
+constexpr float k_fade_step = 800.0F / 32767.0F;
 
 static inline auto decay_sample(float val, float step) noexcept -> float {
-  if (val > 0.0f) {
-    return (val > step) ? (val - step) : 0.0f;
+  if (val > 0.0F) {
+    return (val > step) ? (val - step) : 0.0F;
   }
-  if (val < 0.0f) {
-    return (val < -step) ? (val + step) : 0.0f;
+  if (val < 0.0F) {
+    return (val < -step) ? (val + step) : 0.0F;
   }
-  return 0.0f;
+  return 0.0F;
 }
 
 // Lock-free single-producer single-consumer (SPSC) ring buffer. The ring is
@@ -79,36 +79,44 @@ struct SampleBuffer_t {
   std::atomic<size_t> write_index{0};
   std::atomic<uint32_t> flush_gen{0};
   uint32_t acked_flush_gen{0};
-  float last_left{0.0f};
-  float last_right{0.0f};
+  float last_left{0.0F};
+  float last_right{0.0F};
 };
 
 static auto sample_buffer_reinit(SampleBuffer_t* sb) -> void {
-  if (sb == nullptr) return;
-  sb->buffer.assign(g_capacity_samples, 0.0f);
+  if (sb == nullptr) {
+    return;
+  }
+  sb->buffer.assign(g_capacity_samples, 0.0F);
   sb->read_index.store(0, std::memory_order_relaxed);
   sb->write_index.store(0, std::memory_order_relaxed);
   sb->flush_gen.store(0, std::memory_order_relaxed);
   sb->acked_flush_gen = 0;
-  sb->last_left = 0.0f;
-  sb->last_right = 0.0f;
+  sb->last_left = 0.0F;
+  sb->last_right = 0.0F;
 }
 
 static auto sample_buffer_request_flush(SampleBuffer_t* sb) -> void {
-  if (sb == nullptr) return;
+  if (sb == nullptr) {
+    return;
+  }
   sb->flush_gen.fetch_add(1, std::memory_order_release);
 }
 
 static auto sample_buffer_check_flush(SampleBuffer_t* sb) -> void {
-  if (sb == nullptr) return;
+  if (sb == nullptr) {
+    return;
+  }
   const uint32_t gen = sb->flush_gen.load(std::memory_order_acquire);
-  if (sb->acked_flush_gen == gen) return;
+  if (sb->acked_flush_gen == gen) {
+    return;
+  }
 
   sb->acked_flush_gen = gen;
   const size_t w = sb->write_index.load(std::memory_order_acquire);
   sb->read_index.store(w, std::memory_order_release);
-  sb->last_left = 0.0f;
-  sb->last_right = 0.0f;
+  sb->last_left = 0.0F;
+  sb->last_right = 0.0F;
 }
 
 static auto sample_buffer_get_filled(const SampleBuffer_t* sb) -> size_t {
@@ -135,7 +143,9 @@ static auto sample_buffer_get_free(const SampleBuffer_t* sb) -> size_t {
 }
 
 static auto sample_buffer_skip(SampleBuffer_t* sb, size_t len) -> void {
-  if (sb == nullptr) return;
+  if (sb == nullptr) {
+    return;
+  }
   const size_t filled = sample_buffer_get_filled(sb);
   size_t num = (len < filled) ? len : filled;
   num &= ~static_cast<size_t>(1);
@@ -235,8 +245,8 @@ static auto sample_buffer_drain_to(SampleBuffer_t* sb, float* dest, size_t len,
 }
 
 struct ChannelPan_t {
-  float left{1.0f};
-  float right{1.0f};
+  float left{1.0F};
+  float right{1.0F};
   constexpr ChannelPan_t() = default;
   constexpr ChannelPan_t(float l, float r) : left(l), right(r) {}
 };
@@ -247,7 +257,7 @@ struct ResamplerState_t {
   double window_sum = 0.0;   // area accumulated into the frame in progress
   double window_span = 0.0;  // how much of that frame's window is covered
   double phase = 0.0;        // position between previous and current input
-  float previous = 0.0f;
+  float previous = 0.0F;
   bool primed = false;
 };
 
@@ -257,7 +267,7 @@ struct AudioSourceSlot_t {
   PeripheralAudioInfo_t info{};
   std::array<ChannelPan_t, k_max_channels_per_slot> pan{};
   std::array<ResamplerState_t, k_max_channels_per_slot> resampler{};
-  float gain = 1.0f;
+  float gain = 1.0F;
   std::unique_ptr<SampleBuffer_t> buffer;
 };
 
@@ -281,19 +291,19 @@ static auto source_rate_hz(const PeripheralAudioInfo_t& info) -> double {
 // a single channel part-way from being amplified instead. The speaker's one
 // channel at (1, 1) leaves its 1/2.0 untouched.
 static auto default_source_gain(const PeripheralAudioInfo_t& info) -> float {
-  if (info.peak_magnitude <= 0.0f) {
-    return 1.0f;
+  if (info.peak_magnitude <= 0.0F) {
+    return 1.0F;
   }
   const size_t channels =
       std::min<size_t>(info.num_channels, k_max_channels_per_slot);
-  float left_sum = 0.0f;
-  float right_sum = 0.0f;
+  float left_sum = 0.0F;
+  float right_sum = 0.0F;
   for (size_t c = 0; c < channels; ++c) {
     left_sum += info.channels[c].default_pan_left;
     right_sum += info.channels[c].default_pan_right;
   }
-  const float fan_in = std::max(1.0f, std::max(left_sum, right_sum));
-  return 1.0f / (info.peak_magnitude * fan_in);
+  const float fan_in = std::max(1.0F, std::max(left_sum, right_sum));
+  return 1.0F / (info.peak_magnitude * fan_in);
 }
 
 static auto resample_downsample(ResamplerState_t& state, double step,
@@ -379,9 +389,9 @@ auto audio_mixer_initialize(uint32_t output_rate_hz) -> void {
     sample_buffer_reinit(g_slots[i].buffer.get());
     g_slots[i].active.store(false, std::memory_order_relaxed);
     g_slots[i].info = PeripheralAudioInfo_t{};
-    g_slots[i].gain = 1.0f;
+    g_slots[i].gain = 1.0F;
     for (size_t c = 0; c < k_max_channels_per_slot; ++c) {
-      g_slots[i].pan[c] = {1.0f, 1.0f};
+      g_slots[i].pan[c] = {1.0F, 1.0F};
       g_slots[i].resampler[c] = ResamplerState_t{};
     }
   }
@@ -448,7 +458,7 @@ auto audio_mixer_register_source(int slot, const char* peripheral_id,
       s.pan[c].left = s.info.channels[c].default_pan_left;
       s.pan[c].right = s.info.channels[c].default_pan_right;
     } else {
-      s.pan[c] = {1.0f, 1.0f};
+      s.pan[c] = {1.0F, 1.0F};
     }
   }
   if (!s.buffer) {
@@ -537,8 +547,8 @@ auto audio_mixer_upload_channels(const char* peripheral_id, int slot,
 
     std::array<float, k_resample_scratch_frames * 2> stereo_chunk{};
     for (size_t i = 0; i < produced; ++i) {
-      float l_acc = 0.0f;
-      float r_acc = 0.0f;
+      float l_acc = 0.0F;
+      float r_acc = 0.0F;
       for (size_t c = 0; c < num_channels; ++c) {
         const float sample = resampled[c][i] * s.gain;
         l_acc += sample * s.pan[c].left;
@@ -584,7 +594,7 @@ auto audio_mixer_reset_channel_pan(int slot) -> void {
         s.pan[c].left = s.info.channels[c].default_pan_left;
         s.pan[c].right = s.info.channels[c].default_pan_right;
       } else {
-        s.pan[c] = {1.0f, 1.0f};
+        s.pan[c] = {1.0F, 1.0F};
       }
     }
   }
@@ -626,8 +636,8 @@ auto audio_mixer_get_samples(int16_t* out, size_t num_samples) -> void {
     std::memset(out, 0, num_samples * sizeof(int16_t));
     for (size_t slot = 0; slot < k_max_audio_slots; ++slot) {
       if (g_slots[slot].buffer) {
-        g_slots[slot].buffer->last_left = 0.0f;
-        g_slots[slot].buffer->last_right = 0.0f;
+        g_slots[slot].buffer->last_left = 0.0F;
+        g_slots[slot].buffer->last_right = 0.0F;
       }
     }
     return;
@@ -637,9 +647,13 @@ auto audio_mixer_get_samples(int16_t* out, size_t num_samples) -> void {
       std::min(num_samples + g_cushion_samples, g_capacity_samples - 2);
 
   for (size_t slot = 0; slot < k_max_audio_slots; ++slot) {
-    if (!g_slots[slot].active.load(std::memory_order_acquire)) continue;
+    if (!g_slots[slot].active.load(std::memory_order_acquire)) {
+      continue;
+    }
     auto* sb = g_slots[slot].buffer.get();
-    if (sb == nullptr) continue;
+    if (sb == nullptr) {
+      continue;
+    }
 
     sample_buffer_check_flush(sb);
 
@@ -659,12 +673,16 @@ auto audio_mixer_get_samples(int16_t* out, size_t num_samples) -> void {
   size_t done = 0;
   while (done < num_samples) {
     const size_t chunk = std::min(num_samples - done, accumulator.size());
-    std::fill_n(accumulator.begin(), chunk, 0.0f);
+    std::fill_n(accumulator.begin(), chunk, 0.0F);
 
     for (size_t slot = 0; slot < k_max_audio_slots; ++slot) {
-      if (!g_slots[slot].active.load(std::memory_order_acquire)) continue;
+      if (!g_slots[slot].active.load(std::memory_order_acquire)) {
+        continue;
+      }
       auto* sb = g_slots[slot].buffer.get();
-      if (sb == nullptr) continue;
+      if (sb == nullptr) {
+        continue;
+      }
       sample_buffer_drain_to(sb, accumulator.data(), chunk, true);
     }
 

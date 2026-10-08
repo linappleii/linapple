@@ -89,8 +89,9 @@ auto raw_hd_get_total_blocks(void* instance_handle) -> uint32_t {
 }
 
 const char* const g_raw_hd_creatable_exts[] = {".hdv", ".po", nullptr};
-const char* const g_raw_hd_supported_exts[] = {"hdv", "po",  "2meg",
-                                               "2mg", "img", nullptr};
+const char* const g_raw_hd_supported_exts[] = {
+    "hdv", "po", "2meg", "2mg", "img", nullptr,
+};
 }  // namespace
 
 extern "C" const HarddiskFormatDriver_t g_raw_hd_driver = {
@@ -105,6 +106,7 @@ extern "C" const HarddiskFormatDriver_t g_raw_hd_driver = {
     .is_write_protected = raw_hd_is_write_protected,
     .read_block = raw_hd_read_block,
     .write_block = raw_hd_write_block,
-    .get_total_blocks = raw_hd_get_total_blocks};
+    .get_total_blocks = raw_hd_get_total_blocks,
+};
 
 // NOLINTEND(bugprone-easily-swappable-parameters)

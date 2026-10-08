@@ -56,7 +56,7 @@ enum VideoType_t {
   VT_MONO_AMBER,
   VT_MONO_GREEN,
   VT_MONO_WHITE,
-  VT_NUM_MODES
+  VT_NUM_MODES,
 };
 using VIDEOTYPE = VideoType_t;
 
@@ -67,7 +67,7 @@ enum VideoFlag_t {
   VF_MASK2 = 0x00000008,
   VF_MIXED = 0x00000010,
   VF_PAGE2 = 0x00000020,
-  VF_TEXT = 0x00000040
+  VF_TEXT = 0x00000040,
 };
 using VideoFlag_e = VideoFlag_t;
 
@@ -80,7 +80,7 @@ enum AppleFont_t {
   APPLE_FONT_Y_REGIONSIZE = 256,
   APPLE_FONT_Y_APPLE_2PLUS = 0,
   APPLE_FONT_Y_APPLE_80COL = 256,
-  APPLE_FONT_Y_APPLE_40COL = 512
+  APPLE_FONT_Y_APPLE_40COL = 512,
 };
 using AppleFont_e = AppleFont_t;
 
@@ -149,7 +149,7 @@ enum ColorPaletteIndex_t {
   DARKER_GREEN,
   DARKEST_GREEN,
   LIGHTEST_GRAY,
-  NUM_COLOR_PALETTE
+  NUM_COLOR_PALETTE,
 };
 using Color_Palette_Index_e = ColorPaletteIndex_t;
 

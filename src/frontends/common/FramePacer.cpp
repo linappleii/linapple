@@ -73,21 +73,29 @@ auto FramePacer_t::wait_for_next_frame() -> void {
 
 auto frame_pacer_init(FramePacer_t* pacer, FrameClockNowFn_t now,
                       FrameClockSleepUntilFn_t sleep_until) -> void {
-  if (pacer == nullptr) return;
+  if (pacer == nullptr) {
+    return;
+  }
   *pacer = FramePacer_t(now, sleep_until);
 }
 
 auto frame_pacer_wait(FramePacer_t* pacer) -> void {
-  if (pacer == nullptr) return;
+  if (pacer == nullptr) {
+    return;
+  }
   pacer->wait_for_next_frame();
 }
 
 auto frame_pacer_resync(FramePacer_t* pacer) -> void {
-  if (pacer == nullptr) return;
+  if (pacer == nullptr) {
+    return;
+  }
   pacer->resync();
 }
 
 auto frame_pacer_period_ns(const FramePacer_t* pacer) -> int64_t {
-  if (pacer == nullptr) return k_fallback_period_ns;
+  if (pacer == nullptr) {
+    return k_fallback_period_ns;
+  }
   return pacer->frame_period_ns();
 }

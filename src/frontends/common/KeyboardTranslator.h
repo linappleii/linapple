@@ -7,14 +7,14 @@
 
 enum KeyboardMappingMode_t : uint8_t {
   KBD_MODE_SYMBOLIC = 0,
-  KBD_MODE_POSITIONAL = 1
+  KBD_MODE_POSITIONAL = 1,
 };
 
 enum QuickSaveMode_t : uint8_t {
   QUICKSAVE_MODE_ALT = 0,
   QUICKSAVE_MODE_CTRL = 1,
   QUICKSAVE_MODE_ALT_CTRL = 2,
-  QUICKSAVE_MODE_DISABLED = 3
+  QUICKSAVE_MODE_DISABLED = 3,
 };
 
 // scancode is the USB HID usage the maps index (SDL's scancode); 0 says the
@@ -32,7 +32,7 @@ enum KeyboardCustomSwitch_t : uint8_t {
   keyboard_custom_switch_none = 0,
   keyboard_custom_switch_open_apple,
   keyboard_custom_switch_solid_apple,
-  keyboard_custom_switch_rept
+  keyboard_custom_switch_rept,
 };
 
 // False for a key with no Apple meaning, which must not reach the card. The

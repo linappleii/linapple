@@ -10,7 +10,7 @@ constexpr size_t k_file_browser_cache_max = 32;
 enum FileEntryType_t : uint8_t {
   FILE_ENTRY_UP = 0,
   FILE_ENTRY_DIR,
-  FILE_ENTRY_FILE
+  FILE_ENTRY_FILE,
 };
 
 struct FileEntry_t {

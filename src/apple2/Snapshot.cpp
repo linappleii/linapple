@@ -28,19 +28,30 @@ struct SlotRegionDesc_t {
 // Fixed-body snapshot regions for slots 0 through 7, sized as the AppleWin
 // layout has them; a card whose frame is larger refuses the region and rides
 // the slot trailer.
-constexpr std::array<SlotRegionDesc_t, NUM_SLOTS> k_slot_region_descriptors{{
-    {offsetof(Snapshot_t, apple2_unit.speaker),
-     sizeof(Snapshot_t::apple2_unit.speaker), "Speaker"},
-    {offsetof(Snapshot_t, empty1), sizeof(SsCardEmpty_t), nullptr},
-    {offsetof(Snapshot_t, apple2_unit.comms), sizeof(SsIoComms_t), nullptr},
-    {offsetof(Snapshot_t, empty3), sizeof(SsCardEmpty_t), nullptr},
-    {offsetof(Snapshot_t, mockingboard1), sizeof(SsCardMockingboard_t),
-     nullptr},
-    {offsetof(Snapshot_t, mockingboard2), sizeof(SsCardMockingboard_t),
-     nullptr},
-    {0, 0, nullptr},
-    {offsetof(Snapshot_t, empty7), sizeof(SsCardEmpty_t), nullptr},
-}};
+constexpr std::array<SlotRegionDesc_t, NUM_SLOTS> k_slot_region_descriptors{
+    {
+        {
+            offsetof(Snapshot_t, apple2_unit.speaker),
+            sizeof(Snapshot_t::apple2_unit.speaker),
+            "Speaker",
+        },
+        {offsetof(Snapshot_t, empty1), sizeof(SsCardEmpty_t), nullptr},
+        {offsetof(Snapshot_t, apple2_unit.comms), sizeof(SsIoComms_t), nullptr},
+        {offsetof(Snapshot_t, empty3), sizeof(SsCardEmpty_t), nullptr},
+        {
+            offsetof(Snapshot_t, mockingboard1),
+            sizeof(SsCardMockingboard_t),
+            nullptr,
+        },
+        {
+            offsetof(Snapshot_t, mockingboard2),
+            sizeof(SsCardMockingboard_t),
+            nullptr,
+        },
+        {0, 0, nullptr},
+        {offsetof(Snapshot_t, empty7), sizeof(SsCardEmpty_t), nullptr},
+    },
+};
 
 auto fixed_slot_desc(int slot) noexcept -> const SlotRegionDesc_t* {
   if (slot < 0 || slot >= NUM_SLOTS) {

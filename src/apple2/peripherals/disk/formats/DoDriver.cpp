@@ -60,7 +60,8 @@ extern "C" const DiskFormatDriver_t g_do_driver = {
     .is_write_protected = sector_disk_image_is_write_protected,
     .read_track_bits = sector_disk_image_read_track_bits,
     .write_track_bits = sector_disk_image_write_track_bits,
-    .create = sector_disk_image_create};
+    .create = sector_disk_image_create,
+};
 
 static const DiskFormatRegistration_t registration{&g_do_driver};
 

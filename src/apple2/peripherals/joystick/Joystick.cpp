@@ -50,7 +50,8 @@ constexpr uint64_t pulse_lead_in_cycles = 10;
 struct GamePort_t {
   std::array<uint64_t, paddle_count> trigger_cycle{};
   std::array<uint8_t, paddle_count> position{
-      {centre_position, centre_position, centre_position, centre_position}};
+      {centre_position, centre_position, centre_position, centre_position},
+  };
   // The pot as it stood at the accepted strobe, moved with the pot only while
   // the output is high.
   std::array<uint8_t, paddle_count> pulse_position{};
@@ -321,7 +322,8 @@ static const Peripheral_t joystick_peripheral = {
     .save_state = joystick_abi_save_state,
     .load_state = joystick_abi_load_state,
     .command = joystick_abi_command,
-    .query = joystick_abi_query};
+    .query = joystick_abi_query,
+};
 
 // peripheral_register takes a mutable Peripheral_t*, as PERIPHERAL_REGISTER's
 // own cast does.

@@ -45,20 +45,23 @@ const char* g_file_name_symbols[NUM_SYMBOL_TABLES] = {
     ,
     "A2_SRC2.SYM",
     "A2_DOS33.SYM",
-    "A2_PRODOS.SYM"};
+    "A2_PRODOS.SYM",
+};
 std::string g_file_name_symbols_user;
 
-const char* g_symbol_table_names[NUM_SYMBOL_TABLES] = {"Main",
-                                                       "Basic",
-                                                       "Asm"  // "Assembly",
-                                                       ,
-                                                       "User1"  // User
-                                                       ,
-                                                       "User2",
-                                                       "Src1",
-                                                       "Src2",
-                                                       "DOS33",
-                                                       "ProDOS"};
+const char* g_symbol_table_names[NUM_SYMBOL_TABLES] = {
+    "Main",
+    "Basic",
+    "Asm"  // "Assembly",
+    ,
+    "User1"  // User
+    ,
+    "User2",
+    "Src1",
+    "Src2",
+    "DOS33",
+    "ProDOS",
+};
 
 bool g_symbols_display_missing_file = true;
 
@@ -528,11 +531,17 @@ auto ParseSymbolTable(const std::string& pPathFileName,
         sscanf(line, sFormat1, &address, sName);
       } else {
         char* p = strstr(line, "=");  // Optional
-        if (p) *p = ' ';
+        if (p) {
+          *p = ' ';
+        }
         p = strstr(line, "$");
-        if (p) *p = ' ';
+        if (p) {
+          *p = ' ';
+        }
         p = strstr(line, ";");  // Optional
-        if (p) *p = 0;
+        if (p) {
+          *p = 0;
+        }
         p = strstr(line, " ");  // 1st space between name & value
         if (p) {
           int nLen = p - line;

@@ -358,8 +358,8 @@ auto video_init_buffers() -> void {
     fonts_initialization();
   }
   if (font_sfc != nullptr) {
-    const float scale_x = 1.3f;
-    const float scale_y = 1.5f;
+    const float scale_x = 1.3F;
+    const float scale_y = 1.5F;
     const int text_y = 6;
     font_print(7, text_y, "FDD1", g_status_surface, scale_x, scale_y);
     font_print(40, text_y, "FDD2", g_status_surface, scale_x, scale_y);
@@ -410,10 +410,11 @@ auto video_init_buffers() -> void {
 }
 
 auto draw_dhires_source() -> void {
-  uint8_t colorval[16] = {BLACK,    DARK_BLUE,  DARK_GREEN, BLUE,
-                          BROWN,    LIGHT_GRAY, GREEN,      AQUA,
-                          DEEP_RED, MAGENTA,    DARK_GRAY,  LIGHT_BLUE,
-                          ORANGE,   PINK,       YELLOW,     WHITE};
+  uint8_t colorval[16] = {
+      BLACK,  DARK_BLUE, DARK_GREEN, BLUE,    BROWN,     LIGHT_GRAY,
+      GREEN,  AQUA,      DEEP_RED,   MAGENTA, DARK_GRAY, LIGHT_BLUE,
+      ORANGE, PINK,      YELLOW,     WHITE,
+  };
 
   constexpr int OFFSET = 3;
   constexpr int SIZE = 10;
@@ -485,11 +486,12 @@ enum ColorMapping {
   CM_Orange,
   CM_Black,
   CM_White,
-  NUM_COLOR_MAPPING
+  NUM_COLOR_MAPPING,
 };
 
 const uint8_t aColorIndex[NUM_COLOR_MAPPING] = {
-    HGR_MAGENTA, HGR_BLUE, HGR_GREEN, HGR_RED, HGR_BLACK, HGR_WHITE};
+    HGR_MAGENTA, HGR_BLUE, HGR_GREEN, HGR_RED, HGR_BLACK, HGR_WHITE,
+};
 
 auto draw_hires_source_half_shift_dim() -> void {
   for (int column = 0; column < 16; column++) {
@@ -709,10 +711,11 @@ auto draw_hires_source() -> void {
 }
 
 auto draw_lores_source() -> void {
-  uint8_t colorval[16] = {BLACK,      DEEP_RED,  DARK_BLUE,  MAGENTA,
-                          DARK_GREEN, DARK_GRAY, BLUE,       LIGHT_BLUE,
-                          BROWN,      ORANGE,    LIGHT_GRAY, PINK,
-                          GREEN,      YELLOW,    AQUA,       WHITE};
+  uint8_t colorval[16] = {
+      BLACK, DEEP_RED,   DARK_BLUE, MAGENTA, DARK_GREEN, DARK_GRAY,
+      BLUE,  LIGHT_BLUE, BROWN,     ORANGE,  LIGHT_GRAY, PINK,
+      GREEN, YELLOW,     AQUA,      WHITE,
+  };
   for (int color = 0; color < 16; color++) {
     for (int x = 0; x < 16; x++) {
       for (int y = 0; y < 16; y++) {
@@ -909,7 +912,9 @@ auto set_last_drawn_image() -> void {
 
 auto update_40col_cell(int x, int y, int xpixel, int ypixel, int offset)
     -> bool {
-  if (!vidlastmem) return false;
+  if (!vidlastmem) {
+    return false;
+  }
   (void)x;
   (void)y;
   uint8_t ch = *(g_text_bank0 + offset);
@@ -948,7 +953,9 @@ inline auto update_80column_cell(uint8_t c, const int xPixel, const int yPixel,
 
 auto update_80col_cell(int x, int y, int xpixel, int ypixel, int offset)
     -> bool {
-  if (!vidlastmem) return false;
+  if (!vidlastmem) {
+    return false;
+  }
   (void)x;
   (void)y;
   bool dirty = false;
@@ -979,7 +986,9 @@ auto update_80col_cell(int x, int y, int xpixel, int ypixel, int offset)
 
 auto update_dhires_cell(int x, int y, int xpixel, int ypixel, int offset)
     -> bool {
-  if (!vidlastmem) return false;
+  if (!vidlastmem) {
+    return false;
+  }
   (void)y;
   bool dirty = false;
   int yoffset = 0;
@@ -1154,7 +1163,9 @@ auto copy_mixed_source(int x, int y, int sourcex, int sourcey) -> void {
 
 auto update_hires_cell(int x, int y, int xpixel, int ypixel, int offset)
     -> bool {
-  if (!vidlastmem) return false;
+  if (!vidlastmem) {
+    return false;
+  }
   (void)y;
   bool dirty = false;
   int yoffset = 0;
@@ -1190,7 +1201,9 @@ auto update_hires_cell(int x, int y, int xpixel, int ypixel, int offset)
 
 auto update_lores_cell(int x, int y, int xpixel, int ypixel, int offset)
     -> bool {
-  if (!vidlastmem) return false;
+  if (!vidlastmem) {
+    return false;
+  }
   (void)y;
   uint8_t val = *(g_text_bank0 + offset);
   if ((val != *(vidlastmem.get() + offset + 0x400)) || redrawfull ||
@@ -1206,7 +1219,9 @@ auto update_lores_cell(int x, int y, int xpixel, int ypixel, int offset)
 
 auto update_dlores_cell(int x, int y, int xpixel, int ypixel, int offset)
     -> bool {
-  if (!vidlastmem) return false;
+  if (!vidlastmem) {
+    return false;
+  }
   (void)y;
   uint8_t auxval = *(g_text_bank1 + offset);
   uint8_t mainval = *(g_text_bank0 + offset);
@@ -1329,7 +1344,9 @@ auto video_benchmark() -> void {
   memset(mem + 0x400, 0x14, 0x400);
   video_redraw_screen();
   auto milliseconds = static_cast<uint32_t>(get_tick_count_ms());
-  while (get_tick_count_ms() == milliseconds);
+  while (get_tick_count_ms() == milliseconds) {
+    ;
+  }
   milliseconds = static_cast<uint32_t>(get_tick_count_ms());
   uint32_t cycle = 0;
   do {
@@ -1350,7 +1367,9 @@ auto video_benchmark() -> void {
   memset(mem + 0x2000, 0x14, 0x2000);
   video_redraw_screen();
   milliseconds = static_cast<uint32_t>(get_tick_count_ms());
-  while (get_tick_count_ms() == milliseconds);
+  while (get_tick_count_ms() == milliseconds) {
+    ;
+  }
   milliseconds = static_cast<uint32_t>(get_tick_count_ms());
   cycle = 0;
   do {
@@ -1369,7 +1388,9 @@ auto video_benchmark() -> void {
   cpu_setup_benchmark();
   uint32_t totalmhz10 = 0;
   milliseconds = static_cast<uint32_t>(get_tick_count_ms());
-  while (get_tick_count_ms() == milliseconds);
+  while (get_tick_count_ms() == milliseconds) {
+    ;
+  }
   milliseconds = static_cast<uint32_t>(get_tick_count_ms());
   cycle = 0;
   do {
@@ -1415,7 +1436,9 @@ auto video_benchmark() -> void {
   memset(mem + 0x2000, 0xAA, 0x2000);
   video_redraw_screen();
   milliseconds = static_cast<uint32_t>(get_tick_count_ms());
-  while (get_tick_count_ms() == milliseconds);
+  while (get_tick_count_ms() == milliseconds) {
+    ;
+  }
   milliseconds = static_cast<uint32_t>(get_tick_count_ms());
   cycle = 0;
   do {
@@ -1497,7 +1520,9 @@ auto video_destroy() -> void {
     video_worker_terminate_ = true;
     video_cv.notify_all();
     if (video_worker_active_) {
-      if (video_worker_thread_.joinable()) video_worker_thread_.join();
+      if (video_worker_thread_.joinable()) {
+        video_worker_thread_.join();
+      }
     }
     video_worker_active_ = false;
   }
@@ -1614,7 +1639,9 @@ auto video_worker_thread_func() -> void {
     video_cv.wait_until(lck, video_next_scheduled_update_, [] {
       return video_worker_refresh_.load() || video_worker_terminate_.load();
     });
-    if (video_worker_terminate_) break;
+    if (video_worker_terminate_) {
+      break;
+    }
     if (video_worker_refresh_) {
       video_perform_refresh();
       video_worker_refresh_ = false;
@@ -1671,7 +1698,9 @@ auto video_update_output_buffer() -> void {
   dst.pitch = SCREEN_WIDTH * 4;
   dst.bpp = 4;
 
-  if (!g_device_bitmap) return;
+  if (!g_device_bitmap) {
+    return;
+  }
 
   // Convert internal INDEX8 bitmap to RGB32 output buffer
   video_soft_stretch(g_device_bitmap, &s, &dst, &s);
@@ -1679,9 +1708,12 @@ auto video_update_output_buffer() -> void {
   // If status panel is visible, overlay it
   if (g_status_cycle > 0 && g_show_leds && g_status_surface) {
     VideoRect_t ss = {0, 0, STATUS_PANEL_W, STATUS_PANEL_H};
-    VideoRect_t ds = {SCREEN_WIDTH - STATUS_PANEL_W - 5,
-                      SCREEN_HEIGHT - STATUS_PANEL_H - 5, STATUS_PANEL_W,
-                      STATUS_PANEL_H};
+    VideoRect_t ds = {
+        SCREEN_WIDTH - STATUS_PANEL_W - 5,
+        SCREEN_HEIGHT - STATUS_PANEL_H - 5,
+        STATUS_PANEL_W,
+        STATUS_PANEL_H,
+    };
     video_soft_stretch(g_status_surface, &ss, &dst, &ds);
   }
 }
@@ -1964,14 +1996,18 @@ auto video_get_sw_alt_charset() noexcept -> bool {
 
 //===========================================================================
 auto video_get_snapshot(SsIoVideo_t* ss) noexcept -> uint32_t {
-  if (!ss) return 1;
+  if (!ss) {
+    return 1;
+  }
   ss->alt_char_set = (g_alt_char_set_offset != 0) ? 1 : 0;
   ss->vid_mode = g_video_mode;
   return 0;
 }
 
 auto video_set_snapshot(const SsIoVideo_t* ss) noexcept -> uint32_t {
-  if (!ss) return 1;
+  if (!ss) {
+    return 1;
+  }
   g_alt_char_set_offset = (ss->alt_char_set == 0) ? 0 : 256;
   g_video_mode = ss->vid_mode;
 
@@ -1984,7 +2020,9 @@ auto video_set_snapshot(const SsIoVideo_t* ss) noexcept -> uint32_t {
 auto video_get_scanner_address(bool* vbl_bar_out,
                                const uint32_t executed_cycles) noexcept
     -> uint16_t {
-  if (system_state.clks_per_frame == 0) return 0;
+  if (system_state.clks_per_frame == 0) {
+    return 0;
+  }
   // get video scanner position
   int cycles =
       (g_video_cycles_in_frame + executed_cycles) % system_state.clks_per_frame;
@@ -2072,7 +2110,9 @@ auto video_get_scanner_address(bool* vbl_bar_out,
 }
 
 auto video_get_vbl(const uint32_t executed_cycles) noexcept -> bool {
-  if (system_state.clks_per_frame == 0) return false;
+  if (system_state.clks_per_frame == 0) {
+    return false;
+  }
   // get cycles within current frame
   int cycles =
       (g_video_cycles_in_frame + executed_cycles) % system_state.clks_per_frame;

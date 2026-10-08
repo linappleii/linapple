@@ -72,10 +72,13 @@ auto frontend_dispatch_key_event(uint32_t scancode, uint32_t keycode,
   }
   send_host_modifiers();
 
-  const KeyboardHostKey_t key = {scancode,
-                                 static_cast<uint32_t>(frontend_to_core_key(
-                                     static_cast<int>(keycode), mod)),
-                                 g_host_modifiers.shift, g_host_modifiers.ctrl};
+  const KeyboardHostKey_t key = {
+      scancode,
+      static_cast<uint32_t>(
+          frontend_to_core_key(static_cast<int>(keycode), mod)),
+      g_host_modifiers.shift,
+      g_host_modifiers.ctrl,
+  };
   uint8_t apple_code = 0;
   if (!keyboard_translate(&key, &apple_code)) {
     return;

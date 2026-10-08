@@ -26,8 +26,10 @@
 #include "core/Util_Text.h"
 
 // Globals
-MemoryDump_t g_mem_dump[NUM_MEM_DUMPS] = {{true, 0, DEV_MEMORY, MEM_VIEW_HEX},
-                                          {false, 0, DEV_MEMORY, MEM_VIEW_HEX}};
+MemoryDump_t g_mem_dump[NUM_MEM_DUMPS] = {
+    {true, 0, DEV_MEMORY, MEM_VIEW_HEX},
+    {false, 0, DEV_MEMORY, MEM_VIEW_HEX},
+};
 
 // Made global so operator @# can be used with other commands.
 MemorySearchResults_t g_memory_search_results;
@@ -428,7 +430,7 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
       {"", 0, 0}  // n/a
       ,
       {".hgr", 0x2000, 0x2000},
-      {".hgr2", 0x4000, 0x2000}  // TODO: extension ".dhgr", ".dhgr2"
+      {".hgr2", 0x4000, 0x2000},  // TODO: extension ".dhgr", ".dhgr2"
   };
   const int nFileTypes = sizeof(aFileTypes) / sizeof(KnownFileType_t);
   const KnownFileType_t* pFileType = nullptr;

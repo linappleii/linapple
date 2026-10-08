@@ -44,7 +44,7 @@ constexpr uint8_t pb7_output = 0x80;
 enum class ViaTimerPhase_t : uint8_t {
   running = 0,
   load_delay = 1,
-  reload_pending = 2
+  reload_pending = 2,
 };
 
 // The shift register (0xA), the PCR (0xC) and the CA/CB handshake lines are

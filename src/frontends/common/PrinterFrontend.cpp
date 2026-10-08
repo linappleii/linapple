@@ -175,14 +175,16 @@ auto sink_tick(void* ctx) -> void {
   }
 }
 
-const ByteSink_t g_printer_sink = {.open = sink_open,
-                                   .write = sink_write,
-                                   .ready = sink_ready,
-                                   .close = sink_close,
-                                   .tick = sink_tick,
-                                   .read = nullptr,
-                                   .set_line = nullptr,
-                                   .get_lines = nullptr};
+const ByteSink_t g_printer_sink = {
+    .open = sink_open,
+    .write = sink_write,
+    .ready = sink_ready,
+    .close = sink_close,
+    .tick = sink_tick,
+    .read = nullptr,
+    .set_line = nullptr,
+    .get_lines = nullptr,
+};
 
 }  // namespace
 

@@ -299,9 +299,13 @@ static auto host_register_io(int slot, PeripheralIOHandler readC0,
                              PeripheralIOHandler writeC0,
                              PeripheralIOHandler readCx,
                              PeripheralIOHandler writeCx) -> void {
-  if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) return;
+  if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) {
+    return;
+  }
   auto& slot_peripherals = g_active_peripherals.at(static_cast<size_t>(slot));
-  if (slot_peripherals.empty()) return;
+  if (slot_peripherals.empty()) {
+    return;
+  }
 
   ActivePeripheral_t& ap = slot_peripherals.back();
   ap.readC0 = readC0;
@@ -322,8 +326,9 @@ static constexpr size_t cxrom_slot_size = 256;
 
 static auto host_register_cx_rom(int slot, const uint8_t* rom_ptr) -> void {
   if (slot < min_slot_with_rom || slot > max_slot_with_rom ||
-      rom_ptr == nullptr)
+      rom_ptr == nullptr) {
     return;
+  }
   uint8_t* cxrom = mem_get_cx_rom_peripheral();
   if (cxrom != nullptr) {
     memcpy(cxrom + (static_cast<uint16_t>(slot) << addr_slot_rom_shift),
@@ -336,9 +341,13 @@ static auto host_register_cx_rom(int slot, const uint8_t* rom_ptr) -> void {
 
 static auto host_register_expansion_rom(int slot, const uint8_t* rom_ptr)
     -> void {
-  if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) return;
+  if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) {
+    return;
+  }
   auto& slot_peripherals = g_active_peripherals.at(static_cast<size_t>(slot));
-  if (slot_peripherals.empty()) return;
+  if (slot_peripherals.empty()) {
+    return;
+  }
 
   ActivePeripheral_t& ap = slot_peripherals.back();
   ap.expansionRom = rom_ptr;
@@ -358,8 +367,9 @@ static auto host_register_direct_io(void* instance, uint16_t addr,
     return;
   }
 
-  g_direct_io_handlers.at(g_num_direct_handlers) = {addr, read, write, nullptr,
-                                                    instance};
+  g_direct_io_handlers.at(g_num_direct_handlers) = {
+      addr, read, write, nullptr, instance,
+  };
   g_num_direct_handlers++;
 
   register_direct_io_handler(addr, read ? direct_io_read_bridge : nullptr,
@@ -375,8 +385,9 @@ static auto host_register_direct_io_strobe(void* instance, uint16_t addr,
     return;
   }
 
-  g_direct_io_handlers.at(g_num_direct_handlers) = {addr, nullptr, nullptr,
-                                                    on_strobe, instance};
+  g_direct_io_handlers.at(g_num_direct_handlers) = {
+      addr, nullptr, nullptr, on_strobe, instance,
+  };
   g_num_direct_handlers++;
 
   // Any access toggles the flip-flop on real hardware, so read and write get
@@ -842,7 +853,8 @@ static const HostInterface_t g_host_interface = {
     .SinkGetLines = host_sink_get_lines,
     .ScheduleEvent = host_schedule_event,
     .GetMachine = host_get_machine,
-    .GetFrameCycles = host_get_frame_cycles};
+    .GetFrameCycles = host_get_frame_cycles,
+};
 
 // --- Command Queue ---
 
@@ -987,11 +999,14 @@ auto peripheral_is_any_active() -> bool {
 }
 
 auto peripheral_register(Peripheral_t* api, int slot) -> int {
-  if (api == nullptr || slot < 0 || slot >= static_cast<int>(NUM_SLOTS))
+  if (api == nullptr || slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) {
     return -1;
-  if (api->abi_version != LINAPPLE_ABI_VERSION) return -1;
+  }
+  if (api->abi_version != LINAPPLE_ABI_VERSION) {
+    return -1;
+  }
 
-  if (!(api->compatible_slots & (1u << static_cast<uint32_t>(slot)))) {
+  if (!(api->compatible_slots & (1U << static_cast<uint32_t>(slot)))) {
     return -1;
   }
 
@@ -1024,7 +1039,9 @@ auto peripheral_register(Peripheral_t* api, int slot) -> int {
 }
 
 static auto remove_direct_io_handlers_for_instance(void* instance) -> void {
-  if (instance == nullptr) return;
+  if (instance == nullptr) {
+    return;
+  }
 
   size_t j = 0;
   for (size_t i = 0; i < g_num_direct_handlers; ++i) {
@@ -1046,7 +1063,9 @@ static auto remove_direct_io_handlers_for_instance(void* instance) -> void {
 }
 
 auto peripheral_unregister(int slot) -> int {
-  if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) return -1;
+  if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) {
+    return -1;
+  }
   if (frontend_audio_unregister_cb != nullptr) {
     frontend_audio_unregister_cb(slot);
   }
@@ -1155,23 +1174,30 @@ auto peripheral_query_by_id(int slot, const char* peripheral_id,
 auto peripheral_query(int slot, uint32_t cmd_id, void* out, size_t* out_size)
     -> PeripheralStatus_t {
   if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS) || out == nullptr ||
-      out_size == nullptr)
+      out_size == nullptr) {
     return peripheral_error;
+  }
   auto& slot_peripherals = g_active_peripherals.at(static_cast<size_t>(slot));
-  if (slot_peripherals.empty()) return peripheral_error;
+  if (slot_peripherals.empty()) {
+    return peripheral_error;
+  }
 
   for (auto& ap : slot_peripherals) {
     if (ap.api != nullptr && ap.api->query != nullptr) {
       PeripheralStatus_t status =
           ap.api->query(ap.instance, cmd_id, out, out_size);
-      if (status != peripheral_incompatible) return status;
+      if (status != peripheral_incompatible) {
+        return status;
+      }
     }
   }
   return peripheral_error;
 }
 
 auto peripheral_get_manifest(void* manifest_ptr) -> void {
-  if (manifest_ptr == nullptr) return;
+  if (manifest_ptr == nullptr) {
+    return;
+  }
   auto* manifest = static_cast<SS_PERIPHERAL_MANIFEST*>(manifest_ptr);
   memset(manifest, 0, sizeof(SS_PERIPHERAL_MANIFEST));
   manifest->unit_hdr.length = sizeof(SS_PERIPHERAL_MANIFEST);
@@ -1187,14 +1213,18 @@ auto peripheral_get_manifest(void* manifest_ptr) -> void {
 }
 
 auto peripheral_verify_manifest(const void* manifest_ptr) -> bool {
-  if (manifest_ptr == nullptr) return false;
+  if (manifest_ptr == nullptr) {
+    return false;
+  }
   const auto* manifest =
       static_cast<const SS_PERIPHERAL_MANIFEST*>(manifest_ptr);
   for (size_t i = 0; i < NUM_SLOTS; ++i) {
     const auto& slot_peripherals = g_active_peripherals.at(i);
     const SS_PERIPHERAL_INFO& pi = manifest->peripherals[i];
     if (pi.name[0] == '\0') {
-      if (!slot_peripherals.empty()) return false;
+      if (!slot_peripherals.empty()) {
+        return false;
+      }
       continue;
     }
     // Match slot 0 devices by descriptor name regardless of load order.
@@ -1205,16 +1235,22 @@ auto peripheral_verify_manifest(const void* manifest_ptr) -> bool {
         break;
       }
     }
-    if (!named_device_present) return false;
+    if (!named_device_present) {
+      return false;
+    }
   }
   return true;
 }
 
 auto peripheral_save_state(int slot, void* buffer, size_t* size) -> void {
-  if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) return;
+  if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS)) {
+    return;
+  }
   auto& slot_peripherals = g_active_peripherals.at(static_cast<size_t>(slot));
   if (slot_peripherals.empty()) {
-    if (size != nullptr) *size = 0;
+    if (size != nullptr) {
+      *size = 0;
+    }
     return;
   }
   auto& ap = slot_peripherals.front();
@@ -1227,10 +1263,13 @@ auto peripheral_save_state(int slot, void* buffer, size_t* size) -> void {
 
 auto peripheral_load_state(int slot, const void* buffer, size_t size)
     -> PeripheralStatus_t {
-  if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS) || buffer == nullptr)
+  if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS) || buffer == nullptr) {
     return peripheral_error;
+  }
   auto& slot_peripherals = g_active_peripherals.at(static_cast<size_t>(slot));
-  if (slot_peripherals.empty()) return peripheral_incompatible;
+  if (slot_peripherals.empty()) {
+    return peripheral_incompatible;
+  }
 
   auto& ap = slot_peripherals.front();
   if (ap.api == nullptr || ap.api->load_state == nullptr) {
@@ -1241,8 +1280,9 @@ auto peripheral_load_state(int slot, const void* buffer, size_t size)
 
 auto peripheral_save_state_by_name(int slot, const char* name, void* buffer,
                                    size_t* size) -> void {
-  if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS) || name == nullptr)
+  if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS) || name == nullptr) {
     return;
+  }
   auto& slot_peripherals = g_active_peripherals.at(static_cast<size_t>(slot));
   for (auto& ap : slot_peripherals) {
     if (ap.api != nullptr && strcmp(ap.api->name, name) == 0) {
@@ -1252,14 +1292,17 @@ auto peripheral_save_state_by_name(int slot, const char* name, void* buffer,
       return;
     }
   }
-  if (size != nullptr) *size = 0;
+  if (size != nullptr) {
+    *size = 0;
+  }
 }
 
 auto peripheral_load_state_by_name(int slot, const char* name,
                                    const void* buffer, size_t size) -> void {
   if (slot < 0 || slot >= static_cast<int>(NUM_SLOTS) || name == nullptr ||
-      buffer == nullptr)
+      buffer == nullptr) {
     return;
+  }
   auto& slot_peripherals = g_active_peripherals.at(static_cast<size_t>(slot));
   for (auto& ap : slot_peripherals) {
     if (ap.api != nullptr && strcmp(ap.api->name, name) == 0) {

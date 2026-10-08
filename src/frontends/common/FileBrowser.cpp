@@ -358,7 +358,9 @@ auto file_browser_create_local_generator(const char* directory,
 
 auto disk_browser_open(DiskBrowser_t* b, int slot, int drive,
                        const char* start_dir) -> bool {
-  if (b == nullptr) return false;
+  if (b == nullptr) {
+    return false;
+  }
   b->slot = slot;
   b->drive = drive;
   b->is_active = true;

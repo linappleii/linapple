@@ -34,14 +34,16 @@ struct ConsoleConfig_t {
   const char* prefix;
 };
 
-constexpr std::array<ConsoleConfig_t, 6> console_configs = {{
-    {false, nullptr},   // silent (no console output)
-    {true, "ERROR: "},  // error -> stderr
-    {true, "WARN: "},   // warning -> stderr
-    {false, ""},        // info -> stdout
-    {false, "PERF: "},  // perf -> stdout
-    {false, ""},        // debug -> stdout
-}};
+constexpr std::array<ConsoleConfig_t, 6> console_configs = {
+    {
+        {false, nullptr},   // silent (no console output)
+        {true, "ERROR: "},  // error -> stderr
+        {true, "WARN: "},   // warning -> stderr
+        {false, ""},        // info -> stdout
+        {false, "PERF: "},  // perf -> stdout
+        {false, ""},        // debug -> stdout
+    },
+};
 
 auto format_current_time(char* out_buf, size_t buf_size) -> void {
   if (out_buf == nullptr || buf_size == 0) {
@@ -60,7 +62,8 @@ auto format_current_time(char* out_buf, size_t buf_size) -> void {
 
 auto log_level_to_string(LogLevel_t level) noexcept -> const char* {
   static constexpr std::array<const char*, 6> level_names = {
-      {"SILENT", "ERROR", "WARN", "INFO", "PERF", "DEBUG"}};
+      {"SILENT", "ERROR", "WARN", "INFO", "PERF", "DEBUG"},
+  };
 
   const auto index = static_cast<size_t>(level);
   if (index < level_names.size()) {

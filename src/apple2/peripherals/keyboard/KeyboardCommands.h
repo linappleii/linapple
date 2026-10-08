@@ -22,12 +22,12 @@ enum { KEYBOARD_STATE_VERSION = 1, KEYBOARD_MAP_SIZE = 128 };
  * 0x0001-0x0008 and query indices 0x0001-0x0002 once carried host keys and
  * are retired, never reused. */
 typedef enum {
-  keyboard_cmd_key =
-      PERIPHERAL_SUBSYSTEM_KEYBOARD | 0x0009, /**< data: KeyboardKeyEvent_t */
+  keyboard_cmd_key = PERIPHERAL_SUBSYSTEM_KEYBOARD |
+      0x0009, /**< data: KeyboardKeyEvent_t */
   /* The host's hands are off every key, as on focus loss. data: none */
   keyboard_cmd_release_all = PERIPHERAL_SUBSYSTEM_KEYBOARD | 0x000A,
   /* The REPT key of a II or II Plus keyboard. data: uint8_t (0=up, 1=down) */
-  keyboard_cmd_rept = PERIPHERAL_SUBSYSTEM_KEYBOARD | 0x000B
+  keyboard_cmd_rept = PERIPHERAL_SUBSYSTEM_KEYBOARD | 0x000B,
 } KeyboardCmd_t;
 
 /* host_key is the host's identity for the key, so a release pairs with its

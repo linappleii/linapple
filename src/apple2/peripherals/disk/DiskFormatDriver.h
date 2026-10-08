@@ -34,13 +34,13 @@ enum { disk_default_bit_timing = 32 };
    trust the bits alone, which is all a query hands the frontend. */
 typedef enum {
   disk_driver_cap_write = 0x01,
-  disk_driver_cap_create = 0x02
+  disk_driver_cap_create = 0x02,
 } DiskDriverCap_e;
 
 typedef enum {
   disk_probe_no = 0,
   disk_probe_possible = 1,
-  disk_probe_definite = 2
+  disk_probe_definite = 2,
 } DiskProbe_e;
 
 /* The unit of exchange is the medium as the head sees it: cells packed eight

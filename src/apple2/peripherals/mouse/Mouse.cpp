@@ -845,7 +845,8 @@ auto frame_refusal(const MouseSaveState_t& state) -> const char* {
   }
   const std::array<uint32_t, 8> words = {
       state.position_x, state.position_y, state.min_x,  state.max_x,
-      state.min_y,      state.max_y,      state.read_x, state.read_y};
+      state.min_y,      state.max_y,      state.read_x, state.read_y,
+  };
   for (uint32_t word : words) {
     if (word > frame_word_max) {
       return "a position or clamp above 16 bits";
@@ -1113,7 +1114,8 @@ static const Peripheral_t mouse_peripheral = {
     .save_state = mouse_abi_save_state,
     .load_state = mouse_abi_load_state,
     .command = mouse_abi_command,
-    .query = mouse_abi_query};
+    .query = mouse_abi_query,
+};
 
 // peripheral_register takes a mutable Peripheral_t*, so the descriptor is cast
 // as PERIPHERAL_REGISTER casts it.

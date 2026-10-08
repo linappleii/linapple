@@ -17,7 +17,7 @@ enum {
   MAX_OPMODE_NAME = 32,
   NO_6502_TARGET = -1,
   DBG_6502_NUM_FLAGS = 8,
-  CONSOLE_WIDTH = 80
+  CONSOLE_WIDTH = 80,
 };
 
 enum RangeType_t {
@@ -137,7 +137,7 @@ enum Prompt_e { PROMPT_COMMAND, PROMPT_ASSEMBLER, NUM_PROMPTS };
 
 enum {
   // raised from 13 to 31 for Contiki
-  MAX_SYMBOLS_LEN = 31
+  MAX_SYMBOLS_LEN = 31,
 };
 
 // Bookmarks
@@ -184,7 +184,7 @@ enum BreakpointSource_t {
   BP_SRC_MEM_READ_ONLY,
   BP_SRC_MEM_WRITE_ONLY,
 
-  NUM_BREAKPOINT_SOURCES
+  NUM_BREAKPOINT_SOURCES,
 };
 
 // Note: Order must match Breakpoint_Operator_t
@@ -200,7 +200,7 @@ enum BreakpointOperator_t {
   BP_OP_READ,           // @  MEM @ ? *
   BP_OP_WRITE,          // *  MEM @ ? *
   BP_OP_READ_WRITE,     // ?  MEM @ ? *
-  NUM_BREAKPOINT_OPERATORS
+  NUM_BREAKPOINT_OPERATORS,
 };
 
 struct Breakpoint_t {
@@ -247,7 +247,7 @@ enum Update_e {
   UPDATE_ZERO_PAGE = (1 << 12),
   UPDATE_SOFTSWITCHES = (1 << 13),
   UPDATE_VIDEOSCANNER = (1 << 14),
-  UPDATE_ALL = -1
+  UPDATE_ALL = -1,
 };
 
 typedef int Update_t;
@@ -494,7 +494,7 @@ enum Commands_e {
   CMD_ZEROPAGE_POINTER_ENABLE,
   CMD_ZEROPAGE_POINTER_LIST,
   CMD_ZEROPAGE_POINTER_SAVE,
-  NUM_COMMANDS
+  NUM_COMMANDS,
 };
 
 // Assembler
@@ -853,7 +853,7 @@ enum Nopcode_e {
   ,
   NOP_FAC,
   NOP_SPRITE,
-  NUM_NOPCODE_TYPES
+  NUM_NOPCODE_TYPES,
 };
 
 // Disassembler Data
@@ -881,7 +881,7 @@ enum DisasmBranch_e {
   DISASM_BRANCH_OFF = 0,
   DISASM_BRANCH_PLAIN,
   DISASM_BRANCH_FANCY,
-  NUM_DISASM_BRANCH_TYPES
+  NUM_DISASM_BRANCH_TYPES,
 };
 
 enum DisasmFormat_e {
@@ -898,7 +898,7 @@ enum DisasmImmediate_e {
   DISASM_IMMED_TARGET,
   DISASM_IMMED_MODE,
   DISASM_IMMED_BOTH,
-  NUM_DISASM_IMMED_TYPES
+  NUM_DISASM_IMMED_TYPES,
 };
 
 enum DisasmTargets_e {
@@ -906,7 +906,7 @@ enum DisasmTargets_e {
   DISASM_TARGET_VAL,   // Note: Also treated as bit flag !!
   DISASM_TARGET_ADDR,  // Note: Also treated as bit flag !!
   DISASM_TARGET_BOTH,  // Note: Also treated as bit flag !!
-  NUM_DISASM_TARGET_TYPES
+  NUM_DISASM_TARGET_TYPES,
 };
 
 enum DisasmDisplay_e  // TODO: Prefix enums with DISASM_DISPLAY_
@@ -998,7 +998,7 @@ enum FontType_e {
   FONT_CONSOLE,
   FONT_DISASM_DEFAULT,
   FONT_DISASM_BRANCH,
-  NUM_FONTS
+  NUM_FONTS,
 };
 
 enum { MAX_FONT_NAME = MAX_ARG_LEN };
@@ -1007,7 +1007,7 @@ enum FontSpacing_e {
   FONT_SPACING_CLASSIC,     // least lines (most spacing)
   FONT_SPACING_CLEAN,       // more lines (minimal spacing)
   FONT_SPACING_COMPRESSED,  // max lines (least spacing)
-  NUM_FONT_SPACING
+  NUM_FONT_SPACING,
 };
 
 struct FontConfig_t {
@@ -1063,7 +1063,7 @@ enum Opcode_e {
   OPCODE_JMP_NA = 0x6C,   // Indirect Absolute
   OPCODE_JMP_IAX = 0x7C,  // Indexed (Absolute Indirect, X)
   OPCODE_LDA_A = 0xAD,    // Absolute
-  OPCODE_NOP = 0xEA       // No operation
+  OPCODE_NOP = 0xEA,      // No operation
 };
 
 // Note: "int" causes overflow when profiling for any amount of time.
@@ -1124,7 +1124,7 @@ enum MemoryView_e {
   // 0xA0 .. 0xFF Hi-Bit Normal     (White)
   MEM_VIEW_ASCII,
   MEM_VIEW_APPLE,  // Low-Bit ASCII (Colorized Background)
-  NUM_MEM_VIEWS
+  NUM_MEM_VIEWS,
 };
 
 struct MemoryDump_t {
@@ -1146,7 +1146,7 @@ enum MemorySearch_e {
   MEM_SEARCH_BYTE_N_WILD,     // ??
 
   MEM_SEARCH_TYPE_MASK = (1 << 16) - 1,
-  MEM_SEARCH_FOUND = (1 << 16)
+  MEM_SEARCH_FOUND = (1 << 16),
 };
 
 struct MemorySearch_t {
@@ -1205,7 +1205,7 @@ enum ArgToken_e {  // Arg Token Type
   TOKEN_LESS_EQUAL,     // <=
   TOKEN_NOT_EQUAL,      // !=
   NUM_TOKENS,           // signal none, or bad
-  NO_TOKEN = NUM_TOKENS
+  NO_TOKEN = NUM_TOKENS,
 };
 
 enum ArgType_e {
@@ -1218,7 +1218,7 @@ enum ArgType_e {
   TYPE_LENGTH = (1 << 6),
   TYPE_VALUE = (1 << 7),
   TYPE_NO_REG = (1 << 8),  // Don't do register value -> Argument.nValue
-  TYPE_NO_SYM = (1 << 9)   // Don't do symbol lookup  -> Argument.nValue
+  TYPE_NO_SYM = (1 << 9),  // Don't do symbol lookup  -> Argument.nValue
 };
 
 struct TokenTable_t {
@@ -1339,8 +1339,8 @@ enum Parameters_e {
   PARAM_CAT_WINDOW,
   PARAM_CAT_ZEROPAGE,
   PARAM_HELPCATEGORIES_END,
-  PARAM_HELPCATEGORIES_NUM =
-      PARAM_HELPCATEGORIES_END - PARAM_HELPCATEGORIES_BEGIN,
+  PARAM_HELPCATEGORIES_NUM = PARAM_HELPCATEGORIES_END -
+      PARAM_HELPCATEGORIES_BEGIN,
   PARAM_MEM_SEARCH_BEGIN = PARAM_HELPCATEGORIES_END,  // Daisy Chain
   PARAM_MEM_SEARCH_WILD = PARAM_MEM_SEARCH_BEGIN,
   PARAM_MEM_SEARCH_END,
@@ -1379,7 +1379,7 @@ enum Parameters_e {
   PARAM_SYMBOL_2,   // symbols bot
   PARAM_WINDOW_END,
   PARAM_WINDOW_NUM = PARAM_WINDOW_END - PARAM_WINDOW_BEGIN,
-  NUM_PARAMS = PARAM_WINDOW_END  // Daisy Chain
+  NUM_PARAMS = PARAM_WINDOW_END,  // Daisy Chain
 };
 
 // Source Level Debugging
@@ -1404,7 +1404,7 @@ enum SymbolTable_Index_e  // Symbols_e -> SymbolTable_Index_e
   SYMBOLS_SRC_2,
   SYMBOLS_DOS33,
   SYMBOLS_PRODOS,
-  NUM_SYMBOL_TABLES
+  NUM_SYMBOL_TABLES,
 };
 
 // ****************************************

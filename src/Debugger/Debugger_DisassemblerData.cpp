@@ -148,7 +148,8 @@ auto CmdDisasmDataDefCode(int nArgs) -> Update_t {
 
 const char* g_nopcode_types[NUM_NOPCODE_TYPES] = {
     "-n/a-", "byte1", "byte2", "byte4", "byte8", "word1", "word2", "word4",
-    "addr ", "hex  ", "char ", "ascii", "apple", "mixed", "FAC  ", "bmp  "};
+    "addr ", "hex  ", "char ", "ascii", "apple", "mixed", "FAC  ", "bmp  ",
+};
 
 // Command: B
 // no args

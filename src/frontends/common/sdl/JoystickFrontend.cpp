@@ -33,7 +33,7 @@ enum JoyKey_t {
   JK_UPRIGHT,
   JK_BUTTON0,
   JK_BUTTON1,
-  JK_MAX
+  JK_MAX,
 };
 
 constexpr int k_pdl_central = 127;
@@ -46,15 +46,18 @@ constexpr int k_pdl_scentral = 0;
 constexpr int k_pdl_smin = -127;
 
 static const std::array<JoyCoord_t, 9> k_key_value = {
-    {{k_pdl_smin, k_pdl_smax},
-     {k_pdl_scentral, k_pdl_smax},
-     {k_pdl_smax, k_pdl_smax},
-     {k_pdl_smin, k_pdl_scentral},
-     {k_pdl_scentral, k_pdl_scentral},
-     {k_pdl_smax, k_pdl_scentral},
-     {k_pdl_smin, k_pdl_smin},
-     {k_pdl_scentral, k_pdl_smin},
-     {k_pdl_smax, k_pdl_smin}}};
+    {
+        {k_pdl_smin, k_pdl_smax},
+        {k_pdl_scentral, k_pdl_smax},
+        {k_pdl_smax, k_pdl_smax},
+        {k_pdl_smin, k_pdl_scentral},
+        {k_pdl_scentral, k_pdl_scentral},
+        {k_pdl_smax, k_pdl_scentral},
+        {k_pdl_smin, k_pdl_smin},
+        {k_pdl_scentral, k_pdl_smin},
+        {k_pdl_smax, k_pdl_smin},
+    },
+};
 
 static std::array<int, 2> g_joy_shr_x = {8, 8};
 static std::array<int, 2> g_joy_shr_y = {8, 8};
@@ -193,8 +196,12 @@ static auto flush_switch_queues() -> void {
 static auto send_axis(uint8_t joy_num, uint8_t axis, int position) -> void {
   const int trimmed = clamp_val(position + (axis == 0 ? g_trim_x : g_trim_y),
                                 k_pdl_min, k_pdl_max);
-  const JoystickAxisPayload_t payload = {joy_num, axis,
-                                         static_cast<uint8_t>(trimmed), 0};
+  const JoystickAxisPayload_t payload = {
+      joy_num,
+      axis,
+      static_cast<uint8_t>(trimmed),
+      0,
+  };
   peripheral_command(0, JOYSTICK_CMD_SET_AXIS, &payload, sizeof(payload));
 }
 
@@ -215,7 +222,8 @@ static auto send_keypad_axes(size_t joy_num) -> void {
   int ysum = 0;
   int keydown_count = 0;
   static constexpr std::array<int, 16> corner_convert_lookup = {
-      {-1, -1, -1, 8, -1, 6, -1, -1, -1, -1, 2, -1, 0, -1, -1, -1}};
+      {-1, -1, -1, 8, -1, 6, -1, -1, -1, -1, 2, -1, 0, -1, -1, -1},
+  };
   int corner_idx = (static_cast<int>(0 == g_key_down.at(1))) |
                    (static_cast<int>(0 == g_key_down.at(3)) << 1) |
                    (static_cast<int>(0 == g_key_down.at(5)) << 2) |
@@ -281,15 +289,33 @@ auto joy_frontend_initialize() -> void {
   if (load(REGVALUE_JOY_TYPE2, &val)) {
     g_joy_config.joy_type[1] = (val < joystick_config_type_count) ? val : 0;
   }
-  if (load(REGVALUE_JOY_INDEX1, &val)) g_joy_config.joy_index[0] = val;
-  if (load(REGVALUE_JOY_INDEX2, &val)) g_joy_config.joy_index[1] = val;
-  if (load(REGVALUE_JOY_BUTTON1_1, &val)) g_joy_config.joy0_button_map[0] = val;
-  if (load(REGVALUE_JOY_BUTTON1_2, &val)) g_joy_config.joy0_button_map[1] = val;
-  if (load(REGVALUE_JOY_BUTTON2_1, &val)) g_joy_config.joy1_button_map = val;
-  if (load(REGVALUE_JOY_AXIS1_0, &val)) g_joy_config.joy_axis[0][0] = val;
-  if (load(REGVALUE_JOY_AXIS1_1, &val)) g_joy_config.joy_axis[0][1] = val;
-  if (load(REGVALUE_JOY_AXIS2_0, &val)) g_joy_config.joy_axis[1][0] = val;
-  if (load(REGVALUE_JOY_AXIS2_1, &val)) g_joy_config.joy_axis[1][1] = val;
+  if (load(REGVALUE_JOY_INDEX1, &val)) {
+    g_joy_config.joy_index[0] = val;
+  }
+  if (load(REGVALUE_JOY_INDEX2, &val)) {
+    g_joy_config.joy_index[1] = val;
+  }
+  if (load(REGVALUE_JOY_BUTTON1_1, &val)) {
+    g_joy_config.joy0_button_map[0] = val;
+  }
+  if (load(REGVALUE_JOY_BUTTON1_2, &val)) {
+    g_joy_config.joy0_button_map[1] = val;
+  }
+  if (load(REGVALUE_JOY_BUTTON2_1, &val)) {
+    g_joy_config.joy1_button_map = val;
+  }
+  if (load(REGVALUE_JOY_AXIS1_0, &val)) {
+    g_joy_config.joy_axis[0][0] = val;
+  }
+  if (load(REGVALUE_JOY_AXIS1_1, &val)) {
+    g_joy_config.joy_axis[0][1] = val;
+  }
+  if (load(REGVALUE_JOY_AXIS2_0, &val)) {
+    g_joy_config.joy_axis[1][0] = val;
+  }
+  if (load(REGVALUE_JOY_AXIS2_1, &val)) {
+    g_joy_config.joy_axis[1][1] = val;
+  }
 
   g_trim_x = load_trim(REGVALUE_PDL_XTRIM);
   g_trim_y = load_trim(REGVALUE_PDL_YTRIM);

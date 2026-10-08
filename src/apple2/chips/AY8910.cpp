@@ -14,14 +14,25 @@ namespace {
 // stage.
 constexpr float k_vol_full_scale = 18776.0F;
 constexpr std::array<float, 16> k_vol_table = {
-    {0.0F / k_vol_full_scale, 103.0F / k_vol_full_scale,
-     150.0F / k_vol_full_scale, 218.0F / k_vol_full_scale,
-     316.0F / k_vol_full_scale, 458.0F / k_vol_full_scale,
-     665.0F / k_vol_full_scale, 963.0F / k_vol_full_scale,
-     1396.0F / k_vol_full_scale, 2023.0F / k_vol_full_scale,
-     2933.0F / k_vol_full_scale, 4251.0F / k_vol_full_scale,
-     6163.0F / k_vol_full_scale, 8934.0F / k_vol_full_scale,
-     12952.0F / k_vol_full_scale, 18776.0F / k_vol_full_scale}};
+    {
+        0.0F / k_vol_full_scale,
+        103.0F / k_vol_full_scale,
+        150.0F / k_vol_full_scale,
+        218.0F / k_vol_full_scale,
+        316.0F / k_vol_full_scale,
+        458.0F / k_vol_full_scale,
+        665.0F / k_vol_full_scale,
+        963.0F / k_vol_full_scale,
+        1396.0F / k_vol_full_scale,
+        2023.0F / k_vol_full_scale,
+        2933.0F / k_vol_full_scale,
+        4251.0F / k_vol_full_scale,
+        6163.0F / k_vol_full_scale,
+        8934.0F / k_vol_full_scale,
+        12952.0F / k_vol_full_scale,
+        18776.0F / k_vol_full_scale,
+    },
+};
 
 constexpr auto tone_period(uint8_t fine, uint8_t coarse) noexcept -> uint16_t {
   return static_cast<uint16_t>(fine | ((coarse & 0x0F) << 8));
