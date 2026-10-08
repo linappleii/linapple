@@ -11,13 +11,13 @@
 #include "apple2/peripherals/speaker/Speaker.h"
 #include "core/LinAppleCore.h"
 
-constexpr uint32_t k_byte3_shift = 24;
-constexpr uint32_t k_byte2_shift = 16;
-constexpr uint32_t k_byte1_shift = 8;
+constexpr uint32_t byte3_shift = 24;
+constexpr uint32_t byte2_shift = 16;
+constexpr uint32_t byte1_shift = 8;
 
 constexpr auto make_version(uint32_t a, uint32_t b, uint32_t c,
                             uint32_t d) noexcept -> uint32_t {
-  return (a << k_byte3_shift) | (b << k_byte2_shift) | (c << k_byte1_shift) | d;
+  return (a << byte3_shift) | (b << byte2_shift) | (c << byte1_shift) | d;
 }
 
 constexpr uint32_t snapshot_file_tag = make_version('S', 'S', 'W', 'A');
@@ -195,7 +195,27 @@ struct Snapshot_t {
   SsCardEmpty_t empty7;
   SsSlotTrailer_t slot_trailer;
 };
+using Snapshot = Snapshot_t;
 using ApplewinSnapshot_t = Snapshot_t;
+using ApplewinSnapshot = Snapshot_t;
+using SsFileHdr = SsFileHdr_t;
+using SsUnitHdr = SsUnitHdr_t;
+using SsCpu6502 = SsCpu6502_t;
+using SsIoComms = SsIoComms_t;
+using SsIoJoystick = SsIoJoystick_t;
+using SsIoVideo = SsIoVideo_t;
+using SsKeyboardRegion = SsKeyboardRegion_t;
+using SsBaseMemory = SsBaseMemory_t;
+using SsApple2Unit = SsApple2Unit_t;
+using SsPeripheralInfo = SsPeripheralInfo_t;
+using SsPeripheralManifest = SsPeripheralManifest_t;
+using SsCardHdr = SsCardHdr_t;
+using SsCardEmpty = SsCardEmpty_t;
+using SsVia6522Regs = SsVia6522Regs_t;
+using MbUnit = MbUnit_t;
+using SsCardMockingboard = SsCardMockingboard_t;
+using SsSlotState = SsSlotState_t;
+using SsSlotTrailer = SsSlotTrailer_t;
 
 // Differentiate snapshot format with slot trailer by file size.
 constexpr uint32_t snapshot_version = make_version(1, 0, 0, 1);

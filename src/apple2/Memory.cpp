@@ -80,12 +80,12 @@ auto mem_set_custom_rom_data(const uint8_t* data, size_t size) -> void {
   }
 }
 
-struct MachineRomInfo_t {
+struct MachineRomInfo {
   const char* name;
   const char* cmake_flag;
 };
 
-static auto get_machine_rom_info(Apple2Type_t type) -> MachineRomInfo_t {
+static auto get_machine_rom_info(Apple2Type type) -> MachineRomInfo {
   switch (type) {
     case A2TYPE_APPLE2:
       return {"Apple ][", "-DENABLE_ROM_APPLE2=ON"};

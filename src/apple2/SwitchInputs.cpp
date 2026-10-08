@@ -11,7 +11,7 @@ constexpr uint8_t keyboard_pulldowns_2e = 0x03;
 constexpr uint8_t shift_mod_line = 2;
 constexpr int override_none = -1;
 
-struct SwitchInputs_t {
+struct SwitchInputs {
   std::array<bool, switch_input_count> keyboard_closed{};
   std::array<bool, switch_input_count> connector_closed{};
   uint8_t plug_pulldowns = 0;
@@ -21,39 +21,39 @@ struct SwitchInputs_t {
   int override_pulldowns = override_none;
 };
 
-SwitchInputs_t g_switch_inputs;
+SwitchInputs switch_inputs_state;
 
 }  // namespace
 
 auto switch_inputs_reset_configuration(bool apple2e, bool keyboard_present)
     -> void {
-  g_switch_inputs = SwitchInputs_t{};
-  g_switch_inputs.apple2e = apple2e;
-  g_switch_inputs.keyboard_present = keyboard_present;
+  switch_inputs_state = SwitchInputs{};
+  switch_inputs_state.apple2e = apple2e;
+  switch_inputs_state.keyboard_present = keyboard_present;
 }
 
-auto switch_inputs_set_level(uint8_t line, SwitchInputSource_t source,
+auto switch_inputs_set_level(uint8_t line, SwitchInputSource source,
                              bool closed) -> void {
   if (line >= switch_input_count) {
     return;
   }
   if (source == switch_source_keyboard) {
-    g_switch_inputs.keyboard_closed.at(line) = closed;
+    switch_inputs_state.keyboard_closed.at(line) = closed;
   } else {
-    g_switch_inputs.connector_closed.at(line) = closed;
+    switch_inputs_state.connector_closed.at(line) = closed;
   }
 }
 
 auto switch_inputs_set_connector_pulldowns(uint8_t mask) -> void {
-  g_switch_inputs.plug_pulldowns = mask & pulldown_mask_all;
+  switch_inputs_state.plug_pulldowns = mask & pulldown_mask_all;
 }
 
 auto switch_inputs_set_shift_key_mod(bool jumper_in) -> void {
-  g_switch_inputs.shift_key_mod = jumper_in;
+  switch_inputs_state.shift_key_mod = jumper_in;
 }
 
 auto switch_inputs_override_pulldowns(int mask) -> void {
-  g_switch_inputs.override_pulldowns =
+  switch_inputs_state.override_pulldowns =
       mask < 0 ? override_none : (mask & pulldown_mask_all);
 }
 
@@ -61,11 +61,11 @@ auto switch_inputs_override_pulldowns(int mask) -> void {
 // (Apple IIe Technical Note #9; Sather IIe 7-8, Figure 7.4), so they go with
 // it; a II or II Plus keyboard carries none.
 auto switch_inputs_pulldowns() -> uint8_t {
-  if (g_switch_inputs.override_pulldowns != override_none) {
-    return static_cast<uint8_t>(g_switch_inputs.override_pulldowns);
+  if (switch_inputs_state.override_pulldowns != override_none) {
+    return static_cast<uint8_t>(switch_inputs_state.override_pulldowns);
   }
-  uint8_t mask = g_switch_inputs.plug_pulldowns;
-  if (g_switch_inputs.apple2e && g_switch_inputs.keyboard_present) {
+  uint8_t mask = switch_inputs_state.plug_pulldowns;
+  if (switch_inputs_state.apple2e && switch_inputs_state.keyboard_present) {
     mask |= keyboard_pulldowns_2e;
   }
   return mask;
@@ -79,14 +79,14 @@ auto switch_inputs_level(uint8_t line) -> bool {
     return false;
   }
   if (line == shift_mod_line) {
-    if (g_switch_inputs.shift_key_mod) {
-      return !g_switch_inputs.keyboard_closed.at(line);
+    if (switch_inputs_state.shift_key_mod) {
+      return !switch_inputs_state.keyboard_closed.at(line);
     }
-    if (g_switch_inputs.connector_closed.at(line)) {
+    if (switch_inputs_state.connector_closed.at(line)) {
       return true;
     }
-  } else if (g_switch_inputs.keyboard_closed.at(line) ||
-             g_switch_inputs.connector_closed.at(line)) {
+  } else if (switch_inputs_state.keyboard_closed.at(line) ||
+             switch_inputs_state.connector_closed.at(line)) {
     return true;
   }
   return (switch_inputs_pulldowns() & (1U << line)) == 0;

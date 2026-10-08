@@ -9,10 +9,11 @@
 // IIe Technical Reference pp. 13, 41). Open, a line rests at whatever
 // pull-down hangs on it, else its TTL input reads high (Sather, Understanding
 // the Apple IIe, 7-8; Apple IIe Technical Note #9).
-enum SwitchInputSource_t : uint8_t {
+enum SwitchInputSource : uint8_t {
   switch_source_keyboard = 0,
   switch_source_connector = 1,
 };
+using SwitchInputSource_t = SwitchInputSource;
 
 constexpr uint8_t switch_input_count = 3;
 
@@ -22,7 +23,7 @@ constexpr uint8_t switch_input_count = 3;
 auto switch_inputs_reset_configuration(bool apple2e, bool keyboard_present)
     -> void;
 
-auto switch_inputs_set_level(uint8_t line, SwitchInputSource_t source,
+auto switch_inputs_set_level(uint8_t line, SwitchInputSource source,
                              bool closed) -> void;
 auto switch_inputs_set_connector_pulldowns(uint8_t mask) -> void;
 // X6 on the //e board: PB2 then follows the shift key, inverted, and a button

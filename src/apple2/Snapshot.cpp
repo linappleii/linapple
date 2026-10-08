@@ -19,7 +19,7 @@
 
 namespace {
 
-struct SlotRegionDesc_t {
+struct SlotRegionDesc {
   size_t offset;
   size_t size;
   const char* name;
@@ -28,7 +28,7 @@ struct SlotRegionDesc_t {
 // Fixed-body snapshot regions for slots 0 through 7, sized as the AppleWin
 // layout has them; a card whose frame is larger refuses the region and rides
 // the slot trailer.
-constexpr std::array<SlotRegionDesc_t, NUM_SLOTS> k_slot_region_descriptors{
+constexpr std::array<SlotRegionDesc, NUM_SLOTS> slot_region_descriptors{
     {
         {
             offsetof(Snapshot_t, apple2_unit.speaker),
@@ -53,11 +53,11 @@ constexpr std::array<SlotRegionDesc_t, NUM_SLOTS> k_slot_region_descriptors{
     },
 };
 
-auto fixed_slot_desc(int slot) noexcept -> const SlotRegionDesc_t* {
+auto fixed_slot_desc(int slot) noexcept -> const SlotRegionDesc* {
   if (slot < 0 || slot >= NUM_SLOTS) {
     return nullptr;
   }
-  const auto& desc = k_slot_region_descriptors[static_cast<size_t>(slot)];
+  const auto& desc = slot_region_descriptors[static_cast<size_t>(slot)];
   if (desc.size == 0) {
     return nullptr;
   }
@@ -257,7 +257,7 @@ auto snapshot_serialize(Snapshot_t* snapshot) noexcept -> void {
       0, "Keyboard", snapshot->apple2_unit.keyboard.bytes, &kbd_size);
 
   for (int i = 0; i < NUM_SLOTS; ++i) {
-    const SlotRegionDesc_t* desc = fixed_slot_desc(i);
+    const SlotRegionDesc* desc = fixed_slot_desc(i);
     if (desc == nullptr) {
       continue;
     }
@@ -332,7 +332,7 @@ auto snapshot_deserialize(const Snapshot_t* snapshot) -> bool {
       peripheral_load_state(i, entry->data, entry->length);
       continue;
     }
-    const SlotRegionDesc_t* desc = fixed_slot_desc(i);
+    const SlotRegionDesc* desc = fixed_slot_desc(i);
     if (desc == nullptr) {
       continue;
     }

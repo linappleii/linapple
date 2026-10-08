@@ -17,7 +17,7 @@ constexpr uint16_t IRQ_VECTOR_ADDR = 0xFFFE;
 constexpr uint16_t TRAP_NMOS_DEFAULT = 0x336D;
 constexpr uint16_t TRAP_CMOS_DEFAULT = 0x2434;
 
-struct CpuRegisters_t {
+struct CpuRegisters {
   uint8_t a = 0;
   uint8_t x = 0;
   uint8_t y = 0;
@@ -26,11 +26,12 @@ struct CpuRegisters_t {
   uint16_t sp = 0;  // 16-bit to store pre-computed page 1 address (0x0100 | S)
   bool is_jammed = false;  // CPU has crashed on illegal instruction (NMOS 6502)
 };
+using CpuRegisters_t = CpuRegisters;
 
 // The slice bound and flag are not here: no context switch happens inside
 // cpu_execute_slice.
-struct CpuInstance_t {
-  CpuRegisters_t cpu_regs{};
+struct CpuInstance {
+  CpuRegisters cpu_regs{};
   uint64_t cumulative_cycles = 0;
   uint32_t cycles_submitted = 0;
   uint32_t cycles_executed = 0;
@@ -38,14 +39,15 @@ struct CpuInstance_t {
   uint32_t bm_nmi = 0;
   bool nmi_flank = false;
 };
+using CpuInstance_t = CpuInstance;
 
-auto cpu_get_registers() noexcept -> CpuRegisters_t*;
+auto cpu_get_registers() noexcept -> CpuRegisters*;
 auto cpu_get_cumulative_cycles() noexcept -> uint64_t;
 auto cpu_add_cumulative_cycles(uint32_t cycles) noexcept -> void;
 extern uint64_t g_cumulative_cycles;
 
-auto cpu_get_active_context() noexcept -> CpuInstance_t*;
-auto cpu_set_active_context(CpuInstance_t* context) noexcept -> void;
+auto cpu_get_active_context() noexcept -> CpuInstance*;
+auto cpu_set_active_context(CpuInstance* context) noexcept -> void;
 
 auto cpu_destroy() noexcept -> void;
 auto cpu_calc_cycles(uint32_t executed_cycles) noexcept -> void;

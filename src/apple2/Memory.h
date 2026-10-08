@@ -10,9 +10,10 @@
 
 struct SsBaseMemory_t;
 
-using IoFunction_t = uint8_t (*)(uint16_t pc, uint16_t addr, uint8_t write_flag,
-                                 uint8_t write_value, uint32_t executed_cycles);
-using iofunction = IoFunction_t;
+using IoFunction = uint8_t (*)(uint16_t pc, uint16_t addr, uint8_t write_flag,
+                               uint8_t write_value, uint32_t executed_cycles);
+using IoFunction_t = IoFunction;
+using iofunction = IoFunction;
 
 // Memory Mode Flags
 constexpr uint32_t MF_80STORE = 0x00000001;
@@ -94,7 +95,7 @@ constexpr uint16_t IO_REGION_MASK = 0xF000;
 constexpr uint16_t PAGE_MASK = 0xFF00;
 constexpr uint8_t ADDR_NIBBLE_MASK = 0x0F;
 
-enum SoftSwitch_t : uint8_t {
+enum SoftSwitch : uint8_t {
   SS_80STORE_OFF = 0x00,
   SS_80STORE_ON = 0x01,
   SS_AUXREAD_OFF = 0x02,
@@ -147,23 +148,26 @@ enum SoftSwitch_t : uint8_t {
   SS_AN3_ON = 0x5F,
 };
 
-using SoftSwitch_e = SoftSwitch_t;
+using SoftSwitch_t = SoftSwitch;
+using SoftSwitch_e = SoftSwitch;
 
-enum MemoryInitPattern_t { MIP_ZERO, MIP_FF_FF_00_00, NUM_MIP };
-using MemoryInitPattern_e = MemoryInitPattern_t;
-extern MemoryInitPattern_t g_memory_init_pattern;
+enum MemoryInitPattern { MIP_ZERO, MIP_FF_FF_00_00, NUM_MIP };
+using MemoryInitPattern_t = MemoryInitPattern;
+using MemoryInitPattern_e = MemoryInitPattern;
+extern MemoryInitPattern g_memory_init_pattern;
 
-enum ExpansionRomType_t {
+enum ExpansionRomType {
   EXP_ROM_NULL = 0,
   EXP_ROM_INTERNAL,
   EXP_ROM_PERIPHERAL,
 };
-using eExpansionRomType = ExpansionRomType_t;
-constexpr ExpansionRomType_t eExpRomNull = EXP_ROM_NULL;
-constexpr ExpansionRomType_t eExpRomInternal = EXP_ROM_INTERNAL;
-constexpr ExpansionRomType_t eExpRomPeripheral = EXP_ROM_PERIPHERAL;
+using ExpansionRomType_t = ExpansionRomType;
+using eExpansionRomType = ExpansionRomType;
+constexpr ExpansionRomType eExpRomNull = EXP_ROM_NULL;
+constexpr ExpansionRomType eExpRomInternal = EXP_ROM_INTERNAL;
+constexpr ExpansionRomType eExpRomPeripheral = EXP_ROM_PERIPHERAL;
 
-struct MemoryInstance_t {
+struct MemoryInstance {
   std::vector<uint8_t> buf_memmain;
   std::vector<uint8_t> buf_memaux;
   std::vector<uint8_t> buf_memdirty;
@@ -184,30 +188,31 @@ struct MemoryInstance_t {
   uint8_t* memshadow[NUM_PAGES_64K]{};
   uint8_t* memwrite[NUM_PAGES_64K]{};
 
-  IoFunction_t io_read[NUM_IO_HANDLERS]{};
-  IoFunction_t io_write[NUM_IO_HANDLERS]{};
+  IoFunction io_read[NUM_IO_HANDLERS]{};
+  IoFunction io_write[NUM_IO_HANDLERS]{};
 
   void* slot_parameters[NUM_SLOTS]{};
   bool last_write_ram = false;
   uint32_t mem_mode = MF_HRAM_BANK2 | MF_SLOTCXROM | MF_HRAM_WRITE;
   bool mode_changing = false;
 
-  ExpansionRomType_t expansion_rom_type = EXP_ROM_NULL;
+  ExpansionRomType expansion_rom_type = EXP_ROM_NULL;
   uint32_t peripheral_rom_slot = 0;
   uint8_t io_select = 0;
   uint8_t io_select_internal_rom = 0;
   const uint8_t* expansion_rom[NUM_SLOTS]{};
 
-  MemoryInstance_t() = default;
-  ~MemoryInstance_t();
-  MemoryInstance_t(const MemoryInstance_t&) = delete;
-  auto operator=(const MemoryInstance_t&) -> MemoryInstance_t& = delete;
-  MemoryInstance_t(MemoryInstance_t&&) noexcept = default;
-  auto operator=(MemoryInstance_t&&) noexcept -> MemoryInstance_t& = default;
+  MemoryInstance() = default;
+  ~MemoryInstance();
+  MemoryInstance(const MemoryInstance&) = delete;
+  auto operator=(const MemoryInstance&) -> MemoryInstance& = delete;
+  MemoryInstance(MemoryInstance&&) noexcept = default;
+  auto operator=(MemoryInstance&&) noexcept -> MemoryInstance& = default;
 };
+using MemoryInstance_t = MemoryInstance;
 
-auto mem_get_active_context() noexcept -> MemoryInstance_t*;
-auto mem_set_active_context(MemoryInstance_t* context) noexcept -> void;
+auto mem_get_active_context() noexcept -> MemoryInstance*;
+auto mem_set_active_context(MemoryInstance* context) noexcept -> void;
 
 extern IoFunction_t* g_io_read;
 extern IoFunction_t* g_io_write;
