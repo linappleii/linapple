@@ -531,7 +531,7 @@ auto FormatCharTxtCtrl(const uint8_t b, bool* pWasCtrl_) -> char {
   return (b < 0x20) ? b + '@' : b;
 }
 
-auto FormatChar4Font(const uint8_t b, bool* pWasHi_, bool* pWasLo_) -> char {
+auto FormatChar4Font(uint8_t b, bool* pWasHi_, bool* pWasLo_) -> char {
   uint8_t b1 = FormatCharTxtHigh(b, pWasHi_);
   return FormatCharTxtCtrl(b1, pWasLo_);
 }

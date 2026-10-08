@@ -51,7 +51,7 @@ auto WindowUpdateConsoleDisplayedSize() -> void;
 auto WindowUpdateSizes() -> void;
 auto WindowGetHeight(int iWindow) -> int;
 
-char FormatChar4Font(const uint8_t b, bool* pWasHi_, bool* pWasLo_);
+auto FormatChar4Font(uint8_t b, bool* pWasHi_, bool* pWasLo_) -> char;
 
 extern int g_debug_steps;
 extern uint32_t g_debug_step_cycles;
@@ -72,7 +72,7 @@ extern char g_file_name_trace[];
 // Bookmarks
 
 // Breakpoints
-enum BreakpointHit_t {
+enum BreakpointHit_t : uint8_t {
   BP_HIT_NONE = 0,
   BP_HIT_INVALID = (1 << 0),
   BP_HIT_OPCODE = (1 << 1),
@@ -85,7 +85,6 @@ enum BreakpointHit_t {
 extern int g_debug_break_on_opcode;
 
 // Commands
-extern int g_command;  // last command
 
 extern Command_t g_commands[];
 extern Command_t g_parameters[];
@@ -186,7 +185,7 @@ auto SymbolUpdate(SymbolTable_Index_e eSymbolTable, const char* pSymbolName,
                   uint16_t nAddrss, bool bRemoveSymbol, bool bUpdateSymbol)
     -> void;
 
-auto FindSymbolFromAddress(uint16_t nAdress, int* iTable_ = nullptr) -> const
+auto FindSymbolFromAddress(uint16_t address, int* iTable_ = nullptr) -> const
     char*;
 
 auto GetSymbol(uint16_t address, int nBytes) -> const char*;
@@ -205,6 +204,10 @@ class DebugVideoMode  // NB. Implemented as a singleton
 
  public:
   ~DebugVideoMode() = default;
+  DebugVideoMode(const DebugVideoMode&) = delete;
+  auto operator=(const DebugVideoMode&) -> DebugVideoMode& = delete;
+  DebugVideoMode(DebugVideoMode&&) = delete;
+  auto operator=(DebugVideoMode&&) -> DebugVideoMode& = delete;
 
   static auto Instance() -> DebugVideoMode& { return instance_; }
 
@@ -239,37 +242,9 @@ auto DebuggerProcessCommand(bool echo_console_input) -> Update_t;
 auto UpdateDisplay(Update_t bUpdate) -> void;
 
 // Prototypes
-extern const int DEBUGGER_VERSION;
 
-enum {
-  DEBUG_EXIT_KEY = 0x1B,  // Escape
-  DEBUG_TOGGLE_KEY = linapple_key_f7,
-};
-
-auto CmdGoNormalSpeed(int nArgs) -> Update_t;
-auto CmdGoFullSpeed(int nArgs) -> Update_t;
-auto CmdKey(int nArgs) -> Update_t;
-auto CmdSync(int nArgs) -> Update_t;
-auto CmdStackPush(int nArgs) -> Update_t;
-auto CmdStackPop(int nArgs) -> Update_t;
-auto CmdStackPopPseudo(int nArgs) -> Update_t;
-auto CmdVideoScannerInfo(int nArgs) -> Update_t;
-auto CmdCyclesInfo(int nArgs) -> Update_t;
-auto CmdFlagClear(int nArgs) -> Update_t;
-auto CmdFlagSet(int nArgs) -> Update_t;
-auto CmdFlag(int nArgs) -> Update_t;
-
-auto CmdUnassemble(int nArgs) -> Update_t;
-auto CmdDisk(int nArgs) -> Update_t;
-auto CmdSource(int nArgs) -> Update_t;
-auto CmdWatch(int nArgs) -> Update_t;
-auto CmdWatchAdd(int nArgs) -> Update_t;
-auto CmdWatchClear(int nArgs) -> Update_t;
-auto CmdWatchDisable(int nArgs) -> Update_t;
-auto CmdWatchEnable(int nArgs) -> Update_t;
-auto CmdWatchList(int nArgs) -> Update_t;
-auto CmdWatchLoad(int nArgs) -> Update_t;
-auto CmdWatchSave(int nArgs) -> Update_t;
+constexpr int DEBUG_EXIT_KEY = 0x1B;  // Escape
+constexpr int DEBUG_TOGGLE_KEY = linapple_key_f7;
 
 auto debug_begin() -> void;
 
@@ -283,7 +258,7 @@ auto GetBreakpointInfo(uint16_t nOffset, bool& bBreakpointActive_,
 
 auto DebuggerRunScript(const char* sFileName) -> void;
 
-auto DebugContinueStepping(const bool bCallerWillUpdateDisplay = false) -> void;
+auto DebugContinueStepping(bool bCallerWillUpdateDisplay = false) -> void;
 
 auto debug_destroy() -> void;
 
