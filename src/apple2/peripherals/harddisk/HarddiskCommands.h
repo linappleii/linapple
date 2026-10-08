@@ -65,9 +65,8 @@ typedef enum {
   harddisk_status_prot = 0x04
 } HarddiskStatus_e;
 
-// Why: Uses natural alignment to ensure a deterministic binary layout without
-// reliance on non-standard packing directives. Large types are placed at the
-// start of the structure.
+// Widest members first and natural alignment, so the layout is the same in
+// every consumer without a packing directive.
 typedef struct {
   int32_t drive0_last_error;
   int32_t drive1_last_error;

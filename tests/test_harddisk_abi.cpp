@@ -242,7 +242,8 @@ TEST_CASE("Harddisk ABI: the C99 view of the headers agrees with the C++ one") {
   CHECK(harddisk_abi_c_error_none() == 0);
   CHECK(harddisk_abi_c_error_not_block_image() == harddisk_err_not_block_image);
   CHECK(harddisk_abi_c_error_not_block_image() == 5);
-  // ,  and B (ProDOS 8 Technical Reference Manual, 6.3.2).
+  // $27, $28 and $2B packed high to low (ProDOS 8 Technical Reference Manual,
+  // 6.3.2).
   CHECK(harddisk_abi_c_prodos_codes() == 0x27282Bu);
 }
 

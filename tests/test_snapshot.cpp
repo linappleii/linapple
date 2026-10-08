@@ -1543,10 +1543,9 @@ auto harddisk_status() -> HarddiskStatus_t {
   return out;
 }
 
-// The fixtures were written when the hard disk's frame did not fit the
-// trailer, so their empty slot-7 entry falls back to the 16-byte region,
-// which the card refuses and says so once; the card stays at reset with its
-// mounted image where the host put it.
+// The mouse fixtures carry an empty slot-7 trailer entry, so the load falls
+// back to the 16-byte fixed-body region, which the card refuses and says so
+// once; the card stays at reset with its mounted image where the host put it.
 auto load_mouse_fixture(const std::string& name) -> void {
   const std::string path = TestFixtures::get_fixture_path(name);
   REQUIRE(access(path.c_str(), R_OK) == 0);

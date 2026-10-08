@@ -188,8 +188,8 @@ auto read_whole_file(const std::string& path) -> std::vector<uint8_t> {
   return bytes;
 }
 
-// Every instruction the 6502 fetches, until the sentinel or the cap; what a
-// boot passed through is as much the oracle as where it ended.
+// Every instruction the 6502 fetches, until the sentinel or the cap: which
+// addresses a boot passed through says as much as where it ended.
 auto run_recording(uint16_t sentinel, uint32_t cap) -> std::vector<uint16_t> {
   std::vector<uint16_t> visited;
   const CpuRegisters_t* regs = cpu_get_registers();

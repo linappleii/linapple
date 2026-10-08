@@ -444,13 +444,10 @@ TEST_CASE(
   }
 }
 
-// A save of a running ProDOS session written before the card kept a frame in
-// the trailer: its DEVADR entries hold $C746, the firmware's driver entry, and
-// its slot-7 trailer entry is empty, so the card is refused the 16-byte region
-// and stays at reset while the host mounts the image. The file is written by
-// an earlier build from the re-ordered image, holds that session's memory and
-// so is never committed; LINAPPLE_PRODOS_PREPASS_AWS names it, and without it
-// this case has nothing to load and says so.
+// A save of a running ProDOS session whose slot-7 trailer entry is empty: its
+// DEVADR entries hold $C746 and the card, refused the 16-byte region, stays
+// at reset while the host mounts the image. LINAPPLE_PRODOS_SESSION_AWS names
+// the file; without it the case has nothing to load and says so.
 TEST_CASE(
     "Harddisk ProDOS: a session saved with an empty slot-7 trailer entry "
     "resumes at Bitsy Bye, calls the driver where its DEVADR entries point, "

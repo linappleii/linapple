@@ -237,7 +237,7 @@ enum HarddiskDataPhase_e {
 // $CnBE  85 01        STA $01         ; LOC1: the scan's slot pointer, as the
 // $CnC0  A9 00        LDA #$00        ; scan itself left it      1979 p. 144
 // $CnC2  85 00        STA $00         ; LOC0                     IIe TRM p. 307
-// $CnC4  4C BA FA     JMP $FABA       ; SLOOP: DEC $01 and test the next slot
+// $CnC4  4C BA FA     JMP $FABA       ; SLOOP: reload Y, DEC $01, test slot
 // MONITOR
 // $CnC7  4C 59 FF     JMP $FF59       ; the Monitor's reset entry
 // ; $CnCA-$CnFB: $00
