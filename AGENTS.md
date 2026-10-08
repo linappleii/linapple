@@ -133,13 +133,16 @@ More on building in <!-- Imported from: INSTALL.md -->
   `enums` for constants.
 - **Header Guards:** Use `#pragma once` for all new header files instead of
   traditional `#ifndef` guards.
-- **Static Analysis:** Avoid `NOLINT` markers except where they are
-  absolutely necessary to suppress false positives or unavoidable
-  architectural constraints. When `NOLINT` is used, it must be accompanied by
-  a comment explaining the justification.
-- Files that act as a C99/C++11 ABI should have `NOLINTBEGIN` at the top
-  that removes any clang-tidy rules that would break the C99 functionality.
-  The bottom of the file should turn those lints back on with `NOLINTEND`.
+- **Static Analysis & Tooling:** Project-wide Clang-Tidy configuration
+  (`.clang-tidy`) automatically validates identifier naming, enum sizing,
+  redundant declarations, type aliases, and trailing return types.
+  Avoid `NOLINT` markers except where they are absolutely necessary to
+  suppress false positives or unavoidable architectural constraints.
+  When `NOLINT` is used, it must be accompanied by a comment explaining
+  the justification.
+- Files that act as a C99/C++11 ABI (`Peripheral_Types.h`, command headers)
+  use `NOLINTBEGIN`/`NOLINTEND` blocks to maintain C-compatible symbols
+  and linkage.
 - **Architecture:** Strictly adhere to the tiered decoupling. Host-specific
   logic (SDL, file I/O) must stay in the Frontend layer; hardware logic must
   stay in `src/apple2/`. The one exception is I/O on image paths: the disk
