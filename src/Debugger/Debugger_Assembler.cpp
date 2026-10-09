@@ -896,7 +896,7 @@ auto GetTargets(uint16_t address, int* pTargetPartial_, int* pTargetPartial2_,
       *pTargetPointer_ =
           static_cast<int>(((*reinterpret_cast<uint16_t*>(mem + nTarget8)) +
                             cpu_get_registers()->y) &
-                           APPLE2_6502_MEM_END);  // Bugfix:
+                           apple2_6502_mem_end);  // Bugfix:
       if (pTargetBytes_) {
         *pTargetBytes_ = 1;
       }
@@ -922,7 +922,7 @@ auto GetTargets(uint16_t address, int* pTargetPartial_, int* pTargetPartial2_,
           *pTargetPointer_ -= nTarget8;  // -
         }
 
-        *pTargetPointer_ &= APPLE2_6502_MEM_END;
+        *pTargetPointer_ &= apple2_6502_mem_end;
 
         if (pTargetBytes_) {
           *pTargetBytes_ = 1;
@@ -992,7 +992,7 @@ auto GetTargetAddress(const uint16_t& address, uint16_t& nTarget_) -> bool {
     if (nTargetPointer != NO_6502_TARGET)
     //		else
     {
-      nTarget_ = nTargetPointer & APPLE2_6502_MEM_END;
+      nTarget_ = nTargetPointer & apple2_6502_mem_end;
       return true;
     }
   }
@@ -1349,7 +1349,7 @@ auto ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols) -> bool {
   g_source_assemble_bytes = 0;
   g_source_assembly_symbols = 0;
 
-  const uint32_t INVALID_ADDRESS = APPLE2_6502_MEM_END + 1;
+  const uint32_t INVALID_ADDRESS = apple2_6502_mem_end + 1;
 
   int nLines = g_assembler_source_buffer.GetNumLines();
   for (int iLine = 0; iLine < nLines; iLine++) {

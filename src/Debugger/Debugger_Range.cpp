@@ -23,8 +23,8 @@ auto Range_CalcEndLen(const RangeType_t eRange, const uint16_t& nAddress1,
     // Len =  FFFF
     tEndLen_.nAddressLen = nAddress2;
     uint32_t nTemp = nAddress1 + tEndLen_.nAddressLen - 1;
-    if (nTemp > APPLE2_6502_MEM_END) {
-      nTemp = APPLE2_6502_MEM_END;
+    if (nTemp > apple2_6502_mem_end) {
+      nTemp = apple2_6502_mem_end;
     }
     tEndLen_.nAddressEnd = nTemp;
     bValid = true;
@@ -45,8 +45,8 @@ auto Range_CalcEndLen(const RangeType_t eRange, const uint16_t& nAddress1,
 auto Range_Get(uint16_t& nAddress1_, uint16_t& nAddress2_, const int iArg)
     -> RangeType_t {
   nAddress1_ = static_cast<unsigned>(g_args[iArg].nValue);
-  if (nAddress1_ > APPLE2_6502_MEM_END) {
-    nAddress1_ = APPLE2_6502_MEM_END;
+  if (nAddress1_ > apple2_6502_mem_end) {
+    nAddress1_ = apple2_6502_mem_end;
   }
 
   nAddress2_ = 0;

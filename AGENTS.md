@@ -112,15 +112,16 @@ More on building in <!-- Imported from: INSTALL.md -->
 - **Coding Style:** Favor a **procedural C-like coding style** for all new
   development. Use `structs` and plain functions instead of `classes` and
   methods where possible to improve simplicity and portability.
-- **Naming Conventions:** Use strict `snake_case` for functions, variables,
-  and constants. Use `PascalCase` for types and structs (no Hungarian notation
-  or `_t` suffix). (Exception:
-  hardware register bitmasks, 6502 CPU status flags, and Apple II
-  architecture vector definitions in hardware emulation layers may use
-  `SCREAMING_SNAKE_CASE` to maintain 1:1 fidelity with hardware technical
-  references; legacy internal functions in `src/Debugger/` originally ported
-  from AppleWin are documented legacy exceptions that retain existing
-  `PascalCase` names until individually modernized).
+- **Naming Conventions:** All identifier naming conventions are authoritatively
+  defined and enforced by `.clang-tidy`. In summary:
+  - `snake_case` for all functions, variables, and constants (including
+    `constexpr` values, bitmasks, hardware registers, and vectors).
+  - `PascalCase` for types, structs, classes, and enums.
+  - Hungarian notation (`k_`, `_t`, `g_`, `s_`, `e_`) is eliminated across the
+    entire codebase without exception.
+  - Legacy internal functions in `src/Debugger/` originally ported from AppleWin
+    retain existing `PascalCase` names until individually modernized (exempted
+    locally in `src/Debugger/.clang-tidy`).
 - **Function Syntax:** Use trailing return types (`auto func() -> type`) for
   all new and modernized functions.
 - **Resource Safety & RAII:** Ensure 100% RAII compliance. Avoid raw
@@ -133,13 +134,12 @@ More on building in <!-- Imported from: INSTALL.md -->
   `enums` for constants.
 - **Header Guards:** Use `#pragma once` for all new header files instead of
   traditional `#ifndef` guards.
-- **Static Analysis & Tooling:** Project-wide Clang-Tidy configuration
-  (`.clang-tidy`) automatically validates identifier naming, enum sizing,
-  redundant declarations, type aliases, and trailing return types.
-  Avoid `NOLINT` markers except where they are absolutely necessary to
-  suppress false positives or unavoidable architectural constraints.
-  When `NOLINT` is used, it must be accompanied by a comment explaining
-  the justification.
+- **Static Analysis & Tooling:** Project-wide `.clang-tidy` and `.clang-format`
+  configurations are the authoritative single source of truth for code style,
+  syntax enforcement, and formatting. Code must adhere to them cleanly.
+  Avoid `NOLINT` markers except where strictly necessary to suppress false
+  positives or unavoidable architectural constraints; any `NOLINT` must be
+  accompanied by a comment explaining the justification.
 - Files that act as a C99/C++11 ABI (`Peripheral_Types.h`, command headers)
   use `NOLINTBEGIN`/`NOLINTEND` blocks to maintain C-compatible symbols
   and linkage.
@@ -172,11 +172,11 @@ More on building in <!-- Imported from: INSTALL.md -->
   - Library and chip objects are compiled with hidden visibility, so the
     executable and the plugins never export them.
   - A card's byte output (a printer's, a serial line's) goes through the
-    host's byte sink members of `HostInterface_t`: `SinkOpen`, `SinkWrite`,
+    host's byte sink members of `HostInterface`: `SinkOpen`, `SinkWrite`,
     `SinkReady` and `SinkClose`. A serial line also receives: it pulls
     received bytes through `SinkRead`, reports its format through
     `SinkSetLine` and reads its modem inputs through `SinkGetLines`. The
-    frontend installs the one `ByteSink_t` through `linapple_set_byte_sink`;
+    frontend installs the one `ByteSink` through `linapple_set_byte_sink`;
     the file or device, its path, its mode (append or overwrite) and its
     flushing belong to the frontend, never to the card. The slot comes from
     the token `SinkOpen` returned, never from the card's own bookkeeping.

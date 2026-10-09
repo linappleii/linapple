@@ -191,7 +191,7 @@ struct MemoryInstance {
   IoFunction io_read[NUM_IO_HANDLERS]{};
   IoFunction io_write[NUM_IO_HANDLERS]{};
 
-  void* slot_parameters[NUM_SLOTS]{};
+  void* slot_parameters[num_slots]{};
   bool last_write_ram = false;
   uint32_t mem_mode = MF_HRAM_BANK2 | MF_SLOTCXROM | MF_HRAM_WRITE;
   bool mode_changing = false;
@@ -200,7 +200,7 @@ struct MemoryInstance {
   uint32_t peripheral_rom_slot = 0;
   uint8_t io_select = 0;
   uint8_t io_select_internal_rom = 0;
-  const uint8_t* expansion_rom[NUM_SLOTS]{};
+  const uint8_t* expansion_rom[num_slots]{};
 
   MemoryInstance() = default;
   ~MemoryInstance();

@@ -969,7 +969,7 @@ TEST_CASE(
   TestConfig_t::Description_t description = machine_with_card(slot);
   description.machine_type = TestConfig_t::machine_apple2;
   // The bridge takes the model from the controller, not from the file.
-  const Apple2Type_t previous = linapple_get_apple2_type();
+  const Apple2Type previous = linapple_get_apple2_type();
   linapple_set_apple2_type(A2TYPE_APPLE2);
   {
     Machine_t machine(description);

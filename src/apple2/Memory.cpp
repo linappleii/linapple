@@ -502,7 +502,7 @@ auto io_read_cxxx(uint16_t programcounter, uint16_t address, uint8_t write,
   if (is_apple2() || sw_slotcxrom(g_active_memory)) {
     if ((address >= 0xC100) && (address <= 0xC7FF)) {
       const uint32_t slot = (address >> 8) & 0xF;
-      if (slot < NUM_SLOTS) {
+      if (slot < num_slots) {
         if ((slot != 3) && g_active_memory->expansion_rom[slot]) {
           g_active_memory->io_select |= 1 << slot;
         } else if ((sw_slotc3rom(g_active_memory)) &&
@@ -519,13 +519,13 @@ auto io_read_cxxx(uint16_t programcounter, uint16_t address, uint8_t write,
     if (g_active_memory->io_select && IO_STROBE) {
       // Enable Peripheral Expansion ROM
       uint32_t slot = 1;
-      for (; slot < NUM_SLOTS; slot++) {
+      for (; slot < num_slots; slot++) {
         if (g_active_memory->io_select & (1 << slot)) {
           break;
         }
       }
 
-      if ((slot < NUM_SLOTS) && g_active_memory->expansion_rom[slot] &&
+      if ((slot < num_slots) && g_active_memory->expansion_rom[slot] &&
           (g_active_memory->peripheral_rom_slot != slot)) {
         if (g_active_memory->cx_rom_peripheral != nullptr) {
           memcpy(g_active_memory->cx_rom_peripheral + FIRMWARE_EXPANSION_SIZE,
@@ -623,7 +623,7 @@ static auto init_io_handlers() -> void {
   g_active_memory->expansion_rom_type = EXP_ROM_NULL;
   g_active_memory->peripheral_rom_slot = 0;
 
-  for (uint32_t i = 0; i < NUM_SLOTS; i++) {
+  for (uint32_t i = 0; i < num_slots; i++) {
     g_active_memory->expansion_rom[i] = nullptr;
   }
 }
@@ -633,7 +633,7 @@ auto register_io_handler(uint32_t slot, IoFunction_t io_read_c0,
                          IoFunction_t io_write_c0, IoFunction_t io_read_cx,
                          IoFunction_t io_write_cx, void* slot_parameter,
                          const uint8_t* expansion_rom) noexcept -> void {
-  if (slot >= NUM_SLOTS) {
+  if (slot >= num_slots) {
     return;
   }
   g_bm_slot_init |= 1U << slot;
@@ -1385,7 +1385,7 @@ auto mem_set_paging(uint16_t programcounter, uint16_t address, uint8_t write,
 }
 
 auto mem_get_slot_parameters(uint32_t slot) noexcept -> void* {
-  if (slot >= NUM_SLOTS) {
+  if (slot >= num_slots) {
     return nullptr;
   }
   return g_active_memory->slot_parameters[slot];

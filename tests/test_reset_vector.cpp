@@ -45,7 +45,7 @@ constexpr uint16_t program_end =
     static_cast<uint16_t>(program_base + program.size());
 
 struct Model_t {
-  Apple2Type_t type;
+  Apple2Type type;
   int config_machine;
 };
 
@@ -58,9 +58,9 @@ constexpr std::array<Model_t, 2> both_models = {{enhanced_2e, ii_plus}};
 // linapple_init, not from the config file, so the guard sets it the same way
 // and puts the previous model back for the next case.
 struct ScopedModel_t {
-  Apple2Type_t previous{linapple_get_apple2_type()};
+  Apple2Type previous{linapple_get_apple2_type()};
 
-  explicit ScopedModel_t(Apple2Type_t type) { linapple_set_apple2_type(type); }
+  explicit ScopedModel_t(Apple2Type type) { linapple_set_apple2_type(type); }
   ~ScopedModel_t() { linapple_set_apple2_type(previous); }
 
   ScopedModel_t(const ScopedModel_t&) = delete;

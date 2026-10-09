@@ -19,8 +19,8 @@ auto period_ns_for(uint32_t cycles, double clock_hz) -> int64_t {
 }
 
 const int64_t NTSC_PERIOD_NS =
-    period_ns_for(NTSC_FRAME_CYCLES, CLOCK_6502_NTSC);
-const int64_t PAL_PERIOD_NS = period_ns_for(PAL_FRAME_CYCLES, CLOCK_6502_PAL);
+    period_ns_for(NTSC_FRAME_CYCLES, clock_6502_ntsc);
+const int64_t PAL_PERIOD_NS = period_ns_for(PAL_FRAME_CYCLES, clock_6502_pal);
 
 // The injected clock. A pacer under test never waits: the fake sleep simply
 // moves the clock to the deadline, which is what a perfect sleep would do.
@@ -75,13 +75,13 @@ TEST_CASE("Frame Pacer: The Period Comes From The Machine") {
   // the 16 ms that used to be hardcoded is short of NTSC by 0.69 ms, which is
   // four percent of the audio the device asks for.
   {
-    ScopedPacerWorld world(NTSC_FRAME_CYCLES, CLOCK_6502_NTSC);
+    ScopedPacerWorld world(NTSC_FRAME_CYCLES, clock_6502_ntsc);
     FramePacer pacer(fake_now, fake_sleep_until);
     CHECK(pacer.frame_period_ns() == NTSC_PERIOD_NS);
     CHECK(pacer.frame_period_ns() / 1000 == 16688);
   }
   {
-    ScopedPacerWorld world(PAL_FRAME_CYCLES, CLOCK_6502_PAL);
+    ScopedPacerWorld world(PAL_FRAME_CYCLES, clock_6502_pal);
     FramePacer pacer(fake_now, fake_sleep_until);
     CHECK(pacer.frame_period_ns() == PAL_PERIOD_NS);
     CHECK(pacer.frame_period_ns() / 1000 == 20000);
@@ -99,7 +99,7 @@ TEST_CASE("Frame Pacer: A Thousand Frames Accumulate Without Drift") {
   // round(period) would drift by the rounding every frame; against a deadline
   // the rounding cancels, so a thousand frames land exactly a thousand
   // periods later however the individual sleeps fall.
-  ScopedPacerWorld world(NTSC_FRAME_CYCLES, CLOCK_6502_NTSC);
+  ScopedPacerWorld world(NTSC_FRAME_CYCLES, clock_6502_ntsc);
   FramePacer pacer(fake_now, fake_sleep_until);
 
   constexpr int frames = 1000;
@@ -120,7 +120,7 @@ TEST_CASE("Frame Pacer: Work Inside The Frame Comes Out Of The Sleep") {
   // A frame that took eight milliseconds to emulate and draw sleeps for the
   // rest of the period, not for a whole one. This is what the flat
   // SDL_Delay(16) could not do: its period was the sleep plus the work.
-  ScopedPacerWorld world(NTSC_FRAME_CYCLES, CLOCK_6502_NTSC);
+  ScopedPacerWorld world(NTSC_FRAME_CYCLES, clock_6502_ntsc);
   FramePacer pacer(fake_now, fake_sleep_until);
 
   constexpr int64_t work_ns = 8000000;
@@ -141,7 +141,7 @@ TEST_CASE("Frame Pacer: Work Inside The Frame Comes Out Of The Sleep") {
 TEST_CASE("Frame Pacer: A Frame Or Two Late Is Caught Up, Not Resynced") {
   // The deadline absorbs a hiccup by not sleeping until it has caught up,
   // which is how the average rate survives a slow frame.
-  ScopedPacerWorld world(NTSC_FRAME_CYCLES, CLOCK_6502_NTSC);
+  ScopedPacerWorld world(NTSC_FRAME_CYCLES, clock_6502_ntsc);
   FramePacer pacer(fake_now, fake_sleep_until);
 
   const int64_t start = g_now_ns;
@@ -162,7 +162,7 @@ TEST_CASE("Frame Pacer: A Frame Or Two Late Is Caught Up, Not Resynced") {
 TEST_CASE("Frame Pacer: Falling Far Behind Starts Again From Now") {
   // Past a few frames the backlog is not worth catching up: running the
   // emulation fast to make it up would raise the pitch of everything queued.
-  ScopedPacerWorld world(NTSC_FRAME_CYCLES, CLOCK_6502_NTSC);
+  ScopedPacerWorld world(NTSC_FRAME_CYCLES, clock_6502_ntsc);
   FramePacer pacer(fake_now, fake_sleep_until);
 
   pacer.wait_for_next_frame();
@@ -184,7 +184,7 @@ TEST_CASE("Frame Pacer: Falling Far Behind Starts Again From Now") {
 TEST_CASE("Frame Pacer: Resync Drops The Deadline") {
   // What turbo does on the way out: the accumulated deadline describes a
   // past that no longer applies, so the next frame starts a new grid.
-  ScopedPacerWorld world(NTSC_FRAME_CYCLES, CLOCK_6502_NTSC);
+  ScopedPacerWorld world(NTSC_FRAME_CYCLES, clock_6502_ntsc);
   FramePacer pacer(fake_now, fake_sleep_until);
 
   pacer.wait_for_next_frame();
@@ -199,14 +199,14 @@ TEST_CASE("Frame Pacer: Resync Drops The Deadline") {
 TEST_CASE("Frame Pacer: A Machine Type Change Takes Effect Next Frame") {
   // The period is read every frame rather than captured, because switching
   // between NTSC and PAL changes it and the loop does not restart.
-  ScopedPacerWorld world(NTSC_FRAME_CYCLES, CLOCK_6502_NTSC);
+  ScopedPacerWorld world(NTSC_FRAME_CYCLES, clock_6502_ntsc);
   FramePacer pacer(fake_now, fake_sleep_until);
 
   pacer.wait_for_next_frame();
   const int64_t after_ntsc = g_now_ns;
 
   system_state.clks_per_frame = PAL_FRAME_CYCLES;
-  current_clk_6502 = CLOCK_6502_PAL;
+  current_clk_6502 = clock_6502_pal;
   pacer.wait_for_next_frame();
   CHECK(g_now_ns - after_ntsc == PAL_PERIOD_NS);
 }

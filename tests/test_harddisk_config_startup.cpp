@@ -141,7 +141,7 @@ auto status_in(int slot) -> HarddiskStatus_t {
 
 auto cards_of(const char* id) -> int {
   int n = 0;
-  for (int slot = 1; slot < static_cast<int>(NUM_SLOTS); ++slot) {
+  for (int slot = 1; slot < static_cast<int>(num_slots); ++slot) {
     n += peripheral_present(slot, id) ? 1 : 0;
   }
   return n;

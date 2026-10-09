@@ -84,7 +84,7 @@ struct Bench_t {
   }
 };
 
-std::array<Bench_t, NUM_SLOTS> g_bench{};
+std::array<Bench_t, num_slots> g_bench{};
 
 auto bench_at(int slot) -> Bench_t& {
   return g_bench.at(static_cast<size_t>(slot));

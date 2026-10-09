@@ -38,5 +38,5 @@
 
 [[gnu::weak]] uint64_t g_cumulative_cycles = 0;
 [[gnu::weak]] SystemState system_state = {};
-[[gnu::weak]] eApple2Type current_apple2_type = A2TYPE_APPLE2EENHANCED;
+[[gnu::weak]] Apple2Type current_apple2_type = A2TYPE_APPLE2EENHANCED;
 [[gnu::weak]] uint32_t g_videotype = 0;

@@ -129,7 +129,7 @@ auto ArgsGetValue(Arg_t* pArg, uint16_t* pAddressValue_, const int nBase)
 
   if (pAddressValue_) {
     *pAddressValue_ = static_cast<uint16_t>(strtoul(src_ptr, &pEnd, nBase) &
-                                            APPLE2_6502_MEM_END);
+                                            apple2_6502_mem_end);
     return true;
   }
 
@@ -334,7 +334,7 @@ auto ArgsRawParse() -> void {
     src_ptr = &(pArg->sArg[0]);
 
     nAddressArg = static_cast<uint16_t>(strtoul(src_ptr, &pEnd, BASE) &
-                                        APPLE2_6502_MEM_END);
+                                        apple2_6502_mem_end);
     nAddressValue = nAddressArg;
 
     bool bFound = false;
@@ -649,7 +649,7 @@ auto ArgsCook(const int nArgs) -> int {
     } else  // not an operator, try (1) address, (2) symbol lookup
     {
       nAddressArg = static_cast<uint16_t>(strtoul(src_ptr, &pEnd2, BASE) &
-                                          APPLE2_6502_MEM_END);
+                                          apple2_6502_mem_end);
 
       if (!(pArg->bType & TYPE_NO_REG)) {
         ArgsGetRegisterValue(pArg, &nAddressArg);

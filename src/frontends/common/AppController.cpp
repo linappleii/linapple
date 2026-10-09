@@ -61,7 +61,7 @@ static auto first_harddisk_from_args(const AppConfig& config) -> int {
 // file a printer sink writes is named from this, never from which card
 // happened to print first.
 static auto lowest_configured_printer_slot() -> int {
-  for (int slot = 1; slot < NUM_SLOTS; ++slot) {
+  for (int slot = 1; slot < num_slots; ++slot) {
     const std::string key = "Slot " + std::to_string(slot);
     std::string name;
     if (!config_load_string("Slots", key.c_str(), &name)) {
@@ -289,12 +289,12 @@ auto app_controller_initialize(AppConfig* config) -> int {
     g_videotype = VT_COLOR_TVEMU;
     system_state.video_scanner_ntsc = false;
     system_state.clks_per_frame = clks_per_frame_pal;
-    current_clk_6502 = CLOCK_6502_PAL;
+    current_clk_6502 = clock_6502_pal;
   } else {
     g_videotype = VT_COLOR_STANDARD;
     system_state.video_scanner_ntsc = true;
     system_state.clks_per_frame = clks_per_frame_ntsc;
-    current_clk_6502 = CLOCK_6502_NTSC;
+    current_clk_6502 = clock_6502_ntsc;
   }
 
   const int config_speed = Configuration::instance().get_int(
@@ -410,7 +410,7 @@ auto app_controller_handle_diagnostic_commands(const AppConfig* config)
     printf("ABI Version: %d\n", card->abi_version);
     printf("Compatible Slots: ");
     bool first = true;
-    for (int i = 0; i < NUM_SLOTS; ++i) {
+    for (int i = 0; i < num_slots; ++i) {
       if ((card->compatible_slots & (1U << static_cast<uint32_t>(i))) == 0) {
         continue;
       }

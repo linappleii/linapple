@@ -412,7 +412,7 @@ TEST_CASE(
 TEST_CASE(
     "Peripheral ABI: GetMachine names the board by model and GetFrameCycles "
     "is the television frame whatever the host's speed setting") {
-  const Apple2Type_t saved_type = current_apple2_type;
+  const Apple2Type saved_type = current_apple2_type;
   const uint32_t saved_frame = system_state.clks_per_frame;
   const uint32_t saved_speed = system_state.speed;
 
@@ -423,15 +423,15 @@ TEST_CASE(
 
   current_apple2_type = A2TYPE_APPLE2;
   CHECK(g_captured_host->GetMachine() == peripheral_machine_apple2);
-  for (Apple2Type_t plus :
+  for (Apple2Type plus :
        {A2TYPE_APPLE2PLUS, A2TYPE_APPLE2JPLUS, A2TYPE_CLONE_PRAVETS82,
         A2TYPE_CLONE_PRAVETS8M, A2TYPE_CLONE_BASE64A}) {
     CAPTURE(static_cast<int>(plus));
     current_apple2_type = plus;
     CHECK(g_captured_host->GetMachine() == peripheral_machine_apple2_plus);
   }
-  for (Apple2Type_t iie : {A2TYPE_APPLE2E, A2TYPE_APPLE2EENHANCED,
-                           A2TYPE_CLONE_PRAVETS8C, A2TYPE_CLONE_TK3000E}) {
+  for (Apple2Type iie : {A2TYPE_APPLE2E, A2TYPE_APPLE2EENHANCED,
+                         A2TYPE_CLONE_PRAVETS8C, A2TYPE_CLONE_TK3000E}) {
     CAPTURE(static_cast<int>(iie));
     current_apple2_type = iie;
     CHECK(g_captured_host->GetMachine() == peripheral_machine_apple2e);

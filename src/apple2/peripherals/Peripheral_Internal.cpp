@@ -64,7 +64,7 @@ auto peripheral_requested_slot() -> int { return requested_slot; }
 
 static auto slot_takes_card(const SS_PERIPHERAL_MANIFEST& manifest,
                             const Peripheral_t& card, int slot) -> bool {
-  if (slot < 1 || slot >= static_cast<int>(NUM_SLOTS)) {
+  if (slot < 1 || slot >= static_cast<int>(num_slots)) {
     return false;
   }
   if (manifest.peripherals[slot].name[0] != '\0') {
@@ -91,9 +91,9 @@ static auto apply_run_request(const std::string& id) -> void {
   SS_PERIPHERAL_MANIFEST manifest{};
   peripheral_get_manifest(&manifest);
   const int preferred =
-      (card->default_slot >= 1 && card->default_slot < NUM_SLOTS)
+      (card->default_slot >= 1 && card->default_slot < num_slots)
           ? card->default_slot
-          : static_cast<int>(NUM_SLOTS) - 1;
+          : static_cast<int>(num_slots) - 1;
   if (slot_takes_card(manifest, *card, preferred)) {
     if (peripheral_register(card, preferred) == 0) {
       requested_slot = preferred;
@@ -233,7 +233,7 @@ auto peripheral_register_internal() -> void {
     config_load_int(cfg_sec_configuration, cfg_hdd_enabled, &harddisk_key);
   }
 
-  for (int slot = 1; slot < NUM_SLOTS; ++slot) {
+  for (int slot = 1; slot < num_slots; ++slot) {
     constexpr size_t key_size = 16;
     char key[key_size];
     snprintf(key, sizeof(key), "Slot %d", slot);
@@ -311,7 +311,7 @@ auto linapple_list_hardware() -> void {
       printf("  Desc:   %s\n", p->description);
       printf("  Slots:  ");
       bool first = true;
-      for (int i = 0; i < NUM_SLOTS; ++i) {
+      for (int i = 0; i < num_slots; ++i) {
         if ((p->compatible_slots & (1U << static_cast<uint32_t>(i))) != 0U) {
           if (!first) {
             printf(", ");
@@ -335,7 +335,7 @@ auto linapple_list_hardware() -> void {
       printf("  Desc:   %s\n", plugin.p->description);
       printf("  Slots:  ");
       bool first = true;
-      for (int i = 0; i < NUM_SLOTS; ++i) {
+      for (int i = 0; i < num_slots; ++i) {
         if ((plugin.p->compatible_slots & (1U << static_cast<uint32_t>(i))) !=
             0U) {
           if (!first) {

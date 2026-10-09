@@ -25,7 +25,7 @@
 namespace {
 
 struct ScopedMemoryContext_t {
-  eApple2Type orig_type{current_apple2_type};
+  Apple2Type orig_type{current_apple2_type};
 
   ScopedMemoryContext_t() {
     current_apple2_type = A2TYPE_APPLE2EENHANCED;

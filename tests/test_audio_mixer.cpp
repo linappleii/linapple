@@ -324,7 +324,7 @@ TEST_CASE("Audio Mixer: A CPU-Clocked Source Follows The Video Standard") {
   // is a different length of time on an NTSC machine and a PAL one, and only
   // the mixer is in a position to know which.
   constexpr uint32_t output_rate = 48000;
-  MixerFixture_t mixer(output_rate, CLOCK_6502_NTSC);
+  MixerFixture_t mixer(output_rate, clock_6502_ntsc);
 
   const PeripheralAudioInfo_t info = cpu_clocked_info(1, 1, 1.0f);
   audio_mixer_register_source(0, SOURCE_ID, &info);
@@ -341,7 +341,7 @@ TEST_CASE("Audio Mixer: A CPU-Clocked Source Follows The Video Standard") {
   CHECK(produced <= 802);
 
   mixer.settle();
-  mixer.set_clock(CLOCK_6502_PAL);
+  mixer.set_clock(clock_6502_pal);
   audio_mixer_register_source(0, SOURCE_ID, &info);
   mixer.upload_mono(0, frame.data(), frame.size());
   out = mixer.drain(2048);
@@ -369,9 +369,9 @@ TEST_CASE("Audio Mixer: A Divisor Of Eight At The NTSC Clock") {
   constexpr uint32_t output_rate = 48000;
   constexpr uint32_t divisor = 8;
   constexpr uint32_t voices = 6;
-  const double source_rate = CLOCK_6502_NTSC / divisor;
+  const double source_rate = clock_6502_ntsc / divisor;
 
-  MixerFixture_t mixer(output_rate, CLOCK_6502_NTSC);
+  MixerFixture_t mixer(output_rate, clock_6502_ntsc);
   const PeripheralAudioInfo_t info = cpu_clocked_info(divisor, voices, 1.0f);
 
   // One slot per measurement, because a resampler carries its fractional
@@ -401,9 +401,9 @@ TEST_CASE("Audio Mixer: A 1 kHz Tone Keeps Its Pitch At Every Device Rate") {
   // would put out a different note.
   for (uint32_t rate : {22050U, 48000U, 192000U}) {
     for (int source_is_cpu_clocked : {0, 1}) {
-      MixerFixture_t mixer(rate, CLOCK_6502_NTSC);
+      MixerFixture_t mixer(rate, clock_6502_ntsc);
       const double source_rate =
-          (source_is_cpu_clocked != 0) ? CLOCK_6502_NTSC : 44100.0;
+          (source_is_cpu_clocked != 0) ? clock_6502_ntsc : 44100.0;
       const PeripheralAudioInfo_t info = (source_is_cpu_clocked != 0)
                                              ? cpu_clocked_info(1, 1, 1.0f)
                                              : absolute_info(44100, 1, 1.0f);
@@ -441,7 +441,7 @@ TEST_CASE("Audio Mixer: A Source At The Device Rate Passes Through Untouched") {
   // Identity is the one ratio where the resampler must be invisible: sample
   // for sample, count exact, with only the single conversion applied.
   constexpr uint32_t output_rate = 48000;
-  MixerFixture_t mixer(output_rate, CLOCK_6502_NTSC);
+  MixerFixture_t mixer(output_rate, clock_6502_ntsc);
 
   const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0f);
   audio_mixer_register_source(0, SOURCE_ID, &info);
@@ -468,9 +468,9 @@ TEST_CASE("Audio Mixer: Frame Counts Follow The Ratio In Both Directions") {
   // holding when the upload ends.
   for (uint32_t rate : {22050U, 48000U, 192000U}) {
     for (int source_is_cpu_clocked : {0, 1}) {
-      MixerFixture_t mixer(rate, CLOCK_6502_NTSC);
+      MixerFixture_t mixer(rate, clock_6502_ntsc);
       const double source_rate =
-          (source_is_cpu_clocked != 0) ? CLOCK_6502_NTSC : 44100.0;
+          (source_is_cpu_clocked != 0) ? clock_6502_ntsc : 44100.0;
       const PeripheralAudioInfo_t info = (source_is_cpu_clocked != 0)
                                              ? cpu_clocked_info(1, 1, 1.0f)
                                              : absolute_info(44100, 1, 1.0f);
@@ -498,7 +498,7 @@ TEST_CASE("Audio Mixer: Every Channel Of A Source Advances Together") {
   // resampler advances identically. A six-channel source split three to the
   // left and three to the right must therefore put out two identical sides.
   constexpr uint32_t output_rate = 48000;
-  MixerFixture_t mixer(output_rate, CLOCK_6502_NTSC);
+  MixerFixture_t mixer(output_rate, clock_6502_ntsc);
 
   const PeripheralAudioInfo_t six = absolute_info(44100, 6, 1.0f);
   const PeripheralAudioInfo_t one = absolute_info(44100, 1, 1.0f);
@@ -550,7 +550,7 @@ TEST_CASE("Audio Mixer: Every Channel Of A Source Advances Together") {
 
 TEST_CASE("Audio Mixer: One Clip, At The Very End") {
   constexpr uint32_t output_rate = 48000;
-  MixerFixture_t mixer(output_rate, CLOCK_6502_NTSC);
+  MixerFixture_t mixer(output_rate, clock_6502_ntsc);
   ScopedTap_t tap;
 
   const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0f);
@@ -602,7 +602,7 @@ TEST_CASE("Audio Mixer: A Source's Peak Sets Its Default Gain") {
   // mixer did not attenuate by 1 / peak_magnitude, and 0.5 is exactly the
   // old 16384-times-2 full-scale peak.
   constexpr uint32_t output_rate = 48000;
-  MixerFixture_t mixer(output_rate, CLOCK_6502_NTSC);
+  MixerFixture_t mixer(output_rate, clock_6502_ntsc);
   ScopedTap_t tap;
 
   const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 2.0f);
@@ -634,7 +634,7 @@ TEST_CASE("Audio Mixer: A Source's Fan-In Sets Its Default Gain Too") {
   // the clip rail a source that is three times too hot reads exactly like one
   // that is correct, so a full-scale golden would pass either way.
   constexpr uint32_t output_rate = 48000;
-  MixerFixture_t mixer(output_rate, CLOCK_6502_NTSC);
+  MixerFixture_t mixer(output_rate, clock_6502_ntsc);
 
   const PeripheralAudioInfo_t six = split_pan_info(output_rate, 6, 1.0f);
   audio_mixer_register_source(0, SOURCE_ID, &six);
@@ -656,7 +656,7 @@ TEST_CASE("Audio Mixer: A Part-Panned Lone Channel Is Not Amplified") {
   // between the sides sums to less than unity on both, and dividing by that
   // would turn the rule into a boost the source never asked for.
   constexpr uint32_t output_rate = 48000;
-  MixerFixture_t mixer(output_rate, CLOCK_6502_NTSC);
+  MixerFixture_t mixer(output_rate, clock_6502_ntsc);
 
   PeripheralAudioInfo_t one = absolute_info(output_rate, 1, 1.0f);
   one.channels[0].default_pan_left = 0.5f;
@@ -677,7 +677,7 @@ TEST_CASE("Audio Mixer: A Part-Panned Lone Channel Is Not Amplified") {
 
 TEST_CASE("Audio Mixer: An Unchanged Re-Announcement Changes Nothing") {
   constexpr uint32_t output_rate = 48000;
-  MixerFixture_t mixer(output_rate, CLOCK_6502_NTSC);
+  MixerFixture_t mixer(output_rate, clock_6502_ntsc);
 
   const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0f);
   audio_mixer_register_source(1, SOURCE_ID, &info);
@@ -733,7 +733,7 @@ TEST_CASE("Audio Mixer: The Backlog Skip Is Measured In Milliseconds") {
   // that or the measurement becomes capacity-limited instead; 150 ms fits.
   constexpr size_t upload_ms = 150;
   for (uint32_t rate : {48000U, 96000U}) {
-    MixerFixture_t mixer(rate, CLOCK_6502_NTSC);
+    MixerFixture_t mixer(rate, clock_6502_ntsc);
     const PeripheralAudioInfo_t info = absolute_info(rate, 1, 1.0f);
     audio_mixer_register_source(0, SOURCE_ID, &info);
 
@@ -771,7 +771,7 @@ TEST_CASE("Audio Mixer: The Ring's Capacity Is Measured In Milliseconds Too") {
   // down to an even sample count because several length computations mask the
   // low bit, so at 44100 it is 16316 samples and not 16317.
   for (uint32_t rate : {44100U, 48000U}) {
-    MixerFixture_t mixer(rate, CLOCK_6502_NTSC);
+    MixerFixture_t mixer(rate, clock_6502_ntsc);
     const PeripheralAudioInfo_t info = absolute_info(rate, 1, 1.0f);
     audio_mixer_register_source(0, SOURCE_ID, &info);
 
@@ -803,7 +803,7 @@ TEST_CASE("Audio Mixer: An Underrun Fades Rather Than Repeating") {
   // the last frame walks to zero at a fixed step instead of clicking or
   // repeating. The code fades rather than holding, and the fade is pinned.
   constexpr uint32_t output_rate = 48000;
-  MixerFixture_t mixer(output_rate, CLOCK_6502_NTSC);
+  MixerFixture_t mixer(output_rate, clock_6502_ntsc);
 
   const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0f);
   audio_mixer_register_source(0, SOURCE_ID, &info);
@@ -834,7 +834,7 @@ TEST_CASE("Audio Mixer: More Than The Ring Holds Is Dropped At The Write End") {
   // is, because the alternative -- overwriting the reader's backlog -- is not
   // something a single-producer single-consumer ring can do safely.
   constexpr uint32_t output_rate = 48000;
-  MixerFixture_t mixer(output_rate, CLOCK_6502_NTSC);
+  MixerFixture_t mixer(output_rate, clock_6502_ntsc);
   const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0f);
   audio_mixer_register_source(0, SOURCE_ID, &info);
 
@@ -872,7 +872,7 @@ TEST_CASE("Audio Mixer: More Than The Ring Holds Is Dropped At The Write End") {
 
 TEST_CASE("Audio Mixer: Malformed Uploads Are Refused") {
   constexpr uint32_t output_rate = 48000;
-  MixerFixture_t mixer(output_rate, CLOCK_6502_NTSC);
+  MixerFixture_t mixer(output_rate, clock_6502_ntsc);
   const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0f);
   audio_mixer_register_source(0, SOURCE_ID, &info);
 
@@ -901,7 +901,7 @@ TEST_CASE("Audio Mixer: Malformed Uploads Are Refused") {
 
 TEST_CASE("Audio Mixer: Slots Outside The Range Are Refused") {
   constexpr uint32_t output_rate = 48000;
-  MixerFixture_t mixer(output_rate, CLOCK_6502_NTSC);
+  MixerFixture_t mixer(output_rate, clock_6502_ntsc);
   const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0f);
 
   audio_mixer_register_source(-1, SOURCE_ID, &info);
@@ -940,7 +940,7 @@ TEST_CASE("Audio Mixer: An Out-Of-Range Pan Is Stored, Not Clamped") {
   // limit in the chain is the single conversion at the end. A frontend that
   // wants a bounded control has to bound it itself.
   constexpr uint32_t output_rate = 48000;
-  MixerFixture_t mixer(output_rate, CLOCK_6502_NTSC);
+  MixerFixture_t mixer(output_rate, clock_6502_ntsc);
   const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0f);
   audio_mixer_register_source(0, SOURCE_ID, &info);
 
@@ -980,7 +980,7 @@ TEST_CASE("Audio Mixer: Draining Without A Mixer Is Silence") {
 TEST_CASE("Audio Mixer: A Zero Output Rate Produces No Output") {
   // A device that reports no rate at all cannot be resampled to, so the
   // mixer keeps nothing and plays nothing rather than dividing by it.
-  MixerFixture_t mixer(0, CLOCK_6502_NTSC);
+  MixerFixture_t mixer(0, clock_6502_ntsc);
   const PeripheralAudioInfo_t info = absolute_info(48000, 1, 1.0f);
   audio_mixer_register_source(0, SOURCE_ID, &info);
 
@@ -1133,7 +1133,7 @@ TEST_CASE("Audio Mixer: A Paced Loop Keeps The Device Fed") {
   // frames every 21.333 ms. At that period production equals consumption to
   // the frame, and every callback after the first is served in full.
   constexpr uint32_t output_rate = 48000;
-  MixerFixture_t mixer(output_rate, CLOCK_6502_NTSC);
+  MixerFixture_t mixer(output_rate, clock_6502_ntsc);
   register_cpu_clocked_source(0);
 
   TwoClockRun_t run(output_rate, 0);
@@ -1173,7 +1173,7 @@ TEST_CASE("Audio Mixer: An Unpaced Loop Starves The Device") {
   // device consumes. No amount of buffering in the mixer can invent the
   // difference: a deeper cushion only postpones the first gap.
   constexpr uint32_t output_rate = 48000;
-  MixerFixture_t mixer(output_rate, CLOCK_6502_NTSC);
+  MixerFixture_t mixer(output_rate, clock_6502_ntsc);
   register_cpu_clocked_source(0);
 
   // Twenty milliseconds a frame: fifty a second where NTSC is 59.92.
@@ -1196,7 +1196,7 @@ TEST_CASE("Audio Mixer: A Jittering Producer At The Right Average Rate") {
   // has no margin under it, so this is where the residual fade is measured.
   constexpr uint32_t output_rate = 48000;
   constexpr int64_t jitter_ns = 2000000;
-  MixerFixture_t mixer(output_rate, CLOCK_6502_NTSC);
+  MixerFixture_t mixer(output_rate, clock_6502_ntsc);
   register_cpu_clocked_source(0);
 
   TwoClockRun_t run(output_rate, 0, NTSC_FRAME_PERIOD_NS, jitter_ns);

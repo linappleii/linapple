@@ -139,12 +139,12 @@ extern bool full_speed;
 extern double current_clk_6502;
 
 using LinappleVideoCallback = void (*)(const uint32_t* pixels, int width,
-                                         int height, int pitch);
+                                       int height, int pitch);
 using FrontendAudioChannelCallback = void (*)(const char* peripheral_id,
-                                                int slot,
-                                                const float* const* channels,
-                                                size_t num_channels,
-                                                size_t num_samples);
+                                              int slot,
+                                              const float* const* channels,
+                                              size_t num_channels,
+                                              size_t num_samples);
 using FrontendAudioSourceRegisterCallback = void (*)(
     int slot, const char* peripheral_id, const PeripheralAudioInfo_t* info);
 using FrontendAudioSourceUnregisterCallback = void (*)(int slot);
@@ -188,10 +188,10 @@ auto linapple_toggle_turbo() noexcept -> bool;
 auto linapple_is_full_speed() noexcept -> bool;
 auto linapple_get_app_title() noexcept -> const char*;
 auto linapple_get_clock_hz() noexcept -> double;
-auto linapple_get_apple2_type() noexcept -> Apple2Type_t;
-auto linapple_set_apple2_type(Apple2Type_t type) noexcept -> void;
-auto linapple_get_language() noexcept -> Apple2Language_t;
-auto linapple_set_language(Apple2Language_t lang) noexcept -> void;
+auto linapple_get_apple2_type() noexcept -> Apple2Type;
+auto linapple_set_apple2_type(Apple2Type type) noexcept -> void;
+auto linapple_get_language() noexcept -> Apple2Language;
+auto linapple_set_language(Apple2Language lang) noexcept -> void;
 
 auto peripheral_manager_init() -> void;
 auto peripheral_manager_reset() -> void;

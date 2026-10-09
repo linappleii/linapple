@@ -516,7 +516,7 @@ auto ParseSymbolTable(const std::string& pPathFileName,
       //    . SYMBOL  =$0000; Comment
       //    . SYMBOL  =$FFFF; Comment
       //
-      uint32_t address = APPLE2_6502_MEM_END + 1;  // default to invalid address
+      uint32_t address = apple2_6502_mem_end + 1;  // default to invalid address
       char sName[MAX_SYMBOLS_LEN + 1] = "";
 
       const int MAX_LINE = 256;
@@ -557,7 +557,7 @@ auto ParseSymbolTable(const std::string& pPathFileName,
       // SymbolOffset
       address += nSymbolOffset;
 
-      if ((address > APPLE2_6502_MEM_END) || (sName[0] == 0)) {
+      if ((address > apple2_6502_mem_end) || (sName[0] == 0)) {
         continue;
       }
 
@@ -600,9 +600,9 @@ auto ParseSymbolTable(const std::string& pPathFileName,
                           // pause
                           /*
                                                           ConsolePrintFormat( sText, " %sWarning:
-                             %sAddress already has symbol Name%s (%s%s%s): %s%s"                   , CHC_WARNING                   ,
+                             %sAddress already has symbol Name%s (%s%s%s): %s%s" , CHC_WARNING ,
                              CHC_INFO                   , CHC_ARG_SEP                   ,
-                             CHC_STRING                   , g_symbol_table_names[ iTable ]                   ,
+                             CHC_STRING                   , g_symbol_table_names[ iTable ] ,
                              CHC_DEFAULT                   , CHC_SYMBOL                   ,
                              pSymbolPrev
                                                           );
@@ -684,7 +684,7 @@ auto CmdSymbolsLoad(int nArgs) -> Update_t {
         if (iArg <= nArgs) {
           nOffsetAddr = g_args[iArg].nValue;
           if ((nOffsetAddr < DBG_6502_MEM_BEGIN) ||
-              (nOffsetAddr > APPLE2_6502_MEM_END)) {
+              (nOffsetAddr > apple2_6502_mem_end)) {
             nOffsetAddr = 0;
           }
         }

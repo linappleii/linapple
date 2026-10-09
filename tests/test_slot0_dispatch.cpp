@@ -65,7 +65,7 @@ auto joystick_descriptor() -> Peripheral_t* {
 
 // Slot 0 fixture managing registration and teardown of keyboard and joystick.
 struct Slot0_t {
-  eApple2Type saved_type{current_apple2_type};
+  Apple2Type saved_type{current_apple2_type};
   // A fresh CPU context so the I/O bridge's cycle accounting starts at zero
   // and the counter the probes set is the one the card reads.
   CpuInstance_t* saved_cpu{cpu_get_active_context()};

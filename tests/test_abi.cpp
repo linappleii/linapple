@@ -207,7 +207,7 @@ TEST_CASE(
 
   REQUIRE(g_captured_host != nullptr);
   REQUIRE(g_captured_host->GetClockHz != nullptr);
-  CHECK(g_captured_host->GetClockHz() == doctest::Approx(CLOCK_6502_NTSC));
+  CHECK(g_captured_host->GetClockHz() == doctest::Approx(clock_6502_ntsc));
   g_captured_host->SetConfig("section", "key", "value");
   g_captured_host->NotifyStatusChanged(2);
   g_captured_host->NotifyActivityChanged(2, true);
@@ -309,7 +309,9 @@ TEST_CASE("ABI: [ABI-10] peripheral_command is thread-safe") {
       }
     });
   }
-  for (auto& t : threads) t.join();
+  for (auto& t : threads) {
+    t.join();
+  }
 
   peripheral_manager_think(0);
   CHECK(g_cmd_call_count == THREADS * CMDS_PER_THREAD);

@@ -10,7 +10,7 @@
 namespace {
 
 struct ScopedMemoryContext_t {
-  eApple2Type orig_type{current_apple2_type};
+  Apple2Type orig_type{current_apple2_type};
 
   ScopedMemoryContext_t() {
     current_apple2_type = A2TYPE_APPLE2EENHANCED;
@@ -43,11 +43,15 @@ static void* Mock1_Init(int slot, HostInterface_t* host) {
   return (void*)0x1111;
 }
 static void Mock1_Reset(void* instance) {
-  if (instance == (void*)0x1111) p1_resets++;
+  if (instance == (void*)0x1111) {
+    p1_resets++;
+  }
 }
 static void Mock1_Think(void* instance, uint32_t cycles) {
   (void)cycles;
-  if (instance == (void*)0x1111) p1_thinks++;
+  if (instance == (void*)0x1111) {
+    p1_thinks++;
+  }
 }
 
 static void* Mock2_Init(int slot, HostInterface_t* host) {
@@ -56,11 +60,15 @@ static void* Mock2_Init(int slot, HostInterface_t* host) {
   return (void*)0x2222;
 }
 static void Mock2_Reset(void* instance) {
-  if (instance == (void*)0x2222) p2_resets++;
+  if (instance == (void*)0x2222) {
+    p2_resets++;
+  }
 }
 static void Mock2_Think(void* instance, uint32_t cycles) {
   (void)cycles;
-  if (instance == (void*)0x2222) p2_thinks++;
+  if (instance == (void*)0x2222) {
+    p2_thinks++;
+  }
 }
 
 static Peripheral_t g_mock1 = {

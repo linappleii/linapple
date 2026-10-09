@@ -498,7 +498,7 @@ auto check_repeat_from_press(HeadlessHarness_t& harness,
 // The model is process-wide and a harness-built machine leaves it behind.
 struct EnhancedIIe_t {
   struct Model_t {
-    Apple2Type_t saved = current_apple2_type;
+    Apple2Type saved = current_apple2_type;
     Model_t() { current_apple2_type = A2TYPE_APPLE2EENHANCED; }
     ~Model_t() { current_apple2_type = saved; }
     Model_t(const Model_t&) = delete;
@@ -1549,7 +1549,7 @@ namespace {
 // The national character ROM is chosen when the core comes up, so the
 // language is set before the machine.
 struct GermanCharacterRom_t {
-  Apple2Language_t saved = linapple_get_language();
+  Apple2Language saved = linapple_get_language();
   GermanCharacterRom_t() { linapple_set_language(A2LANG_DE); }
   ~GermanCharacterRom_t() { linapple_set_language(saved); }
   GermanCharacterRom_t(const GermanCharacterRom_t&) = delete;

@@ -31,8 +31,8 @@ using Logger::error;
 
 const char* app_title = title_apple_2e_enhanced;
 
-eApple2Type current_apple2_type = A2TYPE_APPLE2EENHANCED;
-eApple2Language current_language = A2LANG_US;
+Apple2Type current_apple2_type = A2TYPE_APPLE2EENHANCED;
+Apple2Language current_language = A2LANG_US;
 
 uint32_t emul_msec = 0;
 bool full_speed = false;
@@ -65,7 +65,7 @@ SystemState system_state = {
     false,
 };
 
-double current_clk_6502 = CLOCK_6502;
+double current_clk_6502 = clock_6502;
 
 auto get_title_apple_2() noexcept -> const char* { return title_apple_2; }
 auto get_title_apple_2_plus() noexcept -> const char* {
@@ -493,12 +493,11 @@ auto linapple_get_frame_cycles() noexcept -> uint32_t {
   }
   double multiplier = 1.0;
   if (system_state.speed < emulation_speed_normal) {
-    multiplier = speed_subnormal_base +
-                 (static_cast<double>(system_state.speed) *
-                  speed_subnormal_scale);
+    multiplier =
+        speed_subnormal_base +
+        (static_cast<double>(system_state.speed) * speed_subnormal_scale);
   } else {
-    multiplier = static_cast<double>(system_state.speed) /
-                 speed_normal_divisor;
+    multiplier = static_cast<double>(system_state.speed) / speed_normal_divisor;
   }
   return static_cast<uint32_t>(static_cast<double>(base_cycles) * multiplier);
 }
@@ -524,19 +523,19 @@ auto linapple_get_app_title() noexcept -> const char* { return app_title; }
 
 auto linapple_get_clock_hz() noexcept -> double { return current_clk_6502; }
 
-auto linapple_get_apple2_type() noexcept -> Apple2Type_t {
+auto linapple_get_apple2_type() noexcept -> Apple2Type {
   return current_apple2_type;
 }
 
-auto linapple_set_apple2_type(Apple2Type_t type) noexcept -> void {
+auto linapple_set_apple2_type(Apple2Type type) noexcept -> void {
   current_apple2_type = type;
 }
 
-auto linapple_get_language() noexcept -> Apple2Language_t {
+auto linapple_get_language() noexcept -> Apple2Language {
   return current_language;
 }
 
-auto linapple_set_language(Apple2Language_t lang) noexcept -> void {
+auto linapple_set_language(Apple2Language lang) noexcept -> void {
   current_language = lang;
 }
 

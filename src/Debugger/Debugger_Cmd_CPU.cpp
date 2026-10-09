@@ -106,8 +106,8 @@ auto CmdGo(int nArgs, const bool bFullSpeed) -> Update_t {
         if (nArgs > 3) {
           nLen = g_args[iArg + 2].nValue;
           nEnd = g_debug_skip_start + nLen;
-          if (nEnd > static_cast<int>(APPLE2_6502_MEM_END)) {
-            nEnd = APPLE2_6502_MEM_END + 1;
+          if (nEnd > static_cast<int>(apple2_6502_mem_end)) {
+            nEnd = apple2_6502_mem_end + 1;
           }
         } else {
           return Help_Arg_1(kCmdGo);
@@ -126,7 +126,7 @@ auto CmdGo(int nArgs, const bool bFullSpeed) -> Update_t {
       nLen = -nLen;
     }
     g_debug_skip_len = nLen;
-    g_debug_skip_len &= APPLE2_6502_MEM_END;
+    g_debug_skip_len &= apple2_6502_mem_end;
   }
 
   //  uint16_t nAddressSymbol = 0;
@@ -341,7 +341,7 @@ auto CmdJSR(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_JSR);
   }
 
-  uint16_t address = g_args[1].nValue & APPLE2_6502_MEM_END;
+  uint16_t address = g_args[1].nValue & apple2_6502_mem_end;
 
   // Mark Stack Page as dirty
   *(memdirty + (cpu_get_registers()->sp >> 8)) = 1;

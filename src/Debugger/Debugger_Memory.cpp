@@ -289,7 +289,7 @@ auto CmdMemoryFill(int nArgs) -> Update_t {
   if (nArgs == 3) {
     nAddressStart = g_args[1].nValue;
     nAddressEnd = g_args[2].nValue;
-    nAddressLen = std::min(static_cast<int>(APPLE2_6502_MEM_END),
+    nAddressLen = std::min(static_cast<int>(apple2_6502_mem_end),
                            nAddressEnd - nAddressStart + 1);
   } else {
     RangeType_t eRange;
@@ -303,7 +303,7 @@ auto CmdMemoryFill(int nArgs) -> Update_t {
     }
   }
 
-  if ((nAddressLen > 0) && (nAddressEnd <= APPLE2_6502_MEM_END)) {
+  if ((nAddressLen > 0) && (nAddressEnd <= apple2_6502_mem_end)) {
     MemMarkDirty(nAddressStart, nAddressEnd);
 
     nValue = g_args[nArgs].nValue & 0xFF;
@@ -509,9 +509,9 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
   if (hFile) {
     size_t nFileBytes = debugger_get_file_size(hFile.get());
 
-    if (nFileBytes > APPLE2_6502_MEM_END) {
+    if (nFileBytes > apple2_6502_mem_end) {
       nFileBytes =
-          APPLE2_6502_MEM_END + 1;  // Bank-switched RAM/ROM is only 16-bit
+          apple2_6502_mem_end + 1;  // Bank-switched RAM/ROM is only 16-bit
     }
 
     // Caller didn't specify how many bytes to read, default to them all
@@ -581,7 +581,7 @@ auto CmdMemoryMove(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_MEMORY_MOVE);
   }
 
-  if ((nAddressLen > 0) && (nAddressEnd <= APPLE2_6502_MEM_END)) {
+  if ((nAddressLen > 0) && (nAddressEnd <= apple2_6502_mem_end)) {
     MemMarkDirty(nAddressStart, nAddressEnd);
 
     //      uint8_t *src_ptr = mem + nAddressStart;
@@ -701,7 +701,7 @@ auto CmdMemorySave(int nArgs) -> Update_t {
       return Help_Arg_1(CMD_MEMORY_SAVE);
     }
 
-    if ((nAddressLen) && (nAddressEnd <= APPLE2_6502_MEM_END)) {
+    if ((nAddressLen) && (nAddressEnd <= apple2_6502_mem_end)) {
       if (!bHaveFileName) {
         char sMemoryLoadSaveFileName[path_max_len];
         if (!bBankSpecified) {

@@ -710,8 +710,8 @@ constexpr uint8_t last_control_byte = 0x1F;
 
 // The model is process-wide and a harness-built machine leaves it behind.
 struct Model_t {
-  Apple2Type_t saved = current_apple2_type;
-  explicit Model_t(Apple2Type_t type) { current_apple2_type = type; }
+  Apple2Type saved = current_apple2_type;
+  explicit Model_t(Apple2Type type) { current_apple2_type = type; }
   ~Model_t() { current_apple2_type = saved; }
   Model_t(const Model_t&) = delete;
   auto operator=(const Model_t&) -> Model_t& = delete;
@@ -730,7 +730,7 @@ struct TuiKeyboard_t {
 
   explicit TuiKeyboard_t(
       const TestFixtures::ScopedTestConfig_t::Description_t& description,
-      Apple2Type_t type = A2TYPE_APPLE2EENHANCED)
+      Apple2Type type = A2TYPE_APPLE2EENHANCED)
       : model(type), machine(description) {
     keyboard_set_caps(true);
     keyboard_set_caps_mode(caps_mode_emulated);

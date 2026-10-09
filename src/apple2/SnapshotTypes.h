@@ -111,7 +111,7 @@ using SS_PERIPHERAL_INFO = SsPeripheralInfo_t;
 
 struct SsPeripheralManifest_t {
   SsUnitHdr_t unit_hdr;
-  SsPeripheralInfo_t peripherals[NUM_SLOTS];
+  SsPeripheralInfo_t peripherals[num_slots];
 };
 using SS_PERIPHERAL_MANIFEST = SsPeripheralManifest_t;
 

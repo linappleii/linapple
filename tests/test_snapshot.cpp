@@ -169,7 +169,7 @@ struct FakeCard_t {
   size_t last_load_size = 0;
 };
 
-std::array<FakeCard_t*, NUM_SLOTS> g_fake_cards{};
+std::array<FakeCard_t*, num_slots> g_fake_cards{};
 
 auto fake_init(int slot, HostInterface_t* host) -> void* {
   (void)host;
@@ -574,7 +574,7 @@ constexpr uint32_t minimal_aws_crc32 = 0x1DFDECD4;
 // The model is process-wide and a harness-built machine leaves it behind.
 struct EnhancedIIe_t {
   struct Model_t {
-    Apple2Type_t saved = current_apple2_type;
+    Apple2Type saved = current_apple2_type;
     Model_t() { current_apple2_type = A2TYPE_APPLE2EENHANCED; }
     ~Model_t() { current_apple2_type = saved; }
     Model_t(const Model_t&) = delete;

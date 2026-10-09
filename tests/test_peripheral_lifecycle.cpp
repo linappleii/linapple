@@ -796,7 +796,7 @@ TEST_CASE(
   CHECK_FALSE(peripheral_activity_poll(slot));
 
   CHECK_FALSE(peripheral_activity_poll(-1));
-  CHECK_FALSE(peripheral_activity_poll(static_cast<int>(NUM_SLOTS)));
+  CHECK_FALSE(peripheral_activity_poll(static_cast<int>(num_slots)));
 
   g_activity_card_host->NotifyActivityChanged(slot, true);
   peripheral_manager_reset();
@@ -814,7 +814,7 @@ TEST_CASE(
   CHECK(linapple_requested_slot() == -1);
   SS_PERIPHERAL_MANIFEST manifest;
   peripheral_get_manifest(&manifest);
-  for (int slot = 1; slot < static_cast<int>(NUM_SLOTS); ++slot) {
+  for (int slot = 1; slot < static_cast<int>(num_slots); ++slot) {
     CAPTURE(slot);
     CHECK(manifest.peripherals[slot].name[0] == '\0');
   }
@@ -830,7 +830,7 @@ constexpr const char* harddisk_id = "linapple.harddisk";
 // model here and puts the previous one back.
 class ScopedMachineType_t {
  public:
-  explicit ScopedMachineType_t(Apple2Type_t type)
+  explicit ScopedMachineType_t(Apple2Type type)
       : previous_(linapple_get_apple2_type()) {
     linapple_set_apple2_type(type);
   }
@@ -841,7 +841,7 @@ class ScopedMachineType_t {
   auto operator=(ScopedMachineType_t&&) -> ScopedMachineType_t& = delete;
 
  private:
-  Apple2Type_t previous_;
+  Apple2Type previous_;
 };
 
 auto slot_entry(int slot) -> std::string {
@@ -1072,7 +1072,7 @@ TEST_CASE(
     "internal firmware owns, and takes it on a II Plus") {
   struct Model_t {
     int config_type;
-    Apple2Type_t type;
+    Apple2Type type;
     int expected_slot;
   };
   const std::array<Model_t, 3> models = {

@@ -11,7 +11,7 @@
 #include "core/BasicLiveSync.h"
 #include "doctest.h"
 
-extern eApple2Type current_apple2_type;
+extern Apple2Type current_apple2_type;
 
 namespace {
 
@@ -40,7 +40,7 @@ static std::array<uint8_t, test_mem_size> mock_ram{};
 
 struct ScopedMemoryContext_t {
   uint8_t* original_mem{mem};
-  eApple2Type original_type{current_apple2_type};
+  Apple2Type original_type{current_apple2_type};
 
   ScopedMemoryContext_t() = default;
 

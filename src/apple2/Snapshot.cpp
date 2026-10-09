@@ -28,7 +28,7 @@ struct SlotRegionDesc {
 // Fixed-body snapshot regions for slots 0 through 7, sized as the AppleWin
 // layout has them; a card whose frame is larger refuses the region and rides
 // the slot trailer.
-constexpr std::array<SlotRegionDesc, NUM_SLOTS> slot_region_descriptors{
+constexpr std::array<SlotRegionDesc, num_slots> slot_region_descriptors{
     {
         {
             offsetof(Snapshot_t, apple2_unit.speaker),
@@ -54,7 +54,7 @@ constexpr std::array<SlotRegionDesc, NUM_SLOTS> slot_region_descriptors{
 };
 
 auto fixed_slot_desc(int slot) noexcept -> const SlotRegionDesc* {
-  if (slot < 0 || slot >= NUM_SLOTS) {
+  if (slot < 0 || slot >= num_slots) {
     return nullptr;
   }
   const auto& desc = slot_region_descriptors[static_cast<size_t>(slot)];
@@ -163,7 +163,7 @@ auto manifest_admits(const SsPeripheralManifest_t* file, LegacySwap_t* swap)
   const bool overrode =
       peripheral_legacy_override(&override_slot, &key_card, &displaced);
 
-  for (size_t i = 0; i < NUM_SLOTS; ++i) {
+  for (size_t i = 0; i < num_slots; ++i) {
     const char* wanted = file->peripherals[i].name;
     const char* held = live.peripherals[i].name;
     const bool same =
@@ -256,7 +256,7 @@ auto snapshot_serialize(Snapshot_t* snapshot) noexcept -> void {
   peripheral_save_state_by_name(
       0, "Keyboard", snapshot->apple2_unit.keyboard.bytes, &kbd_size);
 
-  for (int i = 0; i < NUM_SLOTS; ++i) {
+  for (int i = 0; i < num_slots; ++i) {
     const SlotRegionDesc* desc = fixed_slot_desc(i);
     if (desc == nullptr) {
       continue;
@@ -272,7 +272,7 @@ auto snapshot_serialize(Snapshot_t* snapshot) noexcept -> void {
 
   snapshot->slot_trailer.unit_hdr.length = sizeof(SsSlotTrailer_t);
   snapshot->slot_trailer.unit_hdr.version = make_version(1, 0, 0, 0);
-  for (int i = 0; i < NUM_SLOTS; ++i) {
+  for (int i = 0; i < num_slots; ++i) {
     SsSlotState_t* entry = trailer_entry(snapshot, i);
     if (entry != nullptr) {
       save_slot_to_trailer(i, entry);
@@ -325,7 +325,7 @@ auto snapshot_deserialize(const Snapshot_t* snapshot) -> bool {
     return false;
   }
 
-  for (int i = 0; i < NUM_SLOTS; ++i) {
+  for (int i = 0; i < num_slots; ++i) {
     // Fall back to fixed body if slot trailer is empty.
     const SsSlotState_t* entry = trailer_entry(snapshot, i);
     if (entry != nullptr && entry->length > 0) {

@@ -742,7 +742,7 @@ constexpr uint8_t switch_bit = 0x80;
 // map as the 6502 would read it. Commands queue until a slice boundary, so
 // the fixture settles them the way linapple_run_frame does.
 struct GamePortOnly_t {
-  Apple2Type_t saved_type{current_apple2_type};
+  Apple2Type saved_type{current_apple2_type};
   CpuInstance_t* saved_cpu{cpu_get_active_context()};
   CpuInstance_t cpu{};
 
@@ -1168,8 +1168,8 @@ constexpr uint32_t rept_frames = 10;
 
 // The model is process-wide and a harness-built machine leaves it behind.
 struct Model_t {
-  Apple2Type_t saved = current_apple2_type;
-  explicit Model_t(Apple2Type_t type) { current_apple2_type = type; }
+  Apple2Type saved = current_apple2_type;
+  explicit Model_t(Apple2Type type) { current_apple2_type = type; }
   ~Model_t() { current_apple2_type = saved; }
   Model_t(const Model_t&) = delete;
   auto operator=(const Model_t&) -> Model_t& = delete;
@@ -1185,7 +1185,7 @@ struct KeyMachine_t {
 
   explicit KeyMachine_t(
       const TestFixtures::ScopedTestConfig_t::Description_t& description,
-      Apple2Type_t type = A2TYPE_APPLE2EENHANCED)
+      Apple2Type type = A2TYPE_APPLE2EENHANCED)
       : model(type),
         config(description),
         core(config),

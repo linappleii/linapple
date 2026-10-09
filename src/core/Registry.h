@@ -87,8 +87,6 @@ constexpr const char* cfg_ftp_hdd_dir = "FTP ServerHDD";
 constexpr const char* cfg_ftp_local_dir = "FTP Local Dir";
 constexpr const char* cfg_ftp_userpass = "FTP UserPass";
 
-
-
 struct Configuration {
   std::string path;
 
@@ -106,7 +104,7 @@ struct Configuration {
   std::array<char, path_max_len> audio_dump_path = {};
   std::array<char, path_max_len> rom_path = {};
 
-  eApple2Type apple2_type = A2TYPE_APPLE2EENHANCED;
+  Apple2Type apple2_type = A2TYPE_APPLE2EENHANCED;
   bool apple2_type_explicit = false;
   bool is_pal = false;
   bool is_pal_explicit = false;
