@@ -80,10 +80,14 @@ auto mem_set_custom_rom_data(const uint8_t* data, size_t size) -> void {
   }
 }
 
+namespace {
+
 struct MachineRomInfo {
   const char* name;
   const char* cmake_flag;
 };
+
+}  // namespace
 
 static auto get_machine_rom_info(Apple2Type type) -> MachineRomInfo {
   switch (type) {
@@ -147,10 +151,12 @@ auto mem_set_active_context(MemoryInstance* context) noexcept -> void {
   memdirty = context->memdirty;
 }
 
-auto io_read_cxxx(uint16_t programcounter, uint16_t address, uint8_t write,
-                  uint8_t value, uint32_t executed_cycles) -> uint8_t;
-auto io_write_cxxx(uint16_t programcounter, uint16_t address, uint8_t write,
-                   uint8_t value, uint32_t executed_cycles) -> uint8_t;
+static auto io_read_cxxx(uint16_t programcounter, uint16_t address,
+                         uint8_t write, uint8_t value, uint32_t executed_cycles)
+    -> uint8_t;
+static auto io_write_cxxx(uint16_t programcounter, uint16_t address,
+                          uint8_t write, uint8_t value,
+                          uint32_t executed_cycles) -> uint8_t;
 
 auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
                      uint32_t cycles) -> uint8_t {
@@ -202,8 +208,9 @@ auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
   return io_null(pc, addr, write, val, cycles);
 }
 
-auto io_annunciator(uint16_t programcounter, uint16_t address, uint8_t write,
-                    uint8_t value, uint32_t cycles) -> uint8_t;
+static auto io_annunciator(uint16_t programcounter, uint16_t address,
+                           uint8_t write, uint8_t value, uint32_t cycles)
+    -> uint8_t;
 
 // With no keyboard card, $C000 answers as a machine with its keyboard
 // unplugged. The //e's encoder and strobe logic are on the main board, so
@@ -449,8 +456,9 @@ auto io_null(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
   return 0;
 }
 
-auto io_annunciator(uint16_t programcounter, uint16_t address, uint8_t write,
-                    uint8_t value, uint32_t executed_cycles) -> uint8_t {
+static auto io_annunciator(uint16_t programcounter, uint16_t address,
+                           uint8_t write, uint8_t value,
+                           uint32_t executed_cycles) -> uint8_t {
   (void)value;
   (void)executed_cycles;
   (void)programcounter;
@@ -472,8 +480,9 @@ auto io_annunciator(uint16_t programcounter, uint16_t address, uint8_t write,
 //   - Reset when 6502 accesses $CFFF
 // . Enable2 = I/O STROBE' (6502 accesses [$C800..$CFFF])
 
-auto io_read_cxxx(uint16_t programcounter, uint16_t address, uint8_t write,
-                  uint8_t value, uint32_t executed_cycles) -> uint8_t {
+static auto io_read_cxxx(uint16_t programcounter, uint16_t address,
+                         uint8_t write, uint8_t value, uint32_t executed_cycles)
+    -> uint8_t {
   if (address == 0xCFFF) {
     // Disable expansion ROM at [$C800..$CFFF]
     // . SSC will disable on an access to $CFxx - but ROM only writes to $CFFF,
@@ -582,8 +591,9 @@ auto io_read_cxxx(uint16_t programcounter, uint16_t address, uint8_t write,
   return mem ? mem[address] : mem_read_floating_bus(executed_cycles);
 }
 
-auto io_write_cxxx(uint16_t programcounter, uint16_t address, uint8_t write,
-                   uint8_t value, uint32_t executed_cycles) -> uint8_t {
+static auto io_write_cxxx(uint16_t programcounter, uint16_t address,
+                          uint8_t write, uint8_t value,
+                          uint32_t executed_cycles) -> uint8_t {
   (void)value;
   (void)executed_cycles;
   (void)programcounter;
@@ -783,8 +793,7 @@ auto mem_update_paging(bool initialize, bool updatewriteonly) -> void {
     uint8_t* const alt_ram = sw_altzp(g_active_memory)
                                  ? g_active_memory->memaux
                                  : g_active_memory->memmain;
-    uint8_t* const lc_ram =
-        alt_ram ? alt_ram + (page << 8) : mem + (page << 8);
+    uint8_t* const lc_ram = alt_ram ? alt_ram + (page << 8) : mem + (page << 8);
 
     if (sw_highram(g_active_memory)) {
       g_active_memory->memshadow[page] = lc_ram;

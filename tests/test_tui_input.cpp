@@ -498,7 +498,7 @@ TEST_CASE(
 // The 80-column text screen fills the 80 by 24 fallback terminal exactly, so a
 // one-based report column c is offset c - 1 of the 79 steps across the box and
 // row r is offset r - 1 of 23 down it.
-auto require_text_box_fills_terminal() -> void {
+static auto require_text_box_fills_terminal() -> void {
   const MousePictureRect box = tui_video_picture_box();
   REQUIRE(box.x == 0);
   REQUIRE(box.y == 0);

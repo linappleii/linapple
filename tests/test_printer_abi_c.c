@@ -3,6 +3,8 @@
  * the printer card's ABI headers and lay out its state frame the way the card
  * does. The descriptor accessor is declared but not called, because in a
  * plugin build it lives inside the shared object. */
+#include "test_printer_abi_c.h"
+
 #include <stddef.h>
 #include <stdint.h>
 

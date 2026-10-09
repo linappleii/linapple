@@ -25,10 +25,14 @@ static uint8_t g_last_cmd_data[PERIPHERAL_CMD_MAX_DATA]{};
 static size_t g_last_cmd_data_size = 0;
 static std::atomic<int> g_cmd_call_count{0};
 
+namespace {
+
 using DummyInstance_t = struct {
   uint8_t last_val;
   HostInterface_t* host;
 };
+
+}  // namespace
 
 static auto Dummy_IORead(void* instance, uint16_t pc, uint16_t addr,
                          uint8_t write, uint8_t val, uint32_t cycles)

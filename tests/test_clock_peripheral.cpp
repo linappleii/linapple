@@ -1234,12 +1234,7 @@ TEST_CASE("Clock Peripheral: Multi-Card Concurrency and Lifecycle Robustness") {
 
 }  // namespace
 
-extern "C" auto clockcard_abi_c_state_size() -> size_t;
-extern "C" auto clockcard_abi_c_fixed_epoch_offset() -> size_t;
-extern "C" auto clockcard_abi_c_latches_offset() -> size_t;
-extern "C" auto clockcard_abi_c_use_fixed_epoch_offset() -> size_t;
-extern "C" auto clockcard_abi_c_reserved_offset() -> size_t;
-extern "C" auto clockcard_abi_c_state_version() -> uint32_t;
+#include "test_clock_abi_c.h"
 
 TEST_CASE("Clock Peripheral: The C99 view of the state frame matches C++") {
   CHECK(clockcard_abi_c_state_size() == sizeof(ClockCardSaveState_t));

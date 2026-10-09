@@ -21,23 +21,7 @@
 #include "doctest.h"
 #include "test_fixtures.h"
 #include "test_fixtures_core.h"
-
-extern "C" unsigned harddisk_abi_c_frame_size(void);
-extern "C" unsigned harddisk_abi_c_frame_offset(int field);
-extern "C" unsigned harddisk_abi_c_insert_size(void);
-extern "C" unsigned harddisk_abi_c_insert_path_offset(void);
-extern "C" unsigned harddisk_abi_c_insert_drive_offset(void);
-extern "C" unsigned harddisk_abi_c_insert_reserved_offset(void);
-extern "C" unsigned harddisk_abi_c_status_size(void);
-extern "C" unsigned harddisk_abi_c_state_version(void);
-extern "C" uint32_t harddisk_abi_c_insert_id(void);
-extern "C" uint32_t harddisk_abi_c_eject_id(void);
-extern "C" uint32_t harddisk_abi_c_set_protect_id(void);
-extern "C" uint32_t harddisk_abi_c_status_query_id(void);
-extern "C" uint32_t harddisk_abi_c_extensions_query_id(void);
-extern "C" int harddisk_abi_c_error_none(void);
-extern "C" int harddisk_abi_c_error_not_block_image(void);
-extern "C" unsigned harddisk_abi_c_prodos_codes(void);
+#include "test_harddisk_abi_c.h"
 
 namespace {
 

@@ -70,16 +70,15 @@ TEST_CASE(
 
 extern "C" auto disk_get_descriptor() -> Peripheral_t*;
 
-PeripheralIOHandler g_captured_disk_read = nullptr;
+static PeripheralIOHandler g_captured_disk_read = nullptr;
 
 // The descriptor hands its read handler to RegisterIO and keeps no other way
 // out, so a case that wants to drive a softswitch has to catch it there.
 static auto capturing_disk_host() -> HostInterface_t {
   HostInterface_t h{};
   h.RegisterIO = [](int, PeripheralIOHandler read_c0, PeripheralIOHandler,
-                    PeripheralIOHandler, PeripheralIOHandler) {
-    g_captured_disk_read = read_c0;
-  };
+                    PeripheralIOHandler,
+                    PeripheralIOHandler) { g_captured_disk_read = read_c0; };
   h.RegisterCxROM = [](int, const uint8_t*) {};
   h.GetConfig = [](const char*, const char*, char*, size_t) { return false; };
   h.SetConfig = [](const char*, const char*, const char*) {};
@@ -276,8 +275,8 @@ TEST_CASE("DiskABI: [ABI-15] Mechanical events never write the config") {
 
   DiskEjectCmd_t eject{};
   eject.drive = disk_drive_1;
-  CHECK(descriptor->command(instance, disk_cmd_eject, &eject,
-                            sizeof(eject)) == peripheral_ok);
+  CHECK(descriptor->command(instance, disk_cmd_eject, &eject, sizeof(eject)) ==
+        peripheral_ok);
 
   descriptor->shutdown(instance);
 
@@ -304,7 +303,7 @@ TEST_CASE("DiskABI: [ABI-16] A created image is one a drive can take") {
   peripheral_manager_think(0);
 
   constexpr int64_t dos_33_image_size = 143360;
-  struct stat created {};
+  struct stat created{};
   REQUIRE(stat(image_path.c_str(), &created) == 0);
   CHECK(created.st_size == dos_33_image_size);
 
@@ -352,7 +351,7 @@ TEST_CASE("DiskABI: [ABI-17] Creating an image refuses to overwrite") {
   CHECK(descriptor->command(instance, disk_cmd_create_image, &create,
                             sizeof(create)) == peripheral_error);
 
-  struct stat untouched {};
+  struct stat untouched{};
   REQUIRE(stat(image_path.c_str(), &untouched) == 0);
   CHECK(untouched.st_size == static_cast<int64_t>(contents.size()));
 
@@ -363,7 +362,7 @@ TEST_CASE("DiskABI: [ABI-17] Creating an image refuses to overwrite") {
   strncpy(unknown.format_name, "Tape", sizeof(unknown.format_name) - 1);
   CHECK(descriptor->command(instance, disk_cmd_create_image, &unknown,
                             sizeof(unknown)) == peripheral_error);
-  struct stat not_created {};
+  struct stat not_created{};
   CHECK(stat(unknown.path, &not_created) != 0);
 
   descriptor->shutdown(instance);
@@ -384,10 +383,13 @@ TEST_CASE("DiskABI: [ABI-18] The card lists the formats it can make") {
   CHECK(size == sizeof(uint32_t));
   // Alphabetical, because the probe's fallback picks the first driver that
   // calls an image possible and that must not depend on link order.
-  const char* const expected_order[] = {"DOS Order",         "IIE",
+  const char* const expected_order[] = {"DOS Order",
+                                        "IIE",
                                         "NB2 (6384-nibble)",
-                                        "NIB (6656-nibble)", "ProDOS Order",
-                                        "WOZ 1",             "WOZ 2"};
+                                        "NIB (6656-nibble)",
+                                        "ProDOS Order",
+                                        "WOZ 1",
+                                        "WOZ 2"};
   // Only the sector and nibble formats can make a blank; the WOZ and IIE
   // drivers read what they are given.
   const bool expected_creatable[] = {true, false, true, true,
@@ -397,8 +399,8 @@ TEST_CASE("DiskABI: [ABI-18] The card lists the formats it can make") {
     DiskFormatNameQuery_t name_query{};
     name_query.index = i;
     size = sizeof(name_query);
-    REQUIRE(peripheral_query(SL6, disk_query_format_name, &name_query,
-                             &size) == peripheral_ok);
+    REQUIRE(peripheral_query(SL6, disk_query_format_name, &name_query, &size) ==
+            peripheral_ok);
     CHECK(std::string(name_query.name) == expected_order[i]);
     CHECK(((name_query.capabilities & disk_driver_cap_create) != 0) ==
           expected_creatable[i]);

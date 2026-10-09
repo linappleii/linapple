@@ -10,9 +10,7 @@
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
 #include "doctest.h"
-
-// Define the global peripheral provided by the C file
-extern "C" Peripheral_t g_test_c_peripheral;
+#include "test_peripheral_abi_c.h"
 
 TEST_CASE("Peripheral ABI: Registration and I/O") {
   // We need to initialize memory system for io_map_dispatch to work
@@ -104,10 +102,6 @@ TEST_CASE(
 
 #include "apple2/peripherals/Peripheral_Internal.h"
 #include "test_fixtures_core.h"
-
-extern "C" int test_c_peripheral_read_clock(HostInterface_t* host,
-                                            int64_t* unix_seconds,
-                                            uint8_t* weekday);
 
 namespace {
 
@@ -232,9 +226,6 @@ TEST_CASE("Peripheral ABI: A host without a clock says so and writes nothing") {
 #include <cstddef>
 
 #include "apple2/Apple2Types.h"
-
-extern "C" int test_c_peripheral_sink_write(HostInterface_t* host, int slot,
-                                            uint8_t byte);
 
 namespace {
 

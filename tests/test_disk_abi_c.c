@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* C99 compilation smoke test — if this file compiles, the headers are
  * C99-compatible. */
+#include "test_disk_abi_c.h"
+
 #include "apple2/media/image_container/ImageContainer.h"
 #include "apple2/peripherals/disk/Disk.h"
 #include "apple2/peripherals/disk/DiskCommands.h"

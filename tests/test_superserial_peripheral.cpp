@@ -23,11 +23,7 @@
 #include "doctest.h"
 #include "test_fixtures.h"
 #include "test_fixtures_core.h"
-
-extern "C" unsigned superserial_abi_c_frame_size(void);
-extern "C" unsigned superserial_abi_c_state_version(void);
-extern "C" unsigned superserial_abi_c_switches_size(void);
-extern "C" uint32_t superserial_abi_c_set_switches_id(void);
+#include "test_superserial_abi_c.h"
 
 namespace {
 

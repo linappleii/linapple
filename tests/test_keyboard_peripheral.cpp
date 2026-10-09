@@ -30,15 +30,7 @@
 #include "frontends/common/SaveStateManager.h"
 #include "test_fixtures.h"
 #include "test_fixtures_core.h"
-
-extern "C" unsigned keyboard_abi_c_frame_size(void);
-extern "C" unsigned keyboard_abi_c_state_version(void);
-extern "C" unsigned keyboard_abi_c_repeat_key_offset(void);
-extern "C" unsigned keyboard_abi_c_latch_offset(void);
-extern "C" unsigned keyboard_abi_c_strobe_offset(void);
-extern "C" unsigned keyboard_abi_c_caps_lock_offset(void);
-extern "C" unsigned keyboard_abi_c_auto_repeat_offset(void);
-extern "C" unsigned keyboard_abi_c_key_event_size(void);
+#include "test_keyboard_abi_c.h"
 
 namespace {
 

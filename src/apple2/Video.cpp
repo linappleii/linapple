@@ -91,7 +91,7 @@ static uint32_t customcolors[NUM_COLOR_PALETTE] =
 
 VideoSurface* g_device_bitmap;
 static uint8_t* framebufferbits;
-VideoColor framebufferinfo[max_palette_size] = {};
+static VideoColor framebufferinfo[max_palette_size] = {};
 
 auto video_get_output_palette() -> VideoColor* { return framebufferinfo; }
 
@@ -100,8 +100,8 @@ static uint8_t* g_hires_bank1;
 static uint8_t* g_hires_bank0;
 
 VideoSurface* g_logo_bitmap = nullptr;
-VideoSurface* charset40 = nullptr;
-int multi_language_charset = false;
+static VideoSurface* charset40 = nullptr;
+static int multi_language_charset = false;
 
 VideoSurface* g_status_surface = nullptr;
 int g_status_cycle = 0;
@@ -110,7 +110,7 @@ VideoSurface* g_origscreen = nullptr;
 VideoSurface* g_source_bitmap = nullptr;
 
 static uint8_t* g_source_pixels;
-VideoColor g_source_header[max_palette_size] = {};
+static VideoColor g_source_header[max_palette_size] = {};
 const int MAX_SOURCE_Y = 512 * 2;
 static uint8_t* g_source_start_of_line[MAX_SOURCE_Y] = {};
 static uint8_t* g_text_bank1;
@@ -146,7 +146,7 @@ uint32_t monochrome =
 static bool redrawfull = true;
 static std::unique_ptr<uint8_t[], void (*)(void*)> vidlastmem(nullptr, free);
 uint32_t g_video_mode = VF_TEXT;
-uint32_t g_debug_video_mode = VF_TEXT;
+static uint32_t g_debug_video_mode = VF_TEXT;
 static uint32_t vidmode_latched = VF_TEXT;
 uint32_t g_videotype = VT_COLOR_STANDARD;
 uint32_t g_singlethreaded = 1;
@@ -184,30 +184,29 @@ static uint32_t s_text_flash_cnt = 0;
 
 bool g_show_leds = true;
 
-auto draw_dhires_source() -> void;
-auto draw_hires_source() -> void;
-auto draw_hires_source_half_shift_full() -> void;
-auto draw_hires_source_half_shift_dim() -> void;
-auto draw_lores_source() -> void;
-auto draw_mono_dhires_source() -> void;
-auto draw_mono_hires_source() -> void;
-auto draw_mono_lores_source() -> void;
-auto draw_mono_text_source(VideoSurface* dc) -> void;
-auto draw_text_source(VideoSurface* dc) -> void;
-auto load_charset() -> VideoSurface*;
+static auto draw_dhires_source() -> void;
+static auto draw_hires_source() -> void;
+static auto draw_hires_source_half_shift_dim() -> void;
+static auto draw_lores_source() -> void;
+static auto draw_mono_dhires_source() -> void;
+static auto draw_mono_hires_source() -> void;
+static auto draw_mono_lores_source() -> void;
+static auto draw_mono_text_source(VideoSurface* dc) -> void;
+static auto draw_text_source(VideoSurface* dc) -> void;
+static auto load_charset() -> VideoSurface*;
 
-std::thread video_worker_thread_;
+static std::thread video_worker_thread_;
 static std::atomic<bool> video_worker_active_{false};
 static std::atomic<bool> video_worker_terminate_{false};
 static std::atomic<bool> video_worker_refresh_{false};
 static std::mutex s_video_worker_mutex;
 std::recursive_mutex g_video_draw_mutex;
-std::condition_variable video_cv;
+static std::condition_variable video_cv;
 
 static char display_pipeline_[(0x2000 * 4) + (0x400 * 4)] = {};
 
-auto copy_source(int destx, int desty, int xsize, int ysize, int sourcex,
-                 int sourcey) -> void {
+static auto copy_source(int destx, int desty, int xsize, int ysize, int sourcex,
+                        int sourcey) -> void {
   uint8_t* currdestptr = frameoffsettable[desty] + destx;
   uint8_t* currsourceptr = g_source_start_of_line[sourcey] + sourcex;
   while (ysize--) {
@@ -221,7 +220,7 @@ auto copy_source(int destx, int desty, int xsize, int ysize, int sourcex,
   }
 }
 
-auto create_frame_offset_table(uint8_t* addr, int pitch) -> void {
+static auto create_frame_offset_table(uint8_t* addr, int pitch) -> void {
   if (framebufferaddr == addr && framebufferpitch == pitch) {
     return;
   }
@@ -234,7 +233,7 @@ auto create_frame_offset_table(uint8_t* addr, int pitch) -> void {
   }
 }
 
-auto create_identity_palette() -> void {
+static auto create_identity_palette() -> void {
   memset(framebufferinfo, 0, max_palette_size * sizeof(VideoColor));
   set_frame_color(DEEP_RED, 0xD0, 0x00, 0x30);
   set_frame_color(LIGHT_BLUE, 0x60, 0xA0, 0xFF);
@@ -297,7 +296,7 @@ auto create_identity_palette() -> void {
   set_frame_color(DARKEST_GREEN, 0x00, 31, 0x00);
 }
 
-auto video_init_buffers() -> void {
+static auto video_init_buffers() -> void {
   const std::lock_guard<std::recursive_mutex> lock(g_video_draw_mutex);
 
   memcpy(g_source_header, framebufferinfo,
@@ -475,6 +474,8 @@ auto draw_dhires_source() -> void {
   }
 }
 
+namespace {
+
 enum ColorMapping : uint8_t {
   CM_Magenta,
   CM_Blue,
@@ -488,6 +489,8 @@ enum ColorMapping : uint8_t {
 const uint8_t aColorIndex[NUM_COLOR_MAPPING] = {
     HGR_MAGENTA, HGR_BLUE, HGR_GREEN, HGR_RED, HGR_BLACK, HGR_WHITE,
 };
+
+}  // namespace
 
 auto draw_hires_source_half_shift_dim() -> void {
   for (int column = 0; column < 16; column++) {
@@ -717,7 +720,7 @@ auto draw_lores_source() -> void {
   }
 }
 
-auto get_monochrome_index() -> int {
+static auto get_monochrome_index() -> int {
   int iMonochrome = 0;
 
   switch (g_videotype) {
@@ -878,7 +881,7 @@ auto draw_text_source(VideoSurface* dc) -> void {
   }
 }
 
-auto set_last_drawn_image() -> void {
+static auto set_last_drawn_image() -> void {
   if (vidlastmem == nullptr) {
     return;
   }
@@ -902,7 +905,7 @@ auto set_last_drawn_image() -> void {
 // displayed on the host with what the "Draw" functions have
 // drawn into the guest Apple graphics buffers.
 
-auto update_40col_cell(int x, int y, int xpixel, int ypixel, int offset)
+static auto update_40col_cell(int x, int y, int xpixel, int ypixel, int offset)
     -> bool {
   if (!vidlastmem) {
     return false;
@@ -932,8 +935,9 @@ auto update_40col_cell(int x, int y, int xpixel, int ypixel, int offset)
   return false;
 }
 
-inline auto update_80column_cell(uint8_t c, const int xPixel, const int yPixel,
-                                 bool char_flashing) -> bool {
+static inline auto update_80column_cell(uint8_t c, const int xPixel,
+                                        const int yPixel, bool char_flashing)
+    -> bool {
   bool invert = char_flashing ? g_text_flash_state : false;
   copy_source(
       xPixel, yPixel, (APPLE_FONT_WIDTH / 2), APPLE_FONT_HEIGHT,
@@ -943,7 +947,7 @@ inline auto update_80column_cell(uint8_t c, const int xPixel, const int yPixel,
   return true;
 }
 
-auto update_80col_cell(int x, int y, int xpixel, int ypixel, int offset)
+static auto update_80col_cell(int x, int y, int xpixel, int ypixel, int offset)
     -> bool {
   if (!vidlastmem) {
     return false;
@@ -976,7 +980,7 @@ auto update_80col_cell(int x, int y, int xpixel, int ypixel, int offset)
   return dirty;
 }
 
-auto update_dhires_cell(int x, int y, int xpixel, int ypixel, int offset)
+static auto update_dhires_cell(int x, int y, int xpixel, int ypixel, int offset)
     -> bool {
   if (!vidlastmem) {
     return false;
@@ -1020,7 +1024,7 @@ auto update_dhires_cell(int x, int y, int xpixel, int ypixel, int offset)
   return dirty;
 }
 
-auto mix_colors(uint8_t c1, uint8_t c2) -> uint8_t {
+static auto mix_colors(uint8_t c1, uint8_t c2) -> uint8_t {
   auto combination = [](uint8_t val1, uint8_t val2, uint8_t ref1,
                         uint8_t ref2) -> bool {
     return (val1 == ref1 && val2 == ref2) || (val1 == ref2 && val2 == ref1);
@@ -1097,7 +1101,7 @@ static inline auto clamp_mix(int idx) noexcept -> int {
   return (idx >= 0 && idx < 6) ? idx : 0;
 }
 
-auto mix_colors_vertical(int matx, int maty) -> void {
+static auto mix_colors_vertical(int matx, int maty) -> void {
   uint16_t twoHalfPixel = 0;
   int bot1idx = 0;
   int bot2idx = 0;
@@ -1132,7 +1136,7 @@ auto mix_colors_vertical(int matx, int maty) -> void {
   colormixbuffer[5] = twoHalfPixel & 0x00FF;
 }
 
-auto copy_mixed_source(int x, int y, int sourcex, int sourcey) -> void {
+static auto copy_mixed_source(int x, int y, int sourcex, int sourcey) -> void {
   uint8_t* currsourceptr = g_source_start_of_line[sourcey] + sourcex;
   uint8_t* currdestptr = frameoffsettable[y << 1] + (x << 1);
   uint8_t* currptr = nullptr;
@@ -1165,7 +1169,7 @@ auto copy_mixed_source(int x, int y, int sourcex, int sourcey) -> void {
   }
 }
 
-auto update_hires_cell(int x, int y, int xpixel, int ypixel, int offset)
+static auto update_hires_cell(int x, int y, int xpixel, int ypixel, int offset)
     -> bool {
   if (!vidlastmem) {
     return false;
@@ -1203,7 +1207,7 @@ auto update_hires_cell(int x, int y, int xpixel, int ypixel, int offset)
   return dirty;
 }
 
-auto update_lores_cell(int x, int y, int xpixel, int ypixel, int offset)
+static auto update_lores_cell(int x, int y, int xpixel, int ypixel, int offset)
     -> bool {
   if (!vidlastmem) {
     return false;
@@ -1221,7 +1225,7 @@ auto update_lores_cell(int x, int y, int xpixel, int ypixel, int offset)
   return false;
 }
 
-auto update_dlores_cell(int x, int y, int xpixel, int ypixel, int offset)
+static auto update_dlores_cell(int x, int y, int xpixel, int ypixel, int offset)
     -> bool {
   if (!vidlastmem) {
     return false;
@@ -1631,7 +1635,7 @@ auto video_initialize() -> void {
   }
 }
 
-auto video_next_scheduled_update_ = std::chrono::system_clock::now();
+static auto video_next_scheduled_update_ = std::chrono::system_clock::now();
 auto video_set_next_scheduled_update() -> void {
   if (!g_singlethreaded) {
     video_next_scheduled_update_ = std::chrono::system_clock::now();
@@ -1639,7 +1643,7 @@ auto video_set_next_scheduled_update() -> void {
   }
 }
 
-auto video_worker_thread_func() -> void {
+static auto video_worker_thread_func() -> void {
   while (!video_worker_terminate_) {
     std::unique_lock<std::mutex> lck(s_video_worker_mutex);
     video_cv.wait_until(lck, video_next_scheduled_update_, [] {
@@ -1695,7 +1699,7 @@ auto video_redraw_screen() -> void {
   video_refresh_screen(0, true);
 }
 
-auto video_update_output_buffer() -> void {
+static auto video_update_output_buffer() -> void {
   VideoRect s = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
   VideoSurface dst{};
   dst.pixels = reinterpret_cast<uint8_t*>(g_video_output);

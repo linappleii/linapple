@@ -27,16 +27,7 @@
 #include "frontends/common/MouseFrontend.h"
 #include "test_fixtures.h"
 #include "test_fixtures_core.h"
-
-extern "C" unsigned mouse_abi_c_frame_size(void);
-extern "C" unsigned mouse_abi_c_state_version(void);
-extern "C" unsigned mouse_abi_c_button_payload_size(void);
-extern "C" unsigned mouse_abi_c_move_payload_size(void);
-extern "C" uint32_t mouse_abi_c_set_button_id(void);
-extern "C" uint32_t mouse_abi_c_move_id(void);
-extern "C" uint32_t mouse_abi_c_is_active_query_id(void);
-extern "C" uint32_t mouse_abi_c_position_query_id(void);
-extern "C" unsigned mouse_abi_c_position_report_size(void);
+#include "test_mouse_abi_c.h"
 
 namespace {
 
@@ -2475,7 +2466,6 @@ constexpr size_t frame_pia_orb = 57;
 constexpr size_t frame_pia_ddrb = 59;
 constexpr size_t frame_pia_port_b_in = 63;
 constexpr size_t frame_port_b_shadow = 73;
-
 
 auto slot_page_first_byte(int slot) -> uint8_t {
   const uint16_t sentinel = poke_page_copier(slot);

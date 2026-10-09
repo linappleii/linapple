@@ -1793,16 +1793,7 @@ TEST_CASE(
 
 }  // namespace
 
-extern "C" auto printer_abi_c_state_size() -> size_t;
-extern "C" auto printer_abi_c_version_offset() -> size_t;
-extern "C" auto printer_abi_c_struct_size_offset() -> size_t;
-extern "C" auto printer_abi_c_total_chars_printed_offset() -> size_t;
-extern "C" auto printer_abi_c_busy_cycles_offset() -> size_t;
-extern "C" auto printer_abi_c_data_latch_offset() -> size_t;
-extern "C" auto printer_abi_c_status_latch_offset() -> size_t;
-extern "C" auto printer_abi_c_is_online_offset() -> size_t;
-extern "C" auto printer_abi_c_is_busy_offset() -> size_t;
-extern "C" auto printer_abi_c_state_version() -> uint32_t;
+#include "test_printer_abi_c.h"
 
 TEST_CASE("Printer Peripheral: The C99 view of the state frame matches C++") {
   CHECK(printer_abi_c_state_size() == 24);

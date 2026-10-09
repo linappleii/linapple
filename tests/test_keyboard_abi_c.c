@@ -5,6 +5,7 @@
 // Included to prove the header is C99; nothing in it is called.
 #include "apple2/peripherals/keyboard/Keyboard.h"  // NOLINT(misc-include-cleaner)
 #include "apple2/peripherals/keyboard/KeyboardCommands.h"
+#include "test_keyboard_abi_c.h"
 
 /* C99 has no static_assert; an array of negative size fails the same way. */
 typedef char

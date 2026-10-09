@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#include "test_peripheral_abi_c.h"
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

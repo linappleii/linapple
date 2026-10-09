@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* A plugin written in C must see the same frame and switch payload. */
+#include "test_superserial_abi_c.h"
+
 #include <stddef.h>
 #include <stdint.h>
 

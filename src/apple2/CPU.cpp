@@ -34,9 +34,9 @@ static constexpr uint8_t bench_opcodes[] = {
 constexpr uint8_t k_bench_opcodes = sizeof(bench_opcodes);
 
 static CpuInstance g_cpu_context{};
-CpuInstance* g_active_cpu = &g_cpu_context;
+static CpuInstance* g_active_cpu = &g_cpu_context;
 
-CpuRegisters regs;
+static CpuRegisters regs;
 uint64_t g_cumulative_cycles = 0;
 static uint32_t g_cycles_submitted;
 static uint32_t g_cycles_executed;
@@ -96,13 +96,15 @@ static inline auto fetch_opcode(uint8_t& opcode, uint32_t executed_cycles)
   regs.pc++;
 }
 
+namespace {
+
+// NOLINTBEGIN(readability-convert-member-functions-to-static) - opcode dispatch handlers maintain a uniform member function interface on CpuLoopContext
 struct CpuLoopContext;
 struct OpcodeDesc {
   void (*handler)(CpuLoopContext& ctx);
   uint8_t base_cycles;
 };
 
-// NOLINTBEGIN(readability-convert-member-functions-to-static) - opcode dispatch handlers maintain a uniform member function interface on CpuLoopContext
 struct CpuLoopContext {
   uint16_t addr = 0;
   uint16_t base = 0;
@@ -846,6 +848,8 @@ struct CpuLoopContext {
   }
 };
 // NOLINTEND(readability-convert-member-functions-to-static)
+
+}  // namespace
 
 static auto op_nop(CpuLoopContext& /*unused*/) -> void {}
 
@@ -3754,6 +3758,8 @@ static auto internal_cpu_execute(uint32_t start_cycles) -> uint32_t {
 }
 
 // An exception out of a handler must not leave the slice flag set.
+namespace {
+
 struct SliceGuard {
   SliceGuard() noexcept { g_in_slice = true; }
   ~SliceGuard() { g_in_slice = false; }
@@ -3762,6 +3768,8 @@ struct SliceGuard {
   SliceGuard(SliceGuard&&) = delete;
   auto operator=(SliceGuard&&) -> SliceGuard& = delete;
 };
+
+}  // namespace
 
 // Modern API implementation
 

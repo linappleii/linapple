@@ -5,6 +5,8 @@
 /* Justification: a header this unit names nothing from is still under test,
    since compiling it as C99 is the point. */
 /* NOLINTBEGIN(misc-include-cleaner) */
+#include "test_harddisk_abi_c.h"
+
 #include <stddef.h>
 #include <stdint.h>
 

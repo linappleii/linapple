@@ -23,18 +23,7 @@
 #include "doctest.h"
 #include "test_fixtures.h"
 #include "test_fixtures_core.h"
-
-extern "C" auto joystick_abi_c_descriptor() -> Peripheral_t*;
-extern "C" auto joystick_abi_c_state_size() -> size_t;
-extern "C" auto joystick_abi_c_trigger_cycle_offset() -> size_t;
-extern "C" auto joystick_abi_c_trigger_cycle_size() -> size_t;
-extern "C" auto joystick_abi_c_x_pos_offset() -> size_t;
-extern "C" auto joystick_abi_c_y_pos_offset() -> size_t;
-extern "C" auto joystick_abi_c_buttons_offset() -> size_t;
-extern "C" auto joystick_abi_c_trim_x_offset() -> size_t;
-extern "C" auto joystick_abi_c_trim_y_offset() -> size_t;
-extern "C" auto joystick_abi_c_axis_payload_size() -> size_t;
-extern "C" auto joystick_abi_c_state_version() -> uint32_t;
+#include "test_joystick_abi_c.h"
 
 namespace {
 

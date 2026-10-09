@@ -1,5 +1,7 @@
 /* C99 view of the game port's public headers: the descriptor accessor, the
  * state frame's layout and the payload sizes as a C consumer sees them. */
+#include "test_joystick_abi_c.h"
+
 #include <stddef.h>
 #include <stdint.h>
 

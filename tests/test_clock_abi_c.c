@@ -1,5 +1,7 @@
 /* C99 smoke test: verify clock ABI headers and state frame layout compile
  * cleanly. */
+#include "test_clock_abi_c.h"
+
 #include <stddef.h>
 #include <stdint.h>
 
