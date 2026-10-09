@@ -6,7 +6,7 @@
 
 TEST_CASE("Memory Context: Encapsulation and Context-Switching") {
   // 1. Get original active context
-  MemoryInstance_t* original_context = mem_get_active_context();
+  MemoryInstance* original_context = mem_get_active_context();
   REQUIRE(original_context != nullptr);
 
   // Set some distinct values in the original context
@@ -15,7 +15,7 @@ TEST_CASE("Memory Context: Encapsulation and Context-Switching") {
   original_context->peripheral_rom_slot = 5;
 
   // 2. Setup secondary context
-  MemoryInstance_t second_context{};
+  MemoryInstance second_context{};
   second_context.mem_mode = 0x5678;
   second_context.last_write_ram = false;
   second_context.peripheral_rom_slot = 10;
@@ -47,7 +47,7 @@ TEST_CASE("Memory Context: Encapsulation and Context-Switching") {
 
 TEST_CASE(
     "Memory Context: Destructor does not free active context buffers (MEM-1)") {
-  MemoryInstance_t active_ctx{};
+  MemoryInstance active_ctx{};
   active_ctx.buf_memmain.assign(MEMORY_64K, 0);
   active_ctx.memmain = active_ctx.buf_memmain.data();
   active_ctx.buf_memaux.assign(MEMORY_64K, 0);
@@ -56,12 +56,12 @@ TEST_CASE(
   REQUIRE(active_ctx.memaux != nullptr);
   active_ctx.memmain[0] = 0x42;
 
-  MemoryInstance_t* prev_active = mem_get_active_context();
+  MemoryInstance* prev_active = mem_get_active_context();
   mem_set_active_context(&active_ctx);
 
   {
     // Create secondary context that allocates its own buffers
-    MemoryInstance_t second_ctx{};
+    MemoryInstance second_ctx{};
     second_ctx.buf_memmain.assign(MEMORY_64K, 0);
     second_ctx.memmain = second_ctx.buf_memmain.data();
     REQUIRE(second_ctx.memmain != nullptr);

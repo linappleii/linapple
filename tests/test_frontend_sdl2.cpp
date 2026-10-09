@@ -48,7 +48,7 @@
 auto ds_init() -> bool { return true; }
 auto ds_shutdown() -> void {}
 extern void sdl_handle_event(SDL_Event* e);
-extern DiskChooseState_t g_diskChooseState;
+extern DiskChooseState g_disk_choose_state;
 
 extern "C" const char* __lsan_default_suppressions() {
   return "leak:libSDL2\n";
@@ -412,11 +412,11 @@ TEST_CASE("SDL2 Frontend Disk Chooser Modal Outline Borders Rendered") {
   REQUIRE(g_screen != nullptr);
 
   // Set up disk choose state
-  g_diskChooseState.active = true;
-  g_diskChooseState.slot = 6;
-  g_diskChooseState.bg_screen.reset(SDL_CreateRGBSurface(
+  g_disk_choose_state.active = true;
+  g_disk_choose_state.slot = 6;
+  g_disk_choose_state.bg_screen.reset(SDL_CreateRGBSurface(
       0, 560, 384, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0));
-  g_diskChooseState.list_handle = nullptr;
+  g_disk_choose_state.list_handle = nullptr;
 
   disk_choose_draw();
 
@@ -448,8 +448,8 @@ TEST_CASE("SDL2 Frontend Disk Chooser Modal Outline Borders Rendered") {
   CHECK(screen_pixels[(box_y + 10) * pitch_pixels + 480] == 0x00FFFFFF);
 
   // Teardown
-  g_diskChooseState.active = false;
-  g_diskChooseState.bg_screen.reset();
+  g_disk_choose_state.active = false;
+  g_disk_choose_state.bg_screen.reset();
   frame_destroy_window();
   asset_quit();
   SDL_Quit();
@@ -872,7 +872,7 @@ TEST_CASE(
   }
 
   SUBCASE("a left click while a toolbar key is held is ignored") {
-    g_buttondown = k_btn_help;
+    g_buttondown = btn_help;
     MouseInputMachine_t::click(SDL_BUTTON_LEFT, true);
     MouseInputMachine_t::click(SDL_BUTTON_LEFT, false);
     CHECK_FALSE(mouse_input_is_captured());
