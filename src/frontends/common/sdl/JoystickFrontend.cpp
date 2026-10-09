@@ -21,7 +21,7 @@ struct JoyCoord {
 };
 
 // In keypad order so KP_1-KP_9 index directly; 0 and '.' are the buttons.
-enum JoyKey {
+enum JoyKey : uint8_t {
   jk_downleft = 0,
   jk_down,
   jk_downright,

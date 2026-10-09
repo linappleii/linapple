@@ -63,7 +63,7 @@ enum class DeviceKind : uint8_t { none, pty, loopback, path };
 enum class PathKind : uint8_t { tty, file, stream };
 
 // Logged once per kind, or a port wrong at every tick writes a line per frame.
-enum LoggedFailure : uint32_t {
+enum LoggedFailure : uint16_t {
   logged_open = 1U << 0,
   logged_termios = 1U << 1,
   logged_speed = 1U << 2,

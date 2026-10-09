@@ -47,7 +47,7 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
 
   const int nDefaultFontWidth = 7;
 
-  enum TabStop_e {
+  enum TabStop_e : uint8_t {
     TS_OPCODE,
     TS_LABEL,
     TS_INSTRUCTION,

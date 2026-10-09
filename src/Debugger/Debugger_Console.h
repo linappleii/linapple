@@ -6,7 +6,7 @@
 
 #include "Debugger_Types.h"
 
-enum {
+enum : uint16_t {
   // Basic Symbol table has > 600 symbols
   // Lines, was 128, but need ~ 256+16 for PROFILE LIST
   // Output
@@ -31,7 +31,7 @@ enum {
 using conchar_t = short;
 
 // NOTE: Keep in sync ConsoleColors_e g_console_color !
-enum ConsoleColors_e {
+enum ConsoleColors_e : uint8_t {
   CONSOLE_COLOR_K,      // 0
   CONSOLE_COLOR_x = 0,  // default console foreground
   CONSOLE_COLOR_R,      // 1 Red

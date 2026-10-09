@@ -47,7 +47,7 @@ struct Rect_t {
   int32_t bottom;
 };
 
-enum VideoType_t {
+enum VideoType_t : uint8_t {
   VT_MONO_CUSTOM,
   VT_COLOR_STANDARD,
   VT_COLOR_TEXT_OPTIMIZED,
@@ -60,7 +60,7 @@ enum VideoType_t {
 };
 using VIDEOTYPE = VideoType_t;
 
-enum VideoFlag_t {
+enum VideoFlag_t : uint8_t {
   VF_80COL = 0x00000001,
   VF_DHIRES = 0x00000002,
   VF_HIRES = 0x00000004,
@@ -71,7 +71,7 @@ enum VideoFlag_t {
 };
 using VideoFlag_e = VideoFlag_t;
 
-enum AppleFont_t {
+enum AppleFont_t : uint16_t {
   APPLE_FONT_WIDTH = 14,
   APPLE_FONT_HEIGHT = 16,
   APPLE_FONT_CELL_WIDTH = 16,
@@ -104,7 +104,7 @@ constexpr auto RGB(uint8_t r, uint8_t g, uint8_t b) noexcept -> uint32_t {
          (static_cast<uint32_t>(b) << BLUE_SHIFT);
 }
 
-enum ColorPaletteIndex_t {
+enum ColorPaletteIndex_t : uint8_t {
   BLACK,
   DARK_RED,
   DARK_GREEN,

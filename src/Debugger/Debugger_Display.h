@@ -9,7 +9,7 @@
 
 struct Rect_t;
 
-enum ConsoleFontSize_e {
+enum ConsoleFontSize_e : uint8_t {
   CONSOLE_FONT_GRID_X = 8,
   CONSOLE_FONT_GRID_Y = 8,
 
@@ -20,7 +20,7 @@ enum ConsoleFontSize_e {
 extern ColorRef_t g_console_brush_fg;
 extern ColorRef_t g_console_brush_bg;
 
-enum {
+enum : uint16_t {
   DISPLAY_WIDTH = 560,
   DISPLAY_HEIGHT = 384,
   DISPLAY_DISASM_RIGHT = 353,
@@ -75,7 +75,7 @@ auto can_draw_debugger(void) -> bool;
 auto InitDisasm(void) -> void;
 auto UpdateDisplay(Update_t bUpdate) -> void;
 
-enum DebugVirtualTextScreen_e {
+enum DebugVirtualTextScreen_e : uint8_t {
   DEBUG_VIRTUAL_TEXT_WIDTH = 80,
   DEBUG_VIRTUAL_TEXT_HEIGHT = 48,
 };

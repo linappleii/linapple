@@ -6,7 +6,7 @@
 
 #include "apple2/peripherals/Peripheral_Audio.h"
 
-enum FadeType { fade_out = 0, fade_in = 1 };
+enum FadeType : uint8_t { fade_out = 0, fade_in = 1 };
 
 // Only the frontend knows the device's rate, because it opened the device.
 // Every source is resampled to it, so no rate constant lives in the mixer or

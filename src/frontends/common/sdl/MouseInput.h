@@ -3,7 +3,7 @@
 
 #include "frontends/common/MouseFrontend.h"
 
-enum class MouseHostButton { left, middle, right, other };
+enum class MouseHostButton : uint8_t { left, middle, right, other };
 
 // The host pointer is taken only while something on the Apple side consumes
 // it: a mouse card, or a joystick emulated from the mouse. The first left click

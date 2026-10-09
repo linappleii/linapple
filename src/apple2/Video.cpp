@@ -475,7 +475,7 @@ auto draw_dhires_source() -> void {
   }
 }
 
-enum ColorMapping {
+enum ColorMapping : uint8_t {
   CM_Magenta,
   CM_Blue,
   CM_Green,

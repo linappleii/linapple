@@ -11,7 +11,7 @@
 
 // Directives
 
-enum Assemblers_e {
+enum Assemblers_e : uint8_t {
   ASM_ACME,
   ASM_BIG_MAC,
   ASM_DOS_TOOL_KIT,
@@ -26,18 +26,27 @@ enum Assemblers_e {
   NUM_ASSEMBLERS,
 };
 
-enum AsmAcmeDirective_e { ASM_A_DEFINE_BYTE, NUM_ASM_ACME_DIRECTIVES };
+enum AsmAcmeDirective_e : uint8_t {
+  ASM_A_DEFINE_BYTE,
+  NUM_ASM_ACME_DIRECTIVES
+};
 
-enum AsmBigMacDirective_e { ASM_B_DEFINE_BYTE, NUM_ASM_BIG_MAC_DIRECTIVES };
+enum AsmBigMacDirective_e : uint8_t {
+  ASM_B_DEFINE_BYTE,
+  NUM_ASM_BIG_MAC_DIRECTIVES
+};
 
-enum AsmDosToolKitDirective_e {
+enum AsmDosToolKitDirective_e : uint8_t {
   ASM_D_DEFINE_BYTE,
   NUM_ASM_DOS_TOOL_KIT_DIRECTIVES,
 };
 
-enum AsmLisaDirective_e { ASM_L_DEFINE_BYTE, NUM_ASM_LISA_DIRECTIVES };
+enum AsmLisaDirective_e : uint8_t {
+  ASM_L_DEFINE_BYTE,
+  NUM_ASM_LISA_DIRECTIVES
+};
 
-enum AsmMerlinDirective_e {
+enum AsmMerlinDirective_e : uint8_t {
   ASM_MERLIN_ASCII,
   ASM_M_DEFINE_WORD,
   ASM_M_DEFINE_BYTE,
@@ -49,14 +58,17 @@ enum AsmMerlinDirective_e {
   ASM_M_DEFINE_WORD_ALIAS,
 };
 
-enum AsmMicroSparcDirective_e {
+enum AsmMicroSparcDirective_e : uint8_t {
   ASM_u_DEFINE_BYTE,
   NUM_ASM_MICROSPARC_DIRECTIVES,
 };
 
-enum AsmOrcamDirective_e { ASM_O_DEFINE_BYTE, NUM_ASM_ORCA_DIRECTIVES };
+enum AsmOrcamDirective_e : uint8_t {
+  ASM_O_DEFINE_BYTE,
+  NUM_ASM_ORCA_DIRECTIVES
+};
 
-enum AsmSCMacroDirective_e {
+enum AsmSCMacroDirective_e : uint8_t {
   ASM_S_ORIGIN,
   ASM_S_TARGET_ADDRESS,
   ASM_S_END_PROGRAM,
@@ -67,11 +79,14 @@ enum AsmSCMacroDirective_e {
   NUM_ASM_SC_DIRECTIVES,
 };
 
-enum AsmTedDirective_e { ASM_T_DEFINE_BYTE, NUM_ASM_TED_DIRECTIVES };
+enum AsmTedDirective_e : uint8_t { ASM_T_DEFINE_BYTE, NUM_ASM_TED_DIRECTIVES };
 
-enum AsmWellersDirective_e { ASM_W_DEFINE_BYTE, NUM_ASM_WELLERS_DIRECTIVES };
+enum AsmWellersDirective_e : uint8_t {
+  ASM_W_DEFINE_BYTE,
+  NUM_ASM_WELLERS_DIRECTIVES
+};
 
-enum AsmCustomDirective_e {
+enum AsmCustomDirective_e : uint8_t {
   ASM_DEFINE_BYTE,
   ASM_DEFINE_WORD,
   ASM_DEFINE_ADDRESS_16,
@@ -84,7 +99,7 @@ enum AsmCustomDirective_e {
 };
 
 // NOTE: Keep in sync AsmDirectives_e and g_assembler_directives
-enum AsmDirectives_e {
+enum AsmDirectives_e : uint8_t {
   FIRST_ACME_DIRECTIVE = 1,
   FIRST_BIG_MAC_DIRECTIVE = FIRST_ACME_DIRECTIVE + NUM_ASM_ACME_DIRECTIVES,
   FIRST_DOS_TOOL_KIT_DIRECTIVE = FIRST_BIG_MAC_DIRECTIVE +

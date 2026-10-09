@@ -4,7 +4,7 @@
 #include <array>
 #include <cstddef>
 
-enum class HelpFeature {
+enum class HelpFeature : uint8_t {
   separator,
   help_screen,
   cold_reboot,

@@ -7,7 +7,7 @@ using ColorRef_t = uint32_t;
 
 // Colors ___________________________________________________________________
 
-enum Color_Schemes_e {
+enum Color_Schemes_e : uint8_t {
   SCHEME_COLOR,  // NOTE: MUST match order in CMD_WINDOW_COLOR
   SCHEME_MONO,   // NOTE: MUST match order in CMD_WINDOW_MONOCHROME
   SCHEME_BW,     // NOTE: MUST match order in CMD_WINDOW_BW
@@ -18,7 +18,7 @@ enum Color_Schemes_e {
 // Named, since they are easier to remember.
 // Ok, maybe RGB + CYMK is a little "too" cute. But what the hell, it works out
 // nicely.
-enum DebugPalette_e {
+enum DebugPalette_e : uint8_t {
   // mipmap level:   8   7   6   5   4   3   2   1   0
   // color depth:  256 224 192 160 128  96  64  32   0
   //               +32 +32 +32 +32 +32 +32 +32 +32
@@ -115,7 +115,7 @@ enum DebugPalette_e {
 
 // Yeah, this was a PITA to organize.
 //
-enum DebugColors_e {
+enum DebugColors_e : uint8_t {
   BG_CONSOLE_OUTPUT  // Black   Window
   ,
   FG_CONSOLE_OUTPUT  // White

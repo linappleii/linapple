@@ -7,7 +7,7 @@
 
 // Types ____________________________________________________________________
 
-enum HelpType_e {
+enum HelpType_e : uint8_t {
   HELP_TYPE_USAGE,
   HELP_TYPE_NOTE,
   HELP_TYPE_EXAMPLE,

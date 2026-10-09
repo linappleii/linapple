@@ -151,12 +151,12 @@ enum SoftSwitch : uint8_t {
 using SoftSwitch_t = SoftSwitch;
 using SoftSwitch_e = SoftSwitch;
 
-enum MemoryInitPattern { MIP_ZERO, MIP_FF_FF_00_00, NUM_MIP };
+enum MemoryInitPattern : uint8_t { MIP_ZERO, MIP_FF_FF_00_00, NUM_MIP };
 using MemoryInitPattern_t = MemoryInitPattern;
 using MemoryInitPattern_e = MemoryInitPattern;
 extern MemoryInitPattern g_memory_init_pattern;
 
-enum ExpansionRomType {
+enum ExpansionRomType : uint8_t {
   EXP_ROM_NULL = 0,
   EXP_ROM_INTERNAL,
   EXP_ROM_PERIPHERAL,

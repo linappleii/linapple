@@ -24,7 +24,7 @@
 #include "frontends/common/VideoStretch.h"
 #include "frontends/common/VideoSurface.h"
 
-enum { DEBUG_FORCE_DISPLAY = 0 };
+constexpr uint8_t DEBUG_FORCE_DISPLAY = 0;
 
 // Globals __________________________________________________________________
 

@@ -15,12 +15,12 @@
 
 namespace {
 
-enum class ArgType {
+enum class ArgType : uint8_t {
   no_arg,
   req_arg,
 };
 
-enum OptId : int {
+enum OptId : uint8_t {
   opt_unknown = 0,
   opt_d1,
   opt_d2,

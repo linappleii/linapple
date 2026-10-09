@@ -227,7 +227,7 @@ enum ConfigSave_t : uint8_t {
 
 // Commands
 
-enum Update_e {
+enum Update_e : int16_t {
   UPDATE_NOTHING,
   UPDATE_BACKGROUND = (1 << 0),
   UPDATE_BREAKPOINTS = (1 << 1),
@@ -267,7 +267,7 @@ struct Command_t {
 // Commands sorted by Category
 // NOTE: Commands_e and g_commands[] order _MUST_ match !!! Aliases are listed
 // at the end
-enum Commands_e : uint16_t {
+enum Commands_e : uint8_t {
   // Assembler
   CMD_ASSEMBLE,
   // CPU
@@ -1135,7 +1135,7 @@ enum MemoryDump_e : uint8_t { MEM_DUMP_1, MEM_DUMP_2, NUM_MEM_DUMPS };
 
 constexpr int NUM_MEM_MINI_DUMPS = 2;
 
-enum MemorySearch_e {
+enum MemorySearch_e : uint32_t {
   MEM_SEARCH_BYTE_EXACT,      // xx
   MEM_SEARCH_NIB_LOW_EXACT,   // ?x
   MEM_SEARCH_NIB_HIGH_EXACT,  // x?

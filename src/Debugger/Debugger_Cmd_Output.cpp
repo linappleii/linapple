@@ -21,7 +21,7 @@
 extern bool g_report_missing_scripts;
 
 // Types used by CmdOutputPrint and CmdOutputPrintf
-enum PrintState_e {
+enum PrintState_e : uint8_t {
   PS_LITERAL,
   PS_ESCAPE,
   PS_NEXT_ARG_BIN,

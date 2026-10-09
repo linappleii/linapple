@@ -493,7 +493,7 @@ int g_assembler_first_directive[NUM_ASSEMBLERS] = {
 
 // Assemblers
 
-enum AssemblerFlags_e {
+enum AssemblerFlags_e : uint16_t {
   AF_HaveLabel = (1 << 0),
   AF_HaveComma = (1 << 1),
   AF_HaveHash = (1 << 2),
@@ -509,7 +509,7 @@ enum AssemblerFlags_e {
   AF_HaveTarget = (1 << 12),
 };
 
-enum AssemblerState_e {
+enum AssemblerState_e : uint8_t {
   AS_GET_MNEMONIC,
   AS_GET_MNEMONIC_PARM,
   AS_GET_HASH,

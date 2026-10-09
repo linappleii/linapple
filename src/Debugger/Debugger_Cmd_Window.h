@@ -67,7 +67,7 @@ auto WindowUpdateSizes() -> void;
 auto CmdWindowViewFull(int iNewWindow) -> Update_t;
 auto CmdWindowViewCommon(int iNewWindow) -> Update_t;
 
-enum ViewVideoPage_t {
+enum ViewVideoPage_t : uint8_t {
   VIEW_PAGE_1 = (1 << 0),
   VIEW_PAGE_2 = (1 << 1),
   VIEW_PAGE_X = (1 << 2),  // XOR cycles Page 1 / Page 2
