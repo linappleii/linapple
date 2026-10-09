@@ -11,7 +11,7 @@ enum BasicLineMode : uint8_t {
 };
 
 struct BasicSyncConfig {
-  std::string file_path{};
+  std::string file_path;
   BasicLineMode line_mode{basic_line_mode_explicit};
   bool enabled{false};
 };
