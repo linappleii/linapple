@@ -741,8 +741,7 @@ auto DrawSubWindow_Data(Update_t bUpdate) -> void {
     for (byte = 0; byte < nMaxOpcodes; byte++) {
       uint8_t nImmediate = static_cast<unsigned>(*(mem + iAddress));
 
-      ColorizeSpecialChar(sImmediate, static_cast<uint8_t>(nImmediate), eView,
-                          iBackground);
+      ColorizeSpecialChar(sImmediate, nImmediate, eView, iBackground);
       PrintTextCursorX((const char*)sImmediate, rect);
 
       iAddress++;

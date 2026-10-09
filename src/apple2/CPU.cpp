@@ -674,7 +674,7 @@ struct CpuLoopContext {
   }
   auto op_axa() -> void {
     uint16_t val = regs.a & regs.x & (((base >> 8) + 1) & 0xFF);
-    addr = (addr & 0x00FF) | (static_cast<uint16_t>(val) << 8);
+    addr = (addr & 0x00FF) | (val << 8);
     write_byte(addr, static_cast<uint8_t>(val));
   }
   auto op_axs() -> void { write_byte(addr, regs.a & regs.x); }
@@ -783,14 +783,14 @@ struct CpuLoopContext {
   }
   auto op_say() -> void {
     uint16_t val = regs.y & (((base >> 8) + 1) & 0xFF);
-    addr = (addr & 0x00FF) | (static_cast<uint16_t>(val) << 8);
+    addr = (addr & 0x00FF) | (val << 8);
     write_byte(addr, static_cast<uint8_t>(val));
   }
   auto op_tas() -> void {
     uint16_t val = regs.a & regs.x;
     regs.sp = 0x100 | val;
     val &= (((base >> 8) + 1) & 0xFF);
-    addr = (addr & 0x00FF) | (static_cast<uint16_t>(val) << 8);
+    addr = (addr & 0x00FF) | (val << 8);
     write_byte(addr, static_cast<uint8_t>(val));
   }
   auto op_xaa() -> void {
@@ -800,7 +800,7 @@ struct CpuLoopContext {
   }
   auto op_xas() -> void {
     uint16_t val = regs.x & (((base >> 8) + 1) & 0xFF);
-    addr = (addr & 0x00FF) | (static_cast<uint16_t>(val) << 8);
+    addr = (addr & 0x00FF) | (val << 8);
     write_byte(addr, static_cast<uint8_t>(val));
   }
 

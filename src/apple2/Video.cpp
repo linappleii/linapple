@@ -1342,11 +1342,11 @@ auto video_benchmark() -> void {
   g_video_mode = VF_TEXT;
   memset(mem + 0x400, 0x14, 0x400);
   video_redraw_screen();
-  auto milliseconds = static_cast<uint32_t>(get_tick_count_ms());
+  auto milliseconds = get_tick_count_ms();
   while (get_tick_count_ms() == milliseconds) {
     ;
   }
-  milliseconds = static_cast<uint32_t>(get_tick_count_ms());
+  milliseconds = get_tick_count_ms();
   uint32_t cycle = 0;
   do {
     if (cycle & 1) {
@@ -1365,11 +1365,11 @@ auto video_benchmark() -> void {
   g_video_mode = VF_HIRES;
   memset(mem + 0x2000, 0x14, 0x2000);
   video_redraw_screen();
-  milliseconds = static_cast<uint32_t>(get_tick_count_ms());
+  milliseconds = get_tick_count_ms();
   while (get_tick_count_ms() == milliseconds) {
     ;
   }
-  milliseconds = static_cast<uint32_t>(get_tick_count_ms());
+  milliseconds = get_tick_count_ms();
   cycle = 0;
   do {
     if (cycle & 1) {
@@ -1386,11 +1386,11 @@ auto video_benchmark() -> void {
 
   cpu_setup_benchmark();
   uint32_t totalmhz10 = 0;
-  milliseconds = static_cast<uint32_t>(get_tick_count_ms());
+  milliseconds = get_tick_count_ms();
   while (get_tick_count_ms() == milliseconds) {
     ;
   }
-  milliseconds = static_cast<uint32_t>(get_tick_count_ms());
+  milliseconds = get_tick_count_ms();
   cycle = 0;
   do {
     static_cast<void>(cpu_execute(100000));
@@ -1434,11 +1434,11 @@ auto video_benchmark() -> void {
   uint32_t realisticfps = 0;
   memset(mem + 0x2000, 0xAA, 0x2000);
   video_redraw_screen();
-  milliseconds = static_cast<uint32_t>(get_tick_count_ms());
+  milliseconds = get_tick_count_ms();
   while (get_tick_count_ms() == milliseconds) {
     ;
   }
-  milliseconds = static_cast<uint32_t>(get_tick_count_ms());
+  milliseconds = get_tick_count_ms();
   cycle = 0;
   do {
     if (realisticfps < 10) {

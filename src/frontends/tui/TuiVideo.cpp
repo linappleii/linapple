@@ -748,8 +748,7 @@ static auto render_text_cell(int r, int c, bool is_80col, uint16_t page_offset,
   }
 
   cell.glyph.fill(0);
-  cell.glyph.at(0) =
-      (ascii < 32 || ascii > 126) ? ' ' : static_cast<uint8_t>(ascii);
+  cell.glyph.at(0) = (ascii < 32 || ascii > 126) ? ' ' : ascii;
   TuiPixel text_color = get_text_fg_color();
   TuiPixel a2_black = {0, 0, 0};
   cell.fg = text_color;

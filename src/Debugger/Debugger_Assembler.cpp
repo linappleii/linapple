@@ -845,7 +845,7 @@ auto GetTargets(uint16_t address, int* pTargetPartial_, int* pTargetPartial2_,
       assert(nOpcode == OPCODE_JMP_IAX);
       nTarget16 += cpu_get_registers()->x;
       *pTargetPartial_ = static_cast<int>(nTarget16);
-      *pTargetPartial2_ = static_cast<int>(nTarget16 + 1);
+      *pTargetPartial2_ = (nTarget16 + 1);
       if (bIncludeNextOpcodeAddress) {
         *pTargetPointer_ =
             static_cast<int>(*reinterpret_cast<uint16_t*>(mem + nTarget16));
