@@ -178,7 +178,7 @@ auto iie_open(const char* path, uint32_t file_offset, bool read_only,
                              instance_ptr->sector_order.data());
     for (int t = 0; t < iie::tracks; ++t) {
       const uint32_t offset =
-          file_offset + static_cast<uint32_t>(t * sector_image_track_bytes +
+          file_offset + static_cast<uint32_t>((t * sector_image_track_bytes) +
                                               iie::track_data_offset);
       if (static_cast<int64_t>(offset) + sector_image_track_bytes >
           total_file_size) {

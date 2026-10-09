@@ -127,9 +127,9 @@ static inline auto set_frame_color(int i, uint8_t r1, uint8_t g1, uint8_t b1)
   framebufferinfo[i].b = b1;
 }
 
-static uint8_t hgrpixelmatrix[apple2_visible_width]
-                             [apple2_visible_height + 2 * hgr_matrix_yoffset] =
-                                 {};
+static uint8_t hgrpixelmatrix[apple2_visible_width][apple2_visible_height +
+                                                    (2 * hgr_matrix_yoffset)] =
+    {};
 static uint8_t colormixbuffer[6] = {};
 static uint16_t colormixmap[6][6][6] = {};
 
@@ -204,7 +204,7 @@ static std::mutex s_video_worker_mutex;
 std::recursive_mutex g_video_draw_mutex;
 std::condition_variable video_cv;
 
-static char display_pipeline_[0x2000 * 4 + 0x400 * 4] = {};
+static char display_pipeline_[(0x2000 * 4) + (0x400 * 4)] = {};
 
 auto copy_source(int destx, int desty, int xsize, int ysize, int sourcex,
                  int sourcey) -> void {
@@ -1002,12 +1002,13 @@ auto update_dhires_cell(int x, int y, int xpixel, int ypixel, int offset)
       auto render_dhires_segment = [&](int pixel_offset) {
         int color = (xpixel + pixel_offset) & 3;
         uint32_t value = dwordval >> (4 + pixel_offset - color);
-        copy_source(xpixel + pixel_offset, ypixel + (yoffset >> 9), 7, 2,
-                    SRCOFFS_DHIRES +
-                        10 * (static_cast<uint8_t>(
-                                 (static_cast<uint16_t>(value) >> 8) & 0xFF)) +
-                        color,
-                    (static_cast<uint8_t>(value)) << 1);
+        copy_source(
+            xpixel + pixel_offset, ypixel + (yoffset >> 9), 7, 2,
+            SRCOFFS_DHIRES +
+                (10 * (static_cast<uint8_t>(
+                          (static_cast<uint16_t>(value) >> 8) & 0xFF))) +
+                color,
+            (static_cast<uint8_t>(value)) << 1);
       };
       render_dhires_segment(0);
       render_dhires_segment(7);
@@ -1313,7 +1314,7 @@ auto video_apparently_dirty() noexcept -> bool {
     // . Skip 8-char holes in TEXT
     for (uint32_t y = 0; y < 8; y++) {
       for (uint32_t x = 0; x < 40 * 3; x++) {
-        uint8_t ch = pnMemText[y * 128 + x];
+        uint8_t ch = pnMemText[(y * 128) + x];
         if ((ch >= 0x40) && (ch <= 0x7F)) {
           char_flashing = true;
           break;
@@ -1771,11 +1772,11 @@ auto video_perform_refresh() -> void {
   if (swl_text()) {
     update = swl_80col() ? update_80col_cell : update_40col_cell;
   } else if (swl_hires()) {
-    update = (swl_dhires() && swl_80col()) ? update_dhires_cell
-                                           : update_hires_cell;
+    update =
+        (swl_dhires() && swl_80col()) ? update_dhires_cell : update_hires_cell;
   } else {
-    update = (swl_dhires() && swl_80col()) ? update_dlores_cell
-                                           : update_lores_cell;
+    update =
+        (swl_dhires() && swl_80col()) ? update_dlores_cell : update_lores_cell;
   }
 
   bool anydirty = redrawfull | g_text_flash_flag;

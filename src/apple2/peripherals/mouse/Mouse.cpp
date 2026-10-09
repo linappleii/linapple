@@ -263,7 +263,7 @@ auto register_bank(MouseCard_t* card) -> void {
       (static_cast<uint32_t>(card->port_b_shadow) & port_b::bank_mask) >>
       port_b::bank_shift;
   card->host->RegisterCxROM(card->slot,
-                            mouse_rom.data() + bank * mouse_rom_bank_size);
+                            mouse_rom.data() + (bank * mouse_rom_bank_size));
 }
 
 // IRQ' is the 6805's PB6 through a 10 k pull-up; the PIA's interrupt pins are
@@ -304,8 +304,8 @@ auto advance(MouseCard_t* card, uint64_t now) -> void {
   card->next_tick = std::min(now + card->tick_period, card->next_tick);
   if (card->next_tick <= now) {
     fire(card);
-    card->next_tick +=
-        ((now - card->next_tick) / card->tick_period + 1) * card->tick_period;
+    card->next_tick += ((((now - card->next_tick) / card->tick_period) + 1) *
+                        card->tick_period);
   }
   card->host->ScheduleEvent(card, card->next_tick);
 }

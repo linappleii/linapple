@@ -127,7 +127,7 @@ auto video_load_xpm(const char* const* xpm) -> VideoSurface* {
           break;
         }
       }
-      s->pixels[y * s->pitch + x] = color_idx;
+      s->pixels[(y * s->pitch) + x] = color_idx;
     }
   }
 

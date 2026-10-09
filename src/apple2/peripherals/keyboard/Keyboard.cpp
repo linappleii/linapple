@@ -146,7 +146,7 @@ auto arm_auto_repeat(KeyboardPeripheral_t* kp) -> void {
   const uint64_t frame = frame_cycles(kp);
   const uint64_t press_frame = kp->host->GetCycles() / frame;
   const uint64_t phase =
-      (repeat_phase_frames - press_frame % repeat_phase_frames) %
+      (repeat_phase_frames - (press_frame % repeat_phase_frames)) %
       repeat_phase_frames;
   arm(kp, (press_frame + repeat_delay_frames + phase) * frame);
 }

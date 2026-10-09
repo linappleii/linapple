@@ -793,7 +793,7 @@ auto DrawVideoScannerValue(int line, int vert, int horz, bool isVisible)
   const int nameWidth = 2;    // 2 chars
   const int numberWidth = 3;  // 3 chars
   const int gapWidth = 1;     // 1 space
-  const int totalWidth = (nameWidth + numberWidth) * 2 + gapWidth;
+  const int totalWidth = ((nameWidth + numberWidth) * 2) + gapWidth;
 
   Rect_t rect;
   rect.top = line * g_font_height;

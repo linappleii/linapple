@@ -106,7 +106,7 @@ auto totai(int64_t year, int64_t month, int64_t mday) noexcept -> int64_t {
     --year;
   }
   result =
-      (mday - 1) * day_multiplier + day_adjust + month_multiplier * month;
+      ((mday - 1) * day_multiplier) + day_adjust + (month_multiplier * month);
   result /= day_multiplier;
   if (result == days_per_year) {
     year -= leap_year_adjust;
@@ -151,8 +151,8 @@ auto get_current_time() noexcept -> CurrentTime {
 auto guesstai(int64_t month, int64_t mday, int64_t now_seconds,
               int64_t current_year) noexcept -> int64_t {
   constexpr int64_t year_search_limit = 100;
-  for (int64_t year = current_year - 1;
-       year < current_year + year_search_limit; ++year) {
+  for (int64_t year = current_year - 1; year < current_year + year_search_limit;
+       ++year) {
     const int64_t t = totai(year, month, mday);
     if (now_seconds - t < guess_max_days_past * seconds_per_day) {
       return t;
@@ -190,7 +190,7 @@ auto getlong(const char* buf, size_t len) noexcept -> uint64_t {
     constexpr uint64_t base10 = 10;
     const uint64_t digit = static_cast<uint64_t>(*buf++ - '0');
     if (u <= (UINT64_MAX - digit) / base10) {
-      u = u * base10 + digit;
+      u = (u * base10) + digit;
     } else {
       u = UINT64_MAX;
     }
@@ -254,8 +254,8 @@ constexpr auto is_unix_file_type(char c) noexcept -> bool {
 
 auto parse_unix_time_or_year(FtpParsedEntry& fp, const char* token,
                              size_t token_len, int64_t month, int64_t mday,
-                             int64_t base,
-                             const CurrentTime& now_time) noexcept -> bool {
+                             int64_t base, const CurrentTime& now_time) noexcept
+    -> bool {
   if (token_len == 4 && token[1] == ':') {
     const auto hour = static_cast<int64_t>(getlong(token, 1));
     const auto minute = static_cast<int64_t>(getlong(token + 2, 2));
@@ -263,7 +263,7 @@ auto parse_unix_time_or_year(FtpParsedEntry& fp, const char* token,
     fp.mtime = static_cast<time_t>(
         base +
         guesstai(month, mday, now_time.now_seconds, now_time.current_year) +
-        hour * seconds_per_hour + minute * seconds_per_minute);
+        (hour * seconds_per_hour) + (minute * seconds_per_minute));
     return true;
   }
   if (token_len == 5 && token[2] == ':') {
@@ -273,7 +273,7 @@ auto parse_unix_time_or_year(FtpParsedEntry& fp, const char* token,
     fp.mtime = static_cast<time_t>(
         base +
         guesstai(month, mday, now_time.now_seconds, now_time.current_year) +
-        hour * seconds_per_hour + minute * seconds_per_minute);
+        (hour * seconds_per_hour) + (minute * seconds_per_minute));
     return true;
   }
   if (token_len >= 4) {
@@ -498,8 +498,8 @@ auto parse_vms(FtpParsedEntry& fp, const char* buf, size_t len) -> bool {
   const int64_t base = get_time_base();
   fp.mtimetype = FtpMtimeType::remote_minute;
   fp.mtime = static_cast<time_t>(base + totai(year, month, mday) +
-                                 hour * seconds_per_hour +
-                                 minute * seconds_per_minute);
+                                 (hour * seconds_per_hour) +
+                                 (minute * seconds_per_minute));
   return true;
 }
 
@@ -607,8 +607,8 @@ auto parse_dos(FtpParsedEntry& fp, const char* buf, size_t len) -> bool {
   const int64_t base = get_time_base();
   fp.mtimetype = FtpMtimeType::remote_minute;
   fp.mtime = static_cast<time_t>(base + totai(year, month, mday) +
-                                 hour * seconds_per_hour +
-                                 minute * seconds_per_minute);
+                                 (hour * seconds_per_hour) +
+                                 (minute * seconds_per_minute));
   return true;
 }
 

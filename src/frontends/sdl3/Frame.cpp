@@ -726,8 +726,8 @@ auto frame_show_help_screen(int width, int height) -> void {
           help_body_lines.at(i).text[0] != '\0') {
         font_print(
             static_cast<int>(16.0F * facx_f),
-            body_top + static_cast<int>(6.0F * facy_f +
-                                        static_cast<float>(i) * line_spacing),
+            body_top + static_cast<int>((6.0F * facy_f) +
+                                        (static_cast<float>(i) * line_spacing)),
             help_body_lines.at(i).text, lock_screen.view(), scale_x, scale_y);
       }
     }

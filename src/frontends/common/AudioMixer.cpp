@@ -574,7 +574,7 @@ auto audio_mixer_upload_channels(const char* peripheral_id, int slot,
         r_acc += sample * s.pan[c].right;
       }
       stereo_chunk[i * 2] = l_acc;
-      stereo_chunk[i * 2 + 1] = r_acc;
+      stereo_chunk[(i * 2) + 1] = r_acc;
     }
 
     sample_buffer_upload(s.buffer.get(), stereo_chunk.data(), produced * 2);

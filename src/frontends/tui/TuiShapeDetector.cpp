@@ -162,15 +162,15 @@ auto tui_shape_detect_cell(const uint32_t* pixels, int pitch, int x_start,
   int total_b = 0;
 
   for (int v = 0; v < subgrid_dim; ++v) {
-    int py = y_start + ((2 * v + 1) * h_span) / (2 * subgrid_dim);
+    int py = y_start + ((((2 * v) + 1) * h_span) / (2 * subgrid_dim));
     for (int u = 0; u < subgrid_dim; ++u) {
-      int px = x_start + ((2 * u + 1) * w_span) / (2 * subgrid_dim);
-      uint32_t pixel_val = pixels[static_cast<size_t>(py * stride + px)];
+      int px = x_start + ((((2 * u) + 1) * w_span) / (2 * subgrid_dim));
+      uint32_t pixel_val = pixels[static_cast<size_t>((py * stride) + px)];
       auto r = static_cast<uint8_t>(pixel_val & byte_mask);
       auto g = static_cast<uint8_t>((pixel_val >> green_shift) & byte_mask);
       auto b = static_cast<uint8_t>((pixel_val >> blue_shift) & byte_mask);
 
-      int lum = (r * lum_weight_r + g * lum_weight_g + b * lum_weight_b) /
+      int lum = ((r * lum_weight_r) + (g * lum_weight_g) + (b * lum_weight_b)) /
                 lum_weight_sum;
       lum_grid.at(static_cast<size_t>(v)).at(static_cast<size_t>(u)) =
           static_cast<uint8_t>(lum);
@@ -226,7 +226,7 @@ auto tui_shape_detect_cell(const uint32_t* pixels, int pitch, int x_start,
           col_grid.at(static_cast<size_t>(v)).at(static_cast<size_t>(u));
       if (lum_grid.at(static_cast<size_t>(v)).at(static_cast<size_t>(u)) >=
           threshold) {
-        cell_bits |= (1ULL << (v * subgrid_dim + u));
+        cell_bits |= (1ULL << ((v * subgrid_dim) + u));
         fg_count++;
         fg_r += pix.r;
         fg_g += pix.g;

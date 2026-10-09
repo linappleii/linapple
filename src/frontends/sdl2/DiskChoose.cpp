@@ -88,8 +88,8 @@ auto wait_for_dismissal() -> void {
 auto prepare_dialog_background() -> bool {
   VideoSurface* temp_surface = g_origscreen;
   if (!g_window_resized) {
-    temp_surface = (system_state.mode == app_mode_logo) ? g_logo_bitmap
-                                                        : g_device_bitmap;
+    temp_surface =
+        (system_state.mode == app_mode_logo) ? g_logo_bitmap : g_device_bitmap;
   }
 
   ScopedSurfaceLock lock_screen(g_screen.get());
@@ -308,8 +308,8 @@ auto disk_choose_draw() -> void {
       }
 
       const string file_name = file_entry->name;
-      const int item_y = static_cast<int>(static_cast<double>(top_y) +
-                                          static_cast<double>(j) * 15.0 * facy);
+      const int item_y = static_cast<int>(
+          static_cast<double>(top_y) + (static_cast<double>(j) * 15.0 * facy));
 
       if (i == g_disk_choose_state.act_file) {
         const int rx = 2;

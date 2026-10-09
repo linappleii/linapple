@@ -82,8 +82,8 @@ static auto copy_row4(const uint32_t* src, int src_w, uint32_t* dst, int dst_x,
                       int dst_w, int max_w) -> void {
   copy_row(src, src_w, dst, dst_x, dst_w, max_w);
 }
-static auto copy_row_or1(const uint8_t* src, int src_w, uint8_t* dst,
-                         int dst_x, int dst_w, int max_w) -> void {
+static auto copy_row_or1(const uint8_t* src, int src_w, uint8_t* dst, int dst_x,
+                         int dst_w, int max_w) -> void {
   copy_row_or(src, src_w, dst, dst_x, dst_w, max_w);
 }
 static auto copy_row_or2(const uint16_t* src, int src_w, uint16_t* dst,
@@ -504,12 +504,12 @@ auto font_print(int x, int y, const char* text, VideoSurfaceView surface,
 
     row = c / k_chars_in_row;
 
-    s.x = (c - (row * k_chars_in_row)) * (k_font_size_x + 1) + 1;
-    s.y = row * (k_font_size_y + 1) + 1;
+    s.x = ((c - (row * k_chars_in_row)) * (k_font_size_x + 1)) + 1;
+    s.y = (row * (k_font_size_y + 1)) + 1;
     s.h = k_font_size_y;
     s.w = k_font_size_x;
 
-    d.x = static_cast<int>(x + i * k_font_size_x * kx);
+    d.x = static_cast<int>(x + (i * k_font_size_x * kx));
     d.y = y;
     d.w = static_cast<int>(s.w * kx);
     d.h = static_cast<int>(s.h * ky);

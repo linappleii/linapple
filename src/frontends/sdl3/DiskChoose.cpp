@@ -81,8 +81,8 @@ auto wait_for_dismissal() -> void {
 auto prepare_dialog_background() -> bool {
   VideoSurface* temp_surface = g_origscreen;
   if (!g_window_resized) {
-    temp_surface = (system_state.mode == app_mode_logo) ? g_logo_bitmap
-                                                        : g_device_bitmap;
+    temp_surface =
+        (system_state.mode == app_mode_logo) ? g_logo_bitmap : g_device_bitmap;
   }
 
   ScopedSurfaceLock lock_screen(g_screen.get());
@@ -304,12 +304,12 @@ auto disk_choose_draw() -> void {
       }
 
       const std::string file_name = file_entry->name;
+      const int item_y = static_cast<int>(
+          static_cast<double>(top_y) + (static_cast<double>(j) * 15.0 * facy));
 
       if (i == g_disk_choose_state.act_file) {
         const int rx = 2;
-        const int ry =
-            static_cast<int>(static_cast<double>(top_y) +
-                             static_cast<double>(j) * 15.0 * facy - 1.0);
+        const int ry = item_y - 1;
         const auto display_len = std::min(file_name.size(), max_filename);
         const int rw = static_cast<int>(
             static_cast<double>(display_len * k_font_size_x) * facx_f);
@@ -321,16 +321,11 @@ auto disk_choose_draw() -> void {
       file_entry_format_type_or_size(file_entry, type_size_str.data(),
                                      type_size_str.size());
 
-      font_print(4,
-                 static_cast<int>(static_cast<double>(top_y) +
-                                  static_cast<double>(j) * 15.0 * facy),
-                 file_name.substr(0, max_filename).c_str(), lock_screen.view(),
-                 1.0F * facx_f, 1.0F * facy_f);
+      font_print(4, item_y, file_name.substr(0, max_filename).c_str(),
+                 lock_screen.view(), 1.0F * facx_f, 1.0F * facy_f);
       font_print_right(
           screen_w - static_cast<int>(8.0 * static_cast<double>(facx_f)),
-          static_cast<int>(static_cast<double>(top_y) +
-                           static_cast<double>(j) * 15.0 * facy),
-          type_size_str.data(), lock_screen.view(), 1.0F * facx_f,
+          item_y, type_size_str.data(), lock_screen.view(), 1.0F * facx_f,
           1.0F * facy_f);
     }
 

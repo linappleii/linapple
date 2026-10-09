@@ -68,7 +68,7 @@ auto record_picture_box(int x, int y, int w, int h) -> void {
 }
 
 auto buffer_cell_index(int x, int y) -> size_t {
-  return static_cast<size_t>(y) * static_cast<size_t>(g_term_width) +
+  return (static_cast<size_t>(y) * static_cast<size_t>(g_term_width)) +
          static_cast<size_t>(x);
 }
 
@@ -767,11 +767,12 @@ static auto render_gfx_cell(const uint32_t* pixels, int pitch, int width,
   } else {
     int sx = (gfx_w > 0) ? (x * width / gfx_w) : 0;
     int sy_top = (gfx_h > 0) ? (y * sample_height / gfx_h) : 0;
-    int sy_bot = (gfx_h > 0) ? ((2 * y + 1) * sample_height / (2 * gfx_h)) : 0;
+    int sy_bot =
+        (gfx_h > 0) ? ((((2 * y) + 1) * sample_height) / (2 * gfx_h)) : 0;
     set_glyph(cell, "\xe2\x96\x80");  // ▀ Upper half block
     const int stride = pitch / static_cast<int>(sizeof(uint32_t));
-    uint32_t p_top = pixels[static_cast<size_t>(sy_top * stride + sx)];
-    uint32_t p_bot = pixels[static_cast<size_t>(sy_bot * stride + sx)];
+    uint32_t p_top = pixels[static_cast<size_t>((sy_top * stride) + sx)];
+    uint32_t p_bot = pixels[static_cast<size_t>((sy_bot * stride) + sx)];
     cell.fg = {
         static_cast<uint8_t>(p_top & 0xFF),
         static_cast<uint8_t>((p_top >> 8) & 0xFF),
