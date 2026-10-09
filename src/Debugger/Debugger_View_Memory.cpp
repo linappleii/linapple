@@ -265,8 +265,8 @@ auto DrawSoftSwitch(Rect_t& rect, int address, bool bSet, const char* sPrefix,
 }
 
 auto DrawTriStateSoftSwitch(Rect_t& rect, int address, const int iBankDisplay,
-                            int iActive, char* sPrefix, char* sOn, char* sOff,
-                            const char* sSuffix = nullptr,
+                            int iActive, const char* sPrefix, const char* sOn,
+                            const char* sOff, const char* sSuffix = nullptr,
                             int bg_default = BG_INFO) -> void {
   (void)sPrefix;
   (void)sSuffix;

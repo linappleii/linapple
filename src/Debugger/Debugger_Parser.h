@@ -178,7 +178,7 @@ auto ArgsClear() -> void;
 auto ArgsGetValue(Arg_t* pArg, uint16_t* pAddressValue_, int nBase = 16)
     -> bool;
 auto ArgsGetImmediateValue(Arg_t* pArg, uint16_t* pAddressValue_) -> bool;
-auto ArgsGet(char* pInput) -> int;
+auto ArgsGet(const char* pInput) -> int;
 auto ArgsGetRegisterValue(Arg_t* pArg, uint16_t* pAddressValue_) -> bool;
 auto ArgsRawParse(void) -> void;
 auto ArgsCook(int nArgs) -> int;

@@ -38,7 +38,7 @@ FramePacer::FramePacer(FrameClockNowFn now, FrameClockSleepUntilFn sleep_until)
       sleep_until_(sleep_until != nullptr ? sleep_until
                                           : steady_sleep_until_ns) {}
 
-auto FramePacer::frame_period_ns() const -> int64_t {
+auto FramePacer::frame_period_ns() -> int64_t {
   const double cycles = static_cast<double>(system_state.clks_per_frame);
   const double clock_hz = current_clk_6502;
   if (!(cycles > 0.0) || !(clock_hz > 0.0)) {

@@ -521,6 +521,7 @@ auto keyboard_abi_load_state(void* instance, const void* buffer, size_t size)
 }
 
 // The keyboard has no queries: its state is read through $C000 and $C010.
+// NOLINTNEXTLINE(readability-non-const-parameter) - signature defined by PeripheralQueryFn ABI
 auto keyboard_abi_query(void* instance, uint32_t cmd_id, void* out,
                         size_t* out_size) -> PeripheralStatus_t {
   (void)instance;

@@ -264,6 +264,7 @@ auto printer_abi_command(void* instance, uint32_t command_id,
   return peripheral_incompatible;
 }
 
+// NOLINTNEXTLINE(readability-non-const-parameter) - signature defined by PeripheralQueryFn ABI
 auto printer_abi_query(void* instance, uint32_t query_id, void* output,
                        size_t* output_size) -> PeripheralStatus_t {
   (void)instance;

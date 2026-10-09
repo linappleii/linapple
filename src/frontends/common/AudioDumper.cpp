@@ -48,6 +48,7 @@ AudioDumper::AudioDumper() noexcept = default;
 
 AudioDumper::~AudioDumper() { finalize(); }
 
+// NOLINTBEGIN(cppcoreguidelines-prefer-member-initializer) - requires mutex lock before member transfer
 AudioDumper::AudioDumper(AudioDumper&& other) noexcept {
   std::lock_guard<std::mutex> lock(other.mutex_);
   file_ = std::move(other.file_);
@@ -56,6 +57,7 @@ AudioDumper::AudioDumper(AudioDumper&& other) noexcept {
   total_bytes_written_ = other.total_bytes_written_;
   num_channels_ = other.num_channels_;
 }
+// NOLINTEND(cppcoreguidelines-prefer-member-initializer)
 
 auto AudioDumper::operator=(AudioDumper&& other) noexcept -> AudioDumper& {
   if (this != &other) {

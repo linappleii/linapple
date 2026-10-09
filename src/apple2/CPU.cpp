@@ -132,14 +132,14 @@ struct CpuLoopContext {
     flagz = (regs.ps & AF_ZERO);
   }
 
-  auto push(uint8_t a) -> void {
+  static auto push(uint8_t a) -> void {
     *(mem + regs.sp--) = a;
     if (regs.sp < STACK_BEGIN) {
       regs.sp = STACK_END;
     }
   }
 
-  auto pop() -> uint8_t {
+  static auto pop() -> uint8_t {
     return *(mem +
              ((regs.sp >= STACK_END) ? (regs.sp = STACK_BEGIN) : ++regs.sp));
   }
@@ -265,10 +265,10 @@ struct CpuLoopContext {
     regs.y = read_byte(addr);
     set_nz(regs.y);
   }
-  auto op_sta() -> void { write_byte(addr, regs.a); }
-  auto op_stx() -> void { write_byte(addr, regs.x); }
-  auto op_sty() -> void { write_byte(addr, regs.y); }
-  auto op_stz() -> void { write_byte(addr, 0); }
+  auto op_sta() const -> void { write_byte(addr, regs.a); }
+  auto op_stx() const -> void { write_byte(addr, regs.x); }
+  auto op_sty() const -> void { write_byte(addr, regs.y); }
+  auto op_stz() const -> void { write_byte(addr, 0); }
   auto op_tax() -> void {
     regs.x = regs.a;
     set_nz(regs.x);
@@ -289,7 +289,7 @@ struct CpuLoopContext {
     regs.x = regs.sp & 0xFF;
     set_nz(regs.x);
   }
-  auto op_txs() -> void { regs.sp = 0x100 | regs.x; }
+  static auto op_txs() -> void { regs.sp = 0x100 | regs.x; }
   auto op_and() -> void {
     regs.a &= read_byte(addr);
     set_nz(regs.a);
@@ -413,13 +413,13 @@ struct CpuLoopContext {
     set_nz(regs.y);
   }
   auto op_jmp() const -> void { regs.pc = addr; }
-  auto op_jsr() -> void {
+  auto op_jsr() const -> void {
     --regs.pc;
     push(regs.pc >> 8);
     push(regs.pc & 0xFF);
     regs.pc = addr;
   }
-  auto op_rts() -> void {
+  static auto op_rts() -> void {
     regs.pc = pop();
     regs.pc |= (static_cast<uint16_t>(pop()) << 8);
     ++regs.pc;
@@ -443,17 +443,17 @@ struct CpuLoopContext {
     }
     regs.pc = read_u16_unaligned(mem + IRQ_VECTOR_ADDR);
   }
-  auto op_hlt() -> void {
+  static auto op_hlt() -> void {
     regs.is_jammed = true;
     --regs.pc;
   }
-  auto op_pha() -> void { push(regs.a); }
-  auto op_php() -> void {
+  static auto op_pha() -> void { push(regs.a); }
+  auto op_php() const -> void {
     pack_ps();
     push(regs.ps);
   }
-  auto op_phx() -> void { push(regs.x); }
-  auto op_phy() -> void { push(regs.y); }
+  static auto op_phx() -> void { push(regs.x); }
+  static auto op_phy() -> void { push(regs.y); }
   auto op_pla() -> void {
     regs.a = pop();
     set_nz(regs.a);
@@ -677,7 +677,7 @@ struct CpuLoopContext {
     addr = (addr & 0x00FF) | (val << 8);
     write_byte(addr, static_cast<uint8_t>(val));
   }
-  auto op_axs() -> void { write_byte(addr, regs.a & regs.x); }
+  auto op_axs() const -> void { write_byte(addr, regs.a & regs.x); }
   auto op_dcm() -> void {
     uint16_t val = read_byte(addr) - 1;
     write_byte(addr, static_cast<uint8_t>(val));
@@ -807,10 +807,10 @@ struct CpuLoopContext {
   auto op_clc() -> void { flagc = 0; }
   auto op_sec() -> void { flagc = 1; }
   auto op_clv() -> void { flagv = 0; }
-  auto op_cli() -> void { regs.ps &= ~AF_INTERRUPT; }
-  auto op_sei() -> void { regs.ps |= AF_INTERRUPT; }
-  auto op_cld() -> void { regs.ps &= ~AF_DECIMAL; }
-  auto op_sed() -> void { regs.ps |= AF_DECIMAL; }
+  static auto op_cli() -> void { regs.ps &= ~AF_INTERRUPT; }
+  static auto op_sei() -> void { regs.ps |= AF_INTERRUPT; }
+  static auto op_cld() -> void { regs.ps &= ~AF_DECIMAL; }
+  static auto op_sed() -> void { regs.ps |= AF_DECIMAL; }
 
   template <bool cmos>
   auto check_nmi() -> void {

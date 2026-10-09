@@ -148,7 +148,7 @@ auto ArgsGetImmediateValue(Arg_t* pArg, uint16_t* pAddressValue_) -> bool {
 
 // Read console input, process the raw args, turning them into tokens and types.
 //===========================================================================
-auto ArgsGet(char* pInput) -> int {
+auto ArgsGet(const char* pInput) -> int {
   const char* src_ptr = pInput;
   const char* pEnd = nullptr;
   int nBuf = 0;

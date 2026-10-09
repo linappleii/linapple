@@ -30,7 +30,7 @@ class FramePacer {
 
   // One emulated frame of wall time, re-read every frame because a machine
   // type change moves it.
-  auto frame_period_ns() const -> int64_t;
+  static auto frame_period_ns() -> int64_t;
 
   auto wait_for_next_frame() -> void;
 

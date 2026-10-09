@@ -11,8 +11,8 @@
 #include "frontends/common/VideoSurface.h"
 
 template <typename T>
-static auto copy_row(T* src, int src_w, T* dst, int dst_x, int dst_w, int max_w)
-    -> void {
+static auto copy_row(const T* src, int src_w, T* dst, int dst_x, int dst_w,
+                     int max_w) -> void {
   if (dst_w <= 0 || src_w <= 0 || !src || !dst) {
     return;
   }
@@ -41,7 +41,7 @@ static auto copy_row(T* src, int src_w, T* dst, int dst_x, int dst_w, int max_w)
 }
 
 template <typename T>
-static auto copy_row_or(T* src, int src_w, T* dst, int dst_x, int dst_w,
+static auto copy_row_or(const T* src, int src_w, T* dst, int dst_x, int dst_w,
                         int max_w) -> void {
   if (dst_w <= 0 || src_w <= 0 || !src || !dst) {
     return;
@@ -70,28 +70,28 @@ static auto copy_row_or(T* src, int src_w, T* dst, int dst_x, int dst_w,
   }
 }
 
-static auto copy_row1(uint8_t* src, int src_w, uint8_t* dst, int dst_x,
+static auto copy_row1(const uint8_t* src, int src_w, uint8_t* dst, int dst_x,
                       int dst_w, int max_w) -> void {
   copy_row(src, src_w, dst, dst_x, dst_w, max_w);
 }
-static auto copy_row2(uint16_t* src, int src_w, uint16_t* dst, int dst_x,
+static auto copy_row2(const uint16_t* src, int src_w, uint16_t* dst, int dst_x,
                       int dst_w, int max_w) -> void {
   copy_row(src, src_w, dst, dst_x, dst_w, max_w);
 }
-static auto copy_row4(uint32_t* src, int src_w, uint32_t* dst, int dst_x,
+static auto copy_row4(const uint32_t* src, int src_w, uint32_t* dst, int dst_x,
                       int dst_w, int max_w) -> void {
   copy_row(src, src_w, dst, dst_x, dst_w, max_w);
 }
-static auto copy_row_or1(uint8_t* src, int src_w, uint8_t* dst, int dst_x,
-                         int dst_w, int max_w) -> void {
+static auto copy_row_or1(const uint8_t* src, int src_w, uint8_t* dst,
+                         int dst_x, int dst_w, int max_w) -> void {
   copy_row_or(src, src_w, dst, dst_x, dst_w, max_w);
 }
-static auto copy_row_or2(uint16_t* src, int src_w, uint16_t* dst, int dst_x,
-                         int dst_w, int max_w) -> void {
+static auto copy_row_or2(const uint16_t* src, int src_w, uint16_t* dst,
+                         int dst_x, int dst_w, int max_w) -> void {
   copy_row_or(src, src_w, dst, dst_x, dst_w, max_w);
 }
-static auto copy_row_or4(uint32_t* src, int src_w, uint32_t* dst, int dst_x,
-                         int dst_w, int max_w) -> void {
+static auto copy_row_or4(const uint32_t* src, int src_w, uint32_t* dst,
+                         int dst_x, int dst_w, int max_w) -> void {
   copy_row_or(src, src_w, dst, dst_x, dst_w, max_w);
 }
 
@@ -113,9 +113,9 @@ static auto update_palette_lut(const VideoColor* palette) -> void {
   g_last_palette = palette;
 }
 
-static auto copy_row1to4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
-                         int dst_w, int max_w, const VideoColor* palette)
-    -> void {
+static auto copy_row1to4(const uint8_t* src, int src_w, uint32_t* dst,
+                         int dst_x, int dst_w, int max_w,
+                         const VideoColor* palette) -> void {
   if (dst_w <= 0 || src_w <= 0 || !src || !dst) {
     return;
   }
@@ -144,9 +144,9 @@ static auto copy_row1to4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
   }
 }
 
-static auto copy_row_or1to4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
-                            int dst_w, int max_w, const VideoColor* palette)
-    -> void {
+static auto copy_row_or1to4(const uint8_t* src, int src_w, uint32_t* dst,
+                            int dst_x, int dst_w, int max_w,
+                            const VideoColor* palette) -> void {
   if (dst_w <= 0 || src_w <= 0 || !src || !dst) {
     return;
   }
@@ -175,7 +175,7 @@ static auto copy_row_or1to4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
   }
 }
 
-static auto copy_row3(uint8_t* src, int src_w, uint8_t* dst, int dst_x,
+static auto copy_row3(const uint8_t* src, int src_w, uint8_t* dst, int dst_x,
                       int dst_w, int max_w) -> void {
   if (dst_w <= 0 || src_w <= 0 || !src || !dst) {
     return;
@@ -197,8 +197,8 @@ static auto copy_row3(uint8_t* src, int src_w, uint8_t* dst, int dst_x,
   }
 }
 
-static auto copy_row3to4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
-                         int dst_w, int max_w) -> void {
+static auto copy_row3to4(const uint8_t* src, int src_w, uint32_t* dst,
+                         int dst_x, int dst_w, int max_w) -> void {
   if (dst_w <= 0 || src_w <= 0 || !src || !dst) {
     return;
   }
@@ -220,8 +220,8 @@ static auto copy_row3to4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
   }
 }
 
-static auto copy_row_or3to4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
-                            int dst_w, int max_w) -> void {
+static auto copy_row_or3to4(const uint8_t* src, int src_w, uint32_t* dst,
+                            int dst_x, int dst_w, int max_w) -> void {
   if (dst_w <= 0 || src_w <= 0 || !src || !dst) {
     return;
   }
@@ -243,7 +243,7 @@ static auto copy_row_or3to4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
   }
 }
 
-static auto copy8mono(uint8_t* src, int src_w, uint8_t* dst, int dst_x,
+static auto copy8mono(const uint8_t* src, int src_w, uint8_t* dst, int dst_x,
                       int dst_w, int max_w, uint8_t fgbrush, uint8_t bgbrush)
     -> void {
   if (dst_w <= 0 || src_w <= 0 || !src || !dst) {
@@ -264,7 +264,7 @@ static auto copy8mono(uint8_t* src, int src_w, uint8_t* dst, int dst_x,
   }
 }
 
-static auto copy8mono4(uint8_t* src, int src_w, uint32_t* dst, int dst_x,
+static auto copy8mono4(const uint8_t* src, int src_w, uint32_t* dst, int dst_x,
                        int dst_w, int max_w, uint32_t fgbrush, uint32_t bgbrush)
     -> void {
   if (dst_w <= 0 || src_w <= 0 || !src || !dst) {
