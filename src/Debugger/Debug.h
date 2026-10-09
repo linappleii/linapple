@@ -26,7 +26,7 @@ extern bool g_profiling;
 extern ProfileOpcode_t g_profile_opcodes[NUM_OPCODES];
 extern ProfileOpmode_t g_profile_opmodes[NUM_OPMODES];
 extern uint64_t g_profile_begin_cycles;
-extern const std::string g_file_name_profile;
+extern const char* const g_file_name_profile;
 extern int g_profile_line_count;
 extern char g_profile_line[NUM_PROFILE_LINES][CONSOLE_WIDTH];
 
@@ -99,7 +99,7 @@ class commands_functor_compare {
 };
 
 // Config - FileName
-extern std::string g_file_name_config;
+extern const char* const g_file_name_config;
 
 // Cursor
 extern uint16_t g_disasm_top_address;
@@ -198,7 +198,7 @@ auto GetSymbol(uint16_t address, int nBytes) -> const char*;
 class DebugVideoMode  // NB. Implemented as a singleton
 {
  protected:
-  DebugVideoMode() { Reset(); }
+  DebugVideoMode() noexcept { Reset(); }
 
  public:
   ~DebugVideoMode() = default;

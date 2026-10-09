@@ -1447,7 +1447,7 @@ struct WindowSplit_t {
 };
 class VideoScannerDisplayInfo_t {
  public:
-  VideoScannerDisplayInfo_t(void)
+  VideoScannerDisplayInfo_t() noexcept
       : isDecimal(false),
         isHorzReal(false),
         isAbsCycle(false),

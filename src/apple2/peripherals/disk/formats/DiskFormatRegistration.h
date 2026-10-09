@@ -11,7 +11,10 @@ void disk_loader_register_permanent(const DiskFormatDriver_t* driver);
 // A driver declares one of these at the end of its own translation unit, which
 // is the whole of what adding a format costs: nothing central names it.
 struct DiskFormatRegistration_t {
-  explicit DiskFormatRegistration_t(const DiskFormatDriver_t* driver) {
-    disk_loader_register_permanent(driver);
+  explicit DiskFormatRegistration_t(const DiskFormatDriver_t* driver) noexcept {
+    try {
+      disk_loader_register_permanent(driver);
+    } catch (...) {
+    }
   }
 };

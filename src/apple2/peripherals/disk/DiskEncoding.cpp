@@ -142,12 +142,13 @@ const std::array<std::array<uint8_t, sectors_per_track>, interleave_row_count>
         },
 };
 
-const auto decode_table = []() {
+const auto decode_table = []() noexcept {
   std::array<uint8_t, decode_table_size> t{};
-  t.fill(invalid_nibble);
+  for (auto& entry : t) {
+    entry = invalid_nibble;
+  }
   for (size_t i = 0; i < disk_encoding_table.size(); ++i) {
-    t.at(disk_encoding_table.at(i) - decode_offset) =
-        static_cast<uint8_t>(i << 2U);
+    t[disk_encoding_table[i] - decode_offset] = static_cast<uint8_t>(i << 2U);
   }
   return t;
 }();

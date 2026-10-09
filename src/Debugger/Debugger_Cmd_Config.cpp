@@ -38,7 +38,7 @@ MemoryTextFile_t g_config_state;
 
 bool g_report_missing_scripts = true;
 
-std::string g_file_name_config = "LinAppleDebugger.cfg";
+const char* const g_file_name_config = "LinAppleDebugger.cfg";
 
 // Externs for globals defined elsewhere
 extern int g_disasm_display_lines;

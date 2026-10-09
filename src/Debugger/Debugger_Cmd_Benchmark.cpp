@@ -26,7 +26,7 @@ ProfileOpcode_t g_profile_opcodes[NUM_OPCODES];
 ProfileOpmode_t g_profile_opmodes[NUM_OPMODES];
 uint64_t g_profile_begin_cycles = 0;  // g_cumulative_cycles // PROFILE RESET
 
-const std::string g_file_name_profile = "Profile.txt";
+const char* const g_file_name_profile = "Profile.txt";
 int g_profile_line_count = 0;
 char g_profile_line[NUM_PROFILE_LINES][CONSOLE_WIDTH] = {};
 
@@ -72,8 +72,7 @@ auto CmdProfile(int nArgs) -> Update_t {
     } else if (iParam == PARAM_PROFILE_SAVE) {
       if (ProfileSave()) {
         char sText[CONSOLE_WIDTH];
-        ConsoleBufferPushFormat(sText, " Saved: %s",
-                                g_file_name_profile.c_str());
+        ConsoleBufferPushFormat(sText, " Saved: %s", g_file_name_profile);
       }
     } else if (iParam == PARAM_PROFILE_LIST) {
       return CmdProfileList(0);
@@ -199,7 +198,7 @@ auto CmdProfileList(int nArgs) -> Update_t {
 
 auto ProfileSave() -> bool {
   bool bStatus = false;
-  FilePtr hFile(fopen(g_file_name_profile.c_str(), "w"), fclose);
+  FilePtr hFile(fopen(g_file_name_profile, "w"), fclose);
 
   if (hFile) {
     ProfileFormat(true, 0);

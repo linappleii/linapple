@@ -849,6 +849,7 @@ struct CpuLoopContext {
 
 static auto op_nop(CpuLoopContext& /*unused*/) -> void {}
 
+// NOLINTNEXTLINE(bugprone-throwing-static-initialization) - stateless lambda table does not throw
 static const OpcodeDesc s_opcodes_nmos[256] = {
     /* 0x00 */ {[](CpuLoopContext& c) { c.op_brk<false>(); }, 7},  // BRK
                                                                    /* 0x01 */
@@ -2440,6 +2441,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // ins
 };
 
+// NOLINTNEXTLINE(bugprone-throwing-static-initialization) - stateless lambda table does not throw
 static const OpcodeDesc s_opcodes_cmos[256] = {
     /* 0x00 */ {[](CpuLoopContext& c) { c.op_brk<true>(); }, 7},  // BRK
                                                                   /* 0x01 */

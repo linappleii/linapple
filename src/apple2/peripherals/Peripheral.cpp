@@ -885,6 +885,7 @@ static_assert(sizeof(static_cast<QueuedCommand*>(nullptr)->data) ==
                   PERIPHERAL_CMD_MAX_DATA,
               "QueuedCommand::data size must match PERIPHERAL_CMD_MAX_DATA");
 
+// NOLINTNEXTLINE(bugprone-throwing-static-initialization) - std::queue default constructor does not throw under standard library
 static std::queue<QueuedCommand> g_command_queue;
 static std::mutex g_command_queue_mutex;
 
