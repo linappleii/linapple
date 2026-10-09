@@ -286,7 +286,9 @@ TEST_CASE(
   int nonzero_left_margin = 0;
   for (int y = 0; y < 1080; ++y) {
     for (int x = 0; x < 172; ++x) {
-      if (screen_pixels[y * pitch_pixels + x] != 0) nonzero_left_margin++;
+      if (screen_pixels[y * pitch_pixels + x] != 0) {
+        nonzero_left_margin++;
+      }
     }
   }
   CHECK(nonzero_left_margin == 0);
@@ -294,7 +296,9 @@ TEST_CASE(
   int nonzero_right_margin = 0;
   for (int y = 0; y < 1080; ++y) {
     for (int x = 1747; x < 1920; ++x) {
-      if (screen_pixels[y * pitch_pixels + x] != 0) nonzero_right_margin++;
+      if (screen_pixels[y * pitch_pixels + x] != 0) {
+        nonzero_right_margin++;
+      }
     }
   }
   CHECK(nonzero_right_margin == 0);
@@ -843,7 +847,7 @@ struct KeyMachine_t {
     joy_frontend_initialize();
     keyboard_set_caps(true);
     keyboard_set_caps_mode(caps_mode_host);
-    keyboard_set_mapping_mode(KBD_MODE_SYMBOLIC);
+    keyboard_set_mapping_mode(kbd_mode_symbolic);
     keyboard_set_layout(keyboard_layout_us);
     linapple_set_rocker_switch(false);
     frontend_update_keyboard_mapping();
@@ -860,7 +864,7 @@ struct KeyMachine_t {
     keyboard_apply_custom_mappings();
     keyboard_set_caps(true);
     keyboard_set_caps_mode(caps_mode_host);
-    keyboard_set_mapping_mode(KBD_MODE_SYMBOLIC);
+    keyboard_set_mapping_mode(kbd_mode_symbolic);
     SDL_SetModState(KMOD_NONE);
     g_buttondown = -1;
     system_state.mode = saved_mode;
@@ -1101,7 +1105,7 @@ TEST_CASE(
     "SDL1 keys: under a driver other than X11 a key's usage comes from its "
     "keysym, so positional mode types the keysym's key whatever the scancode") {
   KeyMachine_t machine(positional());
-  REQUIRE(keyboard_get_mapping_mode() == KBD_MODE_POSITIONAL);
+  REQUIRE(keyboard_get_mapping_mode() == kbd_mode_positional);
   // The A key's X11 keycode with the A keysym: both paths agree.
   KeyMachine_t::key(KEY_A + x11_min_keycode, SDLK_a, KMOD_NONE, true);
   CHECK(KeyMachine_t::latch() == 0xC1);
@@ -1299,8 +1303,8 @@ auto harddisk_status() -> HarddiskStatus_t {
 }
 
 auto harddisk_saved_key() -> std::string {
-  return Configuration_t::instance().get_string("Preferences",
-                                                harddisk_image_key);
+  return Configuration::instance().get_string("Preferences",
+                                              harddisk_image_key);
 }
 
 constexpr uint16_t harddisk_io_base = 0xC080 + (harddisk_test_slot << 4);
@@ -1371,7 +1375,7 @@ TEST_CASE(
   harddisk_drain_data_port();
   frame_refresh();
   CHECK(frame_status_led(lamp_harddisk) == lamp_base + harddisk_status_read);
-  CHECK(g_status_cycle == k_show_cycles);
+  CHECK(g_status_cycle == show_cycles);
 
   // Nothing happened, so the frame leaves the lamp as it was.
   frame_refresh();

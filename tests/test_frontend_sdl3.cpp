@@ -1505,8 +1505,8 @@ auto harddisk_status() -> HarddiskStatus_t {
 }
 
 auto harddisk_saved_key() -> std::string {
-  return Configuration_t::instance().get_string("Preferences",
-                                                harddisk_image_key);
+  return Configuration::instance().get_string("Preferences",
+                                              harddisk_image_key);
 }
 
 constexpr uint16_t harddisk_io_base = 0xC080 + (harddisk_test_slot << 4);
@@ -1577,7 +1577,7 @@ TEST_CASE(
   harddisk_drain_data_port();
   frame_refresh();
   CHECK(frame_status_led(lamp_harddisk) == lamp_base + harddisk_status_read);
-  CHECK(g_status_cycle == k_show_cycles);
+  CHECK(g_status_cycle == show_cycles);
 
   // Nothing happened, so the frame leaves the lamp as it was.
   frame_refresh();

@@ -7,7 +7,8 @@
 
 #include "test_fixtures.h"
 
-struct Configuration_t;
+struct Configuration;
+using AppConfig = Configuration;
 
 /**
  * @brief Headless End-to-End Test Harness.

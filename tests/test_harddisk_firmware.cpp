@@ -170,7 +170,7 @@ auto fill(uint16_t addr, size_t count, uint8_t value) -> void {
 auto read_block_from_file(const std::string& path, uint32_t block)
     -> std::array<uint8_t, block_size> {
   std::array<uint8_t, block_size> bytes{};
-  FilePtr_t file{fopen(path.c_str(), "rb"), fclose};
+  FilePtr file{fopen(path.c_str(), "rb"), fclose};
   REQUIRE(file != nullptr);
   REQUIRE(fseek(file.get(), static_cast<long>(block * block_size), SEEK_SET) ==
           0);
@@ -179,7 +179,7 @@ auto read_block_from_file(const std::string& path, uint32_t block)
 }
 
 auto read_whole_file(const std::string& path) -> std::vector<uint8_t> {
-  FilePtr_t file{fopen(path.c_str(), "rb"), fclose};
+  FilePtr file{fopen(path.c_str(), "rb"), fclose};
   REQUIRE(file != nullptr);
   const int64_t size = Path::file_size(file.get());
   REQUIRE(size >= 0);
@@ -1344,7 +1344,7 @@ TEST_CASE(
   TestFixtures::ScopedTempDir_t dir("linapple_hdd_bound_");
   const std::string path = dir.path() + "/volume.boundless";
   {
-    FilePtr_t file{fopen(path.c_str(), "wb"), fclose};
+    FilePtr file{fopen(path.c_str(), "wb"), fclose};
     REQUIRE(file != nullptr);
   }
   insert(slot, 0, path);

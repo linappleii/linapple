@@ -690,12 +690,12 @@ constexpr const char* run_request_line = "for this run";
 class ScopedLevelLog_t {
  public:
   struct Line_t {
-    LogLevel_t level;
+    LogLevel level;
     std::string text;
   };
 
   ScopedLevelLog_t() : verbosity_(Logger::get_verbosity()) {
-    Logger::set_verbosity(LogLevel_t::info);
+    Logger::set_verbosity(LogLevel::info);
     Logger::set_callback_with_context(collect, &lines_);
   }
   ~ScopedLevelLog_t() {
@@ -714,7 +714,7 @@ class ScopedLevelLog_t {
     }
     return n;
   }
-  auto count_at(LogLevel_t level, const std::string& needle) const -> size_t {
+  auto count_at(LogLevel level, const std::string& needle) const -> size_t {
     size_t n = 0;
     for (const Line_t& line : lines_) {
       n += (line.level == level && line.text.find(needle) != std::string::npos)
@@ -725,7 +725,7 @@ class ScopedLevelLog_t {
   }
 
  private:
-  static auto collect(LogLevel_t level, const char* message, void* user_data)
+  static auto collect(LogLevel level, const char* message, void* user_data)
       -> void {
     auto* lines = static_cast<std::vector<Line_t>*>(user_data);
     if (lines != nullptr && message != nullptr) {
@@ -734,7 +734,7 @@ class ScopedLevelLog_t {
   }
 
   std::vector<Line_t> lines_;
-  LogLevel_t verbosity_;
+  LogLevel verbosity_;
 };
 
 }  // namespace
@@ -845,8 +845,8 @@ class ScopedMachineType_t {
 };
 
 auto slot_entry(int slot) -> std::string {
-  return Configuration_t::instance().get_string("Slots",
-                                                "Slot " + std::to_string(slot));
+  return Configuration::instance().get_string("Slots",
+                                              "Slot " + std::to_string(slot));
 }
 
 }  // namespace
@@ -890,10 +890,10 @@ TEST_CASE(
   CHECK(peripheral_slot_of(harddisk_id) == 7);
   CHECK(log.count_containing(run_request_line) == 0);
   CHECK(slot_entry(7) == "None");
-  CHECK(Configuration_t::instance()
+  CHECK(Configuration::instance()
             .get_string("Configuration", "Harddisk Enable")
             .empty());
-  CHECK(Configuration_t::instance()
+  CHECK(Configuration::instance()
             .get_string("Preferences", "Harddisk Enable")
             .empty());
 }
@@ -1057,7 +1057,7 @@ TEST_CASE(
   CHECK(peripheral_present(6, harddisk_id));
   CHECK(peripheral_slot_of(harddisk_id) == 6);
   CHECK(linapple_requested_slot() == 6);
-  CHECK(log.count_at(LogLevel_t::warning,
+  CHECK(log.count_at(LogLevel::warning,
                      "Slot 7 holds Clock Card; Harddisk installed in slot 6 "
                      "for this run") == 1);
   CHECK(log.count_containing(run_request_line) == 1);
@@ -1099,7 +1099,7 @@ TEST_CASE(
     CHECK(linapple_requested_slot() == model.expected_slot);
     CHECK(log.count_containing(run_request_line) == 1);
     CHECK(log.count_at(
-              LogLevel_t::warning,
+              LogLevel::warning,
               "installed in slot " + std::to_string(model.expected_slot)) == 1);
     CHECK(peripheral_present(7, "linapple.clock"));
     CHECK(peripheral_present(6, "linapple.disk_II"));

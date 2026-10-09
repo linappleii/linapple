@@ -137,7 +137,7 @@ constexpr std::array<std::array<uint8_t, 2>, 8> k_fig_3_14 = {{{{0x0, 0xE}},
                                                                {{0x1, 0xF}}}};
 
 auto read_file(const std::string& path) -> std::vector<uint8_t> {
-  FilePtr_t file{fopen(path.c_str(), "rb"), fclose};
+  FilePtr file{fopen(path.c_str(), "rb"), fclose};
   REQUIRE(file != nullptr);
   const int64_t size = Path::file_size(file.get());
   REQUIRE(size >= 0);
@@ -150,7 +150,7 @@ auto read_file(const std::string& path) -> std::vector<uint8_t> {
 
 auto write_file(const std::string& path, const std::vector<uint8_t>& bytes)
     -> void {
-  FilePtr_t file{fopen(path.c_str(), "wb"), fclose};
+  FilePtr file{fopen(path.c_str(), "wb"), fclose};
   REQUIRE(file != nullptr);
   REQUIRE(fwrite(bytes.data(), 1, bytes.size(), file.get()) == bytes.size());
 }

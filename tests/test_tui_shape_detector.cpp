@@ -97,7 +97,7 @@ auto draw_font_char(std::vector<uint32_t>& fb,
 
 TEST_CASE("TuiShapeDetector: Uniform Cells") {
   auto fb = make_framebuffer();
-  TuiState_t cell{};
+  TuiState cell{};
 
   // Case 1: All black
   tui_shape_detect_cell(fb.data(), k_pitch, 0, 0, k_cell_w, k_cell_h, &cell);
@@ -138,7 +138,7 @@ TEST_CASE("TuiShapeDetector: All 11 Box Drawing Shapes") {
 
   for (const auto& tc : test_cases) {
     auto fb = make_framebuffer();
-    TuiState_t cell{};
+    TuiState cell{};
     draw_grid_line(fb, tc.top, tc.bottom, tc.left, tc.right);
     tui_shape_detect_cell(fb.data(), k_pitch, 0, 0, k_cell_w, k_cell_h, &cell);
     CHECK(std::memcmp(cell.glyph.data(), tc.expected, k_utf8_prefix_len) == 0);
@@ -153,7 +153,7 @@ TEST_CASE("TuiShapeDetector: Apple II Font OCR Matching") {
 
   // Test '5'
   auto fb = make_framebuffer();
-  TuiState_t cell{};
+  TuiState cell{};
   draw_font_char(fb, font_5);
   tui_shape_detect_cell(fb.data(), k_pitch, 0, 0, k_cell_w, k_cell_h, &cell);
   CHECK(cell.glyph.at(0) == '5');
@@ -179,7 +179,7 @@ TEST_CASE("TuiShapeDetector: Apple II Font OCR Matching") {
 TEST_CASE(
     "TuiShapeDetector: Quadrant Block Fallback for Custom Graphic Sprites") {
   auto fb = make_framebuffer();
-  TuiState_t cell{};
+  TuiState cell{};
 
   constexpr uint8_t r_col = 200;
   constexpr uint8_t g_col = 100;

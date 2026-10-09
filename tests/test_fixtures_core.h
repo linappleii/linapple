@@ -26,7 +26,7 @@ namespace TestFixtures {
 class ScopedLogCapture_t {
  public:
   ScopedLogCapture_t() : verbosity_(Logger::get_verbosity()) {
-    Logger::set_verbosity(LogLevel_t::info);
+    Logger::set_verbosity(LogLevel::info);
     Logger::set_callback_with_context(collect, &lines_);
   }
   ~ScopedLogCapture_t() {
@@ -61,7 +61,7 @@ class ScopedLogCapture_t {
   }
 
  private:
-  static auto collect(LogLevel_t level, const char* message, void* user_data)
+  static auto collect(LogLevel level, const char* message, void* user_data)
       -> void {
     (void)level;
     auto* lines = static_cast<std::vector<std::string>*>(user_data);
@@ -70,7 +70,7 @@ class ScopedLogCapture_t {
     }
   }
 
-  LogLevel_t verbosity_;
+  LogLevel verbosity_;
   std::vector<std::string> lines_;
 };
 

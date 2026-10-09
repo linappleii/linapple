@@ -734,7 +734,7 @@ struct TuiKeyboard_t {
       : model(type), machine(description) {
     keyboard_set_caps(true);
     keyboard_set_caps_mode(caps_mode_emulated);
-    keyboard_set_mapping_mode(KBD_MODE_SYMBOLIC);
+    keyboard_set_mapping_mode(kbd_mode_symbolic);
     keyboard_set_layout(0);
     linapple_set_rocker_switch(false);
     frontend_update_keyboard_mapping();

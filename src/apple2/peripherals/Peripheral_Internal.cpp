@@ -263,8 +263,8 @@ auto peripheral_register_internal() -> void {
         name = "linapple.mockingboard";
       } else if (slot == 6) {
         name = "linapple.disk_II";
-      } else if (slot == k_harddisk_key_slot && harddisk_key != 0) {
-        name = k_harddisk_card_id;
+      } else if (slot == harddisk_key_slot && harddisk_key != 0) {
+        name = harddisk_card_id;
       }
     }
 
@@ -274,8 +274,7 @@ auto peripheral_register_internal() -> void {
       if (displaced != mouse_key_card) {
         legacy_override.slot = slot;
         legacy_override.key_card = mouse_key_card->name;
-        legacy_override.displaced =
-            displaced != nullptr ? displaced->name : "";
+        legacy_override.displaced = displaced != nullptr ? displaced->name : "";
         if (displaced != nullptr) {
           Logger::warning(
               "Slot %d: Mouse in slot 4 installs the %s in place of %s\n", slot,

@@ -195,7 +195,7 @@ static auto apply_screen_factor() -> void {
 
   try {
     float factor = std::stof(factor_str);
-    if (factor >= k_min_screen_factor && factor <= k_max_screen_factor) {
+    if (factor >= min_screen_factor && factor <= max_screen_factor) {
       system_state.screen_width =
           static_cast<int>(static_cast<float>(SCREEN_WIDTH) * factor);
       system_state.screen_height =
@@ -269,7 +269,7 @@ auto app_controller_initialize(AppConfig* config) -> int {
   // Made before the cards are placed, and on every restart, since a request
   // lasts one registration.
   if (first_harddisk_from_args(*config) >= 0) {
-    linapple_request_card_for_run(k_harddisk_card_id);
+    linapple_request_card_for_run(harddisk_card_id);
   }
 
   if (linapple_init() != 0) {
@@ -288,12 +288,12 @@ auto app_controller_initialize(AppConfig* config) -> int {
   if (config->is_pal) {
     g_videotype = VT_COLOR_TVEMU;
     system_state.video_scanner_ntsc = false;
-    system_state.clks_per_frame = k_clks_per_frame_pal;
+    system_state.clks_per_frame = clks_per_frame_pal;
     current_clk_6502 = CLOCK_6502_PAL;
   } else {
     g_videotype = VT_COLOR_STANDARD;
     system_state.video_scanner_ntsc = true;
-    system_state.clks_per_frame = k_clks_per_frame_ntsc;
+    system_state.clks_per_frame = clks_per_frame_ntsc;
     current_clk_6502 = CLOCK_6502_NTSC;
   }
 
@@ -591,9 +591,9 @@ auto app_controller_save_harddisk_config(int drive) -> void {
 
   // set_string keeps the harddisk_path field in step with the key, so what
   // the next save writes is what the drive holds.
-  Configuration_t::instance().set_string(
+  Configuration::instance().set_string(
       cfg_sec_preferences,
-      (drive == harddisk_drive_0) ? REGVALUE_HDD_IMAGE1 : REGVALUE_HDD_IMAGE2,
+      (drive == harddisk_drive_0) ? cfg_hdd_image1 : cfg_hdd_image2,
       (drive == harddisk_drive_0) ? status.drive0_full_path
                                   : status.drive1_full_path);
 }

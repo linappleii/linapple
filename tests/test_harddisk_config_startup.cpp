@@ -50,7 +50,7 @@ constexpr const char* not_configured_line =
 class ScopedLevelLog_t {
  public:
   struct Line_t {
-    LogLevel_t level;
+    LogLevel level;
     std::string text;
   };
 
@@ -68,7 +68,7 @@ class ScopedLevelLog_t {
     }
     return n;
   }
-  auto count_at(LogLevel_t level, const std::string& needle) const -> size_t {
+  auto count_at(LogLevel level, const std::string& needle) const -> size_t {
     size_t n = 0;
     for (const Line_t& line : lines_) {
       n += (line.level == level && line.text.find(needle) != std::string::npos)
@@ -79,7 +79,7 @@ class ScopedLevelLog_t {
   }
 
  private:
-  static auto collect(LogLevel_t level, const char* message, void* user_data)
+  static auto collect(LogLevel level, const char* message, void* user_data)
       -> void {
     auto* lines = static_cast<std::vector<Line_t>*>(user_data);
     if (lines != nullptr && message != nullptr) {
@@ -107,8 +107,8 @@ class CommandLineMachine_t {
     // Parsed into the one configuration object, as every frontend's main
     // does, so the controller reads its paths from the instance's own
     // buffers.
-    AppConfig_t& config = Configuration_t::instance();
-    config = AppConfig_t{};
+    AppConfig& config = Configuration::instance();
+    config = AppConfig{};
     REQUIRE(app_args_parse(static_cast<int>(argv.size()), argv.data(),
                            &config) == 0);
     util_safe_strcpy(config.config_path.data(), machine.c_str(), path_max_len);
@@ -166,14 +166,14 @@ auto drop_slot_line(const TestConfig_t& config, int slot) -> void {
 
 // get_string falls back to any section holding the key, so absence from one
 // section is read from that section alone.
-auto in_section(const Configuration_t& config, const char* section,
+auto in_section(const Configuration& config, const char* section,
                 const char* key) -> bool {
   const auto* entries = config.get_section(section);
   return entries != nullptr && entries->count(key) != 0;
 }
 
-auto saved_file(const TestConfig_t& config) -> Configuration_t {
-  Configuration_t saved{};
+auto saved_file(const TestConfig_t& config) -> Configuration {
+  Configuration saved{};
   REQUIRE(saved.load(config.path()));
   return saved;
 }
@@ -246,9 +246,9 @@ TEST_CASE(
 
   // The path the controller handed over lives in the configuration's own
   // buffer; a run request is never recorded, so the buffer still holds it.
-  CHECK(std::string(Configuration_t::instance().harddisk_path.at(0).data()) ==
+  CHECK(std::string(Configuration::instance().harddisk_path.at(0).data()) ==
         "missing.hdv");
-  CHECK(log.count_at(LogLevel_t::error,
+  CHECK(log.count_at(LogLevel::error,
                      "could not insert hard disk image 'missing.hdv': "
                      "file not found or unreadable") == 1);
   // The level supplies the word on the terminal, so the text carries none.
@@ -257,7 +257,7 @@ TEST_CASE(
   CHECK(log.count("hard disk drive 1:") == 0);
   CHECK(log.count("(2)") == 0);
   CHECK(status_in(card_slot).drive0_loaded == 0);
-  CHECK(Configuration_t::instance()
+  CHECK(Configuration::instance()
             .get_string("Preferences", "Harddisk Image 1")
             .empty());
   linapple_run_frame(frame_cycles);
@@ -280,9 +280,9 @@ TEST_CASE(
     CHECK(log.count(duplicate_warning) == 0);
     CHECK(boots_from_hard_disk());
 
-    REQUIRE(Configuration_t::instance().save());
-    CHECK(Configuration_t::instance().get_string("Slots", "Slot 7") == "None");
-    const Configuration_t saved = saved_file(config);
+    REQUIRE(Configuration::instance().save());
+    CHECK(Configuration::instance().get_string("Slots", "Slot 7") == "None");
+    const Configuration saved = saved_file(config);
     CHECK(saved.get_string("Slots", "Slot 7") == "None");
     CHECK_FALSE(in_section(saved, "Preferences", "Harddisk Enable"));
     CHECK_FALSE(in_section(saved, "Configuration", "Harddisk Enable"));
@@ -299,8 +299,8 @@ TEST_CASE(
     CHECK(peripheral_present(card_slot, harddisk_id));
     CHECK(status_in(card_slot).drive0_loaded == 1);
 
-    REQUIRE(Configuration_t::instance().save());
-    const Configuration_t saved = saved_file(config);
+    REQUIRE(Configuration::instance().save());
+    const Configuration saved = saved_file(config);
     CHECK_FALSE(in_section(saved, "Slots", "Slot 7"));
     CHECK(saved.get_string("Configuration", "Harddisk Enable") == "0");
     CHECK_FALSE(in_section(saved, "Preferences", "Harddisk Enable"));
@@ -326,11 +326,11 @@ TEST_CASE(
   CHECK(file_text(config.path()) == text_before);
   CHECK(same_time(modification_time(config.path()), time_before));
 
-  Configuration_t::instance().set_string(
-      "Preferences", "HDV Starting Directory", "/elsewhere");
-  REQUIRE(Configuration_t::instance().save());
+  Configuration::instance().set_string("Preferences", "HDV Starting Directory",
+                                       "/elsewhere");
+  REQUIRE(Configuration::instance().save());
   CHECK(file_text(config.path()) != text_before);
-  const Configuration_t saved = saved_file(config);
+  const Configuration saved = saved_file(config);
   CHECK(saved.get_string("Preferences", "HDV Starting Directory") ==
         "/elsewhere");
   CHECK(saved.get_string("Preferences", "Harddisk Image 1") == remembered);
@@ -352,7 +352,7 @@ TEST_CASE(
   const HarddiskStatus_t status = status_in(card_slot);
   CHECK(status.drive0_loaded == 1);
   CHECK(std::string(status.drive0_full_path) == image.path());
-  CHECK(Configuration_t::instance().get_string(
+  CHECK(Configuration::instance().get_string(
             "Preferences", "Harddisk Image 1") == image.path());
   CHECK(file_text(config.path()) == text_before);
   CHECK(same_time(modification_time(config.path()), time_before));
@@ -419,7 +419,7 @@ TEST_CASE(
   CHECK(peripheral_present(card_slot, "linapple.clock"));
   CHECK(peripheral_slot_of(harddisk_id) == 6);
   CHECK(status_in(6).drive0_loaded == 1);
-  CHECK(log.count_at(LogLevel_t::warning,
+  CHECK(log.count_at(LogLevel::warning,
                      "Slot 7 holds Clock Card; Harddisk installed in slot 6 "
                      "for this run") == 1);
   CHECK(log.count(fallback_line) == 1);
@@ -430,8 +430,8 @@ TEST_CASE(
   CHECK(boots_from_hard_disk());
   CHECK(cpu_get_registers()->x == 0x60);
 
-  REQUIRE(Configuration_t::instance().save());
-  const Configuration_t saved = saved_file(config);
+  REQUIRE(Configuration::instance().save());
+  const Configuration saved = saved_file(config);
   CHECK(saved.get_string("Slots", "Slot 6") == "None");
   CHECK(saved.get_string("Slots", "Slot 7") == "Clock Card");
 }
@@ -482,7 +482,7 @@ TEST_CASE(
     CHECK(peripheral_slot_of(harddisk_id) == model.expected_slot);
     CHECK(status_in(model.expected_slot).drive0_loaded == 1);
     CHECK(log.count_at(
-              LogLevel_t::warning,
+              LogLevel::warning,
               "installed in slot " + std::to_string(model.expected_slot)) == 1);
   }
 }
@@ -503,14 +503,14 @@ TEST_CASE(
   CommandLineMachine_t machine(config, {"--hd1", image.path()});
 
   CHECK(peripheral_slot_of(harddisk_id) == -1);
-  CHECK(log.count_at(LogLevel_t::error, no_free_slot_line) == 1);
+  CHECK(log.count_at(LogLevel::error, no_free_slot_line) == 1);
   CHECK(log.count(no_free_slot_line) == 1);
   CHECK(peripheral_present(card_slot, "linapple.clock"));
   for (int slot = 1; slot <= 6; ++slot) {
     CAPTURE(slot);
     CHECK(peripheral_present(slot, "linapple.mockingboard"));
   }
-  CHECK(Configuration_t::instance()
+  CHECK(Configuration::instance()
             .get_string("Preferences", "Harddisk Image 1")
             .empty());
 }

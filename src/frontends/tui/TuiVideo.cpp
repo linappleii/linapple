@@ -306,7 +306,7 @@ static auto render_disk_select_overlay() -> void {
     return;
   }
 
-  const FileList_t* list = tui_disk_select_get_file_list();
+  const FileList* list = tui_disk_select_get_file_list();
   const size_t total_count = list ? file_browser_get_count(list) : 0;
   const size_t selected_idx = tui_disk_select_get_selected_index();
   const size_t first_vis = tui_disk_select_get_first_visible_index();

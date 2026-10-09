@@ -35,7 +35,7 @@ struct GlyphPattern {
 };
 
 // Standard Apple II 8x8 font patterns
-constexpr std::array<GlyphPattern, 79> font_patterns = {{
+constexpr std::array<GlyphPattern, 81> font_patterns = {{
     {'0', 0x003C66666E76663CULL, 30}, {'1', 0x007E181818181C18ULL, 19},
     {'2', 0x007E0C183060663CULL, 22}, {'3', 0x003C66603860663CULL, 23},
     {'4', 0x0020207E262C3830ULL, 19}, {'5', 0x003C6660603E067EULL, 25},

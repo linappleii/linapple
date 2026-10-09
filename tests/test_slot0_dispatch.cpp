@@ -108,8 +108,7 @@ struct Slot0_t {
   auto operator=(Slot0_t&&) -> Slot0_t& = delete;
 };
 
-// Dedicated test fixture for inspecting synchronous dispatcher status.
-void bare_log(void*, PeripheralLogLevel, const char*, ...) {}
+void bare_log(void*, PeripheralLogLevel_t, const char*, ...) {}
 void bare_register_direct_io(void*, uint16_t, PeripheralIOHandler,
                              PeripheralIOHandler) {}
 void bare_register_direct_io_strobe(void*, uint16_t,
@@ -145,8 +144,12 @@ struct BareHost_t {
   }
 
   ~BareHost_t() {
-    if (kbd != nullptr) keyboard->shutdown(kbd);
-    if (joy != nullptr) joystick->shutdown(joy);
+    if (kbd != nullptr) {
+      keyboard->shutdown(kbd);
+    }
+    if (joy != nullptr) {
+      joystick->shutdown(joy);
+    }
   }
 
   BareHost_t(const BareHost_t&) = delete;

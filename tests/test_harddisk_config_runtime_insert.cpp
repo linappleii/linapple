@@ -64,11 +64,11 @@ auto status() -> HarddiskStatus_t {
 }
 
 auto saved_key() -> std::string {
-  return Configuration_t::instance().get_string("Preferences", image_key);
+  return Configuration::instance().get_string("Preferences", image_key);
 }
 
 auto saved_field() -> std::string {
-  return Configuration_t::instance().harddisk_path.at(0).data();
+  return Configuration::instance().harddisk_path.at(0).data();
 }
 
 }  // namespace

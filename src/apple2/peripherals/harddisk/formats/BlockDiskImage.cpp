@@ -190,7 +190,7 @@ auto block_disk_image_open(const char* path, uint32_t file_offset,
   }
 
   bool host_read_only = read_only;
-  FilePtr_t file{nullptr, fclose};
+  FilePtr file{nullptr, fclose};
   if (!read_only) {
     file.reset(fopen(path, "r+b"));
   }

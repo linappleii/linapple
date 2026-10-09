@@ -48,14 +48,13 @@ TEST_CASE(
 
   REQUIRE(harddisk_frontend_insert(1, image.c_str(), false) == 0);
   REQUIRE(status().drive1_loaded == 1);
-  REQUIRE(Configuration_t::instance().get_string("Preferences", image_key) ==
+  REQUIRE(Configuration::instance().get_string("Preferences", image_key) ==
           image.path());
 
   CHECK(harddisk_frontend_eject(1) == 0);
   CHECK(status().drive1_loaded == 0);
-  CHECK(
-      Configuration_t::instance().get_string("Preferences", image_key).empty());
-  CHECK(std::string(Configuration_t::instance().harddisk_path.at(1).data())
+  CHECK(Configuration::instance().get_string("Preferences", image_key).empty());
+  CHECK(std::string(Configuration::instance().harddisk_path.at(1).data())
             .empty());
 
   // Ejecting an empty drive is not an error.
