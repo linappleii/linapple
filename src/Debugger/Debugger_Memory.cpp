@@ -985,8 +985,8 @@ auto SearchMemoryFind(MemorySearchValues_t vMemorySearchValues,
         }
         bMatchAll = false;
         break;
-
-      } else if (ms.type == MEM_SEARCH_BYTE_1_WILD) {
+      }
+      if (ms.type == MEM_SEARCH_BYTE_1_WILD) {
         // match by definition
       } else {
         // start 2ndary search

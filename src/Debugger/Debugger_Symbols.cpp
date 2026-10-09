@@ -818,8 +818,8 @@ auto CmdSymbolsCommon(int nArgs, int bSymbolTables) -> Update_t {
         //					nArgs = Arg_1( eSymbolsTable );
         ConsoleBufferPush(" error: Unknown Symbol Table Type");
         return ConsoleUpdate();
-
-      } else if (iParam == PARAM_LOAD) {
+      }
+      if (iParam == PARAM_LOAD) {
         nArgs = Arg_Shift(iArg, nArgs);
         Update_t bUpdate = CmdSymbolsLoad(nArgs);
 
@@ -838,10 +838,12 @@ auto CmdSymbolsCommon(int nArgs, int bSymbolTables) -> Update_t {
           ConsoleBufferPush(" error: Unknown Symbol Table Type");
         }
         return ConsoleUpdate();
-      } else if (iParam == PARAM_SAVE) {
+      }
+      if (iParam == PARAM_SAVE) {
         nArgs = Arg_Shift(iArg, nArgs);
         return CmdSymbolsSave(nArgs);
-      } else if (iParam == PARAM_ON) {
+      }
+      if (iParam == PARAM_ON) {
         g_display_symbol_tables |= bSymbolTables;
         int iTable = GetSymbolTableFromFlag(bSymbolTables);
         if (iTable != NUM_SYMBOL_TABLES) {
@@ -849,7 +851,8 @@ auto CmdSymbolsCommon(int nArgs, int bSymbolTables) -> Update_t {
           console_print(sText);
         }
         return ConsoleUpdate() | UPDATE_DISASM;
-      } else if (iParam == PARAM_OFF) {
+      }
+      if (iParam == PARAM_OFF) {
         g_display_symbol_tables &= ~bSymbolTables;
         int iTable = GetSymbolTableFromFlag(bSymbolTables);
         if (iTable != NUM_SYMBOL_TABLES) {

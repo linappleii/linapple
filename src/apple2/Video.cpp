@@ -1033,17 +1033,20 @@ auto mix_colors(uint8_t c1, uint8_t c2) -> uint8_t {
   }
   if (combination(c1, c2, HGR_GREEN, HGR_MAGENTA)) {
     return HGR_GREY2;
-  } else if (combination(c1, c2, HGR_RED, HGR_GREEN)) {
-    return HGR_YELLOW;
-  } else if (combination(c1, c2, HGR_BLUE, HGR_GREEN)) {
-    return HGR_AQUA;
-  } else if (combination(c1, c2, HGR_BLUE, HGR_MAGENTA)) {
-    return HGR_PURPLE;
-  } else if (combination(c1, c2, HGR_RED, HGR_MAGENTA)) {
-    return HGR_PINK;
-  } else {
-    return MONOCHROME_CUSTOM;  // visible failure indicator
   }
+  if (combination(c1, c2, HGR_RED, HGR_GREEN)) {
+    return HGR_YELLOW;
+  }
+  if (combination(c1, c2, HGR_BLUE, HGR_GREEN)) {
+    return HGR_AQUA;
+  }
+  if (combination(c1, c2, HGR_BLUE, HGR_MAGENTA)) {
+    return HGR_PURPLE;
+  }
+  if (combination(c1, c2, HGR_RED, HGR_MAGENTA)) {
+    return HGR_PINK;
+  }
+  return MONOCHROME_CUSTOM;  // visible failure indicator
 }
 
 auto video_create_color_mix_map() -> void {

@@ -385,44 +385,43 @@ auto CmdRegisterSet(int nArgs) -> Update_t {
   if (nArgs < 2)  // || ((g_args[2].sArg[0] != '0') && !g_args[2].nValue))
   {
     return Help_Arg_1(CMD_REGISTER_SET);
-  } else {
-    char* pName = g_args[1].sArg;
-    int iParam = 0;
-    if (FindParam(pName, MATCH_EXACT, iParam, PARAM_REGS_BEGIN,
-                  PARAM_REGS_END)) {
-      int iArg = 2;
-      if (g_args[iArg].eToken == TOKEN_EQUAL) {
-        iArg++;
-      }
+  }
 
-      if (iArg > nArgs) {
+  char* pName = g_args[1].sArg;
+  int iParam = 0;
+  if (FindParam(pName, MATCH_EXACT, iParam, PARAM_REGS_BEGIN, PARAM_REGS_END)) {
+    int iArg = 2;
+    if (g_args[iArg].eToken == TOKEN_EQUAL) {
+      iArg++;
+    }
+
+    if (iArg > nArgs) {
+      return Help_Arg_1(CMD_REGISTER_SET);
+    }
+
+    auto b = static_cast<uint8_t>(g_args[iArg].nValue & 0xFF);
+    auto w = static_cast<uint16_t>(g_args[iArg].nValue & 0xFFFF);
+
+    switch (iParam) {
+      case PARAM_REG_A:
+        cpu_get_registers()->a = b;
+        break;
+      case PARAM_REG_PC:
+        cpu_get_registers()->pc = w;
+        g_disasm_cur_address = cpu_get_registers()->pc;
+        DisasmCalcTopBotAddress();
+        break;
+      case PARAM_REG_SP:
+        cpu_get_registers()->sp = b | 0x100;
+        break;
+      case PARAM_REG_X:
+        cpu_get_registers()->x = b;
+        break;
+      case PARAM_REG_Y:
+        cpu_get_registers()->y = b;
+        break;
+      default:
         return Help_Arg_1(CMD_REGISTER_SET);
-      }
-
-      auto b = static_cast<uint8_t>(g_args[iArg].nValue & 0xFF);
-      auto w = static_cast<uint16_t>(g_args[iArg].nValue & 0xFFFF);
-
-      switch (iParam) {
-        case PARAM_REG_A:
-          cpu_get_registers()->a = b;
-          break;
-        case PARAM_REG_PC:
-          cpu_get_registers()->pc = w;
-          g_disasm_cur_address = cpu_get_registers()->pc;
-          DisasmCalcTopBotAddress();
-          break;
-        case PARAM_REG_SP:
-          cpu_get_registers()->sp = b | 0x100;
-          break;
-        case PARAM_REG_X:
-          cpu_get_registers()->x = b;
-          break;
-        case PARAM_REG_Y:
-          cpu_get_registers()->y = b;
-          break;
-        default:
-          return Help_Arg_1(CMD_REGISTER_SET);
-      }
     }
   }
 

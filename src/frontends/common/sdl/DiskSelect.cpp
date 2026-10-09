@@ -57,8 +57,10 @@ auto disk_select(int drive) -> void {
       continue;
     }
 
-    full_path =
-        (full_path == "/") ? ("/" + filename) : (full_path + "/" + filename);
+    if (full_path != "/") {
+      full_path += '/';
+    }
+    full_path += filename;
     dir_idx = file_index;
     file_index = 0;
   }
@@ -66,7 +68,7 @@ auto disk_select(int drive) -> void {
   util_safe_strcpy(system_state.current_dir.data(), full_path.c_str(),
                    system_state.current_dir.size());
   Configuration::instance().set_string("Preferences", cfg_pref_start_dir,
-                                         system_state.current_dir.data());
+                                       system_state.current_dir.data());
   Configuration::instance().save();
 
   const std::string file_path =
@@ -142,7 +144,7 @@ auto disk_ftp_select_image(int drive) -> void {
   util_safe_strcpy(system_state.ftp_server.data(), full_path.c_str(),
                    system_state.ftp_server.size());
   Configuration::instance().set_string("Preferences", cfg_ftp_dir,
-                                         system_state.ftp_server.data());
+                                       system_state.ftp_server.data());
   Configuration::instance().save();
 
   std::string safe_filename = Path::sanitize_filename(filename);

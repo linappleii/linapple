@@ -90,7 +90,7 @@ auto harddisk_ui_ftp_select(int drive) -> void {
   util_safe_strcpy(system_state.ftp_server_hdd.data(), full_path.c_str(),
                    system_state.ftp_server_hdd.size());
   Configuration::instance().set_string("Preferences", cfg_ftp_hdd_dir,
-                                         system_state.ftp_server_hdd.data());
+                                       system_state.ftp_server_hdd.data());
   Configuration::instance().save();
 
   std::string safe_filename = Path::sanitize_filename(filename);
@@ -170,16 +170,18 @@ auto harddisk_ui_select(int drive) -> void {
       continue;
     }
 
-    full_path =
-        (full_path == "/") ? ("/" + filename) : (full_path + "/" + filename);
+    if (full_path != "/") {
+      full_path += '/';
+    }
+    full_path += filename;
     dir_idx = file_index;
     file_index = 0;
   }
 
   util_safe_strcpy(system_state.hdd_dir.data(), full_path.c_str(),
                    system_state.hdd_dir.size());
-  Configuration::instance().set_string(
-      "Preferences", cfg_pref_hdd_start_dir, system_state.hdd_dir.data());
+  Configuration::instance().set_string("Preferences", cfg_pref_hdd_start_dir,
+                                       system_state.hdd_dir.data());
   Configuration::instance().save();
 
   const std::string file_path =
