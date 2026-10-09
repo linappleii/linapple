@@ -152,42 +152,42 @@ auto io_read_cxxx(uint16_t programcounter, uint16_t address, uint8_t write,
 auto io_write_cxxx(uint16_t programcounter, uint16_t address, uint8_t write,
                    uint8_t value, uint32_t executed_cycles) -> uint8_t;
 
-auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
+auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
                      uint32_t cycles) -> uint8_t {
   if (addr < IO_RANGE_BEGIN || addr > IO_RANGE_END) {
-    return io_null(pc, addr, write, d, cycles);
+    return io_null(pc, addr, write, val, cycles);
   }
   try {
     if ((addr & PAGE_MASK) == IO_RANGE_BEGIN) {
       uint8_t index = static_cast<uint8_t>(addr & 0xFF);
       if (write) {
         if (g_io_write[index] != nullptr) {
-          return g_io_write[index](pc, addr, write, d, cycles);
+          return g_io_write[index](pc, addr, write, val, cycles);
         }
       } else {
         if (g_io_read[index] != nullptr) {
-          return g_io_read[index](pc, addr, write, d, cycles);
+          return g_io_read[index](pc, addr, write, val, cycles);
         }
       }
     } else {
       uint8_t page = static_cast<uint8_t>((addr >> 8) & ADDR_NIBBLE_MASK);
       if (!is_apple2()) {
         if (!sw_slotcxrom(g_active_memory)) {
-          return write ? io_write_cxxx(pc, addr, write, d, cycles)
-                       : io_read_cxxx(pc, addr, write, d, cycles);
+          return write ? io_write_cxxx(pc, addr, write, val, cycles)
+                       : io_read_cxxx(pc, addr, write, val, cycles);
         }
         if (page == 3 && !sw_slotc3rom(g_active_memory)) {
-          return write ? io_write_cxxx(pc, addr, write, d, cycles)
-                       : io_read_cxxx(pc, addr, write, d, cycles);
+          return write ? io_write_cxxx(pc, addr, write, val, cycles)
+                       : io_read_cxxx(pc, addr, write, val, cycles);
         }
       }
       if (write) {
         if (g_io_write[NUM_PAGES_64K + page] != nullptr) {
-          return g_io_write[NUM_PAGES_64K + page](pc, addr, write, d, cycles);
+          return g_io_write[NUM_PAGES_64K + page](pc, addr, write, val, cycles);
         }
       } else {
         if (g_io_read[NUM_PAGES_64K + page] != nullptr) {
-          return g_io_read[NUM_PAGES_64K + page](pc, addr, write, d, cycles);
+          return g_io_read[NUM_PAGES_64K + page](pc, addr, write, val, cycles);
         }
       }
     }
@@ -199,7 +199,7 @@ auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
         "Unknown exception during I/O dispatch at addr $%04X (PC $%04X)", addr,
         pc);
   }
-  return io_null(pc, addr, write, d, cycles);
+  return io_null(pc, addr, write, val, cycles);
 }
 
 auto io_annunciator(uint16_t programcounter, uint16_t address, uint8_t write,
@@ -438,13 +438,13 @@ static IoFunction_t io_write_c0xx[8] = {
     io_write_c06x, io_write_c07x,  // Joystick/Video
 };
 
-auto io_null(uint16_t programcounter, uint16_t address, uint8_t write,
-             uint8_t value, uint32_t executed_cycles) -> uint8_t {
-  (void)value;
-  (void)programcounter;
-  (void)address;
+auto io_null(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
+             uint32_t cycles) -> uint8_t {
+  (void)val;
+  (void)pc;
+  (void)addr;
   if (!write) {
-    return mem_read_floating_bus(executed_cycles);
+    return mem_read_floating_bus(cycles);
   }
   return 0;
 }
@@ -842,14 +842,14 @@ auto mem_update_paging(bool initialize, bool updatewriteonly) -> void {
 
 // All globally accessible functions are below this line
 
-auto mem_check_paging(uint16_t programcounter, uint16_t address, uint8_t write,
-                      uint8_t value, uint32_t executed_cycles) -> uint8_t {
-  (void)programcounter;
+auto mem_check_paging(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
+                      uint32_t cycles) -> uint8_t {
+  (void)pc;
   (void)write;
-  (void)value;
-  address &= 0xFF;
+  (void)val;
+  addr &= 0xFF;
   bool result = false;
-  switch (address) {
+  switch (addr) {
     case SS_RDLCRAM:
       result = sw_hram_bank2(g_active_memory);
       break;
@@ -883,8 +883,7 @@ auto mem_check_paging(uint16_t programcounter, uint16_t address, uint8_t write,
     default:
       break;
   }
-  return (mem_read_floating_bus(executed_cycles) & 0x7F) |
-         (result ? 0x80 : 0x00);
+  return (mem_read_floating_bus(cycles) & 0x7F) | (result ? 0x80 : 0x00);
 }
 
 auto mem_destroy() -> void {
@@ -930,18 +929,18 @@ auto mem_check_slotcxrom() noexcept -> bool {
   return sw_slotcxrom(g_active_memory) != 0;
 }
 
-auto mem_get_aux_ptr(uint16_t offset) noexcept -> uint8_t* {
-  return (g_active_memory->memshadow[(offset >> 8)] ==
-          (g_active_memory->memaux + (offset & PAGE_MASK)))
-             ? mem + offset
-             : g_active_memory->memaux + offset;
+auto mem_get_aux_ptr(uint16_t addr) noexcept -> uint8_t* {
+  return (g_active_memory->memshadow[(addr >> 8)] ==
+          (g_active_memory->memaux + (addr & PAGE_MASK)))
+             ? mem + addr
+             : g_active_memory->memaux + addr;
 }
 
-auto mem_get_main_ptr(uint16_t offset) noexcept -> uint8_t* {
-  return (g_active_memory->memshadow[(offset >> 8)] ==
-          (g_active_memory->memmain + (offset & 0xFF00)))
-             ? mem + offset
-             : g_active_memory->memmain + offset;
+auto mem_get_main_ptr(uint16_t addr) noexcept -> uint8_t* {
+  return (g_active_memory->memshadow[(addr >> 8)] ==
+          (g_active_memory->memmain + (addr & 0xFF00)))
+             ? mem + addr
+             : g_active_memory->memmain + addr;
 }
 
 //===========================================================================
@@ -1243,14 +1242,14 @@ auto mem_read_floating_bus(uint8_t highbit, uint32_t executed_cycles) noexcept
   return (r & ~0x80) | (highbit ? 0x80 : 0);
 }
 
-auto mem_set_paging(uint16_t programcounter, uint16_t address, uint8_t write,
-                    uint8_t value, uint32_t executed_cycles) -> uint8_t {
-  address &= 0xFF;
+auto mem_set_paging(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
+                    uint32_t cycles) -> uint8_t {
+  addr &= 0xFF;
   uint32_t lastmemmode = g_active_memory->mem_mode;
 
   // Determine the new memory paging mode.
-  if ((address >= SS_LC_BEGIN) && (address <= SS_LC_END)) {
-    bool writeram = (address & 1);
+  if ((addr >= SS_LC_BEGIN) && (addr <= SS_LC_END)) {
+    bool writeram = (addr & 1);
     g_active_memory->mem_mode &= ~(MF_HRAM_BANK2 | MF_HIGHRAM | MF_HRAM_WRITE);
     {
       g_active_memory->last_write_ram =
@@ -1258,16 +1257,16 @@ auto mem_set_paging(uint16_t programcounter, uint16_t address, uint8_t write,
       if (g_active_memory->last_write_ram && writeram) {
         g_active_memory->mem_mode |= MF_HRAM_WRITE;
       }
-      if (!(address & 8)) {
+      if (!(addr & 8)) {
         g_active_memory->mem_mode |= MF_HRAM_BANK2;
       }
-      if (((address & 2) >> 1) == (address & 1)) {
+      if (((addr & 2) >> 1) == (addr & 1)) {
         g_active_memory->mem_mode |= MF_HIGHRAM;
       }
     }
     g_active_memory->last_write_ram = writeram;
   } else if (!is_apple2()) {
-    switch (address) {
+    switch (addr) {
       case SS_80STORE_OFF:
         g_active_memory->mem_mode &= ~MF_80STORE;
         break;
@@ -1324,16 +1323,16 @@ auto mem_set_paging(uint16_t programcounter, uint16_t address, uint8_t write,
   // If the emulated program has just update the memory write mode and is
   // about to update the memory read mode, hold off on any processing until it
   // does so.
-  if ((address >= 4) && (address <= 5) && (programcounter <= 0xFFFC) &&
-      ((read_u32_le(mem + programcounter) & 0x00FFFEFF) == 0x00C0028D)) {
+  if ((addr >= 4) && (addr <= 5) && (pc <= 0xFFFC) &&
+      ((read_u32_le(mem + pc) & 0x00FFFEFF) == 0x00C0028D)) {
     g_active_memory->mode_changing = true;
-    return write ? 0 : mem_read_floating_bus(1, executed_cycles);
+    return write ? 0 : mem_read_floating_bus(1, cycles);
   }
-  if ((address >= 0x80) && (address <= 0x8F) && (programcounter <= 0xFFFC) &&
-      (((read_u32_le(mem + programcounter) & 0x00FFFEFF) == 0x00C0048D) ||
-       ((read_u32_le(mem + programcounter) & 0x00FFFEFF) == 0x00C0028D))) {
+  if ((addr >= 0x80) && (addr <= 0x8F) && (pc <= 0xFFFC) &&
+      (((read_u32_le(mem + pc) & 0x00FFFEFF) == 0x00C0048D) ||
+       ((read_u32_le(mem + pc) & 0x00FFFEFF) == 0x00C0028D))) {
     g_active_memory->mode_changing = true;
-    return write ? 0 : mem_read_floating_bus(1, executed_cycles);
+    return write ? 0 : mem_read_floating_bus(1, cycles);
   }
 
   // If the memory paging mode has changed, update our memory images and write
@@ -1369,12 +1368,11 @@ auto mem_set_paging(uint16_t programcounter, uint16_t address, uint8_t write,
     mem_update_paging(false, false);
   }
 
-  if ((address <= 1) || ((address >= 0x54) && (address <= 0x57))) {
-    return video_set_mode(programcounter, address, write, value,
-                          executed_cycles);
+  if ((addr <= 1) || ((addr >= 0x54) && (addr <= 0x57))) {
+    return video_set_mode(pc, addr, write, val, cycles);
   }
 
-  return write ? 0 : mem_read_floating_bus(executed_cycles);
+  return write ? 0 : mem_read_floating_bus(cycles);
 }
 
 auto mem_get_slot_parameters(uint32_t slot) noexcept -> void* {
@@ -1384,31 +1382,31 @@ auto mem_get_slot_parameters(uint32_t slot) noexcept -> void* {
   return g_active_memory->slot_parameters[slot];
 }
 
-auto mem_get_snapshot(SsBaseMemory_t* ss) -> uint32_t {
-  if (ss == nullptr) {
+auto mem_get_snapshot(SsBaseMemory_t* snapshot) -> uint32_t {
+  if (snapshot == nullptr) {
     return 1;
   }
-  ss->mem_mode = g_active_memory->mem_mode;
-  ss->last_write_ram = g_active_memory->last_write_ram ? 1 : 0;
+  snapshot->mem_mode = g_active_memory->mem_mode;
+  snapshot->last_write_ram = g_active_memory->last_write_ram ? 1 : 0;
 
   for (uint32_t offset = 0x0000; offset < MEMORY_64K; offset += PAGE_SIZE) {
-    memcpy(ss->mem_main + offset,
+    memcpy(snapshot->mem_main + offset,
            mem_get_main_ptr(static_cast<uint16_t>(offset)), PAGE_SIZE);
-    memcpy(ss->mem_aux + offset, mem_get_aux_ptr(static_cast<uint16_t>(offset)),
-           PAGE_SIZE);
+    memcpy(snapshot->mem_aux + offset,
+           mem_get_aux_ptr(static_cast<uint16_t>(offset)), PAGE_SIZE);
   }
 
   return 0;
 }
 
-auto mem_set_snapshot(const SsBaseMemory_t* ss) -> uint32_t {
-  if (ss == nullptr) {
+auto mem_set_snapshot(const SsBaseMemory_t* snapshot) -> uint32_t {
+  if (snapshot == nullptr) {
     return 1;
   }
-  g_active_memory->mem_mode = ss->mem_mode;
-  g_active_memory->last_write_ram = (ss->last_write_ram != 0);
-  memcpy(g_active_memory->memmain, ss->mem_main, mem_main_size);
-  memcpy(g_active_memory->memaux, ss->mem_aux, mem_aux_size);
+  g_active_memory->mem_mode = snapshot->mem_mode;
+  g_active_memory->last_write_ram = (snapshot->last_write_ram != 0);
+  memcpy(g_active_memory->memmain, snapshot->mem_main, mem_main_size);
+  memcpy(g_active_memory->memaux, snapshot->mem_aux, mem_aux_size);
   g_active_memory->mode_changing = false;
   mem_update_paging(true, false);  // Initialize=1, UpdateWriteOnly=0
 

@@ -639,8 +639,8 @@ auto frame_poll_activity() -> void {
   }
 }
 
-auto frame_show_help_screen(int sx, int sy) -> void {
-  (void)sy;
+auto frame_show_help_screen(int width, int height) -> void {
+  (void)height;
   if (g_screen == nullptr) {
     return;
   }
@@ -703,13 +703,13 @@ auto frame_show_help_screen(int sx, int sy) -> void {
               static_cast<int>(system_state.screen_width - (8.0F * facx_f)),
               hdr_height, RGB(255, 255, 0));
 
-    font_print_centered(sx / 2, hdr_top + static_cast<int>(4.0F * facy_f),
+    font_print_centered(width / 2, hdr_top + static_cast<int>(4.0F * facy_f),
                         help_header_strings.at(0), lock_screen.view(), scale_x,
                         scale_y);
-    font_print_centered(sx / 2, hdr_top + static_cast<int>(16.0F * facy_f),
+    font_print_centered(width / 2, hdr_top + static_cast<int>(16.0F * facy_f),
                         help_header_strings.at(1), lock_screen.view(), scale_x,
                         scale_y);
-    font_print_centered(sx / 2, hdr_top + static_cast<int>(28.0F * facy_f),
+    font_print_centered(width / 2, hdr_top + static_cast<int>(28.0F * facy_f),
                         help_header_strings.at(2), lock_screen.view(), scale_x,
                         scale_y);
 
@@ -803,8 +803,8 @@ auto frame_quick_state(int state, int mod) -> void {
   }
 }
 
-auto is_modifier_key(SDL_Keycode sym) noexcept -> bool {
-  switch (sym) {
+auto is_modifier_key(SDL_Keycode key) noexcept -> bool {
+  switch (key) {
     case SDLK_LSHIFT:
     case SDLK_RSHIFT:
     case SDLK_LCTRL:

@@ -8,10 +8,6 @@
 
 #include "apple2/CPU.h"
 
-using std::map;
-using std::string;
-using std::vector;
-
 // Addressing
 
 constexpr int MAX_OPMODE_FORMAT = 12;
@@ -1156,8 +1152,8 @@ struct MemorySearch_t {
   bool found;           //
 };
 
-using MemorySearchValues_t = vector<MemorySearch_t>;
-using MemorySearchResults_t = vector<int>;
+using MemorySearchValues_t = std::vector<MemorySearch_t>;
+using MemorySearchResults_t = std::vector<int>;
 
 // Parameters
 
@@ -1386,7 +1382,8 @@ enum Parameters_e : uint8_t {
 // Source Level Debugging
 constexpr int NO_SOURCE_LINE = -1;
 
-using SourceAssembly_t = map<uint16_t, int>;  // Address -> Line #  &  FileName
+using SourceAssembly_t =
+    std::map<uint16_t, int>;  // Address -> Line #  &  FileName
 
 // Symbols
 
@@ -1425,7 +1422,7 @@ enum SymbolTable_Masks_e : uint16_t  // SymbolTable_e ->
   SYMBOL_TABLE_PRODOS = (1 << 8),
 };
 
-using SymbolTable_t = map<uint16_t, string>;
+using SymbolTable_t = std::map<uint16_t, std::string>;
 
 // Watches
 constexpr int MAX_WATCHES = 16;

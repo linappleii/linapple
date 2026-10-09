@@ -184,7 +184,7 @@ inline auto video_set_frame_ready(bool ready = true) noexcept -> void {
 auto video_create_color_mix_map() -> void;
 auto video_apparently_dirty() noexcept -> bool;
 auto video_benchmark() -> void;
-auto video_check_page(bool page) -> void;
+auto video_check_page(bool force) -> void;
 auto video_destroy() -> void;
 auto video_display_logo() -> void;
 auto video_has_refreshed() noexcept -> bool;

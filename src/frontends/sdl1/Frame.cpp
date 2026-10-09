@@ -595,12 +595,12 @@ auto frame_quick_state(int num, int mod) -> void {
   }
 }
 
-auto is_modifier_key(SDLKey sym) noexcept -> bool {
-  return sym == SDLK_NUMLOCK || sym == SDLK_CAPSLOCK || sym == SDLK_SCROLLOCK ||
-         sym == SDLK_RSHIFT || sym == SDLK_LSHIFT || sym == SDLK_RCTRL ||
-         sym == SDLK_LCTRL || sym == SDLK_RALT || sym == SDLK_LALT ||
-         sym == SDLK_RMETA || sym == SDLK_LMETA || sym == SDLK_RSUPER ||
-         sym == SDLK_LSUPER || sym == SDLK_MODE || sym == SDLK_COMPOSE;
+auto is_modifier_key(SDLKey key) noexcept -> bool {
+  return key == SDLK_NUMLOCK || key == SDLK_CAPSLOCK || key == SDLK_SCROLLOCK ||
+         key == SDLK_RSHIFT || key == SDLK_LSHIFT || key == SDLK_RCTRL ||
+         key == SDLK_LCTRL || key == SDLK_RALT || key == SDLK_LALT ||
+         key == SDLK_RMETA || key == SDLK_LMETA || key == SDLK_RSUPER ||
+         key == SDLK_LSUPER || key == SDLK_MODE || key == SDLK_COMPOSE;
 }
 
 auto frame_on_resize(int width, int height) -> void {
