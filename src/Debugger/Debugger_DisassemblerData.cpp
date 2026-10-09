@@ -37,7 +37,7 @@ auto CmdDefineByteRange(int nArgs, int iArg, DisasmData_t& tData_) -> uint16_t {
   } else {
     RangeType_t eRange = Range_Get(address, nAddress2, iArg);
     if ((eRange == RANGE_HAS_END) || (eRange == RANGE_HAS_LEN)) {
-      RangeEndLen_t tEndLen;
+      RangeEndLen_t tEndLen{};
       Range_CalcEndLen(eRange, address, nAddress2, tEndLen);
       nLen = tEndLen.nAddressLen;
       nLen--;  // Disassembly_IsDataAddress() is *inclusive* // KEEP IN SYNC:

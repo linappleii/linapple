@@ -11,9 +11,9 @@ enum BasicLineMode : uint8_t {
 };
 
 struct BasicSyncConfig {
-  std::string file_path;
-  BasicLineMode line_mode;
-  bool enabled;
+  std::string file_path{};
+  BasicLineMode line_mode{basic_line_mode_explicit};
+  bool enabled{false};
 };
 
 auto basic_sync_init(const char* file_path, BasicLineMode mode) -> void;
@@ -24,8 +24,8 @@ auto basic_sync_is_active() noexcept -> bool;
 auto basic_sync_get_config() noexcept -> const BasicSyncConfig&;
 
 auto basic_sync_export_to_string(BasicLineMode mode) -> std::string;
-auto basic_sync_import_from_string(const std::string& text,
-                                   BasicLineMode mode) -> bool;
+auto basic_sync_import_from_string(const std::string& text, BasicLineMode mode)
+    -> bool;
 auto basic_sync_import_from_string(const char* text, size_t length,
                                    BasicLineMode mode) -> bool;
 

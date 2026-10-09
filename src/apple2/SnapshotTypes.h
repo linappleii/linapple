@@ -89,14 +89,14 @@ struct SsBaseMemory_t {
 };
 
 struct SsApple2Unit_t {
-  SsUnitHdr_t unit_hdr;
-  SsCpu6502_t cpu_6502;
-  SsIoComms_t comms;
-  SsIoJoystick_t joystick;
-  SsKeyboardRegion_t keyboard;
-  SsIoSpeaker_t speaker;
-  SsIoVideo_t video;
-  SsBaseMemory_t memory;
+  SsUnitHdr_t unit_hdr{};
+  SsCpu6502_t cpu_6502{};
+  SsIoComms_t comms{};
+  SsIoJoystick_t joystick{};
+  SsKeyboardRegion_t keyboard{};
+  SsIoSpeaker_t speaker{};
+  SsIoVideo_t video{};
+  SsBaseMemory_t memory{};
 };
 static_assert(offsetof(SsApple2Unit_t, keyboard) == 64,
               "the keyboard region is where every .aws written has it");
@@ -148,20 +148,20 @@ static_assert(sizeof(SsVia6522Regs_t) == 18,
               "SsVia6522Regs_t is an .aws wire format and must stay 18 bytes");
 
 struct MbUnit_t {
-  SsVia6522Regs_t regs_sy6522;
-  uint8_t regs_ay8910[ay8910_num_registers];
-  Ssi263A regs_ssi263;
-  uint8_t ay_current_register;
-  bool timer1_irq_pending;
-  bool timer2_irq_pending;
-  bool speech_irq_pending;
+  SsVia6522Regs_t regs_sy6522{};
+  uint8_t regs_ay8910[ay8910_num_registers]{};
+  Ssi263A regs_ssi263{};
+  uint8_t ay_current_register{};
+  bool timer1_irq_pending{false};
+  bool timer2_irq_pending{false};
+  bool speech_irq_pending{false};
 };
 
 constexpr uint32_t mb_units_per_card = 2;
 
 struct SsCardMockingboard_t {
-  SsCardHdr_t hdr;
-  MbUnit_t unit[mb_units_per_card];
+  SsCardHdr_t hdr{};
+  MbUnit_t unit[mb_units_per_card]{};
 };
 
 // Variable-length peripheral states appended after fixed body (slots 1-5, 7).
@@ -183,17 +183,17 @@ struct SsSlotTrailer_t {
 };
 
 struct Snapshot_t {
-  SsFileHdr_t hdr;
-  SsApple2Unit_t apple2_unit;
-  SsPeripheralManifest_t manifest;
-  SsCardEmpty_t empty1;
-  SsCardEmpty_t empty2;
-  SsCardEmpty_t empty3;
-  SsCardMockingboard_t mockingboard1;
-  SsCardMockingboard_t mockingboard2;
-  SsCardEmpty_t empty6;
-  SsCardEmpty_t empty7;
-  SsSlotTrailer_t slot_trailer;
+  SsFileHdr_t hdr{};
+  SsApple2Unit_t apple2_unit{};
+  SsPeripheralManifest_t manifest{};
+  SsCardEmpty_t empty1{};
+  SsCardEmpty_t empty2{};
+  SsCardEmpty_t empty3{};
+  SsCardMockingboard_t mockingboard1{};
+  SsCardMockingboard_t mockingboard2{};
+  SsCardEmpty_t empty6{};
+  SsCardEmpty_t empty7{};
+  SsSlotTrailer_t slot_trailer{};
 };
 using Snapshot = Snapshot_t;
 using ApplewinSnapshot_t = Snapshot_t;

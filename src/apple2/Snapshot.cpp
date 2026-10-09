@@ -155,7 +155,7 @@ auto slot0_matches(const SsPeripheralManifest_t* file,
 // described.
 auto manifest_admits(const SsPeripheralManifest_t* file, LegacySwap_t* swap)
     -> bool {
-  SsPeripheralManifest_t live;
+  SsPeripheralManifest_t live{};
   peripheral_get_manifest(&live);
   int override_slot = 0;
   const char* key_card = "";

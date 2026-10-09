@@ -36,15 +36,15 @@ constexpr int STATUS_PANEL_H = 48;
 using ColorRef_t = uint32_t;
 
 struct Point_t {
-  int32_t x;
-  int32_t y;
+  int32_t x{0};
+  int32_t y{0};
 };
 
 struct Rect_t {
-  int32_t left;
-  int32_t top;
-  int32_t right;
-  int32_t bottom;
+  int32_t left{0};
+  int32_t top{0};
+  int32_t right{0};
+  int32_t bottom{0};
 };
 
 enum VideoType_t : uint8_t {

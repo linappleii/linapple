@@ -164,7 +164,7 @@ auto container_error_to_harddisk_error(ImageContainerError_e error)
 // returns, whatever happened; the driver's handle keeps the inode alive, and
 // nothing written to it would outlive the session anyway.
 struct TemporaryFile_t {
-  char path[path_max_len];
+  char path[path_max_len] = {};
   explicit TemporaryFile_t(const char* p) {
     if (p != nullptr) {
       util_safe_strcpy(path, p, path_max_len);

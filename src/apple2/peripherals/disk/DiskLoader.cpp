@@ -168,7 +168,7 @@ auto container_error_to_disk_error(ImageContainerError_e error) -> DiskError_e {
 }
 
 struct TemporaryFileGuard {
-  char path[path_max_len];
+  char path[path_max_len] = {};
   explicit TemporaryFileGuard(const char* p) {
     if (p != nullptr) {
       util_safe_strcpy(path, p, path_max_len);

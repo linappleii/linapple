@@ -54,8 +54,7 @@ auto restore_terminal_signal_safe() -> void {
 
 auto fatal_signal_handler(int sig) -> void {
   restore_terminal_signal_safe();
-  struct sigaction sa;
-  memset(&sa, 0, sizeof(sa));
+  struct sigaction sa{};
   sa.sa_handler = SIG_DFL;
   sigemptyset(&sa.sa_mask);
   sigaction(sig, &sa, nullptr);
@@ -94,8 +93,7 @@ auto tui_terminal_initialize() -> int {
   fputs(k_enter_alt_screen_hide_cursor, stdout);
   fflush(stdout);
 
-  struct sigaction sa;
-  memset(&sa, 0, sizeof(sa));
+  struct sigaction sa{};
   sa.sa_handler = signal_handler;
   sigemptyset(&sa.sa_mask);
 
@@ -105,8 +103,7 @@ auto tui_terminal_initialize() -> int {
   sigaction(SIGQUIT, &sa, nullptr);
   sigaction(SIGWINCH, &sa, nullptr);
 
-  struct sigaction sa_fatal;
-  memset(&sa_fatal, 0, sizeof(sa_fatal));
+  struct sigaction sa_fatal{};
   sa_fatal.sa_handler = fatal_signal_handler;
   sigemptyset(&sa_fatal.sa_mask);
 
