@@ -480,10 +480,10 @@ static auto render_disk_select_overlay() -> void {
     }
 
     TuiPixel row_bg = is_selected ? sel_bg : modal_bg;
-    TuiPixel row_fg =
-        is_selected
-            ? sel_fg
-            : (entry && file_entry_is_dir_type(entry) ? dir_fg : item_fg);
+    TuiPixel row_fg = sel_fg;
+    if (!is_selected) {
+      row_fg = (entry && file_entry_is_dir_type(entry)) ? dir_fg : item_fg;
+    }
 
     for (int col_idx = 0; col_idx < box_inner_w; ++col_idx) {
       auto& cell = g_next_buffer.at(

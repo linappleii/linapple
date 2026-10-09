@@ -297,10 +297,11 @@ auto CmdUnassemble(int nArgs) -> Update_t {
 
 //===========================================================================
 auto CmdKey(int nArgs) -> Update_t {
-  uint8_t code =
-      nArgs ? (g_args[1].nValue ? static_cast<uint8_t>(g_args[1].nValue)
-                                : static_cast<uint8_t>(g_args[1].sArg[0]))
-            : static_cast<uint8_t>(' ');
+  uint8_t code = static_cast<uint8_t>(' ');
+  if (nArgs != 0) {
+    code = (g_args[1].nValue != 0) ? static_cast<uint8_t>(g_args[1].nValue)
+                                   : static_cast<uint8_t>(g_args[1].sArg[0]);
+  }
 
   linapple_set_key_state(code, true);
   linapple_set_key_state(code, false);

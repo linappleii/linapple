@@ -12,7 +12,13 @@
 #include "frontends/common/JoystickConfig.h"
 
 inline auto clamp_val(int val, int low, int high) -> int {
-  return (val < low) ? low : (val > high) ? high : val;
+  if (val < low) {
+    return low;
+  }
+  if (val > high) {
+    return high;
+  }
+  return val;
 }
 
 struct JoyCoord {

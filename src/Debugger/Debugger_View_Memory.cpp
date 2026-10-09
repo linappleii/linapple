@@ -312,9 +312,10 @@ auto DrawSoftSwitchLanguageCardBank(Rect_t& rect, const int iBankDisplay,
   rect.right = rect.left + dx80;
 
   bool bBankWritable = (get_mem_mode() & MF_HRAM_WRITE) != 0;
-  int iBankActive = (get_mem_mode() & MF_HIGHRAM)
-                        ? (get_mem_mode() & MF_HRAM_BANK2) ? 2 : 1
-                        : 0;
+  int iBankActive = 0;
+  if ((get_mem_mode() & MF_HIGHRAM) != 0) {
+    iBankActive = (get_mem_mode() & MF_HRAM_BANK2) ? 2 : 1;
+  }
 
   char sOn[4] = "B#";
   char sOff[4] = "M";

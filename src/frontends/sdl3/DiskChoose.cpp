@@ -79,11 +79,11 @@ auto wait_for_dismissal() -> void {
 }
 
 auto prepare_dialog_background() -> bool {
-  VideoSurface* temp_surface =
-      !g_window_resized
-          ? ((system_state.mode == app_mode_logo) ? g_logo_bitmap
-                                                  : g_device_bitmap)
-          : g_origscreen;
+  VideoSurface* temp_surface = g_origscreen;
+  if (!g_window_resized) {
+    temp_surface = (system_state.mode == app_mode_logo) ? g_logo_bitmap
+                                                        : g_device_bitmap;
+  }
 
   ScopedSurfaceLock lock_screen(g_screen.get());
   const VideoSurfaceView src_view =

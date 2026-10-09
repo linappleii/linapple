@@ -716,12 +716,14 @@ auto mem_update_paging(bool initialize, bool updatewriteonly) -> void {
     g_active_memory->memshadow[page] =
         sw_auxread(g_active_memory) ? g_active_memory->memaux + (page << 8)
                                     : g_active_memory->memmain + (page << 8);
-    memwrite[page] = ((sw_auxread(g_active_memory) != 0) ==
-                      (sw_auxwrite(g_active_memory) != 0))
-                         ? mem + (page << 8)
-                     : sw_auxwrite(g_active_memory)
-                         ? g_active_memory->memaux + (page << 8)
-                         : g_active_memory->memmain + (page << 8);
+    if ((sw_auxread(g_active_memory) != 0) ==
+        (sw_auxwrite(g_active_memory) != 0)) {
+      memwrite[page] = mem + (page << 8);
+    } else if (sw_auxwrite(g_active_memory)) {
+      memwrite[page] = g_active_memory->memaux + (page << 8);
+    } else {
+      memwrite[page] = g_active_memory->memmain + (page << 8);
+    }
   }
 
   if (!updatewriteonly) {
@@ -751,59 +753,56 @@ auto mem_update_paging(bool initialize, bool updatewriteonly) -> void {
   }
 
   for (uint32_t page = PAGE_D0; page < PAGE_E0; page++) {
-    int bankoffset = (sw_hram_bank2(g_active_memory) ? 0 : LC_BANK_SIZE);
-    g_active_memory->memshadow[page] =
-        sw_highram(g_active_memory)
-            ? sw_altzp(g_active_memory)
-                  ? (g_active_memory->memaux
-                         ? g_active_memory->memaux + (page << 8) - bankoffset
-                         : mem + (page << 8))
-                  : (g_active_memory->memmain
-                         ? g_active_memory->memmain + (page << 8) - bankoffset
-                         : mem + (page << 8))
-            : (g_active_memory->memrom
-                   ? g_active_memory->memrom +
-                         (static_cast<size_t>((page - PAGE_D0) * PAGE_SIZE))
-                   : (mem + (page << 8)));
+    const int bankoffset = sw_hram_bank2(g_active_memory) ? 0 : LC_BANK_SIZE;
+    uint8_t* const alt_ram = sw_altzp(g_active_memory)
+                                 ? g_active_memory->memaux
+                                 : g_active_memory->memmain;
+    uint8_t* const lc_ram =
+        alt_ram ? alt_ram + (page << 8) - bankoffset : mem + (page << 8);
 
-    memwrite[page] =
-        sw_hram_write(g_active_memory)
-            ? sw_highram(g_active_memory) ? mem + (page << 8)
-              : sw_altzp(g_active_memory)
-                  ? (g_active_memory->memaux
-                         ? g_active_memory->memaux + (page << 8) - bankoffset
-                         : mem + (page << 8))
-                  : (g_active_memory->memmain
-                         ? g_active_memory->memmain + (page << 8) - bankoffset
-                         : mem + (page << 8))
-            : nullptr;
+    if (sw_highram(g_active_memory)) {
+      g_active_memory->memshadow[page] = lc_ram;
+    } else {
+      g_active_memory->memshadow[page] =
+          g_active_memory->memrom
+              ? g_active_memory->memrom +
+                    (static_cast<size_t>((page - PAGE_D0) * PAGE_SIZE))
+              : (mem + (page << 8));
+    }
+
+    if (!sw_hram_write(g_active_memory)) {
+      memwrite[page] = nullptr;
+    } else if (sw_highram(g_active_memory)) {
+      memwrite[page] = mem + (page << 8);
+    } else {
+      memwrite[page] = lc_ram;
+    }
   }
 
   for (uint32_t page = PAGE_E0; page < PAGE_MAX; page++) {
-    g_active_memory->memshadow[page] =
-        sw_highram(g_active_memory)
-            ? sw_altzp(g_active_memory)
-                  ? (g_active_memory->memaux
-                         ? g_active_memory->memaux + (page << 8)
-                         : mem + (page << 8))
-                  : (g_active_memory->memmain
-                         ? g_active_memory->memmain + (page << 8)
-                         : mem + (page << 8))
-            : (g_active_memory->memrom
-                   ? g_active_memory->memrom +
-                         (static_cast<size_t>((page - PAGE_D0) * PAGE_SIZE))
-                   : (mem + (page << 8)));
+    uint8_t* const alt_ram = sw_altzp(g_active_memory)
+                                 ? g_active_memory->memaux
+                                 : g_active_memory->memmain;
+    uint8_t* const lc_ram =
+        alt_ram ? alt_ram + (page << 8) : mem + (page << 8);
 
-    memwrite[page] = sw_hram_write(g_active_memory)
-                         ? sw_highram(g_active_memory) ? mem + (page << 8)
-                           : sw_altzp(g_active_memory)
-                               ? (g_active_memory->memaux
-                                      ? g_active_memory->memaux + (page << 8)
-                                      : mem + (page << 8))
-                               : (g_active_memory->memmain
-                                      ? g_active_memory->memmain + (page << 8)
-                                      : mem + (page << 8))
-                         : nullptr;
+    if (sw_highram(g_active_memory)) {
+      g_active_memory->memshadow[page] = lc_ram;
+    } else {
+      g_active_memory->memshadow[page] =
+          g_active_memory->memrom
+              ? g_active_memory->memrom +
+                    (static_cast<size_t>((page - PAGE_D0) * PAGE_SIZE))
+              : (mem + (page << 8));
+    }
+
+    if (!sw_hram_write(g_active_memory)) {
+      memwrite[page] = nullptr;
+    } else if (sw_highram(g_active_memory)) {
+      memwrite[page] = mem + (page << 8);
+    } else {
+      memwrite[page] = lc_ram;
+    }
   }
 
   if (sw_80store(g_active_memory)) {

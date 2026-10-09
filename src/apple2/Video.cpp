@@ -1141,7 +1141,8 @@ auto copy_mixed_source(int x, int y, int sourcex, int sourcey) -> void {
   int count = 0;
   int bufxoffset = 0;
   int hgrlinesabove = (y > 0) ? 1 : 0;
-  int hgrlinesbelow = sw_mixed() ? ((y < 159) ? 1 : 0) : ((y < 191) ? 1 : 0);
+  const int max_hgr_y = sw_mixed() ? 159 : 191;
+  int hgrlinesbelow = (y < max_hgr_y) ? 1 : 0;
   int i = 0;
   int istart = 2 - (hgrlinesabove << 1);
   int iend = 3 + (hgrlinesbelow << 1);
@@ -1766,12 +1767,16 @@ auto video_perform_refresh() -> void {
     g_text_bank0 = reinterpret_cast<uint8_t*>(display_pipeline_) + 0x4400;
   }
   memset(celldirty, 0, static_cast<size_t>(40 * 32));
-  UpdateFunc_t update =
-      swl_text()    ? (swl_80col() ? update_80col_cell : update_40col_cell)
-      : swl_hires() ? ((swl_dhires() && swl_80col()) ? update_dhires_cell
-                                                     : update_hires_cell)
-                    : ((swl_dhires() && swl_80col()) ? update_dlores_cell
-                                                     : update_lores_cell);
+  UpdateFunc_t update = nullptr;
+  if (swl_text()) {
+    update = swl_80col() ? update_80col_cell : update_40col_cell;
+  } else if (swl_hires()) {
+    update = (swl_dhires() && swl_80col()) ? update_dhires_cell
+                                           : update_hires_cell;
+  } else {
+    update = (swl_dhires() && swl_80col()) ? update_dlores_cell
+                                           : update_lores_cell;
+  }
 
   bool anydirty = redrawfull | g_text_flash_flag;
 
