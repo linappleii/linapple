@@ -95,7 +95,7 @@ inline auto woz_chunks_end(FILE* file, uint32_t base_offset, uint64_t file_size)
     std::array<uint8_t, woz::chunk_header_size> chunk_hdr{};
     const uint64_t hdr_pos = static_cast<uint64_t>(base_offset) + end;
     if (hdr_pos + chunk_hdr.size() > file_size ||
-        fseek(file, static_cast<long>(hdr_pos), SEEK_SET) != 0 ||
+        fseek(file, static_cast<int64_t>(hdr_pos), SEEK_SET) != 0 ||
         fread(chunk_hdr.data(), 1, chunk_hdr.size(), file) !=
             chunk_hdr.size() ||
         !woz_is_chunk_id(chunk_hdr.data())) {
@@ -129,8 +129,8 @@ inline auto woz_verify_crc32(FILE* file, uint32_t base_offset,
   const uint64_t end =
       woz_chunks_end(file, base_offset, static_cast<uint64_t>(file_size));
   if (fseek(file,
-            static_cast<long>(static_cast<uint64_t>(base_offset) +
-                              woz::file_header_size),
+            static_cast<int64_t>(static_cast<uint64_t>(base_offset) +
+                                 woz::file_header_size),
             SEEK_SET) != 0) {
     return disk_err_io;
   }

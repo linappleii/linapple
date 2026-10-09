@@ -38,7 +38,7 @@ size_t cushion_samples = 0;
 // Symmetric rails: -1.0 and +1.0 map to -32767 and +32767, so a full-scale
 // signal stays symmetric instead of gaining a half-LSB bias from -32768.
 auto float_to_pcm16(float v) noexcept -> int16_t {
-  const long scaled = std::lroundf(v * 32767.0F);
+  const int64_t scaled = std::lroundf(v * 32767.0F);
   if (scaled > 32767) {
     return 32767;
   }

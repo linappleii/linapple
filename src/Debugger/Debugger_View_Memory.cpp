@@ -694,10 +694,11 @@ auto DrawSubWindow_Data(Update_t bUpdate) -> void {
     for (byte = 0; byte < nMaxOpcodes; byte++) {
       uint8_t nData = static_cast<unsigned>(
           *(mem + static_cast<uint16_t>(iAddress + byte)));
-      snprintf(&sOpcodes[static_cast<ptrdiff_t>(byte * 3)],
-               sizeof(sOpcodes) - (byte * 3), "%02X ", nData);
+      snprintf(&sOpcodes[static_cast<size_t>(byte) * 3U],
+               sizeof(sOpcodes) - (static_cast<size_t>(byte) * 3U), "%02X ",
+               nData);
     }
-    sOpcodes[static_cast<ptrdiff_t>(nMaxOpcodes * 3)] = 0;
+    sOpcodes[static_cast<size_t>(nMaxOpcodes) * 3U] = 0;
 
     int nFontHeight = g_font_config[FONT_DISASM_DEFAULT].line_height;
 

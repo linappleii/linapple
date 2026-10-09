@@ -54,9 +54,9 @@ constexpr size_t read_chunk = 256;
 // The include cleaner attributes these to the kernel header behind
 // <sys/ioctl.h>, which differs by architecture.
 // NOLINTBEGIN(misc-include-cleaner)
-constexpr unsigned long modem_get = TIOCMGET;
-constexpr unsigned long modem_set = TIOCMBIS;
-constexpr unsigned long modem_clear = TIOCMBIC;
+constexpr uint64_t modem_get = TIOCMGET;
+constexpr uint64_t modem_set = TIOCMBIS;
+constexpr uint64_t modem_clear = TIOCMBIC;
 // NOLINTEND(misc-include-cleaner)
 
 enum class DeviceKind : uint8_t { none, pty, loopback, path };
@@ -338,7 +338,7 @@ auto apply_termios() -> void {
   }
 }
 
-auto set_modem_bits(unsigned long request, int bits, const char* action)
+auto set_modem_bits(uint64_t request, int bits, const char* action)
     -> void {
   int value = bits;
   if (ioctl(serial_device.fd, request, &value) != 0) {

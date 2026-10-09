@@ -512,7 +512,7 @@ auto keyboard_parse_apple2_val(const char* name, uint8_t* out_flags)
       (s.length() > 1 && s[0] == '$')) {
     try {
       std::string hex_str = (s[0] == '$') ? s.substr(1) : s.substr(2);
-      unsigned long val = std::stoul(hex_str, nullptr, 16);
+      const uint64_t val = std::stoul(hex_str, nullptr, 16);
       return static_cast<uint8_t>(val & 0xFF);
     } catch (const std::exception&) {
       return 0;

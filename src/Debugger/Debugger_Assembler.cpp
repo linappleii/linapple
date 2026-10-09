@@ -1239,7 +1239,7 @@ auto debugger_get_file_size(FILE* file) -> size_t {
   if (fseek(file, 0, SEEK_END) != 0) {
     return 0;
   }
-  long pos = ftell(file);
+  int64_t pos = ftell(file);
   if (fseek(file, 0, SEEK_SET) != 0) {
     return 0;
   }
@@ -1357,7 +1357,7 @@ auto ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols) -> bool {
     if (p) {
       *p = 0;
       char* endptr = nullptr;
-      const unsigned long parsed = strtoul(sLine, &endptr, 16);
+      const uint64_t parsed = strtoul(sLine, &endptr, 16);
       if (endptr == sLine || parsed >= INVALID_ADDRESS) {
         continue;
       }

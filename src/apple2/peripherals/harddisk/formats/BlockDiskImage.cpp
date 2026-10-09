@@ -287,7 +287,7 @@ auto block_disk_image_read_block(void* instance, uint32_t block_num,
     if (!seek_to(image_ptr, offset)) {
       return harddisk_err_io;
     }
-    if (fread(buffer + (half * piece_size), 1, piece_size,
+    if (fread(buffer + (static_cast<size_t>(half) * piece_size), 1, piece_size,
               image_ptr->file.get()) != piece_size) {
       return harddisk_err_io;
     }
@@ -320,8 +320,8 @@ auto block_disk_image_write_block(void* instance, uint32_t block_num,
     if (!seek_to(image_ptr, offset)) {
       return harddisk_err_io;
     }
-    if (fwrite(buffer + (half * piece_size), 1, piece_size,
-               image_ptr->file.get()) != piece_size) {
+    if (fwrite(buffer + (static_cast<size_t>(half) * piece_size), 1,
+               piece_size, image_ptr->file.get()) != piece_size) {
       return harddisk_err_io;
     }
   }

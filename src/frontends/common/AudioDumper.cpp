@@ -143,14 +143,15 @@ auto AudioDumper::finalize_unlocked() -> void {
 
   if (total_bytes_written_ >= (total_offset_ + 4)) {
     const uint32_t riff_size = total_bytes_written_ - (total_offset_ + 4);
-    if (fseek(file_.get(), static_cast<long>(total_offset_), SEEK_SET) == 0) {
+    if (fseek(file_.get(), static_cast<int64_t>(total_offset_), SEEK_SET) ==
+        0) {
       write_file_u32_le(file_.get(), riff_size);
     }
   }
 
   if (total_bytes_written_ >= (data_offset_ + 4)) {
     const uint32_t data_size = total_bytes_written_ - (data_offset_ + 4);
-    if (fseek(file_.get(), static_cast<long>(data_offset_), SEEK_SET) == 0) {
+    if (fseek(file_.get(), static_cast<int64_t>(data_offset_), SEEK_SET) == 0) {
       write_file_u32_le(file_.get(), data_size);
     }
   }

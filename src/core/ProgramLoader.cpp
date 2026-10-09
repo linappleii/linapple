@@ -122,7 +122,7 @@ auto program_loader_try_load(const char* path, ProgramInfo* out_info) noexcept
     return program_load_invalid;
   }
 
-  if (std::fseek(f.get(), static_cast<long>(info.offset), SEEK_SET) != 0) {
+  if (std::fseek(f.get(), static_cast<int64_t>(info.offset), SEEK_SET) != 0) {
     return program_load_file_error;
   }
 

@@ -371,8 +371,8 @@ auto parse_positional_line(const std::string& sanitized, uint32_t line_index,
     return true;
   }
 
-  unsigned long val = (pos <= 5) ? std::stoul(sanitized.substr(0, pos))
-                                 : static_cast<unsigned long>(max_line_number);
+  uint64_t val = (pos <= 5) ? std::stoul(sanitized.substr(0, pos))
+                            : static_cast<uint64_t>(max_line_number);
   if (val != line_index) {
     *out_statement = sanitized;
     return true;
@@ -400,11 +400,10 @@ auto parse_explicit_line(const std::string& sanitized, uint16_t* out_num,
   }
 
   size_t num_len = pos - num_start;
-  unsigned long val = (num_len <= 5)
-                          ? std::stoul(sanitized.substr(num_start, num_len))
-                          : static_cast<unsigned long>(max_line_number);
-  *out_num =
-      static_cast<uint16_t>(std::min<unsigned long>(val, max_line_number));
+  uint64_t val = (num_len <= 5)
+                     ? std::stoul(sanitized.substr(num_start, num_len))
+                     : static_cast<uint64_t>(max_line_number);
+  *out_num = static_cast<uint16_t>(std::min<uint64_t>(val, max_line_number));
 
   while (pos < sanitized.length() && std::isspace(sanitized.at(pos))) {
     pos++;

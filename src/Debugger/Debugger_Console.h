@@ -28,7 +28,7 @@ enum : uint16_t {
 // Color ____________________________________________________________________
 
 // typedef uint8_t conchar_t;
-using conchar_t = short;
+using conchar_t = int16_t;
 
 // NOTE: Keep in sync ConsoleColors_e g_console_color !
 enum ConsoleColors_e : uint8_t {

@@ -190,9 +190,11 @@ static auto copy_row3(const uint8_t* src, int src_w, uint8_t* dst, int dst_x,
     }
     int cur_x = dst_x + i;
     if (cur_x >= 0 && cur_x < max_w) {
-      dst[cur_x * 3] = src[src_x * 3];
-      dst[cur_x * 3 + 1] = src[src_x * 3 + 1];
-      dst[cur_x * 3 + 2] = src[src_x * 3 + 2];
+      const auto dst_idx = static_cast<size_t>(cur_x) * 3U;
+      const auto src_idx = static_cast<size_t>(src_x) * 3U;
+      dst[dst_idx] = src[src_idx];
+      dst[dst_idx + 1] = src[src_idx + 1];
+      dst[dst_idx + 2] = src[src_idx + 2];
     }
   }
 }
@@ -212,9 +214,10 @@ static auto copy_row3to4(const uint8_t* src, int src_w, uint32_t* dst,
     }
     int cur_x = dst_x + i;
     if (cur_x >= 0 && cur_x < max_w) {
-      uint32_t r = src[src_x * 3];
-      uint32_t g = src[src_x * 3 + 1];
-      uint32_t b = src[src_x * 3 + 2];
+      const auto src_idx = static_cast<size_t>(src_x) * 3U;
+      uint32_t r = src[src_idx];
+      uint32_t g = src[src_idx + 1];
+      uint32_t b = src[src_idx + 2];
       dst[cur_x] = (r << 16) | (g << 8) | b;
     }
   }
@@ -235,9 +238,10 @@ static auto copy_row_or3to4(const uint8_t* src, int src_w, uint32_t* dst,
     }
     int cur_x = dst_x + i;
     if (cur_x >= 0 && cur_x < max_w) {
-      uint32_t r = src[src_x * 3];
-      uint32_t g = src[src_x * 3 + 1];
-      uint32_t b = src[src_x * 3 + 2];
+      const auto src_idx = static_cast<size_t>(src_x) * 3U;
+      uint32_t r = src[src_idx];
+      uint32_t g = src[src_idx + 1];
+      uint32_t b = src[src_idx + 2];
       dst[cur_x] |= (r << 16) | (g << 8) | b;
     }
   }
@@ -350,9 +354,11 @@ static auto video_soft_stretch_impl(VideoSurfaceView src,
       continue;
     }
 
-    uint8_t* srcp = src.pixels + (cur_src_row * src.pitch) +
-                    (static_cast<ptrdiff_t>(full_src.x * sbpp));
-    uint8_t* dst_row_base = dst.pixels + (cur_dst_row * dst.pitch);
+    uint8_t* srcp = src.pixels +
+                    (static_cast<ptrdiff_t>(cur_src_row) * src.pitch) +
+                    (static_cast<ptrdiff_t>(full_src.x) * sbpp);
+    uint8_t* dst_row_base =
+        dst.pixels + (static_cast<ptrdiff_t>(cur_dst_row) * dst.pitch);
 
     row_op(srcp, full_src.w, dst_row_base, full_dst.x, full_dst.w, dst.w);
   }
@@ -562,8 +568,8 @@ auto putpixel(VideoSurfaceView surface, int x, int y, uint32_t pixel) -> void {
     return;
   }
 
-  uint8_t* p = surface.pixels + y * surface.pitch +
-               static_cast<ptrdiff_t>(x * surface.bpp);
+  uint8_t* p = surface.pixels + (static_cast<ptrdiff_t>(y) * surface.pitch) +
+               (static_cast<ptrdiff_t>(x) * surface.bpp);
 
   switch (surface.bpp) {
     case 1:

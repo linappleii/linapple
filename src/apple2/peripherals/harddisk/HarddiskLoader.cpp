@@ -131,14 +131,15 @@ constexpr size_t path_max_len = harddisk_status_path_max;
 // 80 KiB holds track 17, where the DOS 3.3 catalog ends at 73,728 bytes, even
 // behind a 128-byte MacBinary wrapper. A ProDOS directory that chains past
 // the window is not seen; the probe then answers possible, never wrong.
-constexpr size_t probe_header_size = 80 * 1024;
+constexpr size_t probe_header_size = static_cast<size_t>(80) * 1024;
 constexpr size_t extension_hint_size = 16;
 
 // A ProDOS volume tops out at 65,535 blocks, just under 32 MiB, because its
 // block count is a 16-bit field (ProDOS 8 Technical Reference), so an all-zero
 // blank of the largest volume passes on size alone and only an archive that
 // claims more has to satisfy the library's ratio as well.
-constexpr size_t harddisk_decompression_threshold = 32 * 1024 * 1024;
+constexpr size_t harddisk_decompression_threshold =
+    static_cast<size_t>(32) * 1024 * 1024;
 
 auto container_error_to_harddisk_error(ImageContainerError_e error)
     -> HarddiskError_e {

@@ -34,10 +34,10 @@ CurlGlobalGuard::~CurlGlobalGuard() { curl_global_cleanup(); }
 
 namespace {
 
-constexpr long connect_timeout_seconds = 10;
-constexpr long download_timeout_seconds = 60;
-constexpr long listing_timeout_seconds = 30;
-constexpr long no_signal_flag = 1;
+constexpr int64_t connect_timeout_seconds = 10;
+constexpr int64_t download_timeout_seconds = 60;
+constexpr int64_t listing_timeout_seconds = 30;
+constexpr int64_t no_signal_flag = 1;
 
 struct ProgressContext {
   FtpProgressCallback callback{nullptr};

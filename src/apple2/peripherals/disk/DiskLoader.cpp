@@ -137,14 +137,15 @@ constexpr size_t path_max_len = disk_path_max;
 // 80 KiB holds track 17, where the DOS 3.3 catalog ends at 73,728 bytes, even
 // behind a 128-byte MacBinary wrapper. A ProDOS directory that chains past
 // the window is not seen; the probe then answers possible, never wrong.
-constexpr size_t probe_header_size = 80 * 1024;
+constexpr size_t probe_header_size = static_cast<size_t>(80) * 1024;
 constexpr size_t extension_hint_size = 16;
 
 // The largest floppy image this card can mount is a 40-track WOZ of a few
 // hundred KB, so any honest archive is far under this and a zero-filled
 // blank passes on size alone; anything that has to be this big and still
 // compress past the library's ratio is not a floppy.
-constexpr size_t floppy_decompression_threshold = 4 * 1024 * 1024;
+constexpr size_t floppy_decompression_threshold =
+    static_cast<size_t>(4) * 1024 * 1024;
 
 auto container_error_to_disk_error(ImageContainerError_e error) -> DiskError_e {
   switch (error) {
