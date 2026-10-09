@@ -462,7 +462,7 @@ auto CmdConfigFont(int nArgs) -> Update_t {
 
     nFound = FindParam(g_args[iArg].sArg, MATCH_EXACT, iFound, PARAM_FONT_BEGIN,
                        PARAM_FONT_END);
-    if ((nFound) && (iFound == PARAM_FONT_MODE)) {
+    if (nFound && (iFound == PARAM_FONT_MODE)) {
       return CmdConfigFontMode(nArgs);
     }
 

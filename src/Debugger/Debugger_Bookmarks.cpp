@@ -52,7 +52,7 @@ auto Bookmark_Find(const uint16_t address) -> bool {
   int iBookmark = 0;
   for (iBookmark = 0; iBookmark < MAX_BOOKMARKS; iBookmark++) {
     if ((g_bookmarks[iBookmark].address == address) &&
-        (g_bookmarks[iBookmark].bSet)) {
+        g_bookmarks[iBookmark].bSet) {
       return true;
     }
   }

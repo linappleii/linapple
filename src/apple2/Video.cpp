@@ -567,7 +567,7 @@ auto draw_hires_source_half_shift_dim() -> void {
                                HGR_BLUE);
               set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 2, y + 1,
                                DARK_BLUE);
-              if ((hibit) && (pixel <= 2)) {
+              if (hibit && (pixel <= 2)) {
                 set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y,
                                  DARK_BLUE);
                 set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
@@ -592,7 +592,7 @@ auto draw_hires_source_half_shift_dim() -> void {
                                HGR_RED);
               set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 2, y + 1,
                                BROWN);
-              if ((hibit) && (pixel <= 2)) {
+              if (hibit && (pixel <= 2)) {
                 set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y, BROWN);
                 set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
                                  BROWN);
@@ -618,7 +618,7 @@ auto draw_hires_source_half_shift_dim() -> void {
                                HGR_WHITE);
               set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1,
                                HGR_WHITE);
-              if ((hibit) && (pixel <= 2)) {
+              if (hibit && (pixel <= 2)) {
                 set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y,
                                  HGR_WHITE);
                 set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y + 1,

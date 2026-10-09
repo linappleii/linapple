@@ -1732,13 +1732,13 @@ auto AssemblerUpdateAddressingMode() -> bool {
     return false;
   }
 
-  if ((TestFlag(AF_HaveComma)) &&
+  if (TestFlag(AF_HaveComma) &&
       ((!TestFlag(AF_HaveRegisterX)) && (!TestFlag(AF_HaveRegisterY)))) {
     ConsoleBufferPush(" Syntax error: Index 'X' or 'Y'");
     return false;
   }
 
-  if ((TestFlag(AF_HaveBothParen)) && (TestFlag(AF_HaveComma))) {
+  if (TestFlag(AF_HaveBothParen) && TestFlag(AF_HaveComma)) {
     if (TestFlag(AF_HaveRegisterX)) {
       g_asm_address_mode = AM_AX;
       g_asm_bytes = 2;
@@ -1839,8 +1839,8 @@ auto AssemblerProcessDelayedSymols() -> void {
         // BaseAddress
         uint16_t nTargetValue = nTargetAddress;
 
-        if ((CalcRelativeOffset(nOpcode, pTarget->base_address, nTargetAddress,
-                                &nTargetValue)) &&
+        if (CalcRelativeOffset(nOpcode, pTarget->base_address, nTargetAddress,
+                                &nTargetValue) &&
             (g_asm_address_mode == NUM_OPMODES)) {
           nTargetValue = 0;
           bModified = false;

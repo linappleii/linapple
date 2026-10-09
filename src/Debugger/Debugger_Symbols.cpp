@@ -360,7 +360,7 @@ auto CmdSymbolList_Address2Symbol(int address, int bSymbolTables) -> bool {
   int iTable = 0;
   const char* pSymbol = FindSymbolFromAddress(address, &iTable);
 
-  if ((pSymbol) && (FindSymbolTable(bSymbolTables, iTable))) {
+  if (pSymbol && FindSymbolTable(bSymbolTables, iTable)) {
     CmdPrintSymbol(pSymbol, address, iTable);
     return true;
   }
@@ -375,7 +375,7 @@ auto CmdSymbolList_Symbol2Address(const char* pSymbol, int bSymbolTables)
   uint16_t address = 0;
 
   bool bFoundSymbol = FindAddressFromSymbol(pSymbol, &address, &iTable);
-  if ((bFoundSymbol) && (FindSymbolTable(bSymbolTables, iTable))) {
+  if (bFoundSymbol && FindSymbolTable(bSymbolTables, iTable)) {
     CmdPrintSymbol(pSymbol, address, iTable);
   }
 

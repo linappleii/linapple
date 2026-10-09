@@ -758,7 +758,7 @@ static auto render_text_cell(int r, int c, bool is_80col, uint16_t page_offset,
     cell.bg = text_color;
   }
 
-  if ((r == hw_cursor_y && c == hw_cursor_x) && (flash_on)) {
+  if ((r == hw_cursor_y && c == hw_cursor_x) && flash_on) {
     set_glyph(cell, "\xe2\x96\x92");  // ▒ Checkerboard
     cell.fg = text_color;
     cell.bg = a2_black;

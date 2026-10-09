@@ -70,7 +70,7 @@ auto bwz_Clear(Breakpoint_t* aBreakWatchZero, int iSlot) -> void {
 
 auto bwz_RemoveOne(Breakpoint_t* aBreakWatchZero, const int iSlot, int& total)
     -> void {
-  if ((aBreakWatchZero) && (aBreakWatchZero[iSlot].bSet)) {
+  if (aBreakWatchZero && aBreakWatchZero[iSlot].bSet) {
     bwz_Clear(aBreakWatchZero, iSlot);
     total--;
   }

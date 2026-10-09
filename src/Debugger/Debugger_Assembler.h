@@ -28,12 +28,12 @@ enum Assemblers_e : uint8_t {
 
 enum AsmAcmeDirective_e : uint8_t {
   ASM_A_DEFINE_BYTE,
-  NUM_ASM_ACME_DIRECTIVES
+  NUM_ASM_ACME_DIRECTIVES,
 };
 
 enum AsmBigMacDirective_e : uint8_t {
   ASM_B_DEFINE_BYTE,
-  NUM_ASM_BIG_MAC_DIRECTIVES
+  NUM_ASM_BIG_MAC_DIRECTIVES,
 };
 
 enum AsmDosToolKitDirective_e : uint8_t {
@@ -43,7 +43,7 @@ enum AsmDosToolKitDirective_e : uint8_t {
 
 enum AsmLisaDirective_e : uint8_t {
   ASM_L_DEFINE_BYTE,
-  NUM_ASM_LISA_DIRECTIVES
+  NUM_ASM_LISA_DIRECTIVES,
 };
 
 enum AsmMerlinDirective_e : uint8_t {
@@ -65,7 +65,7 @@ enum AsmMicroSparcDirective_e : uint8_t {
 
 enum AsmOrcamDirective_e : uint8_t {
   ASM_O_DEFINE_BYTE,
-  NUM_ASM_ORCA_DIRECTIVES
+  NUM_ASM_ORCA_DIRECTIVES,
 };
 
 enum AsmSCMacroDirective_e : uint8_t {
@@ -83,7 +83,7 @@ enum AsmTedDirective_e : uint8_t { ASM_T_DEFINE_BYTE, NUM_ASM_TED_DIRECTIVES };
 
 enum AsmWellersDirective_e : uint8_t {
   ASM_W_DEFINE_BYTE,
-  NUM_ASM_WELLERS_DIRECTIVES
+  NUM_ASM_WELLERS_DIRECTIVES,
 };
 
 enum AsmCustomDirective_e : uint8_t {

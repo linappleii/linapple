@@ -259,7 +259,7 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
   if (line.bTargetIndexed || line.bTargetIndirect) {
     nOverflow++;
   }
-  if ((line.bTargetIndexed) && (line.bTargetY)) {
+  if (line.bTargetIndexed && line.bTargetY) {
     nOverflow += 2;
   }
 
@@ -321,7 +321,7 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
     PrintTextCursorX(")", linerect);
   }
 
-  if ((line.bTargetIndexed) && (line.bTargetY)) {
+  if (line.bTargetIndexed && line.bTargetY) {
     PrintTextCursorX(",", linerect);
     if (!bCursorLine) {
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_REG));
