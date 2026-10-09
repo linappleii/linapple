@@ -19,14 +19,8 @@
 #include "apple2/Video.h"
 
 // Externs for globals
-extern int g_window_this;
-extern int g_font_height;
+
 extern int g_display_memory_lines;
-extern bool g_config_disasm_address_colon;
-extern bool g_config_info_target_pointer;
-extern int g_console_display_width;
-extern std::string g_source_file_name;
-extern int g_disasm_win_height;
 
 // Constants from Debugger_Display.cpp
 const int DISPLAY_MINIMEM_COLUMN = 357;
@@ -47,7 +41,7 @@ extern auto ColorizeFlags(bool bSet, int bg = BG_INFO, int fg = FG_INFO_REG)
 // --- Functions moved from Debugger_Display.cpp ---
 
 auto DrawMemory(int line, int iMemDump) -> void {
-  if ((g_window_this != WINDOW_CODE) && !((g_window_this == WINDOW_DATA))) {
+  if ((g_window_this != WINDOW_CODE) && !(g_window_this == WINDOW_DATA)) {
     return;
   }
 
@@ -165,7 +159,7 @@ auto DrawMemory(int line, int iMemDump) -> void {
 
 auto DrawRegister(int line, const char* name, const int nBytes,
                   const uint16_t nValue, int iSource) -> void {
-  if ((g_window_this != WINDOW_CODE) && !((g_window_this == WINDOW_DATA))) {
+  if ((g_window_this != WINDOW_CODE) && !(g_window_this == WINDOW_DATA)) {
     return;
   }
 
@@ -317,7 +311,7 @@ auto DrawSoftSwitchLanguageCardBank(Rect_t& rect, const int iBankDisplay,
 
   rect.right = rect.left + dx80;
 
-  bool bBankWritable = (get_mem_mode() & MF_HRAM_WRITE) ? true : false;
+  bool bBankWritable = (get_mem_mode() & MF_HRAM_WRITE) != 0;
   int iBankActive = (get_mem_mode() & MF_HIGHRAM)
                         ? (get_mem_mode() & MF_HRAM_BANK2) ? 2 : 1
                         : 0;
@@ -435,7 +429,7 @@ auto DrawSoftSwitches(int iSoftSwitch) -> void {
 }
 
 auto DrawTargets(int line) -> void {
-  if ((g_window_this != WINDOW_CODE) && !((g_window_this == WINDOW_DATA))) {
+  if ((g_window_this != WINDOW_CODE) && !(g_window_this == WINDOW_DATA)) {
     return;
   }
 
@@ -483,7 +477,7 @@ auto DrawTargets(int line) -> void {
 }
 
 auto DrawWatches(int line) -> void {
-  if ((g_window_this != WINDOW_CODE) && !((g_window_this == WINDOW_DATA))) {
+  if ((g_window_this != WINDOW_CODE) && !(g_window_this == WINDOW_DATA)) {
     return;
   }
 
@@ -574,7 +568,7 @@ auto DrawWatches(int line) -> void {
 }
 
 auto DrawZeroPagePointers(int line) -> void {
-  if ((g_window_this != WINDOW_CODE) && !((g_window_this == WINDOW_DATA))) {
+  if ((g_window_this != WINDOW_CODE) && !(g_window_this == WINDOW_DATA)) {
     return;
   }
 
@@ -605,7 +599,7 @@ auto DrawZeroPagePointers(int line) -> void {
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_BULLET));
       PrintTextCursorX(sText, rect2);
 
-      uint8_t nZPAddr1 = (g_zero_page_pointers[iZP].address) & 0xFF;
+      uint8_t nZPAddr1 = g_zero_page_pointers[iZP].address & 0xFF;
       uint8_t nZPAddr2 = (g_zero_page_pointers[iZP].address + 1) & 0xFF;
 
       const char* pSymbol2 = GetSymbol(nZPAddr2, 2);
@@ -622,8 +616,8 @@ auto DrawZeroPagePointers(int line) -> void {
       }
       sText[nMaxSymbolLen] = 0;
 
-      if ((nLen1) && (pSymbol1[0] == '$')) {
-      } else if ((nLen2) && (pSymbol2[0] == '$')) {
+      if (nLen1 && (pSymbol1[0] == '$')) {
+      } else if (nLen2 && (pSymbol2[0] == '$')) {
         DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_ADDRESS));
       } else {
         int nMin = std::min(nLen1, nMaxSymbolLen);
@@ -790,7 +784,7 @@ auto DrawWindow_ZeroPage(Update_t bUpdate) -> void {
 
 auto DrawVideoScannerValue(int line, int vert, int horz, bool isVisible)
     -> void {
-  if ((g_window_this != WINDOW_CODE) && !((g_window_this == WINDOW_DATA))) {
+  if ((g_window_this != WINDOW_CODE) && !(g_window_this == WINDOW_DATA)) {
     return;
   }
 

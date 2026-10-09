@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using)
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, readability-identifier-naming)
 // Justification: a language-neutral C ABI for C consumers.
 
 #ifdef __cplusplus
@@ -24,4 +24,4 @@ typedef enum {
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using)
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, readability-identifier-naming)

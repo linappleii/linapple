@@ -66,7 +66,7 @@ struct TokenDef_t {
 
 // Applesoft BASIC tokens ($80..$EA) ordered by keyword length descending
 // to ensure longest-prefix matching (e.g. ATN before AT, HCOLOR= before COLOR=)
-static const std::array<TokenDef_t, 107> applesoft_tokens = {
+const std::array<TokenDef_t, 107> applesoft_tokens = {
     {
         {0x92, "HCOLOR=", 7}, {0x9C, "NOTRACE", 7}, {0x9E, "INVERSE", 7},
         {0xAE, "RESTORE", 7}, {0x99, "SCALE=", 6},  {0x9A, "SHLOAD", 6},
@@ -116,21 +116,21 @@ struct ParsedLine_t {
       : line_number(num), token_bytes(std::move(bytes)) {}
 };
 
-static BasicSyncConfig sync_config;
-static std::string watch_dir;
-static std::string watch_filename;
-static uint32_t last_exported_hash = 0;
-static uint32_t last_file_content_hash = 0;
-static time_t last_file_mtime = 0;
-static bool initial_import_pending = false;
-static int frame_counter = 0;
+BasicSyncConfig sync_config;
+std::string watch_dir;
+std::string watch_filename;
+uint32_t last_exported_hash = 0;
+uint32_t last_file_content_hash = 0;
+time_t last_file_mtime = 0;
+bool initial_import_pending = false;
+int frame_counter = 0;
 
-static int inotify_fd = -1;
-static int inotify_wd = -1;
-static int inotify_dir_wd = -1;
+int inotify_fd = -1;
+int inotify_wd = -1;
+int inotify_dir_wd = -1;
 
-static auto split_path(const std::string& full_path, std::string* out_dir,
-                       std::string* out_filename) -> void {
+auto split_path(const std::string& full_path, std::string* out_dir,
+                std::string* out_filename) -> void {
   if (out_dir == nullptr || out_filename == nullptr) {
     return;
   }
@@ -147,14 +147,14 @@ static auto split_path(const std::string& full_path, std::string* out_dir,
   }
 }
 
-static auto get_ram_byte_ptr(uint16_t addr) -> uint8_t* {
+auto get_ram_byte_ptr(uint16_t addr) -> uint8_t* {
   if (mem == nullptr) {
     return nullptr;
   }
   return mem + addr;
 }
 
-static auto read_zero_page_16(uint16_t addr, uint16_t fallback) -> uint16_t {
+auto read_zero_page_16(uint16_t addr, uint16_t fallback) -> uint16_t {
   uint8_t* m = get_ram_byte_ptr(addr);
   if (m == nullptr) {
     return fallback;
@@ -166,7 +166,7 @@ static auto read_zero_page_16(uint16_t addr, uint16_t fallback) -> uint16_t {
   return static_cast<uint16_t>(*m | (*m_high << byte_shift));
 }
 
-static auto write_zero_page_16(uint16_t addr, uint16_t val) -> void {
+auto write_zero_page_16(uint16_t addr, uint16_t val) -> void {
   uint8_t* m = get_ram_byte_ptr(addr);
   uint8_t* m_high = get_ram_byte_ptr(static_cast<uint16_t>(addr + 1));
   if (m == nullptr || m_high == nullptr) {
@@ -176,7 +176,7 @@ static auto write_zero_page_16(uint16_t addr, uint16_t val) -> void {
   *m_high = static_cast<uint8_t>((val >> byte_shift) & byte_mask);
 }
 
-static auto compute_string_hash(const std::string& str) -> uint32_t {
+auto compute_string_hash(const std::string& str) -> uint32_t {
   uint32_t hash = djb2_init;
   for (char ch : str) {
     hash = ((hash << djb2_shift) + hash) + static_cast<unsigned char>(ch);
@@ -184,7 +184,7 @@ static auto compute_string_hash(const std::string& str) -> uint32_t {
   return hash;
 }
 
-static auto compute_program_hash() -> uint32_t {
+auto compute_program_hash() -> uint32_t {
   uint16_t txttab = read_zero_page_16(addr_txttab, default_txttab);
   uint16_t vartab = read_zero_page_16(addr_vartab, default_txttab);
   uint16_t prgend = read_zero_page_16(addr_prgend, default_txttab);
@@ -204,14 +204,14 @@ static auto compute_program_hash() -> uint32_t {
   return hash;
 }
 
-static auto is_uppercase_only_machine() -> bool {
+auto is_uppercase_only_machine() -> bool {
   return (current_apple2_type == A2TYPE_APPLE2 ||
           current_apple2_type == A2TYPE_APPLE2PLUS ||
           current_apple2_type == A2TYPE_APPLE2JPLUS);
 }
 
-static auto sanitize_and_truncate_line(const std::string& input,
-                                       bool force_uppercase) -> std::string {
+auto sanitize_and_truncate_line(const std::string& input, bool force_uppercase)
+    -> std::string {
   std::string result;
   result.reserve(std::min(input.length(), max_input_line_len));
 
@@ -233,8 +233,8 @@ static auto sanitize_and_truncate_line(const std::string& input,
   return result;
 }
 
-static auto iequals_prefix(const std::string& str, size_t pos, const char* kw,
-                           size_t len) -> bool {
+auto iequals_prefix(const std::string& str, size_t pos, const char* kw,
+                    size_t len) -> bool {
   if (pos + len > str.length()) {
     return false;
   }
@@ -248,7 +248,7 @@ static auto iequals_prefix(const std::string& str, size_t pos, const char* kw,
   return true;
 }
 
-static auto find_token_name(uint8_t token) -> const char* {
+auto find_token_name(uint8_t token) -> const char* {
   for (const auto& t : applesoft_tokens) {
     if (t.token == token) {
       return t.name;
@@ -257,8 +257,7 @@ static auto find_token_name(uint8_t token) -> const char* {
   return nullptr;
 }
 
-static auto match_token(const std::string& content, size_t pos)
-    -> const TokenDef_t* {
+auto match_token(const std::string& content, size_t pos) -> const TokenDef_t* {
   for (const auto& t : applesoft_tokens) {
     if (iequals_prefix(content, pos, t.name, t.length)) {
       return &t;
@@ -267,7 +266,7 @@ static auto match_token(const std::string& content, size_t pos)
   return nullptr;
 }
 
-static auto to_normalized_byte(char ch, bool force_uppercase) -> uint8_t {
+auto to_normalized_byte(char ch, bool force_uppercase) -> uint8_t {
   auto uch = static_cast<unsigned char>(ch);
   if (force_uppercase && uch >= 'a' && uch <= 'z') {
     uch = static_cast<unsigned char>(uch - ('a' - 'A'));
@@ -275,8 +274,7 @@ static auto to_normalized_byte(char ch, bool force_uppercase) -> uint8_t {
   return uch;
 }
 
-static auto tokenize_line_content(const std::string& content,
-                                  bool force_uppercase)
+auto tokenize_line_content(const std::string& content, bool force_uppercase)
     -> std::vector<uint8_t> {
   std::vector<uint8_t> tokens;
   tokens.reserve(content.length());
@@ -312,7 +310,7 @@ static auto tokenize_line_content(const std::string& content,
   return tokens;
 }
 
-static auto detokenize_line_bytes(uint16_t start_addr, uint16_t end_addr)
+auto detokenize_line_bytes(uint16_t start_addr, uint16_t end_addr)
     -> std::string {
   std::string line;
   if (end_addr > start_addr) {
@@ -355,9 +353,9 @@ static auto detokenize_line_bytes(uint16_t start_addr, uint16_t end_addr)
   return line;
 }
 
-static auto parse_positional_line(const std::string& sanitized,
-                                  uint32_t line_index, uint16_t* out_num,
-                                  std::string* out_statement) -> bool {
+auto parse_positional_line(const std::string& sanitized, uint32_t line_index,
+                           uint16_t* out_num, std::string* out_statement)
+    -> bool {
   if (line_index > max_line_number) {
     return false;
   }
@@ -387,8 +385,8 @@ static auto parse_positional_line(const std::string& sanitized,
   return true;
 }
 
-static auto parse_explicit_line(const std::string& sanitized, uint16_t* out_num,
-                                std::string* out_statement) -> bool {
+auto parse_explicit_line(const std::string& sanitized, uint16_t* out_num,
+                         std::string* out_statement) -> bool {
   size_t pos = 0;
   while (pos < sanitized.length() && std::isspace(sanitized.at(pos))) {
     pos++;
@@ -415,9 +413,8 @@ static auto parse_explicit_line(const std::string& sanitized, uint16_t* out_num,
   return true;
 }
 
-static auto inject_program_lines(uint16_t txttab, uint16_t himem,
-                                 const std::vector<ParsedLine_t>& lines)
-    -> uint16_t {
+auto inject_program_lines(uint16_t txttab, uint16_t himem,
+                          const std::vector<ParsedLine_t>& lines) -> uint16_t {
   uint16_t current_addr = txttab;
   for (const auto& line : lines) {
     size_t line_size = 4 + line.token_bytes.size() + 1;
@@ -458,7 +455,7 @@ static auto inject_program_lines(uint16_t txttab, uint16_t himem,
   return current_addr;
 }
 
-static auto check_inotify_events() -> bool {
+auto check_inotify_events() -> bool {
   if (inotify_fd < 0) {
     return false;
   }
@@ -491,7 +488,7 @@ static auto check_inotify_events() -> bool {
   return false;
 }
 
-static auto rearm_file_watch() -> void {
+auto rearm_file_watch() -> void {
   if (inotify_fd < 0) {
     return;
   }
@@ -502,7 +499,7 @@ static auto rearm_file_watch() -> void {
                                  IN_CLOSE_WRITE | IN_MODIFY);
 }
 
-static auto inotify_teardown() noexcept -> void {
+auto inotify_teardown() noexcept -> void {
   if (inotify_fd < 0) {
     return;
   }
@@ -518,7 +515,7 @@ static auto inotify_teardown() noexcept -> void {
   inotify_dir_wd = -1;
 }
 
-static auto check_file_mtime_changed() -> bool {
+auto check_file_mtime_changed() -> bool {
   struct stat st{};
   if (stat(sync_config.file_path.c_str(), &st) != 0) {
     return false;
@@ -526,9 +523,9 @@ static auto check_file_mtime_changed() -> bool {
   return (last_file_mtime != 0 && st.st_mtime > last_file_mtime);
 }
 
-static auto append_line_prefix(std::ostringstream& ss, BasicLineMode mode,
-                               uint16_t line_num,
-                               uint32_t* expected_positional_line) -> void {
+auto append_line_prefix(std::ostringstream& ss, BasicLineMode mode,
+                        uint16_t line_num, uint32_t* expected_positional_line)
+    -> void {
   if (mode != basic_line_mode_positional) {
     ss << line_num << " ";
     return;
@@ -608,9 +605,7 @@ auto basic_sync_export_to_string(BasicLineMode mode) -> std::string {
   uint16_t txttab = read_zero_page_16(addr_txttab, default_txttab);
   uint16_t vartab = read_zero_page_16(addr_vartab, default_txttab);
   uint16_t himem = read_zero_page_16(addr_himem, default_himem);
-  if (himem > hard_himem_ceiling) {
-    himem = hard_himem_ceiling;
-  }
+  himem = std::min(himem, hard_himem_ceiling);
 
   uint16_t program_end = himem;
   if (vartab > txttab && vartab <= himem) {
@@ -648,8 +643,8 @@ auto basic_sync_export_to_string(BasicLineMode mode) -> std::string {
   return ss.str();
 }
 
-auto basic_sync_import_from_string(const std::string& text,
-                                   BasicLineMode mode) -> bool {
+auto basic_sync_import_from_string(const std::string& text, BasicLineMode mode)
+    -> bool {
   uint16_t himem = read_zero_page_16(addr_himem, default_himem);
   if (himem == 0 || himem > hard_himem_ceiling) {
     himem = default_himem;

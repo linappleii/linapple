@@ -149,10 +149,6 @@ auto extension_matches_list(const char* ext, const char* list) -> bool {
 
 }  // namespace
 
-extern FrontendAudioChannelCallback frontend_audio_channel_cb;
-extern FrontendAudioSourceRegisterCallback frontend_audio_register_cb;
-extern FrontendAudioSourceUnregisterCallback frontend_audio_unregister_cb;
-
 auto linapple_set_video_callback(LinappleVideoCallback cb) -> void {
   video_cb = cb;
 }
@@ -317,9 +313,10 @@ auto linapple_get_supported_disk_extensions(int slot, char* out_buffer,
   // Whatever card holds the slot answers for it, under either card's query id;
   // a slot whose card answers neither falls back to the descriptors, which
   // list what either card could mount.
-  for (const uint32_t query_id :
-       {static_cast<uint32_t>(disk_query_supported_extensions),
-        static_cast<uint32_t>(harddisk_query_supported_extensions)}) {
+  for (const uint32_t query_id : {
+           static_cast<uint32_t>(disk_query_supported_extensions),
+           static_cast<uint32_t>(harddisk_query_supported_extensions),
+       }) {
     exts_size = buffer_size;
     if (peripheral_query(slot, query_id, out_buffer, &exts_size) ==
         peripheral_ok) {

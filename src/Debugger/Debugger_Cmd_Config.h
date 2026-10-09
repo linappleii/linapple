@@ -18,6 +18,6 @@ auto CmdConfigSetDebugDir(int nArgs) -> Update_t;
 
 auto ConfigSave_BufferToDisk(const char* pFileName, ConfigSave_t eConfigSave)
     -> bool;
-auto ConfigSave_PrepareHeader(const Parameters_e eCategory,
-                              const Commands_e eCommandClear) -> void;
+auto ConfigSave_PrepareHeader(Parameters_e eCategory, Commands_e eCommandClear)
+    -> void;
 auto UpdateWindowFontHeights(int nFontHeight) -> void;

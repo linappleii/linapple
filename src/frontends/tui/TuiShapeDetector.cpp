@@ -35,91 +35,97 @@ struct GlyphPattern {
 };
 
 // Standard Apple II 8x8 font patterns
-constexpr std::array<GlyphPattern, 81> font_patterns = {{
-    {'0', 0x003C66666E76663CULL, 30}, {'1', 0x007E181818181C18ULL, 19},
-    {'2', 0x007E0C183060663CULL, 22}, {'3', 0x003C66603860663CULL, 23},
-    {'4', 0x0020207E262C3830ULL, 19}, {'5', 0x003C6660603E067EULL, 25},
-    {'6', 0x003C66663E060C38ULL, 24}, {'7', 0x000C0C0C1830607EULL, 18},
-    {'8', 0x003C66663C66663CULL, 28}, {'9', 0x001C30607C66663CULL, 24},
-    {'A', 0x0066667E66663C18ULL, 28}, {'B', 0x003E66663E66663EULL, 31},
-    {'C', 0x003C66060606663CULL, 22}, {'D', 0x001E36666666361EULL, 28},
-    {'E', 0x007E06061E06067EULL, 24}, {'F', 0x000606061E06067EULL, 20},
-    {'G', 0x003C66667606663CULL, 27}, {'H', 0x006666667E666666ULL, 30},
-    {'I', 0x003C18181818183CULL, 18}, {'J', 0x003C666060606070ULL, 19},
-    {'K', 0x0066361E0E1E3666ULL, 27}, {'L', 0x007E060606060606ULL, 18},
-    {'M', 0x00C6C6C6D6FEEEC6ULL, 34}, {'N', 0x006666767E7E6E66ULL, 34},
-    {'O', 0x003C66666666663CULL, 28}, {'P', 0x000606063E66663EULL, 24},
-    {'Q', 0x006C36566666663CULL, 28}, {'R', 0x00C666363E66663EULL, 30},
-    {'S', 0x003C66603C06663CULL, 24}, {'T', 0x001818181818187EULL, 18},
-    {'U', 0x003C666666666666ULL, 28}, {'V', 0x00183C6666666666ULL, 26},
-    {'W', 0x00C6EEFED6C6C6C6ULL, 34}, {'X', 0x0066663C183C6666ULL, 26},
-    {'Y', 0x001818183C666666ULL, 22}, {'Z', 0x007E060C1830607EULL, 22},
-    {'a', 0x00DC667C603C0000ULL, 20}, {'b', 0x003E6666663E0606ULL, 26},
-    {'c', 0x003C6606663C0000ULL, 18}, {'d', 0x007C6666667C6060ULL, 26},
-    {'e', 0x003C067E663C0000ULL, 20}, {'f', 0x000C0C0C1E0C0C38ULL, 17},
-    {'g', 0x3C607C66667C0000ULL, 24}, {'h', 0x00666666663E0606ULL, 25},
-    {'i', 0x003C181818001800ULL, 14}, {'j', 0x3C66606060006000ULL, 17},
-    {'k', 0x0066361E0E060606ULL, 21}, {'l', 0x003C181818181818ULL, 16},
-    {'m', 0x00D6D6D6D67C0000ULL, 25}, {'n', 0x00666666663E0000ULL, 20},
-    {'o', 0x003C6666663C0000ULL, 20}, {'p', 0x06063E66663E0000ULL, 22},
-    {'q', 0x60607C66667C0000ULL, 24}, {'r', 0x00060606663E0000ULL, 17},
-    {'s', 0x003C603C063C0000ULL, 19}, {'t', 0x00381818187E1800ULL, 18},
-    {'u', 0x007C666666660000ULL, 21}, {'v', 0x00183C6666660000ULL, 20},
-    {'w', 0x00C6EEFED6C60000ULL, 27}, {'x', 0x00663C183C660000ULL, 18},
-    {'y', 0x3C607C6666660000ULL, 24}, {'z', 0x007E0C18307E0000ULL, 20},
-    {'.', 0x0018180000000000ULL, 4},  {',', 0x0C18180000000000ULL, 6},
-    {'!', 0x0018180018181818ULL, 12}, {'?', 0x001818000C18303CULL, 15},
-    {':', 0x0018180000181800ULL, 8},  {';', 0x0C18180000181800ULL, 10},
-    {'-', 0x0000007E00000000ULL, 6},  {'+', 0x0000187E18000000ULL, 10},
-    {'=', 0x00007E007E000000ULL, 12}, {'*', 0x0000663C7EDB3C00ULL, 24},
-    {'/', 0x0003060C183060C0ULL, 16}, {'\\', 0x00C06030180C0603ULL, 16},
-    {'(', 0x00180C0C0C0C0C18ULL, 12}, {')', 0x0018303030303018ULL, 12},
-    {'[', 0x003C0C0C0C0C0C3CULL, 16}, {']', 0x003C30303030303CULL, 16},
-    {'<', 0x006030180C183060ULL, 14}, {'>', 0x00060C1830180C06ULL, 14},
-    {'_', 0x00FF000000000000ULL, 8},
-}};
+constexpr std::array<GlyphPattern, 81> font_patterns = {
+    {
+        {'0', 0x003C66666E76663CULL, 30}, {'1', 0x007E181818181C18ULL, 19},
+        {'2', 0x007E0C183060663CULL, 22}, {'3', 0x003C66603860663CULL, 23},
+        {'4', 0x0020207E262C3830ULL, 19}, {'5', 0x003C6660603E067EULL, 25},
+        {'6', 0x003C66663E060C38ULL, 24}, {'7', 0x000C0C0C1830607EULL, 18},
+        {'8', 0x003C66663C66663CULL, 28}, {'9', 0x001C30607C66663CULL, 24},
+        {'A', 0x0066667E66663C18ULL, 28}, {'B', 0x003E66663E66663EULL, 31},
+        {'C', 0x003C66060606663CULL, 22}, {'D', 0x001E36666666361EULL, 28},
+        {'E', 0x007E06061E06067EULL, 24}, {'F', 0x000606061E06067EULL, 20},
+        {'G', 0x003C66667606663CULL, 27}, {'H', 0x006666667E666666ULL, 30},
+        {'I', 0x003C18181818183CULL, 18}, {'J', 0x003C666060606070ULL, 19},
+        {'K', 0x0066361E0E1E3666ULL, 27}, {'L', 0x007E060606060606ULL, 18},
+        {'M', 0x00C6C6C6D6FEEEC6ULL, 34}, {'N', 0x006666767E7E6E66ULL, 34},
+        {'O', 0x003C66666666663CULL, 28}, {'P', 0x000606063E66663EULL, 24},
+        {'Q', 0x006C36566666663CULL, 28}, {'R', 0x00C666363E66663EULL, 30},
+        {'S', 0x003C66603C06663CULL, 24}, {'T', 0x001818181818187EULL, 18},
+        {'U', 0x003C666666666666ULL, 28}, {'V', 0x00183C6666666666ULL, 26},
+        {'W', 0x00C6EEFED6C6C6C6ULL, 34}, {'X', 0x0066663C183C6666ULL, 26},
+        {'Y', 0x001818183C666666ULL, 22}, {'Z', 0x007E060C1830607EULL, 22},
+        {'a', 0x00DC667C603C0000ULL, 20}, {'b', 0x003E6666663E0606ULL, 26},
+        {'c', 0x003C6606663C0000ULL, 18}, {'d', 0x007C6666667C6060ULL, 26},
+        {'e', 0x003C067E663C0000ULL, 20}, {'f', 0x000C0C0C1E0C0C38ULL, 17},
+        {'g', 0x3C607C66667C0000ULL, 24}, {'h', 0x00666666663E0606ULL, 25},
+        {'i', 0x003C181818001800ULL, 14}, {'j', 0x3C66606060006000ULL, 17},
+        {'k', 0x0066361E0E060606ULL, 21}, {'l', 0x003C181818181818ULL, 16},
+        {'m', 0x00D6D6D6D67C0000ULL, 25}, {'n', 0x00666666663E0000ULL, 20},
+        {'o', 0x003C6666663C0000ULL, 20}, {'p', 0x06063E66663E0000ULL, 22},
+        {'q', 0x60607C66667C0000ULL, 24}, {'r', 0x00060606663E0000ULL, 17},
+        {'s', 0x003C603C063C0000ULL, 19}, {'t', 0x00381818187E1800ULL, 18},
+        {'u', 0x007C666666660000ULL, 21}, {'v', 0x00183C6666660000ULL, 20},
+        {'w', 0x00C6EEFED6C60000ULL, 27}, {'x', 0x00663C183C660000ULL, 18},
+        {'y', 0x3C607C6666660000ULL, 24}, {'z', 0x007E0C18307E0000ULL, 20},
+        {'.', 0x0018180000000000ULL, 4},  {',', 0x0C18180000000000ULL, 6},
+        {'!', 0x0018180018181818ULL, 12}, {'?', 0x001818000C18303CULL, 15},
+        {':', 0x0018180000181800ULL, 8},  {';', 0x0C18180000181800ULL, 10},
+        {'-', 0x0000007E00000000ULL, 6},  {'+', 0x0000187E18000000ULL, 10},
+        {'=', 0x00007E007E000000ULL, 12}, {'*', 0x0000663C7EDB3C00ULL, 24},
+        {'/', 0x0003060C183060C0ULL, 16}, {'\\', 0x00C06030180C0603ULL, 16},
+        {'(', 0x00180C0C0C0C0C18ULL, 12}, {')', 0x0018303030303018ULL, 12},
+        {'[', 0x003C0C0C0C0C0C3CULL, 16}, {']', 0x003C30303030303CULL, 16},
+        {'<', 0x006030180C183060ULL, 14}, {'>', 0x00060C1830180C06ULL, 14},
+        {'_', 0x00FF000000000000ULL, 8},
+    },
+};
 
 // 16-element lookup table for box glyphs based on (N << 3 | S << 2 | W << 1 |
 // E)
-static constexpr std::array<const char*, 16> box_glyphs = {{
-    nullptr,         // 0000
-    nullptr,         // 0001
-    nullptr,         // 0010
-    "\xe2\x94\x80",  // 0011 ─ (W + E)
-    nullptr,         // 0100
-    "\xe2\x94\x8c",  // 0101 ┌ (S + E)
-    "\xe2\x94\x90",  // 0110 ┐ (S + W)
-    "\xe2\x94\xac",  // 0111 ┬ (S + W + E)
-    nullptr,         // 1000
-    "\xe2\x94\x94",  // 1001 └ (N + E)
-    "\xe2\x94\x98",  // 1010 ┘ (N + W)
-    "\xe2\x94\xb4",  // 1011 ┴ (N + W + E)
-    "\xe2\x94\x82",  // 1100 │ (N + S)
-    "\xe2\x94\x9c",  // 1101 ├ (N + S + E)
-    "\xe2\x94\xa4",  // 1110 ┤ (N + S + W)
-    "\xe2\x94\xbc",  // 1111 ┼ (N + S + W + E)
-}};
+constexpr std::array<const char*, 16> box_glyphs = {
+    {
+        nullptr,         // 0000
+        nullptr,         // 0001
+        nullptr,         // 0010
+        "\xe2\x94\x80",  // 0011 ─ (W + E)
+        nullptr,         // 0100
+        "\xe2\x94\x8c",  // 0101 ┌ (S + E)
+        "\xe2\x94\x90",  // 0110 ┐ (S + W)
+        "\xe2\x94\xac",  // 0111 ┬ (S + W + E)
+        nullptr,         // 1000
+        "\xe2\x94\x94",  // 1001 └ (N + E)
+        "\xe2\x94\x98",  // 1010 ┘ (N + W)
+        "\xe2\x94\xb4",  // 1011 ┴ (N + W + E)
+        "\xe2\x94\x82",  // 1100 │ (N + S)
+        "\xe2\x94\x9c",  // 1101 ├ (N + S + E)
+        "\xe2\x94\xa4",  // 1110 ┤ (N + S + W)
+        "\xe2\x94\xbc",  // 1111 ┼ (N + S + W + E)
+    },
+};
 
-static constexpr std::array<const char*, 16> quadrant_glyphs = {{
-    " ",             // 0000
-    "\xe2\x96\x97",  // 0001 ▗
-    "\xe2\x96\x96",  // 0010 ▖
-    "\xe2\x96\x84",  // 0011 ▄
-    "\xe2\x96\x9d",  // 0100 ▝
-    "\xe2\x96\x90",  // 0101 ▐
-    "\xe2\x96\x9e",  // 0110 ▞
-    "\xe2\x96\x9f",  // 0111 ▟
-    "\xe2\x96\x98",  // 1000 ▘
-    "\xe2\x96\x9a",  // 1001 ▚
-    "\xe2\x96\x8c",  // 1010 ▌
-    "\xe2\x96\x99",  // 1011 ▙
-    "\xe2\x96\x80",  // 1100 ▀
-    "\xe2\x96\x9c",  // 1101 ▜
-    "\xe2\x96\x9b",  // 1110 ▛
-    "\xe2\x96\x88",  // 1111 █
-}};
+constexpr std::array<const char*, 16> quadrant_glyphs = {
+    {
+        " ",             // 0000
+        "\xe2\x96\x97",  // 0001 ▗
+        "\xe2\x96\x96",  // 0010 ▖
+        "\xe2\x96\x84",  // 0011 ▄
+        "\xe2\x96\x9d",  // 0100 ▝
+        "\xe2\x96\x90",  // 0101 ▐
+        "\xe2\x96\x9e",  // 0110 ▞
+        "\xe2\x96\x9f",  // 0111 ▟
+        "\xe2\x96\x98",  // 1000 ▘
+        "\xe2\x96\x9a",  // 1001 ▚
+        "\xe2\x96\x8c",  // 1010 ▌
+        "\xe2\x96\x99",  // 1011 ▙
+        "\xe2\x96\x80",  // 1100 ▀
+        "\xe2\x96\x9c",  // 1101 ▜
+        "\xe2\x96\x9b",  // 1110 ▛
+        "\xe2\x96\x88",  // 1111 █
+    },
+};
 
-static auto set_utf8_glyph(TuiState* cell, const char* str) -> void {
+auto set_utf8_glyph(TuiState* cell, const char* str) -> void {
   cell->glyph.fill(0);
   if (str == nullptr) {
     return;
@@ -168,8 +174,11 @@ auto tui_shape_detect_cell(const uint32_t* pixels, int pitch, int x_start,
                 lum_weight_sum;
       lum_grid.at(static_cast<size_t>(v)).at(static_cast<size_t>(u)) =
           static_cast<uint8_t>(lum);
-      col_grid.at(static_cast<size_t>(v)).at(static_cast<size_t>(u)) = {r, g,
-                                                                        b};
+      col_grid.at(static_cast<size_t>(v)).at(static_cast<size_t>(u)) = {
+          r,
+          g,
+          b,
+      };
 
       min_lum = std::min(min_lum, lum);
       max_lum = std::max(max_lum, lum);
@@ -181,10 +190,11 @@ auto tui_shape_detect_cell(const uint32_t* pixels, int pitch, int x_start,
   }
 
   const int avg_lum = total_lum / subgrid_pixels;
-  const auto avg_cell_color =
-      TuiPixel{static_cast<uint8_t>(total_r / subgrid_pixels),
-               static_cast<uint8_t>(total_g / subgrid_pixels),
-               static_cast<uint8_t>(total_b / subgrid_pixels)};
+  const auto avg_cell_color = TuiPixel{
+      static_cast<uint8_t>(total_r / subgrid_pixels),
+      static_cast<uint8_t>(total_g / subgrid_pixels),
+      static_cast<uint8_t>(total_b / subgrid_pixels),
+  };
 
   if (max_lum - min_lum < min_contrast_threshold) {
     if (avg_lum < dark_luminance_cutoff) {
@@ -233,11 +243,13 @@ auto tui_shape_detect_cell(const uint32_t* pixels, int pitch, int x_start,
   auto fg_color = TuiPixel{
       static_cast<uint8_t>(fg_count > 0 ? (fg_r / fg_count) : max_color_val),
       static_cast<uint8_t>(fg_count > 0 ? (fg_g / fg_count) : max_color_val),
-      static_cast<uint8_t>(fg_count > 0 ? (fg_b / fg_count) : max_color_val)};
-  auto bg_color =
-      TuiPixel{static_cast<uint8_t>(bg_count > 0 ? (bg_r / bg_count) : 0),
-               static_cast<uint8_t>(bg_count > 0 ? (bg_g / bg_count) : 0),
-               static_cast<uint8_t>(bg_count > 0 ? (bg_b / bg_count) : 0)};
+      static_cast<uint8_t>(fg_count > 0 ? (fg_b / fg_count) : max_color_val),
+  };
+  auto bg_color = TuiPixel{
+      static_cast<uint8_t>(bg_count > 0 ? (bg_r / bg_count) : 0),
+      static_cast<uint8_t>(bg_count > 0 ? (bg_g / bg_count) : 0),
+      static_cast<uint8_t>(bg_count > 0 ? (bg_b / bg_count) : 0),
+  };
 
   // Handle inverse presentation (light background, dark text)
   if (fg_count > inverted_fg_threshold) {

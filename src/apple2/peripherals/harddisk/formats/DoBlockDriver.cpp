@@ -73,7 +73,8 @@ extern "C" const HarddiskFormatDriver_t g_do_block_driver = {
     .is_write_protected = block_disk_image_is_write_protected,
     .read_block = block_disk_image_read_block,
     .write_block = block_disk_image_write_block,
-    .get_total_blocks = block_disk_image_get_total_blocks};
+    .get_total_blocks = block_disk_image_get_total_blocks,
+};
 
 static const HarddiskFormatRegistration_t registration{&g_do_block_driver};
 

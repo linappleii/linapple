@@ -586,9 +586,13 @@ auto draw_status_area(int drawflags) -> void {
       }
     }
 
-    s_last_leds = {{static_cast<char>(led_char_base + drive1_status),
-                    static_cast<char>(led_char_base + drive2_status),
-                    static_cast<char>(led_char_base + hdd_status)}};
+    s_last_leds = {
+        {
+            static_cast<char>(led_char_base + drive1_status),
+            static_cast<char>(led_char_base + drive2_status),
+            static_cast<char>(led_char_base + hdd_status),
+        },
+    };
 
     leds.at(0) = s_last_leds.at(0);
     font_print(8, 23, leds.data(), g_status_surface, 4.0F, 2.7F);

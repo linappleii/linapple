@@ -34,7 +34,7 @@ extern FontConfig_t g_font_config[NUM_FONTS];
 auto DebuggerSetColorFG(ColorRef_t nRGB) -> void;
 auto DebuggerSetColorBG(ColorRef_t nRGB, bool bTransparent = false) -> void;
 
-auto PrintGlyph(const int x, const int y, const int iChar) -> void;
+auto PrintGlyph(int x, int y, int iChar) -> void;
 auto PrintText(const char* text, Rect_t& rRect) -> int;
 auto PrintTextCursorX(const char* text, Rect_t& rRect) -> int;
 auto PrintTextCursorY(const char* text, Rect_t& rRect) -> int;
@@ -50,10 +50,10 @@ auto DrawConsoleInput() -> void;
 auto DrawConsoleLine(const conchar_t* text, int y) -> void;
 auto DrawConsoleCursor() -> void;
 
-auto GetDisassemblyLine(const uint16_t nOffset, DisasmLine_t& line_) -> int;
-auto DrawDisassemblyLine(int line, const uint16_t offset) -> uint16_t;
+auto GetDisassemblyLine(uint16_t nOffset, DisasmLine_t& line_) -> int;
+auto DrawDisassemblyLine(int line, uint16_t offset) -> uint16_t;
 auto FormatDisassemblyLine(const DisasmLine_t& line, char* sDisassembly_,
-                           const int nBufferSize) -> void;
+                           int nBufferSize) -> void;
 auto FormatOpcodeBytes(uint16_t nBaseAddress, DisasmLine_t& line_) -> void;
 auto FormatNopcodeBytes(uint16_t nBaseAddress, DisasmLine_t& line_) -> void;
 
@@ -100,13 +100,13 @@ auto DrawWindow_ZeroPage(Update_t bUpdate) -> void;
 
 auto DrawSourceLine(int iSourceLine, Rect_t& rect) -> void;
 
-char ColorizeSpecialChar(char* sText, uint8_t nData, const MemoryView_e iView,
-                         const int iAsciBackground = BG_INFO,
-                         const int iTextForeground = FG_DISASM_CHAR,
-                         const int iHighBackground = BG_INFO_CHAR,
-                         const int iHighForeground = FG_INFO_CHAR_HI,
-                         const int iCtrlBackground = BG_INFO_CHAR,
-                         const int iCtrlForeground = FG_INFO_CHAR_LO);
+char ColorizeSpecialChar(char* sText, uint8_t nData, MemoryView_e iView,
+                         int iAsciBackground = BG_INFO,
+                         int iTextForeground = FG_DISASM_CHAR,
+                         int iHighBackground = BG_INFO_CHAR,
+                         int iHighForeground = FG_INFO_CHAR_HI,
+                         int iCtrlBackground = BG_INFO_CHAR,
+                         int iCtrlForeground = FG_INFO_CHAR_LO);
 
 auto SetupColorsHiLoBits(bool bHighBit, bool bCtrlBit, int iTextBG, int iTextFG,
                          int iHighBG, int iHighFG, int iCtrlBG, int iCtrlFG)
@@ -122,16 +122,11 @@ auto FillRect(const Rect_t* r, int Brush) -> void;
 auto DrawSubWindow_Symbols(Update_t bUpdate) -> void;
 auto DrawSubWindow_ZeroPage(Update_t bUpdate) -> void;
 auto DrawSubWindow_Console(Update_t bUpdate) -> void;
-auto DrawWindow_Data(Update_t bUpdate) -> void;
-auto DrawWindow_IO(Update_t bUpdate) -> void;
-auto DrawWindow_Symbols(Update_t bUpdate) -> void;
-auto DrawWindow_ZeroPage(Update_t bUpdate) -> void;
-auto DrawWindow_Console(Update_t bUpdate) -> void;
+
 auto DrawWindowBackground_Main(int iWindow) -> void;
 auto DrawWindowBackground_Info(int iWindow) -> void;
-auto DrawRegister(int line, const char* name, const int nBytes,
-                  const uint16_t nValue, int iSource) -> void;
-auto GetTargets_IgnoreDirectJSRJMP(const uint8_t opcode, int& nTargetPointer)
-    -> void;
+auto DrawRegister(int line, const char* name, int nBytes, uint16_t nValue,
+                  int iSource) -> void;
+auto GetTargets_IgnoreDirectJSRJMP(uint8_t opcode, int& nTargetPointer) -> void;
 
 extern VideoScannerDisplayInfo_t g_video_scanner_display_info;

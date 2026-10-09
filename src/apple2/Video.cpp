@@ -196,8 +196,6 @@ auto draw_mono_text_source(VideoSurface* dc) -> void;
 auto draw_text_source(VideoSurface* dc) -> void;
 auto load_charset() -> VideoSurface*;
 
-auto video_init_worker() -> bool;
-
 std::thread video_worker_thread_;
 static std::atomic<bool> video_worker_active_{false};
 static std::atomic<bool> video_worker_terminate_{false};
@@ -526,13 +524,13 @@ auto draw_hires_source_half_shift_dim() -> void {
             } else {
               color = ((odd ^ (pixel & 1)) << 1) | hibit;
             }
-          } else if (aPixels[pixel - 1] && aPixels[pixel + 1]) {
-            // Activate for fringe reduction on white hgr text -
-            // drawback: loss of color mix patterns in hgr mode.
-            // select g_videotype by index exclusion
-            if (!(aPixels[pixel - 2] && aPixels[pixel + 2])) {
-              color = ((odd ^ !(pixel & 1)) << 1) | hibit;
-            }
+          } else if ((aPixels[pixel - 1] && aPixels[pixel + 1]) &&
+                     (!(aPixels[pixel - 2] && aPixels[pixel + 2])))
+          // Activate for fringe reduction on white hgr text -
+          // drawback: loss of color mix patterns in hgr mode.
+          // select g_videotype by index exclusion
+          {
+            color = ((odd ^ !(pixel & 1)) << 1) | hibit;
           }
 
           /*
@@ -569,14 +567,13 @@ auto draw_hires_source_half_shift_dim() -> void {
                                HGR_BLUE);
               set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 2, y + 1,
                                DARK_BLUE);
-              if (hibit) {
-                if (pixel <= 2) {
-                  set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y,
-                                   DARK_BLUE);
-                  set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
-                                   DARK_BLUE);
-                }
+              if ((hibit) && (pixel <= 2)) {
+                set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y,
+                                 DARK_BLUE);
+                set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
+                                 DARK_BLUE);
               }
+
               break;
             case CM_Green:
               set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y, HGR_GREEN);
@@ -595,13 +592,12 @@ auto draw_hires_source_half_shift_dim() -> void {
                                HGR_RED);
               set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 2, y + 1,
                                BROWN);
-              if (hibit) {
-                if (pixel <= 2) {
-                  set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y, BROWN);
-                  set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
-                                   BROWN);
-                }
+              if ((hibit) && (pixel <= 2)) {
+                set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y, BROWN);
+                set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
+                                 BROWN);
               }
+
               break;
             case CM_Black:
               set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y, HGR_BLACK);
@@ -622,14 +618,13 @@ auto draw_hires_source_half_shift_dim() -> void {
                                HGR_WHITE);
               set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1,
                                HGR_WHITE);
-              if (hibit) {
-                if (pixel <= 2) {
-                  set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y,
-                                   HGR_WHITE);
-                  set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
-                                   HGR_WHITE);
-                }
+              if ((hibit) && (pixel <= 2)) {
+                set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y,
+                                 HGR_WHITE);
+                set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
+                                 HGR_WHITE);
               }
+
               break;
             default:
               break;
@@ -676,12 +671,11 @@ auto draw_hires_source() -> void {
             } else {
               color = ((odd ^ (pixel & 1)) << 1) | hibit;
             }
-          } else if (aPixels[pixel - 1] && aPixels[pixel + 1]) {
-            if ((g_videotype == VT_COLOR_STANDARD) ||
-                (g_videotype == VT_COLOR_TVEMU) ||
-                !(aPixels[pixel - 2] && aPixels[pixel + 2])) {
-              color = ((odd ^ !(pixel & 1)) << 1) | hibit;
-            }
+          } else if ((aPixels[pixel - 1] && aPixels[pixel + 1]) &&
+                     ((g_videotype == VT_COLOR_STANDARD) ||
+                      (g_videotype == VT_COLOR_TVEMU) ||
+                      !(aPixels[pixel - 2] && aPixels[pixel + 2]))) {
+            color = ((odd ^ !(pixel & 1)) << 1) | hibit;
           }
 
           set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y,
@@ -820,12 +814,12 @@ auto draw_mono_text_source(VideoSurface* hDstDC) -> void {
     soft_stretch_mono(charset40, 0, 0, 128, 128, hDstDC, SRCOFFS_40COL, 0, 256,
                       256, hBrush);
   } else {
-    int MaxLanguage = (multi_language_charset) ? 2 : 1;
+    int MaxLanguage = multi_language_charset ? 2 : 1;
     for (int Language = 0; Language < MaxLanguage; Language++) {
       /* When ROM contains two character sets: US/default set is the second
        * (starting at offset 128), while the local language set is always the
        * first (offset 0). */
-      int srcYofs = ((Language == 0) && (multi_language_charset)) ? 128 : 0;
+      int srcYofs = ((Language == 0) && multi_language_charset) ? 128 : 0;
       int dstYofs = Language * (MAX_SOURCE_Y / 2);
 
       soft_stretch_mono(charset40, 0, srcYofs, 128, 128, hDstDC, SRCOFFS_40COL,
@@ -858,12 +852,12 @@ auto draw_text_source(VideoSurface* dc) -> void {
     soft_stretch_mono(charset40, 0, 0, 128, 128, dc, SRCOFFS_40COL, 0, 256, 256,
                       hBrush);
   } else {
-    int MaxLanguage = (multi_language_charset) ? 2 : 1;
+    int MaxLanguage = multi_language_charset ? 2 : 1;
     for (int Language = 0; Language < MaxLanguage; Language++) {
       /* When ROM contains two character sets: US/default set is the second
        * (starting at offset 128), while the local language set is always the
        * first (offset 0). */
-      int srcYofs = ((Language == 0) && (multi_language_charset)) ? 128 : 0;
+      int srcYofs = ((Language == 0) && multi_language_charset) ? 128 : 0;
       int dstYofs = Language * (MAX_SOURCE_Y / 2);
 
       soft_stretch_mono(charset40, 0, srcYofs, 128, 128, dc, SRCOFFS_40COL,
@@ -1036,7 +1030,8 @@ auto mix_colors(uint8_t c1, uint8_t c2) -> uint8_t {
   }
   if (combination(c1, c2, HGR_BLUE, HGR_RED)) {
     return HGR_GREY1;
-  } else if (combination(c1, c2, HGR_GREEN, HGR_MAGENTA)) {
+  }
+  if (combination(c1, c2, HGR_GREEN, HGR_MAGENTA)) {
     return HGR_GREY2;
   } else if (combination(c1, c2, HGR_RED, HGR_GREEN)) {
     return HGR_YELLOW;
@@ -1278,7 +1273,7 @@ auto load_charset() -> VideoSurface* {
     // instead of 128 pixels)
     multi_language_charset = (result->h == 256);
     printf("Charset supports a second language: %s\n",
-           (multi_language_charset) ? "YES" : "NO");
+           multi_language_charset ? "YES" : "NO");
   }
   return result;
 }
@@ -1510,7 +1505,7 @@ auto video_check_vbl(uint16_t, uint16_t, uint8_t, uint8_t,
   bool vbl_bar = false;
   static_cast<void>(video_get_scanner_address(&vbl_bar, executed_cycles));
   uint8_t r = mem_read_floating_bus(executed_cycles);
-  return static_cast<uint8_t>((r & ~0x80) | ((vbl_bar) ? 0x80 : 0));
+  return static_cast<uint8_t>((r & ~0x80) | (vbl_bar ? 0x80 : 0));
 }
 
 auto video_destroy() -> void {
@@ -1663,7 +1658,7 @@ auto video_init_worker() -> bool {
     // If failed to start, revert to singlethreaded
     std::cerr << "FAILED to start video worker; reverting to single-threaded "
                  "video updating..."
-              << std::endl;
+              << '\n';
     g_singlethreaded = true;
     video_worker_active_ = false;
   }
@@ -2024,8 +2019,8 @@ auto video_get_scanner_address(bool* vbl_bar_out,
 
   // machine state switches
   int hires = (sw_hires() && !sw_text()) ? 1 : 0;
-  int page2 = (sw_page2()) ? 1 : 0;
-  int n80Store = (mem_get_80store()) ? 1 : 0;
+  int page2 = sw_page2() ? 1 : 0;
+  int n80Store = mem_get_80store() ? 1 : 0;
 
   // calculate video parameters according to display standard
   int scan_lines =
@@ -2073,23 +2068,23 @@ auto video_get_scanner_address(bool* vbl_bar_out,
   int sum = (addend0 + addend1 + addend2) & (0x0F << 3);
 
   int address = 0;
-  address |= h_0 << 0;  // a0
-  address |= h_1 << 1;  // a1
-  address |= h_2 << 2;  // a2
-  address |= sum;       // a3 - aa6
-  address |= v_0 << 7;  // a7
-  address |= v_1 << 8;  // a8
-  address |= v_2 << 9;  // a9
-  address |= ((hires) ? v_A : (1 ^ (page2 & (1 ^ n80Store)))) << 10;  // a10
-  address |= ((hires) ? v_B : (page2 & (1 ^ n80Store))) << 11;        // a11
-  if (hires) {                                                        // hires?
+  address |= h_0 << 0;                                              // a0
+  address |= h_1 << 1;                                              // a1
+  address |= h_2 << 2;                                              // a2
+  address |= sum;                                                   // a3 - aa6
+  address |= v_0 << 7;                                              // a7
+  address |= v_1 << 8;                                              // a8
+  address |= v_2 << 9;                                              // a9
+  address |= (hires ? v_A : (1 ^ (page2 & (1 ^ n80Store)))) << 10;  // a10
+  address |= (hires ? v_B : (page2 & (1 ^ n80Store))) << 11;        // a11
+  if (hires) {                                                      // hires?
     // Y: insert hires only address bits
     address |= v_C << 12;                             // a12
     address |= (1 ^ (page2 & (1 ^ n80Store))) << 13;  // a13
     address |= (page2 & (1 ^ n80Store)) << 14;        // a14
   } else {
     // N: text, so no higher address bits unless Apple ][, not Apple //e
-    if ((is_apple2()) &&           // Apple ][?
+    if (is_apple2() &&             // Apple ][?
         (kHPEClock <= h_clock) &&  // Y: HBL?
         (h_clock <= (kHClocks - 1))) {
       address |= 1 << 12;  // Y: a12 (add $1000 to address!)

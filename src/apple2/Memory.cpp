@@ -205,8 +205,6 @@ auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
 auto io_annunciator(uint16_t programcounter, uint16_t address, uint8_t write,
                     uint8_t value, uint32_t cycles) -> uint8_t;
 
-auto mem_update_paging(bool initialize, bool updatewriteonly) -> void;
-
 // With no keyboard card, $C000 answers as a machine with its keyboard
 // unplugged. The //e's encoder and strobe logic are on the main board, so
 // bit 7 never rises (IIe Technical Reference p. 187, Figure 7-14b); bits 0-6
@@ -229,9 +227,8 @@ static auto io_write_c00x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
                           uint32_t executed_cycles) -> uint8_t {
   if ((addr & ADDR_NIBBLE_MASK) <= LAST_MEM_SOFT_SWITCH_OFFSET) {
     return mem_set_paging(pc, addr, write, d, executed_cycles);
-  } else {
-    return video_set_mode(pc, addr, write, d, executed_cycles);
   }
+  return video_set_mode(pc, addr, write, d, executed_cycles);
 }
 
 // On a II or II Plus any access to $C01X clears the strobe flip-flop and a
@@ -505,7 +502,7 @@ auto io_read_cxxx(uint16_t programcounter, uint16_t address, uint8_t write,
       if (slot < num_slots) {
         if ((slot != 3) && g_active_memory->expansion_rom[slot]) {
           g_active_memory->io_select |= 1 << slot;
-        } else if ((sw_slotc3rom(g_active_memory)) &&
+        } else if (sw_slotc3rom(g_active_memory) &&
                    g_active_memory->expansion_rom[slot]) {
           g_active_memory->io_select |= 1 << slot;  // Slot3 & Peripheral ROM
         } else if (!sw_slotc3rom(g_active_memory)) {
@@ -581,9 +578,8 @@ auto io_read_cxxx(uint16_t programcounter, uint16_t address, uint8_t write,
   if ((g_active_memory->expansion_rom_type == EXP_ROM_NULL) &&
       (address >= 0xC800)) {
     return io_null(programcounter, address, write, value, executed_cycles);
-  } else {
-    return mem ? mem[address] : mem_read_floating_bus(executed_cycles);
   }
+  return mem ? mem[address] : mem_read_floating_bus(executed_cycles);
 }
 
 auto io_write_cxxx(uint16_t programcounter, uint16_t address, uint8_t write,
@@ -834,8 +830,7 @@ auto mem_update_paging(bool initialize, bool updatewriteonly) -> void {
   if (!updatewriteonly) {
     for (uint32_t page = PAGE_ZERO; page < PAGE_MAX; page++) {
       if (initialize || (oldshadow[page] != g_active_memory->memshadow[page])) {
-        if ((!(initialize)) &&
-            ((*(memdirty + page) & 1) || (page <= PAGE_ONE))) {
+        if ((!initialize) && ((*(memdirty + page) & 1) || (page <= PAGE_ONE))) {
           *(memdirty + page) &= ~1;
           memcpy(oldshadow[page], mem + (page << 8), PAGE_SIZE);
         }
@@ -1027,10 +1022,8 @@ auto mem_is_addr_code_memory(uint16_t addr) noexcept -> bool {
 
   // [$C800..CFFF]
   if (g_active_memory->expansion_rom_type == EXP_ROM_NULL) {
-    if (g_active_memory->io_select || g_active_memory->io_select_internal_rom) {
-      return true;
-    }
-    return false;
+    return g_active_memory->io_select ||
+           g_active_memory->io_select_internal_rom;
   }
 
   return true;
@@ -1247,7 +1240,7 @@ auto mem_read_floating_bus(uint8_t highbit, uint32_t executed_cycles) noexcept
   uint8_t r = (mem != nullptr)
                   ? *(mem + video_get_scanner_address(nullptr, executed_cycles))
                   : 0xFF;
-  return (r & ~0x80) | ((highbit) ? 0x80 : 0);
+  return (r & ~0x80) | (highbit ? 0x80 : 0);
 }
 
 auto mem_set_paging(uint16_t programcounter, uint16_t address, uint8_t write,

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "Debugger_Cmd_Config.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -38,28 +39,13 @@ MemoryTextFile_t g_config_state;
 bool g_report_missing_scripts = true;
 
 std::string g_file_name_config = "LinAppleDebugger.cfg";
-extern bool g_benchmarking;
-extern bool g_profiling;
 
 // Externs for globals defined elsewhere
 extern int g_disasm_display_lines;
-extern uint16_t g_disasm_cur_address;
-extern int g_disasm_cur_line;
-extern FontConfig_t g_font_config[NUM_FONTS];
-extern int g_font_spacing;
-extern int g_profile_line_count;
-extern const std::string g_file_name_profile;
-
-extern int g_color_scheme;
 
 // Local prototypes
-auto WindowUpdateSizes() -> void;
-auto GetConsoleTopPixels(int nConsoleDisplayLines) -> int;
+
 auto cpu_setup_benchmark() -> void;
-auto ProfileReset() -> void;
-auto ProfileFormat(bool bExport, int iFormat) -> void;
-auto ProfileLinePeek(int iLine) -> char*;
-auto ProfileSave() -> bool;
 
 // Implementation
 
@@ -114,7 +100,8 @@ auto CmdConfigColorMono(int nArgs) -> Update_t {
     if (nArgs == 1) {  // Dump Color
       CmdColorGet(iScheme, iColor);
       return ConsoleUpdate();
-    } else if (nArgs == 4) {  // Set Color
+    }
+    if (nArgs == 4) {  // Set Color
       int R = g_args[2].nValue & 0xFF;
       int G = g_args[3].nValue & 0xFF;
       int B = g_args[4].nValue & 0xFF;
@@ -145,9 +132,8 @@ auto CmdConfigHColor(int nArgs) -> Update_t {
     //    uint32_t nColor = g_colors[ iScheme ][ iColor ];
     //    ColorPrint( iColor, nColor );
     return ConsoleUpdate();
-  } else {  // Set Color
-    return UPDATE_ALL;
-  }
+  }  // Set Color
+  return UPDATE_ALL;
 }
 
 //===========================================================================
@@ -275,9 +261,8 @@ auto CmdConfigDisasm(int nArgs) -> Update_t {
         {
           iArg++;
           g_config_disasm_branch_type = g_args[iArg].nValue;
-          if (g_config_disasm_branch_type < 0) {
-            g_config_disasm_branch_type = 0;
-          }
+          g_config_disasm_branch_type =
+              std::max(g_config_disasm_branch_type, 0);
           if (g_config_disasm_branch_type >= NUM_DISASM_BRANCH_TYPES) {
             g_config_disasm_branch_type = NUM_DISASM_BRANCH_TYPES - 1;
           }
@@ -294,7 +279,7 @@ auto CmdConfigDisasm(int nArgs) -> Update_t {
         if ((nArgs > 1) && (!bDisplayCurrentSettings))  // set
         {
           iArg++;
-          g_config_disasm_click = (g_args[iArg].nValue) & 7;  // MAGIC NUMBER
+          g_config_disasm_click = g_args[iArg].nValue & 7;  // MAGIC NUMBER
         }
         //          else // Always show current setting -- TODO: Fix remaining
         //          disasm to show current setting when set
@@ -327,7 +312,7 @@ auto CmdConfigDisasm(int nArgs) -> Update_t {
         if ((nArgs > 1) && (!bDisplayCurrentSettings))  // set
         {
           iArg++;
-          g_config_disasm_address_colon = (g_args[iArg].nValue) != 0;
+          g_config_disasm_address_colon = g_args[iArg].nValue != 0;
         } else  // show current setting
         {
           int iState = g_config_disasm_address_colon ? PARAM_ON : PARAM_OFF;
@@ -341,7 +326,7 @@ auto CmdConfigDisasm(int nArgs) -> Update_t {
         if ((nArgs > 1) && (!bDisplayCurrentSettings))  // set
         {
           iArg++;
-          g_config_disasm_opcodes_view = (g_args[iArg].nValue) != 0;
+          g_config_disasm_opcodes_view = g_args[iArg].nValue != 0;
         } else {
           int iState = g_config_disasm_opcodes_view ? PARAM_ON : PARAM_OFF;
           ConsoleBufferPushFormat(sText, "Opcodes: %s",
@@ -354,7 +339,7 @@ auto CmdConfigDisasm(int nArgs) -> Update_t {
         if ((nArgs > 1) && (!bDisplayCurrentSettings))  // set
         {
           iArg++;
-          g_config_info_target_pointer = (g_args[iArg].nValue) != 0;
+          g_config_info_target_pointer = g_args[iArg].nValue != 0;
         } else {
           int iState = g_config_info_target_pointer ? PARAM_ON : PARAM_OFF;
           ConsoleBufferPushFormat(sText, "info Target Pointer: %s",
@@ -367,7 +352,7 @@ auto CmdConfigDisasm(int nArgs) -> Update_t {
         if ((nArgs > 1) && (!bDisplayCurrentSettings))  // set
         {
           iArg++;
-          g_config_disasm_opcode_spaces = (g_args[iArg].nValue) != 0;
+          g_config_disasm_opcode_spaces = g_args[iArg].nValue != 0;
         } else {
           int iState = g_config_disasm_opcode_spaces ? PARAM_ON : PARAM_OFF;
           ConsoleBufferPushFormat(sText, "Opcode spaces: %s",
@@ -381,9 +366,7 @@ auto CmdConfigDisasm(int nArgs) -> Update_t {
         {
           iArg++;
           g_config_disasm_targets = g_args[iArg].nValue;
-          if (g_config_disasm_targets < 0) {
-            g_config_disasm_targets = 0;
-          }
+          g_config_disasm_targets = std::max(g_config_disasm_targets, 0);
           if (g_config_disasm_targets >= NUM_DISASM_TARGET_TYPES) {
             g_config_disasm_targets = NUM_DISASM_TARGET_TYPES - 1;
           }
@@ -440,7 +423,8 @@ auto CmdConfigFont(int nArgs) -> Update_t {
 
   if (!nArgs) {
     return CmdConfigGetFont(nArgs);
-  } else if (nArgs <= 2)  // nArgs
+  }
+  if (nArgs <= 2)  // nArgs
   {
     iArg = 1;
 
@@ -479,10 +463,8 @@ auto CmdConfigFont(int nArgs) -> Update_t {
 
     nFound = FindParam(g_args[iArg].sArg, MATCH_EXACT, iFound, PARAM_FONT_BEGIN,
                        PARAM_FONT_END);
-    if (nFound) {
-      if (iFound == PARAM_FONT_MODE) {
-        return CmdConfigFontMode(nArgs);
-      }
+    if ((nFound) && (iFound == PARAM_FONT_MODE)) {
+      return CmdConfigFontMode(nArgs);
     }
 
     return CmdConfigSetFont(nArgs);

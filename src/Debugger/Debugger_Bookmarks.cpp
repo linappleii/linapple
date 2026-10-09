@@ -17,15 +17,12 @@
 int g_bookmarks_count = 0;
 Bookmark_t g_bookmarks[MAX_BOOKMARKS] = {};
 
-extern uint16_t g_disasm_cur_address;
-extern int g_disasm_cur_line;
 extern MemoryTextFile_t g_config_state;
 
 auto ConfigSave_BufferToDisk(const char* pFileName, ConfigSave_t eConfigSave)
     -> bool;
-auto ConfigSave_PrepareHeader(const Parameters_e eCategory,
-                              const Commands_e eCommandClear) -> void;
-auto DisasmCalcTopBotAddress() -> void;
+auto ConfigSave_PrepareHeader(Parameters_e eCategory, Commands_e eCommandClear)
+    -> void;
 
 // Bookmark_t Functions
 auto Bookmark_Add(const int iBookmark, const uint16_t address) -> bool {
@@ -54,10 +51,9 @@ auto Bookmark_Find(const uint16_t address) -> bool {
   // Ugh, linear search
   int iBookmark = 0;
   for (iBookmark = 0; iBookmark < MAX_BOOKMARKS; iBookmark++) {
-    if (g_bookmarks[iBookmark].address == address) {
-      if (g_bookmarks[iBookmark].bSet) {
-        return true;
-      }
+    if ((g_bookmarks[iBookmark].address == address) &&
+        (g_bookmarks[iBookmark].bSet)) {
+      return true;
     }
   }
   return false;
@@ -119,7 +115,7 @@ auto CmdBookmarkAdd(int nArgs) -> Update_t {
 
     if (iBookmark == NO_6502_TARGET) {
       iBookmark = 0;
-      while ((iBookmark < MAX_BOOKMARKS) && (g_bookmarks[iBookmark].bSet)) {
+      while ((iBookmark < MAX_BOOKMARKS) && g_bookmarks[iBookmark].bSet) {
         iBookmark++;
       }
     }

@@ -9,12 +9,6 @@
 #include "apple2/Video.h"
 
 // Externs for globals in Debugger_Display.cpp
-extern int g_console_display_start;
-extern int g_console_display_lines;
-extern int g_console_display_total;
-extern int g_console_display_width;
-extern conchar_t g_console_display[CONSOLE_DISPLAY_HEIGHT][CONSOLE_WIDTH];
-extern uint32_t g_console_brush_bg;
 
 // Functions moved from Debugger_Display.cpp
 

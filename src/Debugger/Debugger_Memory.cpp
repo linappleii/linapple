@@ -34,11 +34,6 @@ MemoryDump_t g_mem_dump[NUM_MEM_DUMPS] = {
 // Made global so operator @# can be used with other commands.
 MemorySearchResults_t g_memory_search_results;
 
-extern const Opcodes_t* g_opcodes;
-extern const Opcodes_t g_opcodes65_c02[NUM_OPCODES];
-extern uint16_t g_break_memory_address;
-
-auto debugger_get_file_size(FILE* hFile) -> size_t;
 auto CmdWindowViewCommon(int iNewWindow) -> Update_t;
 
 // Internal helpers
@@ -455,10 +450,8 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
     pEnd--;
   }
 
-  if (!pFileType) {
-    if (g_args[iArgComma1].eToken != TOKEN_COMMA) {
-      return Help_Arg_1(CMD_MEMORY_LOAD);
-    }
+  if ((!pFileType) && (g_args[iArgComma1].eToken != TOKEN_COMMA)) {
+    return Help_Arg_1(CMD_MEMORY_LOAD);
   }
 
   uint16_t nAddressStart = 0;
@@ -701,7 +694,7 @@ auto CmdMemorySave(int nArgs) -> Update_t {
       return Help_Arg_1(CMD_MEMORY_SAVE);
     }
 
-    if ((nAddressLen) && (nAddressEnd <= apple2_6502_mem_end)) {
+    if (nAddressLen && (nAddressEnd <= apple2_6502_mem_end)) {
       if (!bHaveFileName) {
         char sMemoryLoadSaveFileName[path_max_len];
         if (!bBankSpecified) {
@@ -809,7 +802,8 @@ y  Hex  000a_bcde            01cd_eaba_b000
 static auto RemapChar(const char c) -> char {
   if (c < 0x20) {
     return c + '@';  // Remap INVERSE control character to NORMAL
-  } else if (c == 0x7F) {
+  }
+  if (c == 0x7F) {
     return ' ';  // Remap checkboard (DEL) to space
   }
 
@@ -989,10 +983,10 @@ auto SearchMemoryFind(MemorySearchValues_t vMemorySearchValues,
         if (ms.value == nTarget) {
           ms.found = true;
           continue;
-        } else {
-          bMatchAll = false;
-          break;
         }
+        bMatchAll = false;
+        break;
+
       } else if (ms.type == MEM_SEARCH_BYTE_1_WILD) {
         // match by definition
       } else {
@@ -1023,10 +1017,9 @@ auto SearchMemoryFind(MemorySearchValues_t vMemorySearchValues,
             if (ms.value == nTarget) {
               nAddress2 = nAddress3;
               continue;
-            } else {
-              bMatchAll = false;
-              break;
             }
+            bMatchAll = false;
+            break;
           }
         }
       }

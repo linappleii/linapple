@@ -148,6 +148,9 @@ using FrontendAudioChannelCallback = void (*)(const char* peripheral_id,
 using FrontendAudioSourceRegisterCallback = void (*)(
     int slot, const char* peripheral_id, const PeripheralAudioInfo_t* info);
 using FrontendAudioSourceUnregisterCallback = void (*)(int slot);
+extern FrontendAudioChannelCallback frontend_audio_channel_cb;
+extern FrontendAudioSourceRegisterCallback frontend_audio_register_cb;
+extern FrontendAudioSourceUnregisterCallback frontend_audio_unregister_cb;
 using LinappleTitleCallback = void (*)(const char* title);
 
 auto linapple_init() -> int;
@@ -206,6 +209,8 @@ auto peripheral_is_any_active() -> bool;
 
 auto peripheral_announce_audio_sources() -> void;
 
+// NOLINTBEGIN(readability-redundant-declaration)
+// Justification: Re-exported via Core Bridge for frontends without Peripheral.h
 auto peripheral_command(int slot, uint32_t cmd_id, const void* data,
                         size_t size) -> PeripheralStatus_t;
 auto peripheral_query(int slot, uint32_t cmd_id, void* out, size_t* out_size)
@@ -216,6 +221,7 @@ auto peripheral_command_by_id(int slot, const char* peripheral_id,
 auto peripheral_query_by_id(int slot, const char* peripheral_id,
                             uint32_t cmd_id, void* out, size_t* out_size)
     -> PeripheralStatus_t;
+// NOLINTEND(readability-redundant-declaration)
 
 // A seven-bit code under a strobe, as the motherboard sees it; host_key pairs
 // a release with its press whatever the modifiers did in between.

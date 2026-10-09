@@ -199,7 +199,7 @@ auto find_best_driver(const uint8_t* header_ptr, size_t header_size,
                       uint64_t file_size, const char* ext_hint)
     -> const HarddiskFormatDriver_t* {
   const HarddiskFormatDriver_t* possible_driver = nullptr;
-  for (auto* driver : registry()) {
+  for (const auto* driver : registry()) {
     const HarddiskProbe_e result =
         driver->probe(header_ptr, header_size, file_size, ext_hint);
     if (result == harddisk_probe_definite) {
@@ -419,7 +419,7 @@ auto harddisk_loader_get_supported_extensions(char* out_buffer,
   std::string result;
   for (size_t i = 0; i < exts.size(); ++i) {
     if (i > 0) {
-      result += ";";
+      result += ';';
     }
     result += exts[i];
   }

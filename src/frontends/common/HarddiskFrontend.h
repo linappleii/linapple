@@ -10,8 +10,8 @@
 // code and the text harddisk_frontend_error_message gives for it. Every
 // refusal is logged whatever the reporter; a windowed frontend installs one
 // to show it in a dialog as well, and nullptr removes it.
-using HarddiskErrorReporter_t = auto (*)(int drive, int error,
-                                         const char* message) -> void;
+using HarddiskErrorReporter = auto (*)(int drive, int error,
+                                       const char* message) -> void;
 
 // No card in the machine, as the helper reports it.
 constexpr int harddisk_frontend_no_card = -1;
@@ -36,5 +36,5 @@ auto harddisk_frontend_eject(int drive) -> int;
 auto harddisk_frontend_insert_for_run(int drive, const char* path) -> int;
 
 auto harddisk_frontend_error_message(int error) -> const char*;
-auto harddisk_frontend_set_error_reporter(HarddiskErrorReporter_t reporter)
+auto harddisk_frontend_set_error_reporter(HarddiskErrorReporter reporter)
     -> void;

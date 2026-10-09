@@ -53,11 +53,11 @@ auto peripheral_register_builtin(Peripheral_t* api) -> void {
   // descend so that the speaker stays in front and those readers still load
   // the files this build writes.
   auto& registry = peripheral_get_builtin_registry();
-  const auto position =
-      std::lower_bound(registry.begin(), registry.end(), api,
-                       [](const Peripheral_t* a, const Peripheral_t* b) {
-                         return strcmp(builtin_id(a), builtin_id(b)) > 0;
-                       });
+  const auto position = std::lower_bound(
+      registry.begin(), registry.end(), api,
+      [](const Peripheral_t* a, const Peripheral_t* b) -> bool {
+        return strcmp(builtin_id(a), builtin_id(b)) > 0;
+      });
   registry.insert(position, api);
 }
 
@@ -66,19 +66,20 @@ auto peripheral_register_builtin(Peripheral_t* api) -> void {
 // The ABI's 0 cancels and maps to this, so cycle 0 itself is never scheduled.
 static constexpr uint64_t no_event = UINT64_MAX;
 
-struct ActivePeripheral_t {
-  Peripheral_t* api;
-  void* instance;
-  int slot;
-  PeripheralIOHandler readC0;
-  PeripheralIOHandler writeC0;
-  PeripheralIOHandler readCx;
-  PeripheralIOHandler writeCx;
-  const uint8_t* expansionRom;
+namespace {
+struct ActivePeripheral {
+  Peripheral_t* api = nullptr;
+  void* instance = nullptr;
+  int slot = 0;
+  PeripheralIOHandler read_c0 = nullptr;
+  PeripheralIOHandler write_c0 = nullptr;
+  PeripheralIOHandler read_cx = nullptr;
+  PeripheralIOHandler write_cx = nullptr;
+  const uint8_t* expansion_rom = nullptr;
   uint64_t event_cycle = no_event;
 };
 
-struct DirectIoHandler_t {
+struct DirectIoHandler {
   uint16_t addr;
   PeripheralIOHandler read;
   PeripheralIOHandler write;
@@ -87,8 +88,9 @@ struct DirectIoHandler_t {
   PeripheralStrobeHandler_t on_strobe;
   void* instance;
 };
+}  // namespace
 
-static std::array<std::vector<ActivePeripheral_t>, num_slots>
+static std::array<std::vector<ActivePeripheral>, num_slots>
     g_active_peripherals;
 static std::array<bool, num_slots> g_peripheral_activity_state;
 // Set when a card reports activity and cleared by the frontend's poll, so a
@@ -101,7 +103,7 @@ static uint64_t g_next_event_cycle = no_event;
 // with headroom: a registration past the end is dropped with one log line and
 // the address reads as the floating bus from then on.
 static constexpr size_t io_direct_count = 128;
-static std::array<DirectIoHandler_t, io_direct_count> g_direct_io_handlers;
+static std::array<DirectIoHandler, io_direct_count> g_direct_io_handlers;
 static size_t g_num_direct_handlers = 0;
 
 static constexpr uint16_t addr_slot_io_base = 0x70;
@@ -117,13 +119,13 @@ static auto slot_read_c0_bridge(uint16_t pc, uint16_t addr, uint8_t write,
   cpu_calc_cycles(executed_cycles);
   int slot = (addr & addr_slot_io_base) >> addr_slot_shift;
   for (auto& ap : g_active_peripherals.at(static_cast<size_t>(slot))) {
-    if (ap.readC0 != nullptr) {
+    if (ap.read_c0 != nullptr) {
       try {
-        return ap.readC0(ap.instance, pc, addr, write, d, executed_cycles);
+        return ap.read_c0(ap.instance, pc, addr, write, d, executed_cycles);
       } catch (const std::exception& e) {
-        Logger::error("Exception in slot %d readC0: %s\n", slot, e.what());
+        Logger::error("Exception in slot %d read_c0: %s\n", slot, e.what());
       } catch (...) {
-        Logger::error("Unknown exception in slot %d readC0\n", slot);
+        Logger::error("Unknown exception in slot %d read_c0\n", slot);
       }
     }
   }
@@ -136,13 +138,13 @@ static auto slot_write_c0_bridge(uint16_t pc, uint16_t addr, uint8_t write,
   cpu_calc_cycles(executed_cycles);
   int slot = (addr & addr_slot_io_base) >> addr_slot_shift;
   for (auto& ap : g_active_peripherals.at(static_cast<size_t>(slot))) {
-    if (ap.writeC0 != nullptr) {
+    if (ap.write_c0 != nullptr) {
       try {
-        return ap.writeC0(ap.instance, pc, addr, write, d, executed_cycles);
+        return ap.write_c0(ap.instance, pc, addr, write, d, executed_cycles);
       } catch (const std::exception& e) {
-        Logger::error("Exception in slot %d writeC0: %s\n", slot, e.what());
+        Logger::error("Exception in slot %d write_c0: %s\n", slot, e.what());
       } catch (...) {
-        Logger::error("Unknown exception in slot %d writeC0\n", slot);
+        Logger::error("Unknown exception in slot %d write_c0\n", slot);
       }
     }
   }
@@ -155,13 +157,13 @@ static auto slot_read_cx_bridge(uint16_t pc, uint16_t addr, uint8_t write,
   cpu_calc_cycles(executed_cycles);
   int slot = (addr >> addr_slot_rom_shift) & addr_slot_rom_mask;
   for (auto& ap : g_active_peripherals.at(static_cast<size_t>(slot))) {
-    if (ap.readCx != nullptr) {
+    if (ap.read_cx != nullptr) {
       try {
-        return ap.readCx(ap.instance, pc, addr, write, d, executed_cycles);
+        return ap.read_cx(ap.instance, pc, addr, write, d, executed_cycles);
       } catch (const std::exception& e) {
-        Logger::error("Exception in slot %d readCx: %s\n", slot, e.what());
+        Logger::error("Exception in slot %d read_cx: %s\n", slot, e.what());
       } catch (...) {
-        Logger::error("Unknown exception in slot %d readCx\n", slot);
+        Logger::error("Unknown exception in slot %d read_cx\n", slot);
       }
     }
   }
@@ -174,13 +176,13 @@ static auto slot_write_cx_bridge(uint16_t pc, uint16_t addr, uint8_t write,
   cpu_calc_cycles(executed_cycles);
   int slot = (addr >> addr_slot_rom_shift) & addr_slot_rom_mask;
   for (auto& ap : g_active_peripherals.at(static_cast<size_t>(slot))) {
-    if (ap.writeCx != nullptr) {
+    if (ap.write_cx != nullptr) {
       try {
-        return ap.writeCx(ap.instance, pc, addr, write, d, executed_cycles);
+        return ap.write_cx(ap.instance, pc, addr, write, d, executed_cycles);
       } catch (const std::exception& e) {
-        Logger::error("Exception in slot %d writeCx: %s\n", slot, e.what());
+        Logger::error("Exception in slot %d write_cx: %s\n", slot, e.what());
       } catch (...) {
-        Logger::error("Unknown exception in slot %d writeCx\n", slot);
+        Logger::error("Unknown exception in slot %d write_cx\n", slot);
       }
     }
   }
@@ -298,10 +300,10 @@ static auto host_assert_irq(int slot, bool assert) -> void {
   }
 }
 
-static auto host_register_io(int slot, PeripheralIOHandler readC0,
-                             PeripheralIOHandler writeC0,
-                             PeripheralIOHandler readCx,
-                             PeripheralIOHandler writeCx) -> void {
+static auto host_register_io(int slot, PeripheralIOHandler read_c0,
+                             PeripheralIOHandler write_c0,
+                             PeripheralIOHandler read_cx,
+                             PeripheralIOHandler write_cx) -> void {
   if (slot < 0 || slot >= static_cast<int>(num_slots)) {
     return;
   }
@@ -310,17 +312,17 @@ static auto host_register_io(int slot, PeripheralIOHandler readC0,
     return;
   }
 
-  ActivePeripheral_t& ap = slot_peripherals.back();
-  ap.readC0 = readC0;
-  ap.writeC0 = writeC0;
-  ap.readCx = readCx;
-  ap.writeCx = writeCx;
+  ActivePeripheral& ap = slot_peripherals.back();
+  ap.read_c0 = read_c0;
+  ap.write_c0 = write_c0;
+  ap.read_cx = read_cx;
+  ap.write_cx = write_cx;
 
   register_io_handler(
-      static_cast<uint32_t>(slot), readC0 ? slot_read_c0_bridge : nullptr,
-      writeC0 ? slot_write_c0_bridge : nullptr,
-      readCx ? slot_read_cx_bridge : nullptr,
-      writeCx ? slot_write_cx_bridge : nullptr, ap.instance, ap.expansionRom);
+      static_cast<uint32_t>(slot), read_c0 ? slot_read_c0_bridge : nullptr,
+      write_c0 ? slot_write_c0_bridge : nullptr,
+      read_cx ? slot_read_cx_bridge : nullptr,
+      write_cx ? slot_write_cx_bridge : nullptr, ap.instance, ap.expansion_rom);
 }
 
 static constexpr int min_slot_with_rom = 1;
@@ -352,14 +354,14 @@ static auto host_register_expansion_rom(int slot, const uint8_t* rom_ptr)
     return;
   }
 
-  ActivePeripheral_t& ap = slot_peripherals.back();
-  ap.expansionRom = rom_ptr;
+  ActivePeripheral& ap = slot_peripherals.back();
+  ap.expansion_rom = rom_ptr;
   register_io_handler(static_cast<uint32_t>(slot),
-                      ap.readC0 ? slot_read_c0_bridge : nullptr,
-                      ap.writeC0 ? slot_write_c0_bridge : nullptr,
-                      ap.readCx ? slot_read_cx_bridge : nullptr,
-                      ap.writeCx ? slot_write_cx_bridge : nullptr, ap.instance,
-                      ap.expansionRom);
+                      ap.read_c0 ? slot_read_c0_bridge : nullptr,
+                      ap.write_c0 ? slot_write_c0_bridge : nullptr,
+                      ap.read_cx ? slot_read_cx_bridge : nullptr,
+                      ap.write_cx ? slot_write_cx_bridge : nullptr, ap.instance,
+                      ap.expansion_rom);
 }
 
 static auto host_register_direct_io(void* instance, uint16_t addr,
@@ -587,7 +589,7 @@ auto peripheral_service_events(uint64_t now) -> void {
   // Collected and cleared before any card runs, so a think that re-schedules
   // at or before now waits for the next boundary and the frame completes: one
   // wake per instruction at worst.
-  static std::vector<ActivePeripheral_t*> due;
+  static std::vector<ActivePeripheral*> due;
   due.clear();
   for (auto& slot_peripherals : g_active_peripherals) {
     for (auto& ap : slot_peripherals) {
@@ -597,7 +599,7 @@ auto peripheral_service_events(uint64_t now) -> void {
       }
     }
   }
-  for (ActivePeripheral_t* ap : due) {
+  for (ActivePeripheral* ap : due) {
     if (ap->api != nullptr && ap->api->think != nullptr) {
       ap->api->think(ap->instance, 0);
     }
@@ -667,7 +669,8 @@ static auto host_get_local_time(HostLocalTime_t* out) -> bool {
 
 // --- Byte sink ---
 
-struct SinkRecord_t {
+namespace {
+struct SinkRecord {
   int slot;
   PeripheralSinkKind_t kind;
   bool opened;
@@ -676,15 +679,16 @@ struct SinkRecord_t {
   bool line_sent;
   PeripheralSerialLine_t line;
 };
+}  // namespace
 
 static constexpr size_t sink_slot_count = 7;
-static std::array<SinkRecord_t, sink_slot_count> g_sink_records{};
+static std::array<SinkRecord, sink_slot_count> g_sink_records{};
 static const ByteSink_t* g_byte_sink = nullptr;
 static void* g_byte_sink_ctx = nullptr;
 
 // A token is only ever the address of one of the records, so anything else a
 // card hands back, NULL included, is refused rather than dereferenced.
-static auto sink_record(void* token) -> SinkRecord_t* {
+static auto sink_record(void* token) -> SinkRecord* {
   if (token == nullptr) {
     return nullptr;
   }
@@ -696,7 +700,7 @@ static auto sink_record(void* token) -> SinkRecord_t* {
   return nullptr;
 }
 
-static auto sink_close_record(SinkRecord_t& record) -> void {
+static auto sink_close_record(SinkRecord& record) -> void {
   if (!record.opened) {
     return;
   }
@@ -708,7 +712,7 @@ static auto sink_close_record(SinkRecord_t& record) -> void {
 
 // Cards mint their tokens at init, before any frontend has installed a sink,
 // so a slot is opened on its first use under whatever is installed by then.
-static auto sink_attach(SinkRecord_t& record) -> bool {
+static auto sink_attach(SinkRecord& record) -> bool {
   if (g_byte_sink == nullptr) {
     return false;
   }
@@ -735,7 +739,7 @@ static auto host_sink_open(void* instance, int slot, PeripheralSinkKind_t kind)
       !sink_kind_is_known(kind)) {
     return nullptr;
   }
-  SinkRecord_t& record = g_sink_records.at(static_cast<size_t>(slot - 1));
+  SinkRecord& record = g_sink_records.at(static_cast<size_t>(slot - 1));
   // The frontend names a destination by slot, so a slot streams one kind at a
   // time: a second kind would write into the first one's file.
   if (record.opened && record.kind != kind) {
@@ -747,7 +751,7 @@ static auto host_sink_open(void* instance, int slot, PeripheralSinkKind_t kind)
 }
 
 static auto host_sink_write(void* token, uint8_t byte) -> void {
-  SinkRecord_t* record = sink_record(token);
+  SinkRecord* record = sink_record(token);
   if (record == nullptr || !sink_attach(*record) ||
       g_byte_sink->write == nullptr) {
     return;
@@ -756,7 +760,7 @@ static auto host_sink_write(void* token, uint8_t byte) -> void {
 }
 
 static auto host_sink_ready(void* token) -> bool {
-  SinkRecord_t* record = sink_record(token);
+  SinkRecord* record = sink_record(token);
   if (record == nullptr || !sink_attach(*record) ||
       g_byte_sink->ready == nullptr) {
     return false;
@@ -765,7 +769,7 @@ static auto host_sink_ready(void* token) -> bool {
 }
 
 static auto host_sink_close(void* token) -> void {
-  SinkRecord_t* record = sink_record(token);
+  SinkRecord* record = sink_record(token);
   if (record != nullptr) {
     sink_close_record(*record);
     // The next card in the slot states its own format.
@@ -774,7 +778,7 @@ static auto host_sink_close(void* token) -> void {
 }
 
 static auto host_sink_read(void* token, uint8_t* byte) -> bool {
-  SinkRecord_t* record = sink_record(token);
+  SinkRecord* record = sink_record(token);
   if (record == nullptr || byte == nullptr || !sink_attach(*record) ||
       g_byte_sink->read == nullptr) {
     return false;
@@ -784,7 +788,7 @@ static auto host_sink_read(void* token, uint8_t* byte) -> bool {
 
 static auto host_sink_set_line(void* token, const PeripheralSerialLine_t* line)
     -> void {
-  SinkRecord_t* record = sink_record(token);
+  SinkRecord* record = sink_record(token);
   if (record == nullptr || line == nullptr) {
     return;
   }
@@ -799,7 +803,7 @@ static auto host_sink_set_line(void* token, const PeripheralSerialLine_t* line)
 }
 
 static auto host_sink_get_lines(void* token, uint8_t* lines) -> bool {
-  SinkRecord_t* record = sink_record(token);
+  SinkRecord* record = sink_record(token);
   if (record == nullptr || lines == nullptr || !sink_attach(*record) ||
       g_byte_sink->get_lines == nullptr) {
     return false;
@@ -867,28 +871,31 @@ static HostInterface_t g_host_interface = {
 // Empty target_id broadcasts to entire slot.
 constexpr size_t peripheral_target_id_size = 32;
 
-struct QueuedCommand_t {
-  int slot;
-  uint32_t cmd_id;
-  size_t data_size;
+namespace {
+struct QueuedCommand {
+  int slot = 0;
+  uint32_t cmd_id = 0;
+  size_t data_size = 0;
   char target_id[peripheral_target_id_size] = {};
   uint8_t data[PERIPHERAL_CMD_MAX_DATA] = {};
 };
+}  // namespace
 
-static_assert(sizeof(((QueuedCommand_t*)0)->data) == PERIPHERAL_CMD_MAX_DATA,
-              "QueuedCommand_t::data size must match PERIPHERAL_CMD_MAX_DATA");
+static_assert(sizeof(static_cast<QueuedCommand*>(nullptr)->data) ==
+                  PERIPHERAL_CMD_MAX_DATA,
+              "QueuedCommand::data size must match PERIPHERAL_CMD_MAX_DATA");
 
-static std::queue<QueuedCommand_t> g_command_queue;
+static std::queue<QueuedCommand> g_command_queue;
 static std::mutex g_command_queue_mutex;
 
 static auto peripheral_drain_command_queue() -> void {
-  std::queue<QueuedCommand_t> local;
+  std::queue<QueuedCommand> local;
   {
     std::lock_guard<std::mutex> lock(g_command_queue_mutex);
     std::swap(local, g_command_queue);
   }
   while (!local.empty()) {
-    const QueuedCommand_t& cmd = local.front();
+    const QueuedCommand& cmd = local.front();
     if (cmd.slot >= 0 && cmd.slot < static_cast<int>(num_slots)) {
       for (auto& ap : g_active_peripherals.at(static_cast<size_t>(cmd.slot))) {
         if (ap.api == nullptr || ap.api->command == nullptr) {
@@ -1028,7 +1035,7 @@ auto peripheral_register(Peripheral_t* api, int slot) -> int {
     return -1;
   }
 
-  ActivePeripheral_t ap{};
+  ActivePeripheral ap{};
   ap.api = api;
   ap.slot = slot;
   g_active_peripherals.at(static_cast<size_t>(slot)).push_back(ap);
@@ -1107,7 +1114,7 @@ auto peripheral_command(int slot, uint32_t cmd_id, const void* data,
       size > PERIPHERAL_CMD_MAX_DATA || (size > 0 && data == nullptr)) {
     return peripheral_error;
   }
-  QueuedCommand_t cmd{};
+  QueuedCommand cmd{};
   cmd.slot = slot;
   cmd.cmd_id = cmd_id;
   cmd.data_size = size;
@@ -1121,7 +1128,7 @@ auto peripheral_command(int slot, uint32_t cmd_id, const void* data,
 
 // Lookup peripheral by descriptor ID.
 static auto peripheral_by_id(int slot, const char* peripheral_id)
-    -> ActivePeripheral_t* {
+    -> ActivePeripheral* {
   if (slot < 0 || slot >= static_cast<int>(num_slots) ||
       peripheral_id == nullptr) {
     return nullptr;
@@ -1176,7 +1183,7 @@ auto peripheral_command_by_id(int slot, const char* peripheral_id,
     return peripheral_error;
   }
 
-  QueuedCommand_t cmd{};
+  QueuedCommand cmd{};
   cmd.slot = slot;
   cmd.cmd_id = cmd_id;
   cmd.data_size = size;
@@ -1195,7 +1202,7 @@ auto peripheral_query_by_id(int slot, const char* peripheral_id,
   if (out == nullptr || out_size == nullptr) {
     return peripheral_error;
   }
-  const ActivePeripheral_t* ap = peripheral_by_id(slot, peripheral_id);
+  const ActivePeripheral* ap = peripheral_by_id(slot, peripheral_id);
   if (ap == nullptr || ap->api->query == nullptr) {
     return peripheral_error;
   }

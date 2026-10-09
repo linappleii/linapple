@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-// NOLINTBEGIN(modernize-use-using)
+// NOLINTBEGIN(modernize-use-using, modernize-use-trailing-return-type, readability-identifier-naming)
 // Justification: This header defines a language-neutral C ABI for the disk
 // image loader.
 
@@ -61,7 +61,7 @@ const DiskFormatDriver_t* disk_loader_driver_at(uint32_t index);
    fails part way. */
 DiskError_e disk_loader_create(const char* path, const char* driver_name);
 
-// NOLINTEND(modernize-use-using)
+// NOLINTEND(modernize-use-using, modernize-use-trailing-return-type, readability-identifier-naming)
 
 #ifdef __cplusplus
 }

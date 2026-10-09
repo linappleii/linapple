@@ -77,14 +77,14 @@ struct SpeakerPeripheral_t {
 
 // --- Internal Helpers ---
 
-static auto get_cycles(HostInterface_t* host) -> uint64_t {
+auto get_cycles(HostInterface_t* host) -> uint64_t {
   if (host != nullptr && host->GetCycles != nullptr) {
     return host->GetCycles();
   }
   return 0;
 }
 
-static auto synthesize_samples(SpeakerPeripheral_t& speaker, uint64_t end_cycle)
+auto synthesize_samples(SpeakerPeripheral_t& speaker, uint64_t end_cycle)
     -> size_t {
   const uint32_t available_events = speaker.event_count;
   uint32_t event_index = 0;
@@ -126,8 +126,8 @@ static auto synthesize_samples(SpeakerPeripheral_t& speaker, uint64_t end_cycle)
   return sample_count;
 }
 
-static auto generate_samples(SpeakerPeripheral_t& speaker, void* instance,
-                             uint32_t elapsed_cycles) -> void {
+auto generate_samples(SpeakerPeripheral_t& speaker, void* instance,
+                      uint32_t elapsed_cycles) -> void {
   if (elapsed_cycles == 0) {
     return;
   }
@@ -168,8 +168,7 @@ static auto generate_samples(SpeakerPeripheral_t& speaker, void* instance,
   }
 }
 
-static auto query_audio_info(void* out, size_t* out_size)
-    -> PeripheralStatus_t {
+auto query_audio_info(void* out, size_t* out_size) -> PeripheralStatus_t {
   constexpr size_t required_size = sizeof(PeripheralAudioInfo_t);
   if (out == nullptr) {
     *out_size = required_size;
@@ -194,7 +193,7 @@ static auto query_audio_info(void* out, size_t* out_size)
   return peripheral_ok;
 }
 
-static auto speaker_strobe(void* instance) -> void {
+auto speaker_strobe(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
@@ -347,7 +346,7 @@ auto speaker_query(void* instance, uint32_t cmd_id, void* out, size_t* out_size)
   return peripheral_incompatible;
 }
 
-static Peripheral_t speaker_peripheral = {
+Peripheral_t speaker_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.speaker",
     .name = "Speaker",
@@ -370,8 +369,6 @@ static Peripheral_t speaker_peripheral = {
 }  // namespace
 
 // Peripheral registry requires non-const pointer.
-auto speaker_get_descriptor() -> Peripheral_t* {
-  return &speaker_peripheral;
-}
+auto speaker_get_descriptor() -> Peripheral_t* { return &speaker_peripheral; }
 
 PERIPHERAL_REGISTER(speaker_peripheral)

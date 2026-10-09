@@ -301,9 +301,7 @@ auto fire(MouseCard_t* card) -> void {
 // OR'd, so N firings and one are the same observable. A counter that went
 // backwards (a restored snapshot) re-anchors.
 auto advance(MouseCard_t* card, uint64_t now) -> void {
-  if (now + card->tick_period < card->next_tick) {
-    card->next_tick = now + card->tick_period;
-  }
+  card->next_tick = std::min(now + card->tick_period, card->next_tick);
   if (card->next_tick <= now) {
     fire(card);
     card->next_tick +=
@@ -1118,8 +1116,6 @@ static Peripheral_t mouse_peripheral = {
 };
 
 // Peripheral registry requires non-const pointer.
-auto mouse_get_descriptor() -> Peripheral_t* {
-  return &mouse_peripheral;
-}
+auto mouse_get_descriptor() -> Peripheral_t* { return &mouse_peripheral; }
 
 PERIPHERAL_REGISTER(mouse_peripheral)

@@ -115,7 +115,7 @@ extern AddressingMode_t g_opmodes[NUM_ADDRESSING_MODES];
 // ______________________________________________________________________________________
 
 // Hashing for Assembler
-typedef uint32_t Hash_t;
+using Hash_t = uint32_t;
 
 struct HashOpcode_t {
   int opcode;

@@ -205,7 +205,6 @@ auto two_img_parse(const uint8_t* header, uint64_t file_size,
   return harddisk_err_none;
 }
 
-
 extern "C" const HarddiskFormatDriver_t g_two_img_driver = {
     .abi_version = harddisk_format_abi_version,
     .capabilities = harddisk_driver_cap_write,
@@ -217,7 +216,8 @@ extern "C" const HarddiskFormatDriver_t g_two_img_driver = {
     .is_write_protected = block_disk_image_is_write_protected,
     .read_block = block_disk_image_read_block,
     .write_block = block_disk_image_write_block,
-    .get_total_blocks = block_disk_image_get_total_blocks};
+    .get_total_blocks = block_disk_image_get_total_blocks,
+};
 
 static const HarddiskFormatRegistration_t registration{&g_two_img_driver};
 

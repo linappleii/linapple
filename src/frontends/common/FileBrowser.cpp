@@ -444,9 +444,8 @@ auto disk_browser_move(DiskBrowser* b, int delta, size_t page_size) -> void {
   if (delta < 0) {
     if (b->selected_index > 0) {
       b->selected_index--;
-      if (b->selected_index < b->first_visible_index) {
-        b->first_visible_index = b->selected_index;
-      }
+      b->first_visible_index =
+          std::min(b->selected_index, b->first_visible_index);
     }
     return;
   }
@@ -473,9 +472,8 @@ auto disk_browser_page(DiskBrowser* b, int direction, size_t page_size)
   if (direction < 0) {
     b->selected_index =
         (b->selected_index <= page_size) ? 0 : (b->selected_index - page_size);
-    if (b->selected_index < b->first_visible_index) {
-      b->first_visible_index = b->selected_index;
-    }
+    b->first_visible_index =
+        std::min(b->selected_index, b->first_visible_index);
     return;
   }
 

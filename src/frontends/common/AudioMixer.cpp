@@ -31,13 +31,13 @@ constexpr size_t resample_chunk_frames = 512;
 // from the partial window left over by the previous chunk.
 constexpr size_t resample_scratch_frames = resample_chunk_frames + 2;
 
-static uint32_t output_rate_hz = 0;
-static size_t capacity_samples = 0;
-static size_t cushion_samples = 0;
+uint32_t output_rate_hz = 0;
+size_t capacity_samples = 0;
+size_t cushion_samples = 0;
 
 // Symmetric rails: -1.0 and +1.0 map to -32767 and +32767, so a full-scale
 // signal stays symmetric instead of gaining a half-LSB bias from -32768.
-static auto float_to_pcm16(float v) noexcept -> int16_t {
+auto float_to_pcm16(float v) noexcept -> int16_t {
   const long scaled = std::lroundf(v * 32767.0F);
   if (scaled > 32767) {
     return 32767;
@@ -52,7 +52,7 @@ static auto float_to_pcm16(float v) noexcept -> int16_t {
 // is dramatically slower on some CPUs. Nothing audible lives this far down.
 constexpr float denormal_floor = 1e-20F;
 
-static auto flush_denormal(float v) noexcept -> float {
+auto flush_denormal(float v) noexcept -> float {
   return (v > -denormal_floor && v < denormal_floor) ? 0.0F : v;
 }
 
@@ -60,7 +60,7 @@ static auto flush_denormal(float v) noexcept -> float {
 // PCM scale).
 constexpr float fade_step = 800.0F / 32767.0F;
 
-static inline auto decay_sample(float val, float step) noexcept -> float {
+inline auto decay_sample(float val, float step) noexcept -> float {
   if (val > 0.0F) {
     return (val > step) ? (val - step) : 0.0F;
   }
@@ -83,7 +83,7 @@ struct SampleBuffer {
   float last_right{0.0F};
 };
 
-static auto sample_buffer_reinit(SampleBuffer* sb) -> void {
+auto sample_buffer_reinit(SampleBuffer* sb) -> void {
   if (sb == nullptr) {
     return;
   }
@@ -96,14 +96,14 @@ static auto sample_buffer_reinit(SampleBuffer* sb) -> void {
   sb->last_right = 0.0F;
 }
 
-static auto sample_buffer_request_flush(SampleBuffer* sb) -> void {
+auto sample_buffer_request_flush(SampleBuffer* sb) -> void {
   if (sb == nullptr) {
     return;
   }
   sb->flush_gen.fetch_add(1, std::memory_order_release);
 }
 
-static auto sample_buffer_check_flush(SampleBuffer* sb) -> void {
+auto sample_buffer_check_flush(SampleBuffer* sb) -> void {
   if (sb == nullptr) {
     return;
   }
@@ -119,7 +119,7 @@ static auto sample_buffer_check_flush(SampleBuffer* sb) -> void {
   sb->last_right = 0.0F;
 }
 
-static auto sample_buffer_get_filled(const SampleBuffer* sb) -> size_t {
+auto sample_buffer_get_filled(const SampleBuffer* sb) -> size_t {
   if (sb == nullptr || sb->buffer.empty()) {
     return 0;
   }
@@ -131,7 +131,7 @@ static auto sample_buffer_get_filled(const SampleBuffer* sb) -> size_t {
   return sb->buffer.size() + w - r;
 }
 
-static auto sample_buffer_get_free(const SampleBuffer* sb) -> size_t {
+auto sample_buffer_get_free(const SampleBuffer* sb) -> size_t {
   if (sb == nullptr || sb->buffer.empty()) {
     return 0;
   }
@@ -142,7 +142,7 @@ static auto sample_buffer_get_free(const SampleBuffer* sb) -> size_t {
   return sb->buffer.size() - 1 - filled;
 }
 
-static auto sample_buffer_skip(SampleBuffer* sb, size_t len) -> void {
+auto sample_buffer_skip(SampleBuffer* sb, size_t len) -> void {
   if (sb == nullptr) {
     return;
   }
@@ -157,7 +157,7 @@ static auto sample_buffer_skip(SampleBuffer* sb, size_t len) -> void {
                        std::memory_order_release);
 }
 
-static auto sample_buffer_upload(SampleBuffer* sb, const float* src, size_t len)
+auto sample_buffer_upload(SampleBuffer* sb, const float* src, size_t len)
     -> void {
   if (sb == nullptr || src == nullptr || len == 0) {
     return;
@@ -182,8 +182,8 @@ static auto sample_buffer_upload(SampleBuffer* sb, const float* src, size_t len)
   }
 }
 
-static auto sample_buffer_drain_to(SampleBuffer* sb, float* dest, size_t len,
-                                   bool mix) -> void {
+auto sample_buffer_drain_to(SampleBuffer* sb, float* dest, size_t len, bool mix)
+    -> void {
   if (sb == nullptr || dest == nullptr || len == 0) {
     return;
   }
@@ -271,10 +271,10 @@ struct AudioSourceSlot {
   std::unique_ptr<SampleBuffer> buffer;
 };
 
-static std::array<AudioSourceSlot, max_audio_slots> mixer_slots;
-static AudioChannelTapCallback channel_tap_cb = nullptr;
+std::array<AudioSourceSlot, max_audio_slots> mixer_slots;
+AudioChannelTapCallback channel_tap_cb = nullptr;
 
-static auto source_rate_hz(const PeripheralAudioInfo_t& info) -> double {
+auto source_rate_hz(const PeripheralAudioInfo_t& info) -> double {
   if (info.time_base == peripheral_audio_cpu_clocked) {
     const uint32_t divisor = (info.cycle_divisor == 0) ? 1 : info.cycle_divisor;
     return current_clk_6502 / static_cast<double>(divisor);
@@ -290,7 +290,7 @@ static auto source_rate_hz(const PeripheralAudioInfo_t& info) -> double {
 // spend the music on the clip rail. The floor of one keeps a source that pans
 // a single channel part-way from being amplified instead. The speaker's one
 // channel at (1, 1) leaves its 1/2.0 untouched.
-static auto default_source_gain(const PeripheralAudioInfo_t& info) -> float {
+auto default_source_gain(const PeripheralAudioInfo_t& info) -> float {
   if (info.peak_magnitude <= 0.0F) {
     return 1.0F;
   }
@@ -306,9 +306,9 @@ static auto default_source_gain(const PeripheralAudioInfo_t& info) -> float {
   return 1.0F / (info.peak_magnitude * fan_in);
 }
 
-static auto resample_downsample(ResamplerState& state, double step,
-                                const float* in, size_t in_count, float* out,
-                                size_t out_capacity) -> size_t {
+auto resample_downsample(ResamplerState& state, double step, const float* in,
+                         size_t in_count, float* out, size_t out_capacity)
+    -> size_t {
   size_t produced = 0;
   for (size_t i = 0; i < in_count && produced < out_capacity; ++i) {
     double remaining = 1.0;
@@ -328,9 +328,9 @@ static auto resample_downsample(ResamplerState& state, double step,
   return produced;
 }
 
-static auto resample_upsample(ResamplerState& state, double step,
-                              const float* in, size_t in_count, float* out,
-                              size_t out_capacity) -> size_t {
+auto resample_upsample(ResamplerState& state, double step, const float* in,
+                       size_t in_count, float* out, size_t out_capacity)
+    -> size_t {
   size_t produced = 0;
   for (size_t i = 0; i < in_count && produced < out_capacity; ++i) {
     const float current = in[i];
@@ -355,9 +355,9 @@ static auto resample_upsample(ResamplerState& state, double step,
 // one-bit cone and a PSG, but both live behind this one function so the choice
 // can be upgraded without touching callers. An integer window or dropped
 // samples would alias audibly.
-static auto resample_channel(ResamplerState& state, double step,
-                             const float* in, size_t in_count, float* out,
-                             size_t out_capacity) -> size_t {
+auto resample_channel(ResamplerState& state, double step, const float* in,
+                      size_t in_count, float* out, size_t out_capacity)
+    -> size_t {
   if (step >= 1.0) {
     return resample_downsample(state, step, in, in_count, out, out_capacity);
   }

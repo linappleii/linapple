@@ -369,12 +369,12 @@ auto Configuration::save() -> bool {
 
   for (auto const& section : data) {
     if (section.first != "Default") {
-      file << "[" << section.first << "]" << std::endl;
+      file << "[" << section.first << "]" << '\n';
     }
     for (auto const& kv : section.second) {
-      file << kv.first << " = " << kv.second << std::endl;
+      file << kv.first << " = " << kv.second << '\n';
     }
-    file << std::endl;
+    file << '\n';
   }
   return true;
 #else
@@ -459,9 +459,8 @@ auto Configuration::get_string(const std::string& section,
 }
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
-auto Configuration::get_int(const std::string& section,
-                              const std::string& key,
-                              uint32_t default_value) const -> uint32_t {
+auto Configuration::get_int(const std::string& section, const std::string& key,
+                            uint32_t default_value) const -> uint32_t {
   std::string val = get_string(section, key);
   if (val.empty()) {
     return default_value;
@@ -473,9 +472,8 @@ auto Configuration::get_int(const std::string& section,
   }
 }
 
-auto Configuration::get_bool(const std::string& section,
-                               const std::string& key, bool default_value) const
-    -> bool {
+auto Configuration::get_bool(const std::string& section, const std::string& key,
+                             bool default_value) const -> bool {
   std::string val = get_string(section, key);
   if (val.empty()) {
     return default_value;
@@ -493,8 +491,7 @@ auto Configuration::get_bool(const std::string& section,
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters) Justification: Section, key, and default value are distinct configuration query arguments
 auto Configuration::get_string(const char* section, const char* key,
-                                 const char* default_value) const
-    -> std::string {
+                               const char* default_value) const -> std::string {
   if (section == nullptr || key == nullptr) {
     return default_value != nullptr ? default_value : "";
   }
@@ -504,7 +501,7 @@ auto Configuration::get_string(const char* section, const char* key,
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
 auto Configuration::get_int(const char* section, const char* key,
-                              uint32_t default_value) const -> uint32_t {
+                            uint32_t default_value) const -> uint32_t {
   if (section == nullptr || key == nullptr) {
     return default_value;
   }
@@ -512,7 +509,7 @@ auto Configuration::get_int(const char* section, const char* key,
 }
 
 auto Configuration::get_bool(const char* section, const char* key,
-                               bool default_value) const -> bool {
+                             bool default_value) const -> bool {
   if (section == nullptr || key == nullptr) {
     return default_value;
   }
@@ -530,8 +527,8 @@ auto Configuration::get_section(const std::string& section) const
 
 // NOLINTBEGIN(bugprone-easily-swappable-parameters) Justification: Section, key, and value are distinct configuration parameters
 auto Configuration::set_string(const std::string& section,
-                                 const std::string& key,
-                                 const std::string& value) -> void {
+                               const std::string& key, const std::string& value)
+    -> void {
   data[section][key] = value;
   if (key == cfg_disk_image1) {
     util_safe_strcpy(disk_path.at(0).data(), value.c_str(), path_max_len);
@@ -556,8 +553,8 @@ auto Configuration::set_string(const std::string& section,
   }
 }
 
-auto Configuration::set_int(const std::string& section,
-                              const std::string& key, uint32_t value) -> void {
+auto Configuration::set_int(const std::string& section, const std::string& key,
+                            uint32_t value) -> void {
   data[section][key] = std::to_string(value);
   if (key == cfg_computer_emulation) {
     switch (value) {
@@ -588,8 +585,8 @@ auto Configuration::set_int(const std::string& section,
   }
 }
 
-auto Configuration::set_bool(const std::string& section,
-                               const std::string& key, bool value) -> void {
+auto Configuration::set_bool(const std::string& section, const std::string& key,
+                             bool value) -> void {
   data[section][key] = value ? "1" : "0";
   if (key == "Fullscreen") {
     is_fullscreen = value;
@@ -601,7 +598,7 @@ auto Configuration::set_bool(const std::string& section,
 }
 
 auto Configuration::set_string(const char* section, const char* key,
-                                 const char* value) -> void {
+                               const char* value) -> void {
   if (section == nullptr || key == nullptr || value == nullptr) {
     return;
   }
@@ -609,7 +606,7 @@ auto Configuration::set_string(const char* section, const char* key,
 }
 
 auto Configuration::set_int(const char* section, const char* key,
-                              uint32_t value) -> void {
+                            uint32_t value) -> void {
   if (section == nullptr || key == nullptr) {
     return;
   }
@@ -625,9 +622,7 @@ auto Configuration::set_bool(const char* section, const char* key, bool value)
 }
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
-auto config_instance() -> Configuration& {
-  return Configuration::instance();
-}
+auto config_instance() -> Configuration& { return Configuration::instance(); }
 
 auto config_load_file(const char* path) -> bool {
   if (path == nullptr) {

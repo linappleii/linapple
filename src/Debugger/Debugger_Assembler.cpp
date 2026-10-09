@@ -1260,15 +1260,15 @@ auto CmdAssemble(uint16_t address, int iArg, int nArgs) -> Update_t {
   ArgToken_e iTokenSrc = NO_TOKEN;
   ParserFindToken(g_console_input_ptr, g_tokens, NUM_TOKENS, &iTokenSrc);
 
-  if (iTokenSrc == NO_TOKEN) {  // is TOKEN_ALPHANUMERIC
-    if (g_console_input_ptr[0] != ' ') {
-      // Symbol
-      char* pSymbolName = g_args[iArg].sArg;  // pArg->sArg;
-      SymbolUpdate(SYMBOLS_ASSEMBLY, pSymbolName, address, false,
-                   true);  // bool bRemoveSymbol, bool bUpdateSymbol )
+  if ((iTokenSrc == NO_TOKEN) &&
+      (g_console_input_ptr[0] != ' '))  // is TOKEN_ALPHANUMERIC
+  {
+    // Symbol
+    char* pSymbolName = g_args[iArg].sArg;  // pArg->sArg;
+    SymbolUpdate(SYMBOLS_ASSEMBLY, pSymbolName, address, false,
+                 true);  // bool bRemoveSymbol, bool bUpdateSymbol )
 
-      iArg++;
-    }
+    iArg++;
   }
 
   bool bStatus = Assemble(iArg, nArgs, address);
@@ -1688,30 +1688,28 @@ auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress) -> bool {
           }
         }
 
-        if ((g_asm_address_mode != AM_M) &&
-            (g_asm_address_mode != AM_IMPLIED) && (!g_delayed_targets_dirty)) {
-          if (g_asm_target_address <= DBG_6502_ZEROPAGE_END) {
-            g_asm_address_mode = AM_Z;
-            g_asm_bytes = 1;
-          }
+        if (((g_asm_address_mode != AM_M) &&
+             (g_asm_address_mode != AM_IMPLIED) &&
+             (!g_delayed_targets_dirty)) &&
+            (g_asm_target_address <= DBG_6502_ZEROPAGE_END)) {
+          g_asm_address_mode = AM_Z;
+          g_asm_bytes = 1;
         }
       }
-      if (eNextState == AS_GET_INDEX) {
-        if (pArg->nArgLen == 1) {
-          if (pArg->sArg[0] == 'X') {
-            if (!TestFlag(AF_HaveComma)) {
-              ConsoleBufferPush(" Syntax error: Missing ','");
-              return false;
-            }
-            SetFlag(AF_HaveRegisterX);
+      if ((eNextState == AS_GET_INDEX) && (pArg->nArgLen == 1)) {
+        if (pArg->sArg[0] == 'X') {
+          if (!TestFlag(AF_HaveComma)) {
+            ConsoleBufferPush(" Syntax error: Missing ','");
+            return false;
           }
-          if (pArg->sArg[0] == 'Y') {
-            if (!(TestFlag(AF_HaveComma))) {
-              ConsoleBufferPush(" Syntax error: Missing ','");
-              return false;
-            }
-            SetFlag(AF_HaveRegisterY);
+          SetFlag(AF_HaveRegisterX);
+        }
+        if (pArg->sArg[0] == 'Y') {
+          if (!TestFlag(AF_HaveComma)) {
+            ConsoleBufferPush(" Syntax error: Missing ','");
+            return false;
           }
+          SetFlag(AF_HaveRegisterY);
         }
       }
     }
@@ -1730,40 +1728,37 @@ auto AssemblerUpdateAddressingMode() -> bool {
   SetFlag(AF_HaveBothParen,
           TestFlag(AF_HaveLeftParen) && TestFlag(AF_HaveRightParen));
 
-  if ((TestFlag(AF_HaveLeftParen)) && (!TestFlag(AF_HaveRightParen))) {
+  if (TestFlag(AF_HaveLeftParen) && (!TestFlag(AF_HaveRightParen))) {
     ConsoleBufferPush(" Syntax error: Missing ''");
     return false;
   }
 
-  if ((!TestFlag(AF_HaveLeftParen)) && (TestFlag(AF_HaveRightParen))) {
+  if ((!TestFlag(AF_HaveLeftParen)) && TestFlag(AF_HaveRightParen)) {
     ConsoleBufferPush(" Syntax error: Missing '('");
     return false;
   }
 
-  if (TestFlag(AF_HaveComma)) {
-    if ((!TestFlag(AF_HaveRegisterX)) && (!TestFlag(AF_HaveRegisterY))) {
-      ConsoleBufferPush(" Syntax error: Index 'X' or 'Y'");
-      return false;
-    }
+  if ((TestFlag(AF_HaveComma)) &&
+      ((!TestFlag(AF_HaveRegisterX)) && (!TestFlag(AF_HaveRegisterY)))) {
+    ConsoleBufferPush(" Syntax error: Index 'X' or 'Y'");
+    return false;
   }
 
-  if (TestFlag(AF_HaveBothParen)) {
-    if (TestFlag(AF_HaveComma)) {
-      if (TestFlag(AF_HaveRegisterX)) {
-        g_asm_address_mode = AM_AX;
-        g_asm_bytes = 2;
-        if (g_asm_target_address <= DBG_6502_ZEROPAGE_END) {
-          g_asm_address_mode = AM_ZX;
-          g_asm_bytes = 1;
-        }
+  if ((TestFlag(AF_HaveBothParen)) && (TestFlag(AF_HaveComma))) {
+    if (TestFlag(AF_HaveRegisterX)) {
+      g_asm_address_mode = AM_AX;
+      g_asm_bytes = 2;
+      if (g_asm_target_address <= DBG_6502_ZEROPAGE_END) {
+        g_asm_address_mode = AM_ZX;
+        g_asm_bytes = 1;
       }
-      if (TestFlag(AF_HaveRegisterY)) {
-        g_asm_address_mode = AM_AY;
-        g_asm_bytes = 2;
-        if (g_asm_target_address <= DBG_6502_ZEROPAGE_END) {
-          g_asm_address_mode = AM_ZY;
-          g_asm_bytes = 1;
-        }
+    }
+    if (TestFlag(AF_HaveRegisterY)) {
+      g_asm_address_mode = AM_AY;
+      g_asm_bytes = 2;
+      if (g_asm_target_address <= DBG_6502_ZEROPAGE_END) {
+        g_asm_address_mode = AM_ZY;
+        g_asm_bytes = 1;
       }
     }
   }
@@ -1855,12 +1850,11 @@ auto AssemblerProcessDelayedSymols() -> void {
         // BaseAddress
         uint16_t nTargetValue = nTargetAddress;
 
-        if (CalcRelativeOffset(nOpcode, pTarget->base_address, nTargetAddress,
-                               &nTargetValue)) {
-          if (g_asm_address_mode == NUM_OPMODES) {
-            nTargetValue = 0;
-            bModified = false;
-          }
+        if ((CalcRelativeOffset(nOpcode, pTarget->base_address, nTargetAddress,
+                                &nTargetValue)) &&
+            (g_asm_address_mode == NUM_OPMODES)) {
+          nTargetValue = 0;
+          bModified = false;
         }
 
         if (bModified) {
@@ -1920,14 +1914,13 @@ auto Assemble(int iArg, int nArgs, uint16_t address) -> bool {
 
     ConsoleBufferPush(" Syntax error: Invalid mnemonic");
     return false;
-  } else {
-    bGotArgs = AssemblerGetArgs(iArg, nArgs, address);
-    if (bGotArgs) {
-      bGotMode = AssemblerUpdateAddressingMode();
-      if (bGotMode) {
-        bGotByte = AssemblerPokeOpcodeAddress(address);
-        (void)bGotByte;
-      }
+  }
+  bGotArgs = AssemblerGetArgs(iArg, nArgs, address);
+  if (bGotArgs) {
+    bGotMode = AssemblerUpdateAddressingMode();
+    if (bGotMode) {
+      bGotByte = AssemblerPokeOpcodeAddress(address);
+      (void)bGotByte;
     }
   }
 
@@ -1948,11 +1941,6 @@ auto AssemblerOff() -> void {
 
 // Window
 // _________________________________________________________________________________________
-extern int g_window_last;
-extern int g_window_this;
-extern WindowSplit_t g_window_config[NUM_WINDOWS];
 
 // Zero Page Pointers
 // _____________________________________________________________________________
-extern int g_zero_page_pointers_count;
-extern ZeroPagePointers_t g_zero_page_pointers[MAX_ZEROPAGE_POINTERS];

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using)
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, readability-identifier-naming)
 // Justification: a language-neutral C ABI for C consumers.
 
 #ifdef __cplusplus
@@ -15,7 +15,7 @@ typedef enum {
   harddisk_err_read_only = 3,
   harddisk_err_invalid_format = 4,
   /* A nibble or flux image holds no blocks a block device could serve. */
-  harddisk_err_not_block_image = 5
+  harddisk_err_not_block_image = 5,
 } HarddiskError_e;
 
 /* The codes a ProDOS block device returns in A with the carry set (ProDOS 8
@@ -25,11 +25,11 @@ typedef enum {
   harddisk_prodos_ok = 0x00,
   harddisk_prodos_io_error = 0x27,
   harddisk_prodos_no_device = 0x28,
-  harddisk_prodos_write_protected = 0x2B
+  harddisk_prodos_write_protected = 0x2B,
 } HarddiskProdosError_e;
 
 #ifdef __cplusplus
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using)
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, readability-identifier-naming)

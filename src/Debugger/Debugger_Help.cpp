@@ -917,10 +917,8 @@ auto CmdHelpSpecific(int nArgs) -> Update_t {
       ConsolePrintFormat(sText, "%sCategory%s: %s%s", CHC_USAGE, CHC_DEFAULT,
                          CHC_CATEGORY, sCategory);
 
-      if (bCategory) {
-        if (bDisplayCategory) {
-          bDisplayCategory = false;
-        }
+      if ((bCategory) && (bDisplayCategory)) {
+        bDisplayCategory = false;
       }
     }
 
@@ -982,10 +980,8 @@ auto CmdHelpSpecific(int nArgs) -> Update_t {
       }
     }
 
-    if (!bFoundAny && !bAllCommands) {
-      if ((!nFound) || (!pCommand)) {
-        ConsoleBufferPush(" Invalid command.");
-      }
+    if ((!bFoundAny && !bAllCommands) && ((!nFound) || (!pCommand))) {
+      ConsoleBufferPush(" Invalid command.");
     }
   }
 
@@ -1001,8 +997,6 @@ auto CmdHelpList(int nArgs) -> Update_t {
 
   int nMaxWidth = g_console_display_width - 1;
   int iCommand = 0;
-
-  extern std::vector<Command_t> g_sorted_commands;
 
   if (!g_sorted_commands.size()) {
     for (iCommand = 0; iCommand < g_num_commands_with_aliases; iCommand++) {
@@ -1032,7 +1026,7 @@ auto CmdHelpList(int nArgs) -> Update_t {
     }
 
     int nLenCmd = strlen(pName);
-    if ((nLen + nLenCmd) < (nMaxWidth)) {
+    if ((nLen + nLenCmd) < nMaxWidth) {
       StringCat(sText, CHC_COMMAND, nBuf);
       nLen += StringCat(sText, pName, nBuf);
     } else {
@@ -1097,9 +1091,8 @@ auto CmdVersion(int nArgs) -> Update_t {
         CmdConfigGetFont(0);
 
         break;
-      } else {
-        return Help_Arg_1(CMD_VERSION);
       }
+      return Help_Arg_1(CMD_VERSION);
     }
   }
 

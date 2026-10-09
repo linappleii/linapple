@@ -34,7 +34,7 @@
 // 14 + 2t and each track beginning where the one before it ends.
 namespace {
 namespace iie {
-static constexpr std::array<uint8_t, 13> signature = {
+constexpr std::array<uint8_t, 13> signature = {
     'S', 'I', 'M', 'S', 'Y', 'S', 'T', 'E', 'M', '_', 'I', 'I', 'E',
 };
 constexpr size_t signature_len = 13;

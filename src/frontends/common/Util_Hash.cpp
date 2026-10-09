@@ -29,23 +29,23 @@ struct Md5Context {
   std::array<uint8_t, md5_block_size> buffer{};
 };
 
-static inline auto F(uint32_t x, uint32_t y, uint32_t z) noexcept -> uint32_t {
+inline auto F(uint32_t x, uint32_t y, uint32_t z) noexcept -> uint32_t {
   return ((x & y) | ((~x) & z));
 }
 
-static inline auto G(uint32_t x, uint32_t y, uint32_t z) noexcept -> uint32_t {
+inline auto G(uint32_t x, uint32_t y, uint32_t z) noexcept -> uint32_t {
   return ((x & z) | (y & (~z)));
 }
 
-static inline auto H(uint32_t x, uint32_t y, uint32_t z) noexcept -> uint32_t {
+inline auto H(uint32_t x, uint32_t y, uint32_t z) noexcept -> uint32_t {
   return (x ^ y ^ z);
 }
 
-static inline auto I(uint32_t x, uint32_t y, uint32_t z) noexcept -> uint32_t {
+inline auto I(uint32_t x, uint32_t y, uint32_t z) noexcept -> uint32_t {
   return (y ^ (x | (~z)));
 }
 
-static inline auto rotate_left(uint32_t x, int n) noexcept -> uint32_t {
+inline auto rotate_left(uint32_t x, int n) noexcept -> uint32_t {
   constexpr int bits_in_uint4 = 32;
   return ((x << n) | (x >> (bits_in_uint4 - n)));
 }
@@ -73,7 +73,7 @@ constexpr std::array<uint32_t, md5_block_size> md5_t = {
     },
 };
 
-static auto md5_transform(Md5Context* ctx, const uint8_t block[md5_block_size])
+auto md5_transform(Md5Context* ctx, const uint8_t block[md5_block_size])
     -> void {
   uint32_t a = ctx->state.at(0);
   uint32_t b = ctx->state.at(1);
@@ -129,8 +129,7 @@ static auto md5_transform(Md5Context* ctx, const uint8_t block[md5_block_size])
   ctx->state.at(3) += d;
 }
 
-static auto md5_update(Md5Context* ctx, const char* input, size_t inputlen)
-    -> void {
+auto md5_update(Md5Context* ctx, const char* input, size_t inputlen) -> void {
   const auto buflen = static_cast<size_t>(ctx->total_length & 63U);
   ctx->total_length += inputlen;
 
@@ -151,9 +150,8 @@ static auto md5_update(Md5Context* ctx, const char* input, size_t inputlen)
   memcpy(ctx->buffer.data(), input + i, inputlen - i);
 }
 
-static auto md5_final(Md5Context* ctx,
-                      std::array<uint8_t, md5_digest_size>& digest_out)
-    -> void {
+auto md5_final(Md5Context* ctx,
+               std::array<uint8_t, md5_digest_size>& digest_out) -> void {
   auto buflen = static_cast<size_t>(ctx->total_length & 63U);
 
   ctx->buffer.at(buflen++) = 0x80U;

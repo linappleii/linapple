@@ -39,26 +39,12 @@ bool g_trace_header = false;
 bool g_trace_file_with_video_scanner = false;
 char g_file_name_trace[] = "Trace.txt";
 
-extern uint16_t g_disasm_cur_address;
-extern int g_disasm_cur_line;
-
-extern ProfileOpcode_t g_profile_opcodes[NUM_OPCODES];
-extern ProfileOpmode_t g_profile_opmodes[NUM_OPMODES];
-
-extern int g_debug_break_on_opcode;
 extern int g_debug_breakpoint_hit;
 extern int g_debug_break_on_invalid;
-
-extern uint16_t g_disasm_top_address;
-extern uint16_t g_disasm_bot_address;
 
 extern uint32_t g_video_clock_horz;
 extern uint32_t g_video_clock_vert;
 
-extern VideoScannerDisplayInfo_t g_video_scanner_display_info;
-
-auto DisasmCalcTopBotAddress() -> void;
-auto IsDebugBreakOnInvalid(int iOpcodeType) -> bool;
 auto video_refresh_screen(int bVideoModeFlags, bool bForceRedraw) -> void;
 auto video_get_sw_page2() -> bool;
 auto video_get_sw_mixed() -> bool;
@@ -488,7 +474,7 @@ auto DebugContinueStepping(const bool bCallerWillUpdateDisplay) -> void {
 
   bool bDoSingleStep = true;
 
-  if ((g_debug_steps != 0) || (bForceSingleStepNext)) {
+  if ((g_debug_steps != 0) || bForceSingleStepNext) {
     if (!bForceSingleStepNext) {
       if (g_trace_file) {
         OutputTraceLine();

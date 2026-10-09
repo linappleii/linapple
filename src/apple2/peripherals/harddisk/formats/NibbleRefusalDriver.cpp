@@ -63,8 +63,12 @@ auto nibble_refusal_write_block(void*, uint32_t, const uint8_t*)
 
 auto nibble_refusal_get_total_blocks(void*) -> uint32_t { return 0; }
 
-const char* const nibble_refusal_supported_exts[] = {"nib", "nb2", "woz",
-                                                     nullptr};
+const char* const nibble_refusal_supported_exts[] = {
+    "nib",
+    "nb2",
+    "woz",
+    nullptr,
+};
 
 }  // namespace
 
@@ -79,7 +83,8 @@ extern "C" const HarddiskFormatDriver_t g_nibble_refusal_driver = {
     .is_write_protected = nibble_refusal_is_write_protected,
     .read_block = nibble_refusal_read_block,
     .write_block = nibble_refusal_write_block,
-    .get_total_blocks = nibble_refusal_get_total_blocks};
+    .get_total_blocks = nibble_refusal_get_total_blocks,
+};
 
 static const HarddiskFormatRegistration_t registration{
     &g_nibble_refusal_driver};

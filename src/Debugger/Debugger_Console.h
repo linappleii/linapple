@@ -28,7 +28,7 @@ enum {
 // Color ____________________________________________________________________
 
 // typedef uint8_t conchar_t;
-typedef short conchar_t;
+using conchar_t = short;
 
 // NOTE: Keep in sync ConsoleColors_e g_console_color !
 enum ConsoleColors_e {
@@ -78,17 +78,11 @@ constexpr const char* CHC_PATH = "`:";  // Light Blue
 
 // ascii markup
 inline auto ConsoleColor_IsCharMeta(uint8_t c) -> bool {
-  if (CONSOLE_COLOR_ESCAPE_CHAR == c) {
-    return true;
-  }
-  return false;
+  return CONSOLE_COLOR_ESCAPE_CHAR == c;
 }
 
 inline auto ConsoleColor_IsCharColor(uint8_t c) -> bool {
-  if ((c >= '0') && ((c - '0') < NUM_CONSOLE_COLORS)) {
-    return true;
-  }
-  return false;
+  return (c >= '0') && ((c - '0') < NUM_CONSOLE_COLORS);
 }
 
 // Console "Native" Chars
@@ -123,10 +117,7 @@ inline auto ConsoleColor_IsCharColor(uint8_t c) -> bool {
 //      cc Encoded Color / Mouse Text
 //
 inline auto ConsoleColor_IsColorOrMouse(conchar_t g) -> bool {
-  if (g > CONSOLE_COLOR_MASK) {
-    return true;
-  }
-  return false;
+  return g > CONSOLE_COLOR_MASK;
 }
 
 inline auto ConsoleColor_IsColor(conchar_t g) -> bool {

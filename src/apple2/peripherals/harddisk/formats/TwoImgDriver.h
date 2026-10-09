@@ -21,7 +21,7 @@ enum { two_img_header_size = 64 };
 enum {
   two_img_format_dos = 0,
   two_img_format_prodos = 1,
-  two_img_format_nibble = 2
+  two_img_format_nibble = 2,
 };
 
 /* What the parser settled from a 2IMG header: where the blocks start, how

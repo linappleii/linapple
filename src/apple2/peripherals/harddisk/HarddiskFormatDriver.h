@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using)
+// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, readability-identifier-naming)
 // Justification: a language-neutral C ABI for C consumers.
 
 #include <stdbool.h>
@@ -78,4 +78,4 @@ typedef struct HarddiskFormatDriver_t {
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using)
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, readability-identifier-naming)

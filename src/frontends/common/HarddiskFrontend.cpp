@@ -20,7 +20,7 @@ constexpr const char* k_harddisk_id = "linapple.harddisk";
 
 int g_card_slot = harddisk_frontend_no_card;
 
-HarddiskErrorReporter_t g_reporter = nullptr;
+HarddiskErrorReporter g_reporter = nullptr;
 
 auto is_drive_valid(int drive) -> bool {
   return drive >= 0 && drive < harddisk_drive_count;
@@ -148,7 +148,7 @@ auto harddisk_frontend_error_message(int error) -> const char* {
   }
 }
 
-auto harddisk_frontend_set_error_reporter(HarddiskErrorReporter_t reporter)
+auto harddisk_frontend_set_error_reporter(HarddiskErrorReporter reporter)
     -> void {
   g_reporter = reporter;
 }

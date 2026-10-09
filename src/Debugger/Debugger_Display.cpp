@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "Debugger_Display.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -41,12 +42,6 @@ ColorRef_t g_debugger_virtual_text_screen_fg[DEBUG_VIRTUAL_TEXT_HEIGHT]
 ColorRef_t g_debugger_virtual_text_screen_bg[DEBUG_VIRTUAL_TEXT_HEIGHT]
                                             [DEBUG_VIRTUAL_TEXT_WIDTH];
 
-extern int g_window_last;
-extern int g_window_this;
-extern WindowSplit_t g_window_config[NUM_WINDOWS];
-
-extern int g_disasm_win_height;
-extern int g_console_display_lines;
 int g_display_memory_lines = 8;
 VideoScannerDisplayInfo_t g_video_scanner_display_info;
 
@@ -55,10 +50,6 @@ VideoScannerDisplayInfo_t g_video_scanner_display_info;
 extern auto DisasmInit() -> void;
 extern auto CmdSymbolsClear(SymbolTable_Index_e eSymbolTable) -> Update_t;
 extern auto frame_refresh_status(int) -> void;
-
-extern auto DrawSubWindow_Symbols(Update_t bUpdate) -> void;
-extern auto DrawSubWindow_ZeroPage(Update_t bUpdate) -> void;
-extern auto DrawSubWindow_Source(Update_t bUpdate) -> void;
 
 auto DrawSubWindow_IO(Update_t) -> void {}
 
@@ -573,9 +564,7 @@ auto FormatOpcodeBytes(uint16_t nBaseAddress, DisasmLine_t& line_) -> void {
 
   char* pDst = line_.sOpCodes;
   int nMaxOpBytes = nOpbyte;
-  if (nMaxOpBytes > MAX_OPCODES) {
-    nMaxOpBytes = MAX_OPCODES;
-  }
+  nMaxOpBytes = std::min(nMaxOpBytes, MAX_OPCODES);
 
   for (int byte = 0; byte < nMaxOpBytes; byte++) {
     uint8_t nMem = *(mem + static_cast<uint16_t>(nBaseAddress + byte));
@@ -611,11 +600,10 @@ auto FormatNopcodeBytes(uint16_t nBaseAddress, DisasmLine_t& line_) -> void {
         snprintf(pDst, 3, "%02X", nTarget8);
         pDst += 2;
         byte++;
-        if (line_.iNoptype == NOP_BYTE_1) {
-          if (byte < line_.nOpbyte) {
-            *pDst++ = ',';
-          }
+        if ((line_.iNoptype == NOP_BYTE_1) && (byte < line_.nOpbyte)) {
+          *pDst++ = ',';
         }
+
         break;
       case NOP_WORD_1:
       case NOP_WORD_2:
@@ -1027,7 +1015,6 @@ auto debug_end() -> void {
 
   g_trace_file.reset();
 
-  extern std::vector<int> g_memory_search_results;
   g_memory_search_results.erase(g_memory_search_results.begin(),
                                 g_memory_search_results.end());
 

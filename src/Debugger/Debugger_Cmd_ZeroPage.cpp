@@ -12,8 +12,6 @@
 #include "Debugger_Types.h"
 
 // Globals originally from Debug.cpp
-extern ZeroPagePointers_t g_zero_page_pointers[MAX_ZEROPAGE_POINTERS];
-extern int g_zero_page_pointers_count;
 
 // Implementation helpers
 auto ZeroPage_Error() -> Update_t {
@@ -53,8 +51,7 @@ auto CmdZeroPageAdd(int nArgs) -> Update_t {
 
     if (iZP == NO_6502_TARGET) {
       iZP = 0;
-      while ((iZP < MAX_ZEROPAGE_POINTERS) &&
-             (g_zero_page_pointers[iZP].bSet)) {
+      while ((iZP < MAX_ZEROPAGE_POINTERS) && g_zero_page_pointers[iZP].bSet) {
         iZP++;
       }
     }

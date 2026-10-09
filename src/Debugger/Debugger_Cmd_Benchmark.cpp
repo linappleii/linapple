@@ -33,11 +33,6 @@ char g_profile_line[NUM_PROFILE_LINES][CONSOLE_WIDTH] = {};
 uint32_t extbench = 0;
 
 // Externs
-extern uint16_t g_disasm_cur_address;
-extern uint16_t g_disasm_top_address;
-extern uint16_t g_disasm_bot_address;
-extern int g_disasm_cur_line;
-extern bool g_disasm_cur_bad;
 
 // Implementation ___________________________________________________________
 
@@ -96,9 +91,7 @@ auto CmdProfile(int nArgs) -> Update_t {
 auto ProfileLinePeek(int iLine) -> char* {
   char* text = nullptr;
 
-  if (iLine < 0) {
-    iLine = 0;
-  }
+  iLine = std::max(iLine, 0);
 
   if (iLine <= g_profile_line_count) {
     text = &g_profile_line[iLine][0];

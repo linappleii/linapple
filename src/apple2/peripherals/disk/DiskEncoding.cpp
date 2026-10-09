@@ -142,7 +142,7 @@ const std::array<std::array<uint8_t, sectors_per_track>, interleave_row_count>
         },
 };
 
-static const auto decode_table = []() {
+const auto decode_table = []() {
   std::array<uint8_t, decode_table_size> t{};
   t.fill(invalid_nibble);
   for (size_t i = 0; i < disk_encoding_table.size(); ++i) {
@@ -419,12 +419,12 @@ auto disk_encoding_nibblize_track(const uint8_t* sector_order, uint32_t track,
   };
 
   auto encode_4and4_high = [](uint8_t a) -> uint8_t {
-    return static_cast<uint8_t>((((a) >> 1U) & addr_4and4_mask) |
+    return static_cast<uint8_t>(((a >> 1U) & addr_4and4_mask) |
                                 gcr_sync_bit_mask);
   };
 
   auto encode_4and4_low = [](uint8_t a) -> uint8_t {
-    return static_cast<uint8_t>(((a)&addr_4and4_mask) | gcr_sync_bit_mask);
+    return static_cast<uint8_t>((a & addr_4and4_mask) | gcr_sync_bit_mask);
   };
 
   // Beneath Apple DOS puts gap 1 between the index hole and the first address

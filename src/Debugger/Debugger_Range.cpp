@@ -2,6 +2,7 @@
 
 #include "Debugger_Range.h"
 
+#include <algorithm>
 #include <cstdint>
 
 #include "Debugger_Parser.h"
@@ -23,9 +24,7 @@ auto Range_CalcEndLen(const RangeType_t eRange, const uint16_t& nAddress1,
     // Len =  FFFF
     tEndLen_.nAddressLen = nAddress2;
     uint32_t nTemp = nAddress1 + tEndLen_.nAddressLen - 1;
-    if (nTemp > apple2_6502_mem_end) {
-      nTemp = apple2_6502_mem_end;
-    }
+    nTemp = std::min(nTemp, apple2_6502_mem_end);
     tEndLen_.nAddressEnd = nTemp;
     bValid = true;
   } else if (eRange == RANGE_HAS_END) {
@@ -45,9 +44,7 @@ auto Range_CalcEndLen(const RangeType_t eRange, const uint16_t& nAddress1,
 auto Range_Get(uint16_t& nAddress1_, uint16_t& nAddress2_, const int iArg)
     -> RangeType_t {
   nAddress1_ = static_cast<unsigned>(g_args[iArg].nValue);
-  if (nAddress1_ > apple2_6502_mem_end) {
-    nAddress1_ = apple2_6502_mem_end;
-  }
+  nAddress1_ = std::min<uint32_t>(nAddress1_, apple2_6502_mem_end);
 
   nAddress2_ = 0;
   int nTemp = 0;

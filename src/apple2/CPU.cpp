@@ -114,10 +114,10 @@ struct CpuLoopContext {
 
   auto set_nz(uint16_t a) -> void {
     flagn = (a & 0x80);
-    flagz = !((a) & 0xFF);
+    flagz = !(a & 0xFF);
   }
 
-  auto set_z(uint16_t a) -> void { flagz = !((a) & 0xFF); }
+  auto set_z(uint16_t a) -> void { flagz = !(a & 0xFF); }
 
   auto pack_ps() -> void {
     regs.ps = (regs.ps & ~(AF_CARRY | AF_SIGN | AF_OVERFLOW | AF_ZERO)) |

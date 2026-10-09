@@ -12,21 +12,20 @@
 
 namespace {
 
-static struct termios g_orig_termios;
-static volatile sig_atomic_t g_terminal_initialized = 0;
-static std::atomic<bool> g_resized(false);
-static std::atomic<bool> g_interrupted(false);
-static bool s_atexit_registered = false;
+struct termios g_orig_termios;
+volatile sig_atomic_t g_terminal_initialized = 0;
+std::atomic<bool> g_resized(false);
+std::atomic<bool> g_interrupted(false);
+bool s_atexit_registered = false;
 
-static constexpr const char* k_enter_alt_screen_hide_cursor =
-    "\x1b[?1049h\x1b[?25l";
+constexpr const char* k_enter_alt_screen_hide_cursor = "\x1b[?1049h\x1b[?25l";
 // Mouse tracking is turned off whether or not it was turned on: a crash inside
 // the emulation would otherwise leave the shell typing a report at every
 // pointer movement until `reset`.
-static constexpr char k_restore_terminal[] =
+constexpr char k_restore_terminal[] =
     "\x1b[?1016l\x1b[?1006l\x1b[?1003l\x1b[?25h\x1b[?1049l";
 
-static auto signal_handler(int sig) -> void {
+auto signal_handler(int sig) -> void {
   switch (sig) {
     case SIGINT:
     case SIGTERM:
@@ -42,7 +41,7 @@ static auto signal_handler(int sig) -> void {
   }
 }
 
-static auto restore_terminal_signal_safe() -> void {
+auto restore_terminal_signal_safe() -> void {
   if (!g_terminal_initialized) {
     return;
   }
@@ -53,7 +52,7 @@ static auto restore_terminal_signal_safe() -> void {
   g_terminal_initialized = 0;
 }
 
-static auto fatal_signal_handler(int sig) -> void {
+auto fatal_signal_handler(int sig) -> void {
   restore_terminal_signal_safe();
   struct sigaction sa;
   memset(&sa, 0, sizeof(sa));

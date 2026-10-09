@@ -3,7 +3,7 @@
 
 #include "Debugger_Types.h"
 
-auto CmdGo(int nArgs, const bool bFullSpeed) -> Update_t;
+auto CmdGo(int nArgs, bool bFullSpeed) -> Update_t;
 auto CmdGoNormalSpeed(int nArgs) -> Update_t;
 auto CmdGoFullSpeed(int nArgs) -> Update_t;
 auto CmdStepOver(int nArgs) -> Update_t;
@@ -16,5 +16,5 @@ auto CmdJsr(int nArgs) -> Update_t;
 auto cpu_setup_benchmark() -> void;
 
 auto OutputTraceLine() -> void;
-auto DebugContinueStepping(const bool bCallerWillUpdateDisplay) -> void;
+auto DebugContinueStepping(bool bCallerWillUpdateDisplay) -> void;
 auto DebugStopStepping(void) -> void;

@@ -23,7 +23,7 @@ extern "C" {
    5.25-inch disk. */
 typedef enum {
   block_disk_order_prodos = 0,
-  block_disk_order_dos = 1
+  block_disk_order_dos = 1,
 } BlockDiskOrder_e;
 
 /* The one size a DOS-order image has: 35 tracks of sixteen 256-byte sectors,

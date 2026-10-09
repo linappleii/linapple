@@ -10,9 +10,9 @@ struct RangeEndLen_t {
   int nAddressLen;
 };
 
-auto Range_Get(uint16_t& nAddress1_, uint16_t& nAddress2_, const int iArg = 1)
+auto Range_Get(uint16_t& nAddress1_, uint16_t& nAddress2_, int iArg = 1)
     -> RangeType_t;
 
-auto Range_CalcEndLen(const RangeType_t eRange, const uint16_t& nAddress1,
+auto Range_CalcEndLen(RangeType_t eRange, const uint16_t& nAddress1,
                       const uint16_t& nAddress2, RangeEndLen_t& tEndLen_)
     -> bool;

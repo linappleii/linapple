@@ -498,7 +498,7 @@ auto font_print(int x, int y, const char* text, VideoSurfaceView surface,
     row = c / k_chars_in_row;
 
     s.x = (c - (row * k_chars_in_row)) * (k_font_size_x + 1) + 1;
-    s.y = (row) * (k_font_size_y + 1) + 1;
+    s.y = row * (k_font_size_y + 1) + 1;
     s.h = k_font_size_y;
     s.w = k_font_size_x;
 

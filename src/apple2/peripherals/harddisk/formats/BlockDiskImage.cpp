@@ -58,14 +58,18 @@ constexpr uint32_t blocks_per_track = 8;
 // Apple ProDOS gives (pp. 3-16 to 3-18 by the printed footers), first-named
 // sector first: 0&E, D&C, B&A, 9&8, 7&6, 5&4, 3&2, 1&F.
 constexpr std::array<std::array<uint8_t, 2>, blocks_per_track>
-    k_dos_sectors_of_block = {{{{0x0, 0xE}},
-                               {{0xD, 0xC}},
-                               {{0xB, 0xA}},
-                               {{0x9, 0x8}},
-                               {{0x7, 0x6}},
-                               {{0x5, 0x4}},
-                               {{0x3, 0x2}},
-                               {{0x1, 0xF}}}};
+    k_dos_sectors_of_block = {
+        {
+            {{0x0, 0xE}},
+            {{0xD, 0xC}},
+            {{0xB, 0xA}},
+            {{0x9, 0x8}},
+            {{0x7, 0x6}},
+            {{0x5, 0x4}},
+            {{0x3, 0x2}},
+            {{0x1, 0xF}},
+        },
+};
 
 // The byte offset of either 256-byte half of block b in a DOS-order file:
 // track b >> 3, the sector the table gives for b & 7.

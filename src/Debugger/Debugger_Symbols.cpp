@@ -360,11 +360,9 @@ auto CmdSymbolList_Address2Symbol(int address, int bSymbolTables) -> bool {
   int iTable = 0;
   const char* pSymbol = FindSymbolFromAddress(address, &iTable);
 
-  if (pSymbol) {
-    if (FindSymbolTable(bSymbolTables, iTable)) {
-      CmdPrintSymbol(pSymbol, address, iTable);
-      return true;
-    }
+  if ((pSymbol) && (FindSymbolTable(bSymbolTables, iTable))) {
+    CmdPrintSymbol(pSymbol, address, iTable);
+    return true;
   }
 
   return false;
@@ -377,11 +375,10 @@ auto CmdSymbolList_Symbol2Address(const char* pSymbol, int bSymbolTables)
   uint16_t address = 0;
 
   bool bFoundSymbol = FindAddressFromSymbol(pSymbol, &address, &iTable);
-  if (bFoundSymbol) {
-    if (FindSymbolTable(bSymbolTables, iTable)) {
-      CmdPrintSymbol(pSymbol, address, iTable);
-    }
+  if ((bFoundSymbol) && (FindSymbolTable(bSymbolTables, iTable))) {
+    CmdPrintSymbol(pSymbol, address, iTable);
   }
+
   return bFoundSymbol;
 }
 
@@ -443,13 +440,14 @@ auto CmdSymbolsListTables(int nArgs, int bSymbolTables) -> Update_t {
         }
       }
     } else if (address) {  // Have address, do symbol lookup first
-      if (!CmdSymbolList_Symbol2Address(pSymbol, bSymbolTables)) {
-        // nope, ok, try as address
-        if (!CmdSymbolList_Address2Symbol(address, bSymbolTables)) {
-          ConsolePrintFormat(sText, " Address not found: %s$%s%04X%s",
-                             CHC_ARG_SEP, CHC_ADDRESS, address, CHC_DEFAULT);
-        }
+      if ((!CmdSymbolList_Symbol2Address(pSymbol, bSymbolTables)) &&
+          (!CmdSymbolList_Address2Symbol(address, bSymbolTables)))
+      // nope, ok, try as address
+      {
+        ConsolePrintFormat(sText, " Address not found: %s$%s%04X%s",
+                           CHC_ARG_SEP, CHC_ADDRESS, address, CHC_DEFAULT);
       }
+
     } else {  // Have symbol, do address lookup
       if (!CmdSymbolList_Symbol2Address(
               pSymbol, bSymbolTables)) {  // nope, ok, try as address
@@ -678,15 +676,13 @@ auto CmdSymbolsLoad(int nArgs) -> Update_t {
     uint32_t nOffsetAddr = 0;
 
     iArg++;
-    if (iArg <= nArgs) {
-      if (g_args[iArg].eToken == TOKEN_COMMA) {
-        iArg++;
-        if (iArg <= nArgs) {
-          nOffsetAddr = g_args[iArg].nValue;
-          if ((nOffsetAddr < DBG_6502_MEM_BEGIN) ||
-              (nOffsetAddr > apple2_6502_mem_end)) {
-            nOffsetAddr = 0;
-          }
+    if ((iArg <= nArgs) && (g_args[iArg].eToken == TOKEN_COMMA)) {
+      iArg++;
+      if (iArg <= nArgs) {
+        nOffsetAddr = g_args[iArg].nValue;
+        if ((nOffsetAddr < DBG_6502_MEM_BEGIN) ||
+            (nOffsetAddr > apple2_6502_mem_end)) {
+          nOffsetAddr = 0;
         }
       }
     }
@@ -817,12 +813,12 @@ auto CmdSymbolsCommon(int nArgs, int bSymbolTables) -> Update_t {
                              g_symbol_table_names[iTable]);
           iUpdate |= ConsoleUpdate();
           return iUpdate;
-        } else {
-          // Shouldn't have multiple symbol tables selected
-          //					nArgs = Arg_1( eSymbolsTable );
-          ConsoleBufferPush(" error: Unknown Symbol Table Type");
-          return ConsoleUpdate();
         }
+        // Shouldn't have multiple symbol tables selected
+        //					nArgs = Arg_1( eSymbolsTable );
+        ConsoleBufferPush(" error: Unknown Symbol Table Type");
+        return ConsoleUpdate();
+
       } else if (iParam == PARAM_LOAD) {
         nArgs = Arg_Shift(iArg, nArgs);
         Update_t bUpdate = CmdSymbolsLoad(nArgs);

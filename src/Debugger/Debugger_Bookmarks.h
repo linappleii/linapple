@@ -8,10 +8,10 @@ extern int g_bookmarks_count;
 extern Bookmark_t g_bookmarks[MAX_BOOKMARKS];
 
 // Bookmark_t Functions
-auto Bookmark_Add(const int iBookmark, const uint16_t address) -> bool;
-auto Bookmark_Del(const uint16_t address) -> bool;
-auto Bookmark_Find(const uint16_t address) -> bool;
-auto Bookmark_Get(const int iBookmark, uint16_t& address) -> bool;
+auto Bookmark_Add(int iBookmark, uint16_t address) -> bool;
+auto Bookmark_Del(uint16_t address) -> bool;
+auto Bookmark_Find(uint16_t address) -> bool;
+auto Bookmark_Get(int iBookmark, uint16_t& address) -> bool;
 auto Bookmark_Reset() -> void;
 auto Bookmark_Size() -> int;
 

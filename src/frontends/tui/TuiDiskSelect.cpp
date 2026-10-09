@@ -6,7 +6,7 @@
 #include "frontends/common/FileBrowser.h"
 
 namespace {
-static DiskBrowser s_browser{};
+DiskBrowser s_browser{};
 }
 
 auto tui_disk_select_open(int slot, int drive) -> void {

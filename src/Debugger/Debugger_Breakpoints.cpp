@@ -12,13 +12,9 @@
 #include "Util_MemoryTextFile.h"
 #include "core/Util_Text.h"
 
-extern uint16_t g_break_memory_address;
 extern MemoryTextFile_t g_config_state;
 extern const Opcodes_t* g_opcodes;
 extern const Opcodes_t g_opcodes65_c02[NUM_OPCODES];
-
-extern int g_debug_break_on_opcode;
-extern int g_debug_breakpoint_hit;
 
 int g_debug_break_on_invalid = 0;  // Bit Flags of Invalid Opcode to break on
 int g_debug_break_on_opcode = 0;
@@ -41,7 +37,6 @@ const char* g_breakpoint_symbols[NUM_BREAKPOINT_OPERATORS] = {
 };
 
 auto IsDebugBreakOnInvalid(int iOpcodeType) -> bool {
-  extern int g_debug_break_on_invalid;
   g_debug_breakpoint_hit |=
       ((g_debug_break_on_invalid >> iOpcodeType) & 1) ? BP_HIT_INVALID : 0;
   return g_debug_breakpoint_hit != 0;
@@ -75,11 +70,9 @@ auto bwz_Clear(Breakpoint_t* aBreakWatchZero, int iSlot) -> void {
 
 auto bwz_RemoveOne(Breakpoint_t* aBreakWatchZero, const int iSlot, int& total)
     -> void {
-  if (aBreakWatchZero) {
-    if (aBreakWatchZero[iSlot].bSet) {
-      bwz_Clear(aBreakWatchZero, iSlot);
-      total--;
-    }
+  if ((aBreakWatchZero) && (aBreakWatchZero[iSlot].bSet)) {
+    bwz_Clear(aBreakWatchZero, iSlot);
+    total--;
   }
 }
 
@@ -214,7 +207,7 @@ auto CmdBreakpointAddCommonArg(int iArg, int nArg, BreakpointSource_t iSrc,
                                bool bIsTempBreakpoint) -> int {
   (void)nArg;
   int iBP = 0;
-  while ((iBP < MAX_BREAKPOINTS) && (g_breakpoints[iBP].bSet)) {
+  while ((iBP < MAX_BREAKPOINTS) && g_breakpoints[iBP].bSet) {
     iBP++;
   }
 
@@ -390,7 +383,7 @@ auto CmdWatchAdd(int nArgs) -> Update_t {
 
     if (iWatch == NO_6502_TARGET) {
       iWatch = 0;
-      while ((iWatch < MAX_WATCHES) && (g_watches[iWatch].bSet)) {
+      while ((iWatch < MAX_WATCHES) && g_watches[iWatch].bSet) {
         iWatch++;
       }
     }

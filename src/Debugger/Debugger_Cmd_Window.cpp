@@ -16,22 +16,6 @@
 #include "apple2/Video.h"
 
 // Globals originally from Debug.cpp
-extern int g_window_last;
-extern int g_window_this;
-extern WindowSplit_t g_window_config[NUM_WINDOWS];
-
-extern int g_console_display_lines;
-extern bool g_console_full_width;
-extern int g_console_display_width;
-extern int g_disasm_win_height;
-extern int g_disasm_cur_line;
-
-extern uint16_t g_disasm_top_address;
-extern uint16_t g_disasm_bot_address;
-extern uint16_t g_disasm_cur_address;
-extern bool g_disasm_cur_bad;
-
-extern uint32_t g_video_mode;
 
 const int MIN_DISPLAY_CONSOLE_LINES = 5;
 
@@ -190,7 +174,8 @@ auto CmdWindowShowData(int nArgs) -> Update_t {
     g_window_config[g_window_this].bSplit = true;
     g_window_config[g_window_this].eBot = WINDOW_DATA;
     return UPDATE_ALL;
-  } else if (g_window_this == WINDOW_DATA) {
+  }
+  if (g_window_this == WINDOW_DATA) {
     g_window_config[g_window_this].bSplit = false;
     g_window_config[g_window_this].eBot =
         WINDOW_DATA;  // not really needed, but SAFE HEX ;-)
@@ -371,13 +356,12 @@ auto DisasmCalcTopFromCurAddress(bool bUpdateTop) -> void {
     for (int iLine = 0; iLine <= g_disasm_cur_line; iLine++) {
       GetOpmodeOpbyte(iAddress, iOpmode, nOpbytes);
 
-      if (iLine == g_disasm_cur_line) {
-        if (iAddress == g_disasm_cur_address) {
-          g_disasm_top_address = static_cast<uint16_t>(iTop);
-          bFound = true;
-          break;
-        }
+      if ((iLine == g_disasm_cur_line) && (iAddress == g_disasm_cur_address)) {
+        g_disasm_top_address = static_cast<uint16_t>(iTop);
+        bFound = true;
+        break;
       }
+
       if (iAddress >= g_disasm_cur_address) {
         break;
       }
@@ -554,9 +538,7 @@ auto CmdCursorPageDown(int nArgs) -> Update_t {
   int iLines = 0;  // show at least 1 line from previous display
   int nLines = WindowGetHeight(g_window_this);
 
-  if (nLines < 2) {
-    nLines = 2;
-  }
+  nLines = std::max(nLines, 2);
 
   if (g_window_this == WINDOW_DATA) {
     const int nStep = 128;
@@ -568,9 +550,7 @@ auto CmdCursorPageDown(int nArgs) -> Update_t {
 
     // 5
     nLines -= (g_disasm_cur_line + 1);
-    if (nLines < 1) {
-      nLines = 1;
-    }
+    nLines = std::max(nLines, 1);
 
     while (iLines++ < nLines) {
       CmdCursorLineDown(0);  // nArgs
@@ -603,9 +583,7 @@ auto CmdCursorPageUp(int nArgs) -> Update_t {
   int iLines = 0;  // show at least 1 line from previous display
   int nLines = WindowGetHeight(g_window_this);
 
-  if (nLines < 2) {
-    nLines = 2;
-  }
+  nLines = std::max(nLines, 2);
 
   if (g_window_this == WINDOW_DATA) {
     const int nStep = 128;
@@ -614,9 +592,7 @@ auto CmdCursorPageUp(int nArgs) -> Update_t {
     //    while (++iLines < nLines)
     //      CmdCursorLineUp(nArgs);
     nLines -= (g_disasm_cur_line + 1);
-    if (nLines < 1) {
-      nLines = 1;
-    }
+    nLines = std::max(nLines, 1);
 
     while (iLines++ < nLines) {
       CmdCursorLineUp(0);  // smart line up

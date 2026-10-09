@@ -107,10 +107,8 @@ extern uint16_t g_disasm_bot_address;
 extern uint16_t g_disasm_cur_address;
 
 extern bool g_disasm_cur_bad;
-extern int g_disasm_cur_line;  // Aligned to Top or Center
+// Aligned to Top or Center
 extern int g_disasm_cur_state;
-
-extern int g_disasm_win_height;
 
 extern const int WINDOW_DATA_BYTES_PER_LINE;
 
@@ -161,7 +159,7 @@ extern ZeroPagePointers_t
 // Prototypes
 
 // Bookmarks
-auto Bookmark_Find(const uint16_t address) -> bool;
+auto Bookmark_Find(uint16_t address) -> bool;
 
 // Breakpoints
 auto GetBreakpointInfo(uint16_t nOffset, bool& bBreakpointActive_,
@@ -253,8 +251,6 @@ auto SetDebugBreakOnInvalid(int iOpcodeType, int nValue) -> void;
 auto CheckBreakpointsIO() -> int;
 auto CheckBreakpointsReg() -> int;
 auto ClearTempBreakpoints() -> void;
-auto GetBreakpointInfo(uint16_t nOffset, bool& bBreakpointActive_,
-                       bool& bBreakpointEnable_) -> bool;
 
 auto DebuggerRunScript(const char* sFileName) -> void;
 

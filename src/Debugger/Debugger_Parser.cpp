@@ -124,7 +124,7 @@ auto ArgsGetValue(Arg_t* pArg, uint16_t* pAddressValue_, const int nBase)
     return false;
   }
 
-  char* src_ptr = &(pArg->sArg[0]);
+  char* src_ptr = &pArg->sArg[0];
   char* pEnd = nullptr;
 
   if (pAddressValue_) {
@@ -138,11 +138,9 @@ auto ArgsGetValue(Arg_t* pArg, uint16_t* pAddressValue_, const int nBase)
 
 //===========================================================================
 auto ArgsGetImmediateValue(Arg_t* pArg, uint16_t* pAddressValue_) -> bool {
-  if (pArg && pAddressValue_) {
-    if (pArg->eToken == TOKEN_HASH) {
-      pArg++;
-      return ArgsGetValue(pArg, pAddressValue_);
-    }
+  if ((pArg && pAddressValue_) && (pArg->eToken == TOKEN_HASH)) {
+    pArg++;
+    return ArgsGetValue(pArg, pAddressValue_);
   }
 
   return false;
@@ -303,13 +301,12 @@ auto ArgsGetRegisterValue(Arg_t* pArg, uint16_t* pAddressValue_) -> bool {
           default:
             break;
         }
-      } else if (iReg == BP_SRC_REG_PC) {
-        if ((pArg->nArgLen == 2) &&
-            (strcmp(pArg->sArg, g_breakpoint_source[iReg]) == 0)) {
-          *pAddressValue_ = cpu_get_registers()->pc;
-          bStatus = true;
-          break;
-        }
+      } else if ((iReg == BP_SRC_REG_PC) &&
+                 ((pArg->nArgLen == 2) &&
+                  (strcmp(pArg->sArg, g_breakpoint_source[iReg]) == 0))) {
+        *pAddressValue_ = cpu_get_registers()->pc;
+        bStatus = true;
+        break;
       }
     }
   }
@@ -331,7 +328,7 @@ auto ArgsRawParse() -> void {
   uint16_t nAddressValue = 0;
 
   while (iArg <= nArg) {
-    src_ptr = &(pArg->sArg[0]);
+    src_ptr = &pArg->sArg[0];
 
     nAddressArg = static_cast<uint16_t>(strtoul(src_ptr, &pEnd, BASE) &
                                         apple2_6502_mem_end);
@@ -389,8 +386,8 @@ auto ArgsCook(const int nArgs) -> int {
   int nParenR = 0;
 
   while (iArg <= nArg) {
-    pArg = &(g_args[iArg]);
-    src_ptr = &(pArg->sArg[0]);
+    pArg = &g_args[iArg];
+    src_ptr = &pArg->sArg[0];
 
     if (pArg->eToken == TOKEN_DOLLAR)  // address
     {
@@ -561,7 +558,7 @@ auto ArgsCook(const int nArgs) -> int {
           pArg->bSymbol = false;
 
           int nPointers = g_memory_search_results.size();
-          if ((nPointers) && (nAddressRHS < nPointers)) {
+          if (nPointers && (nAddressRHS < nPointers)) {
             pArg->nValue = g_memory_search_results.at(nAddressRHS);
             pArg->bType = TYPE_VALUE | TYPE_ADDRESS | TYPE_NO_REG | TYPE_NO_SYM;
           }
@@ -588,11 +585,11 @@ auto ArgsCook(const int nArgs) -> int {
 
         if (pArg->eToken == TOKEN_EXCLAMATION)  // NOT !
         {
-          if (!ArgsGetImmediateValue(pNext, &nAddressRHS)) {
-            if (!ArgsGetRegisterValue(pNext, &nAddressRHS)) {
-              nAddressRHS = nAddressVal;
-            }
+          if ((!ArgsGetImmediateValue(pNext, &nAddressRHS)) &&
+              (!ArgsGetRegisterValue(pNext, &nAddressRHS))) {
+            nAddressRHS = nAddressVal;
           }
+
           pArg->nValue = ~nAddressRHS;
           pArg->bType |= TYPE_VALUE;  // signal already up to date
           // Don't remove, since "SYM ! symbol" needs token to remove symbol
@@ -605,7 +602,7 @@ auto ArgsCook(const int nArgs) -> int {
             nParamLen = 1;  // eat '('
             Arg_Shift(iArg + nParamLen, nArgs, iArg);
 
-            pNext = &(g_args[iArg + 1]);
+            pNext = &g_args[iArg + 1];
             if (pNext->eToken == TOKEN_PAREN_R) {
               nParenR++;
               pArg->bSymbol = false;
@@ -696,7 +693,7 @@ auto ParserFindToken(const char* src_ptr, const TokenTable_t* aTokens,
   // Look-ahead for <=
   // Look-ahead for >=
   for (iToken = TOKEN_FLAG_MULTI; iToken < NUM_TOKENS; iToken++) {
-    pName = &(g_tokens[iToken].sToken[0]);
+    pName = &g_tokens[iToken].sToken[0];
     if ((src_ptr[0] == pName[0]) && (src_ptr[1] == pName[1])) {
       *pToken_ = g_tokens[iToken].eToken;
       return src_ptr + 2;
@@ -706,7 +703,7 @@ auto ParserFindToken(const char* src_ptr, const TokenTable_t* aTokens,
   const TokenTable_t* pToken = aTokens;
 
   for (iToken = 0; iToken < TOKEN_FLAG_MULTI; iToken++) {
-    pName = &(pToken->sToken[0]);
+    pName = &pToken->sToken[0];
     if (*src_ptr == *pName) {
       if (pToken_) {
         *pToken_ = static_cast<ArgToken_e>(iToken);

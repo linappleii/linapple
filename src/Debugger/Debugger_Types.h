@@ -224,7 +224,7 @@ using ZeroPagePointers_t = Breakpoint_t;
 
 enum ConfigSave_t : uint8_t {
   CONFIG_SAVE_FILE_CREATE,
-  CONFIG_SAVE_FILE_APPEND
+  CONFIG_SAVE_FILE_APPEND,
 };
 
 // Commands
@@ -1111,7 +1111,7 @@ enum DEVICE_e : uint8_t {
   DEV_DISK2,
   DEV_SY6522,
   DEV_AY8910,
-  NUM_DEVICES
+  NUM_DEVICES,
 };
 
 enum MemoryView_e : uint8_t {
@@ -1477,7 +1477,7 @@ enum Match_e : uint8_t { MATCH_EXACT, MATCH_FUZZY };
 enum InputCursor : uint8_t {
   CURSOR_INSERT,
   CURSOR_OVERSTRIKE,
-  NUM_INPUT_CURSORS
+  NUM_INPUT_CURSORS,
 };
 
 constexpr int NUM_PROFILE_LINES = NUM_OPCODES + NUM_OPMODES + 16;

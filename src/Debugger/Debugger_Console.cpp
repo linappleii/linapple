@@ -29,8 +29,6 @@ const int g_input_cursor_count = sizeof(g_input_cursor);
 
 bool g_ignore_next_key = false;
 
-extern bool g_debug_full_speed;
-
 auto ConsoleInputHistoryPrev() -> Update_t;
 auto ConsoleInputHistoryNext() -> Update_t;
 
@@ -257,9 +255,7 @@ auto ConsoleBufferPop() -> void {
   }
 
   g_console_buffer_size--;
-  if (g_console_buffer_size < 0) {
-    g_console_buffer_size = 0;
-  }
+  g_console_buffer_size = std::max(g_console_buffer_size, 0);
 }
 
 // Remove string from buffered output
@@ -314,9 +310,8 @@ auto ConsoleDisplayPush(const conchar_t* text) -> void {
   }
 
   g_console_display_total++;
-  if (g_console_display_total > (CONSOLE_DISPLAY_HEIGHT - CONSOLE_FIRST_LINE)) {
-    g_console_display_total = (CONSOLE_DISPLAY_HEIGHT - CONSOLE_FIRST_LINE);
-  }
+  g_console_display_total = std::min(
+      g_console_display_total, CONSOLE_DISPLAY_HEIGHT - CONSOLE_FIRST_LINE);
 }
 
 //===========================================================================
@@ -420,9 +415,7 @@ auto ConsoleInputTabCompletion() -> int { return UPDATE_CONSOLE_INPUT; }
 //===========================================================================
 auto ConsoleScrollHome() -> Update_t {
   g_console_display_start = g_console_display_total - CONSOLE_FIRST_LINE;
-  if (g_console_display_start < 0) {
-    g_console_display_start = 0;
-  }
+  g_console_display_start = std::max(g_console_display_start, 0);
 
   return UPDATE_CONSOLE_DISPLAY;
 }
@@ -438,14 +431,10 @@ auto ConsoleScrollEnd() -> Update_t {
 auto ConsoleScrollUp(int nLines) -> Update_t {
   g_console_display_start += nLines;
 
-  if (g_console_display_start >
-      (g_console_display_total - CONSOLE_FIRST_LINE)) {
-    g_console_display_start = (g_console_display_total - CONSOLE_FIRST_LINE);
-  }
+  g_console_display_start = std::min(
+      g_console_display_start, g_console_display_total - CONSOLE_FIRST_LINE);
 
-  if (g_console_display_start < 0) {
-    g_console_display_start = 0;
-  }
+  g_console_display_start = std::max(g_console_display_start, 0);
 
   return UPDATE_CONSOLE_DISPLAY;
 }
@@ -453,9 +442,7 @@ auto ConsoleScrollUp(int nLines) -> Update_t {
 //===========================================================================
 auto ConsoleScrollDn(int nLines) -> Update_t {
   g_console_display_start -= nLines;
-  if (g_console_display_start < 0) {
-    g_console_display_start = 0;
-  }
+  g_console_display_start = std::max(g_console_display_start, 0);
 
   return UPDATE_CONSOLE_DISPLAY;
 }
@@ -583,19 +570,6 @@ auto ToggleFullScreenConsole() -> void {
   }
   CmdWindowLast(0);
 }
-
-extern auto CmdWindowViewConsole(int) -> Update_t;
-extern auto CmdWindowLast(int) -> Update_t;
-extern auto CmdGoNormalSpeed(int) -> Update_t;
-extern auto CursorMoveUpAligned(int) -> void;
-extern auto CursorMoveDownAligned(int) -> void;
-extern auto WindowGetHeight(int) -> int;
-extern auto CmdCursorPageUp(int) -> Update_t;
-extern auto CmdCursorPageDown(int) -> Update_t;
-extern auto CmdCursorPageUp256(int) -> Update_t;
-extern auto CmdCursorPageDown256(int) -> Update_t;
-extern auto CmdCursorPageUp4K(int) -> Update_t;
-extern auto CmdCursorPageDown4K(int) -> Update_t;
 
 auto debugger_process_key(int keycode) -> void {
   if (system_state.mode != app_mode_debug) {

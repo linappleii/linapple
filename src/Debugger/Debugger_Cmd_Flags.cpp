@@ -58,7 +58,8 @@ auto CmdFlagSet(int nArgs) -> Update_t {
 auto CmdFlag(int nArgs) -> Update_t {
   if (g_command == CMD_FLAG_CLEAR) {
     return CmdFlagClear(nArgs);
-  } else if (g_command == CMD_FLAG_SET) {
+  }
+  if (g_command == CMD_FLAG_SET) {
     return CmdFlagSet(nArgs);
   }
 

@@ -50,7 +50,7 @@ auto DebuggerRunScript(const char* pFileName) -> void {
     sFileName = pFileName;
   } else {
     sFileName = system_state.current_dir.data();
-    sFileName += "/";
+    sFileName += '/';
     sFileName += pFileName;
   }
 

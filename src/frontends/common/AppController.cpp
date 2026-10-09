@@ -235,17 +235,15 @@ static auto autoload_startup_disks(const AppConfig* config) -> void {
   peripheral_command(disk_default_slot, disk_cmd_insert, &cmd, sizeof(cmd));
 
   std::string disk2;
-  if (config_load_string("Slots", cfg_disk_image2, &disk2) ||
-      config_load_string("Configuration", cfg_disk_image2, &disk2) ||
-      config_load_string("Preferences", cfg_disk_image2, &disk2)) {
-    if (!disk2.empty()) {
-      DiskInsertCmd_t cmd2{};
-      cmd2.drive = disk_drive_1;
-      util_safe_strcpy(cmd2.path, disk2.c_str(), disk_insert_path_max);
-      cmd2.write_protected = 0;
-      peripheral_command(disk_default_slot, disk_cmd_insert, &cmd2,
-                         sizeof(cmd2));
-    }
+  if ((config_load_string("Slots", cfg_disk_image2, &disk2) ||
+       config_load_string("Configuration", cfg_disk_image2, &disk2) ||
+       config_load_string("Preferences", cfg_disk_image2, &disk2)) &&
+      (!disk2.empty())) {
+    DiskInsertCmd_t cmd2{};
+    cmd2.drive = disk_drive_1;
+    util_safe_strcpy(cmd2.path, disk2.c_str(), disk_insert_path_max);
+    cmd2.write_protected = 0;
+    peripheral_command(disk_default_slot, disk_cmd_insert, &cmd2, sizeof(cmd2));
   }
 }
 
@@ -522,11 +520,10 @@ auto app_controller_load_initial_media(const AppConfig* config) -> void {
     load_initial_disk(static_cast<int>(i), path);
   }
 
-  if (config->program_path.at(0) != '\0') {
-    if (linapple_load_program(config->program_path.data()) != 0) {
-      fprintf(stderr, "error: Could not load program '%s'\n",
-              config->program_path.data());
-    }
+  if ((config->program_path.at(0) != '\0') &&
+      (linapple_load_program(config->program_path.data()) != 0)) {
+    fprintf(stderr, "error: Could not load program '%s'\n",
+            config->program_path.data());
   }
 
   load_initial_harddisks(*config);

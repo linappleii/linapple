@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <array>
 #include <cerrno>
 #include <cstdint>
@@ -32,36 +33,36 @@
 
 namespace {
 
-static int g_term_width = 0;
-static int g_term_height = 0;
-static std::vector<TuiState> g_back_buffer;
-static std::vector<TuiState> g_next_buffer;
-static std::vector<char> g_output_buffer;
-static uint32_t g_frame_count = 0;
+int g_term_width = 0;
+int g_term_height = 0;
+std::vector<TuiState> g_back_buffer;
+std::vector<TuiState> g_next_buffer;
+std::vector<char> g_output_buffer;
+uint32_t g_frame_count = 0;
 
-static constexpr int k_default_term_width = 80;
-static constexpr int k_default_term_height = 24;
-static constexpr int k_output_reserve_factor = 64;
-static constexpr int k_flash_divisor = 15;
-static constexpr int k_a2_page1_addr = 0x400;
-static constexpr int k_a2_page2_offset = 0x400;
-static constexpr int k_a2_cursor_x_addr = 0x24;
-static constexpr int k_a2_cursor_y_addr = 0x25;
-static constexpr int k_a2_cols_80 = 80;
-static constexpr int k_a2_cols_40 = 40;
-static constexpr int k_min_term_height_status = 24;
-static constexpr int k_a2_text_rows = 24;
-static constexpr int k_mixed_mode_text_start = 20;
-static constexpr int k_refresh_full_divisor = 60;
+constexpr int k_default_term_width = 80;
+constexpr int k_default_term_height = 24;
+constexpr int k_output_reserve_factor = 64;
+constexpr int k_flash_divisor = 15;
+constexpr int k_a2_page1_addr = 0x400;
+constexpr int k_a2_page2_offset = 0x400;
+constexpr int k_a2_cursor_x_addr = 0x24;
+constexpr int k_a2_cursor_y_addr = 0x25;
+constexpr int k_a2_cols_80 = 80;
+constexpr int k_a2_cols_40 = 40;
+constexpr int k_min_term_height_status = 24;
+constexpr int k_a2_text_rows = 24;
+constexpr int k_mixed_mode_text_start = 20;
+constexpr int k_refresh_full_divisor = 60;
 
-static TuiRenderMode g_render_mode = TUI_RENDER_SMART;
-static bool g_show_help = false;
-static bool g_fullscreen = false;
+TuiRenderMode g_render_mode = TUI_RENDER_SMART;
+bool g_show_help = false;
+bool g_fullscreen = false;
 
-static MousePictureRect g_picture_box{};
-static bool g_picture_box_drawn = false;
+MousePictureRect g_picture_box{};
+bool g_picture_box_drawn = false;
 
-static auto record_picture_box(int x, int y, int w, int h) -> void {
+auto record_picture_box(int x, int y, int w, int h) -> void {
   g_picture_box = {x, y, w, h};
   g_picture_box_drawn = true;
 }
@@ -115,7 +116,8 @@ static auto render_help_overlay() -> void {
 
   // Features not supported in the TUI are excluded from the help overlay.
   constexpr std::array<HelpFeature, 2> excluded = {
-      {HelpFeature::numpad_speed, HelpFeature::mouse_capture}};
+      {HelpFeature::numpad_speed, HelpFeature::mouse_capture},
+  };
 
   const bool compact = (g_term_height < 28);
   std::vector<const char*> visible_body_lines;
@@ -315,9 +317,7 @@ static auto render_disk_select_overlay() -> void {
   const char* cur_dir = tui_disk_select_get_current_dir();
 
   int box_inner_w = 66;
-  if (box_inner_w > g_term_width - 4) {
-    box_inner_w = g_term_width - 4;
-  }
+  box_inner_w = std::min(box_inner_w, g_term_width - 4);
   if (box_inner_w < 40) {
     return;
   }
@@ -327,9 +327,7 @@ static auto render_disk_select_overlay() -> void {
   int max_visible_rows = 14;
   if (g_term_height < 24) {
     max_visible_rows = g_term_height - 10;
-    if (max_visible_rows < 4) {
-      max_visible_rows = 4;
-    }
+    max_visible_rows = std::max(max_visible_rows, 4);
   } else if (g_term_height > 30) {
     max_visible_rows = g_term_height - 12;
   }
@@ -671,7 +669,8 @@ static auto get_text_addr(int row, int col) -> uint16_t {
   static const std::array<uint16_t, k_a2_text_rows> row_offsets = {
       0x000, 0x080, 0x100, 0x180, 0x200, 0x280, 0x300, 0x380,
       0x028, 0x0A8, 0x128, 0x1A8, 0x228, 0x2A8, 0x328, 0x3A8,
-      0x050, 0x0D0, 0x150, 0x1D0, 0x250, 0x2D0, 0x350, 0x3D0};
+      0x050, 0x0D0, 0x150, 0x1D0, 0x250, 0x2D0, 0x350, 0x3D0,
+  };
   return row_offsets.at(static_cast<size_t>(row)) + static_cast<uint16_t>(col);
 }
 
@@ -680,17 +679,29 @@ static auto get_text_fg_color() -> TuiPixel {
   if (pal != nullptr) {
     switch (g_videotype) {
       case VT_MONO_AMBER:
-        return {pal[MONOCHROME_AMBER].r, pal[MONOCHROME_AMBER].g,
-                pal[MONOCHROME_AMBER].b};
+        return {
+            pal[MONOCHROME_AMBER].r,
+            pal[MONOCHROME_AMBER].g,
+            pal[MONOCHROME_AMBER].b,
+        };
       case VT_MONO_GREEN:
-        return {pal[MONOCHROME_GREEN].r, pal[MONOCHROME_GREEN].g,
-                pal[MONOCHROME_GREEN].b};
+        return {
+            pal[MONOCHROME_GREEN].r,
+            pal[MONOCHROME_GREEN].g,
+            pal[MONOCHROME_GREEN].b,
+        };
       case VT_MONO_WHITE:
-        return {pal[MONOCHROME_WHITE].r, pal[MONOCHROME_WHITE].g,
-                pal[MONOCHROME_WHITE].b};
+        return {
+            pal[MONOCHROME_WHITE].r,
+            pal[MONOCHROME_WHITE].g,
+            pal[MONOCHROME_WHITE].b,
+        };
       case VT_MONO_CUSTOM:
-        return {pal[MONOCHROME_CUSTOM].r, pal[MONOCHROME_CUSTOM].g,
-                pal[MONOCHROME_CUSTOM].b};
+        return {
+            pal[MONOCHROME_CUSTOM].r,
+            pal[MONOCHROME_CUSTOM].g,
+            pal[MONOCHROME_CUSTOM].b,
+        };
       default:
         break;
     }
@@ -748,12 +759,10 @@ static auto render_text_cell(int r, int c, bool is_80col, uint16_t page_offset,
     cell.bg = text_color;
   }
 
-  if (r == hw_cursor_y && c == hw_cursor_x) {
-    if (flash_on) {
-      set_glyph(cell, "\xe2\x96\x92");  // ▒ Checkerboard
-      cell.fg = text_color;
-      cell.bg = a2_black;
-    }
+  if ((r == hw_cursor_y && c == hw_cursor_x) && (flash_on)) {
+    set_glyph(cell, "\xe2\x96\x92");  // ▒ Checkerboard
+    cell.fg = text_color;
+    cell.bg = a2_black;
   }
 }
 
@@ -777,12 +786,16 @@ static auto render_gfx_cell(const uint32_t* pixels, int pitch, int width,
     const int stride = pitch / static_cast<int>(sizeof(uint32_t));
     uint32_t p_top = pixels[static_cast<size_t>(sy_top * stride + sx)];
     uint32_t p_bot = pixels[static_cast<size_t>(sy_bot * stride + sx)];
-    cell.fg = {static_cast<uint8_t>(p_top & 0xFF),
-               static_cast<uint8_t>((p_top >> 8) & 0xFF),
-               static_cast<uint8_t>((p_top >> 16) & 0xFF)};
-    cell.bg = {static_cast<uint8_t>(p_bot & 0xFF),
-               static_cast<uint8_t>((p_bot >> 8) & 0xFF),
-               static_cast<uint8_t>((p_bot >> 16) & 0xFF)};
+    cell.fg = {
+        static_cast<uint8_t>(p_top & 0xFF),
+        static_cast<uint8_t>((p_top >> 8) & 0xFF),
+        static_cast<uint8_t>((p_top >> 16) & 0xFF),
+    };
+    cell.bg = {
+        static_cast<uint8_t>(p_bot & 0xFF),
+        static_cast<uint8_t>((p_bot >> 8) & 0xFF),
+        static_cast<uint8_t>((p_bot >> 16) & 0xFF),
+    };
   }
 }
 
@@ -800,9 +813,7 @@ static auto render_debugger_text_screen() -> void {
   }
 
   int off_x = (g_term_width - target_w) / 2;
-  if (off_x < 0) {
-    off_x = 0;
-  }
+  off_x = std::max(off_x, 0);
 
   int console_rows = 4;
   if (avail_rows < 16) {
@@ -812,12 +823,8 @@ static auto render_debugger_text_screen() -> void {
   }
 
   int top_rows = avail_rows - console_rows;
-  if (top_rows > disasm_max_rows) {
-    top_rows = disasm_max_rows;
-  }
-  if (top_rows < 0) {
-    top_rows = 0;
-  }
+  top_rows = std::min(top_rows, disasm_max_rows);
+  top_rows = std::max(top_rows, 0);
 
   for (int ty = 0; ty < avail_rows; ++ty) {
     int src_r = 0;
@@ -858,17 +865,21 @@ static auto render_debugger_text_screen() -> void {
       if (pal != nullptr && fg_raw < max_palette_size) {
         cell.fg = {pal[fg_raw].r, pal[fg_raw].g, pal[fg_raw].b};
       } else {
-        cell.fg = {static_cast<uint8_t>(fg_raw & 0xFF),
-                   static_cast<uint8_t>((fg_raw >> 8) & 0xFF),
-                   static_cast<uint8_t>((fg_raw >> 16) & 0xFF)};
+        cell.fg = {
+            static_cast<uint8_t>(fg_raw & 0xFF),
+            static_cast<uint8_t>((fg_raw >> 8) & 0xFF),
+            static_cast<uint8_t>((fg_raw >> 16) & 0xFF),
+        };
       }
 
       if (pal != nullptr && bg_raw < max_palette_size) {
         cell.bg = {pal[bg_raw].r, pal[bg_raw].g, pal[bg_raw].b};
       } else {
-        cell.bg = {static_cast<uint8_t>(bg_raw & 0xFF),
-                   static_cast<uint8_t>((bg_raw >> 8) & 0xFF),
-                   static_cast<uint8_t>((bg_raw >> 16) & 0xFF)};
+        cell.bg = {
+            static_cast<uint8_t>(bg_raw & 0xFF),
+            static_cast<uint8_t>((bg_raw >> 8) & 0xFF),
+            static_cast<uint8_t>((bg_raw >> 16) & 0xFF),
+        };
       }
     }
   }
@@ -921,12 +932,8 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
     int display_w = a2_w_cols;
     int off_x = (g_term_width - display_w) / 2;
     int off_y = (avail_rows - display_h) / 2;
-    if (off_x < 0) {
-      off_x = 0;
-    }
-    if (off_y < 0) {
-      off_y = 0;
-    }
+    off_x = std::max(off_x, 0);
+    off_y = std::max(off_y, 0);
     record_picture_box(off_x, off_y, display_w, display_h);
 
     for (int r = 0; r < display_h; ++r) {
@@ -958,19 +965,13 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
 
     int total_display_h = gfx_h + mixed_text_lines;
     int off_y = (avail_rows - total_display_h) / 2;
-    if (off_y < 0) {
-      off_y = 0;
-    }
+    off_y = std::max(off_y, 0);
 
     int gfx_off_x = (g_term_width - gfx_w) / 2;
-    if (gfx_off_x < 0) {
-      gfx_off_x = 0;
-    }
+    gfx_off_x = std::max(gfx_off_x, 0);
 
     int text_off_x = (g_term_width - a2_w_cols) / 2;
-    if (text_off_x < 0) {
-      text_off_x = 0;
-    }
+    text_off_x = std::max(text_off_x, 0);
     // The four text rows sit under the graphics box, so the picture is the
     // box's width by the whole screen's height.
     record_picture_box(gfx_off_x, off_y, gfx_w, total_display_h);
@@ -1019,13 +1020,9 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
       gfx_h = gfx_w * 3 / 8;
     }
     int off_y = (avail_rows - gfx_h) / 2;
-    if (off_y < 0) {
-      off_y = 0;
-    }
+    off_y = std::max(off_y, 0);
     int gfx_off_x = (g_term_width - gfx_w) / 2;
-    if (gfx_off_x < 0) {
-      gfx_off_x = 0;
-    }
+    gfx_off_x = std::max(gfx_off_x, 0);
     record_picture_box(gfx_off_x, off_y, gfx_w, gfx_h);
 
     for (int y = 0; y < gfx_h; ++y) {

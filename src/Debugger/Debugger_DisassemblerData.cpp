@@ -54,10 +54,8 @@ auto CmdDefineByteRange(int nArgs, int iArg, DisasmData_t& tData_) -> uint16_t {
 
   // 2.7.0.35 DW address -- round the length up to even number for convenience.
   // Example: 'DW 6062' is equivalent to: 'DW 6062:6063'
-  if (g_command == CMD_DEFINE_DATA_WORD1) {
-    if (~nLen & 1) {
-      nLen++;
-    }
+  if ((g_command == CMD_DEFINE_DATA_WORD1) && (~nLen & 1)) {
+    nLen++;
   }
 
   tData_.nStartAddress = address;
@@ -204,11 +202,12 @@ auto CmdDisasmDataDefByteX(int nArgs) -> Update_t {
   DisasmData_t tData{};
   int iArg = 2;
 
-  if (nArgs == 3)  // 2.7.0.31 Bug fix: DB range, i.e. DB 174E:175F
+  if ((nArgs == 3) &&
+      (g_args[2].eToken ==
+       TOKEN_COLON))  // 2.7.0.31 Bug fix: DB range, i.e. DB 174E:175F
+
   {
-    if (g_args[2].eToken == TOKEN_COLON) {
-      iArg = 1;
-    }
+    iArg = 1;
   }
 
   uint16_t address = CmdDefineByteRange(nArgs, iArg, tData);
@@ -257,11 +256,12 @@ auto CmdDisasmDataDefWordX(int nArgs) -> Update_t {
   DisasmData_t tData{};
   int iArg = 2;
 
-  if (nArgs == 3)  // 2.7.0.33 Bug fix: DW range, i.e. DW 3F2:3F3
+  if ((nArgs == 3) &&
+      (g_args[2].eToken ==
+       TOKEN_COLON))  // 2.7.0.33 Bug fix: DW range, i.e. DW 3F2:3F3
+
   {
-    if (g_args[2].eToken == TOKEN_COLON) {
-      iArg = 1;
-    }
+    iArg = 1;
   }
 
   uint16_t address = CmdDefineByteRange(nArgs, iArg, tData);
@@ -380,11 +380,12 @@ auto CmdDisasmDataDefString(int nArgs) -> Update_t {
   DisasmData_t tData{};
   int iArg = 2;
 
-  if (nArgs == 3)  // 2.7.0.32 Bug fix: ASC range, i.e. ASC 174E:175F
+  if ((nArgs == 3) &&
+      (g_args[2].eToken ==
+       TOKEN_COLON))  // 2.7.0.32 Bug fix: ASC range, i.e. ASC 174E:175F
+
   {
-    if (g_args[2].eToken == TOKEN_COLON) {
-      iArg = 1;
-    }
+    iArg = 1;
   }
 
   uint16_t address = CmdDefineByteRange(nArgs, iArg, tData);
@@ -444,12 +445,12 @@ auto Disassembly_IsDataAddress(uint16_t address) -> DisasmData_t* {
     // via start address
     data = &g_disassembler_data[0];
     for (int iTarget = 0; iTarget < nDataTargets; iTarget++) {
-      if (data->iDirective != NOP_REMOVED) {
-        if ((address >= data->nStartAddress) &&
-            (address <= data->nEndAddress)) {
-          return data;
-        }
+      if ((data->iDirective != NOP_REMOVED) &&
+          ((address >= data->nStartAddress) &&
+           (address <= data->nEndAddress))) {
+        return data;
       }
+
       data++;
     }
     data = nullptr;  // bIsNopCode = false
@@ -487,11 +488,11 @@ auto Disassembly_DelData(DisasmData_t tData) -> void {
     // via start address
     data = &g_disassembler_data[0];
     for (int iTarget = 0; iTarget < nDataTargets; iTarget++) {
-      if (data->iDirective != NOP_REMOVED) {
-        if ((address >= data->nStartAddress) && (address < data->nEndAddress)) {
-          data->iDirective = NOP_REMOVED;
-        }
+      if ((data->iDirective != NOP_REMOVED) &&
+          ((address >= data->nStartAddress) && (address < data->nEndAddress))) {
+        data->iDirective = NOP_REMOVED;
       }
+
       data++;
     }
     data = nullptr;  // bIsNopCode = false

@@ -49,9 +49,9 @@ auto disk_ui_format_display_name(const char* file_name, char* out,
 
   // Names that shout are an artefact of the DOS 3.3 era rather than a choice,
   // so they read better with only the first letter left capital.
-  const bool shouts =
-      std::none_of(title.begin(), title.end(),
-                   [](unsigned char ch) { return std::islower(ch) != 0; });
+  const bool shouts = std::none_of(
+      title.begin(), title.end(),
+      [](unsigned char ch) -> bool { return std::islower(ch) != 0; });
   constexpr size_t min_length_to_recase = 3;
   if (shouts && title.length() >= min_length_to_recase) {
     for (size_t i = 1; i < title.length(); ++i) {

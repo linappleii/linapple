@@ -7,5 +7,5 @@ extern Command_t g_commands[];
 extern int g_num_commands_with_aliases;
 
 auto VerifyDebuggerCommandTable() -> void;
-auto DebuggerProcessCommand(const bool bEchoConsoleInput) -> Update_t;
+auto DebuggerProcessCommand(bool bEchoConsoleInput) -> Update_t;
 auto ExecuteCommand(int nArgs) -> Update_t;

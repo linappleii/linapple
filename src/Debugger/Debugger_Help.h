@@ -39,6 +39,6 @@ inline auto UnpackVersion(const uint32_t nVersion, int& nMajor_, int& nMinor_,
   nFixMinor_ = static_cast<int>(nVersion & BYTE_MASK);
 }
 
-auto TestStringCat(char* pDst, const char* src_ptr, const int nDstSize) -> bool;
-auto TryStringCat(char* pDst, const char* src_ptr, const int nDstSize) -> bool;
-auto StringCat(char* pDst, const char* src_ptr, const int nDstSize) -> int;
+auto TestStringCat(char* pDst, const char* src_ptr, int nDstSize) -> bool;
+auto TryStringCat(char* pDst, const char* src_ptr, int nDstSize) -> bool;
+auto StringCat(char* pDst, const char* src_ptr, int nDstSize) -> int;

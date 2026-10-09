@@ -38,41 +38,41 @@
 
 namespace {
 
-static int g_joy_fd = -1;
-static std::vector<uint8_t> g_input_queue;
+int g_joy_fd = -1;
+std::vector<uint8_t> g_input_queue;
 
-static constexpr uint8_t k_a2_key_up = 0x0B;
-static constexpr uint8_t k_a2_key_down = 0x0A;
-static constexpr uint8_t k_a2_key_left = 0x08;
-static constexpr uint8_t k_a2_key_right = 0x15;
-static constexpr uint8_t k_a2_key_esc = 0x1B;
-static constexpr uint8_t k_a2_key_enter = 0x0D;
-static constexpr uint8_t k_a2_key_backspace = 0x08;
-static constexpr uint8_t k_a2_key_delete = 0x7F;
-static constexpr uint8_t k_eighth_bit = 0x80;
-static constexpr uint8_t k_seven_bits = 0x7F;
+constexpr uint8_t k_a2_key_up = 0x0B;
+constexpr uint8_t k_a2_key_down = 0x0A;
+constexpr uint8_t k_a2_key_left = 0x08;
+constexpr uint8_t k_a2_key_right = 0x15;
+constexpr uint8_t k_a2_key_esc = 0x1B;
+constexpr uint8_t k_a2_key_enter = 0x0D;
+constexpr uint8_t k_a2_key_backspace = 0x08;
+constexpr uint8_t k_a2_key_delete = 0x7F;
+constexpr uint8_t k_eighth_bit = 0x80;
+constexpr uint8_t k_seven_bits = 0x7F;
 
-static constexpr int k_f1_vt_code = 11;
-static constexpr int k_f2_vt_code = 12;
-static constexpr int k_f3_vt_code = 13;
-static constexpr int k_f4_vt_code = 14;
-static constexpr int k_f5_vt_code = 15;
-static constexpr int k_f6_vt_code = 17;
-static constexpr int k_f7_vt_code = 18;
-static constexpr int k_f8_vt_code = 19;
-static constexpr int k_f9_vt_code = 20;
-static constexpr int k_f10_vt_code = 21;
-static constexpr int k_f11_vt_code = 23;
-static constexpr int k_f12_code = 24;
-static constexpr size_t k_disk_select_page_size = 14;
+constexpr int k_f1_vt_code = 11;
+constexpr int k_f2_vt_code = 12;
+constexpr int k_f3_vt_code = 13;
+constexpr int k_f4_vt_code = 14;
+constexpr int k_f5_vt_code = 15;
+constexpr int k_f6_vt_code = 17;
+constexpr int k_f7_vt_code = 18;
+constexpr int k_f8_vt_code = 19;
+constexpr int k_f9_vt_code = 20;
+constexpr int k_f10_vt_code = 21;
+constexpr int k_f11_vt_code = 23;
+constexpr int k_f12_code = 24;
+constexpr size_t k_disk_select_page_size = 14;
 
-static constexpr uint8_t k_ansi_final_byte_min = 0x40;
-static constexpr uint8_t k_ansi_final_byte_max = 0x7E;
-static constexpr uint8_t k_ascii_printable_min = 32;
-static constexpr uint8_t k_ascii_printable_max = 127;
-static constexpr size_t k_input_buffer_size = 256;
-static constexpr size_t k_max_escape_length = 32;
-static constexpr int k_esc_poll_timeout_ms = 3;
+constexpr uint8_t k_ansi_final_byte_min = 0x40;
+constexpr uint8_t k_ansi_final_byte_max = 0x7E;
+constexpr uint8_t k_ascii_printable_min = 32;
+constexpr uint8_t k_ascii_printable_max = 127;
+constexpr size_t k_input_buffer_size = 256;
+constexpr size_t k_max_escape_length = 32;
+constexpr int k_esc_poll_timeout_ms = 3;
 
 // A terminal has no key-up, so the release is deferred one poll, long enough
 // for a program polling $C010 to see the key for a frame. Alt+key is Open
@@ -83,9 +83,9 @@ struct HeldKey {
   bool open_apple;
 };
 
-static std::vector<HeldKey> g_held_keys;
+std::vector<HeldKey> g_held_keys;
 
-static auto release_held_keys() -> void {
+auto release_held_keys() -> void {
   for (const HeldKey& key : g_held_keys) {
     linapple_set_key(key.host_key, key.code, false);
     if (key.open_apple) {
@@ -97,7 +97,7 @@ static auto release_held_keys() -> void {
 
 // A terminal has no scancodes, so the byte is read symbolically and doubles
 // as the key's identity.
-static auto map_key(uint8_t a2_code, bool open_apple = false) -> void {
+auto map_key(uint8_t a2_code, bool open_apple = false) -> void {
   const KeyboardHostKey key = {0, a2_code, false, false};
   uint8_t code = 0;
   if (!keyboard_translate(&key, &code)) {
@@ -112,13 +112,13 @@ static auto map_key(uint8_t a2_code, bool open_apple = false) -> void {
 
 // 0x7F is what most terminals send for Backspace, the Apple's left arrow;
 // every other seven-bit byte is its own code.
-static auto terminal_byte_to_apple(uint8_t byte) -> uint8_t {
+auto terminal_byte_to_apple(uint8_t byte) -> uint8_t {
   return byte == k_a2_key_delete ? k_a2_key_backspace : byte;
 }
 
 // One keystroke can be split across reads; a few milliseconds tells its tail
 // from the next keystroke.
-static auto read_more_input() -> void {
+auto read_more_input() -> void {
   struct pollfd pfd{};
   pfd.fd = STDIN_FILENO;
   pfd.events = POLLIN;
@@ -134,14 +134,14 @@ static auto read_more_input() -> void {
   }
 }
 
-static constexpr uint8_t k_utf8_lead2_min = 0xC2;
-static constexpr uint8_t k_utf8_lead2_max = 0xDF;
-static constexpr uint8_t k_utf8_lead3_max = 0xEF;
-static constexpr uint8_t k_utf8_lead4_max = 0xF4;
-static constexpr uint8_t k_utf8_continuation_min = 0x80;
-static constexpr uint8_t k_utf8_continuation_max = 0xBF;
+constexpr uint8_t k_utf8_lead2_min = 0xC2;
+constexpr uint8_t k_utf8_lead2_max = 0xDF;
+constexpr uint8_t k_utf8_lead3_max = 0xEF;
+constexpr uint8_t k_utf8_lead4_max = 0xF4;
+constexpr uint8_t k_utf8_continuation_min = 0x80;
+constexpr uint8_t k_utf8_continuation_max = 0xBF;
 
-static auto utf8_continuation_count(uint8_t lead) -> size_t {
+auto utf8_continuation_count(uint8_t lead) -> size_t {
   if (lead < k_utf8_lead2_min) {
     return 0;
   }
@@ -157,7 +157,7 @@ static auto utf8_continuation_count(uint8_t lead) -> size_t {
   return 0;
 }
 
-static auto utf8_sequence_at(size_t i, size_t continuation) -> bool {
+auto utf8_sequence_at(size_t i, size_t continuation) -> bool {
   if (i + continuation >= g_input_queue.size()) {
     return false;
   }
@@ -170,22 +170,22 @@ static auto utf8_sequence_at(size_t i, size_t continuation) -> bool {
   return true;
 }
 
-static auto reset_machine() -> void {
+auto reset_machine() -> void {
   full_speed = false;
   linapple_reset_hard();
   system_state.mode = app_mode_running;
   system_state.reset_timing = true;
 }
 
-static auto soft_reset_machine() -> void {
+auto soft_reset_machine() -> void {
   linapple_reset_soft();
   system_state.mode = app_mode_running;
   system_state.reset_timing = true;
 }
 
-static auto restart_machine() -> void { app_controller_set_restart(true); }
+auto restart_machine() -> void { app_controller_set_restart(true); }
 
-static auto swap_drives() -> void {
+auto swap_drives() -> void {
   if (peripheral_command(disk_default_slot, disk_cmd_swap_drives, nullptr, 0) ==
       peripheral_ok) {
     app_controller_save_disk_config(0);
@@ -193,14 +193,14 @@ static auto swap_drives() -> void {
   }
 }
 
-static auto toggle_keyboard_rocker() -> void {
+auto toggle_keyboard_rocker() -> void {
   if ((current_apple2_type == A2TYPE_APPLE2E) ||
       (current_apple2_type == A2TYPE_APPLE2EENHANCED)) {
     linapple_set_rocker_switch(!linapple_get_rocker_switch());
   }
 }
 
-static auto toggle_debugger() -> void {
+auto toggle_debugger() -> void {
 #if ENABLE_DEBUGGER
   if (system_state.disable_debugger) {
     return;
@@ -213,7 +213,7 @@ static auto toggle_debugger() -> void {
 #endif
 }
 
-static auto save_configuration() -> void {
+auto save_configuration() -> void {
   Configuration::instance().set_int("Configuration", "Video Emulation",
                                     static_cast<int>(g_videotype));
   Configuration::instance().set_int("Configuration", "Emulation Speed",
@@ -223,7 +223,7 @@ static auto save_configuration() -> void {
   Configuration::instance().save();
 }
 
-static auto cycle_video_mode() -> void {
+auto cycle_video_mode() -> void {
   g_videotype++;
   if (g_videotype >= VT_NUM_MODES) {
     g_videotype = 0;
@@ -243,7 +243,7 @@ static auto cycle_video_mode() -> void {
   }
 }
 
-static auto toggle_pause() -> void {
+auto toggle_pause() -> void {
   switch (system_state.mode) {
     case app_mode_running:
       system_state.mode = app_mode_paused;
@@ -259,42 +259,42 @@ static auto toggle_pause() -> void {
   system_state.reset_timing = true;
 }
 
-static auto toggle_scroll_lock() -> void { linapple_toggle_turbo(); }
+auto toggle_scroll_lock() -> void { linapple_toggle_turbo(); }
 
 // The terminal's mouse is asked for only while a card can take it. A terminal
 // cannot hide its pointer, so the card's pointer is put under the host's: each
 // report's position within the drawn Apple screen is mapped onto the card's
 // clamp window, in pixels once the terminal has said it reports them and a
 // cell size is known, in cells otherwise.
-static bool g_tracking = false;
-static bool g_pixel_reports = false;
-static int g_pixel_mode_setting = -1;
-static int g_cell_width_px = 0;
-static int g_cell_height_px = 0;
-static bool g_left_held = false;
+bool g_tracking = false;
+bool g_pixel_reports = false;
+int g_pixel_mode_setting = -1;
+int g_cell_width_px = 0;
+int g_cell_height_px = 0;
+bool g_left_held = false;
 
-static constexpr int k_sgr_left_button = 0;
-static constexpr int k_pixel_report_mode = 1016;
-static constexpr int k_mode_set = 1;
-static constexpr int k_mode_reset = 2;
-static constexpr int k_mode_set_permanently = 3;
+constexpr int k_sgr_left_button = 0;
+constexpr int k_pixel_report_mode = 1016;
+constexpr int k_mode_set = 1;
+constexpr int k_mode_reset = 2;
+constexpr int k_mode_set_permanently = 3;
 
-static auto write_terminal(const char* seq) -> void {
+auto write_terminal(const char* seq) -> void {
   fputs(seq, stdout);
   fflush(stdout);
 }
 
 // The TUI has no joystick-from-mouse path, so the card alone is a consumer.
-static auto tracking_wanted() -> bool {
+auto tracking_wanted() -> bool {
   return mouse_frontend_card_present() && mouse_frontend_capture_enabled();
 }
 
-static auto cell_size_known() -> bool {
+auto cell_size_known() -> bool {
   return g_cell_width_px > 0 && g_cell_height_px > 0;
 }
 
 // xterm fills ws_xpixel and ws_ypixel; many terminals leave them zero.
-static auto read_cell_size_from_window() -> void {
+auto read_cell_size_from_window() -> void {
   struct winsize w{};
   if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) != 0 || w.ws_col == 0 ||
       w.ws_row == 0 || w.ws_xpixel == 0 || w.ws_ypixel == 0) {
@@ -306,7 +306,7 @@ static auto read_cell_size_from_window() -> void {
 
 // An unconditional ?1016 could bring pixel reports with no cell size to scale
 // them by, so pixels wait until the terminal has answered both queries.
-static auto decide_report_unit() -> void {
+auto decide_report_unit() -> void {
   if (g_pixel_reports) {
     return;
   }
@@ -329,7 +329,7 @@ static auto decide_report_unit() -> void {
 }
 
 // The DECRQM and XTWINOPS replies arrive through the input queue.
-static auto start_tracking() -> void {
+auto start_tracking() -> void {
   g_tracking = true;
   g_pixel_reports = false;
   g_pixel_mode_setting = -1;
@@ -340,7 +340,7 @@ static auto start_tracking() -> void {
   write_terminal("\x1b[?1003h\x1b[?1006h\x1b[?1016$p\x1b[16t");
 }
 
-static auto stop_tracking() -> void {
+auto stop_tracking() -> void {
   if (!g_tracking) {
     return;
   }
@@ -353,7 +353,7 @@ static auto stop_tracking() -> void {
   g_pixel_reports = false;
 }
 
-static auto follow_machine() -> void {
+auto follow_machine() -> void {
   if (tracking_wanted() == g_tracking) {
     return;
   }
@@ -365,12 +365,12 @@ static auto follow_machine() -> void {
 }
 
 // A load can move the mouse card or take it away.
-static auto load_state() -> void {
+auto load_state() -> void {
   save_state_load();
   follow_machine();
 }
 
-static auto picture_in_report_units() -> MousePictureRect {
+auto picture_in_report_units() -> MousePictureRect {
   MousePictureRect box = tui_video_picture_box();
   if (g_pixel_reports) {
     box.x *= g_cell_width_px;
@@ -384,7 +384,7 @@ static auto picture_in_report_units() -> MousePictureRect {
 // A press or release moves nothing: under any-event tracking the pointer's
 // travel to that spot has already arrived as motion reports. Coordinates are
 // one-based.
-static auto handle_mouse_report(const MouseSgrEvent& event) -> void {
+auto handle_mouse_report(const MouseSgrEvent& event) -> void {
   if (event.motion) {
     mouse_frontend_follow(event.x - 1, event.y - 1, picture_in_report_units());
   } else if (event.button == k_sgr_left_button) {
@@ -398,7 +398,7 @@ static auto handle_mouse_report(const MouseSgrEvent& event) -> void {
   }
 }
 
-static auto handle_terminal_reply(const uint8_t* seq, size_t len) -> void {
+auto handle_terminal_reply(const uint8_t* seq, size_t len) -> void {
   int mode = 0;
   int setting = 0;
   if (mouse_frontend_decode_mode_report(seq, len, &mode, &setting)) {
@@ -418,7 +418,7 @@ static auto handle_terminal_reply(const uint8_t* seq, size_t len) -> void {
   }
 }
 
-static auto process_sequences() -> void {
+auto process_sequences() -> void {
   size_t i = 0;
   while (i < g_input_queue.size()) {
     if (g_input_queue.at(i) == k_a2_key_esc) {

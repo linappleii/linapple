@@ -532,7 +532,7 @@ auto keyboard_abi_query(void* instance, uint32_t cmd_id, void* out,
   return peripheral_incompatible;
 }
 
-static Peripheral_t keyboard_peripheral = {
+Peripheral_t keyboard_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.keyboard",
     .name = "Keyboard",

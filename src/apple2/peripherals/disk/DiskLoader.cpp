@@ -126,7 +126,7 @@ auto insert_by_name(std::vector<const DiskFormatDriver_t*>& drivers,
                     const DiskFormatDriver_t* driver) -> void {
   const auto at = std::upper_bound(
       drivers.begin(), drivers.end(), driver,
-      [](const DiskFormatDriver_t* lhs, const DiskFormatDriver_t* rhs) {
+      [](const DiskFormatDriver_t* lhs, const DiskFormatDriver_t* rhs) -> bool {
         return strcmp(driver_label(lhs), driver_label(rhs)) < 0;
       });
   drivers.insert(at, driver);
@@ -197,7 +197,7 @@ auto find_best_driver(const uint8_t* header_ptr, size_t header_size,
   }
 
   const DiskFormatDriver_t* possible_driver = nullptr;
-  for (auto* driver : registry()) {
+  for (const auto* driver : registry()) {
     const DiskProbe_e result =
         driver->probe(header_ptr, header_size, file_size, ext_hint);
     if (result == disk_probe_definite) {
@@ -416,7 +416,7 @@ auto disk_loader_get_supported_extensions(char* out_buffer, size_t buffer_size)
   std::string result;
   for (size_t i = 0; i < exts.size(); ++i) {
     if (i > 0) {
-      result += ";";
+      result += ';';
     }
     result += exts[i];
   }

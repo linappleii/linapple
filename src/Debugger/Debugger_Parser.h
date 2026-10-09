@@ -7,13 +7,12 @@
 #include "Debugger_Types.h"
 
 auto ParserFindToken(const char* src_ptr, const TokenTable_t* aTokens,
-                     const int nTokens, ArgToken_e* pToken_) -> const char*;
+                     int nTokens, ArgToken_e* pToken_) -> const char*;
 auto FindTokenOrAlphaNumeric(const char* src_ptr, const TokenTable_t* aTokens,
-                             const int nTokens, ArgToken_e* pToken_) -> const
-    char*;
+                             int nTokens, ArgToken_e* pToken_) -> const char*;
 auto RemoveWhiteSpaceReverse(char* src_ptr) -> int;
-auto TextConvertTabsToSpaces(char* pDeTabified_, const char* text,
-                             const int nDstSize, int nTabStop = 0) -> void;
+auto TextConvertTabsToSpaces(char* pDeTabified_, const char* text, int nDstSize,
+                             int nTabStop = 0) -> void;
 
 inline auto SkipUntilToken(const char* src_ptr, const TokenTable_t* aTokens,
                            const int nTokens, ArgToken_e* pToken_) -> const
@@ -176,10 +175,10 @@ auto Arg_Shift(int iSrc, int iEnd, int iDst = 0) -> int;
 auto Args_Insert(int iSrc, int iEnd, int nLen) -> int;
 auto ArgsClear() -> void;
 
-auto ArgsGetValue(Arg_t* pArg, uint16_t* pAddressValue_, const int nBase = 16)
+auto ArgsGetValue(Arg_t* pArg, uint16_t* pAddressValue_, int nBase = 16)
     -> bool;
 auto ArgsGetImmediateValue(Arg_t* pArg, uint16_t* pAddressValue_) -> bool;
 auto ArgsGet(char* pInput) -> int;
 auto ArgsGetRegisterValue(Arg_t* pArg, uint16_t* pAddressValue_) -> bool;
 auto ArgsRawParse(void) -> void;
-auto ArgsCook(const int nArgs) -> int;
+auto ArgsCook(int nArgs) -> int;
