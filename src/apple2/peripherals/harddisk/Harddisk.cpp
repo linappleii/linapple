@@ -527,8 +527,9 @@ auto execute_command(HarddiskPeripheral_t* card) -> uint8_t {
   }
 }
 
-auto harddisk_io_command(void* instance, uint16_t, uint16_t, uint8_t is_write,
-                         uint8_t data_value, uint32_t) -> uint8_t {
+auto harddisk_io_command(void* instance, uint16_t /*unused*/,
+                         uint16_t /*unused*/, uint8_t is_write,
+                         uint8_t data_value, uint32_t /*unused*/) -> uint8_t {
   auto* card = static_cast<HarddiskPeripheral_t*>(instance);
   if (is_write == 0) {
     return card->result;
@@ -538,8 +539,9 @@ auto harddisk_io_command(void* instance, uint16_t, uint16_t, uint8_t is_write,
   return 0;
 }
 
-auto harddisk_io_unit(void* instance, uint16_t, uint16_t, uint8_t is_write,
-                      uint8_t data_value, uint32_t) -> uint8_t {
+auto harddisk_io_unit(void* instance, uint16_t /*unused*/, uint16_t /*unused*/,
+                      uint8_t is_write, uint8_t data_value, uint32_t /*unused*/)
+    -> uint8_t {
   auto* card = static_cast<HarddiskPeripheral_t*>(instance);
   if (is_write == 0) {
     return card->unit;
@@ -550,8 +552,9 @@ auto harddisk_io_unit(void* instance, uint16_t, uint16_t, uint8_t is_write,
   return 0;
 }
 
-auto harddisk_io_block_low(void* instance, uint16_t, uint16_t, uint8_t is_write,
-                           uint8_t data_value, uint32_t) -> uint8_t {
+auto harddisk_io_block_low(void* instance, uint16_t /*unused*/,
+                           uint16_t /*unused*/, uint8_t is_write,
+                           uint8_t data_value, uint32_t /*unused*/) -> uint8_t {
   auto* card = static_cast<HarddiskPeripheral_t*>(instance);
   if (is_write == 0) {
     return static_cast<uint8_t>(card->block & 0xFF);
@@ -560,8 +563,9 @@ auto harddisk_io_block_low(void* instance, uint16_t, uint16_t, uint8_t is_write,
   return 0;
 }
 
-auto harddisk_io_block_high(void* instance, uint16_t, uint16_t,
-                            uint8_t is_write, uint8_t data_value, uint32_t)
+auto harddisk_io_block_high(void* instance, uint16_t /*unused*/,
+                            uint16_t /*unused*/, uint8_t is_write,
+                            uint8_t data_value, uint32_t /*unused*/)
     -> uint8_t {
   auto* card = static_cast<HarddiskPeripheral_t*>(instance);
   if (is_write == 0) {
@@ -572,8 +576,9 @@ auto harddisk_io_block_high(void* instance, uint16_t, uint16_t,
   return 0;
 }
 
-auto harddisk_io_data(void* instance, uint16_t, uint16_t, uint8_t is_write,
-                      uint8_t data_value, uint32_t) -> uint8_t {
+auto harddisk_io_data(void* instance, uint16_t /*unused*/, uint16_t /*unused*/,
+                      uint8_t is_write, uint8_t data_value, uint32_t /*unused*/)
+    -> uint8_t {
   auto* card = static_cast<HarddiskPeripheral_t*>(instance);
   const size_t index = card->data_index;
   card->data_index =
@@ -597,8 +602,9 @@ auto harddisk_io_data(void* instance, uint16_t, uint16_t, uint8_t is_write,
   return value;
 }
 
-auto harddisk_io_count_low(void* instance, uint16_t, uint16_t, uint8_t is_write,
-                           uint8_t, uint32_t) -> uint8_t {
+auto harddisk_io_count_low(void* instance, uint16_t /*unused*/,
+                           uint16_t /*unused*/, uint8_t is_write,
+                           uint8_t /*unused*/, uint32_t /*unused*/) -> uint8_t {
   auto* card = static_cast<HarddiskPeripheral_t*>(instance);
   if (is_write != 0) {
     return 0;
@@ -606,8 +612,10 @@ auto harddisk_io_count_low(void* instance, uint16_t, uint16_t, uint8_t is_write,
   return static_cast<uint8_t>(card->block_count & 0xFF);
 }
 
-auto harddisk_io_count_high(void* instance, uint16_t, uint16_t,
-                            uint8_t is_write, uint8_t, uint32_t) -> uint8_t {
+auto harddisk_io_count_high(void* instance, uint16_t /*unused*/,
+                            uint16_t /*unused*/, uint8_t is_write,
+                            uint8_t /*unused*/, uint32_t /*unused*/)
+    -> uint8_t {
   auto* card = static_cast<HarddiskPeripheral_t*>(instance);
   if (is_write != 0) {
     return 0;
@@ -615,8 +623,10 @@ auto harddisk_io_count_high(void* instance, uint16_t, uint16_t,
   return static_cast<uint8_t>(card->block_count >> 8);
 }
 
-auto harddisk_io_floating(void* instance, uint16_t, uint16_t, uint8_t is_write,
-                          uint8_t, uint32_t executed_cycles) -> uint8_t {
+auto harddisk_io_floating(void* instance, uint16_t /*unused*/,
+                          uint16_t /*unused*/, uint8_t is_write,
+                          uint8_t /*unused*/, uint32_t executed_cycles)
+    -> uint8_t {
   if (is_write != 0) {
     return 0;
   }
@@ -645,8 +655,8 @@ static_assert(regs::command == 0 && regs::unit == 1 && regs::block_low == 2 &&
               "the handler table is indexed by register offset");
 
 auto harddisk_io_read(void* instance, uint16_t program_counter,
-                      uint16_t memory_address, uint8_t is_write, uint8_t,
-                      uint32_t executed_cycles) -> uint8_t {
+                      uint16_t memory_address, uint8_t is_write,
+                      uint8_t /*unused*/, uint32_t executed_cycles) -> uint8_t {
   if (instance == nullptr || is_write != 0) {
     return read_floating_bus(static_cast<HarddiskPeripheral_t*>(instance),
                              executed_cycles);

@@ -56,8 +56,9 @@ auto chunk_is_placed(uint64_t data_end, uint64_t file_size, uint32_t offset,
   return begin >= data_end && end <= file_size;
 }
 
-auto two_img_probe(const uint8_t* header_data, size_t header_size, uint64_t,
-                   const char*) -> HarddiskProbe_e {
+auto two_img_probe(const uint8_t* header_data, size_t header_size,
+                   uint64_t /*unused*/, const char* /*unused*/)
+    -> HarddiskProbe_e {
   if (header_data == nullptr || header_size < magic_size) {
     return harddisk_probe_no;
   }

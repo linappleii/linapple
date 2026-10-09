@@ -845,7 +845,7 @@ struct CpuLoopContext {
   }
 };
 
-static auto op_nop(CpuLoopContext&) -> void {}
+static auto op_nop(CpuLoopContext& /*unused*/) -> void {}
 
 static const OpcodeDesc s_opcodes_nmos[256] = {
     /* 0x00 */ {[](CpuLoopContext& c) { c.op_brk<false>(); }, 7},  // BRK

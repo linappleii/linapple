@@ -28,9 +28,7 @@ auto CurlDeleter::operator()(CURL* handle) const noexcept -> void {
   }
 }
 
-CurlGlobalGuard::CurlGlobalGuard() {
-  curl_global_init(CURL_GLOBAL_DEFAULT);
-}
+CurlGlobalGuard::CurlGlobalGuard() { curl_global_init(CURL_GLOBAL_DEFAULT); }
 
 CurlGlobalGuard::~CurlGlobalGuard() { curl_global_cleanup(); }
 
@@ -60,7 +58,7 @@ struct StagingGuard {
 };
 
 auto curl_xfer_callback(void* clientp, curl_off_t dltotal, curl_off_t dlnow,
-                        curl_off_t, curl_off_t) -> int {
+                        curl_off_t /*unused*/, curl_off_t /*unused*/) -> int {
   auto* ctx = static_cast<ProgressContext*>(clientp);
   if (ctx == nullptr || ctx->callback == nullptr) {
     return 0;
@@ -170,11 +168,11 @@ FtpClient::FtpClient(FtpClient&&) noexcept = default;
 auto FtpClient::operator=(FtpClient&&) noexcept -> FtpClient& = default;
 
 auto FtpClient::download_file(const std::string& remote_url,
-                                const std::string& local_cache_dir,
-                                const std::string& filename,
-                                const std::string& user_pwd,
-                                FtpProgressCallback progress_cb,
-                                void* user_data) -> FtpStatus {
+                              const std::string& local_cache_dir,
+                              const std::string& filename,
+                              const std::string& user_pwd,
+                              FtpProgressCallback progress_cb, void* user_data)
+    -> FtpStatus {
   if (remote_url.empty() || local_cache_dir.empty() || filename.empty()) {
     return FtpStatus::invalid_param;
   }
@@ -246,8 +244,8 @@ auto FtpClient::download_file(const std::string& remote_url,
 }
 
 auto FtpClient::fetch_directory_listing(const std::string& remote_dir_url,
-                                          std::vector<FtpFileEntry>& entries,
-                                          const std::string& user_pwd)
+                                        std::vector<FtpFileEntry>& entries,
+                                        const std::string& user_pwd)
     -> FtpStatus {
   if (remote_dir_url.empty()) {
     return FtpStatus::invalid_param;
@@ -306,14 +304,14 @@ FtpClient::FtpClient(FtpClient&&) noexcept = default;
 auto FtpClient::operator=(FtpClient&&) noexcept -> FtpClient& = default;
 
 auto FtpClient::download_file(const std::string&, const std::string&,
-                                const std::string&, const std::string&,
-                                FtpProgressCallback, void*) -> FtpStatus {
+                              const std::string&, const std::string&,
+                              FtpProgressCallback, void*) -> FtpStatus {
   return FtpStatus::disabled;
 }
 
 auto FtpClient::fetch_directory_listing(const std::string&,
-                                          std::vector<FtpFileEntry>&,
-                                          const std::string&) -> FtpStatus {
+                                        std::vector<FtpFileEntry>&,
+                                        const std::string&) -> FtpStatus {
   return FtpStatus::disabled;
 }
 

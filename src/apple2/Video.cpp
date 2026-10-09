@@ -1470,8 +1470,8 @@ auto video_benchmark() -> void {
   std::this_thread::sleep_for(std::chrono::milliseconds(1500));
 }
 
-auto video_check_mode(uint16_t, uint16_t address, uint8_t, uint8_t,
-                      uint32_t executed_cycles) -> uint8_t {
+auto video_check_mode(uint16_t /*unused*/, uint16_t address, uint8_t /*unused*/,
+                      uint8_t /*unused*/, uint32_t executed_cycles) -> uint8_t {
   address &= 0xFF;
   if (address == 0x7F) {
     return mem_read_floating_bus(sw_dhires(), executed_cycles);
@@ -1509,7 +1509,8 @@ auto video_check_page(bool force) -> void {
   }
 }
 
-auto video_check_vbl(uint16_t, uint16_t, uint8_t, uint8_t,
+auto video_check_vbl(uint16_t /*unused*/, uint16_t /*unused*/,
+                     uint8_t /*unused*/, uint8_t /*unused*/,
                      uint32_t executed_cycles) -> uint8_t {
   bool vbl_bar = false;
   static_cast<void>(video_get_scanner_address(&vbl_bar, executed_cycles));
@@ -1863,8 +1864,8 @@ auto video_reset_state() -> void {
   redrawfull = true;
 }
 
-auto video_set_mode(uint16_t, uint16_t address, uint8_t write, uint8_t,
-                    uint32_t executed_cycles) -> uint8_t {
+auto video_set_mode(uint16_t /*unused*/, uint16_t address, uint8_t write,
+                    uint8_t /*unused*/, uint32_t executed_cycles) -> uint8_t {
   (void)write;
 
   address &= 0xFF;

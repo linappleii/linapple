@@ -23,7 +23,8 @@ namespace {
 constexpr size_t woz_magic_size = 4;
 
 auto nibble_refusal_probe(const uint8_t* header_data, size_t header_size,
-                          uint64_t, const char* ext_hint) -> HarddiskProbe_e {
+                          uint64_t /*unused*/, const char* ext_hint)
+    -> HarddiskProbe_e {
   if (ext_hint != nullptr &&
       (strcmp(ext_hint, ".nib") == 0 || strcmp(ext_hint, ".nb2") == 0 ||
        strcmp(ext_hint, ".woz") == 0)) {
@@ -37,7 +38,8 @@ auto nibble_refusal_probe(const uint8_t* header_data, size_t header_size,
   return harddisk_probe_no;
 }
 
-auto nibble_refusal_open(const char*, uint32_t, bool, void** out_instance)
+auto nibble_refusal_open(const char* /*unused*/, uint32_t /*unused*/,
+                         bool /*unused*/, void** out_instance)
     -> HarddiskError_e {
   if (out_instance != nullptr) {
     *out_instance = nullptr;
@@ -48,20 +50,23 @@ auto nibble_refusal_open(const char*, uint32_t, bool, void** out_instance)
 // open never hands out an instance, so none of the entry points below is ever
 // reached; each is present so the loader admits the driver by the same test
 // as any other and the card never has to ask whether a member exists.
-auto nibble_refusal_close(void*) -> void {}
+auto nibble_refusal_close(void* /*unused*/) -> void {}
 
-auto nibble_refusal_is_write_protected(void*) -> bool { return true; }
+auto nibble_refusal_is_write_protected(void* /*unused*/) -> bool {
+  return true;
+}
 
-auto nibble_refusal_read_block(void*, uint32_t, uint8_t*) -> HarddiskError_e {
+auto nibble_refusal_read_block(void* /*unused*/, uint32_t /*unused*/,
+                               uint8_t* /*unused*/) -> HarddiskError_e {
   return harddisk_err_not_block_image;
 }
 
-auto nibble_refusal_write_block(void*, uint32_t, const uint8_t*)
-    -> HarddiskError_e {
+auto nibble_refusal_write_block(void* /*unused*/, uint32_t /*unused*/,
+                                const uint8_t* /*unused*/) -> HarddiskError_e {
   return harddisk_err_not_block_image;
 }
 
-auto nibble_refusal_get_total_blocks(void*) -> uint32_t { return 0; }
+auto nibble_refusal_get_total_blocks(void* /*unused*/) -> uint32_t { return 0; }
 
 const char* const nibble_refusal_supported_exts[] = {
     "nib",

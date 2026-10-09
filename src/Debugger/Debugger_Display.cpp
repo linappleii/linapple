@@ -51,7 +51,7 @@ extern auto DisasmInit() -> void;
 extern auto CmdSymbolsClear(SymbolTable_Index_e eSymbolTable) -> Update_t;
 extern auto frame_refresh_status(int) -> void;
 
-auto DrawSubWindow_IO(Update_t) -> void {}
+auto DrawSubWindow_IO(Update_t /*unused*/) -> void {}
 
 // Implementation ___________________________________________________________
 

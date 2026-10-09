@@ -16,7 +16,7 @@ enum class LogLevel : uint8_t {
 
 using LogCallback = void (*)(LogLevel level, const char* message);
 using LogCallbackWithContext = void (*)(LogLevel level, const char* message,
-                                          void* user_data);
+                                        void* user_data);
 
 namespace Logger {
 
@@ -29,8 +29,8 @@ auto set_verbosity(LogLevel level) noexcept -> void;
 auto get_verbosity() noexcept -> LogLevel;
 
 auto set_callback(LogCallback callback) -> void;
-auto set_callback_with_context(LogCallbackWithContext callback,
-                               void* user_data) -> void;
+auto set_callback_with_context(LogCallbackWithContext callback, void* user_data)
+    -> void;
 
 auto set_log_path(const char* path) -> void;
 auto enable_file_logging(bool enable) noexcept -> void;
@@ -45,6 +45,6 @@ auto is_file_logging_enabled() noexcept -> bool;
 [[gnu::format(printf, 2, 0)]] auto log_message_v(LogLevel level,
                                                  const char* format,
                                                  va_list args) -> void;
-auto log_level_to_string(LogLevel) noexcept -> const char*;
+auto log_level_to_string(LogLevel /*level*/) noexcept -> const char*;
 
 }  // namespace Logger

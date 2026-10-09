@@ -465,8 +465,9 @@ auto insert_disk_into_drive(DiskPeripheral_t* disk_peripheral, int drive_index,
   return error;
 }
 
-auto disk_io_control_motor(void* instance, uint16_t, uint16_t memory_address,
-                           uint8_t, uint8_t, uint32_t executed_cycles)
+auto disk_io_control_motor(void* instance, uint16_t /*unused*/,
+                           uint16_t memory_address, uint8_t /*unused*/,
+                           uint8_t /*unused*/, uint32_t executed_cycles)
     -> uint8_t {
   if (instance == nullptr) {
     return read_floating_bus(instance, executed_cycles);
@@ -535,8 +536,9 @@ auto settle_head(DiskPeripheral_t* disk_peripheral) -> void {
   move_head_to(disk_peripheral, static_cast<uint32_t>(settled));
 }
 
-auto disk_io_control_stepper(void* instance, uint16_t, uint16_t memory_address,
-                             uint8_t, uint8_t, uint32_t executed_cycles)
+auto disk_io_control_stepper(void* instance, uint16_t /*unused*/,
+                             uint16_t memory_address, uint8_t /*unused*/,
+                             uint8_t /*unused*/, uint32_t executed_cycles)
     -> uint8_t {
   if (instance == nullptr) {
     return read_floating_bus(instance, executed_cycles);
@@ -590,8 +592,9 @@ auto disk_io_control_stepper(void* instance, uint16_t, uint16_t memory_address,
   return read_floating_bus(instance, executed_cycles);
 }
 
-auto disk_io_enable_drive(void* instance, uint16_t, uint16_t memory_address,
-                          uint8_t, uint8_t, uint32_t executed_cycles)
+auto disk_io_enable_drive(void* instance, uint16_t /*unused*/,
+                          uint16_t memory_address, uint8_t /*unused*/,
+                          uint8_t /*unused*/, uint32_t executed_cycles)
     -> uint8_t {
   if (instance == nullptr) {
     return read_floating_bus(instance, executed_cycles);
@@ -785,9 +788,10 @@ auto sync_sequencer_to_cycle(DiskPeripheral_t* disk_peripheral,
   run_sequencer_cycles(disk_peripheral, elapsed);
 }
 
-auto disk_io_mode_switch(void* instance, uint16_t, uint16_t memory_address,
-                         uint8_t is_write, uint8_t data_value,
-                         uint32_t executed_cycles) -> uint8_t {
+auto disk_io_mode_switch(void* instance, uint16_t /*unused*/,
+                         uint16_t memory_address, uint8_t is_write,
+                         uint8_t data_value, uint32_t executed_cycles)
+    -> uint8_t {
   if (instance == nullptr) {
     return read_floating_bus(instance, executed_cycles);
   }
@@ -985,7 +989,7 @@ constexpr std::array<DiskIoHandler_t, 16> k_disk_io_handlers = {
 // access does and what it answers with are two separate questions: every
 // switch still fires, but only the even offsets drive the eight data lines.
 auto disk_io_read(void* instance, uint16_t program_counter,
-                  uint16_t memory_address, uint8_t is_write, uint8_t,
+                  uint16_t memory_address, uint8_t is_write, uint8_t /*unused*/,
                   uint32_t executed_cycles) -> uint8_t {
   if (instance == nullptr || is_write != 0) {
     return read_floating_bus(instance, executed_cycles);
