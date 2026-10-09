@@ -11,20 +11,20 @@
 #include <fstream>
 #include <iterator>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include "HeadlessHarness.h"
 #include "apple2/Memory.h"
 #include "core/LinAppleCore.h"
-#include "core/Log.h"
 #include "doctest.h"
 #include "frontends/common/PrinterFrontend.h"
 #include "test_fixtures.h"
+#include "test_fixtures_core.h"
 
 namespace {
 
 using TestFixtures::ScopedEnvVar_t;
+using TestFixtures::ScopedLogCapture_t;
 using TestFixtures::ScopedTempDir_t;
 using TestFixtures::ScopedTempFile_t;
 using TestFixtures::ScopedTestConfig_t;
@@ -71,36 +71,6 @@ auto file_bytes_hex(const std::string& path) -> std::string {
 auto file_exists(const std::string& path) -> bool {
   return access(path.c_str(), F_OK) == 0;
 }
-
-std::string g_watched_file;
-std::vector<std::string> g_lines_naming_the_file;
-
-auto capture_log(LogLevel level, const char* message) -> void {
-  (void)level;
-  if (message != nullptr &&
-      std::strstr(message, g_watched_file.c_str()) != nullptr) {
-    g_lines_naming_the_file.emplace_back(message);
-  }
-}
-
-// Collects the log lines that name the printer's file; the card's own wait
-// line names the slot only, so it is not counted here.
-struct ScopedLogCapture_t {
-  explicit ScopedLogCapture_t(std::string path) {
-    g_watched_file = std::move(path);
-    g_lines_naming_the_file.clear();
-    Logger::set_callback(capture_log);
-  }
-  ~ScopedLogCapture_t() { Logger::set_callback(nullptr); }
-  ScopedLogCapture_t(const ScopedLogCapture_t&) = delete;
-  auto operator=(const ScopedLogCapture_t&) -> ScopedLogCapture_t& = delete;
-  ScopedLogCapture_t(ScopedLogCapture_t&&) = delete;
-  auto operator=(ScopedLogCapture_t&&) -> ScopedLogCapture_t& = delete;
-
-  static auto lines() -> const std::vector<std::string>& {
-    return g_lines_naming_the_file;
-  }
-};
 
 }  // namespace
 
@@ -189,17 +159,20 @@ TEST_CASE(
   const std::string spool = dir.path() + "/spool";
   const std::string path = spool + "/Printer.txt";
   ScopedTestConfig_t config(printer_in_slot_1(path));
-  ScopedLogCapture_t log(path);
+  // The card's own wait line names the slot only, so counting the lines that
+  // name the file leaves it out.
+  ScopedLogCapture_t log;
+  const auto naming_the_file = [&log, &path]() {
+    return log.lines_containing(path);
+  };
   {
     HeadlessHarness_t harness(config);
     harness.boot();
 
     strobe(1, 0xC8);
-    REQUIRE(ScopedLogCapture_t::lines().size() == 1);
-    CHECK(ScopedLogCapture_t::lines().at(0).find("cannot open") !=
-          std::string::npos);
-    CHECK(ScopedLogCapture_t::lines().at(0).find("slot 1 is off") !=
-          std::string::npos);
+    REQUIRE(naming_the_file().size() == 1);
+    CHECK(naming_the_file().at(0).find("cannot open") != std::string::npos);
+    CHECK(naming_the_file().at(0).find("slot 1 is off") != std::string::npos);
     CHECK_FALSE(file_exists(path));
 
     // The directory now exists, but readiness is a state query: a thousand
@@ -209,19 +182,18 @@ TEST_CASE(
     for (int poll = 0; poll < 1000; ++poll) {
       strobe(1, 0xC9);
     }
-    CHECK(ScopedLogCapture_t::lines().size() == 1);
+    CHECK(naming_the_file().size() == 1);
     CHECK_FALSE(file_exists(path));
 
     harness.run_frames(1);
-    REQUIRE(ScopedLogCapture_t::lines().size() == 2);
-    CHECK(ScopedLogCapture_t::lines().at(1).find("on again") !=
-          std::string::npos);
+    REQUIRE(naming_the_file().size() == 2);
+    CHECK(naming_the_file().at(1).find("on again") != std::string::npos);
     CHECK(file_exists(path));
 
     strobe(1, 0xCA);
     strobe(1, 0x8D);
   }
-  CHECK(ScopedLogCapture_t::lines().size() == 2);
+  CHECK(naming_the_file().size() == 2);
   CHECK(file_bytes_hex(path) == "4A 0D");
 }
 

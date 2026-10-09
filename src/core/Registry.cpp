@@ -226,11 +226,12 @@ auto Configuration::sync_to_data() -> void {
     data[cfg_sec_slots][cfg_disk_image2] = disk_path.at(1).data();
   }
 
-  if (harddisk_path.at(0).at(0) != '\0') {
+  // A path the command line named is this run's alone: the key keeps what the
+  // file held, so no later save remembers it.
+  if (harddisk_path.at(0).at(0) != '\0' && !harddisk_path_from_args.at(0)) {
     data[cfg_sec_preferences][cfg_hdd_image1] = harddisk_path.at(0).data();
-    data[cfg_sec_preferences][cfg_hdd_enabled] = "1";
   }
-  if (harddisk_path.at(1).at(0) != '\0') {
+  if (harddisk_path.at(1).at(0) != '\0' && !harddisk_path_from_args.at(1)) {
     data[cfg_sec_preferences][cfg_hdd_image2] = harddisk_path.at(1).data();
   }
 

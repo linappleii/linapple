@@ -25,6 +25,17 @@ auto peripheral_get_plugin_path(const char* name) -> const char*;
 auto peripheral_legacy_override(int* slot, const char** key_card,
                                 const char** displaced) -> bool;
 
+// A card a frontend wants for this run only, by descriptor id. The next
+// peripheral_register_internal applies it after the slot table and the legacy
+// keys and then forgets it: a card the configuration already placed satisfies
+// the request where it is; otherwise the card goes into its default slot if
+// that is empty, else the highest free slot below it, never displacing another
+// card. Nothing is written to the configuration.
+auto peripheral_request_card_for_run(const char* id) -> void;
+// The slot holding the requested card after the last registration, or -1 when
+// nothing was requested, no slot was free or the build has no such card.
+auto peripheral_requested_slot() -> int;
+
 // NOLINTBEGIN(modernize-use-using, cppcoreguidelines-use-enum-class, readability-identifier-naming)
 
 // Test hook: inject frozen host clock provider.

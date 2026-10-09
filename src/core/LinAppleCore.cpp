@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <initializer_list>
 
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
@@ -35,7 +36,6 @@ eApple2Language current_language = A2LANG_US;
 
 uint32_t emul_msec = 0;
 bool full_speed = false;
-bool hdd_enabled = false;
 
 constexpr uint32_t default_cycles_per_frame = 17030;
 constexpr int bytes_per_pixel = 4;
@@ -237,6 +237,12 @@ auto linapple_init() -> int {
 
 auto linapple_register_peripherals() -> void { peripheral_register_internal(); }
 
+auto linapple_request_card_for_run(const char* id) -> void {
+  peripheral_request_card_for_run(id);
+}
+
+auto linapple_requested_slot() -> int { return peripheral_requested_slot(); }
+
 auto linapple_shutdown() -> void {
   basic_sync_shutdown();
   peripheral_manager_shutdown();
@@ -308,32 +314,42 @@ auto linapple_get_supported_disk_extensions(int slot, char* out_buffer,
   }
   out_buffer[0] = '\0';
   size_t exts_size = buffer_size;
-  if (slot == harddisk_default_slot) {
-    if (peripheral_query(harddisk_default_slot,
-                         harddisk_query_supported_extensions, out_buffer,
-                         &exts_size) == peripheral_ok) {
-      return std::strlen(out_buffer);
-    }
-    const auto* p = peripheral_find_internal("linapple.harddisk");
-    if (p != nullptr && p->query != nullptr &&
-        p->query(nullptr, harddisk_query_supported_extensions, out_buffer,
-                 &exts_size) == peripheral_ok) {
-      return std::strlen(out_buffer);
-    }
-  } else {
-    const int target_slot = (slot > 0) ? slot : disk_default_slot;
-    if (peripheral_query(target_slot, disk_query_supported_extensions,
-                         out_buffer, &exts_size) == peripheral_ok) {
-      return std::strlen(out_buffer);
-    }
-    const auto* p = peripheral_find_internal("linapple.disk_II");
-    if (p != nullptr && p->query != nullptr &&
-        p->query(nullptr, disk_query_supported_extensions, out_buffer,
-                 &exts_size) == peripheral_ok) {
+  // Whatever card holds the slot answers for it, under either card's query id;
+  // a slot whose card answers neither falls back to the descriptors, which
+  // list what either card could mount.
+  for (const uint32_t query_id :
+       {static_cast<uint32_t>(disk_query_supported_extensions),
+        static_cast<uint32_t>(harddisk_query_supported_extensions)}) {
+    exts_size = buffer_size;
+    if (peripheral_query(slot, query_id, out_buffer, &exts_size) ==
+        peripheral_ok) {
       return std::strlen(out_buffer);
     }
   }
-  return 0;
+  out_buffer[0] = '\0';
+  for (const char* id : {"linapple.disk_II", "linapple.harddisk"}) {
+    Peripheral_t* descriptor = peripheral_find_internal(id);
+    if (descriptor == nullptr || descriptor->query == nullptr) {
+      continue;
+    }
+    const uint32_t query_id =
+        (std::strcmp(id, "linapple.disk_II") == 0)
+            ? static_cast<uint32_t>(disk_query_supported_extensions)
+            : static_cast<uint32_t>(harddisk_query_supported_extensions);
+    char list[256] = {};
+    exts_size = sizeof(list);
+    if (descriptor->query(nullptr, query_id, list, &exts_size) !=
+        peripheral_ok) {
+      continue;
+    }
+    const size_t used = std::strlen(out_buffer);
+    if (used > 0 && used + 1 < buffer_size) {
+      out_buffer[used] = ';';
+      out_buffer[used + 1] = '\0';
+    }
+    std::strncat(out_buffer, list, buffer_size - std::strlen(out_buffer) - 1);
+  }
+  return std::strlen(out_buffer);
 }
 
 auto linapple_is_supported_disk_image(const char* path) -> bool {
@@ -344,17 +360,26 @@ auto linapple_is_supported_disk_image(const char* path) -> bool {
   if (ext == nullptr) {
     return false;
   }
-  constexpr size_t buf_size = 256;
-  char floppy_exts[buf_size] = {};
-  linapple_get_supported_disk_extensions(disk_default_slot, floppy_exts,
-                                         sizeof(floppy_exts));
-  if (extension_matches_list(ext, floppy_exts)) {
-    return true;
+  // Both cards' descriptors, with no instance: what the machine could mount,
+  // whether or not a card is in a slot right now.
+  for (const char* id : {"linapple.disk_II", "linapple.harddisk"}) {
+    Peripheral_t* descriptor = peripheral_find_internal(id);
+    if (descriptor == nullptr || descriptor->query == nullptr) {
+      continue;
+    }
+    const uint32_t query_id =
+        (std::strcmp(id, "linapple.disk_II") == 0)
+            ? static_cast<uint32_t>(disk_query_supported_extensions)
+            : static_cast<uint32_t>(harddisk_query_supported_extensions);
+    char list[256] = {};
+    size_t exts_size = sizeof(list);
+    if (descriptor->query(nullptr, query_id, list, &exts_size) ==
+            peripheral_ok &&
+        extension_matches_list(ext, list)) {
+      return true;
+    }
   }
-  char hdd_exts[buf_size] = {};
-  linapple_get_supported_disk_extensions(harddisk_default_slot, hdd_exts,
-                                         sizeof(hdd_exts));
-  return extension_matches_list(ext, hdd_exts);
+  return false;
 }
 
 auto linapple_load_program(const char* path) -> int {

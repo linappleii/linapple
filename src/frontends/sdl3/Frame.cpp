@@ -35,6 +35,7 @@
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
+#include "apple2/peripherals/harddisk/HarddiskError.h"
 #include "core/Asset.h"
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
@@ -43,6 +44,7 @@
 #include "frontends/common/AppController.h"
 #include "frontends/common/AudioMixer.h"
 #include "frontends/common/Frontend.h"
+#include "frontends/common/HarddiskFrontend.h"
 #include "frontends/common/HelpText.h"
 #include "frontends/common/MouseFrontend.h"
 #include "frontends/common/SaveStateManager.h"
@@ -80,6 +82,26 @@ uint32_t s_windowed_height = 0;
 DiskStatus_t s_last_disk_status{};
 int s_drive0_last_reported_error = disk_err_none;
 int s_drive1_last_reported_error = disk_err_none;
+std::array<int, harddisk_drive_count> s_harddisk_last_reported_error{};
+
+// Refusals arrive from the helper, not from the status poll; like the Disk
+// II's they are shown once per distinct error per drive, until the card
+// reports the drive clear again.
+auto report_harddisk_error(int drive, int error, const char* message) -> void {
+  if (drive < 0 || drive >= harddisk_drive_count) {
+    return;
+  }
+  int& last_reported =
+      s_harddisk_last_reported_error.at(static_cast<size_t>(drive));
+  if (error == last_reported) {
+    return;
+  }
+  const char* title =
+      (drive == harddisk_drive_0) ? "Hard Disk 1 error" : "Hard Disk 2 error";
+  SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title, message,
+                           g_window.get());
+  last_reported = error;
+}
 
 inline auto to_video_rect(const SDL_Rect& r) noexcept -> VideoRect {
   VideoRect vr{};
@@ -177,9 +199,7 @@ auto handle_btn_drive(int drive_index, int mod) -> void {
   if ((mod & SDL_KMOD_CTRL) != 0) {
     if ((mod & SDL_KMOD_SHIFT) != 0) {
       std::printf("HDD  Eject Drive #%d\n", drive_index + 1);
-      HarddiskEjectCmd_t ecmd = {static_cast<uint8_t>(drive_index)};
-      peripheral_command(harddisk_default_slot, harddisk_cmd_eject, &ecmd,
-                         sizeof(ecmd));
+      harddisk_frontend_eject(drive_index);
     } else {
       std::printf("Disk Eject Drive #%d\n", drive_index + 1);
       DiskEjectCmd_t ecmd{};
@@ -423,6 +443,7 @@ auto draw_apple_content() -> void {
 }
 
 auto frame_refresh() -> void {
+  frame_poll_activity();
   if (g_texture != nullptr && g_screen != nullptr && g_renderer != nullptr) {
     SDL_UpdateTexture(g_texture.get(), nullptr, g_screen->pixels,
                       g_screen->pitch);
@@ -474,6 +495,11 @@ auto draw_frame_window() -> void {
 
   frame_refresh();
 }
+
+// The glyphs as last composed, so what the panel shows can be read back, and
+// an activity mark the poll took before the repaint it asked for.
+static std::array<char, 3> s_last_leds = {{1, 1, 1}};
+static bool s_harddisk_activity_seen = false;
 
 auto draw_status_area(int drawflags) -> void {
   if (g_status_surface == nullptr || g_status_surface->pixels == nullptr) {
@@ -531,25 +557,81 @@ auto draw_status_area(int drawflags) -> void {
       drive2_status = disk_status_prot;
     }
 
+    const int hd_slot = harddisk_frontend_slot();
     HarddiskStatus_t hstatus{};
     size_t hsize = sizeof(hstatus);
-    if (peripheral_query(harddisk_default_slot, harddisk_query_status, &hstatus,
-                         &hsize) == peripheral_ok) {
-      hdd_status = hstatus.activity_status;
+    if (hd_slot != harddisk_frontend_no_card &&
+        peripheral_query(hd_slot, harddisk_query_status, &hstatus, &hsize) ==
+            peripheral_ok) {
+      if (hstatus.drive0_last_error == harddisk_err_none) {
+        s_harddisk_last_reported_error.at(0) = harddisk_err_none;
+      }
+      if (hstatus.drive1_last_error == harddisk_err_none) {
+        s_harddisk_last_reported_error.at(1) = harddisk_err_none;
+      }
+      // The card reports a transfer still in flight; the manager remembers
+      // one that began and ended inside the frame.
+      const bool seen =
+          s_harddisk_activity_seen || peripheral_activity_poll(hd_slot);
+      s_harddisk_activity_seen = false;
+      if (seen || hstatus.activity_status != harddisk_status_off) {
+        hdd_status = (hstatus.activity_status == harddisk_status_write)
+                         ? harddisk_status_write
+                         : harddisk_status_read;
+      } else if ((hstatus.drive0_loaded != 0 &&
+                  hstatus.drive0_write_protected != 0) ||
+                 (hstatus.drive1_loaded != 0 &&
+                  hstatus.drive1_write_protected != 0)) {
+        hdd_status = harddisk_status_prot;
+      }
     }
 
-    leds.at(0) = static_cast<char>(led_char_base + drive1_status);
+    s_last_leds = {{static_cast<char>(led_char_base + drive1_status),
+                    static_cast<char>(led_char_base + drive2_status),
+                    static_cast<char>(led_char_base + hdd_status)}};
+
+    leds.at(0) = s_last_leds.at(0);
     font_print(8, 23, leds.data(), g_status_surface, 4.0F, 2.7F);
 
-    leds.at(0) = static_cast<char>(led_char_base + drive2_status);
+    leds.at(0) = s_last_leds.at(1);
     font_print(40, 23, leds.data(), g_status_surface, 4.0F, 2.7F);
 
-    leds.at(0) = static_cast<char>(led_char_base + hdd_status);
+    leds.at(0) = s_last_leds.at(2);
     font_print(71, 23, leds.data(), g_status_surface, 4.0F, 2.7F);
 
     if ((drive1_status | drive2_status | hdd_status) != 0) {
       g_status_cycle = show_cycles;
     }
+  }
+}
+
+auto frame_status_led(int index) -> char {
+  if (index < 0 || static_cast<size_t>(index) >= s_last_leds.size()) {
+    return 0;
+  }
+  return s_last_leds.at(static_cast<size_t>(index));
+}
+
+// No frontend repaints the panel each frame, so a transfer that began and
+// ended between two repaints would never light the lamp; one repaint per
+// frame of activity, and one more when the panel's hold runs out, so that a
+// lamp left lit goes dark.
+auto frame_poll_activity() -> void {
+  const int hd_slot = harddisk_frontend_slot();
+  if (hd_slot == harddisk_frontend_no_card) {
+    return;
+  }
+  if (peripheral_activity_poll(hd_slot)) {
+    s_harddisk_activity_seen = true;
+    frame_refresh_status(draw_leds);
+    return;
+  }
+  constexpr int led_char_base = 1;
+  const char lamp = s_last_leds.at(2);
+  const bool lit = lamp == led_char_base + harddisk_status_read ||
+                   lamp == led_char_base + harddisk_status_write;
+  if (lit && g_status_cycle == 0) {
+    frame_refresh_status(draw_leds);
   }
 }
 
@@ -1000,10 +1082,12 @@ auto frame_create_window() -> int {
   }
   std::printf("Screen size is %dx%d\n", system_state.screen_width,
               system_state.screen_height);
+  harddisk_frontend_set_error_reporter(report_harddisk_error);
   return 0;
 }
 
 auto frame_destroy_window() -> void {
+  harddisk_frontend_set_error_reporter(nullptr);
   g_texture.reset();
   g_screen.reset();
   g_renderer.reset();

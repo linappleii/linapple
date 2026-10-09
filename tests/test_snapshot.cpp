@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdio>
@@ -26,8 +27,22 @@
 #include "apple2/peripherals/Peripheral_Internal.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/mouse/MouseCommands.h"
+#if defined(ENABLE_PERIPHERAL_HARDDISK)
+#include "apple2/peripherals/harddisk/HarddiskCommands.h"
+#endif
+#if defined(ENABLE_PERIPHERAL_CLOCK)
+#include "apple2/peripherals/clock/ClockCardCommands.h"
+#endif
+#if defined(ENABLE_PERIPHERAL_PRINTER)
+#include "apple2/peripherals/printer/PrinterCommands.h"
+#endif
+#if defined(ENABLE_PERIPHERAL_SUPER_SERIAL)
+#include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
+#endif
+#if defined(ENABLE_PERIPHERAL_MOCKINGBOARD)
+#include "apple2/peripherals/mockingboard/MockingboardCommands.h"
+#endif
 #include "core/LinAppleCore.h"
-#include "core/Log.h"
 #include "core/Util_Crc32.h"
 #include "doctest.h"
 #include "frontends/common/MouseFrontend.h"
@@ -368,53 +383,7 @@ TEST_CASE("Snapshot: A fixed-body file loads with its slots intact") {
 }
 #endif
 
-namespace {
-
-struct LogLines_t {
-  std::vector<std::string> lines;
-};
-
-auto collect_log_line(LogLevel level, const char* message, void* user_data)
-    -> void {
-  (void)level;
-  auto* lines = static_cast<LogLines_t*>(user_data);
-  if (lines != nullptr && message != nullptr) {
-    lines->lines.emplace_back(message);
-  }
-}
-
-class ScopedLogCapture_t {
- public:
-  ScopedLogCapture_t() : verbosity_(Logger::get_verbosity()) {
-    Logger::set_verbosity(LogLevel::info);
-    Logger::set_callback_with_context(collect_log_line, &lines_);
-  }
-  ~ScopedLogCapture_t() {
-    Logger::set_callback_with_context(nullptr, nullptr);
-    Logger::set_verbosity(verbosity_);
-  }
-  ScopedLogCapture_t(const ScopedLogCapture_t&) = delete;
-  auto operator=(const ScopedLogCapture_t&) -> ScopedLogCapture_t& = delete;
-  ScopedLogCapture_t(ScopedLogCapture_t&&) = delete;
-  auto operator=(ScopedLogCapture_t&&) -> ScopedLogCapture_t& = delete;
-
-  auto lines() const -> const std::vector<std::string>& { return lines_.lines; }
-  auto count_containing(const std::string& needle) const -> size_t {
-    size_t count = 0;
-    for (const std::string& line : lines_.lines) {
-      if (line.find(needle) != std::string::npos) {
-        ++count;
-      }
-    }
-    return count;
-  }
-
- private:
-  LogLevel verbosity_;
-  LogLines_t lines_;
-};
-
-}  // namespace
+using TestFixtures::ScopedLogCapture_t;
 
 #if defined(ENABLE_PERIPHERAL_PRINTER) &&      \
     defined(ENABLE_PERIPHERAL_SUPER_SERIAL) && \
@@ -1563,16 +1532,48 @@ auto mouse_fixture_machine() -> TestConfig_t::Description_t {
   return description;
 }
 
+constexpr int harddisk_slot = 7;
+constexpr uint16_t harddisk_io_base = 0xC080 + (harddisk_slot << 4);
+
+auto harddisk_status() -> HarddiskStatus_t {
+  HarddiskStatus_t out{};
+  size_t size = sizeof(out);
+  REQUIRE(peripheral_query(harddisk_slot, harddisk_query_status, &out, &size) ==
+          peripheral_ok);
+  return out;
+}
+
+// The mouse fixtures carry an empty slot-7 trailer entry, so the load falls
+// back to the 16-byte fixed-body region, which the card refuses and says so
+// once; the card stays at reset with its mounted image where the host put it.
 auto load_mouse_fixture(const std::string& name) -> void {
   const std::string path = TestFixtures::get_fixture_path(name);
   REQUIRE(access(path.c_str(), R_OK) == 0);
+
+  const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
+  HarddiskInsertCmd_t insert{};
+  insert.drive = harddisk_drive_0;
+  std::strncpy(insert.path, image.c_str(), sizeof(insert.path) - 1);
+  REQUIRE(peripheral_command(harddisk_slot, harddisk_cmd_insert, &insert,
+                             sizeof(insert)) == peripheral_ok);
+  peripheral_manager_think(0);
+  REQUIRE(harddisk_status().drive0_loaded == 1);
+  io_map_dispatch(0, harddisk_io_base + 2, 1, 0x05, 0);
+
   save_state_set_filename(path.c_str());
   ScopedLogCapture_t log;
   REQUIRE(save_state_load());
-  // The Harddisk's 2,160-byte frame never fit the trailer, so its empty entry
-  // falls back to the 16-byte region, which it refuses.
-  CHECK(log.count_containing("Slot 7: Harddisk refused") == 1);
+  CHECK(log.count_containing("Slot 7: Harddisk refused the 16-byte "
+                             "fixed-body region and stays at reset") == 1);
   CHECK(log.count_containing("Slot 4:") == 0);
+
+  CHECK(io_map_dispatch(0, harddisk_io_base + 0, 0, 0, 0) == 0);
+  CHECK(io_map_dispatch(0, harddisk_io_base + 1, 0, 0, 0) == 0);
+  CHECK(io_map_dispatch(0, harddisk_io_base + 2, 0, 0, 0) == 0);
+  CHECK(io_map_dispatch(0, harddisk_io_base + 5, 0, 0, 0) == 0);
+  const HarddiskStatus_t after = harddisk_status();
+  CHECK(after.drive0_loaded == 1);
+  CHECK(std::string(after.drive0_full_path) == image.path());
 }
 
 // The fixtures hold the frame the card wrote before the tick existed: mode $0B,
@@ -1650,4 +1651,95 @@ TEST_CASE(
 
 #endif
 
+#endif
+
+// Every card whose frame rides the slot trailer must fit its 256-byte entry,
+// or save_slot_to_trailer writes nothing and the card is silently at reset
+// on every load.
+TEST_CASE("Snapshot: every frame that rides the slot trailer fits its entry") {
+#if defined(ENABLE_PERIPHERAL_HARDDISK)
+  static_assert(sizeof(HarddiskSaveState_t) <= snapshot_slot_state_capacity,
+                "the hard disk's frame rides the trailer");
+  CHECK(sizeof(HarddiskSaveState_t) == 20);
+#endif
+#if defined(ENABLE_PERIPHERAL_MOUSE)
+  static_assert(sizeof(MouseSaveState_t) <= snapshot_slot_state_capacity,
+                "the mouse's frame rides the trailer");
+#endif
+#if defined(ENABLE_PERIPHERAL_CLOCK)
+  static_assert(sizeof(ClockCardSaveState_t) <= snapshot_slot_state_capacity,
+                "the clock's frame rides the trailer");
+#endif
+#if defined(ENABLE_PERIPHERAL_PRINTER)
+  static_assert(sizeof(PrinterSaveState_t) <= snapshot_slot_state_capacity,
+                "the printer's frame rides the trailer");
+#endif
+#if defined(ENABLE_PERIPHERAL_SUPER_SERIAL)
+  static_assert(sizeof(SuperSerialSaveState_t) <= snapshot_slot_state_capacity,
+                "the serial card's frame rides the trailer");
+#endif
+#if defined(ENABLE_PERIPHERAL_MOCKINGBOARD)
+  static_assert(sizeof(MockingboardSaveState_t) <= snapshot_slot_state_capacity,
+                "the Mockingboard's frame rides the trailer");
+#endif
+  CHECK(snapshot_slot_state_capacity == 256);
+}
+
+#if defined(ENABLE_PERIPHERAL_HARDDISK)
+TEST_CASE(
+    "Snapshot: An .aws carries the hard disk's registers in the slot-7 "
+    "trailer entry and gives them back, with no warning about its size") {
+  TestConfig_t::Description_t description;
+  description.slots[6] = "Harddisk";
+  TestConfig_t config(description);
+  TestFixtures::ScopedCore_t core(config);
+  peripheral_manager_init();
+  linapple_register_peripherals();
+  linapple_reset_hard();
+  REQUIRE(peripheral_present(7, "linapple.harddisk"));
+
+  constexpr uint16_t io_base = 0xC080 + (7 << 4);
+  io_map_dispatch(0, io_base + 1, 1, 0xF0, 0);
+  io_map_dispatch(0, io_base + 2, 1, 0x34, 0);
+  io_map_dispatch(0, io_base + 3, 1, 0x12, 0);
+  std::array<uint8_t, 20> saved{};
+  size_t size = saved.size();
+  peripheral_save_state(7, saved.data(), &size);
+  REQUIRE(size == saved.size());
+  CHECK(saved.at(8) == 0xF0);
+  CHECK(saved.at(12) == 0x34);
+  CHECK(saved.at(13) == 0x12);
+
+  TestFixtures::ScopedTempFile_t file(".aws");
+  save_state_set_filename(file.c_str());
+  {
+    ScopedLogCapture_t log;
+    save_state_save();
+    CHECK(log.count_containing("exceeds the") == 0);
+  }
+  std::ifstream in(file.path(), std::ios::binary | std::ios::ate);
+  REQUIRE(in.is_open());
+  CHECK(in.tellg() == static_cast<std::streamoff>(134200));
+  const std::streamoff slot7_entry = static_cast<std::streamoff>(
+      offsetof(Snapshot_t, slot_trailer) + offsetof(SsSlotTrailer_t, slots) +
+      (6 * sizeof(SsSlotState_t)));
+  in.seekg(slot7_entry);
+  std::array<uint8_t, 28> entry{};
+  in.read(reinterpret_cast<char*>(entry.data()), entry.size());
+  CHECK(entry.at(0) == 20);
+  CHECK(std::equal(saved.begin(), saved.end(), entry.begin() + 8));
+
+  linapple_reset_hard();
+  std::array<uint8_t, 20> reset{};
+  size = reset.size();
+  peripheral_save_state(7, reset.data(), &size);
+  CHECK(reset.at(8) == 0);
+  CHECK(reset.at(12) == 0);
+
+  REQUIRE(save_state_load());
+  std::array<uint8_t, 20> loaded{};
+  size = loaded.size();
+  peripheral_save_state(7, loaded.data(), &size);
+  CHECK(loaded == saved);
+}
 #endif

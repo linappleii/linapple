@@ -243,7 +243,7 @@ TEST_CASE("Configuration: Typed field synchronization via sync_to_data") {
   CHECK(cfg.get_bool(cfg_sec_configuration, cfg_disable_debugger) == true);
   CHECK(cfg.get_string(cfg_sec_slots, cfg_disk_image1) == "boot.dsk");
   CHECK(cfg.get_string(cfg_sec_preferences, cfg_hdd_image1) == "hdd.hdv");
-  CHECK(cfg.get_string(cfg_sec_preferences, cfg_hdd_enabled) == "1");
+  CHECK(cfg.get_string(cfg_sec_preferences, cfg_hdd_enabled).empty());
   CHECK(cfg.get_string(cfg_sec_configuration, cfg_savestate_filename) ==
         "state.snap");
   CHECK(cfg.get_string(cfg_sec_configuration, cfg_basic_sync_file) ==

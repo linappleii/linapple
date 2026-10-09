@@ -41,6 +41,8 @@ use constant {
     WOZ_TMAP_ENTRIES    => 160,
     WOZ2_TRKS_ENTRY     => 8,
     ZIP_EPOCH_1980      => 315_532_800,
+    HDV_BLOCKS          => 16,
+    TWO_IMG_HEADER_SIZE => 64,
 };
 
 sub slurp {
@@ -102,6 +104,96 @@ sub prodos_image {
         }
     }
     return $image;
+}
+
+# ---------------------------------------------------------------------------
+# DOS-order serialization of a ProDOS volume. ProDOS block b of a 5.25-inch
+# disk is the pair of DOS 3.3 sectors Fig. 3.14 of Beneath Apple ProDOS (pp.
+# 3-16 to 3-18) gives for b & 7, first-named sector first, on track b >> 3;
+# a .dsk file holds DOS sector s of track t at (t * 16 + s) * 256.
+# ---------------------------------------------------------------------------
+my @prodos_block_sectors = (
+    [ 0x0, 0xE ], [ 0xD, 0xC ], [ 0xB, 0xA ], [ 0x9, 0x8 ],
+    [ 0x7, 0x6 ], [ 0x5, 0x4 ], [ 0x3, 0x2 ], [ 0x1, 0xF ]
+);
+
+sub dos_order_image {
+    my ($prodos) = @_;
+    length $prodos == DSK_SIZE or die "a DOS-order image needs a 140K volume\n";
+    my $image = "\0" x DSK_SIZE;
+    for my $block ( 0 .. DSK_SIZE / BLOCK_SIZE - 1 ) {
+        my $track = $block >> 3;
+        my ( $first, $second ) = @{ $prodos_block_sectors[ $block & 7 ] };
+        $image = patch( $image, $track * TRACK_SIZE + $first * SECTOR_SIZE,
+            substr( $prodos, $block * BLOCK_SIZE, SECTOR_SIZE ) );
+        $image = patch( $image, $track * TRACK_SIZE + $second * SECTOR_SIZE,
+            substr( $prodos, $block * BLOCK_SIZE + SECTOR_SIZE, SECTOR_SIZE ) );
+    }
+    return $image;
+}
+
+# ---------------------------------------------------------------------------
+# An empty DOS 3.3 volume (Beneath Apple DOS ch. 4): the VTOC at track 17
+# sector 0 names the first catalog sector, the volume, the track and sector
+# counts and the sector size; the catalog runs from sector 15 down to sector
+# 1, each linking the one below it, and the last link is 00 00.
+# ---------------------------------------------------------------------------
+sub dos33_image {
+    my $image = "\0" x DSK_SIZE;
+    my $vtoc  = "\0" x SECTOR_SIZE;
+    $vtoc = patch( $vtoc, 1,    pack( 'C C C', 0x11, 0x0F, 0x03 ) );
+    $vtoc = patch( $vtoc, 6,    chr(0xFE) );
+    $vtoc = patch( $vtoc, 0x27, chr(0x7A) );
+    $vtoc = patch( $vtoc, 0x34, pack( 'C C v', TRACKS, SECTORS_PER_TRACK, SECTOR_SIZE ) );
+    $image = patch( $image, 17 * TRACK_SIZE, $vtoc );
+    for my $sector ( 1 .. 15 ) {
+        my $link = $sector > 1 ? pack( 'C C', 0x11, $sector - 1 ) : "\0\0";
+        $image = patch( $image, 17 * TRACK_SIZE + $sector * SECTOR_SIZE + 1, $link );
+    }
+    return $image;
+}
+
+# ---------------------------------------------------------------------------
+# A 16-block ProDOS-order hard disk image. Block 0 begins 01 4C 01 08: a boot
+# block whose first instruction jumps to itself, so a boot through a card is
+# seen to reach $0801 and stay there. Blocks 1-15 are filled with their own
+# number, so a misaddressed read shows in its first byte.
+# ---------------------------------------------------------------------------
+sub block_image {
+    my $image = pack( 'C4', 0x01, 0x4C, 0x01, 0x08 ) . ( "\0" x ( BLOCK_SIZE - 4 ) );
+    $image .= chr($_) x BLOCK_SIZE for 1 .. HDV_BLOCKS - 1;
+    return $image;
+}
+
+# ---------------------------------------------------------------------------
+# 2IMG header (the 2IMG specification): magic, creator, header size, version,
+# image format (0 DOS 3.3, 1 ProDOS, 2 nibble), flags (bit 31 locked), block
+# count, data offset and length, comment offset and length, creator-data
+# offset and length, sixteen reserved bytes. Every field is little-endian.
+# ---------------------------------------------------------------------------
+sub two_img_header {
+    my (%field) = @_;
+    my $header = pack(
+        'a4 a4 v v V V V V V V V V V x16',
+        '2IMG', 'LinA',
+        $field{header_size}    // TWO_IMG_HEADER_SIZE,
+        $field{version}        // 1,
+        $field{format}         // 1,
+        $field{flags}          // 0,
+        $field{blocks}         // 0,
+        $field{data_offset}    // TWO_IMG_HEADER_SIZE,
+        $field{data_length}    // 0,
+        $field{comment_offset} // 0,
+        $field{comment_length} // 0,
+        0, 0
+    );
+    length $header == TWO_IMG_HEADER_SIZE or die "2IMG header is not 64 bytes\n";
+    return $header;
+}
+
+sub two_img_image {
+    my ( $payload, %field ) = @_;
+    return two_img_header( blocks => length($payload) / BLOCK_SIZE, data_length => length $payload, %field ) . $payload;
 }
 
 # ---------------------------------------------------------------------------
@@ -318,8 +410,29 @@ index( $flux_woz, 'FLUX' ) == 4 * BLOCK_SIZE or die "FLUX chunk is off its block
 
 my $false_positive = patch( patch( $dsk, 0, "\x00\x05" ), 122, "\0" );
 
+my $prodos    = prodos_image();
+my $hdv       = block_image();
+my $two_img   = two_img_image($hdv);
+my $comment   = 'comment ' x ( BLOCK_SIZE / 8 );
+my $nibble_ish = "\x96" x length $hdv;
+
 my %fixture = (
-    'minimal.po'               => prodos_image(),
+    'minimal.po'               => $prodos,
+    'minimal-prodos.dsk'       => dos_order_image($prodos),
+    'minimal-dos33.dsk'        => dos33_image(),
+    'minimal-block.hdv'        => $hdv,
+    'minimal-block.hdv.gz'     => gzip_bytes($hdv),
+    'minimal-block.hdv.zip'    => zip_bytes( [ 'minimal-block.hdv', $hdv ] ),
+    'minimal-block.2mg'        => $two_img,
+    'minimal-block-locked.2mg' => two_img_image( $hdv, flags => 0x8000_0000 ),
+    'minimal-block-comment.2mg' => two_img_image( $hdv, comment_offset => TWO_IMG_HEADER_SIZE + length $hdv, comment_length => length $comment ) . $comment,
+    'minimal-block-format0.2mg' => two_img_image( dos_order_image($prodos), format => 0 ),
+    'minimal-block-format2.2mg' => two_img_image( $nibble_ish, format => 2 ),
+    'minimal-block-short-header.2mg' => two_img_image( $hdv, header_size => 32 ),
+    'minimal-block-oversize.2mg' => two_img_image( $hdv, blocks => 8, data_length => 8 * BLOCK_SIZE ),
+    'minimal-block-disagree.2mg' => two_img_image( $hdv, blocks => 8 ),
+    'minimal-block-nomagic.2mg' => patch( $two_img, 0, 'X' ),
+    'minimal-macbinary.2mg'    => macbinary_wrap( 'minimal-block.2mg', $two_img ),
     'minimal.nib'              => nibble_image(NIB_TRACK_SIZE),
     'minimal.nb2'              => nibble_image(NB2_TRACK_SIZE),
     'minimal-legacy.iie'       => iie_legacy_image(),

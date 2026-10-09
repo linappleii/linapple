@@ -24,20 +24,13 @@ typedef enum {
   harddisk_drive_count = 2,
 } HarddiskDrive_t;
 
-typedef HarddiskDrive_t HarddiskDrive_e;
-
+/* 0x0005-0x0007 are retired ids, never reassigned, so a sender built against
+   them is answered incompatible. */
 typedef enum {
   harddisk_cmd_insert = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0001,
   harddisk_cmd_eject = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0002,
   harddisk_cmd_set_protect = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0004,
-  harddisk_cmd_reset_status = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0006,
-  // Backward-compatibility aliases
-  harddisk_cmd_get_status = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0005,
-  harddisk_cmd_get_supported_extensions = PERIPHERAL_SUBSYSTEM_HARDDISK |
-      0x0007,
 } HarddiskCmd_t;
-
-typedef HarddiskCmd_t HarddiskCmd_e;
 
 typedef enum {
   harddisk_query_status = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0001,
@@ -50,7 +43,7 @@ typedef struct {
   char path[harddisk_insert_path_max];
   uint8_t drive;
   uint8_t write_protected;
-  uint8_t create_if_necessary;
+  uint8_t reserved;
   uint8_t padding[5];
 } HarddiskInsertCmd_t;
 
@@ -72,9 +65,8 @@ typedef enum {
   harddisk_status_prot = 0x04,
 } HarddiskStatus_e;
 
-// Why: Uses natural alignment to ensure a deterministic binary layout without
-// reliance on non-standard packing directives. Large types are placed at the
-// start of the structure.
+// Widest members first and natural alignment, so the layout is the same in
+// every consumer without a packing directive.
 typedef struct {
   int32_t drive0_last_error;
   int32_t drive1_last_error;
@@ -90,41 +82,25 @@ typedef struct {
   char drive1_full_path[harddisk_status_path_max];
 } HarddiskStatus_t;
 
-// Why: 1072-byte naturally aligned POD representing per-drive state.
+/* The controller's registers, and nothing else: the image in each drive is
+   the host's to mount and the configuration's to name, and the 512-byte
+   buffer is re-read from the mounted image on load. data_phase is 0 idle, 1
+   read-out (the buffer holds the block the firmware is fetching), 2 write-in
+   (the firmware was pushing a WRITE, whose bytes a load cannot recover). */
 typedef struct {
-  char image_name[harddisk_status_name_max]; /* 32 bytes */
-  char full_path[harddisk_status_path_max];  /* 512 bytes */
-  int32_t last_error;                        /* 4 bytes */
-  uint16_t memory_address;                   /* 2 bytes */
-  uint16_t disk_block;                       /* 2 bytes */
-  uint16_t buffer_ptr;                       /* 2 bytes */
-  uint8_t error_code;                        /* 1 byte */
-  uint8_t is_loaded;                         /* 1 byte */
-  uint8_t os_readonly;                       /* 1 byte */
-  uint8_t user_write_protected;              /* 1 byte */
-  uint8_t padding[2];                        /* 2 bytes */
-  uint8_t data_buffer[512];                  /* 512 bytes */
-} HarddiskDriveSaveState_t;                  /* 1072 bytes */
+  uint32_t version;
+  uint32_t struct_size;
+  uint8_t unit;
+  uint8_t command;
+  uint8_t result;
+  uint8_t data_phase;
+  uint16_t block;
+  uint16_t data_index;
+  uint16_t block_count;
+  uint8_t reserved[2];
+} HarddiskSaveState_t;
 
-// Why: 2160-byte naturally aligned POD representing controller & drive state.
-// 8 + (2 * 1072) + 8 = 2160 bytes. (2160 % 8 == 0).
-typedef struct {
-  // --- Header (8 bytes) ---
-  uint32_t version;     /* 4 bytes */
-  uint32_t struct_size; /* 4 bytes */
-
-  // --- Drives (2 * 1072 = 2144 bytes) ---
-  HarddiskDriveSaveState_t drives[harddisk_drive_count];
-
-  // --- Controller Scalars (8 bytes) ---
-  uint8_t unit_num;
-  uint8_t command_reg;
-  uint8_t rom_active;
-  uint8_t is_enabled;
-  uint8_t activity_status;
-  uint8_t slot;
-  uint8_t padding[2];
-} HarddiskSaveState_t; /* 2160 bytes */
+enum { harddisk_save_state_size = 20 };
 
 #ifdef __cplusplus
 }

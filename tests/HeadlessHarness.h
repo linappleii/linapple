@@ -7,6 +7,8 @@
 
 #include "test_fixtures.h"
 
+struct Configuration_t;
+
 /**
  * @brief Headless End-to-End Test Harness.
  *
@@ -19,6 +21,11 @@ struct HeadlessHarness_t {
   bool is_initialized = false;
 
   explicit HeadlessHarness_t(const TestFixtures::ScopedTestConfig_t& config);
+  // The machine a user gets from the command line: the arguments are parsed as
+  // the frontends parse them and the initial media loaded as they load it. The
+  // declared configuration still names the machine, whatever the arguments say.
+  HeadlessHarness_t(const TestFixtures::ScopedTestConfig_t& config, int argc,
+                    char** argv);
   ~HeadlessHarness_t();
 
   // Non-copyable, non-movable (stack-scoped test fixture)
@@ -47,4 +54,8 @@ struct HeadlessHarness_t {
 
   // Internal callback dispatchers
   auto handle_audio(const int16_t* samples, size_t num_samples) -> void;
+
+ private:
+  auto start(const TestFixtures::ScopedTestConfig_t& test_config,
+             AppConfig* config) -> void;
 };

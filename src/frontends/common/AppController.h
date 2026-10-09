@@ -16,3 +16,8 @@ auto app_controller_load_initial_media(const AppConfig* config) -> void;
 // next run mounts it again. Call it after a command the user asked for
 // succeeds; the card itself has no business knowing the configuration exists.
 auto app_controller_save_disk_config(int drive) -> void;
+
+// The same for a hard disk drive: whatever it holds once the queue has been
+// drained is recorded under Preferences/Harddisk Image n, empty after a
+// refused insert or an eject, for the next save to write.
+auto app_controller_save_harddisk_config(int drive) -> void;

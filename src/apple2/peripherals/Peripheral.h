@@ -218,6 +218,14 @@ PeripheralStatus_t peripheral_query_by_id(int slot, const char* peripheral_id,
                                           uint32_t cmd_id, void* out,
                                           size_t* out_size);
 bool peripheral_present(int slot, const char* peripheral_id);
+// The lowest slot holding a card with this descriptor id, -1 when none does.
+// A frontend asks once at start instead of naming a slot of its own.
+int peripheral_slot_of(const char* peripheral_id);
+// True when the slot's card reported activity since the last poll. The bit
+// clears on the read, so a frame loop polling once a frame sees a burst that
+// started and ended inside the frame; peripheral_is_any_active still answers
+// for the level. False for a slot outside the table.
+bool peripheral_activity_poll(int slot);
 void peripheral_save_state(int slot, void* buffer, size_t* size);
 // peripheral_incompatible for an empty slot or a card that keeps no state,
 // so a refused frame is told apart from one nobody was there to take.

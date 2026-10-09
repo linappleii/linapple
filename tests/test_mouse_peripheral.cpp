@@ -23,7 +23,6 @@
 #include "apple2/peripherals/mouse/MouseCommands.h"
 #include "apple2/peripherals/mouse/MouseRom.h"
 #include "core/LinAppleCore.h"
-#include "core/Log.h"
 #include "doctest.h"
 #include "frontends/common/MouseFrontend.h"
 #include "test_fixtures.h"
@@ -2470,53 +2469,13 @@ TEST_CASE(
 
 namespace {
 
+using TestFixtures::ScopedLogCapture_t;
+
 constexpr size_t frame_pia_orb = 57;
 constexpr size_t frame_pia_ddrb = 59;
 constexpr size_t frame_pia_port_b_in = 63;
 constexpr size_t frame_port_b_shadow = 73;
 
-struct LogLines_t {
-  std::vector<std::string> lines;
-};
-
-auto collect_log_line(LogLevel level, const char* message, void* user_data)
-    -> void {
-  (void)level;
-  auto* lines = static_cast<LogLines_t*>(user_data);
-  if (lines != nullptr && message != nullptr) {
-    lines->lines.emplace_back(message);
-  }
-}
-
-class ScopedLogCapture_t {
- public:
-  ScopedLogCapture_t() : verbosity_(Logger::get_verbosity()) {
-    Logger::set_verbosity(LogLevel::info);
-    Logger::set_callback_with_context(collect_log_line, &lines_);
-  }
-  ~ScopedLogCapture_t() {
-    Logger::set_callback_with_context(nullptr, nullptr);
-    Logger::set_verbosity(verbosity_);
-  }
-  ScopedLogCapture_t(const ScopedLogCapture_t&) = delete;
-  auto operator=(const ScopedLogCapture_t&) -> ScopedLogCapture_t& = delete;
-  ScopedLogCapture_t(ScopedLogCapture_t&&) = delete;
-  auto operator=(ScopedLogCapture_t&&) -> ScopedLogCapture_t& = delete;
-
-  auto count_containing(const std::string& needle) const -> size_t {
-    size_t count = 0;
-    for (const std::string& line : lines_.lines) {
-      if (line.find(needle) != std::string::npos) {
-        ++count;
-      }
-    }
-    return count;
-  }
-
- private:
-  LogLevel verbosity_;
-  LogLines_t lines_;
-};
 
 auto slot_page_first_byte(int slot) -> uint8_t {
   const uint16_t sentinel = poke_page_copier(slot);

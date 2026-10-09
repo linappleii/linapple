@@ -1,16 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include <cstdint>
 #include <cstring>
 #include <string>
 
-#include "apple2/peripherals/Peripheral.h"
-#include "apple2/peripherals/Peripheral_Types.h"
-#include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
 #include "core/Registry.h"
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
+#include "frontends/common/HarddiskFrontend.h"
 #include "frontends/common/sdl/DiskChoose_Decl.h"
 
 #if ENABLE_FTP
@@ -21,12 +18,24 @@
 
 namespace {
 
-constexpr uint8_t k_harddisk_slot = 7;
+// The chooser is a modal loop with nowhere to put its choice when the machine
+// has no hard disk, so it does not open.
+auto harddisk_slot_or_refuse(int drive) -> int {
+  const int slot = harddisk_frontend_slot();
+  if (slot == harddisk_frontend_no_card) {
+    Logger::error("hard disk drive %d: no hard disk is installed\n", drive + 1);
+  }
+  return slot;
+}
 
 }  // namespace
 
 auto harddisk_ui_ftp_select(int drive) -> void {
   if (drive < 0 || drive > 1) {
+    return;
+  }
+  const int slot = harddisk_slot_or_refuse(drive);
+  if (slot == harddisk_frontend_no_card) {
     return;
   }
 
@@ -45,9 +54,9 @@ auto harddisk_ui_ftp_select(int drive) -> void {
   }
 
   while (is_directory) {
-    if (!choose_an_image_ftp(
-            system_state.screen_width, system_state.screen_height, full_path,
-            k_harddisk_slot, filename, is_directory, file_index)) {
+    if (!choose_an_image_ftp(system_state.screen_width,
+                             system_state.screen_height, full_path, slot,
+                             filename, is_directory, file_index)) {
       draw_frame_window();
       return;
     }
@@ -113,17 +122,7 @@ auto harddisk_ui_ftp_select(int drive) -> void {
 
   const std::string local_path =
       std::string(system_state.ftp_local_dir.data()) + "/" + safe_filename;
-  HarddiskInsertCmd_t cmd{};
-  cmd.drive = static_cast<uint8_t>(drive);
-  util_safe_strcpy(cmd.path, local_path.c_str(), sizeof(cmd.path));
-
-  if (peripheral_command(k_harddisk_slot, harddisk_cmd_insert, &cmd,
-                         sizeof(cmd)) == peripheral_ok) {
-    const char* key = (drive != 0) ? cfg_hdd_image2 : cfg_hdd_image1;
-    Configuration::instance().set_string("Preferences", key,
-                                           local_path.c_str());
-    Configuration::instance().save();
-  }
+  harddisk_frontend_insert(drive, local_path.c_str(), false);
   back_idx = file_index;
   draw_frame_window();
 #else
@@ -133,6 +132,10 @@ auto harddisk_ui_ftp_select(int drive) -> void {
 
 auto harddisk_ui_select(int drive) -> void {
   if (drive < 0 || drive > 1) {
+    return;
+  }
+  const int slot = harddisk_slot_or_refuse(drive);
+  if (slot == harddisk_frontend_no_card) {
     return;
   }
 
@@ -148,8 +151,7 @@ auto harddisk_ui_select(int drive) -> void {
 
   while (is_directory) {
     if (!choose_an_image(system_state.screen_width, system_state.screen_height,
-                         full_path, k_harddisk_slot, filename, is_directory,
-                         file_index)) {
+                         full_path, slot, filename, is_directory, file_index)) {
       draw_frame_window();
       return;
     }
@@ -183,16 +185,7 @@ auto harddisk_ui_select(int drive) -> void {
   const std::string file_path =
       (full_path == "/") ? ("/" + filename) : (full_path + "/" + filename);
 
-  HarddiskInsertCmd_t cmd{};
-  cmd.drive = static_cast<uint8_t>(drive);
-  util_safe_strcpy(cmd.path, file_path.c_str(), sizeof(cmd.path));
-
-  if (peripheral_command(k_harddisk_slot, harddisk_cmd_insert, &cmd,
-                         sizeof(cmd)) == peripheral_ok) {
-    const char* key = (drive != 0) ? cfg_hdd_image2 : cfg_hdd_image1;
-    Configuration::instance().set_string("Preferences", key,
-                                           file_path.c_str());
-    Configuration::instance().save();
+  if (harddisk_frontend_insert(drive, file_path.c_str(), false) == 0) {
     Logger::info("HDD disk image %s inserted\n", file_path.c_str());
   }
   back_idx = file_index;

@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include "apple2/Apple2Types.h"
 #include "apple2/SnapshotTypes.h"
 #include "core/LinAppleCore.h"
 #include "core/Log.h"
@@ -39,7 +40,83 @@ struct LegacyOverride {
 constexpr int mouse_key_slot = 4;
 constexpr const char* mouse_card_id = "linapple.mouse";
 LegacyOverride legacy_override;
+
+// Harddisk Enable is the legacy key that puts the hard disk in slot 7,
+// honoured only where [Slots] has no Slot 7 line: the shipped conf pairs Slot
+// 7 = Harddisk with Harddisk Enable = 0, and the slot table must win there.
+constexpr int harddisk_key_slot = 7;
+constexpr const char* harddisk_card_id = "linapple.harddisk";
+
+// The //e pages its internal 80-column firmware over $C300 unless SLOTC3ROM is
+// set (Apple IIe Technical Reference Manual, pp. 134-136), so a card put there
+// for a run would never be reached by the Monitor's scan or by PR#3; the II
+// and II Plus have no such page.
+constexpr int internal_firmware_slot = 3;
+std::string run_request_id;
+int requested_slot = -1;
 }  // namespace
+
+auto peripheral_request_card_for_run(const char* id) -> void {
+  run_request_id = (id != nullptr) ? id : "";
+}
+
+auto peripheral_requested_slot() -> int { return requested_slot; }
+
+static auto slot_takes_card(const SS_PERIPHERAL_MANIFEST& manifest,
+                            const Peripheral_t& card, int slot) -> bool {
+  if (slot < 1 || slot >= static_cast<int>(NUM_SLOTS)) {
+    return false;
+  }
+  if (manifest.peripherals[slot].name[0] != '\0') {
+    return false;
+  }
+  return (card.compatible_slots & (1u << static_cast<uint32_t>(slot))) != 0;
+}
+
+static auto apply_run_request(const std::string& id) -> void {
+  requested_slot = -1;
+  if (id.empty()) {
+    return;
+  }
+  Peripheral_t* card = peripheral_find_internal(id.c_str());
+  if (card == nullptr) {
+    return;
+  }
+  const int configured = peripheral_slot_of(card->id);
+  if (configured >= 0) {
+    requested_slot = configured;
+    return;
+  }
+
+  SS_PERIPHERAL_MANIFEST manifest{};
+  peripheral_get_manifest(&manifest);
+  const int preferred =
+      (card->default_slot >= 1 && card->default_slot < NUM_SLOTS)
+          ? card->default_slot
+          : static_cast<int>(NUM_SLOTS) - 1;
+  if (slot_takes_card(manifest, *card, preferred)) {
+    if (peripheral_register(card, preferred) == 0) {
+      requested_slot = preferred;
+    }
+    return;
+  }
+  for (int slot = preferred - 1; slot >= 1; --slot) {
+    if (slot == internal_firmware_slot && !is_apple2()) {
+      continue;
+    }
+    if (!slot_takes_card(manifest, *card, slot)) {
+      continue;
+    }
+    if (peripheral_register(card, slot) != 0) {
+      return;
+    }
+    requested_slot = slot;
+    Logger::warning("Slot %d holds %s; %s installed in slot %d for this run\n",
+                    preferred, manifest.peripherals[preferred].name, card->name,
+                    slot);
+    return;
+  }
+}
 
 auto peripheral_legacy_override(int* slot, const char** key_card,
                                 const char** displaced) -> bool {
@@ -101,8 +178,13 @@ auto peripheral_get_plugin_path(const char* name) -> const char* {
 
 auto peripheral_register_internal() -> void {
   peripheral_plugins_init();
-  // A restart rebuilds the machine from the configuration; so does the record.
+  // A restart rebuilds the machine from the configuration; so does the record,
+  // and a run request is taken once and asked for again by whoever still
+  // wants it.
   legacy_override = LegacyOverride{};
+  const std::string run_request = run_request_id;
+  run_request_id.clear();
+  requested_slot = -1;
 
   for (auto* p : peripheral_get_builtin_registry()) {
     if (p != nullptr && p->default_slot == 0) {
@@ -143,6 +225,14 @@ auto peripheral_register_internal() -> void {
     }
   }
 
+  // [Preferences] is read first: a saved file carries the key there as 1
+  // beside the template's [Configuration] 0, and with no Slot 7 line that
+  // file means a hard disk.
+  uint32_t harddisk_key = 0;
+  if (!config_load_int(cfg_sec_preferences, cfg_hdd_enabled, &harddisk_key)) {
+    config_load_int(cfg_sec_configuration, cfg_hdd_enabled, &harddisk_key);
+  }
+
   for (int slot = 1; slot < NUM_SLOTS; ++slot) {
     constexpr size_t key_size = 16;
     char key[key_size];
@@ -152,6 +242,15 @@ auto peripheral_register_internal() -> void {
     const bool in_config = config_load_string("Slots", key, &name);
 
     if (in_config) {
+      if (slot == harddisk_key_slot && harddisk_key != 0) {
+        const Peripheral_t* named = peripheral_find_internal(name.c_str());
+        if (named == nullptr || strcmp(named->id, harddisk_card_id) != 0) {
+          Logger::info(
+              "Harddisk Enable is set, but [Slots] names %s for slot %d; the "
+              "slot table governs\n",
+              name.empty() ? "None" : name.c_str(), slot);
+        }
+      }
       if (name == "None") {
         name.clear();
       }
@@ -164,15 +263,8 @@ auto peripheral_register_internal() -> void {
         name = "linapple.mockingboard";
       } else if (slot == 6) {
         name = "linapple.disk_II";
-      } else if (slot == 7) {
-        uint32_t hdd_val = 0;
-        if (config_load_int("Preferences", "Harddisk Enable", &hdd_val) ||
-            config_load_int("Configuration", "Harddisk Enable", &hdd_val)) {
-          hdd_enabled = (hdd_val != 0);
-        }
-        if (hdd_enabled) {
-          name = "linapple.harddisk";
-        }
+      } else if (slot == k_harddisk_key_slot && harddisk_key != 0) {
+        name = k_harddisk_card_id;
       }
     }
 
@@ -202,6 +294,10 @@ auto peripheral_register_internal() -> void {
       peripheral_register(p, slot);
     }
   }
+
+  // After the table and the keys, so the request takes only a slot nothing
+  // else claimed and the mouse key's slot is simply not free.
+  apply_run_request(run_request);
 }
 
 auto linapple_list_hardware() -> void {

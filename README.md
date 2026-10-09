@@ -105,7 +105,7 @@ cmake --build build -j$(nproc)
 # Boot the bundled Apple II Master floppy disk
 ./build/linapple --autoboot --d1 res/Master.dsk
 
-# Or boot a hard disk image (e.g., Total Replay / 2MG)
+# Or boot a ProDOS hard disk image (e.g., Total Replay as .hdv or .2mg)
 ./build/linapple --autoboot --hd1 /path/to/image.2mg
 ```
 
@@ -155,8 +155,16 @@ cmake --build build -j$(nproc)
 * **Flexible Storage & Disk Formats:**
   * Full read/write support for standard floppy images (`.dsk`, `.do`, `.po`,
     `.nib`, `.woz` v2).
-  * Native SmartPort hard disk emulation with `.2mg` container parsing and raw
-    `.hdv` / `.po` block images.
+  * A ProDOS 8 block-device hard disk controller with firmware of its own,
+    in any slot (`Slot n = Harddisk`; on a //e slot 3's page belongs to the
+    built-in 80-column firmware, so the card is not reached there), with two
+    drives.
+    It serves `.hdv` / `.po` / `.img` block images, `.2mg` containers in
+    ProDOS or DOS order, and 140 K floppy images (`.dsk`, `.do`) decoded
+    through the DOS 3.3 sector map; nibble images are refused as holding no
+    blocks. ProDOS sees the volume's real size and the real errors (`WRITE
+    PROTECTED`, `NO DEVICE CONNECTED`), and with no image in drive 1 the
+    boot moves on to the next slot down.
   * Built-in direct FTP disk image streaming.
 
 * **Bidirectional Applesoft BASIC Live-Sync:**
@@ -238,9 +246,9 @@ resistors.
 | **`F1`**                        | Show in-emulator Help screen                                    |
 | **`F2`** / **`Ctrl + F2`**      | Restart emulator / Cold reboot                                  |
 | **`F3` / `F4`**                 | Insert disk into Floppy Drive 1 / Drive 2                       |
-| **`Shift + F3` / `Shift + F4`** | Insert hard disk into Drive 1 / Drive 2 (Slot 7)                |
+| **`Shift + F3` / `Shift + F4`** | Insert hard disk into Drive 1 / Drive 2 (the hard disk's slot) |
 | **`Alt + F3` / `Alt + F4`**     | Browse and insert floppy disk image via FTP                     |
-| **`Shift + Alt + F3 / F4`**     | Browse and insert hard disk image via FTP (Slot 7)              |
+| **`Shift + Alt + F3 / F4`**     | Browse and insert hard disk image via FTP (the hard disk's slot) |
 | **`Ctrl + F3` / `Ctrl + F4`**   | Eject floppy disk from Drive 1 / Drive 2                        |
 | **`Ctrl + Shift + F3 / F4`**    | Eject hard disk from Drive 1 / Drive 2                          |
 | **`F5`**                        | Swap Drive 1 and Drive 2 floppy disks                           |
@@ -273,8 +281,8 @@ linapple [options]
 | :---------------------------- | :-------------------------------------------------------------- |
 | **`-1`, `--d1 <file>`**       | Insert floppy disk image in Drive 1 (Slot 6)                    |
 | **`-2`, `--d2 <file>`**       | Insert floppy disk image in Drive 2 (Slot 6)                    |
-| **`--hd1 <file>`**            | Insert hard disk image in Drive 1 (Slot 7, e.g. `.2mg`, `.hdv`) |
-| **`--hd2 <file>`**            | Insert hard disk image in Drive 2 (Slot 7)                      |
+| **`--hd1 <file>`**            | Insert hard disk image in Drive 1 (e.g. `.2mg`, `.hdv`, `.po`)  |
+| **`--hd2 <file>`**            | Insert hard disk image in Drive 2 of the same card              |
 | **`-a`, `-b`, `--autoboot`**  | Automatically boot into inserted disk on startup                |
 | **`-c`, `--config <file>`**   | Load specific configuration file                                |
 | **`-f`, `--fullscreen`**      | Start in fullscreen mode                                        |
@@ -291,6 +299,37 @@ linapple [options]
 | **`--no-debugger`**           | Disable debugger shortcuts and memory overhead                  |
 | **`--caps-mode <mode>`**      | Caps Lock mode: `host` (default) or `emulated`                  |
 | **`-h`, `--help`**            | Show full command-line help and target frontend                 |
+
+### Hard Disk Images
+
+`--hd1` and `--hd2` are the two drives of one hard disk card. When the
+configuration already defines the card, in any slot, the images are mounted
+into it. When it does not, the card is installed for this run only: in slot
+7 if that slot is empty, otherwise in the highest free slot below it (slot 3
+is skipped on a //e, whose built-in 80-column firmware owns that page); below
+slot 7, a warning names the slot it took. A card already in a slot is never
+displaced, and when no slot is free the error says so and nothing is
+mounted. `--hd2` alone installs the card the same way and fills drive 2.
+Nothing of a run's install is written to the configuration; only the image a
+drive holds is remembered, under `Harddisk Image 1` and `Harddisk Image 2`.
+
+The Monitor's boot scan starts at slot 7 and boots the first card that
+answers, so a hard disk installed below a Disk II is not reached by
+`--autoboot`; boot it with `PR#n` or let ProDOS find it, since ProDOS
+installs every block device it sees.
+
+An image that cannot be mounted is reported and LinApple runs on: `--hd1
+missing.hdv` logs `ERROR: could not insert hard disk image 'missing.hdv':
+file not found or unreadable`, and the SDL3 and SDL2 frontends also show the
+error in a dialog. A failed image is not remembered. A `Harddisk Image` saved
+in the configuration mounts only into a hard disk the configuration defines;
+with none, the log says the image was not mounted.
+
+The hard disk reports its activity as the Disk II does, so `Disk Turbo = 1`
+runs a hard disk transfer at full speed too, and `Disk Turbo = 0` turns that
+off for both cards. A save state holds the controller's registers but not
+which images were mounted: it resumes against whatever images the
+configuration mounts, and the log (`--log`) names them.
 
 ## Configuration
 

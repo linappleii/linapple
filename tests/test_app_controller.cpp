@@ -19,6 +19,9 @@
 #include "frontends/common/AppController.h"
 #include "frontends/common/AppEnvironment.h"
 #include "test_fixtures.h"
+#if !defined(ENABLE_PERIPHERAL_HARDDISK)
+#include "test_fixtures_core.h"
+#endif
 
 namespace {
 
@@ -270,3 +273,26 @@ TEST_CASE("AppController: FTP Configuration Defaults and Preferences") {
   CHECK(std::string(system_state.ftp_user_pass.data()) == "user:pass");
   CHECK(is_valid_directory(system_state.ftp_local_dir.data()));
 }
+
+#if !defined(ENABLE_PERIPHERAL_HARDDISK)
+TEST_CASE(
+    "AppController: --hd1 in a build without the hard disk says so once and "
+    "the machine runs on") {
+  ScopedAppController_t controller_guard;
+  TestConfig_t machine(TestConfig_t::enhanced_2e_only());
+  AppConfig_t config = {};
+  app_config_default(&config);
+  declare(machine, &config);
+  util_safe_strcpy(config.harddisk_path.at(0).data(), "image.hdv",
+                   config.harddisk_path.at(0).size());
+  config.harddisk_path_from_args.at(0) = true;
+
+  REQUIRE(app_controller_initialize(&config) == 0);
+  TestFixtures::ScopedLogCapture_t log;
+  app_controller_load_initial_media(&config);
+
+  CHECK(log.count_containing(
+            "--hd1: this build has no Harddisk card; image not mounted") == 1);
+  CHECK(system_state.mode == app_mode_running);
+}
+#endif

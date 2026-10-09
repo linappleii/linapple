@@ -16,7 +16,6 @@
 #include <thread>
 
 #include "apple2/Apple2Types.h"
-#include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #include "core/Asset.h"
 #include "core/LinAppleCore.h"
 #include "frontends/common/VideoSurface.h"
@@ -33,7 +32,6 @@ static auto get_tick_count_ms() -> uint32_t {
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/SnapshotTypes.h"
-#include "apple2/peripherals/Peripheral.h"
 #include "charset40.xpm"
 #include "charset40_IIplus.xpm"
 #include "charset40_british.xpm"
@@ -1809,9 +1807,6 @@ auto video_perform_refresh() -> void {
 
   if (g_status_cycle > 0) {
     g_status_cycle--;
-    if (!g_status_cycle) {
-      peripheral_command(7, harddisk_cmd_reset_status, nullptr, 0);
-    }
   }
 
   // Update final output buffer
