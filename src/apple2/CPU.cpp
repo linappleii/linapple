@@ -119,7 +119,7 @@ struct CpuLoopContext {
 
   auto set_z(uint16_t a) -> void { flagz = !(a & 0xFF); }
 
-  auto pack_ps() -> void {
+  auto pack_ps() const -> void {
     regs.ps = (regs.ps & ~(AF_CARRY | AF_SIGN | AF_OVERFLOW | AF_ZERO)) |
               flagc | flagn | (flagv ? AF_OVERFLOW : 0) |
               (flagz ? AF_ZERO : 0) | AF_RESERVED | AF_BREAK;
@@ -144,14 +144,14 @@ struct CpuLoopContext {
              ((regs.sp >= STACK_END) ? (regs.sp = STACK_BEGIN) : ++regs.sp));
   }
 
-  auto read_byte(uint16_t a) -> uint8_t {
+  auto read_byte(uint16_t a) const -> uint8_t {
     if ((a & IO_REGION_MASK) == IO_REGION_START) {
       return io_map_dispatch(regs.pc, a, 0, 0, executed_cycles);
     }
     return *(mem + a);
   }
 
-  auto write_byte(uint16_t a, uint8_t val) -> void {
+  auto write_byte(uint16_t a, uint8_t val) const -> void {
     memdirty[a >> 8] = 0xFF;
     uint8_t* page = memwrite[a >> 8];
     if (page) {
@@ -412,7 +412,7 @@ struct CpuLoopContext {
     --regs.y;
     set_nz(regs.y);
   }
-  auto op_jmp() -> void { regs.pc = addr; }
+  auto op_jmp() const -> void { regs.pc = addr; }
   auto op_jsr() -> void {
     --regs.pc;
     push(regs.pc >> 8);

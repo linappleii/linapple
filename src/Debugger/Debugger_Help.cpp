@@ -998,7 +998,7 @@ auto CmdHelpList(int nArgs) -> Update_t {
   int nMaxWidth = g_console_display_width - 1;
   int iCommand = 0;
 
-  if (!g_sorted_commands.size()) {
+  if (g_sorted_commands.empty()) {
     for (iCommand = 0; iCommand < g_num_commands_with_aliases; iCommand++) {
       g_sorted_commands.push_back(g_commands[iCommand]);
     }

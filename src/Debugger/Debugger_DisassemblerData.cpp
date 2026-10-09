@@ -419,7 +419,7 @@ auto Disassembly_Enumerate(DisasmData_t* pCurrent) -> DisasmData_t* {
   int nDataTargets = g_disassembler_data.size();
 
   if (nDataTargets) {
-    DisasmData_t* pBegin = &g_disassembler_data[0];
+    DisasmData_t* pBegin = g_disassembler_data.data();
     DisasmData_t* pEnd = &g_disassembler_data[nDataTargets - 1];
 
     if (pCurrent) {
@@ -443,7 +443,7 @@ auto Disassembly_IsDataAddress(uint16_t address) -> DisasmData_t* {
   if (nDataTargets) {
     // TODO: Replace with binary search -- should store data in sorted order,
     // via start address
-    data = &g_disassembler_data[0];
+    data = g_disassembler_data.data();
     for (int iTarget = 0; iTarget < nDataTargets; iTarget++) {
       if ((data->iDirective != NOP_REMOVED) &&
           ((address >= data->nStartAddress) &&
@@ -486,7 +486,7 @@ auto Disassembly_DelData(DisasmData_t tData) -> void {
   if (nDataTargets) {
     // TODO: Replace with binary search -- should store data in sorted order,
     // via start address
-    data = &g_disassembler_data[0];
+    data = g_disassembler_data.data();
     for (int iTarget = 0; iTarget < nDataTargets; iTarget++) {
       if ((data->iDirective != NOP_REMOVED) &&
           ((address >= data->nStartAddress) && (address < data->nEndAddress))) {

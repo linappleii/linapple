@@ -13,8 +13,6 @@ auto CmdOut(int nArgs) -> Update_t;
 auto CmdRegisterSet(int nArgs) -> Update_t;
 auto CmdJsr(int nArgs) -> Update_t;
 
-auto cpu_setup_benchmark() -> void;
-
 auto OutputTraceLine() -> void;
 auto DebugContinueStepping(bool bCallerWillUpdateDisplay) -> void;
 auto DebugStopStepping(void) -> void;

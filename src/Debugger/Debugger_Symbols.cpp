@@ -130,7 +130,7 @@ auto FindSymbolFromAddress(uint16_t address, int* iTable_) -> const char* {
   // Bugfix/User feature: User symbols should be searched first
   int iTable = NUM_SYMBOL_TABLES;
   while (iTable-- > 0) {
-    if (!g_symbols[iTable].size()) {
+    if (g_symbols[iTable].empty()) {
       continue;
     }
 
@@ -154,7 +154,7 @@ auto FindAddressFromSymbol(const char* pSymbol, uint16_t* pAddress_,
                            int* iTable_) -> bool {
   // Bugfix/User feature: User symbols should be searched first
   for (int iTable = NUM_SYMBOL_TABLES; iTable-- > 0;) {
-    if (!g_symbols[iTable].size()) {
+    if (g_symbols[iTable].empty()) {
       continue;
     }
 

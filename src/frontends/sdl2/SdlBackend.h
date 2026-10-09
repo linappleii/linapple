@@ -12,7 +12,7 @@
 
 #include <cstdint>
 
-#include "frontends/sdl2/SdlPtr.h"
+#include "frontends/sdl2/Frame.h"
 
 using SdlKeycode = SDL_Keycode;
 using SdlKeymod = SDL_Keymod;
@@ -23,8 +23,6 @@ constexpr auto SDL_COMPAT_KMOD_SHIFT = KMOD_SHIFT;
 constexpr auto SDL_COMPAT_KMOD_CTRL = KMOD_CTRL;
 constexpr auto SDL_COMPAT_KMOD_ALT = KMOD_ALT;
 constexpr auto SDL_COMPAT_KMOD_GUI = KMOD_GUI;
-
-extern SdlWindowPtr g_window;
 
 inline auto sdl_compat_get_key_from_event(const SDL_Event& event)
     -> SdlKeycode {

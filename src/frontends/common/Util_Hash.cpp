@@ -187,5 +187,5 @@ auto md5str(const char* input) -> std::string {
   for (size_t i = 0; i < md5_digest_size; i++) {
     snprintf(hex_str.data() + (2 * i), 3, "%02X", digest.at(i));
   }
-  return std::string(hex_str.data(), md5_hex_buffer_size - 1);
+  return {hex_str.data(), md5_hex_buffer_size - 1};
 }

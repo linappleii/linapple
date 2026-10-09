@@ -479,8 +479,10 @@ auto fonts_termination() -> void {
 
 auto font_print(int x, int y, const char* text, VideoSurfaceView surface,
                 double kx, double ky) -> void {
-  int i = 0, c = 0;
-  VideoRect s{}, d{};
+  int i = 0;
+  int c = 0;
+  VideoRect s{};
+  VideoRect d{};
 
   if (font_sfc == nullptr || text == nullptr || surface.pixels == nullptr ||
       y >= surface.h) {

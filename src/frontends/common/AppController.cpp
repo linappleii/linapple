@@ -308,13 +308,14 @@ auto app_controller_initialize(AppConfig* config) -> int {
   }
   save_state_startup();
 
-  initialize_directory(cfg_pref_start_dir, &system_state.current_dir[0],
+  initialize_directory(cfg_pref_start_dir, system_state.current_dir.data(),
                        sizeof(system_state.current_dir));
-  initialize_directory(cfg_pref_hdd_start_dir, &system_state.hdd_dir[0],
+  initialize_directory(cfg_pref_hdd_start_dir, system_state.hdd_dir.data(),
                        sizeof(system_state.hdd_dir));
-  initialize_directory(cfg_pref_savestate_dir, &system_state.save_state_dir[0],
+  initialize_directory(cfg_pref_savestate_dir,
+                       system_state.save_state_dir.data(),
                        sizeof(system_state.save_state_dir));
-  initialize_directory(cfg_ftp_local_dir, &system_state.ftp_local_dir[0],
+  initialize_directory(cfg_ftp_local_dir, system_state.ftp_local_dir.data(),
                        sizeof(system_state.ftp_local_dir));
 
   install_host_sink();
@@ -351,7 +352,7 @@ auto app_controller_initialize(AppConfig* config) -> int {
   }
 
   if (config->debugger_script.at(0) != '\0') {
-    util_safe_strcpy(&system_state.debugger_script[0],
+    util_safe_strcpy(system_state.debugger_script.data(),
                      config->debugger_script.data(), path_max_len);
   }
 

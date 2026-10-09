@@ -1047,9 +1047,14 @@ auto mix_colors(uint8_t c1, uint8_t c2) -> uint8_t {
 }
 
 auto video_create_color_mix_map() -> void {
-  int t = 0, m = 0, b = 0;
-  uint8_t cTop = 0, cMid = 0, cBot = 0;
-  uint16_t mixTop = 0, mixBot = 0;
+  int t = 0;
+  int m = 0;
+  int b = 0;
+  uint8_t cTop = 0;
+  uint8_t cMid = 0;
+  uint8_t cBot = 0;
+  uint16_t mixTop = 0;
+  uint16_t mixBot = 0;
 
   for (t = 0; t < 6; t++) {
     for (m = 0; m < 6; m++) {
@@ -1090,7 +1095,8 @@ static inline auto clamp_mix(int idx) noexcept -> int {
 
 auto mix_colors_vertical(int matx, int maty) -> void {
   uint16_t twoHalfPixel = 0;
-  int bot1idx = 0, bot2idx = 0;
+  int bot1idx = 0;
+  int bot2idx = 0;
 
   if (sw_mixed() && maty > 159) {
     if (maty < 161) {
@@ -1558,7 +1564,8 @@ auto video_destroy() -> void {
 }
 
 auto video_display_logo() -> void {
-  VideoRect drect{}, srect{};
+  VideoRect drect{};
+  VideoRect srect{};
 
   if (!g_logo_bitmap) {
     return;

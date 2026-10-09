@@ -70,7 +70,7 @@ static auto slot_takes_card(const SS_PERIPHERAL_MANIFEST& manifest,
   if (manifest.peripherals[slot].name[0] != '\0') {
     return false;
   }
-  return (card.compatible_slots & (1u << static_cast<uint32_t>(slot))) != 0;
+  return (card.compatible_slots & (1U << static_cast<uint32_t>(slot))) != 0;
 }
 
 static auto apply_run_request(const std::string& id) -> void {

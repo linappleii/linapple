@@ -1,6 +1,5 @@
----
-# Temporary exemption: The integrated assembly debugger retains legacy AppleWin
-# PascalCase identifiers until it is modernized to project naming conventions.
-InheritParentConfig: true
-Checks:
-  - '-readability-identifier-naming'
+-- -
+#Temporary exemption : The integrated assembly debugger retains legacy AppleWin
+#PascalCase identifiers until it is modernized to project naming conventions.
+    InheritParentConfig : true Checks : -'-readability-identifier-naming' -
+    '-readability-redundant-declaration'

@@ -913,7 +913,7 @@ auto FindCommand(const char* pName, CmdFuncPtr_t& pFunction_, int* iCommand_)
 
   if (nFound == 1) {
     int nCommand =
-        g_potential_commands.size() ? g_potential_commands[0] : *iCommand_;
+        !g_potential_commands.empty() ? g_potential_commands[0] : *iCommand_;
     pFunction_ = g_commands[nCommand].function;
   }
 

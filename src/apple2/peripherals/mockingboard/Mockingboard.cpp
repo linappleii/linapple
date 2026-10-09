@@ -177,7 +177,7 @@ struct Mockingboard_t {
 };
 
 auto update_irq(Mockingboard_t* mb) -> void {
-  const bool line = via_irq(&mb->via[0]) || via_irq(&mb->via[1]);
+  const bool line = via_irq(mb->via.data()) || via_irq(&mb->via[1]);
   if (line == mb->irq_line) {
     return;
   }

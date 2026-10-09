@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+#include "apple2/CPU.h"
+
 using std::map;
 using std::string;
 using std::vector;
@@ -1446,8 +1448,6 @@ struct WindowSplit_t {
   Window_e eBot;
   int left, top, right, bottom;
 };
-
-extern uint64_t g_cumulative_cycles;
 class VideoScannerDisplayInfo_t {
  public:
   VideoScannerDisplayInfo_t(void)

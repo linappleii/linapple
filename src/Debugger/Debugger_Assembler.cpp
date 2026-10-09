@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -15,6 +16,7 @@
 #include "Debugger_Console.h"
 #include "Debugger_DisassemblerData.h"
 #include "Debugger_Parser.h"
+#include "Debugger_Symbols.h"
 #include "Debugger_Types.h"
 #include "Util_MemoryTextFile.h"
 #include "Util_Text.h"
@@ -1213,14 +1215,6 @@ auto AssemblerHashDirectives() -> void {
     g_assembler_directives[iNopcode].hash = nMnemonicHash;
   }
 }
-
-#include <cstring>
-#include <map>
-#include <string>
-
-#include "Debugger_Console.h"
-#include "Debugger_Parser.h"
-#include "Debugger_Symbols.h"
 
 // Implementation helpers originally from Debug.cpp
 bool g_source_level_debugging = false;

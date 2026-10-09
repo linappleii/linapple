@@ -177,7 +177,7 @@ auto sample_buffer_upload(SampleBuffer* sb, const float* src, size_t len)
     const size_t len1 = sb->buffer.size() - w;
     std::memcpy(&sb->buffer[w], src, len1 * sizeof(float));
     const size_t len2 = num - len1;
-    std::memcpy(&sb->buffer[0], src + len1, len2 * sizeof(float));
+    std::memcpy(sb->buffer.data(), src + len1, len2 * sizeof(float));
     sb->write_index.store(len2, std::memory_order_release);
   }
 }
@@ -210,7 +210,7 @@ auto sample_buffer_drain_to(SampleBuffer* sb, float* dest, size_t len, bool mix)
       const size_t len1 = sb->buffer.size() - r;
       process(&sb->buffer[r], len1, 0);
       const size_t len2 = num - len1;
-      process(&sb->buffer[0], len2, len1);
+      process(sb->buffer.data(), len2, len1);
       r = len2;
     }
     sb->read_index.store(r, std::memory_order_release);
@@ -302,7 +302,7 @@ auto default_source_gain(const PeripheralAudioInfo_t& info) -> float {
     left_sum += info.channels[c].default_pan_left;
     right_sum += info.channels[c].default_pan_right;
   }
-  const float fan_in = std::max(1.0F, std::max(left_sum, right_sum));
+  const float fan_in = std::max({1.0F, left_sum, right_sum});
   return 1.0F / (info.peak_magnitude * fan_in);
 }
 

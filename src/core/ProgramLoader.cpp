@@ -64,7 +64,7 @@ auto program_loader_inspect(FILE* f, ProgramInfo* out_info) noexcept
   }
 
   if (bytes_read >= k_min_prg_read_size) {
-    const auto magic = read_u32_le(&buf[0]);
+    const auto magic = read_u32_le(buf.data());
     if (magic == k_prg_magic) {
       const auto word_len = read_u16_le(&buf[k_prg_word_len_offset]);
       out_info->format = ProgramFormat::prg;

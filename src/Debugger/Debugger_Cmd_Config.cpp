@@ -17,6 +17,7 @@
 #include "Debugger_Parser.h"
 #include "Debugger_Types.h"
 #include "Util_MemoryTextFile.h"
+#include "apple2/CPU.h"
 #include "apple2/Video.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
@@ -44,8 +45,6 @@ std::string g_file_name_config = "LinAppleDebugger.cfg";
 extern int g_disasm_display_lines;
 
 // Local prototypes
-
-auto cpu_setup_benchmark() -> void;
 
 // Implementation
 
