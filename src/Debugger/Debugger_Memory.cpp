@@ -287,8 +287,7 @@ auto CmdMemoryFill(int nArgs) -> Update_t {
     nAddressLen = std::min(static_cast<int>(apple2_6502_mem_end),
                            nAddressEnd - nAddressStart + 1);
   } else {
-    RangeType_t eRange;
-    eRange = Range_Get(nAddressStart, nAddress2, 1);
+    RangeType_t eRange = Range_Get(nAddressStart, nAddress2, 1);
 
     RangeEndLen_t tEndLen = {nAddressEnd, nAddressLen};
     if (!Range_CalcEndLen(eRange, nAddressStart, nAddress2, tEndLen)) {
@@ -563,8 +562,7 @@ auto CmdMemoryMove(int nArgs) -> Update_t {
   uint16_t nAddressEnd = 0;
   int nAddressLen = 0;
 
-  RangeType_t eRange;
-  eRange = Range_Get(nAddressStart, nAddress2, 2);
+  RangeType_t eRange = Range_Get(nAddressStart, nAddress2, 2);
 
   //    if (eRange == RANGE_MISSING_ARG_2)
   RangeEndLen_t tEndLen = {nAddressEnd, nAddressLen};
@@ -683,8 +681,8 @@ auto CmdMemorySave(int nArgs) -> Update_t {
     std::string sLoadSaveFilePath =
         system_state.current_dir.data();  // system_state.program_dir
 
-    RangeType_t eRange;
-    eRange = Range_Get(nAddressStart, nAddress2, iArgAddress);
+    RangeType_t eRange =
+        Range_Get(nAddressStart, nAddress2, iArgAddress);
 
     //    if (eRange == RANGE_MISSING_ARG_2)
     RangeEndLen_t tEndLen = {nAddressEnd, nAddressLen};
@@ -1145,8 +1143,7 @@ auto CmdMemorySearch(int nArgs, bool bTextIsAscii = true) -> Update_t {
   uint16_t nAddressEnd = 0;
   int nAddressLen = 0;
 
-  RangeType_t eRange;
-  eRange = Range_Get(nAddressStart, nAddress2);
+  RangeType_t eRange = Range_Get(nAddressStart, nAddress2);
 
   //  if (eRange == RANGE_MISSING_ARG_2)
   RangeEndLen_t tEndLen = {nAddressEnd, nAddressLen};

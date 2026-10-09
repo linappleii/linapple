@@ -219,7 +219,7 @@ auto ConsoleBufferPush(const char* text) -> bool {
   conchar_t* pDst = &g_console_buffer[g_console_buffer_size][0];
 
   while ((x < CONSOLE_WIDTH) && *src_ptr) {
-    c = *src_ptr;
+    c = static_cast<unsigned char>(*src_ptr);
     if ((c == '\n') || (x == (CONSOLE_WIDTH - 1))) {
       *pDst = 0;
       x = 0;

@@ -206,7 +206,7 @@ auto run_dc_block(DcBlock_t* f, float* buffer, size_t count) -> bool {
   return any_signal;
 }
 
-auto render_chunk(Mockingboard_t* mb, size_t count) -> void {
+auto render_chunk(Mockingboard_t* mb, size_t ticks) -> void {
   for (size_t chip = 0; chip < chips_per_card; ++chip) {
     std::array<float*, ay8910_num_voices> voices = {
         {
@@ -215,14 +215,14 @@ auto render_chunk(Mockingboard_t* mb, size_t count) -> void {
             mb->scratch[(chip * voices_per_chip) + 2].data(),
         },
     };
-    ay8910_step(&mb->ay[chip], count, voices.data(), scratch_ticks);
+    ay8910_step(&mb->ay[chip], ticks, voices.data(), scratch_ticks);
   }
 
   std::array<const float*, voices_per_card> channels = {};
   bool any_signal = false;
   for (size_t v = 0; v < voices_per_card; ++v) {
     any_signal =
-        run_dc_block(&mb->dc[v], mb->scratch[v].data(), count) || any_signal;
+        run_dc_block(&mb->dc[v], mb->scratch[v].data(), ticks) || any_signal;
     channels[v] = mb->scratch[v].data();
   }
 
@@ -230,7 +230,7 @@ auto render_chunk(Mockingboard_t* mb, size_t count) -> void {
     return;
   }
   if (mb->host != nullptr && mb->host->AudioPushChannels != nullptr) {
-    mb->host->AudioPushChannels(mb, channels.data(), voices_per_card, count);
+    mb->host->AudioPushChannels(mb, channels.data(), voices_per_card, ticks);
   }
 }
 

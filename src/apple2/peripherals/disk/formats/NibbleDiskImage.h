@@ -82,4 +82,4 @@ DiskError_e nibble_disk_image_create(const char* path, uint32_t track_nibbles);
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using)
+// NOLINTEND(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type)

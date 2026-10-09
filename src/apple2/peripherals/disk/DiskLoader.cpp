@@ -182,6 +182,8 @@ struct TemporaryFileGuard {
   }
   TemporaryFileGuard(const TemporaryFileGuard&) = delete;
   auto operator=(const TemporaryFileGuard&) -> TemporaryFileGuard& = delete;
+  TemporaryFileGuard(TemporaryFileGuard&&) = delete;
+  auto operator=(TemporaryFileGuard&&) -> TemporaryFileGuard& = delete;
 };
 
 auto find_best_driver(const uint8_t* header_ptr, size_t header_size,

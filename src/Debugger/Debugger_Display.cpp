@@ -228,7 +228,7 @@ auto DebuggerPrintColor(int x, int y, const conchar_t* text) -> void {
       if (ConsoleColor_IsColor(g)) {
         DebuggerSetColorFG(ConsoleColor_GetColor(g));
       }
-      g = ConsoleChar_GetChar(g);
+      g = static_cast<unsigned char>(ConsoleChar_GetChar(g));
     }
 
     PrintGlyph(x, y, static_cast<char>(g & CONSOLE_COLOR_MASK));

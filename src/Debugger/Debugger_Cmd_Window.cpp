@@ -412,9 +412,9 @@ auto debug_get_video_mode(uint32_t* pVideoMode) -> bool {
   return DebugVideoMode::Instance().Get(pVideoMode);
 }
 auto CmdCursorFollowTarget(int nArgs) -> Update_t {
-  uint16_t address = 0;
-  if (GetTargetAddress(g_disasm_cur_address, address)) {
-    g_disasm_cur_address = address;
+  uint16_t target_address = 0;
+  if (GetTargetAddress(g_disasm_cur_address, target_address)) {
+    g_disasm_cur_address = target_address;
 
     if (CURSOR_ALIGN_CENTER == nArgs) {
       WindowUpdateDisasmSize();

@@ -50,7 +50,25 @@ auto video_load_xpm(const char* const* xpm) -> VideoSurface* {
   int h = 0;
   int colors = 0;
   int cpp = 0;
-  if (sscanf(xpm[0], "%d %d %d %d", &w, &h, &colors, &cpp) != 4) {
+  char* end = nullptr;
+  const char* p = xpm[0];
+  w = static_cast<int>(strtol(p, &end, 10));
+  if (end == p) {
+    return nullptr;
+  }
+  p = end;
+  h = static_cast<int>(strtol(p, &end, 10));
+  if (end == p) {
+    return nullptr;
+  }
+  p = end;
+  colors = static_cast<int>(strtol(p, &end, 10));
+  if (end == p) {
+    return nullptr;
+  }
+  p = end;
+  cpp = static_cast<int>(strtol(p, &end, 10));
+  if (end == p) {
     return nullptr;
   }
   if (cpp != 1 || colors < 0 || colors > static_cast<int>(video_palette_size) ||

@@ -102,7 +102,7 @@ auto DebuggerProcessCommand(const bool bEchoConsoleInput) -> Update_t {
 
 //===========================================================================
 
-constexpr const char* DEBUGGER__COMMANDS_VERIFY_TXT__ = "\xDE\xAD\xC0\xDE";
+constexpr const char* debugger_commands_verify_txt = "\xDE\xAD\xC0\xDE";
 
 // Setting function to nullptr, allows g_commands arguments to be safely listed
 // here Commands should be listed alphabetically per category. For the list
@@ -936,7 +936,7 @@ Command_t g_commands[] = {
     //	{"WD", CmdShowDataWindow, nullptr, nullptr}, //
 
     // Internal Consistency Check
-    {DEBUGGER__COMMANDS_VERIFY_TXT__, nullptr, NUM_COMMANDS, nullptr},
+    {debugger_commands_verify_txt, nullptr, NUM_COMMANDS, nullptr},
 
     // Aliasies - Can be in any order
     {"->", nullptr, CMD_CURSOR_JUMP_PC, nullptr},
@@ -1057,7 +1057,7 @@ Command_t g_commands[] = {
 // Parameters
 // _____________________________________________________________________________________
 
-constexpr const char* DEBUGGER__PARAMS_VERIFY_TXT__ = "\xDE\xAD\xDA\x1A";
+constexpr const char* debugger_params_verify_txt = "\xDE\xAD\xDA\x1A";
 
 // NOTE: Order MUST match Parameters_e[] !!!
 Command_t g_parameters[] = {
@@ -1231,7 +1231,7 @@ Command_t g_parameters[] = {
         nullptr,
     },  //   -     x    code/data win
         // Internal Consistency Check
-    {DEBUGGER__PARAMS_VERIFY_TXT__, nullptr, NUM_PARAMS, nullptr},
+    {debugger_params_verify_txt, nullptr, NUM_PARAMS, nullptr},
 };
 
 //===========================================================================
@@ -1247,12 +1247,12 @@ auto VerifyDebuggerCommandTable() -> void {
     }
   }
 
-  if (strcmp(g_commands[NUM_COMMANDS].name, DEBUGGER__COMMANDS_VERIFY_TXT__) !=
+  if (strcmp(g_commands[NUM_COMMANDS].name, debugger_commands_verify_txt) !=
       0) {
     fprintf(stderr, "*** ERROR *** Total Commands mis-matched!");
   }
 
-  if (strcmp(g_parameters[NUM_PARAMS].name, DEBUGGER__PARAMS_VERIFY_TXT__) !=
+  if (strcmp(g_parameters[NUM_PARAMS].name, debugger_params_verify_txt) !=
       0) {
     fprintf(stderr, "*** ERROR *** Total Parameters mis-matched!");
   }

@@ -48,13 +48,21 @@ struct ProgressContext {
 };
 
 struct StagingGuard {
-  const std::string& path;
-  const bool& success;
+  std::string path;
+  bool armed = true;
+
+  explicit StagingGuard(std::string p) : path(std::move(p)) {}
   ~StagingGuard() {
-    if (!success) {
+    if (armed) {
       std::remove(path.c_str());
     }
   }
+  StagingGuard(const StagingGuard&) = delete;
+  auto operator=(const StagingGuard&) -> StagingGuard& = delete;
+  StagingGuard(StagingGuard&&) = delete;
+  auto operator=(StagingGuard&&) -> StagingGuard& = delete;
+
+  auto disarm() -> void { armed = false; }
 };
 
 auto curl_xfer_callback(void* clientp, curl_off_t dltotal, curl_off_t dlnow,
@@ -202,8 +210,7 @@ auto FtpClient::download_file(const std::string& remote_url,
     return FtpStatus::write_error;
   }
 
-  bool download_succeeded = false;
-  StagingGuard staging_guard{staging_path, download_succeeded};
+  StagingGuard staging_guard{staging_path};
 
   CURL* curl = curl_handle.get();
   curl_easy_reset(curl);
@@ -238,7 +245,7 @@ auto FtpClient::download_file(const std::string& remote_url,
   if (std::rename(staging_path.c_str(), target_path.c_str()) != 0) {
     return FtpStatus::write_error;
   }
-  download_succeeded = true;
+  staging_guard.disarm();
 
   return FtpStatus::ok;
 }

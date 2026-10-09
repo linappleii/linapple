@@ -62,6 +62,7 @@ typedef enum {
   keyb_idx_y = 28,
   keyb_idx_z = 29,
 
+  // NOLINTNEXTLINE(misc-confusable-identifiers) - digit key '1' distinct from letter key 'l'
   keyb_idx_1 = 30,
   keyb_idx_2 = 31,
   keyb_idx_3 = 32,

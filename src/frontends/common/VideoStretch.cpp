@@ -470,9 +470,8 @@ VideoSurface* font_sfc = nullptr;
 auto fonts_initialization() -> bool { return true; }
 
 auto fonts_termination() -> void {
-  if (font_sfc) {
-    free(font_sfc->pixels);
-    free(font_sfc);
+  if (font_sfc != nullptr) {
+    video_destroy_surface(font_sfc);
     font_sfc = nullptr;
   }
 }

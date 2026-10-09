@@ -125,7 +125,7 @@ enum AddressingMode_e : uint8_t {  // ADDRESSING_MODES_e
   ,
   NUM_ADDRESSING_MODES,
   NUM_OPMODES = NUM_ADDRESSING_MODES,
-  AM_I = NUM_ADDRESSING_MODES,  // for assembler
+  AM_INDIRECT = NUM_ADDRESSING_MODES,  // for assembler
 };
 
 // Assembler

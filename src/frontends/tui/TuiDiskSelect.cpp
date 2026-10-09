@@ -7,7 +7,7 @@
 
 namespace {
 DiskBrowser s_browser{};
-}
+}  // namespace
 
 auto tui_disk_select_open(int slot, int drive) -> void {
   // A machine without the card asked for has no slot to browse for.

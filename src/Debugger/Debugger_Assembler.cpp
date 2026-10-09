@@ -1356,11 +1356,12 @@ auto ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols) -> bool {
     p = strstr(sLine, ":");
     if (p) {
       *p = 0;
-      sscanf(sLine, "%X", &address);
-
-      if (address >= INVALID_ADDRESS) {
+      char* endptr = nullptr;
+      const unsigned long parsed = strtoul(sLine, &endptr, 16);
+      if (endptr == sLine || parsed >= INVALID_ADDRESS) {
         continue;
       }
+      address = static_cast<uint32_t>(parsed);
 
       if (bBytesToMemory) {
         char* pEnd = p + 1;
@@ -1553,7 +1554,7 @@ auto SetFlag(AssemblerFlags_e eFlag, bool bValue = true) -> void {
                 AM_M
                 AM_A
                 AM_Z
-                AM_I // indexed or indirect
+                AM_INDIRECT // indexed or indirect
 */
 //===========================================================================
 auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress) -> bool {
@@ -1612,7 +1613,7 @@ auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress) -> bool {
       SetFlag(AF_HaveLeftParen);
 
       // Indexed or Indirect
-      g_asm_address_mode = AM_I;
+      g_asm_address_mode = AM_INDIRECT;
     } else if (iToken == TOKEN_PAREN_R) {
       if (TestFlag(AF_HaveRightParen)) {
         ConsoleBufferPush(
@@ -1622,7 +1623,7 @@ auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress) -> bool {
       SetFlag(AF_HaveRightParen);
 
       // Indexed or Indirect
-      g_asm_address_mode = AM_I;
+      g_asm_address_mode = AM_INDIRECT;
     } else if (iToken == TOKEN_COMMA) {
       if (TestFlag(AF_HaveComma)) {
         ConsoleBufferPush(
@@ -1774,7 +1775,7 @@ auto AssemblerUpdateAddressingMode() -> bool {
     }
   }
 
-  if (g_asm_address_mode == AM_I && !TestFlag(AF_HaveEitherParen)) {
+  if (g_asm_address_mode == AM_INDIRECT && !TestFlag(AF_HaveEitherParen)) {
     // Indirect Zero Page
     // Indirect Absolute
   }

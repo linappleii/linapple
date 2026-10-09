@@ -13,7 +13,7 @@
 
 namespace {
 constexpr int eol_null = 0;
-}
+}  // namespace
 
 auto MemoryTextFile_t::Read(const std::string& filename) -> bool {
   FilePtr file_handle(fopen(filename.c_str(), "rb"), fclose);

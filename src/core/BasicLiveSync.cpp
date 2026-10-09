@@ -697,10 +697,10 @@ auto basic_sync_import_from_string(const std::string& text, BasicLineMode mode)
               return a.line_number < b.line_number;
             });
 
-  uint16_t current_addr = inject_program_lines(txttab, himem, lines);
-  uint16_t var_start = static_cast<uint16_t>(current_addr + 2);
+  uint16_t prg_end = inject_program_lines(txttab, himem, lines);
+  uint16_t var_start = static_cast<uint16_t>(prg_end + 2);
 
-  write_zero_page_16(addr_prgend, current_addr);
+  write_zero_page_16(addr_prgend, prg_end);
   write_zero_page_16(addr_vartab, var_start);
   write_zero_page_16(addr_arytab, var_start);
   write_zero_page_16(addr_strend, var_start);
@@ -710,7 +710,7 @@ auto basic_sync_import_from_string(const std::string& text, BasicLineMode mode)
 
   Logger::info(
       "BasicLiveSync: Injected %zu BASIC lines into RAM ($%04X-$%04X)\n",
-      lines.size(), txttab, current_addr);
+      lines.size(), txttab, prg_end);
   return true;
 }
 
