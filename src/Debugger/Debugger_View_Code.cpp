@@ -248,12 +248,8 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
     nOverflow += strlen(line.sTargetOffset);
   }
 
-  if (line.bTargetIndirect || line.bTargetX || line.bTargetY) {
-    if (line.bTargetX) {
-      nOverflow += 2;
-    } else if (line.bTargetY && (!line.bTargetIndirect)) {
-      nOverflow += 2;
-    }
+  if (line.bTargetX || (line.bTargetY && !line.bTargetIndirect)) {
+    nOverflow += 2;
   }
 
   if (line.bTargetIndexed || line.bTargetIndirect) {

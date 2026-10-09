@@ -76,7 +76,8 @@ auto Configuration::sync_from_data() -> void {
             apple2_type = A2TYPE_APPLE2EENHANCED;
             break;
         }
-      } catch (...) {
+      } catch (const std::exception&) {
+        apple2_type = A2TYPE_APPLE2EENHANCED;
       }
     }
   }
@@ -94,7 +95,8 @@ auto Configuration::sync_from_data() -> void {
       try {
         uint32_t vid = std::stoul(vid_str, nullptr, 0);
         is_pal = (vid == 2);
-      } catch (...) {
+      } catch (const std::exception&) {
+        is_pal = false;
       }
     }
   }
@@ -163,7 +165,8 @@ auto Configuration::sync_from_data() -> void {
     if (!bmode_str.empty()) {
       try {
         basic_line_mode = static_cast<int>(std::stoul(bmode_str, nullptr, 0));
-      } catch (...) {
+      } catch (const std::exception&) {
+        basic_line_mode = 0;
       }
     }
   }
@@ -190,7 +193,8 @@ auto Configuration::sync_from_data() -> void {
     if (!cmode_str.empty()) {
       try {
         caps_lock_mode = static_cast<int>(std::stoul(cmode_str, nullptr, 0));
-      } catch (...) {
+      } catch (const std::exception&) {
+        caps_lock_mode = 0;
       }
     }
   }

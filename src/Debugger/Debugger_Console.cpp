@@ -684,8 +684,6 @@ auto debugger_process_key(int keycode) -> void {
       case linapple_key_f10:
       case linapple_key_f11:
       case linapple_key_f12:
-        break;
-
       default:
         break;
     }

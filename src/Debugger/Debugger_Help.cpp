@@ -528,17 +528,11 @@ auto Colorize(char* pDst, const char* src_ptr) -> bool {
       ColorizeHeader(pDst, src_ptr, sTotal, total);
     } else if (strncmp(sExamples, src_ptr, nExamples) == 0) {
       ColorizeHeader(pDst, src_ptr, sExamples, nExamples);
-    } else if (*src_ptr == '[') {
+    } else if (*src_ptr == '[' || *src_ptr == ']') {
       ColorizeOperator(pDst, src_ptr, CHC_ARG_OPT);
-    } else if (*src_ptr == ']') {
-      ColorizeOperator(pDst, src_ptr, CHC_ARG_OPT);
-    } else if (*src_ptr == '<') {
+    } else if (*src_ptr == '<' || *src_ptr == '>') {
       ColorizeOperator(pDst, src_ptr, CHC_ARG_MAND);
-    } else if (*src_ptr == '>') {
-      ColorizeOperator(pDst, src_ptr, CHC_ARG_MAND);
-    } else if (*src_ptr == '|') {
-      ColorizeOperator(pDst, src_ptr, CHC_ARG_SEP);
-    } else if (*src_ptr == '\'') {
+    } else if (*src_ptr == '|' || *src_ptr == '\'') {
       ColorizeOperator(pDst, src_ptr, CHC_ARG_SEP);
     } else if ((*src_ptr == '$') && isHexDigit(src_ptr[1]))  // Hex Number
     {

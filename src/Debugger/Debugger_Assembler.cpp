@@ -1632,8 +1632,7 @@ auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress) -> bool {
       SetFlag(AF_HaveComma);
       eNextState = AS_GET_INDEX;
       // We should have address by now
-    } else if (iToken == TOKEN_LESS_THAN) {
-    } else if (iToken == TOKEN_GREATER_THAN) {
+    } else if (iToken == TOKEN_LESS_THAN || iToken == TOKEN_GREATER_THAN) {
     } else if (iToken == TOKEN_SEMI)  // comment
     {
       break;

@@ -433,7 +433,8 @@ auto keyboard_parse_host_key(const char* name) -> uint32_t {
       if (fnum >= 1 && fnum <= 12) {
         return keyb_idx_f1 + (fnum - 1);
       }
-    } catch (...) {
+    } catch (const std::exception&) {
+      return keyb_idx_unknown;
     }
   }
 
@@ -513,7 +514,8 @@ auto keyboard_parse_apple2_val(const char* name, uint8_t* out_flags)
       std::string hex_str = (s[0] == '$') ? s.substr(1) : s.substr(2);
       unsigned long val = std::stoul(hex_str, nullptr, 16);
       return static_cast<uint8_t>(val & 0xFF);
-    } catch (...) {
+    } catch (const std::exception&) {
+      return 0;
     }
   }
 

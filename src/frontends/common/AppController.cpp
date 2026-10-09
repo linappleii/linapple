@@ -201,7 +201,8 @@ static auto apply_screen_factor() -> void {
       system_state.screen_height =
           static_cast<int>(static_cast<float>(SCREEN_HEIGHT) * factor);
     }
-  } catch (...) {
+  } catch (const std::exception&) {
+    (void)factor_str;
   }
 }
 

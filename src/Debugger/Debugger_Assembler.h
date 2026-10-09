@@ -161,7 +161,7 @@ extern AssemblerDirective_t g_assembler_directives[NUM_ASM_DIRECTIVES];
 
 // Prototypes _______________________________________________________________
 
-auto GetOpmodeOpbyte(const int nBaseAddress, int& iOpmode_, int& nOpbyte_,
+auto GetOpmodeOpbyte(int nBaseAddress, int& iOpmode_, int& nOpbyte_,
                      const DisasmData_t** pData_ = nullptr) -> int;
 auto GetOpcodeOpmodeOpbyte(int& iOpcode_, int& iOpmode_, int& nOpbyte_) -> void;
 auto GetStackReturnAddress(uint16_t& nAddress_) -> bool;

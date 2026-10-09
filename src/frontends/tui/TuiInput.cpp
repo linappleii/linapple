@@ -756,7 +756,8 @@ auto process_sequences() -> void {
                   } else if (tui_video_is_help_visible()) {
                     tui_video_close_help();
                   }
-                } catch (...) {
+                } catch (const std::exception&) {
+                  (void)token;
                 }
               }
             }

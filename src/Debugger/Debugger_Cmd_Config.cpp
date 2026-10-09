@@ -90,8 +90,7 @@ auto CmdConfigColorMono(int nArgs) -> Update_t {
     if (iParam == PARAM_RESET) {
       ConfigColorsReset();
       ConsoleBufferPush(" Resetting colors.");
-    } else if (iParam == PARAM_SAVE) {
-    } else if (iParam == PARAM_LOAD) {
+    } else if (iParam == PARAM_SAVE || iParam == PARAM_LOAD) {
     } else {
       return HelpLastCommand();
     }

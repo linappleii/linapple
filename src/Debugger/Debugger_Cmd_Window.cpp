@@ -427,14 +427,10 @@ auto CmdCursorFollowTarget(int nArgs) -> Update_t {
   return UPDATE_ALL;
 }
 
-auto CmdCursorLineUp(int nArgs) -> Update_t {
+auto CmdCursorLineUp(int /*nArgs*/) -> Update_t {
   if (g_window_this == WINDOW_DATA) {
     CursorMoveUpAligned(WINDOW_DATA_BYTES_PER_LINE);
     DisasmCalcTopBotAddress();
-  } else if (nArgs) {
-    g_disasm_top_address--;
-    DisasmCalcCurFromTopAddress();
-    DisasmCalcBotFromTopAddress();
   } else {
     g_disasm_top_address--;
     DisasmCalcCurFromTopAddress();

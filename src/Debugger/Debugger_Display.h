@@ -51,7 +51,7 @@ auto DrawConsoleLine(const conchar_t* text, int y) -> void;
 auto DrawConsoleCursor() -> void;
 
 auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int;
-auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t;
+auto DrawDisassemblyLine(int iLine, uint16_t nBaseAddress) -> uint16_t;
 auto FormatDisassemblyLine(const DisasmLine_t& line, char* sDisassembly_,
                            int nBufferSize) -> void;
 auto FormatOpcodeBytes(uint16_t nBaseAddress, DisasmLine_t& line_) -> void;
