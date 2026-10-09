@@ -16,6 +16,7 @@ struct HarddiskFormatRegistration_t {
     try {
       harddisk_loader_register_permanent(driver);
     } catch (...) {
+      (void)driver;
     }
   }
 };

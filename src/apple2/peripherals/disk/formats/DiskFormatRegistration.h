@@ -15,6 +15,7 @@ struct DiskFormatRegistration_t {
     try {
       disk_loader_register_permanent(driver);
     } catch (...) {
+      (void)driver;
     }
   }
 };
