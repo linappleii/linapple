@@ -17,7 +17,6 @@
 #include "Debugger_Parser.h"
 #include "Debugger_Types.h"
 #include "Util_MemoryTextFile.h"
-#include "apple2/CPU.h"
 #include "apple2/Video.h"
 #include "core/LinAppleCore.h"
 #include "core/Util_Path.h"

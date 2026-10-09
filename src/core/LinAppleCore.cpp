@@ -3,6 +3,8 @@
 
 #include <strings.h>
 
+#include <algorithm>
+
 #include <chrono>
 #include <cinttypes>
 #include <cstdint>

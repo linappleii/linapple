@@ -15,8 +15,8 @@ extern auto frame_refresh_status(int) -> void;
 #include <cstring>
 
 #include "Debugger_Console.h"
-#include "Debugger_Display.h"
 #include "Debugger_Parser.h"
+#include "apple2/CPU.h"
 
 // Globals originally from Debug.cpp
 bool g_benchmarking = false;

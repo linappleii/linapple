@@ -5,7 +5,6 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <string>
 
 #include "Debug.h"
 #include "Debugger_Assembler.h"

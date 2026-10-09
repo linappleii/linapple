@@ -96,5 +96,5 @@ auto frame_pacer_period_ns(const FramePacer* pacer) -> int64_t {
   if (pacer == nullptr) {
     return fallback_period_ns;
   }
-  return pacer->frame_period_ns();
+  return FramePacer::frame_period_ns();
 }

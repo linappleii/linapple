@@ -102,6 +102,7 @@ struct OpcodeDesc {
   uint8_t base_cycles;
 };
 
+// NOLINTBEGIN(readability-convert-member-functions-to-static) - opcode dispatch handlers maintain a uniform member function interface on CpuLoopContext
 struct CpuLoopContext {
   uint16_t addr = 0;
   uint16_t base = 0;
@@ -132,14 +133,14 @@ struct CpuLoopContext {
     flagz = (regs.ps & AF_ZERO);
   }
 
-  static auto push(uint8_t a) -> void {
+  auto push(uint8_t a) -> void {
     *(mem + regs.sp--) = a;
     if (regs.sp < STACK_BEGIN) {
       regs.sp = STACK_END;
     }
   }
 
-  static auto pop() -> uint8_t {
+  auto pop() -> uint8_t {
     return *(mem +
              ((regs.sp >= STACK_END) ? (regs.sp = STACK_BEGIN) : ++regs.sp));
   }
@@ -289,7 +290,7 @@ struct CpuLoopContext {
     regs.x = regs.sp & 0xFF;
     set_nz(regs.x);
   }
-  static auto op_txs() -> void { regs.sp = 0x100 | regs.x; }
+  auto op_txs() -> void { regs.sp = 0x100 | regs.x; }
   auto op_and() -> void {
     regs.a &= read_byte(addr);
     set_nz(regs.a);
@@ -413,13 +414,13 @@ struct CpuLoopContext {
     set_nz(regs.y);
   }
   auto op_jmp() const -> void { regs.pc = addr; }
-  auto op_jsr() const -> void {
+  auto op_jsr() -> void {
     --regs.pc;
     push(regs.pc >> 8);
     push(regs.pc & 0xFF);
     regs.pc = addr;
   }
-  static auto op_rts() -> void {
+  auto op_rts() -> void {
     regs.pc = pop();
     regs.pc |= (static_cast<uint16_t>(pop()) << 8);
     ++regs.pc;
@@ -443,17 +444,17 @@ struct CpuLoopContext {
     }
     regs.pc = read_u16_unaligned(mem + IRQ_VECTOR_ADDR);
   }
-  static auto op_hlt() -> void {
+  auto op_hlt() -> void {
     regs.is_jammed = true;
     --regs.pc;
   }
-  static auto op_pha() -> void { push(regs.a); }
-  auto op_php() const -> void {
+  auto op_pha() -> void { push(regs.a); }
+  auto op_php() -> void {
     pack_ps();
     push(regs.ps);
   }
-  static auto op_phx() -> void { push(regs.x); }
-  static auto op_phy() -> void { push(regs.y); }
+  auto op_phx() -> void { push(regs.x); }
+  auto op_phy() -> void { push(regs.y); }
   auto op_pla() -> void {
     regs.a = pop();
     set_nz(regs.a);
@@ -807,10 +808,10 @@ struct CpuLoopContext {
   auto op_clc() -> void { flagc = 0; }
   auto op_sec() -> void { flagc = 1; }
   auto op_clv() -> void { flagv = 0; }
-  static auto op_cli() -> void { regs.ps &= ~AF_INTERRUPT; }
-  static auto op_sei() -> void { regs.ps |= AF_INTERRUPT; }
-  static auto op_cld() -> void { regs.ps &= ~AF_DECIMAL; }
-  static auto op_sed() -> void { regs.ps |= AF_DECIMAL; }
+  auto op_cli() -> void { regs.ps &= ~AF_INTERRUPT; }
+  auto op_sei() -> void { regs.ps |= AF_INTERRUPT; }
+  auto op_cld() -> void { regs.ps &= ~AF_DECIMAL; }
+  auto op_sed() -> void { regs.ps |= AF_DECIMAL; }
 
   template <bool cmos>
   auto check_nmi() -> void {
@@ -844,6 +845,7 @@ struct CpuLoopContext {
     }
   }
 };
+// NOLINTEND(readability-convert-member-functions-to-static)
 
 static auto op_nop(CpuLoopContext& /*unused*/) -> void {}
 

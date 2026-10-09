@@ -8,9 +8,9 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <exception>
 #include <fstream>
 #include <map>
-#include <ostream>
 #include <string>
 #include <utility>
 
