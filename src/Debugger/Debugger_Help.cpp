@@ -654,8 +654,8 @@ auto CmdHelpSpecific(int nArgs) -> Update_t {
   int iArg = 0;
   char sText[CONSOLE_WIDTH * 2];
   char sTemp[CONSOLE_WIDTH * 2];
-  memset(sText, 0, static_cast<size_t>(CONSOLE_WIDTH * 2));
-  memset(sTemp, 0, static_cast<size_t>(CONSOLE_WIDTH * 2));
+  memset(sText, 0, sizeof(sText));
+  memset(sTemp, 0, sizeof(sTemp));
 
   if (!nArgs) {
     Help_Categories();

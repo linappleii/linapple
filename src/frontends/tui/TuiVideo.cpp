@@ -67,6 +67,11 @@ auto record_picture_box(int x, int y, int w, int h) -> void {
   g_picture_box_drawn = true;
 }
 
+auto buffer_cell_index(int x, int y) -> size_t {
+  return static_cast<size_t>(y) * static_cast<size_t>(g_term_width) +
+         static_cast<size_t>(x);
+}
+
 }  // namespace
 
 auto tui_video_picture_box() -> MousePictureRect {
@@ -158,22 +163,20 @@ static auto render_help_overlay() -> void {
   const TuiPixel modal_bg = {10, 15, 25};        // Dimmed Blue-Black background
 
   {
-    auto& tl =
-        g_next_buffer.at(static_cast<size_t>(start_y * g_term_width + start_x));
+    auto& tl = g_next_buffer.at(buffer_cell_index(start_x, start_y));
     set_glyph(tl, "\xe2\x94\x8c");  // ┌
     tl.fg = header_border;
     tl.bg = modal_bg;
 
     for (int x = 1; x <= box_inner_w; ++x) {
-      auto& cell = g_next_buffer.at(
-          static_cast<size_t>(start_y * g_term_width + start_x + x));
+      auto& cell = g_next_buffer.at(buffer_cell_index(start_x + x, start_y));
       set_glyph(cell, "\xe2\x94\x80");  // ─
       cell.fg = header_border;
       cell.bg = modal_bg;
     }
 
-    auto& tr = g_next_buffer.at(
-        static_cast<size_t>(start_y * g_term_width + start_x + box_w - 1));
+    auto& tr =
+        g_next_buffer.at(buffer_cell_index(start_x + box_w - 1, start_y));
     set_glyph(tr, "\xe2\x94\x90");  // ┐
     tr.fg = header_border;
     tr.bg = modal_bg;
@@ -185,8 +188,7 @@ static auto render_help_overlay() -> void {
       break;
     }
 
-    auto& left_border =
-        g_next_buffer.at(static_cast<size_t>(cur_y * g_term_width + start_x));
+    auto& left_border = g_next_buffer.at(buffer_cell_index(start_x, cur_y));
     set_glyph(left_border, "\xe2\x94\x82");  // │
     left_border.fg = header_border;
     left_border.bg = modal_bg;
@@ -197,8 +199,8 @@ static auto render_help_overlay() -> void {
     int l_pad = pad / 2;
 
     for (int col_idx = 0; col_idx < box_inner_w; ++col_idx) {
-      auto& cell = g_next_buffer.at(
-          static_cast<size_t>(cur_y * g_term_width + start_x + 1 + col_idx));
+      auto& cell =
+          g_next_buffer.at(buffer_cell_index(start_x + 1 + col_idx, cur_y));
       cell.glyph.fill(0);
       if (col_idx >= l_pad && col_idx < l_pad + line_len) {
         cell.glyph.at(0) = static_cast<uint8_t>(line[col_idx - l_pad]);
@@ -209,8 +211,8 @@ static auto render_help_overlay() -> void {
       cell.bg = modal_bg;
     }
 
-    auto& right_border = g_next_buffer.at(
-        static_cast<size_t>(cur_y * g_term_width + start_x + box_w - 1));
+    auto& right_border =
+        g_next_buffer.at(buffer_cell_index(start_x + box_w - 1, cur_y));
     set_glyph(right_border, "\xe2\x94\x82");  // │
     right_border.fg = header_border;
     right_border.bg = modal_bg;
@@ -219,22 +221,20 @@ static auto render_help_overlay() -> void {
   {
     int div_y = start_y + 1 + static_cast<int>(help_header_strings.size());
     if (div_y < g_term_height) {
-      auto& div_l =
-          g_next_buffer.at(static_cast<size_t>(div_y * g_term_width + start_x));
+      auto& div_l = g_next_buffer.at(buffer_cell_index(start_x, div_y));
       set_glyph(div_l, "\xe2\x94\x9c");  // ├
       div_l.fg = body_border;
       div_l.bg = modal_bg;
 
       for (int x = 1; x <= box_inner_w; ++x) {
-        auto& cell = g_next_buffer.at(
-            static_cast<size_t>(div_y * g_term_width + start_x + x));
+        auto& cell = g_next_buffer.at(buffer_cell_index(start_x + x, div_y));
         set_glyph(cell, "\xe2\x94\x80");  // ─
         cell.fg = body_border;
         cell.bg = modal_bg;
       }
 
-      auto& div_r = g_next_buffer.at(
-          static_cast<size_t>(div_y * g_term_width + start_x + box_w - 1));
+      auto& div_r =
+          g_next_buffer.at(buffer_cell_index(start_x + box_w - 1, div_y));
       set_glyph(div_r, "\xe2\x94\xa4");  // ┤
       div_r.fg = body_border;
       div_r.bg = modal_bg;
@@ -248,8 +248,7 @@ static auto render_help_overlay() -> void {
       break;
     }
 
-    auto& left_border =
-        g_next_buffer.at(static_cast<size_t>(cur_y * g_term_width + start_x));
+    auto& left_border = g_next_buffer.at(buffer_cell_index(start_x, cur_y));
     set_glyph(left_border, "\xe2\x94\x82");  // │
     left_border.fg = body_border;
     left_border.bg = modal_bg;
@@ -258,8 +257,8 @@ static auto render_help_overlay() -> void {
     size_t line_len = strlen(line);
 
     for (int col_idx = 0; col_idx < box_inner_w; ++col_idx) {
-      auto& cell = g_next_buffer.at(
-          static_cast<size_t>(cur_y * g_term_width + start_x + 1 + col_idx));
+      auto& cell =
+          g_next_buffer.at(buffer_cell_index(start_x + 1 + col_idx, cur_y));
       cell.glyph.fill(0);
       if (col_idx >= 2 && static_cast<size_t>(col_idx - 2) < line_len) {
         cell.glyph.at(0) = static_cast<uint8_t>(line[col_idx - 2]);
@@ -270,8 +269,8 @@ static auto render_help_overlay() -> void {
       cell.bg = modal_bg;
     }
 
-    auto& right_border = g_next_buffer.at(
-        static_cast<size_t>(cur_y * g_term_width + start_x + box_w - 1));
+    auto& right_border =
+        g_next_buffer.at(buffer_cell_index(start_x + box_w - 1, cur_y));
     set_glyph(right_border, "\xe2\x94\x82");  // │
     right_border.fg = body_border;
     right_border.bg = modal_bg;
@@ -280,22 +279,20 @@ static auto render_help_overlay() -> void {
   {
     int bot_y = start_y + box_h - 1;
     if (bot_y < g_term_height) {
-      auto& bl =
-          g_next_buffer.at(static_cast<size_t>(bot_y * g_term_width + start_x));
+      auto& bl = g_next_buffer.at(buffer_cell_index(start_x, bot_y));
       set_glyph(bl, "\xe2\x94\x94");  // └
       bl.fg = body_border;
       bl.bg = modal_bg;
 
       for (int x = 1; x <= box_inner_w; ++x) {
-        auto& cell = g_next_buffer.at(
-            static_cast<size_t>(bot_y * g_term_width + start_x + x));
+        auto& cell = g_next_buffer.at(buffer_cell_index(start_x + x, bot_y));
         set_glyph(cell, "\xe2\x94\x80");  // ─
         cell.fg = body_border;
         cell.bg = modal_bg;
       }
 
-      auto& br = g_next_buffer.at(
-          static_cast<size_t>(bot_y * g_term_width + start_x + box_w - 1));
+      auto& br =
+          g_next_buffer.at(buffer_cell_index(start_x + box_w - 1, bot_y));
       set_glyph(br, "\xe2\x94\x98");  // ┘
       br.fg = body_border;
       br.bg = modal_bg;
@@ -352,22 +349,20 @@ static auto render_disk_select_overlay() -> void {
   const TuiPixel size_fg = {180, 180, 180};     // Gray size info
 
   {
-    auto& tl =
-        g_next_buffer.at(static_cast<size_t>(start_y * g_term_width + start_x));
+    auto& tl = g_next_buffer.at(buffer_cell_index(start_x, start_y));
     set_glyph(tl, "\xe2\x94\x8c");
     tl.fg = border_color;
     tl.bg = modal_bg;
 
     for (int x = 1; x <= box_inner_w; ++x) {
-      auto& cell = g_next_buffer.at(
-          static_cast<size_t>(start_y * g_term_width + start_x + x));
+      auto& cell = g_next_buffer.at(buffer_cell_index(start_x + x, start_y));
       set_glyph(cell, "\xe2\x94\x80");
       cell.fg = border_color;
       cell.bg = modal_bg;
     }
 
-    auto& tr = g_next_buffer.at(
-        static_cast<size_t>(start_y * g_term_width + start_x + box_w - 1));
+    auto& tr =
+        g_next_buffer.at(buffer_cell_index(start_x + box_w - 1, start_y));
     set_glyph(tr, "\xe2\x94\x90");
     tr.fg = border_color;
     tr.bg = modal_bg;
@@ -387,8 +382,7 @@ static auto render_disk_select_overlay() -> void {
       break;
     }
 
-    auto& lb =
-        g_next_buffer.at(static_cast<size_t>(cur_y * g_term_width + start_x));
+    auto& lb = g_next_buffer.at(buffer_cell_index(start_x, cur_y));
     set_glyph(lb, "\xe2\x94\x82");
     lb.fg = border_color;
     lb.bg = modal_bg;
@@ -399,8 +393,8 @@ static auto render_disk_select_overlay() -> void {
     int l_pad = pad / 2;
 
     for (int col_idx = 0; col_idx < box_inner_w; ++col_idx) {
-      auto& cell = g_next_buffer.at(
-          static_cast<size_t>(cur_y * g_term_width + start_x + 1 + col_idx));
+      auto& cell =
+          g_next_buffer.at(buffer_cell_index(start_x + 1 + col_idx, cur_y));
       cell.glyph.fill(0);
       if (col_idx >= l_pad && col_idx < l_pad + line_len) {
         cell.glyph.at(0) =
@@ -412,8 +406,7 @@ static auto render_disk_select_overlay() -> void {
       cell.bg = modal_bg;
     }
 
-    auto& rb = g_next_buffer.at(
-        static_cast<size_t>(cur_y * g_term_width + start_x + box_w - 1));
+    auto& rb = g_next_buffer.at(buffer_cell_index(start_x + box_w - 1, cur_y));
     set_glyph(rb, "\xe2\x94\x82");
     rb.fg = border_color;
     rb.bg = modal_bg;
@@ -421,29 +414,27 @@ static auto render_disk_select_overlay() -> void {
 
   {
     int div_y = start_y + 4;
-    auto& div_l =
-        g_next_buffer.at(static_cast<size_t>(div_y * g_term_width + start_x));
+    auto& div_l = g_next_buffer.at(buffer_cell_index(start_x, div_y));
     set_glyph(div_l, "\xe2\x94\x9c");
     div_l.fg = border_color;
     div_l.bg = modal_bg;
 
     for (int x = 1; x <= box_inner_w; ++x) {
-      auto& cell = g_next_buffer.at(
-          static_cast<size_t>(div_y * g_term_width + start_x + x));
+      auto& cell = g_next_buffer.at(buffer_cell_index(start_x + x, div_y));
       set_glyph(cell, "\xe2\x94\x80");
       cell.fg = border_color;
       cell.bg = modal_bg;
     }
 
     if (first_vis > 0 && box_inner_w >= 10) {
-      auto& cell = g_next_buffer.at(static_cast<size_t>(
-          div_y * g_term_width + start_x + (box_inner_w / 2)));
+      auto& cell = g_next_buffer.at(
+          buffer_cell_index(start_x + (box_inner_w / 2), div_y));
       set_glyph(cell, "\xe2\x96\xb2");  // ▲
       cell.fg = header_fg;
     }
 
-    auto& div_r = g_next_buffer.at(
-        static_cast<size_t>(div_y * g_term_width + start_x + box_w - 1));
+    auto& div_r =
+        g_next_buffer.at(buffer_cell_index(start_x + box_w - 1, div_y));
     set_glyph(div_r, "\xe2\x94\xa4");
     div_r.fg = border_color;
     div_r.bg = modal_bg;
@@ -455,8 +446,7 @@ static auto render_disk_select_overlay() -> void {
       break;
     }
 
-    auto& lb =
-        g_next_buffer.at(static_cast<size_t>(cur_y * g_term_width + start_x));
+    auto& lb = g_next_buffer.at(buffer_cell_index(start_x, cur_y));
     set_glyph(lb, "\xe2\x94\x82");
     lb.fg = border_color;
     lb.bg = modal_bg;
@@ -486,8 +476,8 @@ static auto render_disk_select_overlay() -> void {
     }
 
     for (int col_idx = 0; col_idx < box_inner_w; ++col_idx) {
-      auto& cell = g_next_buffer.at(
-          static_cast<size_t>(cur_y * g_term_width + start_x + 1 + col_idx));
+      auto& cell =
+          g_next_buffer.at(buffer_cell_index(start_x + 1 + col_idx, cur_y));
       cell.glyph.fill(0);
       cell.bg = row_bg;
       cell.fg = row_fg;
@@ -516,8 +506,7 @@ static auto render_disk_select_overlay() -> void {
       }
     }
 
-    auto& rb = g_next_buffer.at(
-        static_cast<size_t>(cur_y * g_term_width + start_x + box_w - 1));
+    auto& rb = g_next_buffer.at(buffer_cell_index(start_x + box_w - 1, cur_y));
     set_glyph(rb, "\xe2\x94\x82");
     rb.fg = border_color;
     rb.bg = modal_bg;
@@ -525,15 +514,13 @@ static auto render_disk_select_overlay() -> void {
 
   {
     int div_y = start_y + 5 + max_visible_rows;
-    auto& div_l =
-        g_next_buffer.at(static_cast<size_t>(div_y * g_term_width + start_x));
+    auto& div_l = g_next_buffer.at(buffer_cell_index(start_x, div_y));
     set_glyph(div_l, "\xe2\x94\x9c");
     div_l.fg = border_color;
     div_l.bg = modal_bg;
 
     for (int x = 1; x <= box_inner_w; ++x) {
-      auto& cell = g_next_buffer.at(
-          static_cast<size_t>(div_y * g_term_width + start_x + x));
+      auto& cell = g_next_buffer.at(buffer_cell_index(start_x + x, div_y));
       set_glyph(cell, "\xe2\x94\x80");
       cell.fg = border_color;
       cell.bg = modal_bg;
@@ -541,14 +528,14 @@ static auto render_disk_select_overlay() -> void {
 
     if (first_vis + static_cast<size_t>(max_visible_rows) < total_count &&
         box_inner_w >= 10) {
-      auto& cell = g_next_buffer.at(static_cast<size_t>(
-          div_y * g_term_width + start_x + (box_inner_w / 2)));
+      auto& cell = g_next_buffer.at(
+          buffer_cell_index(start_x + (box_inner_w / 2), div_y));
       set_glyph(cell, "\xe2\x96\xbc");  // ▼
       cell.fg = header_fg;
     }
 
-    auto& div_r = g_next_buffer.at(
-        static_cast<size_t>(div_y * g_term_width + start_x + box_w - 1));
+    auto& div_r =
+        g_next_buffer.at(buffer_cell_index(start_x + box_w - 1, div_y));
     set_glyph(div_r, "\xe2\x94\xa4");
     div_r.fg = border_color;
     div_r.bg = modal_bg;
@@ -557,8 +544,7 @@ static auto render_disk_select_overlay() -> void {
   {
     int cur_y = start_y + 6 + max_visible_rows;
     if (cur_y < g_term_height) {
-      auto& lb =
-          g_next_buffer.at(static_cast<size_t>(cur_y * g_term_width + start_x));
+      auto& lb = g_next_buffer.at(buffer_cell_index(start_x, cur_y));
       set_glyph(lb, "\xe2\x94\x82");
       lb.fg = border_color;
       lb.bg = modal_bg;
@@ -571,8 +557,8 @@ static auto render_disk_select_overlay() -> void {
       int l_pad = pad / 2;
 
       for (int col_idx = 0; col_idx < box_inner_w; ++col_idx) {
-        auto& cell = g_next_buffer.at(
-            static_cast<size_t>(cur_y * g_term_width + start_x + 1 + col_idx));
+        auto& cell =
+            g_next_buffer.at(buffer_cell_index(start_x + 1 + col_idx, cur_y));
         cell.glyph.fill(0);
         if (col_idx >= l_pad && col_idx < l_pad + line_len) {
           cell.glyph.at(0) = static_cast<uint8_t>(
@@ -584,8 +570,8 @@ static auto render_disk_select_overlay() -> void {
         cell.bg = modal_bg;
       }
 
-      auto& rb = g_next_buffer.at(
-          static_cast<size_t>(cur_y * g_term_width + start_x + box_w - 1));
+      auto& rb =
+          g_next_buffer.at(buffer_cell_index(start_x + box_w - 1, cur_y));
       set_glyph(rb, "\xe2\x94\x82");
       rb.fg = border_color;
       rb.bg = modal_bg;
@@ -595,22 +581,20 @@ static auto render_disk_select_overlay() -> void {
   {
     int bot_y = start_y + box_h - 1;
     if (bot_y < g_term_height) {
-      auto& bl =
-          g_next_buffer.at(static_cast<size_t>(bot_y * g_term_width + start_x));
+      auto& bl = g_next_buffer.at(buffer_cell_index(start_x, bot_y));
       set_glyph(bl, "\xe2\x94\x94");
       bl.fg = border_color;
       bl.bg = modal_bg;
 
       for (int x = 1; x <= box_inner_w; ++x) {
-        auto& cell = g_next_buffer.at(
-            static_cast<size_t>(bot_y * g_term_width + start_x + x));
+        auto& cell = g_next_buffer.at(buffer_cell_index(start_x + x, bot_y));
         set_glyph(cell, "\xe2\x94\x80");
         cell.fg = border_color;
         cell.bg = modal_bg;
       }
 
-      auto& br = g_next_buffer.at(
-          static_cast<size_t>(bot_y * g_term_width + start_x + box_w - 1));
+      auto& br =
+          g_next_buffer.at(buffer_cell_index(start_x + box_w - 1, bot_y));
       set_glyph(br, "\xe2\x94\x98");
       br.fg = border_color;
       br.bg = modal_bg;
@@ -657,12 +641,15 @@ auto tui_video_on_resize() -> void {
   empty_cell.fg = {0, 0, 0};
   empty_cell.bg = {0, 0, 0};
 
-  g_back_buffer.assign(static_cast<size_t>(g_term_width * g_term_height),
-                       empty_cell);
-  g_next_buffer.assign(static_cast<size_t>(g_term_width * g_term_height),
-                       empty_cell);
-  g_output_buffer.reserve(static_cast<size_t>(g_term_width * g_term_height *
-                                              k_output_reserve_factor));
+  g_back_buffer.assign(
+      static_cast<size_t>(g_term_width) * static_cast<size_t>(g_term_height),
+      empty_cell);
+  g_next_buffer.assign(
+      static_cast<size_t>(g_term_width) * static_cast<size_t>(g_term_height),
+      empty_cell);
+  g_output_buffer.reserve(static_cast<size_t>(g_term_width) *
+                          static_cast<size_t>(g_term_height) *
+                          k_output_reserve_factor);
 }
 
 static auto get_text_addr(int row, int col) -> uint16_t {
@@ -855,8 +842,7 @@ static auto render_debugger_text_screen() -> void {
         bg_raw = g_debugger_virtual_text_screen_bg[src_r][c];
       }
 
-      TuiState& cell =
-          g_next_buffer.at(static_cast<size_t>(ty * g_term_width + tx));
+      TuiState& cell = g_next_buffer.at(buffer_cell_index(tx, ty));
       cell.glyph.fill(0);
       cell.glyph.at(0) =
           (ch != 0) ? static_cast<uint8_t>(ch) : static_cast<uint8_t>(' ');
@@ -946,8 +932,7 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
           break;
         }
 
-        TuiState& cell =
-            g_next_buffer.at(static_cast<size_t>(ty * g_term_width + tx));
+        TuiState& cell = g_next_buffer.at(buffer_cell_index(tx, ty));
         render_text_cell(r, c, is_80col, page_offset, alt_charset, flash_on,
                          hw_cursor_x, hw_cursor_y, cell);
       }
@@ -987,8 +972,7 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
           break;
         }
 
-        TuiState& cell =
-            g_next_buffer.at(static_cast<size_t>(ty * g_term_width + tx));
+        TuiState& cell = g_next_buffer.at(buffer_cell_index(tx, ty));
         render_gfx_cell(pixels, pitch, width, gfx_sample_height, x, y, gfx_w,
                         gfx_h, cell);
       }
@@ -1005,8 +989,7 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
         if (tx >= g_term_width) {
           break;
         }
-        TuiState& cell =
-            g_next_buffer.at(static_cast<size_t>(ty * g_term_width + tx));
+        TuiState& cell = g_next_buffer.at(buffer_cell_index(tx, ty));
         render_text_cell(r, c, is_80col, page_offset, alt_charset, flash_on,
                          hw_cursor_x, hw_cursor_y, cell);
       }
@@ -1035,8 +1018,7 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
           break;
         }
 
-        TuiState& cell =
-            g_next_buffer.at(static_cast<size_t>(ty * g_term_width + tx));
+        TuiState& cell = g_next_buffer.at(buffer_cell_index(tx, ty));
         render_gfx_cell(pixels, pitch, width, height, x, y, gfx_w, gfx_h, cell);
       }
     }
@@ -1079,10 +1061,8 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
       if (y == g_term_height - 1 && x == g_term_width - 1) {
         break;
       }
-      TuiState& next =
-          g_next_buffer.at(static_cast<size_t>(y * g_term_width + x));
-      TuiState& prev =
-          g_back_buffer.at(static_cast<size_t>(y * g_term_width + x));
+      TuiState& next = g_next_buffer.at(buffer_cell_index(x, y));
+      TuiState& prev = g_back_buffer.at(buffer_cell_index(x, y));
 
       if (next != prev || g_frame_count % k_refresh_full_divisor == 0) {
         prev = next;
@@ -1172,7 +1152,7 @@ auto tui_video_save_screenshot() -> void {
         " LinApple-TUI | F1: Help | F3: D1 | F4: D2 | F5: Swap | F6: Full | "
         "F12: Quit ";
     for (int x = 0; x < g_term_width; ++x) {
-      size_t idx = static_cast<size_t>(status_y * g_term_width + x);
+      size_t idx = buffer_cell_index(x, status_y);
       if (idx >= screen_buf.size()) {
         break;
       }
@@ -1194,8 +1174,7 @@ auto tui_video_save_screenshot() -> void {
 
     for (int y = 0; y < g_term_height; ++y) {
       for (int x = 0; x < g_term_width; ++x) {
-        const TuiState& cell =
-            screen_buf.at(static_cast<size_t>(y * g_term_width + x));
+        const TuiState& cell = screen_buf.at(buffer_cell_index(x, y));
 
         if (cell.fg != curr_fg) {
           if (fprintf(fp_ans.get(), "\x1b[38;2;%d;%d;%dm", cell.fg.r, cell.fg.g,
@@ -1237,8 +1216,7 @@ auto tui_video_save_screenshot() -> void {
     for (int y = 0; y < g_term_height; ++y) {
       std::string line_str;
       for (int x = 0; x < g_term_width; ++x) {
-        const TuiState& cell =
-            screen_buf.at(static_cast<size_t>(y * g_term_width + x));
+        const TuiState& cell = screen_buf.at(buffer_cell_index(x, y));
         for (size_t i = 0; i < cell.glyph.size() && cell.glyph.at(i) != 0;
              ++i) {
           line_str.push_back(static_cast<char>(cell.glyph.at(i)));

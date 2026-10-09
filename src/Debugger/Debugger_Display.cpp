@@ -935,7 +935,8 @@ auto UpdateDisplay(Update_t bUpdate) -> void {
     }
     if (g_debug_screen) {
       memset(g_debug_screen->pixels, 0,
-             static_cast<size_t>(g_debug_screen->pitch * g_debug_screen->h));
+             static_cast<size_t>(g_debug_screen->pitch) *
+                 static_cast<size_t>(g_debug_screen->h));
     }
   }
 
