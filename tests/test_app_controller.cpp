@@ -280,7 +280,7 @@ TEST_CASE(
     "the machine runs on") {
   ScopedAppController_t controller_guard;
   TestConfig_t machine(TestConfig_t::enhanced_2e_only());
-  AppConfig_t config = {};
+  AppConfig config = {};
   app_config_default(&config);
   declare(machine, &config);
   util_safe_strcpy(config.harddisk_path.at(0).data(), "image.hdv",

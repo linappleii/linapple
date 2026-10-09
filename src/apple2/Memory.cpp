@@ -125,7 +125,7 @@ static auto set_mem_dirty(uint8_t* val) -> void {
   }
 }
 
-MemoryInstance_t::~MemoryInstance_t() {
+MemoryInstance::~MemoryInstance() {
   if (this->memimage != nullptr) {
     munlock(this->memimage, MEMORY_64K);
   }
