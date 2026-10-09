@@ -252,7 +252,7 @@ auto ConsoleBufferToDisplay() -> void;
 auto ConsoleBufferPeek() -> const conchar_t*;
 auto ConsoleBufferPop() -> void;
 
-auto ConsoleBufferPush(const char* pString) -> bool;
+auto ConsoleBufferPush(const char* text) -> bool;
 auto ConsoleBufferPushVa(char* buf, size_t bufsz, const char* pFormat,
                          va_list va) -> bool;
 template <size_t BufSize>
@@ -281,7 +281,7 @@ inline auto ConsoleBufferPushFormat(char (&buf)[BufSize], const char* pFormat,
 auto ConsoleConvertFromText(conchar_t* sText, const char* text) -> void;
 
 // Display
-auto console_display_error(const char* pTextError) -> Update_t;
+auto console_display_error(const char* text) -> Update_t;
 auto ConsoleDisplayPause() -> void;
 auto ConsoleDisplayPush(const char* text) -> void;
 auto ConsoleDisplayPush(const conchar_t* text) -> void;

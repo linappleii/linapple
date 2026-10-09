@@ -161,14 +161,15 @@ extern AssemblerDirective_t g_assembler_directives[NUM_ASM_DIRECTIVES];
 
 // Prototypes _______________________________________________________________
 
-auto GetOpmodeOpbyte(int address, int& opmode, int& opbytes,
-                     const DisasmData_t** data = nullptr) -> int;
-auto GetOpcodeOpmodeOpbyte(int& opcode, int& opmode, int& opbytes) -> void;
-auto GetStackReturnAddress(uint16_t& address) -> bool;
-auto GetTargets(uint16_t address, int* target_partial_1, int* target_partial_2,
-                int* target_pointer, int* bytes, bool ignore_branch = true,
-                bool include_next_opcode_address = true) -> bool;
-auto GetTargetAddress(const uint16_t& address, uint16_t& target) -> bool;
+auto GetOpmodeOpbyte(const int nBaseAddress, int& iOpmode_, int& nOpbyte_,
+                     const DisasmData_t** pData_ = nullptr) -> int;
+auto GetOpcodeOpmodeOpbyte(int& iOpcode_, int& iOpmode_, int& nOpbyte_) -> void;
+auto GetStackReturnAddress(uint16_t& nAddress_) -> bool;
+auto GetTargets(uint16_t address, int* pTargetPartial_, int* pTargetPartial2_,
+                int* pTargetPointer_, int* pTargetBytes_,
+                bool bIgnoreBranch = true,
+                bool bIncludeNextOpcodeAddress = true) -> bool;
+auto GetTargetAddress(const uint16_t& address, uint16_t& nTarget_) -> bool;
 auto IsOpcodeBranch(int opcode) -> bool;
 auto IsOpcodeValid(int opcode) -> bool;
 
@@ -177,17 +178,17 @@ auto CmdAssembleHashDump() -> void;
 
 auto AssemblerDelayedTargetsSize() -> int;
 auto AssemblerStartup() -> void;
-auto Assemble(int arg_index, int arg_count, uint16_t address) -> bool;
+auto Assemble(int iArg, int nArgs, uint16_t address) -> bool;
 
 auto AssemblerOn() -> void;
 auto AssemblerOff() -> void;
 
 auto debugger_get_file_size(FILE* file) -> size_t;
-auto CmdAssemble(uint16_t address, int arg_index, int arg_count) -> Update_t;
+auto CmdAssemble(uint16_t address, int iArg, int nArgs) -> Update_t;
 
-auto CmdAssemble(int arg_count) -> Update_t;
-auto CmdSource(int arg_count) -> Update_t;
-auto CmdUnassemble(int arg_count) -> Update_t;
+auto CmdAssemble(int nArgs) -> Update_t;
+auto CmdSource(int nArgs) -> Update_t;
+auto CmdUnassemble(int nArgs) -> Update_t;
 
 extern bool g_source_level_debugging;
 extern bool g_source_add_symbols;
@@ -200,6 +201,6 @@ extern int g_source_assembly_symbols;
 extern SourceAssembly_t g_source_debug;
 
 auto BufferAssemblyListing(const std::string& filename) -> bool;
-auto ParseAssemblyListing(bool bytes_to_memory, bool add_symbols) -> bool;
+auto ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols) -> bool;
 auto FindAddressFromSourceLine(int line) -> int;
 auto FindSourceLineFromAddress(uint16_t address) -> int;

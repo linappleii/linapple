@@ -38,7 +38,7 @@ auto CmdWindowViewCommon(int iNewWindow) -> Update_t;
 
 // Internal helpers
 static auto CmdMemoryDump(int nArgs, int iWhich, int iView) -> Update_t;
-static auto CmdMemorySearch(int nArgs, bool bCaseInsensitive) -> Update_t;
+static auto CmdMemorySearch(int nArgs, bool bTextIsAscii) -> Update_t;
 
 // Memory Functions
 // Memory

@@ -180,7 +180,7 @@ auto FindAddressFromSymbol(const char* pSymbol, uint16_t* pAddress_ = nullptr,
 auto GetAddressFromSymbol(const char* symbol)
     -> uint16_t;  // HACK: returns 0 if symbol not found
 auto SymbolUpdate(SymbolTable_Index_e eSymbolTable, const char* pSymbolName,
-                  uint16_t nAddrss, bool bRemoveSymbol, bool bUpdateSymbol)
+                  uint16_t address, bool bRemoveSymbol, bool bUpdateSymbol)
     -> void;
 
 auto FindSymbolFromAddress(uint16_t address, int* iTable_ = nullptr) -> const
@@ -235,7 +235,7 @@ class DebugVideoMode  // NB. Implemented as a singleton
   static DebugVideoMode instance_;
 };
 
-auto DebuggerProcessCommand(bool echo_console_input) -> Update_t;
+auto DebuggerProcessCommand(bool bEchoConsoleInput) -> Update_t;
 
 auto UpdateDisplay(Update_t bUpdate) -> void;
 
@@ -252,7 +252,7 @@ auto CheckBreakpointsIO() -> int;
 auto CheckBreakpointsReg() -> int;
 auto ClearTempBreakpoints() -> void;
 
-auto DebuggerRunScript(const char* sFileName) -> void;
+auto DebuggerRunScript(const char* pFileName) -> void;
 
 auto DebugContinueStepping(bool bCallerWillUpdateDisplay = false) -> void;
 

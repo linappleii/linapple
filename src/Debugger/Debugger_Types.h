@@ -631,7 +631,7 @@ auto CmdDisk(int nArgs) -> Update_t;
 // Help
 auto CmdHelpList(int nArgs) -> Update_t;
 
-auto CmdHelpSpecific(int Argss) -> Update_t;
+auto CmdHelpSpecific(int nArgs) -> Update_t;
 
 auto CmdVersion(int nArgs) -> Update_t;
 
