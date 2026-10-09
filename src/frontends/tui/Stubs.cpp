@@ -2,9 +2,12 @@
 #include <cstdint>
 
 #include "Apple2Types.h"
+#include "Debugger_Display.h"
+#include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
 #include "core/LinAppleCore.h"
+#include "frontends/common/Frontend.h"
 
 [[gnu::weak]] auto frame_refresh_status(int /*drawflags*/) -> void {}
 
@@ -17,8 +20,6 @@
     -> uint16_t {
   return 0;
 }
-[[gnu::weak]] auto video_choose_color() -> void {}
-[[gnu::weak]] auto video_set_border_color(uint8_t) -> void {}
 [[gnu::weak]] auto linapple_update_title(const char*) -> void {}
 [[gnu::weak]] auto linapple_list_hardware() -> void {}
 [[gnu::weak]] auto linapple_cpu_test(const char*, uint16_t) -> void {}

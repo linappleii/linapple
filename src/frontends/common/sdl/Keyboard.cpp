@@ -29,6 +29,8 @@ auto frontend_to_core_key(int key, uint32_t mod) -> LinAppleKey {
 // mask; the two Apple keys follow their own key edges, because the mask
 // folds both Alt keys into one bit and both GUI keys into another while the
 // //e has two distinct switches (Apple IIe Technical Reference Manual, p. 13).
+namespace {
+
 struct HostModifiers {
   bool shift = false;
   bool ctrl = false;
@@ -36,17 +38,19 @@ struct HostModifiers {
   bool solid_apple = false;
 };
 
-static HostModifiers host_modifiers;
+HostModifiers host_modifiers;
 
-static auto send_host_modifiers() -> void {
+auto send_host_modifiers() -> void {
   linapple_set_modifiers(host_modifiers.shift, host_modifiers.ctrl,
                          host_modifiers.open_apple, host_modifiers.solid_apple);
 }
 
-static auto track_shift_and_ctrl(uint32_t mod) -> void {
+auto track_shift_and_ctrl(uint32_t mod) -> void {
   host_modifiers.shift = (mod & SDL_COMPAT_KMOD_SHIFT) != 0;
   host_modifiers.ctrl = (mod & SDL_COMPAT_KMOD_CTRL) != 0;
 }
+
+}  // namespace
 
 auto frontend_dispatch_key_event(uint32_t scancode, uint32_t keycode,
                                  uint32_t mod, bool is_down) -> void {

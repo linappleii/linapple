@@ -16,3 +16,8 @@ auto choose_image_dialog(int sx, int sy, const std::string& dir, int slot,
     -> bool;
 
 auto draw_frame_window() -> void;
+
+auto disk_select(int drive) -> void;
+auto disk_ftp_select_image(int drive) -> void;
+auto harddisk_ui_select(int drive) -> void;
+auto harddisk_ui_ftp_select(int drive) -> void;

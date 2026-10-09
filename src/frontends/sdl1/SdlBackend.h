@@ -95,3 +95,5 @@ inline auto sdl_compat_unlock_surface(SDL_Surface* s) -> void {
     SDL_UnlockSurface(s);
   }
 }
+
+auto frontend_handle_key_event(SdlKeycode key, bool is_down) -> bool;

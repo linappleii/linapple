@@ -39,11 +39,15 @@ struct FileList {
   std::string failure_message;
 };
 
+namespace {
+
 struct LocalGeneratorContext {
   std::string directory;
   std::string filter_extensions;
   std::string failure_message;
 };
+
+}  // namespace
 
 static auto getstat(const char* catalog, const char* fname, uintmax_t* size)
     -> int {

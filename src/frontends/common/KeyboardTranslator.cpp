@@ -54,12 +54,16 @@ static auto to_lower_str(std::string s) -> std::string {
   return s;
 }
 
+namespace {
+
 struct CustomKey {
   uint8_t normal_val = 0;
   uint8_t shift_val = 0;
   uint8_t ctrl_val = 0;
   uint8_t flags = 0;
 };
+
+}  // namespace
 
 static std::array<CustomKey, keyb_map_size> custom_keys{};
 static bool caps_lock = true;

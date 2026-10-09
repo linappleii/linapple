@@ -11,6 +11,8 @@
 #include "core/Registry.h"
 #include "frontends/common/JoystickConfig.h"
 
+namespace {
+
 inline auto clamp_val(int val, int low, int high) -> int {
   if (val < low) {
     return low;
@@ -279,6 +281,8 @@ static auto load_trim(const char* key) -> int {
   // back as its two's complement.
   return clamp_trim(static_cast<int32_t>(raw));
 }
+
+}  // namespace
 
 auto joy_frontend_initialize() -> void {
   constexpr int16_t axis_min = -32768;

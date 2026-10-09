@@ -28,6 +28,8 @@
 // easily-swappable-parameters is mandated by the shared block image ABI
 // signatures.
 
+namespace {
+
 struct BlockDiskImage_t {
   FilePtr file{nullptr, fclose};
   std::string path;
@@ -44,8 +46,6 @@ struct BlockDiskImage_t {
   BlockDiskImage_t(BlockDiskImage_t&&) = default;
   auto operator=(BlockDiskImage_t&&) -> BlockDiskImage_t& = default;
 };
-
-namespace {
 
 constexpr uint32_t block_size = 512;
 constexpr uint32_t half_block = 256;
@@ -320,8 +320,8 @@ auto block_disk_image_write_block(void* instance, uint32_t block_num,
     if (!seek_to(image_ptr, offset)) {
       return harddisk_err_io;
     }
-    if (fwrite(buffer + (static_cast<size_t>(half) * piece_size), 1,
-               piece_size, image_ptr->file.get()) != piece_size) {
+    if (fwrite(buffer + (static_cast<size_t>(half) * piece_size), 1, piece_size,
+               image_ptr->file.get()) != piece_size) {
       return harddisk_err_io;
     }
   }
