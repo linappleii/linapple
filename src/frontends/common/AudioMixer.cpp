@@ -416,6 +416,25 @@ auto audio_mixer_clear_buffers() -> void {
   }
 }
 
+static auto audio_info_equal(const PeripheralAudioInfo_t& a,
+                             const PeripheralAudioInfo_t& b) -> bool {
+  if (a.time_base != b.time_base || a.cycle_divisor != b.cycle_divisor ||
+      a.sample_rate != b.sample_rate || a.num_channels != b.num_channels ||
+      a.peak_magnitude != b.peak_magnitude) {
+    return false;
+  }
+  for (size_t i = 0; i < a.num_channels && i < PERIPHERAL_AUDIO_MAX_CHANNELS;
+       ++i) {
+    if (a.channels[i].default_pan_left != b.channels[i].default_pan_left ||
+        a.channels[i].default_pan_right != b.channels[i].default_pan_right ||
+        std::strncmp(a.channels[i].name, b.channels[i].name,
+                     PERIPHERAL_AUDIO_NAME_MAX) != 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
 auto audio_mixer_register_source(int slot, const char* peripheral_id,
                                  const PeripheralAudioInfo_t* info) -> void {
   (void)peripheral_id;
@@ -442,7 +461,7 @@ auto audio_mixer_register_source(int slot, const char* peripheral_id,
   // thread, so this comparison is safe while the audio thread is inside
   // audio_mixer_get_samples.
   const bool reconfiguring = s.active.load(std::memory_order_relaxed);
-  if (reconfiguring && std::memcmp(&s.info, info, sizeof(s.info)) == 0) {
+  if (reconfiguring && audio_info_equal(s.info, *info)) {
     return;
   }
 

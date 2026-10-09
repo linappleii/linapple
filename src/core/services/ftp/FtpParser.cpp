@@ -573,8 +573,11 @@ auto parse_dos(FtpParsedEntry& fp, const char* buf, size_t len) -> bool {
   if (++j == len) {
     return false;
   }
-  if (buf[j] == 'M' && ++j == len) {
-    return false;
+  if (buf[j] == 'M') {
+    ++j;
+    if (j == len) {
+      return false;
+    }
   }
 
   if (!skip_matching(buf, len, j, ' ')) {

@@ -201,8 +201,6 @@ auto ConfigSave_PrepareHeader(const Parameters_e eCategory,
 //===========================================================================
 auto CmdConfigSave(int nArgs) -> Update_t {
   (void)nArgs;
-  const std::string sFilename =
-      std::string(system_state.program_dir.data()) + g_file_name_config;
 
   // Bookmarks
   CmdBookmarkSave(0);

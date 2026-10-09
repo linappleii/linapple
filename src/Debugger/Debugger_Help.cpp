@@ -911,7 +911,7 @@ auto CmdHelpSpecific(int nArgs) -> Update_t {
       ConsolePrintFormat(sText, "%sCategory%s: %s%s", CHC_USAGE, CHC_DEFAULT,
                          CHC_CATEGORY, sCategory);
 
-      if (bCategory && bDisplayCategory) {
+      if (bCategory) {
         bDisplayCategory = false;
       }
     }
