@@ -79,7 +79,7 @@ auto path_basename(const std::string& path) -> std::string {
 }
 
 struct Disk_t {
-  std::string full_path{};
+  std::string full_path;
   uint32_t quarter_track = 0;
   uint32_t bit_position = 0;
   int32_t cell_remaining = 0;
@@ -91,7 +91,7 @@ struct Disk_t {
   bool is_dirty = false;
   uint32_t motor_enable_cycles = 0;
   uint32_t write_light_cycles = 0;
-  std::vector<uint8_t> track_bits{};
+  std::vector<uint8_t> track_bits;
   const DiskFormatDriver_t* driver = nullptr;
   void* driver_instance = nullptr;
   DiskError_e last_error = disk_err_none;
@@ -1477,8 +1477,6 @@ static Peripheral_t disk_peripheral = {
 };
 
 // Peripheral registry requires non-const pointer.
-auto disk_get_descriptor() -> Peripheral_t* {
-  return &disk_peripheral;
-}
+auto disk_get_descriptor() -> Peripheral_t* { return &disk_peripheral; }
 
 PERIPHERAL_REGISTER(disk_peripheral)

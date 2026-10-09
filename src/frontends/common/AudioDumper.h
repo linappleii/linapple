@@ -31,7 +31,7 @@ struct AudioDumper {
   uint32_t data_offset_{0};
   uint32_t total_bytes_written_{0};
   uint32_t num_channels_{2};
-  mutable std::mutex mutex_{};
+  mutable std::mutex mutex_;
 };
 
 auto audio_dumper_initialize(AudioDumper* dumper, const char* filename,

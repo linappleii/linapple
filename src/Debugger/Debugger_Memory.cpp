@@ -821,9 +821,8 @@ auto Util_GetDebuggerText(char*& pText_) -> size_t {
          sizeof(g_debugger_virtual_text_screen));
   debug_display();
 
-  for (auto& y : g_debugger_virtual_text_screen) {
-    for (int x = 0; x < DEBUG_VIRTUAL_TEXT_WIDTH; x++) {
-      char c = y[x];
+  for (const auto& y : g_debugger_virtual_text_screen) {
+    for (char c : y) {
       if ((c < 0x20) || (c >= 0x7F)) {
         c = ' ';  // convert null to spaces to keep everything non-proptional
       }

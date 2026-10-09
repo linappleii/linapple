@@ -186,30 +186,27 @@ auto joystick_abi_command(void* instance, uint32_t command_id,
     return peripheral_incompatible;
   }
 
-  switch (command_id) {
-    case JOYSTICK_CMD_SET_AXIS: {
-      if (payload == nullptr || payload_size != sizeof(JoystickAxisPayload_t)) {
-        return peripheral_error;
-      }
-      const auto* axis = static_cast<const JoystickAxisPayload_t*>(payload);
-      if (axis->joystick >= joystick_count || axis->axis >= axis_count) {
-        return peripheral_error;
-      }
-      const size_t paddle =
-          (static_cast<size_t>(axis->joystick) * axis_count) + axis->axis;
-      // The capacitor charges through the pot it has now: a move while the
-      // output is high moves the fall; a move after it meets an idle timer.
-      const bool running =
-          !timer_expired(port, paddle, port->host->GetCycles());
-      port->position.at(paddle) = axis->value;
-      if (running) {
-        port->pulse_position.at(paddle) = axis->value;
-      }
-      return peripheral_ok;
-    }
-    default:
-      return peripheral_incompatible;
+  if (command_id != JOYSTICK_CMD_SET_AXIS) {
+    return peripheral_incompatible;
   }
+
+  if (payload == nullptr || payload_size != sizeof(JoystickAxisPayload_t)) {
+    return peripheral_error;
+  }
+  const auto* axis = static_cast<const JoystickAxisPayload_t*>(payload);
+  if (axis->joystick >= joystick_count || axis->axis >= axis_count) {
+    return peripheral_error;
+  }
+  const size_t paddle =
+      (static_cast<size_t>(axis->joystick) * axis_count) + axis->axis;
+  // The capacitor charges through the pot it has now: a move while the
+  // output is high moves the fall; a move after it meets an idle timer.
+  const bool running = !timer_expired(port, paddle, port->host->GetCycles());
+  port->position.at(paddle) = axis->value;
+  if (running) {
+    port->pulse_position.at(paddle) = axis->value;
+  }
+  return peripheral_ok;
 }
 
 // The port has no queries: its state is read through the switches and timers.
@@ -326,8 +323,6 @@ static Peripheral_t joystick_peripheral = {
 };
 
 // Peripheral registry requires non-const pointer.
-auto joystick_get_descriptor() -> Peripheral_t* {
-  return &joystick_peripheral;
-}
+auto joystick_get_descriptor() -> Peripheral_t* { return &joystick_peripheral; }
 
 PERIPHERAL_REGISTER(joystick_peripheral)

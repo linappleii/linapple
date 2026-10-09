@@ -1757,32 +1757,27 @@ auto AssemblerUpdateAddressingMode() -> bool {
     }
   }
 
-  if ((g_asm_address_mode == AM_A) || (g_asm_address_mode == AM_Z)) {
-    if (!TestFlag(AF_HaveEitherParen))  // if no paren
-    {
-      if (TestFlag(AF_HaveComma) && TestFlag(AF_HaveRegisterX)) {
-        if (g_asm_address_mode == AM_Z) {
-          g_asm_address_mode = AM_ZX;
-        } else {
-          g_asm_address_mode = AM_AX;
-        }
+  if (((g_asm_address_mode == AM_A) || (g_asm_address_mode == AM_Z)) &&
+      !TestFlag(AF_HaveEitherParen)) {
+    if (TestFlag(AF_HaveComma) && TestFlag(AF_HaveRegisterX)) {
+      if (g_asm_address_mode == AM_Z) {
+        g_asm_address_mode = AM_ZX;
+      } else {
+        g_asm_address_mode = AM_AX;
       }
-      if (TestFlag(AF_HaveComma) && TestFlag(AF_HaveRegisterY)) {
-        if (g_asm_address_mode == AM_Z) {
-          g_asm_address_mode = AM_ZY;
-        } else {
-          g_asm_address_mode = AM_AY;
-        }
+    }
+    if (TestFlag(AF_HaveComma) && TestFlag(AF_HaveRegisterY)) {
+      if (g_asm_address_mode == AM_Z) {
+        g_asm_address_mode = AM_ZY;
+      } else {
+        g_asm_address_mode = AM_AY;
       }
     }
   }
 
-  if (g_asm_address_mode == AM_I) {
-    if (!TestFlag(AF_HaveEitherParen))  // if no paren
-    {
-      // Indirect Zero Page
-      // Indirect Absolute
-    }
+  if (g_asm_address_mode == AM_I && !TestFlag(AF_HaveEitherParen)) {
+    // Indirect Zero Page
+    // Indirect Absolute
   }
 
   g_asm_target_value = g_asm_target_address;

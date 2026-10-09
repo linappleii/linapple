@@ -882,11 +882,11 @@ constexpr int CONSOLE_WINDOW_TOP = 256;
 constexpr int DEFAULT_DISPLAY_MEMORY_LINES = 8;
 
 auto InitDisasm() -> void {
-  for (int i = 0; i < NUM_FONTS; i++) {
-    g_font_config[i].font_width_avg = CONSOLE_FONT_WIDTH;
-    g_font_config[i].font_width_max = CONSOLE_FONT_WIDTH;
-    g_font_config[i].font_height = CONSOLE_FONT_HEIGHT;
-    g_font_config[i].line_height = CONSOLE_FONT_HEIGHT;
+  for (auto& config : g_font_config) {
+    config.font_width_avg = CONSOLE_FONT_WIDTH;
+    config.font_width_max = CONSOLE_FONT_WIDTH;
+    config.font_height = CONSOLE_FONT_HEIGHT;
+    config.line_height = CONSOLE_FONT_HEIGHT;
   }
 
   for (auto& i : g_window_config) {

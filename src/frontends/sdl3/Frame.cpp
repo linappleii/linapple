@@ -533,7 +533,7 @@ auto draw_status_area(int drawflags) -> void {
       }
     }
 
-    std::array<char, 2> leds = {{"\x64"}};
+    std::array<char, 2> leds = {'\x64', '\0'};
     constexpr int led_char_base = 1;
     int drive1_status = disk_status_off;
     int drive2_status = disk_status_off;

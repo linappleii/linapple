@@ -619,8 +619,8 @@ static auto init_io_handlers() -> void {
   g_active_memory->expansion_rom_type = EXP_ROM_NULL;
   g_active_memory->peripheral_rom_slot = 0;
 
-  for (uint32_t i = 0; i < num_slots; i++) {
-    g_active_memory->expansion_rom[i] = nullptr;
+  for (auto& rom : g_active_memory->expansion_rom) {
+    rom = nullptr;
   }
 }
 
