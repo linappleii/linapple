@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "Debug.h"
+#include "Debugger_Cmd_Config.h"
 #include "Debugger_Console.h"
 #include "Debugger_Help.h"
 #include "Debugger_Parser.h"
@@ -17,8 +18,7 @@
 #include "core/LinAppleCore.h"
 #include "core/Util_Text.h"
 
-// Globals originally from Debug.cpp
-extern bool g_report_missing_scripts;
+namespace {
 
 // Types used by CmdOutputPrint and CmdOutputPrintf
 enum PrintState_e : uint8_t {
@@ -34,6 +34,8 @@ struct PrintFormat_t {
   int nValue;
   int eType;
 };
+
+}  // namespace
 
 // Implementation
 

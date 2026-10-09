@@ -19,6 +19,9 @@ enum ConsoleFontSize_e : uint8_t {
 
 extern ColorRef_t g_console_brush_fg;
 extern ColorRef_t g_console_brush_bg;
+struct VideoSurface;
+extern VideoSurface* g_debug_screen;
+extern int g_display_memory_lines;
 
 enum : uint16_t {
   DISPLAY_WIDTH = 560,
@@ -109,6 +112,9 @@ char ColorizeSpecialChar(char* sText, uint8_t nData, MemoryView_e iView,
 auto SetupColorsHiLoBits(bool bHighBit, bool bCtrlBit, int iTextBG, int iTextFG,
                          int iHighBG, int iHighFG, int iCtrlBG, int iCtrlFG)
     -> void;
+
+auto ColorizeFlags(bool bSet, int bg_default = BG_INFO,
+                   int fg_default = FG_INFO_REG) -> void;
 
 auto DrawWindowBottom(Update_t bUpdate, int iWindow) -> void;
 auto DrawSubWindow_Info(Update_t bUpdate, int iWindow) -> void;

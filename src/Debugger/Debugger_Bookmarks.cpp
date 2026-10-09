@@ -17,12 +17,7 @@
 int g_bookmarks_count = 0;
 Bookmark_t g_bookmarks[MAX_BOOKMARKS] = {};
 
-extern MemoryTextFile_t g_config_state;
-
-auto ConfigSave_BufferToDisk(const char* pFileName, ConfigSave_t eConfigSave)
-    -> bool;
-auto ConfigSave_PrepareHeader(Parameters_e eCategory, Commands_e eCommandClear)
-    -> void;
+#include "Debugger_Cmd_Config.h"
 
 // Bookmark_t Functions
 auto Bookmark_Add(const int iBookmark, const uint16_t address) -> bool {

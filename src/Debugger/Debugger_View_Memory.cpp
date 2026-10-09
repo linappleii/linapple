@@ -17,10 +17,6 @@
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
 
-// Externs for globals
-
-extern int g_display_memory_lines;
-
 // Constants from Debugger_Display.cpp
 const int DISPLAY_MINIMEM_COLUMN = 357;
 const int DISPLAY_REGS_COLUMN = 357;
@@ -32,10 +28,6 @@ const int DISPLAY_VIDEO_SCANNER_COLUMN = 357;
 const int MAX_DISPLAY_REGS_LINES = 12;
 const int MAX_DISPLAY_ZEROPAGE_LINES = 10;
 const int MAX_DISPLAY_TARGET_PTR_LINES = 3;
-
-// Function prototypes for helpers in other files
-extern auto ColorizeFlags(bool bSet, int bg = BG_INFO, int fg = FG_INFO_REG)
-    -> void;
 
 // --- Functions moved from Debugger_Display.cpp ---
 
@@ -212,8 +204,9 @@ auto DrawRegisters(int line) -> void {
                PARAM_REG_SP);
 }
 
-auto DrawSoftSwitchHighlight(Rect_t& temp, bool bSet, const char* sOn,
-                             const char* sOff, int bg = BG_INFO) -> void {
+static auto DrawSoftSwitchHighlight(Rect_t& temp, bool bSet, const char* sOn,
+                                    const char* sOff, int bg = BG_INFO)
+    -> void {
   ColorizeFlags(bSet, bg);
   PrintTextCursorX(sOn, temp);
 
@@ -225,8 +218,8 @@ auto DrawSoftSwitchHighlight(Rect_t& temp, bool bSet, const char* sOn,
   PrintTextCursorX(sOff, temp);
 }
 
-auto DrawSoftSwitchAddress(Rect_t& rect, int address, int bg_default = BG_INFO)
-    -> void {
+static auto DrawSoftSwitchAddress(Rect_t& rect, int address,
+                                  int bg_default = BG_INFO) -> void {
   char sText[4] = "";
 
   DebuggerSetColorBG(DebuggerGetColor(bg_default));
@@ -238,10 +231,10 @@ auto DrawSoftSwitchAddress(Rect_t& rect, int address, int bg_default = BG_INFO)
   PrintTextCursorX(":", rect);
 }
 
-auto DrawSoftSwitch(Rect_t& rect, int address, bool bSet, const char* sPrefix,
-                    const char* sOn, const char* sOff,
-                    const char* sSuffix = nullptr, int bg_default = BG_INFO)
-    -> void {
+static auto DrawSoftSwitch(Rect_t& rect, int address, bool bSet,
+                           const char* sPrefix, const char* sOn,
+                           const char* sOff, const char* sSuffix = nullptr,
+                           int bg_default = BG_INFO) -> void {
   Rect_t temp = rect;
 
   DrawSoftSwitchAddress(temp, address, bg_default);
@@ -263,10 +256,12 @@ auto DrawSoftSwitch(Rect_t& rect, int address, bool bSet, const char* sPrefix,
   rect.bottom += g_font_height;
 }
 
-auto DrawTriStateSoftSwitch(Rect_t& rect, int address, const int iBankDisplay,
-                            int iActive, const char* sPrefix, const char* sOn,
-                            const char* sOff, const char* sSuffix = nullptr,
-                            int bg_default = BG_INFO) -> void {
+static auto DrawTriStateSoftSwitch(Rect_t& rect, int address,
+                                   const int iBankDisplay, int iActive,
+                                   const char* sPrefix, const char* sOn,
+                                   const char* sOff,
+                                   const char* sSuffix = nullptr,
+                                   int bg_default = BG_INFO) -> void {
   (void)sPrefix;
   (void)sSuffix;
   bool bSet = (iBankDisplay == iActive);
@@ -302,8 +297,8 @@ auto DrawTriStateSoftSwitch(Rect_t& rect, int address, const int iBankDisplay,
   }
 }
 
-auto DrawSoftSwitchLanguageCardBank(Rect_t& rect, const int iBankDisplay,
-                                    int bg_default = BG_INFO) -> void {
+static auto DrawSoftSwitchLanguageCardBank(Rect_t& rect, const int iBankDisplay,
+                                           int bg_default = BG_INFO) -> void {
   const int w = g_font_config[FONT_DISASM_DEFAULT].font_width_avg;
   const int dx80 = 7 * w;
   const int dx88 = 8 * w;
@@ -352,7 +347,7 @@ auto DrawSoftSwitchLanguageCardBank(Rect_t& rect, const int iBankDisplay,
   rect.bottom += g_font_height;
 }
 
-auto DrawSoftSwitchMainAuxBanks(Rect_t& rect) -> void {
+static auto DrawSoftSwitchMainAuxBanks(Rect_t& rect) -> void {
   Rect_t temp = rect;
   rect.top += g_font_height;
   rect.bottom += g_font_height;
@@ -656,7 +651,7 @@ auto DrawZeroPagePointers(int line) -> void {
   }
 }
 
-auto DrawSubWindow_Data(Update_t bUpdate) -> void {
+static auto DrawSubWindow_Data(Update_t bUpdate) -> void {
   (void)bUpdate;
   int iBackground = 0;
 
@@ -780,55 +775,6 @@ auto DrawWindow_Symbols(Update_t bUpdate) -> void {
 auto DrawWindow_ZeroPage(Update_t bUpdate) -> void {
   DrawSubWindow_ZeroPage(bUpdate);
   DrawSubWindow_Info(bUpdate, g_window_this);
-}
-
-auto DrawVideoScannerValue(int line, int vert, int horz, bool isVisible)
-    -> void {
-  if ((g_window_this != WINDOW_CODE) && !(g_window_this == WINDOW_DATA)) {
-    return;
-  }
-
-  const int nFontWidth = g_font_config[FONT_INFO].font_width_avg;
-
-  const int nameWidth = 2;    // 2 chars
-  const int numberWidth = 3;  // 3 chars
-  const int gapWidth = 1;     // 1 space
-  const int totalWidth = ((nameWidth + numberWidth) * 2) + gapWidth;
-
-  Rect_t rect;
-  rect.top = line * g_font_height;
-  rect.bottom = rect.top + g_font_height;
-  rect.left = DISPLAY_VIDEO_SCANNER_COLUMN;
-  rect.right = rect.left + (totalWidth * nFontWidth);
-
-  for (int i = 0; i < 2; i++) {
-    DebuggerSetColorBG(DebuggerGetColor(BG_VIDEOSCANNER_TITLE));
-    DebuggerSetColorFG(DebuggerGetColor(FG_VIDEOSCANNER_TITLE));
-
-    const int nValue = (i == 0) ? vert : horz;
-
-    if (i == 0) {
-      PrintText("v:", rect);
-    } else {
-      PrintText("h:", rect);
-    }
-    rect.left += nameWidth * nFontWidth;
-
-    char sValue[8];
-    if (g_video_scanner_display_info.isDecimal) {
-      snprintf(sValue, sizeof(sValue), "%03u", nValue);
-    } else {
-      snprintf(sValue, sizeof(sValue), "%03X", nValue);
-    }
-
-    if (!isVisible) {
-      DebuggerSetColorFG(DebuggerGetColor(FG_VIDEOSCANNER_INVISIBLE));  // red
-    } else {
-      DebuggerSetColorFG(DebuggerGetColor(FG_VIDEOSCANNER_VISIBLE));  // green
-    }
-    PrintText(sValue, rect);
-    rect.left += (numberWidth + gapWidth) * nFontWidth;
-  }
 }
 
 auto DrawVideoScannerInfo(int line) -> void { (void)line; }

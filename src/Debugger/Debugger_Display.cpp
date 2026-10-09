@@ -29,7 +29,7 @@ constexpr uint8_t DEBUG_FORCE_DISPLAY = 0;
 // Globals __________________________________________________________________
 
 VideoSurface* g_debug_screen = nullptr;
-VideoSurface* g_debug_charset = nullptr;
+static VideoSurface* g_debug_charset = nullptr;
 
 ColorRef_t g_console_brush_fg = WHITE;
 ColorRef_t g_console_brush_bg = BLACK;
@@ -138,8 +138,8 @@ auto FillRect(const Rect_t* r, int Brush) -> void {
   }
 }
 
-auto PrintGlyph(const int x, const int y, const char glyph) -> void {
-  char g = glyph;
+auto PrintGlyph(int x, int y, int glyph) -> void {
+  char g = static_cast<char>(glyph);
   int ySrc = 64;
 
   if (glyph < 32) {
@@ -185,7 +185,7 @@ auto PrintGlyph(const int x, const int y, const char glyph) -> void {
   }
 }
 
-auto DebuggerPrint(int x, int y, const char* text) -> void {
+static auto DebuggerPrint(int x, int y, const char* text) -> void {
   if (!text) {
     return;
   }
@@ -207,7 +207,7 @@ auto DebuggerPrint(int x, int y, const char* text) -> void {
   }
 }
 
-auto DebuggerPrintColor(int x, int y, const conchar_t* text) -> void {
+static auto DebuggerPrintColor(int x, int y, const conchar_t* text) -> void {
   int nLeft = x;
   conchar_t g = 0;
   const conchar_t* src_ptr = text;
@@ -300,48 +300,13 @@ auto PrintTextCursorY(const char* text, Rect_t& rRect) -> int {
   return nChars;
 }
 
-// Font: GDI/Console
-// Font: GDI/Console
-auto ConsoleDrawChar(int x, int y, char ch) -> void { PrintGlyph(x, y, ch); }
-
-// Font: GDI/Console
-auto ConsoleDrawText(int x, int y, const char* text) -> void {
-  if (!text) {
-    return;
-  }
-
-  const char* src_ptr = text;
-  int xCur = x;
-  char c = 0;
-
-  while (src_ptr && (c = *src_ptr)) {
-    if (ConsoleColor_IsCharMeta(c)) {
-      src_ptr++;
-      if (!*src_ptr) {
-        break;
-      }
-
-      if (ConsoleColor_IsCharColor(*src_ptr)) {
-        DebuggerSetColorFG(g_console_color[*src_ptr - '0']);
-      } else if (ConsoleColor_IsCharMeta(*src_ptr))  // ``
-      {
-        ConsoleDrawChar(xCur, y, c);
-        xCur += CONSOLE_FONT_WIDTH;
-      }
-      // else // `@  mouse text
-    } else {
-      ConsoleDrawChar(xCur, y, c);
-      xCur += CONSOLE_FONT_WIDTH;
-    }
-    src_ptr++;
-  }
+//===========================================================================
+static auto DebuggerDrawChar(int x, int y, char ch) -> void {
+  PrintGlyph(x, y, ch);
 }
 
-//===========================================================================
-auto DebuggerDrawChar(int x, int y, char ch) -> void { PrintGlyph(x, y, ch); }
-
 // Font: Apple Text
-auto DebuggerDrawText(int x, int y, const char* text) -> void {
+static auto DebuggerDrawText(int x, int y, const char* text) -> void {
   if (!text) {
     return;
   }
@@ -356,7 +321,9 @@ auto DebuggerDrawText(int x, int y, const char* text) -> void {
 
 //===========================================================================
 //===========================================================================
-auto DebuggerDrawCursor(int x, int y, char ch) -> void { PrintGlyph(x, y, ch); }
+static auto DebuggerDrawCursor(int x, int y, char ch) -> void {
+  PrintGlyph(x, y, ch);
+}
 
 //===========================================================================
 auto DrawConsoleCursor() -> void {
@@ -508,14 +475,14 @@ auto ColorizeSpecialChar(char* sText, uint8_t nData, const MemoryView_e iView,
   return nChar;
 }
 
-auto FormatCharTxtHigh(const uint8_t b, bool* pWasHi_) -> char {
+static auto FormatCharTxtHigh(const uint8_t b, bool* pWasHi_) -> char {
   if (pWasHi_) {
     *pWasHi_ = (b > 0x7F);
   }
   return b & 0x7F;
 }
 
-auto FormatCharTxtCtrl(const uint8_t b, bool* pWasCtrl_) -> char {
+static auto FormatCharTxtCtrl(const uint8_t b, bool* pWasCtrl_) -> char {
   if (pWasCtrl_) {
     *pWasCtrl_ = (b < 0x20);
   }
@@ -527,30 +494,23 @@ auto FormatChar4Font(uint8_t b, bool* pWasHi_, bool* pWasLo_) -> char {
   return FormatCharTxtCtrl(b1, pWasLo_);
 }
 
-const char* g_config_branch_indicator_up[NUM_DISASM_BRANCH_TYPES] = {
+static const char* g_config_branch_indicator_up[NUM_DISASM_BRANCH_TYPES] = {
     " ",
     "^",
     "\x8B",
 };
-const char* g_config_branch_indicator_equal[NUM_DISASM_BRANCH_TYPES] = {
+static const char* g_config_branch_indicator_equal[NUM_DISASM_BRANCH_TYPES] = {
     " ",
     "=",
     "\x88",
 };
-const char* g_config_branch_indicator_down[NUM_DISASM_BRANCH_TYPES] = {
+static const char* g_config_branch_indicator_down[NUM_DISASM_BRANCH_TYPES] = {
     " ",
     "v",
     "\x8A",
 };
 
-auto FormatCharCopy(char* pDst, const char* src_ptr, const int nLen) -> char* {
-  for (int i = 0; i < nLen; i++) {
-    *pDst++ = FormatCharTxtCtrl(*src_ptr++, nullptr);
-  }
-  return pDst;
-}
-
-auto FormatCharCopyWrapped(char* pDst, uint16_t nStart, const int nLen)
+static auto FormatCharCopyWrapped(char* pDst, uint16_t nStart, const int nLen)
     -> char* {
   for (int i = 0; i < nLen; i++) {
     *pDst++ =

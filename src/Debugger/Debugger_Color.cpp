@@ -14,7 +14,7 @@
 
 int g_color_scheme = SCHEME_COLOR;
 
-int g_color_palette[NUM_PALETTE] = {
+static int g_color_palette[NUM_PALETTE] = {
     BLACK,
     // NOTE: See SetupColorRamp() if you want to programmatically set/change
     RED,
@@ -199,7 +199,7 @@ auto ConfigColorsReset() -> void {}
 
 constexpr uint8_t BYTE_MASK = 0xFF;
 
-auto ColorPrint(int iColor, ColorRef_t nColor) -> void {
+static auto ColorPrint(int iColor, ColorRef_t nColor) -> void {
   int R = static_cast<int>(nColor & BYTE_MASK);
   int G = static_cast<int>((nColor >> GREEN_SHIFT) & BYTE_MASK);
   int B = static_cast<int>((nColor >> BLUE_SHIFT) & BYTE_MASK);

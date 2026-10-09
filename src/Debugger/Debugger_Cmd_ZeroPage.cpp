@@ -14,7 +14,7 @@
 // Globals originally from Debug.cpp
 
 // Implementation helpers
-auto ZeroPage_Error() -> Update_t {
+static auto ZeroPage_Error() -> Update_t {
   char sText[CONSOLE_WIDTH];
   snprintf(sText, sizeof(sText),
            "  There are no current (ZP) pointers.  (Max: %d)",

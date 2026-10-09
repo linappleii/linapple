@@ -3,20 +3,19 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cstdio>
+#include <cstring>
 #include <string>
 #include <vector>
 
 #include "Debug.h"
 #include "Debugger_Assembler.h"
-#include "Debugger_Types.h"
-#include "core/Util_Path.h"
-extern auto frame_refresh_status(int) -> void;
-#include <cstdio>
-#include <cstring>
-
 #include "Debugger_Console.h"
 #include "Debugger_Parser.h"
+#include "Debugger_Types.h"
 #include "apple2/CPU.h"
+#include "core/Util_Path.h"
+#include "frontends/common/Frontend.h"
 
 // Globals originally from Debug.cpp
 bool g_benchmarking = false;
@@ -54,7 +53,7 @@ auto CmdBenchmark(int nArgs) -> Update_t {
   return UPDATE_CONSOLE_DISPLAY;
 }
 
-auto CmdProfileList(int nArgs) -> Update_t;
+static auto CmdProfileList(int nArgs) -> Update_t;
 
 auto CmdProfile(int nArgs) -> Update_t {
   if (!nArgs) {
@@ -188,7 +187,7 @@ auto ProfileFormat(bool bSeperateColumns, int eFormatMode) -> void {
   }
 }
 
-auto CmdProfileList(int nArgs) -> Update_t {
+static auto CmdProfileList(int nArgs) -> Update_t {
   (void)nArgs;
   ProfileFormat(true, 0);
 

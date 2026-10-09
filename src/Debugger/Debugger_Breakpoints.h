@@ -7,6 +7,7 @@
 extern Breakpoint_t g_breakpoints[MAX_BREAKPOINTS];
 extern int g_breakpoints_count;
 extern int g_debug_breakpoint_hit;
+extern int g_debug_break_on_invalid;
 extern const char* g_breakpoint_source[NUM_BREAKPOINT_SOURCES];
 extern const char* g_breakpoint_symbols[NUM_BREAKPOINT_OPERATORS];
 

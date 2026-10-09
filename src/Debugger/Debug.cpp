@@ -56,7 +56,6 @@ int g_disasm_win_height = 0;
 
 int g_font_spacing = FONT_SPACING_CLEAN;
 int g_font_height = CONSOLE_FONT_HEIGHT;
-int g_disasm_display_lines = 0;
 
 int g_watches_count = 0;
 Watches_t g_watches[MAX_WATCHES] = {};

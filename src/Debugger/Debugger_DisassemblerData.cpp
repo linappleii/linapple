@@ -21,7 +21,8 @@
 // ____________________________________________________________________________
 
 //===========================================================================
-auto CmdDefineByteRange(int nArgs, int iArg, DisasmData_t& tData_) -> uint16_t {
+static auto CmdDefineByteRange(int nArgs, int iArg, DisasmData_t& tData_)
+    -> uint16_t {
   uint16_t address = 0;
   uint16_t nAddress2 = 0;
   int nLen = 0;
@@ -144,7 +145,7 @@ auto CmdDisasmDataDefCode(int nArgs) -> Update_t {
   return UPDATE_DISASM | ConsoleUpdate();
 }
 
-const char* g_nopcode_types[NUM_NOPCODE_TYPES] = {
+static const char* const g_nopcode_types[NUM_NOPCODE_TYPES] = {
     "-n/a-", "byte1", "byte2", "byte4", "byte8", "word1", "word2", "word4",
     "addr ", "hex  ", "char ", "ascii", "apple", "mixed", "FAC  ", "bmp  ",
 };

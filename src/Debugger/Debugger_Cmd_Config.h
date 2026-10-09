@@ -2,6 +2,10 @@
 #pragma once
 
 #include "Debugger_Types.h"
+#include "Util_MemoryTextFile.h"
+
+extern MemoryTextFile_t g_config_state;
+extern bool g_report_missing_scripts;
 
 auto CmdConfigColorMono(int nArgs) -> Update_t;
 auto CmdConfigHColor(int nArgs) -> Update_t;

@@ -1,26 +1,27 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "Debugger_Cmd_CPU.h"
 
+#include <cassert>
 #include <cstdint>
+#include <cstdio>
 #include <string>
 
 #include "Debug.h"
+#include "Debugger_Assembler.h"
+#include "Debugger_Breakpoints.h"
+#include "Debugger_Cmd_Window.h"
 #include "Debugger_Console.h"
+#include "Debugger_Display.h"
+#include "Debugger_Parser.h"
 #include "Debugger_Types.h"
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
-#include "core/LinAppleCore.h"
-extern auto frame_refresh_status(int) -> void;
-#include <cassert>
-#include <cstdio>
-
-#include "Debugger_Assembler.h"
-#include "Debugger_Cmd_Window.h"
-#include "Debugger_Display.h"
-#include "Debugger_Parser.h"
 #include "apple2/Memory.h"
+#include "apple2/Video.h"
+#include "core/LinAppleCore.h"
 #include "core/Util_Path.h"
 #include "frontends/common/AudioMixer.h"
+#include "frontends/common/Frontend.h"
 
 // Definitions
 int g_debug_steps = 0;
@@ -39,15 +40,8 @@ bool g_trace_header = false;
 bool g_trace_file_with_video_scanner = false;
 char g_file_name_trace[] = "Trace.txt";
 
-extern int g_debug_breakpoint_hit;
-extern int g_debug_break_on_invalid;
-
 extern uint32_t g_video_clock_horz;
 extern uint32_t g_video_clock_vert;
-
-auto video_refresh_screen(int bVideoModeFlags, bool bForceRedraw) -> void;
-auto video_get_sw_page2() -> bool;
-auto video_get_sw_mixed() -> bool;
 
 // Implementation
 // CPU

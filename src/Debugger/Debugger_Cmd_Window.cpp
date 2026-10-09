@@ -485,14 +485,6 @@ auto CmdCursorLineDown(int nArgs) -> Update_t {
   return UPDATE_DISASM;
 }
 
-// C++ Bug, can't have local structs used in STL containers
-struct LookAhead_t {
-  int nAddress;
-  int iOpcode;
-  int iOpmode;
-  int nOpbytes;
-};
-
 auto CmdCursorJumpPC(int nArgs) -> Update_t {
   // TODO: Allow user to decide if they want next g_opcodes at
   // 1) Centered (traditionaly), or

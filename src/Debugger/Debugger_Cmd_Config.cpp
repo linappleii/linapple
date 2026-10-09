@@ -31,7 +31,7 @@ bool g_config_disasm_opcode_spaces = true;
 int g_config_disasm_targets = DISASM_TARGET_BOTH;
 int g_config_disasm_branch_type = DISASM_BRANCH_FANCY;
 int g_config_disasm_immediate_char = DISASM_IMMED_BOTH;
-int g_config_disasm_scroll = 3;  // favor 3 byte opcodes
+static int g_config_disasm_scroll = 3;  // favor 3 byte opcodes
 bool g_config_info_target_pointer = false;
 
 MemoryTextFile_t g_config_state;
@@ -40,8 +40,7 @@ bool g_report_missing_scripts = true;
 
 const char* const g_file_name_config = "LinAppleDebugger.cfg";
 
-// Externs for globals defined elsewhere
-extern int g_disasm_display_lines;
+static int g_disasm_display_lines = 0;
 
 // Local prototypes
 

@@ -26,7 +26,7 @@
 // xxx1xxx symbol table is active (are displayed in disassembly window, etc.)
 // xxx1xxx symbol table is disabled (not displayed in disassembly window, etc.)
 // See: CmdSymbolsListTable(), g_display_symbol_tables
-int g_display_symbol_tables =
+static int g_display_symbol_tables =
     ((1 << NUM_SYMBOL_TABLES) - 1) &
     (~static_cast<int>(
         SYMBOL_TABLE_PRODOS));  // default to all symbol tables displayed/active
@@ -34,7 +34,7 @@ int g_display_symbol_tables =
 // Symbols
 // ________________________________________________________________________________________
 
-const char* g_file_name_symbols[NUM_SYMBOL_TABLES] = {
+static const char* const g_file_name_symbols[NUM_SYMBOL_TABLES] = {
     "APPLE2E.SYM",
     "A2_BASIC.SYM",
     "A2_ASM.SYM",
@@ -47,9 +47,9 @@ const char* g_file_name_symbols[NUM_SYMBOL_TABLES] = {
     "A2_DOS33.SYM",
     "A2_PRODOS.SYM",
 };
-std::string g_file_name_symbols_user;
+static std::string g_file_name_symbols_user;
 
-const char* g_symbol_table_names[NUM_SYMBOL_TABLES] = {
+static const char* const g_symbol_table_names[NUM_SYMBOL_TABLES] = {
     "Main",
     "Basic",
     "Asm"  // "Assembly",
@@ -63,28 +63,28 @@ const char* g_symbol_table_names[NUM_SYMBOL_TABLES] = {
     "ProDOS",
 };
 
-bool g_symbols_display_missing_file = true;
+static bool g_symbols_display_missing_file = true;
 
 SymbolTable_t g_symbols[NUM_SYMBOL_TABLES];
-int g_symbols_loaded = 0;  // on Last Load
+static int g_symbols_loaded = 0;  // on Last Load
 
 // Utils _
 // ________________________________________________________________________________________
 
-auto CmdSymbolsInfoHeader(int iTable, char* text, size_t text_size,
-                          int nDisplaySize = 0) -> void;
-auto PrintCurrentPath() -> void;
-auto PrintSymbolInvalidTable() -> Update_t;
+static auto CmdSymbolsInfoHeader(int iTable, char* text, size_t text_size,
+                                 int nDisplaySize = 0) -> void;
+static auto PrintCurrentPath() -> void;
+static auto PrintSymbolInvalidTable() -> Update_t;
 
 // Private
 // ________________________________________________________________________________________
 
 //===========================================================================
-auto PrintCurrentPath() -> void {
+static auto PrintCurrentPath() -> void {
   console_display_error(system_state.program_dir.data());
 }
 
-auto PrintSymbolInvalidTable() -> Update_t {
+static auto PrintSymbolInvalidTable() -> Update_t {
   char sText[CONSOLE_WIDTH * 2];
   char sTemp[CONSOLE_WIDTH * 2];
 
@@ -122,7 +122,7 @@ auto GetSymbol(uint16_t address, int nBytes) -> const char* {
   return FormatAddress(address, nBytes);
 }
 
-auto GetSymbolTableFromCommand() -> int {
+static auto GetSymbolTableFromCommand() -> int {
   return (g_command - CMD_SYMBOLS_ROM);
 }
 
@@ -192,7 +192,7 @@ auto GetAddressFromSymbol(const char* pSymbol) -> uint16_t {
   return address;
 }
 
-auto String2Address(const char* text, uint16_t& nAddress_) -> bool {
+static auto String2Address(const char* text, uint16_t& nAddress_) -> bool {
   char sHexApple[CONSOLE_WIDTH];
 
   if (text[0] == '$') {
@@ -250,8 +250,8 @@ auto CmdSymbolsClear(int nArgs) -> Update_t {
 
 // Format the summary of the specified symbol table
 //===========================================================================
-auto CmdSymbolsInfoHeader(int iTable, char* text, size_t text_size,
-                          int nDisplaySize /* = 0 */) -> void {
+static auto CmdSymbolsInfoHeader(int iTable, char* text, size_t text_size,
+                                 int nDisplaySize /* = 0 */) -> void {
   // Common case is to use/calc the table size
   bool bActive = (g_display_symbol_tables & (1 << iTable)) != 0;
   int nSymbols = nDisplaySize ? nDisplaySize : g_symbols[iTable].size();
@@ -312,7 +312,8 @@ auto CmdSymbolsInfo(int nArgs) -> Update_t {
 }
 
 //===========================================================================
-auto CmdPrintSymbol(const char* pSymbol, uint16_t address, int iTable) -> void {
+static auto CmdPrintSymbol(const char* pSymbol, uint16_t address, int iTable)
+    -> void {
   char sText[CONSOLE_WIDTH * 2];
 
   // 2.6.2.19 Color for name of symbol table: CmdPrintSymbol() "SYM HOME"
@@ -331,7 +332,7 @@ auto CmdPrintSymbol(const char* pSymbol, uint16_t address, int iTable) -> void {
 // Test if bit-mask to index (equal to number of bit-shifs required to reach
 // table)
 //=========================================================================== */
-auto FindSymbolTable(int bSymbolTables, int iTable) -> bool {
+static auto FindSymbolTable(int bSymbolTables, int iTable) -> bool {
   // iTable is enumeration
   // bSymbolTables is bit-flags of enabled tables to search
 
@@ -340,7 +341,7 @@ auto FindSymbolTable(int bSymbolTables, int iTable) -> bool {
 
 // Convert bit-mask to index
 //=========================================================================== */
-auto GetSymbolTableFromFlag(int bSymbolTables) -> int {
+static auto GetSymbolTableFromFlag(int bSymbolTables) -> int {
   int iTable = 0;
   int bTable = 1;
 
@@ -786,7 +787,7 @@ auto CmdSymbolsUpdate(int nArgs, int bSymbolTables) -> Update_t {
   return UPDATE_NOTHING;
 }
 
-auto CmdSymbolsCommon(int nArgs, int bSymbolTables) -> Update_t {
+static auto CmdSymbolsCommon(int nArgs, int bSymbolTables) -> Update_t {
   if (!nArgs) {
     return Help_Arg_1(g_command);
   }

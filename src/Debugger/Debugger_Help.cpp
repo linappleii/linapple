@@ -269,7 +269,7 @@ auto Help_Arg_1(int iCommandHelp) -> Update_t {
 }
 
 //===========================================================================
-auto Help_Categories() -> void {
+static auto Help_Categories() -> void {
   const int nBuf = CONSOLE_WIDTH * 2;
 
   char sText[nBuf] = "";
@@ -331,21 +331,21 @@ auto Help_Categories() -> void {
   //		ConsoleBufferPush( sText );
 }
 
-auto Help_Examples() -> void {
+static auto Help_Examples() -> void {
   char sText[CONSOLE_WIDTH];
   ConsolePrintFormat(sText, " %sExamples%s:%s", CHC_USAGE, CHC_ARG_SEP,
                      CHC_DEFAULT);
 }
 
 //===========================================================================
-auto Help_Range() -> void {
+static auto Help_Range() -> void {
   ConsoleBufferPush("  Where <range> is of the form:");
   ConsoleBufferPush("    address , length   [address,address+length)");
   ConsoleBufferPush("    address : end      [address,end]");
 }
 
 //===========================================================================
-auto Help_Operators() -> void {
+static auto Help_Operators() -> void {
   char sText[CONSOLE_WIDTH];
 
   //	ConsolePrintFormat( sText," %sOperators%s:" , CHC_USAGE, CHC_DEFAULT );
@@ -412,7 +412,7 @@ auto Help_Operators() -> void {
   console_print(sText);
 }
 
-auto Help_KeyboardShortcuts() -> void {
+static auto Help_KeyboardShortcuts() -> void {
   ConsoleBufferPush("  Scrolling:");
   ConsoleBufferPush("    Up Arrow");
   ConsoleBufferPush("    Down Arrow");
@@ -428,8 +428,8 @@ auto Help_KeyboardShortcuts() -> void {
   ConsoleBufferPush("    Ctrl-#      ");
 }
 
-auto ColorizeHeader(char*& pDst, const char*& src_ptr, const char* pHeader,
-                    const int nHeaderLen) -> void {
+static auto ColorizeHeader(char*& pDst, const char*& src_ptr,
+                           const char* pHeader, const int nHeaderLen) -> void {
   int nLen = 0;
 
   nLen = strlen(CHC_USAGE);
@@ -454,15 +454,15 @@ auto ColorizeHeader(char*& pDst, const char*& src_ptr, const char* pHeader,
   pDst += nLen;
 }
 
-auto ColorizeString(char*& pDst, const char* src_ptr, const size_t nLen)
+static auto ColorizeString(char*& pDst, const char* src_ptr, const size_t nLen)
     -> void {
   util_safe_strcpy(pDst, src_ptr, nLen + 1);
   pDst += nLen;
 }
 
 // pOperator is one of CHC_*
-auto ColorizeOperator(char*& pDst, const char*& src_ptr, const char* pOperator)
-    -> void {
+static auto ColorizeOperator(char*& pDst, const char*& src_ptr,
+                             const char* pOperator) -> void {
   int nLen = 0;
 
   nLen = strlen(pOperator);
@@ -479,7 +479,7 @@ auto ColorizeOperator(char*& pDst, const char*& src_ptr, const char* pOperator)
   src_ptr++;
 }
 
-auto isHexDigit(char c) -> bool {
+static auto isHexDigit(char c) -> bool {
   if ((c >= '0') && (c <= '9')) {
     return true;
   }
@@ -493,7 +493,7 @@ auto isHexDigit(char c) -> bool {
   return false;
 }
 
-auto Colorize(char* pDst, const char* src_ptr) -> bool {
+static auto Colorize(char* pDst, const char* src_ptr) -> bool {
   if (!src_ptr) {
     return false;
   }
@@ -563,8 +563,9 @@ auto Colorize(char* pDst, const char* src_ptr) -> bool {
 }
 
 // NOTE: This appends a new line
-inline auto ConsoleColorizePrint(char* colorizeBuf, size_t /*colorizeBufSz*/,
-                                 const char* text) -> bool {
+static inline auto ConsoleColorizePrint(char* colorizeBuf,
+                                        size_t /*colorizeBufSz*/,
+                                        const char* text) -> bool {
   if (!Colorize(colorizeBuf, text)) {
     return false;
   }
@@ -572,29 +573,32 @@ inline auto ConsoleColorizePrint(char* colorizeBuf, size_t /*colorizeBufSz*/,
 }
 
 template <size_t ColorizeBufSz>
-inline auto ConsoleColorizePrint(char (&colorizeBuf)[ColorizeBufSz],
-                                 const char* text) -> bool {
+static inline auto ConsoleColorizePrint(char (&colorizeBuf)[ColorizeBufSz],
+                                        const char* text) -> bool {
   return ConsoleColorizePrint(colorizeBuf, ColorizeBufSz, text);
 }
 
-inline auto ConsoleColorizePrintVa(char* colorizeBuf, size_t colorizeBufSz,
-                                   char* buf, size_t bufsz, const char* format,
-                                   va_list va) -> bool {
+static inline auto ConsoleColorizePrintVa(char* colorizeBuf,
+                                          size_t colorizeBufSz, char* buf,
+                                          size_t bufsz, const char* format,
+                                          va_list va) -> bool {
   vsnprintf(buf, bufsz, format, va);
   return ConsoleColorizePrint(colorizeBuf, colorizeBufSz, buf);
 }
 
 template <size_t ColorizeBufSz, size_t BufSz>
-inline auto ConsoleColorizePrintVa(char (&colorizeBuf)[ColorizeBufSz],
-                                   char (&buf)[BufSz], const char* format,
-                                   va_list va) -> bool {
+static inline auto ConsoleColorizePrintVa(char (&colorizeBuf)[ColorizeBufSz],
+                                          char (&buf)[BufSz],
+                                          const char* format, va_list va)
+    -> bool {
   return ConsoleColorizePrintVa(colorizeBuf, ColorizeBufSz, buf, BufSz, format,
                                 va);
 }
 
-inline auto ConsoleColorizePrintFormat(char* colorizeBuf, size_t colorizeBufSz,
-                                       char* buf, size_t bufsz,
-                                       const char* format, ...) -> bool {
+static inline auto ConsoleColorizePrintFormat(char* colorizeBuf,
+                                              size_t colorizeBufSz, char* buf,
+                                              size_t bufsz, const char* format,
+                                              ...) -> bool {
   va_list va;
   va_start(va, format);
   bool const r = ConsoleColorizePrintVa(colorizeBuf, colorizeBufSz, buf, bufsz,
@@ -604,9 +608,9 @@ inline auto ConsoleColorizePrintFormat(char* colorizeBuf, size_t colorizeBufSz,
 }
 
 template <size_t ColorizeBufSz, size_t BufSz>
-inline auto ConsoleColorizePrintFormat(char (&colorizeBuf)[ColorizeBufSz],
-                                       char (&buf)[BufSz], const char* format,
-                                       ...) -> bool {
+static inline auto ConsoleColorizePrintFormat(
+    char (&colorizeBuf)[ColorizeBufSz], char (&buf)[BufSz], const char* format,
+    ...) -> bool {
   va_list va;
   va_start(va, format);
   bool const r = ConsoleColorizePrintVa(colorizeBuf, buf, format, va);

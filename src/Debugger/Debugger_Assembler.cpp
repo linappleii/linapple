@@ -493,6 +493,8 @@ int g_assembler_first_directive[NUM_ASSEMBLERS] = {
 
 // Assemblers
 
+namespace {
+
 enum AssemblerFlags_e : uint16_t {
   AF_HaveLabel = (1 << 0),
   AF_HaveComma = (1 << 1),
@@ -538,15 +540,18 @@ uint16_t g_asm_base_address = 0;
 uint16_t g_asm_target_address = 0;
 uint16_t g_asm_target_value = 0;
 
+}  // namespace
+
 // Private
-auto AssemblerHashOpcodes() -> void;
-auto AssemblerHashDirectives() -> void;
+static auto AssemblerHashOpcodes() -> void;
+static auto AssemblerHashDirectives() -> void;
 
 // Implementation ___________________________________________________________
 
 //===========================================================================
-auto CalcRelativeOffset(int nOpcode, int nBaseAddress, int nTargetAddress,
-                        uint16_t* pTargetOffset_) -> bool {
+static auto CalcRelativeOffset(int nOpcode, int nBaseAddress,
+                               int nTargetAddress, uint16_t* pTargetOffset_)
+    -> bool {
   if (IsOpcodeBranch(nOpcode)) {
     // Branch is
     //   a) relative to address+2
@@ -1082,7 +1087,7 @@ auto AssemblerHashMnemonic(const char* pMnemonic) -> uint32_t {
 }
 
 //===========================================================================
-auto AssemblerHashOpcodes() -> void {
+static auto AssemblerHashOpcodes() -> void {
   Hash_t nMnemonicHash = 0;
   int opcode = 0;
 
@@ -1204,7 +1209,7 @@ auto CmdSync(int nArgs) -> Update_t {
 }
 
 //===========================================================================
-auto AssemblerHashDirectives() -> void {
+static auto AssemblerHashDirectives() -> void {
   Hash_t nMnemonicHash = 0;
   int opcode = 0;
 
@@ -1481,9 +1486,9 @@ auto CmdAssembleHashDump() -> void {
 }
 
 //===========================================================================
-auto AssemblerPokeAddress(const int Opcode, const int nOpmode,
-                          const uint16_t nBaseAddress,
-                          const uint16_t nTargetOffset) -> int {
+static auto AssemblerPokeAddress(const int Opcode, const int nOpmode,
+                                 const uint16_t nBaseAddress,
+                                 const uint16_t nTargetOffset) -> int {
   (void)Opcode;
   int nOpbytes = g_opmodes[nOpmode].bytes;
 
@@ -1501,7 +1506,7 @@ auto AssemblerPokeAddress(const int Opcode, const int nOpmode,
 }
 
 //===========================================================================
-auto AssemblerPokeOpcodeAddress(const uint16_t nBaseAddress) -> bool {
+static auto AssemblerPokeOpcodeAddress(const uint16_t nBaseAddress) -> bool {
   int iAddressMode = g_asm_address_mode;  // opmode detected from input
   int nTargetValue = g_asm_target_value;
 
@@ -1535,12 +1540,12 @@ auto AssemblerPokeOpcodeAddress(const uint16_t nBaseAddress) -> bool {
 }
 
 //===========================================================================
-auto TestFlag(AssemblerFlags_e eFlag) -> bool {
+static auto TestFlag(AssemblerFlags_e eFlag) -> bool {
   return (g_asm_flags & eFlag) != 0;
 }
 
 //===========================================================================
-auto SetFlag(AssemblerFlags_e eFlag, bool bValue = true) -> void {
+static auto SetFlag(AssemblerFlags_e eFlag, bool bValue = true) -> void {
   if (bValue) {
     g_asm_flags |= eFlag;
   } else {
@@ -1557,7 +1562,8 @@ auto SetFlag(AssemblerFlags_e eFlag, bool bValue = true) -> void {
                 AM_INDIRECT // indexed or indirect
 */
 //===========================================================================
-auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress) -> bool {
+static auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress)
+    -> bool {
   (void)nArgs;
   g_asm_address_mode = AM_IMPLIED;
   AssemblerState_e eNextState = AS_GET_MNEMONIC;
@@ -1716,7 +1722,7 @@ auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress) -> bool {
 }
 
 //===========================================================================
-auto AssemblerUpdateAddressingMode() -> bool {
+static auto AssemblerUpdateAddressingMode() -> bool {
   SetFlag(AF_HaveEitherParen,
           TestFlag(AF_HaveLeftParen) || TestFlag(AF_HaveRightParen));
   SetFlag(AF_HaveBothParen,
@@ -1808,7 +1814,7 @@ auto AssemblerDelayedTargetsSize() -> int {
 //     BNE $DONE
 // <enter>
 //===========================================================================
-auto AssemblerProcessDelayedSymols() -> void {
+static auto AssemblerProcessDelayedSymols() -> void {
   g_delayed_targets_dirty =
       false;  // assembler set signal if new symbol was added
 
@@ -1840,7 +1846,7 @@ auto AssemblerProcessDelayedSymols() -> void {
         uint16_t nTargetValue = nTargetAddress;
 
         if (CalcRelativeOffset(nOpcode, pTarget->base_address, nTargetAddress,
-                                &nTargetValue) &&
+                               &nTargetValue) &&
             (g_asm_address_mode == NUM_OPMODES)) {
           nTargetValue = 0;
           bModified = false;

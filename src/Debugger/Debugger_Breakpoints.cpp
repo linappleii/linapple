@@ -6,13 +6,12 @@
 #include <cstdio>
 
 #include "Debug.h"
+#include "Debugger_Cmd_Config.h"
 #include "Debugger_Console.h"
 #include "Debugger_Parser.h"
 #include "Debugger_Types.h"
 #include "Util_MemoryTextFile.h"
 #include "core/Util_Text.h"
-
-extern MemoryTextFile_t g_config_state;
 extern const Opcodes_t* g_opcodes;
 extern const Opcodes_t g_opcodes65_c02[NUM_OPCODES];
 

@@ -260,7 +260,7 @@ auto CmdMemoryEnterWord(int nArgs) -> Update_t {
 }
 
 //===========================================================================
-auto MemMarkDirty(uint16_t nAddressStart, uint16_t nAddressEnd) -> void {
+static auto MemMarkDirty(uint16_t nAddressStart, uint16_t nAddressEnd) -> void {
   for (int iPage = (nAddressStart >> 8); iPage <= (nAddressEnd >> 8); iPage++) {
     *(memdirty + iPage) = 1;
   }
@@ -681,8 +681,7 @@ auto CmdMemorySave(int nArgs) -> Update_t {
     std::string sLoadSaveFilePath =
         system_state.current_dir.data();  // system_state.program_dir
 
-    RangeType_t eRange =
-        Range_Get(nAddressStart, nAddress2, iArgAddress);
+    RangeType_t eRange = Range_Get(nAddressStart, nAddress2, iArgAddress);
 
     //    if (eRange == RANGE_MISSING_ARG_2)
     RangeEndLen_t tEndLen = {nAddressEnd, nAddressLen};
@@ -742,10 +741,10 @@ auto CmdMemorySave(int nArgs) -> Update_t {
   return ConsoleUpdate();
 }
 
-char g_text_screen[DEBUG_VIRTUAL_TEXT_HEIGHT *
-                   (DEBUG_VIRTUAL_TEXT_WIDTH +
-                    4)];  // (80 column + CR + LF) * 24 rows + NUL
-int g_text_screen_count = 0;
+static char g_text_screen[DEBUG_VIRTUAL_TEXT_HEIGHT *
+                          (DEBUG_VIRTUAL_TEXT_WIDTH +
+                           4)];  // (80 column + CR + LF) * 24 rows + NUL
+static int g_text_screen_count = 0;
 
 /*
   $FBC1 BASCALC  IN: A=row, OUT: $28=low, $29=hi
@@ -836,7 +835,7 @@ auto Util_GetDebuggerText(char*& pText_) -> size_t {
   return g_text_screen_count;
 }
 
-auto Util_GetTextScreen(char*& pText_) -> size_t {
+static auto Util_GetTextScreen(char*& pText_) -> size_t {
   uint16_t nAddressStart = 0;
 
   char* pBeg = &g_text_screen[0];
@@ -946,8 +945,9 @@ auto CmdTextSave(int nArgs) -> int {
 }
 
 //===========================================================================
-auto SearchMemoryFind(MemorySearchValues_t vMemorySearchValues,
-                      uint16_t nAddressStart, uint16_t nAddressEnd) -> int {
+static auto SearchMemoryFind(MemorySearchValues_t vMemorySearchValues,
+                             uint16_t nAddressStart, uint16_t nAddressEnd)
+    -> int {
   int nFound = 0;
   g_memory_search_results.erase(g_memory_search_results.begin(),
                                 g_memory_search_results.end());

@@ -29,8 +29,8 @@ const int g_input_cursor_count = sizeof(g_input_cursor);
 
 bool g_ignore_next_key = false;
 
-auto ConsoleInputHistoryPrev() -> Update_t;
-auto ConsoleInputHistoryNext() -> Update_t;
+static auto ConsoleInputHistoryPrev() -> Update_t;
+static auto ConsoleInputHistoryNext() -> Update_t;
 
 // Console
 // ________________________________________________________________________________________
@@ -100,19 +100,6 @@ int g_console_color[NUM_CONSOLE_COLORS] = {
 
 // Console
 // ________________________________________________________________________________________
-
-auto ConsoleLineLength(const conchar_t* text) -> int {
-  int nLen = 0;
-  const conchar_t* src_ptr = text;
-
-  if (text) {
-    while (*src_ptr) {
-      src_ptr++;
-    }
-    nLen = src_ptr - text;
-  }
-  return nLen;
-}
 
 //===========================================================================
 auto ConsoleBufferPeek() -> const conchar_t* { return g_console_buffer[0]; }
@@ -717,14 +704,14 @@ auto debugger_mouse_click(int /*x*/, int /*y*/) -> void {
   // TODO: WindowMouseClick( x, y );
 }
 
-auto ConsoleInputHistoryPrev() -> Update_t {
+static auto ConsoleInputHistoryPrev() -> Update_t {
   if (g_history_lines_total) {
     // TODO: Implement history browsing
   }
   return UPDATE_NOTHING;
 }
 
-auto ConsoleInputHistoryNext() -> Update_t {
+static auto ConsoleInputHistoryNext() -> Update_t {
   if (g_history_lines_total) {
     // TODO: Implement history browsing
   }
