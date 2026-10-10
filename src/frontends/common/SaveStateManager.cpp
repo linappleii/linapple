@@ -21,26 +21,26 @@ static constexpr const char* default_snapshot_name = "SaveState.aws";
 
 bool save_state_on_exit = false;
 
-static std::array<char, path_max_len> s_save_state_filename{};
+static std::array<char, path_max_len> save_state_filename{};
 
 static auto resolve_snapshot_filename() -> const char* {
-  if (s_save_state_filename[0] != '\0') {
-    return s_save_state_filename.data();
+  if (save_state_filename[0] != '\0') {
+    return save_state_filename.data();
   }
   return default_snapshot_name;
 }
 
 auto save_state_get_filename() -> const char* {
-  return s_save_state_filename.data();
+  return save_state_filename.data();
 }
 
 auto save_state_set_filename(const char* filename) -> void {
   if (filename == nullptr || *filename == '\0') {
-    s_save_state_filename[0] = '\0';
+    save_state_filename[0] = '\0';
     return;
   }
-  util_safe_strcpy(s_save_state_filename.data(), filename,
-                   s_save_state_filename.size());
+  util_safe_strcpy(save_state_filename.data(), filename,
+                   save_state_filename.size());
 }
 
 // Legacy snapshots omit the peripheral slot trailer; accept both sizes for
@@ -152,7 +152,7 @@ auto save_state_startup() -> void {
   }
   done = true;
 
-  if (s_save_state_filename[0] != '\0') {
+  if (save_state_filename[0] != '\0') {
     save_state_load();
     return;
   }

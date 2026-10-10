@@ -38,7 +38,7 @@
 #include "frontends/common/SaveStateManager.h"
 #include "frontends/common/SuperSerialFrontend.h"
 
-static bool s_initialized = false;
+static bool initialized = false;
 
 constexpr float min_screen_factor = 0.25F;
 constexpr float max_screen_factor = 8.0F;
@@ -254,7 +254,7 @@ auto app_controller_initialize(AppConfig* config) -> int {
     return -1;
   }
 
-  if (s_initialized) {
+  if (initialized) {
     app_controller_shutdown();
   }
 
@@ -276,7 +276,7 @@ auto app_controller_initialize(AppConfig* config) -> int {
     mem_set_custom_rom_data(nullptr, 0);
     return -1;
   }
-  s_initialized = true;
+  initialized = true;
 
   // Reported here so every frontend and a headless machine start from the
   // configured plug; an SDL frontend reports again with the devices it opened.
@@ -540,7 +540,7 @@ auto app_controller_load_initial_media(const AppConfig* config) -> void {
 
 auto app_controller_shutdown() -> void {
   mem_set_custom_rom_data(nullptr, 0);
-  if (!s_initialized) {
+  if (!initialized) {
     return;
   }
 
@@ -549,7 +549,7 @@ auto app_controller_shutdown() -> void {
   linapple_shutdown();
   Logger::destroy();
 
-  s_initialized = false;
+  initialized = false;
 }
 
 auto app_controller_save_disk_config(int drive) -> void {

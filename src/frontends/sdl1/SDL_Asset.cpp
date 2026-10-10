@@ -36,11 +36,11 @@ auto sdl_asset_load_bmp(const char* filename) -> SdlSurfacePtr {
 }
 
 namespace {
-static SdlSurfacePtr s_app_icon;
+static SdlSurfacePtr app_icon;
 }  // namespace
 
 auto sdl_asset_free_icon() -> void {
-  s_app_icon.reset();
+  app_icon.reset();
   if (assets != nullptr) {
     assets->icon = nullptr;
   }
@@ -53,6 +53,6 @@ auto sdl_asset_load_icon() -> void {
 
   sdl_asset_free_icon();
   asset_set_free_icon_callback(sdl_asset_free_icon);
-  s_app_icon = sdl_asset_load_bmp("icon.bmp");
-  assets->icon = static_cast<void*>(s_app_icon.get());
+  app_icon = sdl_asset_load_bmp("icon.bmp");
+  assets->icon = static_cast<void*>(app_icon.get());
 }

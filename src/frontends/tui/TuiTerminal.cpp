@@ -15,7 +15,7 @@ struct termios g_orig_termios;
 volatile sig_atomic_t g_terminal_initialized = 0;
 std::atomic<bool> g_resized(false);
 std::atomic<bool> g_interrupted(false);
-bool s_atexit_registered = false;
+bool atexit_registered = false;
 
 constexpr const char* enter_alt_screen_hide_cursor = "\x1b[?1049h\x1b[?25l";
 // Mouse tracking is turned off whether or not it was turned on: a crash inside
@@ -112,9 +112,9 @@ auto tui_terminal_initialize() -> int {
   sigaction(SIGFPE, &sa_fatal, nullptr);
   sigaction(SIGILL, &sa_fatal, nullptr);
 
-  if (!s_atexit_registered) {
+  if (!atexit_registered) {
     atexit(tui_terminal_shutdown);
-    s_atexit_registered = true;
+    atexit_registered = true;
   }
 
   g_terminal_initialized = 1;

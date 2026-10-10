@@ -40,12 +40,12 @@ static auto get_tick_count_ms() -> uint32_t {
 #include "frontends/common/VideoStretch.h"
 
 static uint32_t g_video_output[video_width * video_height] = {};
-static bool s_language_rocker_switch = false;
+static bool language_rocker_switch = false;
 
 auto video_get_output_buffer() -> uint32_t* { return g_video_output; }
 
 auto video_set_rocker_switch(bool local) -> void {
-  s_language_rocker_switch = local;
+  language_rocker_switch = local;
 }
 
 static inline auto get_r_value(uint32_t rgb) -> uint8_t {
@@ -180,7 +180,7 @@ static inline auto swl_text() -> bool {
 
 static bool g_text_flash_state = false;
 static bool g_text_flash_flag = false;
-static uint32_t s_text_flash_cnt = 0;
+static uint32_t text_flash_cnt = 0;
 
 bool g_show_leds = true;
 
@@ -199,7 +199,7 @@ static std::thread video_worker_thread_;
 static std::atomic<bool> video_worker_active_{false};
 static std::atomic<bool> video_worker_terminate_{false};
 static std::atomic<bool> video_worker_refresh_{false};
-static std::mutex s_video_worker_mutex;
+static std::mutex video_worker_mutex;
 std::recursive_mutex g_video_draw_mutex;
 static std::condition_variable video_cv;
 
@@ -721,28 +721,28 @@ auto draw_lores_source() -> void {
 }
 
 static auto get_monochrome_index() -> int {
-  int iMonochrome = 0;
+  int mono_index = 0;
 
   switch (g_videotype) {
     case VT_MONO_AMBER:
-      iMonochrome = MONOCHROME_AMBER;
+      mono_index = MONOCHROME_AMBER;
       break;
     case VT_MONO_GREEN:
-      iMonochrome = MONOCHROME_GREEN;
+      mono_index = MONOCHROME_GREEN;
       break;
     case VT_MONO_WHITE:
-      iMonochrome = MONOCHROME_WHITE;
+      mono_index = MONOCHROME_WHITE;
       break;
     default:
-      iMonochrome = MONOCHROME_CUSTOM;
+      mono_index = MONOCHROME_CUSTOM;
       break;
   }
 
-  return iMonochrome;
+  return mono_index;
 }
 
 auto draw_mono_dhires_source() -> void {
-  int iMonochrome = get_monochrome_index();
+  int mono_color = get_monochrome_index();
 
   for (int column = 0; column < 256; column++) {
     int coloffs = 10 * column;
@@ -753,7 +753,7 @@ auto draw_mono_dhires_source() -> void {
       int y = byteval << 1;
       for (int x = 0; x < 10; x++) {
         uint8_t colorval =
-            ((pattern & (1U << (x + 3))) != 0U) ? iMonochrome : BLACK;
+            ((pattern & (1U << (x + 3))) != 0U) ? mono_color : BLACK;
 
         set_source_pixel(SRCOFFS_DHIRES + coloffs + x, y, colorval);
         set_source_pixel(SRCOFFS_DHIRES + coloffs + x, y + 1, colorval);
@@ -763,13 +763,13 @@ auto draw_mono_dhires_source() -> void {
 }
 
 auto draw_mono_hires_source() -> void {
-  int iMonochrome = get_monochrome_index();
+  int mono_color = get_monochrome_index();
 
   for (int column = 0; column < 512; column += 16) {
     for (int y = 0; y < 512; y += 2) {
       unsigned val = (y >> 1);
       for (int x = 0; x < 16; x += 2) {
-        uint8_t colorval = ((val & 1U) != 0U) ? iMonochrome : BLACK;
+        uint8_t colorval = ((val & 1U) != 0U) ? mono_color : BLACK;
         val >>= 1;
         set_source_pixel(SRCOFFS_HIRES + column + x, y, colorval);
         set_source_pixel(SRCOFFS_HIRES + column + x + 1, y, colorval);
@@ -781,67 +781,67 @@ auto draw_mono_hires_source() -> void {
 }
 
 auto draw_mono_lores_source() -> void {
-  int iMonochrome = get_monochrome_index();
+  int mono_color = get_monochrome_index();
   for (int color = 0; color < 16; color++) {
     for (int x = 0; x < 16; x++) {
       for (int y = 0; y < 16; y++) {
         uint8_t colorval =
-            (((color >> (x & 3)) & 1) != 0) ? iMonochrome : BLACK;
+            (((color >> (x & 3)) & 1) != 0) ? mono_color : BLACK;
         set_source_pixel(SRCOFFS_LORES + x, (color << 4) + y, colorval);
       }
     }
   }
 }
 
-auto draw_mono_text_source(VideoSurface* hDstDC) -> void {
+auto draw_mono_text_source(VideoSurface* dst_dc) -> void {
   if (charset40 == nullptr) {
     return;
   }
-  uint8_t hBrush = 0;
+  uint8_t brush = 0;
   switch (g_videotype) {
     case VT_MONO_AMBER:
-      hBrush = MONOCHROME_AMBER;
+      brush = MONOCHROME_AMBER;
       break;
     case VT_MONO_GREEN:
-      hBrush = MONOCHROME_GREEN;
+      brush = MONOCHROME_GREEN;
       break;
     case VT_MONO_WHITE:
-      hBrush = MONOCHROME_WHITE;
+      brush = MONOCHROME_WHITE;
       break;
     default:
-      hBrush = MONOCHROME_CUSTOM;
+      brush = MONOCHROME_CUSTOM;
       break;
   }
 
   if ((current_apple2_type == A2TYPE_APPLE2) ||
       (current_apple2_type == A2TYPE_APPLE2PLUS) ||
       (current_apple2_type == A2TYPE_APPLE2JPLUS)) {
-    soft_stretch_mono(charset40, 0, 0, 128, 128, hDstDC, SRCOFFS_40COL, 0, 256,
-                      256, hBrush);
+    soft_stretch_mono(charset40, 0, 0, 128, 128, dst_dc, SRCOFFS_40COL, 0, 256,
+                      256, brush);
   } else {
-    int MaxLanguage = multi_language_charset ? 2 : 1;
-    for (int Language = 0; Language < MaxLanguage; Language++) {
+    int max_language = multi_language_charset ? 2 : 1;
+    for (int language = 0; language < max_language; language++) {
       /* When ROM contains two character sets: US/default set is the second
        * (starting at offset 128), while the local language set is always the
        * first (offset 0). */
-      int srcYofs = ((Language == 0) && multi_language_charset) ? 128 : 0;
-      int dstYofs = Language * (MAX_SOURCE_Y / 2);
+      int src_y_ofs = ((language == 0) && multi_language_charset) ? 128 : 0;
+      int dst_y_ofs = language * (MAX_SOURCE_Y / 2);
 
-      soft_stretch_mono(charset40, 0, srcYofs, 128, 128, hDstDC, SRCOFFS_40COL,
-                        dstYofs, 256, 256, hBrush);
-      soft_stretch_mono(hDstDC, 0, dstYofs, 256, 256, hDstDC, SRCOFFS_40COL,
-                        256 + dstYofs, 256, 256, hBrush);
-      soft_stretch_mono(hDstDC, 0, dstYofs, 256, 64, hDstDC, SRCOFFS_40COL,
-                        64 + dstYofs, 256, 64, hBrush);
+      soft_stretch_mono(charset40, 0, src_y_ofs, 128, 128, dst_dc, SRCOFFS_40COL,
+                        dst_y_ofs, 256, 256, brush);
+      soft_stretch_mono(dst_dc, 0, dst_y_ofs, 256, 256, dst_dc, SRCOFFS_40COL,
+                        256 + dst_y_ofs, 256, 256, brush);
+      soft_stretch_mono(dst_dc, 0, dst_y_ofs, 256, 64, dst_dc, SRCOFFS_40COL,
+                        64 + dst_y_ofs, 256, 64, brush);
 
       if (current_apple2_type == A2TYPE_APPLE2E) {
-        soft_stretch_mono(hDstDC, 0, 256 + dstYofs, 256, 32, hDstDC,
-                          SRCOFFS_40COL, 256 + 64 + dstYofs, 256, 32, hBrush);
+        soft_stretch_mono(dst_dc, 0, 256 + dst_y_ofs, 256, 32, dst_dc,
+                          SRCOFFS_40COL, 256 + 64 + dst_y_ofs, 256, 32, brush);
       }
     }
 
-    soft_stretch_mono(hDstDC, 0, 0, 256, MAX_SOURCE_Y, hDstDC, SRCOFFS_80COL, 0,
-                      128, MAX_SOURCE_Y, hBrush);
+    soft_stretch_mono(dst_dc, 0, 0, 256, MAX_SOURCE_Y, dst_dc, SRCOFFS_80COL, 0,
+                      128, MAX_SOURCE_Y, brush);
   }
 }
 
@@ -849,37 +849,37 @@ auto draw_text_source(VideoSurface* dc) -> void {
   if (charset40 == nullptr) {
     return;
   }
-  uint8_t hBrush = get_monochrome_index();
+  uint8_t brush = get_monochrome_index();
 
   if ((current_apple2_type == A2TYPE_APPLE2) ||
       (current_apple2_type == A2TYPE_APPLE2PLUS) ||
       (current_apple2_type == A2TYPE_APPLE2JPLUS)) {
     soft_stretch_mono(charset40, 0, 0, 128, 128, dc, SRCOFFS_40COL, 0, 256, 256,
-                      hBrush);
+                      brush);
   } else {
-    int MaxLanguage = multi_language_charset ? 2 : 1;
-    for (int Language = 0; Language < MaxLanguage; Language++) {
+    int max_language = multi_language_charset ? 2 : 1;
+    for (int language = 0; language < max_language; language++) {
       /* When ROM contains two character sets: US/default set is the second
        * (starting at offset 128), while the local language set is always the
        * first (offset 0). */
-      int srcYofs = ((Language == 0) && multi_language_charset) ? 128 : 0;
-      int dstYofs = Language * (MAX_SOURCE_Y / 2);
+      int src_y_ofs = ((language == 0) && multi_language_charset) ? 128 : 0;
+      int dst_y_ofs = language * (MAX_SOURCE_Y / 2);
 
-      soft_stretch_mono(charset40, 0, srcYofs, 128, 128, dc, SRCOFFS_40COL,
-                        dstYofs, 256, 256, hBrush);
-      soft_stretch_mono(dc, 0, dstYofs, 256, 256, dc, SRCOFFS_40COL,
-                        256 + dstYofs, 256, 256, hBrush);
-      soft_stretch_mono(dc, 0, dstYofs, 256, 64, dc, SRCOFFS_40COL,
-                        64 + dstYofs, 256, 64, hBrush);
+      soft_stretch_mono(charset40, 0, src_y_ofs, 128, 128, dc, SRCOFFS_40COL,
+                        dst_y_ofs, 256, 256, brush);
+      soft_stretch_mono(dc, 0, dst_y_ofs, 256, 256, dc, SRCOFFS_40COL,
+                        256 + dst_y_ofs, 256, 256, brush);
+      soft_stretch_mono(dc, 0, dst_y_ofs, 256, 64, dc, SRCOFFS_40COL,
+                        64 + dst_y_ofs, 256, 64, brush);
 
       if (current_apple2_type == A2TYPE_APPLE2E) {
-        soft_stretch_mono(dc, 0, 256 + dstYofs, 256, 32, dc, SRCOFFS_40COL,
-                          256 + 64 + dstYofs, 256, 32, hBrush);
+        soft_stretch_mono(dc, 0, 256 + dst_y_ofs, 256, 32, dc, SRCOFFS_40COL,
+                          256 + 64 + dst_y_ofs, 256, 32, brush);
       }
     }
 
     soft_stretch_mono(dc, 0, 0, 256, MAX_SOURCE_Y, dc, SRCOFFS_80COL, 0, 128,
-                      MAX_SOURCE_Y, hBrush);
+                      MAX_SOURCE_Y, brush);
   }
 }
 
@@ -931,7 +931,7 @@ static auto update_40col_cell(int x, int y, int xpixel, int ypixel, int offset)
         xpixel, ypixel, APPLE_FONT_WIDTH, APPLE_FONT_HEIGHT,
         SRCOFFS_40COL + ((ch & 0x0F) << 4),
         (ch & 0xF0) + g_alt_char_set_offset + (invert ? 0x40 : 0x00) +
-            ((s_language_rocker_switch && multi_language_charset) ? 512 : 0));
+            ((language_rocker_switch && multi_language_charset) ? 512 : 0));
     return true;
   }
   return false;
@@ -945,7 +945,7 @@ static inline auto update_80column_cell(uint8_t c, const int xPixel,
       xPixel, yPixel, (APPLE_FONT_WIDTH / 2), APPLE_FONT_HEIGHT,
       SRCOFFS_80COL + ((c & 15) << 3),
       ((c >> 4) << 4) + g_alt_char_set_offset + (invert ? 0x40 : 0x00) +
-          ((s_language_rocker_switch && multi_language_charset) ? 512 : 0));
+          ((language_rocker_switch && multi_language_charset) ? 512 : 0));
   return true;
 }
 
@@ -1650,7 +1650,7 @@ auto video_set_next_scheduled_update() -> void {
 
 static auto video_worker_thread_func() -> void {
   while (!video_worker_terminate_) {
-    std::unique_lock<std::mutex> lck(s_video_worker_mutex);
+    std::unique_lock<std::mutex> lck(video_worker_mutex);
     video_cv.wait_until(lck, video_next_scheduled_update_, []() -> bool {
       return video_worker_refresh_.load() || video_worker_terminate_.load();
     });
@@ -1689,14 +1689,14 @@ auto video_init_worker() -> bool {
 
 auto video_realize_palette() -> void {}
 
-static bool s_rendering_enabled = true;
+static bool rendering_enabled = true;
 
 auto video_set_rendering_enabled(bool enabled) -> void {
-  s_rendering_enabled = enabled;
+  rendering_enabled = enabled;
 }
 
 auto video_is_rendering_enabled() noexcept -> bool {
-  return s_rendering_enabled;
+  return rendering_enabled;
 }
 
 auto video_redraw_screen() -> void {
@@ -1852,7 +1852,7 @@ auto video_reinitialize() -> void {
 
 auto video_refresh_screen(uint32_t redraw_whole_screen_video_mode /* =0*/,
                           bool redraw_whole_screen /* =false*/) -> void {
-  if (!s_rendering_enabled && !redraw_whole_screen) {
+  if (!rendering_enabled && !redraw_whole_screen) {
     return;
   }
   // If multithreaded, tell thread to do it; otherwise, do it in this thread
@@ -1862,7 +1862,7 @@ auto video_refresh_screen(uint32_t redraw_whole_screen_video_mode /* =0*/,
   }
   if (video_worker_active_) {
     {
-      std::lock_guard<std::mutex> lock(s_video_worker_mutex);
+      std::lock_guard<std::mutex> lock(video_worker_mutex);
       video_worker_refresh_ = true;
     }
     video_cv.notify_one();
@@ -1879,7 +1879,7 @@ auto video_reset_state() -> void {
   g_video_mode = VF_TEXT;
   g_text_flash_state = false;
   g_text_flash_flag = false;
-  s_text_flash_cnt = 0;
+  text_flash_cnt = 0;
   redrawfull = true;
 }
 
@@ -1985,9 +1985,9 @@ auto video_update_vbl(uint32_t cycles_this_frame) -> void {
 
 // Called at 60Hz (every 16.666ms)
 auto video_update_flash() -> void {
-  s_text_flash_cnt++;
-  if (s_text_flash_cnt == 60 / 6) {  // Flash rate = 6Hz (every 166ms)
-    s_text_flash_cnt = 0;
+  text_flash_cnt++;
+  if (text_flash_cnt == 60 / 6) {  // Flash rate = 6Hz (every 166ms)
+    text_flash_cnt = 0;
     g_text_flash_state = !g_text_flash_state;
 
     if (sw_text() || sw_mixed()) {

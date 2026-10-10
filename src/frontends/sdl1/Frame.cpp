@@ -58,13 +58,13 @@ bool g_window_resized = false;
 
 namespace {
 
-static bool s_app_active = false;
-static DiskStatus_t s_last_disk_status{};
-static int s_drive0_last_reported_error = disk_err_none;
-static int s_drive1_last_reported_error = disk_err_none;
-static bool s_is_fullscreen = false;
-static uint32_t s_windowed_width = 0;
-static uint32_t s_windowed_height = 0;
+static bool app_active = false;
+static DiskStatus_t last_disk_status{};
+static int drive0_last_reported_error = disk_err_none;
+static int drive1_last_reported_error = disk_err_none;
+static bool is_fullscreen = false;
+static uint32_t windowed_width = 0;
+static uint32_t windowed_height = 0;
 
 auto to_video_rect(const SDL_Rect& r) noexcept -> VideoRect {
   return {static_cast<int>(r.x), static_cast<int>(r.y), static_cast<int>(r.w),
@@ -87,17 +87,17 @@ auto set_icon() -> void {
 }
 
 auto frame_save_bmp() -> void {
-  static int s_screenshot_counter = 0;
+  static int screenshot_counter = 0;
   std::array<char, 32> bmp_name{};
   snprintf(bmp_name.data(), bmp_name.size(), "linapple%04d.bmp",
-           s_screenshot_counter);
+           screenshot_counter);
   if (SDL_SaveBMP(g_screen, bmp_name.data()) == 0) {
     printf("File %s saved!\n", bmp_name.data());
   } else {
     fprintf(stderr, "Failed to save screenshot %s: %s\n", bmp_name.data(),
             SDL_GetError());
   }
-  ++s_screenshot_counter;
+  ++screenshot_counter;
 }
 
 auto handle_btn_run(int mod) -> void {
@@ -312,8 +312,8 @@ auto draw_frame_window() -> void {
 
 // The glyphs as last composed, so what the panel shows can be read back, and
 // an activity mark the poll took before the repaint it asked for.
-static std::array<char, 3> s_last_leds = {{1, 1, 1}};
-static bool s_harddisk_activity_seen = false;
+static std::array<char, 3> last_leds = {{1, 1, 1}};
+static bool harddisk_activity_seen = false;
 
 auto draw_status_area(int drawflags) -> void {
   if (g_status_surface == nullptr || g_status_surface->pixels == nullptr) {
@@ -353,21 +353,21 @@ auto draw_status_area(int drawflags) -> void {
     int drive2_status = disk_status_off;
     int hdd_status = disk_status_off;
 
-    if (s_last_disk_status.drive0_spinning != 0) {
-      drive1_status = (s_last_disk_status.drive0_writing != 0)
+    if (last_disk_status.drive0_spinning != 0) {
+      drive1_status = (last_disk_status.drive0_writing != 0)
                           ? disk_status_write
                           : disk_status_read;
-    } else if (s_last_disk_status.drive0_loaded != 0 &&
-               s_last_disk_status.drive0_write_protected != 0) {
+    } else if (last_disk_status.drive0_loaded != 0 &&
+               last_disk_status.drive0_write_protected != 0) {
       drive1_status = disk_status_prot;
     }
 
-    if (s_last_disk_status.drive1_spinning != 0) {
-      drive2_status = (s_last_disk_status.drive1_writing != 0)
+    if (last_disk_status.drive1_spinning != 0) {
+      drive2_status = (last_disk_status.drive1_writing != 0)
                           ? disk_status_write
                           : disk_status_read;
-    } else if (s_last_disk_status.drive1_loaded != 0 &&
-               s_last_disk_status.drive1_write_protected != 0) {
+    } else if (last_disk_status.drive1_loaded != 0 &&
+               last_disk_status.drive1_write_protected != 0) {
       drive2_status = disk_status_prot;
     }
 
@@ -380,8 +380,8 @@ auto draw_status_area(int drawflags) -> void {
       // The card reports a transfer still in flight; the manager remembers
       // one that began and ended inside the frame.
       const bool seen =
-          s_harddisk_activity_seen || peripheral_activity_poll(hd_slot);
-      s_harddisk_activity_seen = false;
+          harddisk_activity_seen || peripheral_activity_poll(hd_slot);
+      harddisk_activity_seen = false;
       if (seen || hstatus.activity_status != harddisk_status_off) {
         hdd_status = (hstatus.activity_status == harddisk_status_write)
                          ? harddisk_status_write
@@ -394,17 +394,17 @@ auto draw_status_area(int drawflags) -> void {
       }
     }
 
-    s_last_leds = {{static_cast<char>(led_char_base + drive1_status),
+    last_leds = {{static_cast<char>(led_char_base + drive1_status),
                     static_cast<char>(led_char_base + drive2_status),
                     static_cast<char>(led_char_base + hdd_status)}};
 
-    leds.at(0) = s_last_leds.at(0);
+    leds.at(0) = last_leds.at(0);
     font_print(8, 23, leds.data(), g_status_surface, 4.0f, 2.7f);
 
-    leds.at(0) = s_last_leds.at(1);
+    leds.at(0) = last_leds.at(1);
     font_print(40, 23, leds.data(), g_status_surface, 4.0f, 2.7f);
 
-    leds.at(0) = s_last_leds.at(2);
+    leds.at(0) = last_leds.at(2);
     font_print(71, 23, leds.data(), g_status_surface, 4.0f, 2.7f);
 
     if ((drive1_status | drive2_status | hdd_status) != 0) {
@@ -414,10 +414,10 @@ auto draw_status_area(int drawflags) -> void {
 }
 
 auto frame_status_led(int index) -> char {
-  if (index < 0 || static_cast<size_t>(index) >= s_last_leds.size()) {
+  if (index < 0 || static_cast<size_t>(index) >= last_leds.size()) {
     return 0;
   }
-  return s_last_leds.at(static_cast<size_t>(index));
+  return last_leds.at(static_cast<size_t>(index));
 }
 
 // No frontend repaints the panel each frame, so a transfer that began and
@@ -430,12 +430,12 @@ auto frame_poll_activity() -> void {
     return;
   }
   if (peripheral_activity_poll(hd_slot)) {
-    s_harddisk_activity_seen = true;
+    harddisk_activity_seen = true;
     frame_refresh_status(draw_leds);
     return;
   }
   constexpr int led_char_base = 1;
-  const char lamp = s_last_leds.at(2);
+  const char lamp = last_leds.at(2);
   const bool lit = lamp == led_char_base + harddisk_status_read ||
                    lamp == led_char_base + harddisk_status_write;
   if (lit && g_status_cycle == 0) {
@@ -612,9 +612,9 @@ auto frame_on_resize(int width, int height) -> void {
   system_state.screen_width = static_cast<uint32_t>(width);
   system_state.screen_height = static_cast<uint32_t>(height);
 
-  if (!s_is_fullscreen) {
-    s_windowed_width = static_cast<uint32_t>(width);
-    s_windowed_height = static_cast<uint32_t>(height);
+  if (!is_fullscreen) {
+    windowed_width = static_cast<uint32_t>(width);
+    windowed_height = static_cast<uint32_t>(height);
   }
 
   Uint32 flags = SDL_SWSURFACE;
@@ -641,7 +641,7 @@ auto frame_on_resize(int width, int height) -> void {
 
   g_orig_rect = SDL_Rect{0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
   g_new_rect =
-      s_is_fullscreen
+      is_fullscreen
           ? compute_aspect_fit_rect(width, height)
           : SDL_Rect{0, 0, static_cast<uint16_t>(system_state.screen_width),
                      static_cast<uint16_t>(system_state.screen_height)};
@@ -650,7 +650,7 @@ auto frame_on_resize(int width, int height) -> void {
 }
 
 auto frame_on_focus(bool gained) -> void {
-  s_app_active = gained;
+  app_active = gained;
   if (!gained) {
     keyboard_release_host_modifiers();
     audio_mixer_set_fade(fade_out);
@@ -669,17 +669,17 @@ auto frame_on_expose() -> void { draw_apple_content(); }
 namespace {
 
 auto psp_save_state_select_image(bool saveit) -> bool {
-  static size_t s_file_index = 0;
-  static int s_backdx = 0;
-  static int s_dirdx = 0;
+  static size_t file_index = 0;
+  static int backdx = 0;
+  static int dirdx = 0;
 
   std::string filename;
   bool isdir = false;
   const int slot = saveit ? 1 : 0;
   std::string dir = system_state.save_state_dir.data();
 
-  const bool result = choose_an_image(s_backdx, s_dirdx, dir, slot, filename,
-                                      isdir, s_file_index);
+  const bool result = choose_an_image(backdx, dirdx, dir, slot, filename,
+                                      isdir, file_index);
 
   if (result) {
     std::string full_path = dir + "/" + filename;
@@ -801,14 +801,14 @@ auto process_button_click(int button, int mod) -> void {
 }
 
 auto set_fullscreen_mode() -> void {
-  if (s_is_fullscreen) {
+  if (is_fullscreen) {
     return;
   }
 
-  s_is_fullscreen = true;
-  if (s_windowed_width == 0 || s_windowed_height == 0) {
-    s_windowed_width = system_state.screen_width;
-    s_windowed_height = system_state.screen_height;
+  is_fullscreen = true;
+  if (windowed_width == 0 || windowed_height == 0) {
+    windowed_width = system_state.screen_width;
+    windowed_height = system_state.screen_height;
   }
   SDL_WM_ToggleFullScreen(g_screen);
   if (system_state.mode != app_mode_debug) {
@@ -817,7 +817,7 @@ auto set_fullscreen_mode() -> void {
 }
 
 auto set_normal_mode() -> void {
-  if (!s_is_fullscreen) {
+  if (!is_fullscreen) {
     if (system_state.mode != app_mode_debug) {
       return;
     }
@@ -826,11 +826,11 @@ auto set_normal_mode() -> void {
     return;
   }
 
-  s_is_fullscreen = false;
+  is_fullscreen = false;
   SDL_WM_ToggleFullScreen(g_screen);
-  if (s_windowed_width > 0 && s_windowed_height > 0) {
-    frame_on_resize(static_cast<int>(s_windowed_width),
-                    static_cast<int>(s_windowed_height));
+  if (windowed_width > 0 && windowed_height > 0) {
+    frame_on_resize(static_cast<int>(windowed_width),
+                    static_cast<int>(windowed_height));
   }
   if (!mouse_input_is_captured()) {
     SDL_ShowCursor(SDL_ENABLE);
@@ -848,7 +848,7 @@ auto frame_pointer_capture(bool captured, bool relative) -> void {
     return;
   }
 
-  if (!s_is_fullscreen || system_state.mode == app_mode_debug) {
+  if (!is_fullscreen || system_state.mode == app_mode_debug) {
     SDL_ShowCursor(SDL_ENABLE);
   }
 }
@@ -864,10 +864,10 @@ auto frame_picture_rect() -> MousePictureRect {
 
 auto frame_create_window() -> int {
   sdl_asset_load_icon();
-  s_is_fullscreen = false;
+  is_fullscreen = false;
   if (!system_state.fullscreen) {
-    s_windowed_width = system_state.screen_width;
-    s_windowed_height = system_state.screen_height;
+    windowed_width = system_state.screen_width;
+    windowed_height = system_state.screen_height;
   }
 
   Uint32 flags = SDL_SWSURFACE;
@@ -938,21 +938,21 @@ auto report_disk_error(const char* title, int current_error,
 }
 
 auto refresh_disk_status() -> void {
-  size_t size = sizeof(s_last_disk_status);
+  size_t size = sizeof(last_disk_status);
   if (peripheral_query(disk_default_slot, disk_query_status,
-                       &s_last_disk_status, &size) != peripheral_ok) {
+                       &last_disk_status, &size) != peripheral_ok) {
     return;
   }
 
-  report_disk_error("Disk 1 error", s_last_disk_status.drive0_last_error,
-                    s_drive0_last_reported_error);
-  report_disk_error("Disk 2 error", s_last_disk_status.drive1_last_error,
-                    s_drive1_last_reported_error);
+  report_disk_error("Disk 1 error", last_disk_status.drive0_last_error,
+                    drive0_last_reported_error);
+  report_disk_error("Disk 2 error", last_disk_status.drive1_last_error,
+                    drive1_last_reported_error);
 
   std::array<char, 512> title_buf{};
-  if (s_last_disk_status.drive0_loaded != 0) {
+  if (last_disk_status.drive0_loaded != 0) {
     std::array<char, disk_ui_display_name_max + 1> display_name{};
-    disk_ui_format_display_name(s_last_disk_status.drive0_name,
+    disk_ui_format_display_name(last_disk_status.drive0_name,
                                 display_name.data(), display_name.size());
     std::snprintf(title_buf.data(), title_buf.size(), "%s - %s", app_title,
                   display_name.data());
