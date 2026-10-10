@@ -126,14 +126,14 @@ auto medium_driver() -> const DiskFormatDriver* {
   return &driver;
 }
 
-PeripheralIOHandler read_c0 = nullptr;
-PeripheralIOHandler write_c0 = nullptr;
+PeripheralIOHandler registered_read_c0 = nullptr;
+PeripheralIOHandler registered_write_c0 = nullptr;
 
-auto mock_register_io(int, PeripheralIOHandler read_c0,
-                      PeripheralIOHandler write_c0, PeripheralIOHandler,
+auto mock_register_io(int, PeripheralIOHandler read_c0_handler,
+                      PeripheralIOHandler write_c0_handler, PeripheralIOHandler,
                       PeripheralIOHandler) -> void {
-  read_c0 = read_c0;
-  write_c0 = write_c0;
+  registered_read_c0 = read_c0_handler;
+  registered_write_c0 = write_c0_handler;
 }
 
 auto mock_register_cx_rom(int, const uint8_t* rom_ptr) -> void {
@@ -220,12 +220,13 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   host.NotifyStatusChanged = mock_notify_status;
   host.NotifyActivityChanged = mock_notify_activity;
 
-  read_c0 = nullptr;
-  write_c0 = nullptr;
+  registered_read_c0 = nullptr;
+  registered_write_c0 = nullptr;
   host_saw_null = false;
 
   void* instance = card->init(card_slot, &host);
-  if (instance == nullptr || read_c0 == nullptr || write_c0 == nullptr) {
+  if (instance == nullptr || registered_read_c0 == nullptr ||
+      registered_write_c0 == nullptr) {
     return 0;
   }
 
@@ -248,7 +249,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     switch (record[0] & 0x03U) {
       case 0:
       case 1: {
-        const uint8_t answer = read_c0(instance, 0, address, 0, 0, cycle);
+        const uint8_t answer =
+            registered_read_c0(instance, 0, address, 0, 0, cycle);
         const DiskSavedState after = state_of(card, instance);
         // A0 low gates the 74LS323 onto the data bus, so an even offset
         // answers with the register the state file also carries.
@@ -259,14 +261,14 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
         // The sync mark never moves backwards inside a slice: the same
         // access at the same cycle leaves the medium exactly where it was.
-        read_c0(instance, 0, address, 0, 0, cycle);
+        registered_read_c0(instance, 0, address, 0, 0, cycle);
         const DiskSavedState again = state_of(card, instance);
         assert(again.drives[0].current_byte_pos ==
                after.drives[0].current_byte_pos);
         break;
       }
       case 2: {
-        write_c0(instance, 0, address, 1, record[2], cycle);
+        registered_write_c0(instance, 0, address, 1, record[2], cycle);
         check_position(state_of(card, instance));
         break;
       }
