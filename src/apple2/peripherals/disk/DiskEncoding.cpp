@@ -142,7 +142,8 @@ const std::array<std::array<uint8_t, sectors_per_track>, interleave_row_count>
         },
 };
 
-const auto decode_table = []() noexcept {
+const auto decode_table =
+    []() noexcept -> std::array<uint8_t, decode_table_size> {
   std::array<uint8_t, decode_table_size> t{};
   for (auto& entry : t) {
     entry = invalid_nibble;
@@ -163,7 +164,7 @@ auto encode_sector_62(const uint8_t* sectors_in, uint8_t sector_index,
 
     for (int i = 0; i < gcr62_iterations; ++i) {
       uint8_t value = 0;
-      auto encode_bits = [&](uint8_t b) {
+      auto encode_bits = [&](uint8_t b) -> void {
         value = static_cast<uint8_t>((value << 2U) | ((b & bit_0_mask) << 1U) |
                                      ((b & bit_1_mask) >> 1U));
       };
@@ -401,7 +402,7 @@ auto disk_encoding_nibblize_track(const uint8_t* sector_order, uint32_t track,
   *out_count = 0;
 
   // Every byte a field is made of is data; what stays sync is the gaps.
-  auto put_data = [&](uint8_t value) {
+  auto put_data = [&](uint8_t value) -> void {
     nibbles_out[current_offset] = value;
     if (sync_mask_out != nullptr) {
       sync_mask_out[current_offset] = 0;
@@ -409,7 +410,7 @@ auto disk_encoding_nibblize_track(const uint8_t* sector_order, uint32_t track,
     ++current_offset;
   };
 
-  auto put_gap = [&](uint32_t length) {
+  auto put_gap = [&](uint32_t length) -> void {
     for (uint32_t i = 0; i < length; ++i) {
       nibbles_out[current_offset] = sync_byte;
       if (sync_mask_out != nullptr) {
@@ -492,9 +493,10 @@ auto disk_encoding_nibbles_to_bits(const uint8_t* nibbles, uint32_t count,
   }
 
   uint32_t total_bits = 0;
-  walk_sync_runs(nibbles, count, sync_mask, [&](uint8_t, bool self_sync) {
-    total_bits += self_sync ? cells_per_self_sync : cells_per_nibble;
-  });
+  walk_sync_runs(
+      nibbles, count, sync_mask, [&](uint8_t, bool self_sync) -> void {
+        total_bits += self_sync ? cells_per_self_sync : cells_per_nibble;
+      });
   if (total_bits > max_bits) {
     return disk_err_unsupported;
   }
@@ -502,19 +504,20 @@ auto disk_encoding_nibbles_to_bits(const uint8_t* nibbles, uint32_t count,
   std::fill_n(bits, (total_bits + 7U) / 8U, static_cast<uint8_t>(0));
 
   uint32_t cell = 0;
-  walk_sync_runs(nibbles, count, sync_mask, [&](uint8_t value, bool self_sync) {
-    for (uint32_t mask = 0x80U; mask != 0U; mask >>= 1U) {
-      if ((value & mask) != 0U) {
-        bits[cell >> 3U] |= static_cast<uint8_t>(0x80U >> (cell & 7U));
-      }
-      ++cell;
-    }
-    // A self-sync byte is its eight cells followed by two blank ones, which
-    // is what lets the shift register fall back into step behind it.
-    if (self_sync) {
-      cell += cells_per_self_sync - cells_per_nibble;
-    }
-  });
+  walk_sync_runs(
+      nibbles, count, sync_mask, [&](uint8_t value, bool self_sync) -> void {
+        for (uint32_t mask = 0x80U; mask != 0U; mask >>= 1U) {
+          if ((value & mask) != 0U) {
+            bits[cell >> 3U] |= static_cast<uint8_t>(0x80U >> (cell & 7U));
+          }
+          ++cell;
+        }
+        // A self-sync byte is its eight cells followed by two blank ones, which
+        // is what lets the shift register fall back into step behind it.
+        if (self_sync) {
+          cell += cells_per_self_sync - cells_per_nibble;
+        }
+      });
 
   *out_bit_count = total_bits;
   return disk_err_none;

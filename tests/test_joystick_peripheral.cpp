@@ -470,16 +470,19 @@ TEST_CASE(
       {
           {
               "RegisterDirectIO",
-              [](HostInterface_t* h) { h->RegisterDirectIO = nullptr; },
+              [](HostInterface_t* h) -> void { h->RegisterDirectIO = nullptr; },
           },
           {
               "RegisterDirectIOStrobe",
-              [](HostInterface_t* h) { h->RegisterDirectIOStrobe = nullptr; },
+              [](HostInterface_t* h) -> void {
+                h->RegisterDirectIOStrobe = nullptr;
+              },
           },
-          {"GetCycles", [](HostInterface_t* h) { h->GetCycles = nullptr; }},
+          {"GetCycles",
+           [](HostInterface_t* h) -> void { h->GetCycles = nullptr; }},
           {
               "ReadFloatingBus",
-              [](HostInterface_t* h) { h->ReadFloatingBus = nullptr; },
+              [](HostInterface_t* h) -> void { h->ReadFloatingBus = nullptr; },
           },
       },
   };

@@ -598,28 +598,38 @@ struct RequiredMember_t {
 
 const std::array<RequiredMember_t, 14> required_members = {
     {
-        {"AssertIrq", [](HostInterface_t* h) { h->AssertIrq = nullptr; }},
-        {"RegisterIO", [](HostInterface_t* h) { h->RegisterIO = nullptr; }},
+        {"AssertIrq",
+         [](HostInterface_t* h) -> void { h->AssertIrq = nullptr; }},
+        {"RegisterIO",
+         [](HostInterface_t* h) -> void { h->RegisterIO = nullptr; }},
         {"RegisterCxROM",
-         [](HostInterface_t* h) { h->RegisterCxROM = nullptr; }},
+         [](HostInterface_t* h) -> void { h->RegisterCxROM = nullptr; }},
         {
             "RegisterExpansionROM",
-            [](HostInterface_t* h) { h->RegisterExpansionROM = nullptr; },
+            [](HostInterface_t* h) -> void {
+              h->RegisterExpansionROM = nullptr;
+            },
         },
-        {"GetCycles", [](HostInterface_t* h) { h->GetCycles = nullptr; }},
-        {"GetClockHz", [](HostInterface_t* h) { h->GetClockHz = nullptr; }},
+        {"GetCycles",
+         [](HostInterface_t* h) -> void { h->GetCycles = nullptr; }},
+        {"GetClockHz",
+         [](HostInterface_t* h) -> void { h->GetClockHz = nullptr; }},
         {
             "ReadFloatingBus",
-            [](HostInterface_t* h) { h->ReadFloatingBus = nullptr; },
+            [](HostInterface_t* h) -> void { h->ReadFloatingBus = nullptr; },
         },
-        {"SinkOpen", [](HostInterface_t* h) { h->SinkOpen = nullptr; }},
-        {"SinkWrite", [](HostInterface_t* h) { h->SinkWrite = nullptr; }},
-        {"SinkClose", [](HostInterface_t* h) { h->SinkClose = nullptr; }},
-        {"SinkRead", [](HostInterface_t* h) { h->SinkRead = nullptr; }},
-        {"SinkSetLine", [](HostInterface_t* h) { h->SinkSetLine = nullptr; }},
-        {"SinkGetLines", [](HostInterface_t* h) { h->SinkGetLines = nullptr; }},
+        {"SinkOpen", [](HostInterface_t* h) -> void { h->SinkOpen = nullptr; }},
+        {"SinkWrite",
+         [](HostInterface_t* h) -> void { h->SinkWrite = nullptr; }},
+        {"SinkClose",
+         [](HostInterface_t* h) -> void { h->SinkClose = nullptr; }},
+        {"SinkRead", [](HostInterface_t* h) -> void { h->SinkRead = nullptr; }},
+        {"SinkSetLine",
+         [](HostInterface_t* h) -> void { h->SinkSetLine = nullptr; }},
+        {"SinkGetLines",
+         [](HostInterface_t* h) -> void { h->SinkGetLines = nullptr; }},
         {"ScheduleEvent",
-         [](HostInterface_t* h) { h->ScheduleEvent = nullptr; }},
+         [](HostInterface_t* h) -> void { h->ScheduleEvent = nullptr; }},
     },
 };
 
@@ -1710,12 +1720,13 @@ TEST_CASE(
   CHECK(status_entry == slot_page + 0x9A);
 
   const auto slot_y = static_cast<uint8_t>(machine.slot << 4);
-  const auto call = [&](Program_t& p, uint16_t entry) {
+  const auto call = [&](Program_t& p, uint16_t entry) -> void {
     p.ldx_imm(slot_page_hi);
     p.ldy_imm(slot_y);
     p.jsr(entry);
   };
-  const auto status_into = [&](Program_t& p, uint8_t request, uint8_t store) {
+  const auto status_into = [&](Program_t& p, uint8_t request,
+                               uint8_t store) -> void {
     p.ldx_imm(slot_page_hi);
     p.ldy_imm(slot_y);
     p.lda_imm(request);

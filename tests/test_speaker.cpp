@@ -915,7 +915,7 @@ TEST_CASE("Speaker Peripheral: Poisoned Save-State Recovery") {
   // Every poisoned field the .aws format can carry, one at a time. After each
   // one the scrubbed instance must behave like a cone at rest: silent until
   // strobed, then a full edge with nothing but finite values behind it.
-  const std::vector<SsIoSpeaker_t> poisoned = [] {
+  const std::vector<SsIoSpeaker_t> poisoned = [] -> std::vector<SsIoSpeaker_t> {
     std::vector<SsIoSpeaker_t> states(6);
     states[0].filter_state = NAN;
     states[1].filter_state = INFINITY;

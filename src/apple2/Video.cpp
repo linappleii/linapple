@@ -1005,7 +1005,7 @@ static auto update_dhires_cell(int x, int y, int xpixel, int ypixel, int offset)
         redrawfull || video_worker_active_) {
       uint32_t dwordval = (byteval1 & 0x70) | ((byteval2 & 0x7F) << 7) |
                           ((byteval3 & 0x7F) << 14) | ((byteval4 & 0x07) << 21);
-      auto render_dhires_segment = [&](int pixel_offset) {
+      auto render_dhires_segment = [&](int pixel_offset) -> void {
         int color = (xpixel + pixel_offset) & 3;
         uint32_t value = dwordval >> (4 + pixel_offset - color);
         copy_source(
@@ -1651,7 +1651,7 @@ auto video_set_next_scheduled_update() -> void {
 static auto video_worker_thread_func() -> void {
   while (!video_worker_terminate_) {
     std::unique_lock<std::mutex> lck(s_video_worker_mutex);
-    video_cv.wait_until(lck, video_next_scheduled_update_, [] {
+    video_cv.wait_until(lck, video_next_scheduled_update_, []() -> bool {
       return video_worker_refresh_.load() || video_worker_terminate_.load();
     });
     if (video_worker_terminate_) {

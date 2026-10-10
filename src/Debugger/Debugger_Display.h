@@ -101,13 +101,13 @@ auto DrawWindow_ZeroPage(Update_t bUpdate) -> void;
 
 auto DrawSourceLine(int iSourceLine, Rect_t& rect) -> void;
 
-char ColorizeSpecialChar(char* sText, uint8_t nData, MemoryView_e iView,
+auto ColorizeSpecialChar(char* sText, uint8_t nData, MemoryView_e iView,
                          int iAsciBackground = BG_INFO,
                          int iTextForeground = FG_DISASM_CHAR,
                          int iHighBackground = BG_INFO_CHAR,
                          int iHighForeground = FG_INFO_CHAR_HI,
                          int iCtrlBackground = BG_INFO_CHAR,
-                         int iCtrlForeground = FG_INFO_CHAR_LO);
+                         int iCtrlForeground = FG_INFO_CHAR_LO) -> char;
 
 auto SetupColorsHiLoBits(bool bHighBit, bool bCtrlBit, int iTextBG, int iTextFG,
                          int iHighBG, int iHighFG, int iCtrlBG, int iCtrlFG)

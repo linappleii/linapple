@@ -604,22 +604,25 @@ TEST_CASE(
       members = {
           {
               "RegisterDirectIO",
-              [](HostInterface_t* h) { h->RegisterDirectIO = nullptr; },
+              [](HostInterface_t* h) -> void { h->RegisterDirectIO = nullptr; },
           },
           {
               "ReadFloatingBus",
-              [](HostInterface_t* h) { h->ReadFloatingBus = nullptr; },
+              [](HostInterface_t* h) -> void { h->ReadFloatingBus = nullptr; },
           },
-          {"GetCycles", [](HostInterface_t* h) { h->GetCycles = nullptr; }},
+          {"GetCycles",
+           [](HostInterface_t* h) -> void { h->GetCycles = nullptr; }},
           {
               "ScheduleEvent",
-              [](HostInterface_t* h) { h->ScheduleEvent = nullptr; },
+              [](HostInterface_t* h) -> void { h->ScheduleEvent = nullptr; },
           },
-          {"GetClockHz", [](HostInterface_t* h) { h->GetClockHz = nullptr; }},
-          {"GetMachine", [](HostInterface_t* h) { h->GetMachine = nullptr; }},
+          {"GetClockHz",
+           [](HostInterface_t* h) -> void { h->GetClockHz = nullptr; }},
+          {"GetMachine",
+           [](HostInterface_t* h) -> void { h->GetMachine = nullptr; }},
           {
               "GetFrameCycles",
-              [](HostInterface_t* h) { h->GetFrameCycles = nullptr; },
+              [](HostInterface_t* h) -> void { h->GetFrameCycles = nullptr; },
           },
   };
   for (const auto& member : members) {
@@ -1209,7 +1212,7 @@ TEST_CASE(
   harness.boot();
 
   // The text page full of normal spaces makes the undriven bus a literal $A0.
-  const std::array<uint8_t, 0x0400> spaces = [] {
+  const std::array<uint8_t, 0x0400> spaces = [] -> std::array<uint8_t, 1024> {
     std::array<uint8_t, 0x0400> page{};
     page.fill(0xA0);
     return page;

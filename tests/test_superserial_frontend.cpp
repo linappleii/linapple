@@ -726,7 +726,7 @@ TEST_CASE(
   clear_input_buffer();
   REQUIRE(peer.write_text("HELLO"));
   const uint32_t frames =
-      run_frames_until(harness, [] { return mem[0x0204] != 0; });
+      run_frames_until(harness, [] -> bool { return mem[0x0204] != 0; });
   CAPTURE(frames);
   CHECK(mem[0x0200] == 0xC8);
   CHECK(mem[0x0201] == 0xC5);
@@ -740,7 +740,8 @@ TEST_CASE(
   REQUIRE(peer.write_text("\r"));
   harness.run_frames(6);
   REQUIRE(peer.write_text("PRINT 7*6\r"));
-  run_frames_until(harness, [&] { return screen_has_row(harness, "42"); });
+  run_frames_until(harness,
+                   [&]() -> bool { return screen_has_row(harness, "42"); });
   CHECK(screen_has_row(harness, "?SYNTAX ERROR"));
   CHECK(screen_has_row(harness, "42"));
 }

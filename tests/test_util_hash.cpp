@@ -42,7 +42,7 @@ TEST_CASE("Util_Hash: Concurrency and Thread Safety") {
   std::vector<std::string> results(k_num_threads);
 
   for (size_t t = 0; t < k_num_threads; ++t) {
-    threads.emplace_back([t, &results]() {
+    threads.emplace_back([t, &results]() -> void {
       results.at(t) = md5str(t % 2 == 0 ? "linapple" : "consistency check");
     });
   }

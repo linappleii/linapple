@@ -175,7 +175,7 @@ TEST_CASE("Logger: [LOG-06] Reentrancy & Deadlock Safety") {
   static int recursion_depth = 0;
   recursion_depth = 0;
 
-  Logger::set_callback([](LogLevel, const char*) {
+  Logger::set_callback([](LogLevel, const char*) -> void {
     if (recursion_depth < 3) {
       ++recursion_depth;
       Logger::info("recursive call %d\n", recursion_depth);

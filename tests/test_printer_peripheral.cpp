@@ -649,8 +649,8 @@ struct PrinterHarness_t {
 
   auto run_until(uint16_t sentinel, uint32_t cap) -> uint32_t {
     const CpuRegisters_t* regs = cpu_get_registers();
-    return run_while_not([regs, sentinel] { return regs->pc == sentinel; },
-                         cap);
+    return run_while_not(
+        [regs, sentinel] -> bool { return regs->pc == sentinel; }, cap);
   }
 
   // Continues from wherever the machine stopped, registers and stack as they
@@ -1002,17 +1002,22 @@ TEST_CASE(
   };
   const std::array<Missing_t, 7> members = {
       {
-          {"RegisterIO", [](HostInterface_t* h) { h->RegisterIO = nullptr; }},
+          {"RegisterIO",
+           [](HostInterface_t* h) -> void { h->RegisterIO = nullptr; }},
           {"RegisterCxROM",
-           [](HostInterface_t* h) { h->RegisterCxROM = nullptr; }},
+           [](HostInterface_t* h) -> void { h->RegisterCxROM = nullptr; }},
           {
               "ReadFloatingBus",
-              [](HostInterface_t* h) { h->ReadFloatingBus = nullptr; },
+              [](HostInterface_t* h) -> void { h->ReadFloatingBus = nullptr; },
           },
-          {"SinkOpen", [](HostInterface_t* h) { h->SinkOpen = nullptr; }},
-          {"SinkWrite", [](HostInterface_t* h) { h->SinkWrite = nullptr; }},
-          {"SinkReady", [](HostInterface_t* h) { h->SinkReady = nullptr; }},
-          {"SinkClose", [](HostInterface_t* h) { h->SinkClose = nullptr; }},
+          {"SinkOpen",
+           [](HostInterface_t* h) -> void { h->SinkOpen = nullptr; }},
+          {"SinkWrite",
+           [](HostInterface_t* h) -> void { h->SinkWrite = nullptr; }},
+          {"SinkReady",
+           [](HostInterface_t* h) -> void { h->SinkReady = nullptr; }},
+          {"SinkClose",
+           [](HostInterface_t* h) -> void { h->SinkClose = nullptr; }},
       },
   };
 
@@ -1441,13 +1446,15 @@ TEST_CASE(
   peripheral_manager_reset();
   CHECK(cpu_get_registers()->pc == monitor_reset);
   const uint32_t reset_cycles = machine.run_while_not(
-      [] { return mem[zp_cswl] == cout1_low && mem[zp_cswh] == cout1_high; },
+      [] -> bool {
+        return mem[zp_cswl] == cout1_low && mem[zp_cswh] == cout1_high;
+      },
       reset_cycle_cap);
   CHECK(reset_cycles < reset_cycle_cap);
   CHECK(mem[zp_cswl] == cout1_low);
   CHECK(mem[zp_cswh] == cout1_high);
   const uint32_t internal_rom_cycles = machine.run_while_not(
-      [] { return mem[rom_address(test_slot_1, 0)] == rom_first_byte; },
+      [] -> bool { return mem[rom_address(test_slot_1, 0)] == rom_first_byte; },
       reset_cycle_cap - reset_cycles);
   CHECK(reset_cycles + internal_rom_cycles < reset_cycle_cap);
 

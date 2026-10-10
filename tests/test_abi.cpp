@@ -307,7 +307,7 @@ TEST_CASE("ABI: [ABI-10] peripheral_command is thread-safe") {
   std::vector<std::thread> threads;
   threads.reserve(THREADS);
   for (int i = 0; i < THREADS; ++i) {
-    threads.emplace_back([&]() {
+    threads.emplace_back([&]() -> void {
       for (int j = 0; j < CMDS_PER_THREAD; ++j) {
         peripheral_command(2, 0x0001, &payload, sizeof(payload));
       }

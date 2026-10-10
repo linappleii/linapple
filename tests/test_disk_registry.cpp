@@ -85,7 +85,7 @@ struct ScopedRandomFile_t {
 
 auto count_rejections(std::vector<std::string>* names) -> void {
   disk_loader_drain_rejections(
-      [](void* context, const char* driver_name, const char*) {
+      [](void* context, const char* driver_name, const char*) -> void {
         static_cast<std::vector<std::string>*>(context)->emplace_back(
             driver_name);
       },
@@ -225,7 +225,9 @@ TEST_CASE("DiskRegistry: the create bit and the create entry must agree") {
 
   DiskFormatDriver_t creates_unclaimed =
       make_fake("Fake Hidden Create", probe_no);
-  creates_unclaimed.create = [](const char*) { return disk_err_none; };
+  creates_unclaimed.create = [](const char*) -> DiskError_e {
+    return disk_err_none;
+  };
   disk_loader_register(&creates_unclaimed);
 
   CHECK(disk_loader_driver_count() == baseline);

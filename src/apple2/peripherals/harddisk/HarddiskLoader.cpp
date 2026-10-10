@@ -120,9 +120,8 @@ auto insert_by_name(std::vector<const HarddiskFormatDriver_t*>& drivers,
                     const HarddiskFormatDriver_t* driver) -> void {
   const auto at = std::upper_bound(
       drivers.begin(), drivers.end(), driver,
-      [](const HarddiskFormatDriver_t* lhs, const HarddiskFormatDriver_t* rhs) {
-        return strcmp(driver_label(lhs), driver_label(rhs)) < 0;
-      });
+      [](const HarddiskFormatDriver_t* lhs, const HarddiskFormatDriver_t* rhs)
+          -> bool { return strcmp(driver_label(lhs), driver_label(rhs)) < 0; });
   drivers.insert(at, driver);
 }
 

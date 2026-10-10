@@ -335,7 +335,7 @@ auto joy_frontend_initialize() -> void {
   const int number_of_joysticks = sdl_compat_num_joysticks();
 
   auto open_device = [&](size_t joy_id, SdlJoystickPtr& joy_ptr,
-                         uint32_t fallback_type) {
+                         uint32_t fallback_type) -> void {
     if (device_of(joy_id) != joystick_device_joystick) {
       return;
     }
@@ -446,7 +446,7 @@ auto joy_frontend_update() -> void {
   drain_switch_queues();
 
   auto poll_if_due = [](size_t joy_id, SdlJoystickPtr& joy_ptr,
-                        uint32_t& last_check) {
+                        uint32_t& last_check) -> void {
     if (!joy_ptr || device_of(joy_id) != joystick_device_joystick) {
       return;
     }

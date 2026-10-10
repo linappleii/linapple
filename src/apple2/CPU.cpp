@@ -872,28 +872,29 @@ static auto op_nop(CpuLoopContext& /*unused*/) -> void {}
 
 // NOLINTNEXTLINE(bugprone-throwing-static-initialization) - stateless lambda table does not throw
 static const OpcodeDesc s_opcodes_nmos[256] = {
-    /* 0x00 */ {[](CpuLoopContext& c) { c.op_brk<false>(); }, 7},  // BRK
-                                                                   /* 0x01 */
+    /* 0x00 */ {[](CpuLoopContext& c) -> void { c.op_brk<false>(); },
+                7},  // BRK
+                     /* 0x01 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indx();
           c.op_ora();
         },
         6,
-    },                                                      // ORA
-    /* 0x02 */ {[](CpuLoopContext& c) { c.op_hlt(); }, 2},  // hlt
-                                                            /* 0x03 */
+    },                                                              // ORA
+    /* 0x02 */ {[](CpuLoopContext& c) -> void { c.op_hlt(); }, 2},  // hlt
+                                                                    /* 0x03 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indx();
           c.op_aso();
         },
         8,
-    },                                                        // aso
-    /* 0x04 */ {[](CpuLoopContext& c) { c.addr_zpg(); }, 3},  // nop
-                                                              /* 0x05 */
+    },                                                                // aso
+    /* 0x04 */ {[](CpuLoopContext& c) -> void { c.addr_zpg(); }, 3},  // nop
+                                                                      /* 0x05 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_ora();
         },
@@ -901,7 +902,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // ORA
         /* 0x06 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_asl();
         },
@@ -909,34 +910,34 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // ASL
         /* 0x07 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_aso();
         },
         5,
-    },                                                      // aso
-    /* 0x08 */ {[](CpuLoopContext& c) { c.op_php(); }, 3},  // PHP
-                                                            /* 0x09 */
+    },                                                              // aso
+    /* 0x08 */ {[](CpuLoopContext& c) -> void { c.op_php(); }, 3},  // PHP
+                                                                    /* 0x09 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_ora();
         },
         2,
-    },                                                       // ORA
-    /* 0x0A */ {[](CpuLoopContext& c) { c.op_asla(); }, 2},  // ASL
-                                                             /* 0x0B */
+    },                                                               // ORA
+    /* 0x0A */ {[](CpuLoopContext& c) -> void { c.op_asla(); }, 2},  // ASL
+                                                                     /* 0x0B */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_anc();
         },
         2,
-    },                                                         // anc
-    /* 0x0C */ {[](CpuLoopContext& c) { c.addr_absx(); }, 4},  // nop
-                                                               /* 0x0D */
+    },                                                                 // anc
+    /* 0x0C */ {[](CpuLoopContext& c) -> void { c.addr_absx(); }, 4},  // nop
+    /* 0x0D */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_ora();
         },
@@ -944,7 +945,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // ORA
         /* 0x0E */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_asl();
         },
@@ -952,7 +953,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // ASL
         /* 0x0F */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_aso();
         },
@@ -960,7 +961,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // aso
         /* 0x10 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_rel();
           if (!c.flagn) {
             c.branch_taken();
@@ -970,25 +971,25 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // BPL
         /* 0x11 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indy();
           c.op_ora();
         },
         5,
-    },                                                      // ORA
-    /* 0x12 */ {[](CpuLoopContext& c) { c.op_hlt(); }, 2},  // hlt
-                                                            /* 0x13 */
+    },                                                              // ORA
+    /* 0x12 */ {[](CpuLoopContext& c) -> void { c.op_hlt(); }, 2},  // hlt
+                                                                    /* 0x13 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indy();
           c.op_aso();
         },
         8,
-    },                                                         // aso
-    /* 0x14 */ {[](CpuLoopContext& c) { c.addr_zpgx(); }, 4},  // nop
-                                                               /* 0x15 */
+    },                                                                 // aso
+    /* 0x14 */ {[](CpuLoopContext& c) -> void { c.addr_zpgx(); }, 4},  // nop
+    /* 0x15 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_ora();
         },
@@ -996,7 +997,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // ORA
         /* 0x16 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_asl();
         },
@@ -1004,16 +1005,16 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // ASL
         /* 0x17 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_aso();
         },
         6,
-    },                                                      // aso
-    /* 0x18 */ {[](CpuLoopContext& c) { c.op_clc(); }, 2},  // CLC
-                                                            /* 0x19 */
+    },                                                              // aso
+    /* 0x18 */ {[](CpuLoopContext& c) -> void { c.op_clc(); }, 2},  // CLC
+                                                                    /* 0x19 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absy();
           c.op_ora();
         },
@@ -1022,16 +1023,16 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     /* 0x1A */ {op_nop, 2},  // nop
                              /* 0x1B */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absy();
           c.op_aso();
         },
         7,
-    },                                                         // aso
-    /* 0x1C */ {[](CpuLoopContext& c) { c.addr_absx(); }, 4},  // nop
-                                                               /* 0x1D */
+    },                                                                 // aso
+    /* 0x1C */ {[](CpuLoopContext& c) -> void { c.addr_absx(); }, 4},  // nop
+    /* 0x1D */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_ora();
         },
@@ -1039,7 +1040,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // ORA
         /* 0x1E */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_asl();
         },
@@ -1047,7 +1048,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // ASL
         /* 0x1F */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_aso();
         },
@@ -1055,7 +1056,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // aso
         /* 0x20 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_jsr();
         },
@@ -1063,16 +1064,16 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // JSR
         /* 0x21 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indx();
           c.op_and();
         },
         6,
-    },                                                      // AND
-    /* 0x22 */ {[](CpuLoopContext& c) { c.op_hlt(); }, 2},  // hlt
-                                                            /* 0x23 */
+    },                                                              // AND
+    /* 0x22 */ {[](CpuLoopContext& c) -> void { c.op_hlt(); }, 2},  // hlt
+                                                                    /* 0x23 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indx();
           c.op_rla();
         },
@@ -1080,7 +1081,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // rla
         /* 0x24 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_bit();
         },
@@ -1088,7 +1089,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // BIT
         /* 0x25 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_and();
         },
@@ -1096,7 +1097,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // AND
         /* 0x26 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_rol();
         },
@@ -1104,25 +1105,25 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // ROL
         /* 0x27 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_rla();
         },
         5,
-    },                                                      // rla
-    /* 0x28 */ {[](CpuLoopContext& c) { c.op_plp(); }, 4},  // PLP
-                                                            /* 0x29 */
+    },                                                              // rla
+    /* 0x28 */ {[](CpuLoopContext& c) -> void { c.op_plp(); }, 4},  // PLP
+                                                                    /* 0x29 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_and();
         },
         2,
-    },                                                       // AND
-    /* 0x2A */ {[](CpuLoopContext& c) { c.op_rola(); }, 2},  // ROL
-                                                             /* 0x2B */
+    },                                                               // AND
+    /* 0x2A */ {[](CpuLoopContext& c) -> void { c.op_rola(); }, 2},  // ROL
+                                                                     /* 0x2B */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_anc();
         },
@@ -1130,7 +1131,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // anc
         /* 0x2C */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_bit();
         },
@@ -1138,7 +1139,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // BIT
         /* 0x2D */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_and();
         },
@@ -1146,7 +1147,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // AND
         /* 0x2E */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_rol();
         },
@@ -1154,7 +1155,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // ROL
         /* 0x2F */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_rla();
         },
@@ -1162,7 +1163,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // rla
         /* 0x30 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_rel();
           if (c.flagn) {
             c.branch_taken();
@@ -1172,25 +1173,25 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // BMI
         /* 0x31 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indy();
           c.op_and();
         },
         5,
-    },                                                      // AND
-    /* 0x32 */ {[](CpuLoopContext& c) { c.op_hlt(); }, 2},  // hlt
-                                                            /* 0x33 */
+    },                                                              // AND
+    /* 0x32 */ {[](CpuLoopContext& c) -> void { c.op_hlt(); }, 2},  // hlt
+                                                                    /* 0x33 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indy();
           c.op_rla();
         },
         8,
-    },                                                         // rla
-    /* 0x34 */ {[](CpuLoopContext& c) { c.addr_zpgx(); }, 4},  // nop
-                                                               /* 0x35 */
+    },                                                                 // rla
+    /* 0x34 */ {[](CpuLoopContext& c) -> void { c.addr_zpgx(); }, 4},  // nop
+    /* 0x35 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_and();
         },
@@ -1198,7 +1199,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // AND
         /* 0x36 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_rol();
         },
@@ -1206,16 +1207,16 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // ROL
         /* 0x37 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_rla();
         },
         6,
-    },                                                      // rla
-    /* 0x38 */ {[](CpuLoopContext& c) { c.op_sec(); }, 2},  // SEC
-                                                            /* 0x39 */
+    },                                                              // rla
+    /* 0x38 */ {[](CpuLoopContext& c) -> void { c.op_sec(); }, 2},  // SEC
+                                                                    /* 0x39 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absy();
           c.op_and();
         },
@@ -1224,16 +1225,16 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     /* 0x3A */ {op_nop, 2},  // nop
                              /* 0x3B */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absy();
           c.op_rla();
         },
         7,
-    },                                                         // rla
-    /* 0x3C */ {[](CpuLoopContext& c) { c.addr_absx(); }, 4},  // nop
-                                                               /* 0x3D */
+    },                                                                 // rla
+    /* 0x3C */ {[](CpuLoopContext& c) -> void { c.addr_absx(); }, 4},  // nop
+    /* 0x3D */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_and();
         },
@@ -1241,7 +1242,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // AND
         /* 0x3E */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_rol();
         },
@@ -1249,34 +1250,34 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // ROL
         /* 0x3F */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_rla();
         },
         7,
-    },                                                      // rla
-    /* 0x40 */ {[](CpuLoopContext& c) { c.op_rti(); }, 6},  // RTI
-                                                            /* 0x41 */
+    },                                                              // rla
+    /* 0x40 */ {[](CpuLoopContext& c) -> void { c.op_rti(); }, 6},  // RTI
+                                                                    /* 0x41 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indx();
           c.op_eor();
         },
         6,
-    },                                                      // EOR
-    /* 0x42 */ {[](CpuLoopContext& c) { c.op_hlt(); }, 2},  // hlt
-                                                            /* 0x43 */
+    },                                                              // EOR
+    /* 0x42 */ {[](CpuLoopContext& c) -> void { c.op_hlt(); }, 2},  // hlt
+                                                                    /* 0x43 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indx();
           c.op_lse();
         },
         8,
-    },                                                        // lse
-    /* 0x44 */ {[](CpuLoopContext& c) { c.addr_zpg(); }, 3},  // nop
-                                                              /* 0x45 */
+    },                                                                // lse
+    /* 0x44 */ {[](CpuLoopContext& c) -> void { c.addr_zpg(); }, 3},  // nop
+                                                                      /* 0x45 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_eor();
         },
@@ -1284,7 +1285,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // EOR
         /* 0x46 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_lsr();
         },
@@ -1292,25 +1293,25 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // LSR
         /* 0x47 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_lse();
         },
         5,
-    },                                                      // lse
-    /* 0x48 */ {[](CpuLoopContext& c) { c.op_pha(); }, 3},  // PHA
-                                                            /* 0x49 */
+    },                                                              // lse
+    /* 0x48 */ {[](CpuLoopContext& c) -> void { c.op_pha(); }, 3},  // PHA
+                                                                    /* 0x49 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_eor();
         },
         2,
-    },                                                       // EOR
-    /* 0x4A */ {[](CpuLoopContext& c) { c.op_lsra(); }, 2},  // LSR
-                                                             /* 0x4B */
+    },                                                               // EOR
+    /* 0x4A */ {[](CpuLoopContext& c) -> void { c.op_lsra(); }, 2},  // LSR
+                                                                     /* 0x4B */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_alr();
         },
@@ -1318,7 +1319,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // alr
         /* 0x4C */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_jmp();
         },
@@ -1326,7 +1327,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // JMP
         /* 0x4D */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_eor();
         },
@@ -1334,7 +1335,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // EOR
         /* 0x4E */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_lsr();
         },
@@ -1342,7 +1343,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // LSR
         /* 0x4F */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_lse();
         },
@@ -1350,7 +1351,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // lse
         /* 0x50 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_rel();
           if (!c.flagv) {
             c.branch_taken();
@@ -1360,25 +1361,25 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // BVC
         /* 0x51 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indy();
           c.op_eor();
         },
         5,
-    },                                                      // EOR
-    /* 0x52 */ {[](CpuLoopContext& c) { c.op_hlt(); }, 2},  // hlt
-                                                            /* 0x53 */
+    },                                                              // EOR
+    /* 0x52 */ {[](CpuLoopContext& c) -> void { c.op_hlt(); }, 2},  // hlt
+                                                                    /* 0x53 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indy();
           c.op_lse();
         },
         8,
-    },                                                         // lse
-    /* 0x54 */ {[](CpuLoopContext& c) { c.addr_zpgx(); }, 4},  // nop
-                                                               /* 0x55 */
+    },                                                                 // lse
+    /* 0x54 */ {[](CpuLoopContext& c) -> void { c.addr_zpgx(); }, 4},  // nop
+    /* 0x55 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_eor();
         },
@@ -1386,7 +1387,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // EOR
         /* 0x56 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_lsr();
         },
@@ -1394,16 +1395,16 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // LSR
         /* 0x57 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_lse();
         },
         6,
-    },                                                      // lse
-    /* 0x58 */ {[](CpuLoopContext& c) { c.op_cli(); }, 2},  // CLI
-                                                            /* 0x59 */
+    },                                                              // lse
+    /* 0x58 */ {[](CpuLoopContext& c) -> void { c.op_cli(); }, 2},  // CLI
+                                                                    /* 0x59 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absy();
           c.op_eor();
         },
@@ -1412,16 +1413,16 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     /* 0x5A */ {op_nop, 2},  // nop
                              /* 0x5B */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absy();
           c.op_lse();
         },
         7,
-    },                                                         // lse
-    /* 0x5C */ {[](CpuLoopContext& c) { c.addr_absx(); }, 4},  // nop
-                                                               /* 0x5D */
+    },                                                                 // lse
+    /* 0x5C */ {[](CpuLoopContext& c) -> void { c.addr_absx(); }, 4},  // nop
+    /* 0x5D */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_eor();
         },
@@ -1429,7 +1430,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // EOR
         /* 0x5E */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_lsr();
         },
@@ -1437,34 +1438,34 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // LSR
         /* 0x5F */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_lse();
         },
         7,
-    },                                                      // lse
-    /* 0x60 */ {[](CpuLoopContext& c) { c.op_rts(); }, 6},  // RTS
-                                                            /* 0x61 */
+    },                                                              // lse
+    /* 0x60 */ {[](CpuLoopContext& c) -> void { c.op_rts(); }, 6},  // RTS
+                                                                    /* 0x61 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indx();
           c.op_adc_nmos();
         },
         6,
-    },                                                      // ADC
-    /* 0x62 */ {[](CpuLoopContext& c) { c.op_hlt(); }, 2},  // hlt
-                                                            /* 0x63 */
+    },                                                              // ADC
+    /* 0x62 */ {[](CpuLoopContext& c) -> void { c.op_hlt(); }, 2},  // hlt
+                                                                    /* 0x63 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indx();
           c.op_rra();
         },
         8,
-    },                                                        // rra
-    /* 0x64 */ {[](CpuLoopContext& c) { c.addr_zpg(); }, 3},  // nop
-                                                              /* 0x65 */
+    },                                                                // rra
+    /* 0x64 */ {[](CpuLoopContext& c) -> void { c.addr_zpg(); }, 3},  // nop
+                                                                      /* 0x65 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_adc_nmos();
         },
@@ -1472,7 +1473,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // ADC
         /* 0x66 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_ror();
         },
@@ -1480,25 +1481,25 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // ROR
         /* 0x67 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_rra();
         },
         5,
-    },                                                      // rra
-    /* 0x68 */ {[](CpuLoopContext& c) { c.op_pla(); }, 4},  // PLA
-                                                            /* 0x69 */
+    },                                                              // rra
+    /* 0x68 */ {[](CpuLoopContext& c) -> void { c.op_pla(); }, 4},  // PLA
+                                                                    /* 0x69 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_adc_nmos();
         },
         2,
-    },                                                       // ADC
-    /* 0x6A */ {[](CpuLoopContext& c) { c.op_rora(); }, 2},  // ROR
-                                                             /* 0x6B */
+    },                                                               // ADC
+    /* 0x6A */ {[](CpuLoopContext& c) -> void { c.op_rora(); }, 2},  // ROR
+                                                                     /* 0x6B */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_arr();
         },
@@ -1506,7 +1507,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // arr
         /* 0x6C */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_iabs_nmos();
           c.op_jmp();
         },
@@ -1514,7 +1515,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // JMP
         /* 0x6D */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_adc_nmos();
         },
@@ -1522,7 +1523,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // ADC
         /* 0x6E */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_ror();
         },
@@ -1530,7 +1531,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // ROR
         /* 0x6F */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_rra();
         },
@@ -1538,7 +1539,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // rra
         /* 0x70 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_rel();
           if (c.flagv) {
             c.branch_taken();
@@ -1548,25 +1549,25 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // BVS
         /* 0x71 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indy();
           c.op_adc_nmos();
         },
         5,
-    },                                                      // ADC
-    /* 0x72 */ {[](CpuLoopContext& c) { c.op_hlt(); }, 2},  // hlt
-                                                            /* 0x73 */
+    },                                                              // ADC
+    /* 0x72 */ {[](CpuLoopContext& c) -> void { c.op_hlt(); }, 2},  // hlt
+                                                                    /* 0x73 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indy();
           c.op_rra();
         },
         8,
-    },                                                         // rra
-    /* 0x74 */ {[](CpuLoopContext& c) { c.addr_zpgx(); }, 4},  // nop
-                                                               /* 0x75 */
+    },                                                                 // rra
+    /* 0x74 */ {[](CpuLoopContext& c) -> void { c.addr_zpgx(); }, 4},  // nop
+    /* 0x75 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_adc_nmos();
         },
@@ -1574,7 +1575,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // ADC
         /* 0x76 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_ror();
         },
@@ -1582,16 +1583,16 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // ROR
         /* 0x77 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_rra();
         },
         6,
-    },                                                      // rra
-    /* 0x78 */ {[](CpuLoopContext& c) { c.op_sei(); }, 2},  // SEI
-                                                            /* 0x79 */
+    },                                                              // rra
+    /* 0x78 */ {[](CpuLoopContext& c) -> void { c.op_sei(); }, 2},  // SEI
+                                                                    /* 0x79 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absy();
           c.op_adc_nmos();
         },
@@ -1600,16 +1601,16 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     /* 0x7A */ {op_nop, 2},  // nop
                              /* 0x7B */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absy();
           c.op_rra();
         },
         7,
-    },                                                         // rra
-    /* 0x7C */ {[](CpuLoopContext& c) { c.addr_absx(); }, 4},  // nop
-                                                               /* 0x7D */
+    },                                                                 // rra
+    /* 0x7C */ {[](CpuLoopContext& c) -> void { c.addr_absx(); }, 4},  // nop
+    /* 0x7D */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_adc_nmos();
         },
@@ -1617,7 +1618,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // ADC
         /* 0x7E */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_ror();
         },
@@ -1625,25 +1626,25 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // ROR
         /* 0x7F */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_rra();
         },
         7,
-    },                                                        // rra
-    /* 0x80 */ {[](CpuLoopContext& c) { c.addr_imm(); }, 2},  // nop
-                                                              /* 0x81 */
+    },                                                                // rra
+    /* 0x80 */ {[](CpuLoopContext& c) -> void { c.addr_imm(); }, 2},  // nop
+                                                                      /* 0x81 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indx();
           c.op_sta();
         },
         6,
-    },                                                        // STA
-    /* 0x82 */ {[](CpuLoopContext& c) { c.addr_imm(); }, 2},  // nop
-                                                              /* 0x83 */
+    },                                                                // STA
+    /* 0x82 */ {[](CpuLoopContext& c) -> void { c.addr_imm(); }, 2},  // nop
+                                                                      /* 0x83 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indx();
           c.op_axs();
         },
@@ -1651,7 +1652,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // axs
         /* 0x84 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_sty();
         },
@@ -1659,7 +1660,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // STY
         /* 0x85 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_sta();
         },
@@ -1667,7 +1668,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // STA
         /* 0x86 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_stx();
         },
@@ -1675,18 +1676,18 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // STX
         /* 0x87 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_axs();
         },
         3,
-    },                                                        // axs
-    /* 0x88 */ {[](CpuLoopContext& c) { c.op_dey(); }, 2},    // DEY
-    /* 0x89 */ {[](CpuLoopContext& c) { c.addr_imm(); }, 2},  // nop
-    /* 0x8A */ {[](CpuLoopContext& c) { c.op_txa(); }, 2},    // TXA
-                                                              /* 0x8B */
+    },                                                                // axs
+    /* 0x88 */ {[](CpuLoopContext& c) -> void { c.op_dey(); }, 2},    // DEY
+    /* 0x89 */ {[](CpuLoopContext& c) -> void { c.addr_imm(); }, 2},  // nop
+    /* 0x8A */ {[](CpuLoopContext& c) -> void { c.op_txa(); }, 2},    // TXA
+                                                                      /* 0x8B */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_xaa();
         },
@@ -1694,7 +1695,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // xaa
         /* 0x8C */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_sty();
         },
@@ -1702,7 +1703,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // STY
         /* 0x8D */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_sta();
         },
@@ -1710,7 +1711,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // STA
         /* 0x8E */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_stx();
         },
@@ -1718,7 +1719,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // STX
         /* 0x8F */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_axs();
         },
@@ -1726,7 +1727,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // axs
         /* 0x90 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_rel();
           if (!c.flagc) {
             c.branch_taken();
@@ -1736,16 +1737,16 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // BCC
         /* 0x91 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indy();
           c.op_sta();
         },
         6,
-    },                                                      // STA
-    /* 0x92 */ {[](CpuLoopContext& c) { c.op_hlt(); }, 2},  // hlt
-                                                            /* 0x93 */
+    },                                                              // STA
+    /* 0x92 */ {[](CpuLoopContext& c) -> void { c.op_hlt(); }, 2},  // hlt
+                                                                    /* 0x93 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indy();
           c.op_axa();
         },
@@ -1753,7 +1754,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // axa
         /* 0x94 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_sty();
         },
@@ -1761,7 +1762,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // STY
         /* 0x95 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_sta();
         },
@@ -1769,7 +1770,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // STA
         /* 0x96 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgy();
           c.op_stx();
         },
@@ -1777,25 +1778,25 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // STX
         /* 0x97 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgy();
           c.op_axs();
         },
         4,
-    },                                                      // axs
-    /* 0x98 */ {[](CpuLoopContext& c) { c.op_tya(); }, 2},  // TYA
-                                                            /* 0x99 */
+    },                                                              // axs
+    /* 0x98 */ {[](CpuLoopContext& c) -> void { c.op_tya(); }, 2},  // TYA
+                                                                    /* 0x99 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absy();
           c.op_sta();
         },
         5,
-    },                                                      // STA
-    /* 0x9A */ {[](CpuLoopContext& c) { c.op_txs(); }, 2},  // TXS
-                                                            /* 0x9B */
+    },                                                              // STA
+    /* 0x9A */ {[](CpuLoopContext& c) -> void { c.op_txs(); }, 2},  // TXS
+                                                                    /* 0x9B */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absy();
           c.op_tas();
         },
@@ -1803,7 +1804,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // tas
         /* 0x9C */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_say();
         },
@@ -1811,7 +1812,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // say
         /* 0x9D */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_sta();
         },
@@ -1819,7 +1820,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // STA
         /* 0x9E */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absy();
           c.op_xas();
         },
@@ -1827,7 +1828,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // xas
         /* 0x9F */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absy();
           c.op_axa();
         },
@@ -1835,7 +1836,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // axa
         /* 0xA0 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_ldy();
         },
@@ -1843,7 +1844,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // LDY
         /* 0xA1 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indx();
           c.op_lda();
         },
@@ -1851,7 +1852,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // LDA
         /* 0xA2 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_ldx();
         },
@@ -1859,7 +1860,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // LDX
         /* 0xA3 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indx();
           c.op_lax();
         },
@@ -1867,7 +1868,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // lax
         /* 0xA4 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_ldy();
         },
@@ -1875,7 +1876,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // LDY
         /* 0xA5 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_lda();
         },
@@ -1883,7 +1884,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // LDA
         /* 0xA6 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_ldx();
         },
@@ -1891,25 +1892,25 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // LDX
         /* 0xA7 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_lax();
         },
         3,
-    },                                                      // lax
-    /* 0xA8 */ {[](CpuLoopContext& c) { c.op_tay(); }, 2},  // TAY
-                                                            /* 0xA9 */
+    },                                                              // lax
+    /* 0xA8 */ {[](CpuLoopContext& c) -> void { c.op_tay(); }, 2},  // TAY
+                                                                    /* 0xA9 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_lda();
         },
         2,
-    },                                                      // LDA
-    /* 0xAA */ {[](CpuLoopContext& c) { c.op_tax(); }, 2},  // TAX
-                                                            /* 0xAB */
+    },                                                              // LDA
+    /* 0xAA */ {[](CpuLoopContext& c) -> void { c.op_tax(); }, 2},  // TAX
+                                                                    /* 0xAB */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_oal();
         },
@@ -1917,7 +1918,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // oal
         /* 0xAC */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_ldy();
         },
@@ -1925,7 +1926,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // LDY
         /* 0xAD */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_lda();
         },
@@ -1933,7 +1934,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // LDA
         /* 0xAE */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_ldx();
         },
@@ -1941,7 +1942,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // LDX
         /* 0xAF */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_lax();
         },
@@ -1949,7 +1950,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // lax
         /* 0xB0 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_rel();
           if (c.flagc) {
             c.branch_taken();
@@ -1959,16 +1960,16 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // BCS
         /* 0xB1 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indy();
           c.op_lda();
         },
         5,
-    },                                                      // LDA
-    /* 0xB2 */ {[](CpuLoopContext& c) { c.op_hlt(); }, 2},  // hlt
-                                                            /* 0xB3 */
+    },                                                              // LDA
+    /* 0xB2 */ {[](CpuLoopContext& c) -> void { c.op_hlt(); }, 2},  // hlt
+                                                                    /* 0xB3 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indy();
           c.op_lax();
         },
@@ -1976,7 +1977,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // lax
         /* 0xB4 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_ldy();
         },
@@ -1984,7 +1985,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // LDY
         /* 0xB5 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_lda();
         },
@@ -1992,7 +1993,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // LDA
         /* 0xB6 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgy();
           c.op_ldx();
         },
@@ -2000,25 +2001,25 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // LDX
         /* 0xB7 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgy();
           c.op_lax();
         },
         4,
-    },                                                      // lax
-    /* 0xB8 */ {[](CpuLoopContext& c) { c.op_clv(); }, 2},  // CLV
-                                                            /* 0xB9 */
+    },                                                              // lax
+    /* 0xB8 */ {[](CpuLoopContext& c) -> void { c.op_clv(); }, 2},  // CLV
+                                                                    /* 0xB9 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absy();
           c.op_lda();
         },
         4,
-    },                                                      // LDA
-    /* 0xBA */ {[](CpuLoopContext& c) { c.op_tsx(); }, 2},  // TSX
-                                                            /* 0xBB */
+    },                                                              // LDA
+    /* 0xBA */ {[](CpuLoopContext& c) -> void { c.op_tsx(); }, 2},  // TSX
+                                                                    /* 0xBB */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absy();
           c.op_las();
         },
@@ -2026,7 +2027,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // las
         /* 0xBC */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_ldy();
         },
@@ -2034,7 +2035,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // LDY
         /* 0xBD */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_lda();
         },
@@ -2042,7 +2043,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // LDA
         /* 0xBE */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absy();
           c.op_ldx();
         },
@@ -2050,7 +2051,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // LDX
         /* 0xBF */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absy();
           c.op_lax();
         },
@@ -2058,7 +2059,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // lax
         /* 0xC0 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_cpy();
         },
@@ -2066,16 +2067,16 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // CPY
         /* 0xC1 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indx();
           c.op_cmp();
         },
         6,
-    },                                                        // CMP
-    /* 0xC2 */ {[](CpuLoopContext& c) { c.addr_imm(); }, 2},  // nop
-                                                              /* 0xC3 */
+    },                                                                // CMP
+    /* 0xC2 */ {[](CpuLoopContext& c) -> void { c.addr_imm(); }, 2},  // nop
+                                                                      /* 0xC3 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indx();
           c.op_dcm();
         },
@@ -2083,7 +2084,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // dcm
         /* 0xC4 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_cpy();
         },
@@ -2091,7 +2092,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // CPY
         /* 0xC5 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_cmp();
         },
@@ -2099,7 +2100,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // CMP
         /* 0xC6 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_dec();
         },
@@ -2107,25 +2108,25 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // DEC
         /* 0xC7 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_dcm();
         },
         5,
-    },                                                      // dcm
-    /* 0xC8 */ {[](CpuLoopContext& c) { c.op_iny(); }, 2},  // INY
-                                                            /* 0xC9 */
+    },                                                              // dcm
+    /* 0xC8 */ {[](CpuLoopContext& c) -> void { c.op_iny(); }, 2},  // INY
+                                                                    /* 0xC9 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_cmp();
         },
         2,
-    },                                                      // CMP
-    /* 0xCA */ {[](CpuLoopContext& c) { c.op_dex(); }, 2},  // DEX
-                                                            /* 0xCB */
+    },                                                              // CMP
+    /* 0xCA */ {[](CpuLoopContext& c) -> void { c.op_dex(); }, 2},  // DEX
+                                                                    /* 0xCB */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_sax();
         },
@@ -2133,7 +2134,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // sax
         /* 0xCC */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_cpy();
         },
@@ -2141,7 +2142,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // CPY
         /* 0xCD */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_cmp();
         },
@@ -2149,7 +2150,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // CMP
         /* 0xCE */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_dec();
         },
@@ -2157,7 +2158,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // DEC
         /* 0xCF */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_dcm();
         },
@@ -2165,7 +2166,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // dcm
         /* 0xD0 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_rel();
           if (!c.flagz) {
             c.branch_taken();
@@ -2175,25 +2176,25 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // BNE
         /* 0xD1 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indy();
           c.op_cmp();
         },
         5,
-    },                                                      // CMP
-    /* 0xD2 */ {[](CpuLoopContext& c) { c.op_hlt(); }, 2},  // hlt
-                                                            /* 0xD3 */
+    },                                                              // CMP
+    /* 0xD2 */ {[](CpuLoopContext& c) -> void { c.op_hlt(); }, 2},  // hlt
+                                                                    /* 0xD3 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indy();
           c.op_dcm();
         },
         8,
-    },                                                         // dcm
-    /* 0xD4 */ {[](CpuLoopContext& c) { c.addr_zpgx(); }, 4},  // nop
-                                                               /* 0xD5 */
+    },                                                                 // dcm
+    /* 0xD4 */ {[](CpuLoopContext& c) -> void { c.addr_zpgx(); }, 4},  // nop
+    /* 0xD5 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_cmp();
         },
@@ -2201,7 +2202,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // CMP
         /* 0xD6 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_dec();
         },
@@ -2209,16 +2210,16 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // DEC
         /* 0xD7 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_dcm();
         },
         6,
-    },                                                      // dcm
-    /* 0xD8 */ {[](CpuLoopContext& c) { c.op_cld(); }, 2},  // CLD
-                                                            /* 0xD9 */
+    },                                                              // dcm
+    /* 0xD8 */ {[](CpuLoopContext& c) -> void { c.op_cld(); }, 2},  // CLD
+                                                                    /* 0xD9 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absy();
           c.op_cmp();
         },
@@ -2227,16 +2228,16 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     /* 0xDA */ {op_nop, 2},  // nop
                              /* 0xDB */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absy();
           c.op_dcm();
         },
         7,
-    },                                                         // dcm
-    /* 0xDC */ {[](CpuLoopContext& c) { c.addr_absx(); }, 4},  // nop
-                                                               /* 0xDD */
+    },                                                                 // dcm
+    /* 0xDC */ {[](CpuLoopContext& c) -> void { c.addr_absx(); }, 4},  // nop
+    /* 0xDD */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_cmp();
         },
@@ -2244,7 +2245,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // CMP
         /* 0xDE */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_dec();
         },
@@ -2252,7 +2253,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // DEC
         /* 0xDF */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_dcm();
         },
@@ -2260,7 +2261,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // dcm
         /* 0xE0 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_cpx();
         },
@@ -2268,16 +2269,16 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // CPX
         /* 0xE1 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indx();
           c.op_sbc_nmos();
         },
         6,
-    },                                                        // SBC
-    /* 0xE2 */ {[](CpuLoopContext& c) { c.addr_imm(); }, 2},  // nop
-                                                              /* 0xE3 */
+    },                                                                // SBC
+    /* 0xE2 */ {[](CpuLoopContext& c) -> void { c.addr_imm(); }, 2},  // nop
+                                                                      /* 0xE3 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indx();
           c.op_ins();
         },
@@ -2285,7 +2286,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // ins
         /* 0xE4 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_cpx();
         },
@@ -2293,7 +2294,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // CPX
         /* 0xE5 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_sbc_nmos();
         },
@@ -2301,7 +2302,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // SBC
         /* 0xE6 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_inc();
         },
@@ -2309,16 +2310,16 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // INC
         /* 0xE7 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_ins();
         },
         5,
-    },                                                      // ins
-    /* 0xE8 */ {[](CpuLoopContext& c) { c.op_inx(); }, 2},  // INX
-                                                            /* 0xE9 */
+    },                                                              // ins
+    /* 0xE8 */ {[](CpuLoopContext& c) -> void { c.op_inx(); }, 2},  // INX
+                                                                    /* 0xE9 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_sbc_nmos();
         },
@@ -2327,7 +2328,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     /* 0xEA */ {op_nop, 2},  // NOP
                              /* 0xEB */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_sbc_nmos();
         },
@@ -2335,7 +2336,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // sbc
         /* 0xEC */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_cpx();
         },
@@ -2343,7 +2344,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // CPX
         /* 0xED */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_sbc_nmos();
         },
@@ -2351,7 +2352,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // SBC
         /* 0xEE */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_inc();
         },
@@ -2359,7 +2360,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // INC
         /* 0xEF */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_ins();
         },
@@ -2367,7 +2368,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // ins
         /* 0xF0 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_rel();
           if (c.flagz) {
             c.branch_taken();
@@ -2377,25 +2378,25 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // BEQ
         /* 0xF1 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indy();
           c.op_sbc_nmos();
         },
         5,
-    },                                                      // SBC
-    /* 0xF2 */ {[](CpuLoopContext& c) { c.op_hlt(); }, 2},  // hlt
-                                                            /* 0xF3 */
+    },                                                              // SBC
+    /* 0xF2 */ {[](CpuLoopContext& c) -> void { c.op_hlt(); }, 2},  // hlt
+                                                                    /* 0xF3 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indy();
           c.op_ins();
         },
         8,
-    },                                                         // ins
-    /* 0xF4 */ {[](CpuLoopContext& c) { c.addr_zpgx(); }, 4},  // nop
-                                                               /* 0xF5 */
+    },                                                                 // ins
+    /* 0xF4 */ {[](CpuLoopContext& c) -> void { c.addr_zpgx(); }, 4},  // nop
+    /* 0xF5 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_sbc_nmos();
         },
@@ -2403,7 +2404,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // SBC
         /* 0xF6 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_inc();
         },
@@ -2411,16 +2412,16 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // INC
         /* 0xF7 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_ins();
         },
         6,
-    },                                                      // ins
-    /* 0xF8 */ {[](CpuLoopContext& c) { c.op_sed(); }, 2},  // SED
-                                                            /* 0xF9 */
+    },                                                              // ins
+    /* 0xF8 */ {[](CpuLoopContext& c) -> void { c.op_sed(); }, 2},  // SED
+                                                                    /* 0xF9 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absy();
           c.op_sbc_nmos();
         },
@@ -2429,16 +2430,16 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     /* 0xFA */ {op_nop, 2},  // nop
                              /* 0xFB */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absy();
           c.op_ins();
         },
         7,
-    },                                                         // ins
-    /* 0xFC */ {[](CpuLoopContext& c) { c.addr_absx(); }, 4},  // nop
-                                                               /* 0xFD */
+    },                                                                 // ins
+    /* 0xFC */ {[](CpuLoopContext& c) -> void { c.addr_absx(); }, 4},  // nop
+    /* 0xFD */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_sbc_nmos();
         },
@@ -2446,7 +2447,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // SBC
         /* 0xFE */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_inc();
         },
@@ -2454,7 +2455,7 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
     },  // INC
         /* 0xFF */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_ins();
         },
@@ -2464,20 +2465,20 @@ static const OpcodeDesc s_opcodes_nmos[256] = {
 
 // NOLINTNEXTLINE(bugprone-throwing-static-initialization) - stateless lambda table does not throw
 static const OpcodeDesc s_opcodes_cmos[256] = {
-    /* 0x00 */ {[](CpuLoopContext& c) { c.op_brk<true>(); }, 7},  // BRK
-                                                                  /* 0x01 */
+    /* 0x00 */ {[](CpuLoopContext& c) -> void { c.op_brk<true>(); }, 7},  // BRK
+    /* 0x01 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indx();
           c.op_ora();
         },
         6,
-    },                                                        // ORA
-    /* 0x02 */ {[](CpuLoopContext& c) { c.addr_imm(); }, 2},  // nop
-    /* 0x03 */ {op_nop, 2},                                   // nop
-                                                              /* 0x04 */
+    },                                                                // ORA
+    /* 0x02 */ {[](CpuLoopContext& c) -> void { c.addr_imm(); }, 2},  // nop
+    /* 0x03 */ {op_nop, 2},                                           // nop
+                                                                      /* 0x04 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_tsb();
         },
@@ -2485,7 +2486,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // TSB
         /* 0x05 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_ora();
         },
@@ -2493,27 +2494,27 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // ORA
         /* 0x06 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_asl();
         },
         5,
-    },                                                      // ASL
-    /* 0x07 */ {op_nop, 2},                                 // nop
-    /* 0x08 */ {[](CpuLoopContext& c) { c.op_php(); }, 3},  // PHP
-                                                            /* 0x09 */
+    },                                                              // ASL
+    /* 0x07 */ {op_nop, 2},                                         // nop
+    /* 0x08 */ {[](CpuLoopContext& c) -> void { c.op_php(); }, 3},  // PHP
+                                                                    /* 0x09 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_ora();
         },
         2,
-    },                                                       // ORA
-    /* 0x0A */ {[](CpuLoopContext& c) { c.op_asla(); }, 2},  // ASL
-    /* 0x0B */ {op_nop, 2},                                  // nop
-                                                             /* 0x0C */
+    },                                                               // ORA
+    /* 0x0A */ {[](CpuLoopContext& c) -> void { c.op_asla(); }, 2},  // ASL
+    /* 0x0B */ {op_nop, 2},                                          // nop
+                                                                     /* 0x0C */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_tsb();
         },
@@ -2521,7 +2522,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // TSB
         /* 0x0D */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_ora();
         },
@@ -2529,7 +2530,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // ORA
         /* 0x0E */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_asl();
         },
@@ -2538,7 +2539,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     /* 0x0F */ {op_nop, 2},  // nop
                              /* 0x10 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_rel();
           if (!c.flagn) {
             c.branch_taken();
@@ -2548,7 +2549,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // BPL
         /* 0x11 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indy();
           c.op_ora();
         },
@@ -2556,7 +2557,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // ORA
         /* 0x12 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_izpg();
           c.op_ora();
         },
@@ -2565,7 +2566,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     /* 0x13 */ {op_nop, 2},  // nop
                              /* 0x14 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_trb();
         },
@@ -2573,7 +2574,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // TRB
         /* 0x15 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_ora();
         },
@@ -2581,27 +2582,27 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // ORA
         /* 0x16 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_asl();
         },
         6,
-    },                                                      // ASL
-    /* 0x17 */ {op_nop, 2},                                 // nop
-    /* 0x18 */ {[](CpuLoopContext& c) { c.op_clc(); }, 2},  // CLC
-                                                            /* 0x19 */
+    },                                                              // ASL
+    /* 0x17 */ {op_nop, 2},                                         // nop
+    /* 0x18 */ {[](CpuLoopContext& c) -> void { c.op_clc(); }, 2},  // CLC
+                                                                    /* 0x19 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absy();
           c.op_ora();
         },
         4,
-    },                                                      // ORA
-    /* 0x1A */ {[](CpuLoopContext& c) { c.op_ina(); }, 2},  // INC
-    /* 0x1B */ {op_nop, 2},                                 // nop
-                                                            /* 0x1C */
+    },                                                              // ORA
+    /* 0x1A */ {[](CpuLoopContext& c) -> void { c.op_ina(); }, 2},  // INC
+    /* 0x1B */ {op_nop, 2},                                         // nop
+                                                                    /* 0x1C */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_trb();
         },
@@ -2609,7 +2610,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // TRB
         /* 0x1D */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_ora();
         },
@@ -2617,7 +2618,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // ORA
         /* 0x1E */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_asl();
         },
@@ -2626,7 +2627,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     /* 0x1F */ {op_nop, 2},  // nop
                              /* 0x20 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_jsr();
         },
@@ -2634,17 +2635,17 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // JSR
         /* 0x21 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indx();
           c.op_and();
         },
         6,
-    },                                                        // AND
-    /* 0x22 */ {[](CpuLoopContext& c) { c.addr_imm(); }, 2},  // nop
-    /* 0x23 */ {op_nop, 2},                                   // nop
-                                                              /* 0x24 */
+    },                                                                // AND
+    /* 0x22 */ {[](CpuLoopContext& c) -> void { c.addr_imm(); }, 2},  // nop
+    /* 0x23 */ {op_nop, 2},                                           // nop
+                                                                      /* 0x24 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_bit();
         },
@@ -2652,7 +2653,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // BIT
         /* 0x25 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_and();
         },
@@ -2660,27 +2661,27 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // AND
         /* 0x26 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_rol();
         },
         5,
-    },                                                      // ROL
-    /* 0x27 */ {op_nop, 2},                                 // nop
-    /* 0x28 */ {[](CpuLoopContext& c) { c.op_plp(); }, 4},  // PLP
-                                                            /* 0x29 */
+    },                                                              // ROL
+    /* 0x27 */ {op_nop, 2},                                         // nop
+    /* 0x28 */ {[](CpuLoopContext& c) -> void { c.op_plp(); }, 4},  // PLP
+                                                                    /* 0x29 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_and();
         },
         2,
-    },                                                       // AND
-    /* 0x2A */ {[](CpuLoopContext& c) { c.op_rola(); }, 2},  // ROL
-    /* 0x2B */ {op_nop, 2},                                  // nop
-                                                             /* 0x2C */
+    },                                                               // AND
+    /* 0x2A */ {[](CpuLoopContext& c) -> void { c.op_rola(); }, 2},  // ROL
+    /* 0x2B */ {op_nop, 2},                                          // nop
+                                                                     /* 0x2C */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_bit();
         },
@@ -2688,7 +2689,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // BIT
         /* 0x2D */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_and();
         },
@@ -2696,7 +2697,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // AND
         /* 0x2E */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_rol();
         },
@@ -2705,7 +2706,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     /* 0x2F */ {op_nop, 2},  // nop
                              /* 0x30 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_rel();
           if (c.flagn) {
             c.branch_taken();
@@ -2715,7 +2716,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // BMI
         /* 0x31 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indy();
           c.op_and();
         },
@@ -2723,7 +2724,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // AND
         /* 0x32 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_izpg();
           c.op_and();
         },
@@ -2732,7 +2733,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     /* 0x33 */ {op_nop, 2},  // nop
                              /* 0x34 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_bit();
         },
@@ -2740,7 +2741,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // BIT
         /* 0x35 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_and();
         },
@@ -2748,27 +2749,27 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // AND
         /* 0x36 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_rol();
         },
         6,
-    },                                                      // ROL
-    /* 0x37 */ {op_nop, 2},                                 // nop
-    /* 0x38 */ {[](CpuLoopContext& c) { c.op_sec(); }, 2},  // SEC
-                                                            /* 0x39 */
+    },                                                              // ROL
+    /* 0x37 */ {op_nop, 2},                                         // nop
+    /* 0x38 */ {[](CpuLoopContext& c) -> void { c.op_sec(); }, 2},  // SEC
+                                                                    /* 0x39 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absy();
           c.op_and();
         },
         4,
-    },                                                      // AND
-    /* 0x3A */ {[](CpuLoopContext& c) { c.op_dea(); }, 2},  // DEC
-    /* 0x3B */ {op_nop, 2},                                 // nop
-                                                            /* 0x3C */
+    },                                                              // AND
+    /* 0x3A */ {[](CpuLoopContext& c) -> void { c.op_dea(); }, 2},  // DEC
+    /* 0x3B */ {op_nop, 2},                                         // nop
+                                                                    /* 0x3C */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_bit();
         },
@@ -2776,7 +2777,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // BIT
         /* 0x3D */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_and();
         },
@@ -2784,28 +2785,28 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // AND
         /* 0x3E */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_rol();
         },
         6,
-    },                                                      // ROL
-    /* 0x3F */ {op_nop, 2},                                 // nop
-    /* 0x40 */ {[](CpuLoopContext& c) { c.op_rti(); }, 6},  // RTI
-                                                            /* 0x41 */
+    },                                                              // ROL
+    /* 0x3F */ {op_nop, 2},                                         // nop
+    /* 0x40 */ {[](CpuLoopContext& c) -> void { c.op_rti(); }, 6},  // RTI
+                                                                    /* 0x41 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indx();
           c.op_eor();
         },
         6,
-    },                                                        // EOR
-    /* 0x42 */ {[](CpuLoopContext& c) { c.addr_imm(); }, 2},  // nop
-    /* 0x43 */ {op_nop, 2},                                   // nop
-    /* 0x44 */ {[](CpuLoopContext& c) { c.addr_zpg(); }, 3},  // nop
-                                                              /* 0x45 */
+    },                                                                // EOR
+    /* 0x42 */ {[](CpuLoopContext& c) -> void { c.addr_imm(); }, 2},  // nop
+    /* 0x43 */ {op_nop, 2},                                           // nop
+    /* 0x44 */ {[](CpuLoopContext& c) -> void { c.addr_zpg(); }, 3},  // nop
+                                                                      /* 0x45 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_eor();
         },
@@ -2813,27 +2814,27 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // EOR
         /* 0x46 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_lsr();
         },
         5,
-    },                                                      // LSR
-    /* 0x47 */ {op_nop, 2},                                 // nop
-    /* 0x48 */ {[](CpuLoopContext& c) { c.op_pha(); }, 3},  // PHA
-                                                            /* 0x49 */
+    },                                                              // LSR
+    /* 0x47 */ {op_nop, 2},                                         // nop
+    /* 0x48 */ {[](CpuLoopContext& c) -> void { c.op_pha(); }, 3},  // PHA
+                                                                    /* 0x49 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_eor();
         },
         2,
-    },                                                       // EOR
-    /* 0x4A */ {[](CpuLoopContext& c) { c.op_lsra(); }, 2},  // LSR
-    /* 0x4B */ {op_nop, 2},                                  // nop
-                                                             /* 0x4C */
+    },                                                               // EOR
+    /* 0x4A */ {[](CpuLoopContext& c) -> void { c.op_lsra(); }, 2},  // LSR
+    /* 0x4B */ {op_nop, 2},                                          // nop
+                                                                     /* 0x4C */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_jmp();
         },
@@ -2841,7 +2842,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // JMP
         /* 0x4D */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_eor();
         },
@@ -2849,7 +2850,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // EOR
         /* 0x4E */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_lsr();
         },
@@ -2858,7 +2859,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     /* 0x4F */ {op_nop, 2},  // nop
                              /* 0x50 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_rel();
           if (!c.flagv) {
             c.branch_taken();
@@ -2868,7 +2869,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // BVC
         /* 0x51 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indy();
           c.op_eor();
         },
@@ -2876,17 +2877,17 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // EOR
         /* 0x52 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_izpg();
           c.op_eor();
         },
         5,
-    },                                                         // EOR
-    /* 0x53 */ {op_nop, 2},                                    // nop
-    /* 0x54 */ {[](CpuLoopContext& c) { c.addr_zpgx(); }, 4},  // nop
-                                                               /* 0x55 */
+    },                                                                 // EOR
+    /* 0x53 */ {op_nop, 2},                                            // nop
+    /* 0x54 */ {[](CpuLoopContext& c) -> void { c.addr_zpgx(); }, 4},  // nop
+    /* 0x55 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_eor();
         },
@@ -2894,28 +2895,28 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // EOR
         /* 0x56 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_lsr();
         },
         6,
-    },                                                      // LSR
-    /* 0x57 */ {op_nop, 2},                                 // nop
-    /* 0x58 */ {[](CpuLoopContext& c) { c.op_cli(); }, 2},  // CLI
-                                                            /* 0x59 */
+    },                                                              // LSR
+    /* 0x57 */ {op_nop, 2},                                         // nop
+    /* 0x58 */ {[](CpuLoopContext& c) -> void { c.op_cli(); }, 2},  // CLI
+                                                                    /* 0x59 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absy();
           c.op_eor();
         },
         4,
-    },                                                         // EOR
-    /* 0x5A */ {[](CpuLoopContext& c) { c.op_phy(); }, 3},     // PHY
-    /* 0x5B */ {op_nop, 2},                                    // nop
-    /* 0x5C */ {[](CpuLoopContext& c) { c.addr_absx(); }, 8},  // nop
-                                                               /* 0x5D */
+    },                                                                 // EOR
+    /* 0x5A */ {[](CpuLoopContext& c) -> void { c.op_phy(); }, 3},     // PHY
+    /* 0x5B */ {op_nop, 2},                                            // nop
+    /* 0x5C */ {[](CpuLoopContext& c) -> void { c.addr_absx(); }, 8},  // nop
+    /* 0x5D */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_eor();
         },
@@ -2923,27 +2924,27 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // EOR
         /* 0x5E */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_lsr();
         },
         6,
-    },                                                      // LSR
-    /* 0x5F */ {op_nop, 2},                                 // nop
-    /* 0x60 */ {[](CpuLoopContext& c) { c.op_rts(); }, 6},  // RTS
-                                                            /* 0x61 */
+    },                                                              // LSR
+    /* 0x5F */ {op_nop, 2},                                         // nop
+    /* 0x60 */ {[](CpuLoopContext& c) -> void { c.op_rts(); }, 6},  // RTS
+                                                                    /* 0x61 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indx();
           c.op_adc_cmos();
         },
         6,
-    },                                                        // ADC
-    /* 0x62 */ {[](CpuLoopContext& c) { c.addr_imm(); }, 2},  // nop
-    /* 0x63 */ {op_nop, 2},                                   // nop
-                                                              /* 0x64 */
+    },                                                                // ADC
+    /* 0x62 */ {[](CpuLoopContext& c) -> void { c.addr_imm(); }, 2},  // nop
+    /* 0x63 */ {op_nop, 2},                                           // nop
+                                                                      /* 0x64 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_stz();
         },
@@ -2951,7 +2952,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // STZ
         /* 0x65 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_adc_cmos();
         },
@@ -2959,27 +2960,27 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // ADC
         /* 0x66 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_ror();
         },
         5,
-    },                                                      // ROR
-    /* 0x67 */ {op_nop, 2},                                 // nop
-    /* 0x68 */ {[](CpuLoopContext& c) { c.op_pla(); }, 4},  // PLA
-                                                            /* 0x69 */
+    },                                                              // ROR
+    /* 0x67 */ {op_nop, 2},                                         // nop
+    /* 0x68 */ {[](CpuLoopContext& c) -> void { c.op_pla(); }, 4},  // PLA
+                                                                    /* 0x69 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_adc_cmos();
         },
         2,
-    },                                                       // ADC
-    /* 0x6A */ {[](CpuLoopContext& c) { c.op_rora(); }, 2},  // ROR
-    /* 0x6B */ {op_nop, 2},                                  // nop
-                                                             /* 0x6C */
+    },                                                               // ADC
+    /* 0x6A */ {[](CpuLoopContext& c) -> void { c.op_rora(); }, 2},  // ROR
+    /* 0x6B */ {op_nop, 2},                                          // nop
+                                                                     /* 0x6C */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_iabs_cmos();
           c.op_jmp();
         },
@@ -2987,7 +2988,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // JMP
         /* 0x6D */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_adc_cmos();
         },
@@ -2995,7 +2996,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // ADC
         /* 0x6E */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_ror();
         },
@@ -3004,7 +3005,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     /* 0x6F */ {op_nop, 2},  // nop
                              /* 0x70 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_rel();
           if (c.flagv) {
             c.branch_taken();
@@ -3014,7 +3015,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // BVS
         /* 0x71 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indy();
           c.op_adc_cmos();
         },
@@ -3022,7 +3023,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // ADC
         /* 0x72 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_izpg();
           c.op_adc_cmos();
         },
@@ -3031,7 +3032,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     /* 0x73 */ {op_nop, 2},  // nop
                              /* 0x74 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_stz();
         },
@@ -3039,7 +3040,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // STZ
         /* 0x75 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_adc_cmos();
         },
@@ -3047,27 +3048,27 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // ADC
         /* 0x76 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_ror();
         },
         6,
-    },                                                      // ROR
-    /* 0x77 */ {op_nop, 2},                                 // nop
-    /* 0x78 */ {[](CpuLoopContext& c) { c.op_sei(); }, 2},  // SEI
-                                                            /* 0x79 */
+    },                                                              // ROR
+    /* 0x77 */ {op_nop, 2},                                         // nop
+    /* 0x78 */ {[](CpuLoopContext& c) -> void { c.op_sei(); }, 2},  // SEI
+                                                                    /* 0x79 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absy();
           c.op_adc_cmos();
         },
         4,
-    },                                                      // ADC
-    /* 0x7A */ {[](CpuLoopContext& c) { c.op_ply(); }, 4},  // PLY
-    /* 0x7B */ {op_nop, 2},                                 // nop
-                                                            /* 0x7C */
+    },                                                              // ADC
+    /* 0x7A */ {[](CpuLoopContext& c) -> void { c.op_ply(); }, 4},  // PLY
+    /* 0x7B */ {op_nop, 2},                                         // nop
+                                                                    /* 0x7C */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_iabsx();
           c.op_jmp();
         },
@@ -3075,7 +3076,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // JMP
         /* 0x7D */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_adc_cmos();
         },
@@ -3083,7 +3084,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // ADC
         /* 0x7E */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_ror();
         },
@@ -3092,7 +3093,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     /* 0x7F */ {op_nop, 2},  // nop
                              /* 0x80 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_rel();
           c.branch_taken();
         },
@@ -3100,17 +3101,17 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // BRA
         /* 0x81 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indx();
           c.op_sta();
         },
         6,
-    },                                                        // STA
-    /* 0x82 */ {[](CpuLoopContext& c) { c.addr_imm(); }, 2},  // nop
-    /* 0x83 */ {op_nop, 2},                                   // nop
-                                                              /* 0x84 */
+    },                                                                // STA
+    /* 0x82 */ {[](CpuLoopContext& c) -> void { c.addr_imm(); }, 2},  // nop
+    /* 0x83 */ {op_nop, 2},                                           // nop
+                                                                      /* 0x84 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_sty();
         },
@@ -3118,7 +3119,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // STY
         /* 0x85 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_sta();
         },
@@ -3126,27 +3127,27 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // STA
         /* 0x86 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_stx();
         },
         3,
-    },                                                      // STX
-    /* 0x87 */ {op_nop, 2},                                 // nop
-    /* 0x88 */ {[](CpuLoopContext& c) { c.op_dey(); }, 2},  // DEY
-                                                            /* 0x89 */
+    },                                                              // STX
+    /* 0x87 */ {op_nop, 2},                                         // nop
+    /* 0x88 */ {[](CpuLoopContext& c) -> void { c.op_dey(); }, 2},  // DEY
+                                                                    /* 0x89 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_biti();
         },
         2,
-    },                                                      // BIT
-    /* 0x8A */ {[](CpuLoopContext& c) { c.op_txa(); }, 2},  // TXA
-    /* 0x8B */ {op_nop, 2},                                 // nop
-                                                            /* 0x8C */
+    },                                                              // BIT
+    /* 0x8A */ {[](CpuLoopContext& c) -> void { c.op_txa(); }, 2},  // TXA
+    /* 0x8B */ {op_nop, 2},                                         // nop
+                                                                    /* 0x8C */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_sty();
         },
@@ -3154,7 +3155,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // STY
         /* 0x8D */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_sta();
         },
@@ -3162,7 +3163,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // STA
         /* 0x8E */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_stx();
         },
@@ -3171,7 +3172,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     /* 0x8F */ {op_nop, 2},  // nop
                              /* 0x90 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_rel();
           if (!c.flagc) {
             c.branch_taken();
@@ -3181,7 +3182,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // BCC
         /* 0x91 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indy();
           c.op_sta();
         },
@@ -3189,7 +3190,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // STA
         /* 0x92 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_izpg();
           c.op_sta();
         },
@@ -3198,7 +3199,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     /* 0x93 */ {op_nop, 2},  // nop
                              /* 0x94 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_sty();
         },
@@ -3206,7 +3207,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // STY
         /* 0x95 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_sta();
         },
@@ -3214,27 +3215,27 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // STA
         /* 0x96 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgy();
           c.op_stx();
         },
         4,
-    },                                                      // STX
-    /* 0x97 */ {op_nop, 2},                                 // nop
-    /* 0x98 */ {[](CpuLoopContext& c) { c.op_tya(); }, 2},  // TYA
-                                                            /* 0x99 */
+    },                                                              // STX
+    /* 0x97 */ {op_nop, 2},                                         // nop
+    /* 0x98 */ {[](CpuLoopContext& c) -> void { c.op_tya(); }, 2},  // TYA
+                                                                    /* 0x99 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absy();
           c.op_sta();
         },
         5,
-    },                                                      // STA
-    /* 0x9A */ {[](CpuLoopContext& c) { c.op_txs(); }, 2},  // TXS
-    /* 0x9B */ {op_nop, 2},                                 // nop
-                                                            /* 0x9C */
+    },                                                              // STA
+    /* 0x9A */ {[](CpuLoopContext& c) -> void { c.op_txs(); }, 2},  // TXS
+    /* 0x9B */ {op_nop, 2},                                         // nop
+                                                                    /* 0x9C */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_stz();
         },
@@ -3242,7 +3243,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // STZ
         /* 0x9D */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_sta();
         },
@@ -3250,7 +3251,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // STA
         /* 0x9E */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_stz();
         },
@@ -3259,7 +3260,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     /* 0x9F */ {op_nop, 2},  // nop
                              /* 0xA0 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_ldy();
         },
@@ -3267,7 +3268,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // LDY
         /* 0xA1 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indx();
           c.op_lda();
         },
@@ -3275,7 +3276,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // LDA
         /* 0xA2 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_ldx();
         },
@@ -3284,7 +3285,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     /* 0xA3 */ {op_nop, 2},  // nop
                              /* 0xA4 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_ldy();
         },
@@ -3292,7 +3293,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // LDY
         /* 0xA5 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_lda();
         },
@@ -3300,27 +3301,27 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // LDA
         /* 0xA6 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_ldx();
         },
         3,
-    },                                                      // LDX
-    /* 0xA7 */ {op_nop, 2},                                 // nop
-    /* 0xA8 */ {[](CpuLoopContext& c) { c.op_tay(); }, 2},  // TAY
-                                                            /* 0xA9 */
+    },                                                              // LDX
+    /* 0xA7 */ {op_nop, 2},                                         // nop
+    /* 0xA8 */ {[](CpuLoopContext& c) -> void { c.op_tay(); }, 2},  // TAY
+                                                                    /* 0xA9 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_lda();
         },
         2,
-    },                                                      // LDA
-    /* 0xAA */ {[](CpuLoopContext& c) { c.op_tax(); }, 2},  // TAX
-    /* 0xAB */ {op_nop, 2},                                 // nop
-                                                            /* 0xAC */
+    },                                                              // LDA
+    /* 0xAA */ {[](CpuLoopContext& c) -> void { c.op_tax(); }, 2},  // TAX
+    /* 0xAB */ {op_nop, 2},                                         // nop
+                                                                    /* 0xAC */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_ldy();
         },
@@ -3328,7 +3329,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // LDY
         /* 0xAD */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_lda();
         },
@@ -3336,7 +3337,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // LDA
         /* 0xAE */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_ldx();
         },
@@ -3345,7 +3346,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     /* 0xAF */ {op_nop, 2},  // nop
                              /* 0xB0 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_rel();
           if (c.flagc) {
             c.branch_taken();
@@ -3355,7 +3356,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // BCS
         /* 0xB1 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indy();
           c.op_lda();
         },
@@ -3363,7 +3364,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // LDA
         /* 0xB2 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_izpg();
           c.op_lda();
         },
@@ -3372,7 +3373,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     /* 0xB3 */ {op_nop, 2},  // nop
                              /* 0xB4 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_ldy();
         },
@@ -3380,7 +3381,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // LDY
         /* 0xB5 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_lda();
         },
@@ -3388,27 +3389,27 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // LDA
         /* 0xB6 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgy();
           c.op_ldx();
         },
         4,
-    },                                                      // LDX
-    /* 0xB7 */ {op_nop, 2},                                 // nop
-    /* 0xB8 */ {[](CpuLoopContext& c) { c.op_clv(); }, 2},  // CLV
-                                                            /* 0xB9 */
+    },                                                              // LDX
+    /* 0xB7 */ {op_nop, 2},                                         // nop
+    /* 0xB8 */ {[](CpuLoopContext& c) -> void { c.op_clv(); }, 2},  // CLV
+                                                                    /* 0xB9 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absy();
           c.op_lda();
         },
         4,
-    },                                                      // LDA
-    /* 0xBA */ {[](CpuLoopContext& c) { c.op_tsx(); }, 2},  // TSX
-    /* 0xBB */ {op_nop, 2},                                 // nop
-                                                            /* 0xBC */
+    },                                                              // LDA
+    /* 0xBA */ {[](CpuLoopContext& c) -> void { c.op_tsx(); }, 2},  // TSX
+    /* 0xBB */ {op_nop, 2},                                         // nop
+                                                                    /* 0xBC */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_ldy();
         },
@@ -3416,7 +3417,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // LDY
         /* 0xBD */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_lda();
         },
@@ -3424,7 +3425,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // LDA
         /* 0xBE */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absy();
           c.op_ldx();
         },
@@ -3433,7 +3434,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     /* 0xBF */ {op_nop, 2},  // nop
                              /* 0xC0 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_cpy();
         },
@@ -3441,17 +3442,17 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // CPY
         /* 0xC1 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indx();
           c.op_cmp();
         },
         6,
-    },                                                        // CMP
-    /* 0xC2 */ {[](CpuLoopContext& c) { c.addr_imm(); }, 2},  // nop
-    /* 0xC3 */ {op_nop, 2},                                   // nop
-                                                              /* 0xC4 */
+    },                                                                // CMP
+    /* 0xC2 */ {[](CpuLoopContext& c) -> void { c.addr_imm(); }, 2},  // nop
+    /* 0xC3 */ {op_nop, 2},                                           // nop
+                                                                      /* 0xC4 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_cpy();
         },
@@ -3459,7 +3460,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // CPY
         /* 0xC5 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_cmp();
         },
@@ -3467,27 +3468,27 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // CMP
         /* 0xC6 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_dec();
         },
         5,
-    },                                                      // DEC
-    /* 0xC7 */ {op_nop, 2},                                 // nop
-    /* 0xC8 */ {[](CpuLoopContext& c) { c.op_iny(); }, 2},  // INY
-                                                            /* 0xC9 */
+    },                                                              // DEC
+    /* 0xC7 */ {op_nop, 2},                                         // nop
+    /* 0xC8 */ {[](CpuLoopContext& c) -> void { c.op_iny(); }, 2},  // INY
+                                                                    /* 0xC9 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_cmp();
         },
         2,
-    },                                                      // CMP
-    /* 0xCA */ {[](CpuLoopContext& c) { c.op_dex(); }, 2},  // DEX
-    /* 0xCB */ {op_nop, 2},                                 // nop
-                                                            /* 0xCC */
+    },                                                              // CMP
+    /* 0xCA */ {[](CpuLoopContext& c) -> void { c.op_dex(); }, 2},  // DEX
+    /* 0xCB */ {op_nop, 2},                                         // nop
+                                                                    /* 0xCC */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_cpy();
         },
@@ -3495,7 +3496,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // CPY
         /* 0xCD */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_cmp();
         },
@@ -3503,7 +3504,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // CMP
         /* 0xCE */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_dec();
         },
@@ -3512,7 +3513,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     /* 0xCF */ {op_nop, 2},  // nop
                              /* 0xD0 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_rel();
           if (!c.flagz) {
             c.branch_taken();
@@ -3522,7 +3523,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // BNE
         /* 0xD1 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indy();
           c.op_cmp();
         },
@@ -3530,17 +3531,17 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // CMP
         /* 0xD2 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_izpg();
           c.op_cmp();
         },
         5,
-    },                                                         // CMP
-    /* 0xD3 */ {op_nop, 2},                                    // nop
-    /* 0xD4 */ {[](CpuLoopContext& c) { c.addr_zpgx(); }, 4},  // nop
-                                                               /* 0xD5 */
+    },                                                                 // CMP
+    /* 0xD3 */ {op_nop, 2},                                            // nop
+    /* 0xD4 */ {[](CpuLoopContext& c) -> void { c.addr_zpgx(); }, 4},  // nop
+    /* 0xD5 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_cmp();
         },
@@ -3548,28 +3549,28 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // CMP
         /* 0xD6 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_dec();
         },
         6,
-    },                                                      // DEC
-    /* 0xD7 */ {op_nop, 2},                                 // nop
-    /* 0xD8 */ {[](CpuLoopContext& c) { c.op_cld(); }, 2},  // CLD
-                                                            /* 0xD9 */
+    },                                                              // DEC
+    /* 0xD7 */ {op_nop, 2},                                         // nop
+    /* 0xD8 */ {[](CpuLoopContext& c) -> void { c.op_cld(); }, 2},  // CLD
+                                                                    /* 0xD9 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absy();
           c.op_cmp();
         },
         4,
-    },                                                         // CMP
-    /* 0xDA */ {[](CpuLoopContext& c) { c.op_phx(); }, 3},     // PHX
-    /* 0xDB */ {op_nop, 2},                                    // nop
-    /* 0xDC */ {[](CpuLoopContext& c) { c.addr_absx(); }, 4},  // nop
-                                                               /* 0xDD */
+    },                                                                 // CMP
+    /* 0xDA */ {[](CpuLoopContext& c) -> void { c.op_phx(); }, 3},     // PHX
+    /* 0xDB */ {op_nop, 2},                                            // nop
+    /* 0xDC */ {[](CpuLoopContext& c) -> void { c.addr_absx(); }, 4},  // nop
+    /* 0xDD */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_cmp();
         },
@@ -3577,7 +3578,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // CMP
         /* 0xDE */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_dec();
         },
@@ -3586,7 +3587,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     /* 0xDF */ {op_nop, 2},  // nop
                              /* 0xE0 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_cpx();
         },
@@ -3594,17 +3595,17 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // CPX
         /* 0xE1 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indx();
           c.op_sbc_cmos();
         },
         6,
-    },                                                        // SBC
-    /* 0xE2 */ {[](CpuLoopContext& c) { c.addr_imm(); }, 2},  // nop
-    /* 0xE3 */ {op_nop, 2},                                   // nop
-                                                              /* 0xE4 */
+    },                                                                // SBC
+    /* 0xE2 */ {[](CpuLoopContext& c) -> void { c.addr_imm(); }, 2},  // nop
+    /* 0xE3 */ {op_nop, 2},                                           // nop
+                                                                      /* 0xE4 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_cpx();
         },
@@ -3612,7 +3613,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // CPX
         /* 0xE5 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_sbc_cmos();
         },
@@ -3620,17 +3621,17 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // SBC
         /* 0xE6 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpg();
           c.op_inc();
         },
         5,
-    },                                                      // INC
-    /* 0xE7 */ {op_nop, 2},                                 // nop
-    /* 0xE8 */ {[](CpuLoopContext& c) { c.op_inx(); }, 2},  // INX
-                                                            /* 0xE9 */
+    },                                                              // INC
+    /* 0xE7 */ {op_nop, 2},                                         // nop
+    /* 0xE8 */ {[](CpuLoopContext& c) -> void { c.op_inx(); }, 2},  // INX
+                                                                    /* 0xE9 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_imm();
           c.op_sbc_cmos();
         },
@@ -3640,7 +3641,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     /* 0xEB */ {op_nop, 2},  // nop
                              /* 0xEC */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_cpx();
         },
@@ -3648,7 +3649,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // CPX
         /* 0xED */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_sbc_cmos();
         },
@@ -3656,7 +3657,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // SBC
         /* 0xEE */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_abs();
           c.op_inc();
         },
@@ -3665,7 +3666,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     /* 0xEF */ {op_nop, 2},  // nop
                              /* 0xF0 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_rel();
           if (c.flagz) {
             c.branch_taken();
@@ -3675,7 +3676,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // BEQ
         /* 0xF1 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_indy();
           c.op_sbc_cmos();
         },
@@ -3683,17 +3684,17 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // SBC
         /* 0xF2 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_izpg();
           c.op_sbc_cmos();
         },
         5,
-    },                                                         // SBC
-    /* 0xF3 */ {op_nop, 2},                                    // nop
-    /* 0xF4 */ {[](CpuLoopContext& c) { c.addr_zpgx(); }, 4},  // nop
-                                                               /* 0xF5 */
+    },                                                                 // SBC
+    /* 0xF3 */ {op_nop, 2},                                            // nop
+    /* 0xF4 */ {[](CpuLoopContext& c) -> void { c.addr_zpgx(); }, 4},  // nop
+    /* 0xF5 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_sbc_cmos();
         },
@@ -3701,28 +3702,28 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // SBC
         /* 0xF6 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_zpgx();
           c.op_inc();
         },
         6,
-    },                                                      // INC
-    /* 0xF7 */ {op_nop, 2},                                 // nop
-    /* 0xF8 */ {[](CpuLoopContext& c) { c.op_sed(); }, 2},  // SED
-                                                            /* 0xF9 */
+    },                                                              // INC
+    /* 0xF7 */ {op_nop, 2},                                         // nop
+    /* 0xF8 */ {[](CpuLoopContext& c) -> void { c.op_sed(); }, 2},  // SED
+                                                                    /* 0xF9 */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absy();
           c.op_sbc_cmos();
         },
         4,
-    },                                                         // SBC
-    /* 0xFA */ {[](CpuLoopContext& c) { c.op_plx(); }, 4},     // PLX
-    /* 0xFB */ {op_nop, 2},                                    // nop
-    /* 0xFC */ {[](CpuLoopContext& c) { c.addr_absx(); }, 4},  // nop
-                                                               /* 0xFD */
+    },                                                                 // SBC
+    /* 0xFA */ {[](CpuLoopContext& c) -> void { c.op_plx(); }, 4},     // PLX
+    /* 0xFB */ {op_nop, 2},                                            // nop
+    /* 0xFC */ {[](CpuLoopContext& c) -> void { c.addr_absx(); }, 4},  // nop
+    /* 0xFD */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_sbc_cmos();
         },
@@ -3730,7 +3731,7 @@ static const OpcodeDesc s_opcodes_cmos[256] = {
     },  // SBC
         /* 0xFE */
     {
-        [](CpuLoopContext& c) {
+        [](CpuLoopContext& c) -> void {
           c.addr_absx();
           c.op_inc();
         },

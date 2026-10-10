@@ -37,7 +37,7 @@ static int p2_resets = 0;
 static int p1_thinks = 0;
 static int p2_thinks = 0;
 
-static void* Mock1_Init(int slot, HostInterface_t* host) {
+static auto Mock1_Init(int slot, HostInterface_t* host) -> void* {
   (void)slot;
   (void)host;
   return (void*)0x1111;
@@ -54,7 +54,7 @@ static void Mock1_Think(void* instance, uint32_t cycles) {
   }
 }
 
-static void* Mock2_Init(int slot, HostInterface_t* host) {
+static auto Mock2_Init(int slot, HostInterface_t* host) -> void* {
   (void)slot;
   (void)host;
   return (void*)0x2222;

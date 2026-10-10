@@ -107,7 +107,7 @@ TEST_CASE(
   AudioDumper dumper;
   REQUIRE(dumper.initialize(temp_wav.c_str(), 44100, 2) == true);
 
-  std::thread writer([&dumper]() {
+  std::thread writer([&dumper]() -> void {
     std::vector<int16_t> samples(static_cast<size_t>(256) * 2, 0x0101);
     for (int i = 0; i < 100; ++i) {
       dumper.put_samples(samples.data(), samples.size());
@@ -115,7 +115,7 @@ TEST_CASE(
     }
   });
 
-  std::thread finalizer([&dumper]() {
+  std::thread finalizer([&dumper]() -> void {
     std::this_thread::yield();
     dumper.finalize();
   });

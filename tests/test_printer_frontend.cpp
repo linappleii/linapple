@@ -162,7 +162,7 @@ TEST_CASE(
   // The card's own wait line names the slot only, so counting the lines that
   // name the file leaves it out.
   ScopedLogCapture_t log;
-  const auto naming_the_file = [&log, &path]() {
+  const auto naming_the_file = [&log, &path]() -> std::vector<std::string> {
     return log.lines_containing(path);
   };
   {

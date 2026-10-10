@@ -66,7 +66,7 @@ auto make_fake(const char* name) -> HarddiskFormatDriver_t {
 auto drain_names() -> std::vector<std::string> {
   std::vector<std::string> names;
   harddisk_loader_drain_rejections(
-      [](void* context, const char* driver_name, const char*) {
+      [](void* context, const char* driver_name, const char*) -> void {
         static_cast<std::vector<std::string>*>(context)->emplace_back(
             driver_name);
       },

@@ -77,23 +77,28 @@ static PeripheralIOHandler g_captured_disk_read = nullptr;
 static auto capturing_disk_host() -> HostInterface_t {
   HostInterface_t h{};
   h.RegisterIO = [](int, PeripheralIOHandler read_c0, PeripheralIOHandler,
-                    PeripheralIOHandler,
-                    PeripheralIOHandler) { g_captured_disk_read = read_c0; };
-  h.RegisterCxROM = [](int, const uint8_t*) {};
-  h.GetConfig = [](const char*, const char*, char*, size_t) { return false; };
-  h.SetConfig = [](const char*, const char*, const char*) {};
-  h.NotifyStatusChanged = [](int) {};
+                    PeripheralIOHandler, PeripheralIOHandler) -> void {
+    g_captured_disk_read = read_c0;
+  };
+  h.RegisterCxROM = [](int, const uint8_t*) -> void {};
+  h.GetConfig = [](const char*, const char*, char*, size_t) -> bool {
+    return false;
+  };
+  h.SetConfig = [](const char*, const char*, const char*) -> void {};
+  h.NotifyStatusChanged = [](int) -> void {};
   return h;
 }
 
-static HostInterface_t g_test_disk_host = []() noexcept {
+static HostInterface_t g_test_disk_host = []() noexcept -> HostInterface_t {
   HostInterface_t h{};
   h.RegisterIO = [](int, PeripheralIOHandler, PeripheralIOHandler,
-                    PeripheralIOHandler, PeripheralIOHandler) {};
-  h.RegisterCxROM = [](int, const uint8_t*) {};
-  h.GetConfig = [](const char*, const char*, char*, size_t) { return false; };
-  h.SetConfig = [](const char*, const char*, const char*) {};
-  h.NotifyStatusChanged = [](int) {};
+                    PeripheralIOHandler, PeripheralIOHandler) -> void {};
+  h.RegisterCxROM = [](int, const uint8_t*) -> void {};
+  h.GetConfig = [](const char*, const char*, char*, size_t) -> bool {
+    return false;
+  };
+  h.SetConfig = [](const char*, const char*, const char*) -> void {};
+  h.NotifyStatusChanged = [](int) -> void {};
   return h;
 }();
 
@@ -248,15 +253,15 @@ TEST_CASE("DiskABI: [ABI-15] Mechanical events never write the config") {
 
   HostInterface_t host{};
   host.RegisterIO = [](int, PeripheralIOHandler, PeripheralIOHandler,
-                       PeripheralIOHandler, PeripheralIOHandler) {};
-  host.RegisterCxROM = [](int, const uint8_t*) {};
-  host.GetConfig = [](const char*, const char*, char*, size_t) {
+                       PeripheralIOHandler, PeripheralIOHandler) -> void {};
+  host.RegisterCxROM = [](int, const uint8_t*) -> void {};
+  host.GetConfig = [](const char*, const char*, char*, size_t) -> bool {
     return false;
   };
-  host.SetConfig = [](const char*, const char*, const char*) {
+  host.SetConfig = [](const char*, const char*, const char*) -> void {
     ++g_set_config_calls;
   };
-  host.NotifyStatusChanged = [](int) {};
+  host.NotifyStatusChanged = [](int) -> void {};
 
   auto* descriptor = disk_get_descriptor();
   REQUIRE(descriptor != nullptr);
@@ -428,17 +433,16 @@ TEST_CASE("DiskABI: [REG-15] DiskLoader registration validation") {
   disk_loader_register(&missing_entry_points);
 
   DiskFormatDriver_t usable{};
-  usable.probe = [](const uint8_t*, size_t, uint32_t, const char*) {
-    return disk_probe_no;
-  };
-  usable.open = [](const char*, uint32_t, bool, void**) {
+  usable.probe = [](const uint8_t*, size_t, uint32_t,
+                    const char*) -> DiskProbe_e { return disk_probe_no; };
+  usable.open = [](const char*, uint32_t, bool, void**) -> DiskError_e {
     return disk_err_none;
   };
-  usable.close = [](void*) {};
-  usable.is_write_protected = [](void*) { return true; };
+  usable.close = [](void*) -> void {};
+  usable.is_write_protected = [](void*) -> bool { return true; };
   usable.read_track_bits = [](void*, uint32_t, uint8_t*, uint32_t,
                               uint32_t* out_bit_count,
-                              uint8_t* out_bit_timing) {
+                              uint8_t* out_bit_timing) -> DiskError_e {
     *out_bit_count = 0;
     *out_bit_timing = static_cast<uint8_t>(disk_default_bit_timing);
     return disk_err_none;
@@ -457,7 +461,7 @@ TEST_CASE("DiskABI: [REG-15] DiskLoader registration validation") {
 
   int refused = 0;
   disk_loader_drain_rejections(
-      [](void* context, const char*, const char*) {
+      [](void* context, const char*, const char*) -> void {
         ++*static_cast<int*>(context);
       },
       &refused);
@@ -536,12 +540,12 @@ TEST_CASE("DiskABI: [ABI-13] Host Interface Null Callbacks Defensive Guards") {
   CHECK(descriptor->init(SL6, &h) == nullptr);
 
   h.RegisterIO = [](int, PeripheralIOHandler, PeripheralIOHandler,
-                    PeripheralIOHandler, PeripheralIOHandler) {};
+                    PeripheralIOHandler, PeripheralIOHandler) -> void {};
 #if ENABLE_ROM_DISK2
   // Missing RegisterCxROM
   CHECK(descriptor->init(SL6, &h) == nullptr);
 
-  h.RegisterCxROM = [](int, const uint8_t*) {};
+  h.RegisterCxROM = [](int, const uint8_t*) -> void {};
 #endif
   // Valid host with minimal callbacks
   void* inst = descriptor->init(SL6, &h);

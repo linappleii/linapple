@@ -594,8 +594,9 @@ auto check_read_entry_returned(uint32_t cycles) -> void {
   const InputPage_t page = read_input_page();
   CHECK(std::equal(frozen_input_line.begin(), frozen_input_line.end(),
                    page.begin()));
-  CHECK(std::all_of(page.begin() + frozen_input_line.size(), page.end(),
-                    [](uint8_t byte) { return byte == untouched_marker; }));
+  CHECK(std::all_of(
+      page.begin() + frozen_input_line.size(), page.end(),
+      [](uint8_t byte) -> bool { return byte == untouched_marker; }));
 
   // Five fields of two digits and a comma each leave X at the fifteenth byte,
   // the one the firmware overwrote with $80.
@@ -739,7 +740,7 @@ TEST_CASE("Clock Peripheral: Saving the frozen latches gives the literal") {
   CHECK(std::equal(frozen_frame.begin(), frozen_frame.end(),
                    slot_buffer.begin()));
   CHECK(std::all_of(slot_buffer.begin() + frame_size, slot_buffer.end(),
-                    [](uint8_t byte) { return byte == 0xA5; }));
+                    [](uint8_t byte) -> bool { return byte == 0xA5; }));
 }
 
 TEST_CASE(
@@ -784,11 +785,11 @@ TEST_CASE("Clock Peripheral: A rejected load leaves the latches as they were") {
   REQUIRE(harness.load_frame(slot, frozen_frame.data(), frozen_frame.size()) ==
           peripheral_ok);
 
-  auto rejects = [&](const Frame_t& frame, size_t size) {
+  auto rejects = [&](const Frame_t& frame, size_t size) -> void {
     CHECK(harness.load_frame(slot, frame.data(), size) == peripheral_error);
     CHECK(harness.latches(slot) == frozen_latches);
   };
-  auto corrupted = [](size_t index, uint8_t value) {
+  auto corrupted = [](size_t index, uint8_t value) -> Frame_t {
     Frame_t frame = frozen_frame;
     frame.at(index) = value;
     return frame;
@@ -948,14 +949,15 @@ TEST_CASE(
   };
   const std::array<Missing_t, 4> members = {
       {
-          {"RegisterIO", [](HostInterface_t* h) { h->RegisterIO = nullptr; }},
+          {"RegisterIO",
+           [](HostInterface_t* h) -> void { h->RegisterIO = nullptr; }},
           {"RegisterCxROM",
-           [](HostInterface_t* h) { h->RegisterCxROM = nullptr; }},
+           [](HostInterface_t* h) -> void { h->RegisterCxROM = nullptr; }},
           {"GetLocalTime",
-           [](HostInterface_t* h) { h->GetLocalTime = nullptr; }},
+           [](HostInterface_t* h) -> void { h->GetLocalTime = nullptr; }},
           {
               "ReadFloatingBus",
-              [](HostInterface_t* h) { h->ReadFloatingBus = nullptr; },
+              [](HostInterface_t* h) -> void { h->ReadFloatingBus = nullptr; },
           },
       },
   };
@@ -1034,7 +1036,7 @@ TEST_CASE("Clock Peripheral: The slot ROM is the firmware, byte for byte") {
   CHECK(rom[rom_carry_leg] == 0xB0);
   CHECK(rom[rom_carry_leg + 1] == 0xCC);
   CHECK(std::all_of(rom + rom_first_unused, rom_end,
-                    [](uint8_t byte) { return byte == 0; }));
+                    [](uint8_t byte) -> bool { return byte == 0; }));
 
   // The second card's image differs from the first in the slot operand alone.
   REQUIRE(harness.create_clock(test_slot_2) != nullptr);
@@ -1113,8 +1115,9 @@ TEST_CASE("Clock Peripheral: The WRITE entry is a bare RTS that keeps A") {
   CHECK(clock.calls() == 0);
 
   const InputPage_t page = read_input_page();
-  CHECK(std::all_of(page.begin(), page.end(),
-                    [](uint8_t byte) { return byte == untouched_marker; }));
+  CHECK(std::all_of(page.begin(), page.end(), [](uint8_t byte) -> bool {
+    return byte == untouched_marker;
+  }));
 }
 
 // Two cards, each entered from the language card: the one called strobes its
@@ -1196,7 +1199,7 @@ TEST_CASE("Clock Peripheral: The host's wall clock latches a calendar") {
     CAPTURE(i);
     CHECK(latched.at(i) <= bcd_digit_max);
   }
-  auto pair = [&](size_t index) {
+  auto pair = [&](size_t index) -> int {
     return (latched.at(index) * 10) + latched.at(index + 1);
   };
   CHECK(pair(latch_month) >= 1);

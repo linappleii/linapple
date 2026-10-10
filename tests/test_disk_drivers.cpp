@@ -317,7 +317,7 @@ TEST_CASE("DiskDrivers: [DRV-10] WOZ 3.5\" Rejection") {
 
 TEST_CASE("DiskDrivers: [DRV-11] WOZ Write Protect") {
   ScopedTempFile_t tmp_file(".woz");
-  auto create_woz_wp = [](const char* path, uint8_t wp_byte) {
+  auto create_woz_wp = [](const char* path, uint8_t wp_byte) -> void {
     FILE* f = fopen(path, "wb");
     REQUIRE(f != nullptr);
     uint8_t h[1536]{};
@@ -387,7 +387,7 @@ TEST_CASE("DiskDrivers: [DRV-12] WOZ Unrecorded Track") {
 
 TEST_CASE("DiskDrivers: [DRV-14] WOZ reports the cell time INFO measured") {
   ScopedTempFile_t tmp_file(".woz");
-  auto create_woz_timing = [](const char* path, uint8_t timing) {
+  auto create_woz_timing = [](const char* path, uint8_t timing) -> void {
     FILE* f = fopen(path, "wb");
     REQUIRE(f != nullptr);
     uint8_t h[1536]{};

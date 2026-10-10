@@ -331,7 +331,7 @@ TEST_CASE(
   REQUIRE(desc != nullptr);
   BenchHost_t bench;
 
-  auto refused_naming = [&](const std::string& member, int slot) {
+  auto refused_naming = [&](const std::string& member, int slot) -> void {
     CHECK(desc->init(slot, bench.host()) == nullptr);
     CHECK(bench.last_log().find(member) != std::string::npos);
     CHECK(bench.last_log().find("slot " + std::to_string(slot)) !=
@@ -620,12 +620,12 @@ auto poke_bank_switch_and_copier(int slot, uint8_t bank) -> uint16_t {
   const auto base = static_cast<uint16_t>(0xC080 + (slot << 4));
   const auto slot_page = static_cast<uint8_t>(0xC0 + slot);
   std::vector<uint8_t> program;
-  auto emit = [&program](uint8_t opcode, uint16_t operand) {
+  auto emit = [&program](uint8_t opcode, uint16_t operand) -> void {
     program.push_back(opcode);
     program.push_back(static_cast<uint8_t>(operand & 0xFF));
     program.push_back(static_cast<uint8_t>(operand >> 8));
   };
-  auto emit_imm = [&program](uint8_t opcode, uint8_t operand) {
+  auto emit_imm = [&program](uint8_t opcode, uint8_t operand) -> void {
     program.push_back(opcode);
     program.push_back(operand);
   };
@@ -1195,12 +1195,12 @@ auto poke_slot_holes(int slot, int16_t x, int16_t y) -> void {
 auto send_raw_byte(MouseMachine_t& machine, uint8_t byte) -> void {
   const auto base = static_cast<uint16_t>(0xC080 + (machine.slot << 4));
   std::vector<uint8_t> program;
-  auto emit = [&program](uint8_t opcode, uint16_t operand) {
+  auto emit = [&program](uint8_t opcode, uint16_t operand) -> void {
     program.push_back(opcode);
     program.push_back(static_cast<uint8_t>(operand & 0xFF));
     program.push_back(static_cast<uint8_t>(operand >> 8));
   };
-  auto emit_imm = [&program](uint8_t opcode, uint8_t operand) {
+  auto emit_imm = [&program](uint8_t opcode, uint8_t operand) -> void {
     program.push_back(opcode);
     program.push_back(operand);
   };
@@ -1276,12 +1276,12 @@ auto read_addresses(MouseMachine_t& machine,
 auto select_bank_stepped(int slot, uint8_t bank) -> void {
   const auto base = static_cast<uint16_t>(0xC080 + (slot << 4));
   std::vector<uint8_t> program;
-  auto emit = [&program](uint8_t opcode, uint16_t operand) {
+  auto emit = [&program](uint8_t opcode, uint16_t operand) -> void {
     program.push_back(opcode);
     program.push_back(static_cast<uint8_t>(operand & 0xFF));
     program.push_back(static_cast<uint8_t>(operand >> 8));
   };
-  auto emit_imm = [&program](uint8_t opcode, uint8_t operand) {
+  auto emit_imm = [&program](uint8_t opcode, uint8_t operand) -> void {
     program.push_back(opcode);
     program.push_back(operand);
   };
@@ -2280,7 +2280,7 @@ TEST_CASE(
   move_mouse(session.slot, 40, 50);
   const Frame_t before = save_frame(session.slot);
 
-  auto refused = [&](Frame_t frame, size_t size) {
+  auto refused = [&](Frame_t frame, size_t size) -> void {
     CHECK(peripheral_load_state(session.slot, frame.data(), size) ==
           peripheral_error);
     CHECK(save_frame(session.slot) == before);

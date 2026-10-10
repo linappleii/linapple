@@ -50,7 +50,7 @@ static auto trim_str(const std::string& str) -> std::string {
 
 static auto to_lower_str(std::string s) -> std::string {
   std::transform(s.begin(), s.end(), s.begin(),
-                 [](unsigned char c) { return std::tolower(c); });
+                 [](unsigned char c) -> int { return std::tolower(c); });
   return s;
 }
 

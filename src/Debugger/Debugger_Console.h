@@ -133,24 +133,24 @@ inline auto ConsoleColor_GetColor(conchar_t g) -> uint32_t {
   return g_console_color[0];
 }
 
-inline char ConsoleColor_GetMeta(conchar_t g) {
+inline auto ConsoleColor_GetMeta(conchar_t g) -> char {
   return ((g >> CONSOLE_COLOR_SHIFT) & CONSOLE_COLOR_MASK);
 }
 
-inline char ConsoleChar_GetChar(conchar_t g) {
+inline auto ConsoleChar_GetChar(conchar_t g) -> char {
   return (g & CONSOLE_COLOR_MASK);
 }
 
-inline char ConsoleColor_MakeMouse(uint8_t c) {
+inline auto ConsoleColor_MakeMouse(uint8_t c) -> char {
   return ((c - '@') + (CONSOLE_COLOR_MASK + 1));
 }
 
-inline conchar_t ConsoleColor_MakeMeta(uint8_t c) {
+inline auto ConsoleColor_MakeMeta(uint8_t c) -> conchar_t {
   conchar_t g = (ConsoleColor_MakeMouse(c) << CONSOLE_COLOR_SHIFT);
   return g;
 }
 
-inline conchar_t ConsoleColor_MakeColor(uint8_t color, uint8_t text) {
+inline auto ConsoleColor_MakeColor(uint8_t color, uint8_t text) -> conchar_t {
   conchar_t g = (color << CONSOLE_COLOR_SHIFT) | text;
   return g;
 }

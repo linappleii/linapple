@@ -697,7 +697,7 @@ auto basic_sync_import_from_string(const std::string& text, BasicLineMode mode)
   }
 
   std::sort(lines.begin(), lines.end(),
-            [](const ParsedLine_t& a, const ParsedLine_t& b) {
+            [](const ParsedLine_t& a, const ParsedLine_t& b) -> bool {
               return a.line_number < b.line_number;
             });
 

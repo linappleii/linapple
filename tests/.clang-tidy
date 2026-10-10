@@ -1,0 +1,10 @@
+---
+# Integration and unit tests:
+# doctest framework macros (CAPTURE, INFO, TEST_SUITE) expand to anonymous lambda
+# expressions and helper functions without explicit trailing return types within
+# doctest.h header internals.
+
+InheritParentConfig: true
+
+Checks:
+  - '-modernize-use-trailing-return-type'

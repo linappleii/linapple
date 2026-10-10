@@ -366,20 +366,25 @@ TEST_CASE(
   };
   const std::array<Member_t, 5> members = {
       {
-          {"RegisterIO", [](HostInterface_t* h) { h->RegisterIO = nullptr; }},
+          {"RegisterIO",
+           [](HostInterface_t* h) -> void { h->RegisterIO = nullptr; }},
           {"RegisterCxROM",
-           [](HostInterface_t* h) { h->RegisterCxROM = nullptr; }},
+           [](HostInterface_t* h) -> void { h->RegisterCxROM = nullptr; }},
           {
               "ReadFloatingBus",
-              [](HostInterface_t* h) { h->ReadFloatingBus = nullptr; },
+              [](HostInterface_t* h) -> void { h->ReadFloatingBus = nullptr; },
           },
           {
               "NotifyActivityChanged",
-              [](HostInterface_t* h) { h->NotifyActivityChanged = nullptr; },
+              [](HostInterface_t* h) -> void {
+                h->NotifyActivityChanged = nullptr;
+              },
           },
           {
               "NotifyStatusChanged",
-              [](HostInterface_t* h) { h->NotifyStatusChanged = nullptr; },
+              [](HostInterface_t* h) -> void {
+                h->NotifyStatusChanged = nullptr;
+              },
           },
       },
   };

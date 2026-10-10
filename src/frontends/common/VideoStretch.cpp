@@ -371,7 +371,7 @@ auto video_soft_stretch(VideoSurfaceView src, const VideoRect* srcrect,
   return video_soft_stretch_impl(
       src, srcrect, dst, dstrect,
       [&](uint8_t* srcp, int src_w, uint8_t* dst_row_base, int dst_x, int dst_w,
-          int max_w) {
+          int max_w) -> void {
         switch (dst.bpp) {
           case 1:
             copy_row1(srcp, src_w, dst_row_base, dst_x, dst_w, max_w);
@@ -415,7 +415,7 @@ auto video_soft_stretch_mono8(VideoSurfaceView src, const VideoRect* srcrect,
   return video_soft_stretch_impl(
       src, srcrect, dst, dstrect,
       [&](uint8_t* srcp, int src_w, uint8_t* dst_row_base, int dst_x, int dst_w,
-          int max_w) {
+          int max_w) -> void {
         if (src.bpp == 1 && dst.bpp == 4) {
           copy8mono4(srcp, src_w, reinterpret_cast<uint32_t*>(dst_row_base),
                      dst_x, dst_w, max_w, fgbrush, bgbrush);
@@ -433,7 +433,7 @@ auto video_soft_stretch_or(VideoSurfaceView src, const VideoRect* srcrect,
   return video_soft_stretch_impl(
       src, srcrect, dst, dstrect,
       [&](uint8_t* srcp, int src_w, uint8_t* dst_row_base, int dst_x, int dst_w,
-          int max_w) {
+          int max_w) -> void {
         switch (dst.bpp) {
           case 1:
             copy_row_or1(srcp, src_w, dst_row_base, dst_x, dst_w, max_w);

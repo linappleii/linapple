@@ -61,7 +61,8 @@ struct SwitchMachine_t {
   explicit SwitchMachine_t(const TestConfig_t::Description_t& description)
       : config(description), harness(config) {
     harness.boot();
-    const std::array<uint8_t, text_page_size> spaces = [] {
+    const std::array<uint8_t, text_page_size> spaces =
+        [] -> std::array<uint8_t, text_page_size> {
       std::array<uint8_t, text_page_size> page{};
       page.fill(normal_space);
       return page;
