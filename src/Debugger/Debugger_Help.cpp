@@ -517,7 +517,7 @@ static auto Colorize(char* pDst, const char* src_ptr) -> bool {
   const char sExamples[] = "Examples:";
   const int nExamples = sizeof(sExamples) - 1;
 
-  while (*src_ptr) {
+  while ((*src_ptr) != 0) {
     if (strncmp(sUsage, src_ptr, nUsage) == 0) {
       ColorizeHeader(pDst, src_ptr, sUsage, nUsage);
     } else if (strncmp(sSeeAlso, src_ptr, nSeeAlso) == 0) {
@@ -661,7 +661,7 @@ auto CmdHelpSpecific(int nArgs) -> Update_t {
   memset(sText, 0, sizeof(sText));
   memset(sTemp, 0, sizeof(sTemp));
 
-  if (!nArgs) {
+  if (nArgs == 0) {
     Help_Categories();
     return ConsoleUpdate();
   }
@@ -671,8 +671,8 @@ auto CmdHelpSpecific(int nArgs) -> Update_t {
   bool bCategory = false;
   bool bDisplayCategory = true;
 
-  if ((!strcmp(g_args[1].sArg, g_parameters[PARAM_WILDSTAR].name)) ||
-      (!strcmp(g_args[1].sArg, g_parameters[PARAM_MEM_SEARCH_WILD].name))) {
+  if ((strcmp(g_args[1].sArg, g_parameters[PARAM_WILDSTAR].name) == 0) ||
+      (strcmp(g_args[1].sArg, g_parameters[PARAM_MEM_SEARCH_WILD].name) == 0)) {
     bAllCommands = true;
     nArgs = NUM_COMMANDS;
   }
@@ -718,10 +718,10 @@ auto CmdHelpSpecific(int nArgs) -> Update_t {
         case PARAM_CAT_FLAGS:
           nFound = FindCommand(
               g_args[iArg].sArg, pFunction,
-              &iCommand);  // check if we have an exact command match first
-          if (nFound) {    // && (iCommand != CMD_MEMORY_FILL))
+              &iCommand);     // check if we have an exact command match first
+          if (nFound != 0) {  // && (iCommand != CMD_MEMORY_FILL))
             bCategory = false;
-          } else if (nFoundCategory) {
+          } else if (nFoundCategory != 0) {
             iCmdBegin = CMD_FLAG_CLEAR;
             iCmdEnd = CMD_FLAG_SET_N;
           }
@@ -734,7 +734,7 @@ auto CmdHelpSpecific(int nArgs) -> Update_t {
           nFound = FindCommand(
               g_args[iArg].sArg, pFunction,
               &iCommand);  // check if we have an exact command match first
-          if ((!nFound) || (iCommand != CMD_INPUT_KEY)) {
+          if ((nFound == 0) || (iCommand != CMD_INPUT_KEY)) {
             nArgs = 0;
             Help_KeyboardShortcuts();
           }
@@ -743,10 +743,10 @@ auto CmdHelpSpecific(int nArgs) -> Update_t {
         case PARAM_CAT_MEMORY:
           nFound = FindCommand(
               g_args[iArg].sArg, pFunction,
-              &iCommand);  // check if we have an exact command match first
-          if (nFound) {    // && (iCommand != CMD_MEMORY_MOVE))
+              &iCommand);     // check if we have an exact command match first
+          if (nFound != 0) {  // && (iCommand != CMD_MEMORY_MOVE))
             bCategory = false;
-          } else if (nFoundCategory) {
+          } else if (nFoundCategory != 0) {
             iCmdBegin = CMD_MEMORY_COMPARE;
             iCmdEnd = CMD_MEMORY_FILL;
           }
@@ -754,10 +754,10 @@ auto CmdHelpSpecific(int nArgs) -> Update_t {
         case PARAM_CAT_OUTPUT:
           nFound = FindCommand(
               g_args[iArg].sArg, pFunction,
-              &iCommand);  // check if we have an exact command match first
-          if (nFound) {    // && (iCommand != CMD_OUT))
+              &iCommand);     // check if we have an exact command match first
+          if (nFound != 0) {  // && (iCommand != CMD_OUT))
             bCategory = false;
-          } else if (nFoundCategory) {
+          } else if (nFoundCategory != 0) {
             iCmdBegin = CMD_OUTPUT_CALC;
             iCmdEnd = CMD_OUTPUT_RUN;
           }
@@ -766,10 +766,11 @@ auto CmdHelpSpecific(int nArgs) -> Update_t {
           nFound = FindCommand(
               g_args[iArg].sArg, pFunction,
               &iCommand);  // check if we have an exact command match first
-          if (nFound) {  // && (iCommand != CMD_SYMBOLS_LOOKUP) && (iCommand !=
-                         // CMD_MEMORY_SEARCH))
+          if (nFound !=
+              0) {  // && (iCommand != CMD_SYMBOLS_LOOKUP) && (iCommand !=
+                    // CMD_MEMORY_SEARCH))
             bCategory = false;
-          } else if (nFoundCategory) {
+          } else if (nFoundCategory != 0) {
             iCmdBegin = CMD_SYMBOLS_LOOKUP;
             iCmdEnd = CMD_SYMBOLS_LIST;
           }
@@ -782,11 +783,11 @@ auto CmdHelpSpecific(int nArgs) -> Update_t {
           nFound = FindCommand(
               g_args[iArg].sArg, pFunction,
               &iCommand);  // check if we have an exact command match first
-          if (nFound) {
+          if (nFound != 0) {
             bCategory = false;
           } else  // 2.7.0.17: HELP <category> wasn't displaying when category
                   // was one of: FLAGS, OUTPUT, WATCHES
-            if (nFoundCategory) {
+            if (nFoundCategory != 0) {
               iCmdBegin = CMD_WATCH_ADD;
               iCmdEnd = CMD_WATCH_LIST;
             }
@@ -808,7 +809,7 @@ auto CmdHelpSpecific(int nArgs) -> Update_t {
         case PARAM_CAT_RANGE:
           // HACK: check if we have an exact command match first
           nFound = FindCommand(g_args[iArg].sArg, pFunction, &iCommand);
-          if ((!nFound) || (iCommand != CMD_REGISTER_SET)) {
+          if ((nFound == 0) || (iCommand != CMD_REGISTER_SET)) {
             nArgs = 0;
             Help_Range();
           }
@@ -818,7 +819,7 @@ auto CmdHelpSpecific(int nArgs) -> Update_t {
           bCategory = false;
           break;
       }
-      if (iCmdEnd) {
+      if (iCmdEnd != 0) {
         iCmdEnd++;
       }
       nNewArgs = (iCmdEnd - iCmdBegin);
@@ -861,19 +862,19 @@ auto CmdHelpSpecific(int nArgs) -> Update_t {
       continue;
     }
 
-    if ((nArgs == 1) && (!nFound)) {
+    if ((nArgs == 1) && (nFound == 0)) {
       iCommand = g_args[iArg].nValue;
     }
 
     Command_t* pCommand = &g_commands[iCommand];
 
-    if (!nFound) {
+    if (nFound == 0) {
       iCommand = NUM_COMMANDS;
       pCommand = nullptr;
     }
 
     //		if (nFound && (! bAllCommands) && (! bCategory))
-    if (nFound && (!bAllCommands) && bDisplayCategory) {
+    if ((nFound != 0) && (!bAllCommands) && bDisplayCategory) {
       char sCategory[CONSOLE_WIDTH];
       int iCmd = g_commands[iCommand].command_id;  // Unaliased command
 
@@ -978,7 +979,7 @@ auto CmdHelpSpecific(int nArgs) -> Update_t {
       }
     }
 
-    if ((!bFoundAny && !bAllCommands) && ((!nFound) || (!pCommand))) {
+    if ((!bFoundAny && !bAllCommands) && ((nFound == 0) || (!pCommand))) {
       ConsoleBufferPush(" Invalid command.");
     }
   }
@@ -1060,12 +1061,12 @@ auto CmdVersion(int nArgs) -> Update_t {
                      CHC_SYMBOL, VERSIONSTRING, CHC_DEFAULT, CHC_SYMBOL, nMajor,
                      nMinor, nFixMajor, nFixMinor, CHC_DEFAULT);
 
-  if (nArgs) {
+  if (nArgs != 0) {
     for (int iArg = 1; iArg <= g_arg_raw_count; iArg++) {
       // * PARAM_WILDSTAR -> ? PARAM_MEM_SEARCH_WILD
-      if ((!strcmp(g_args[iArg].sArg, g_parameters[PARAM_WILDSTAR].name)) ||
-          (!strcmp(g_args[iArg].sArg,
-                   g_parameters[PARAM_MEM_SEARCH_WILD].name))) {
+      if ((strcmp(g_args[iArg].sArg, g_parameters[PARAM_WILDSTAR].name) == 0) ||
+          (strcmp(g_args[iArg].sArg,
+                  g_parameters[PARAM_MEM_SEARCH_WILD].name) == 0)) {
         ConsoleBufferPushFormat(sText, "  Arg: %d bytes * %d = %d bytes",
                                 sizeof(Arg_t), MAX_ARGS, sizeof(g_args));
 

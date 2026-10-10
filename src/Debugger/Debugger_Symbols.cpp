@@ -134,7 +134,7 @@ auto FindSymbolFromAddress(uint16_t address, int* iTable_) -> const char* {
       continue;
     }
 
-    if (!(g_display_symbol_tables & (1 << iTable))) {
+    if ((g_display_symbol_tables & (1 << iTable)) == 0) {
       continue;
     }
 
@@ -158,13 +158,13 @@ auto FindAddressFromSymbol(const char* pSymbol, uint16_t* pAddress_,
       continue;
     }
 
-    if (!(g_display_symbol_tables & (1 << iTable))) {
+    if ((g_display_symbol_tables & (1 << iTable)) == 0) {
       continue;
     }
 
     auto iSymbol = g_symbols[iTable].begin();
     while (iSymbol != g_symbols[iTable].end()) {
-      if (!strcasecmp(iSymbol->second.c_str(), pSymbol)) {
+      if (strcasecmp(iSymbol->second.c_str(), pSymbol) == 0) {
         if (pAddress_) {
           *pAddress_ = iSymbol->first;
         }
@@ -227,7 +227,7 @@ static auto String2Address(const char* text, uint16_t& nAddress_) -> bool {
 
 //===========================================================================
 auto CmdSymbols(int nArgs) -> Update_t {
-  if (!nArgs) {
+  if (nArgs == 0) {
     return CmdSymbolsInfo(0);
   }
 
@@ -254,7 +254,7 @@ static auto CmdSymbolsInfoHeader(int iTable, char* text, size_t text_size,
                                  int nDisplaySize /* = 0 */) -> void {
   // Common case is to use/calc the table size
   bool bActive = (g_display_symbol_tables & (1 << iTable)) != 0;
-  int nSymbols = nDisplaySize ? nDisplaySize : g_symbols[iTable].size();
+  int nSymbols = (nDisplaySize != 0) ? nDisplaySize : g_symbols[iTable].size();
 
   // Short Desc: `MAIN`: `1000`
   // // 2.6.2.19 Color for name of symbol table: CmdPrintSymbol() "SYM HOME"
@@ -275,7 +275,7 @@ auto CmdSymbolsInfo(int nArgs) -> Update_t {
 
   util_safe_strcpy(sText, sIndent, sizeof(sText));  // Indent new line
 
-  if (!nArgs) {
+  if (nArgs == 0) {
     // default to all tables
     bDisplaySymbolTables = (1 << NUM_SYMBOL_TABLES) - 1;
   } else {  // Convert Command Index to parameter
@@ -293,7 +293,7 @@ auto CmdSymbolsInfo(int nArgs) -> Update_t {
   int bTable = 1;
   int iTable = 0;
   for (; bTable <= bDisplaySymbolTables; iTable++, bTable <<= 1) {
-    if (bDisplaySymbolTables & bTable) {
+    if ((bDisplaySymbolTables & bTable) != 0) {
       CmdSymbolsInfoHeader(iTable, sTemp, sizeof(sTemp));  // 15 chars per table
 
       // 2.8.0.4 BUGFIX: Check for buffer overflow and wrap text
@@ -346,7 +346,7 @@ static auto GetSymbolTableFromFlag(int bSymbolTables) -> int {
   int bTable = 1;
 
   for (; bTable <= bSymbolTables; iTable++, bTable <<= 1) {
-    if (bTable & bSymbolTables) {
+    if ((bTable & bSymbolTables) != 0) {
       break;
     }
   }
@@ -393,7 +393,7 @@ auto CmdSymbolsList(int nArgs) -> Update_t {
 
 //===========================================================================
 auto CmdSymbolsListTables(int nArgs, int bSymbolTables) -> Update_t {
-  if (!nArgs) {
+  if (nArgs == 0) {
     return Help_Arg_1(CMD_SYMBOLS_LIST);
   }
 
@@ -425,9 +425,9 @@ auto CmdSymbolsListTables(int nArgs, int bSymbolTables) -> Update_t {
       int iTable = 0;
       int bTable = 1;
       for (; bTable <= bSymbolTables; iTable++, bTable <<= 1) {
-        if (bTable & bSymbolTables) {
+        if ((bTable & bSymbolTables) != 0) {
           int nSymbols = g_symbols[iTable].size();
-          if (nSymbols) {
+          if (nSymbols != 0) {
             auto iSymbol = g_symbols[iTable].begin();
             while (iSymbol != g_symbols[iTable].end()) {
               const char* pSymbol = iSymbol->second.c_str();
@@ -440,7 +440,7 @@ auto CmdSymbolsListTables(int nArgs, int bSymbolTables) -> Update_t {
           console_print(sText);
         }
       }
-    } else if (address) {  // Have address, do symbol lookup first
+    } else if (address != 0u) {  // Have address, do symbol lookup first
       if ((!CmdSymbolList_Symbol2Address(pSymbol, bSymbolTables)) &&
           (!CmdSymbolList_Address2Symbol(address, bSymbolTables)))
       // nope, ok, try as address
@@ -506,7 +506,7 @@ auto ParseSymbolTable(const std::string& pPathFileName,
 
   bool bDupSymbolHeader = false;
   if (hFile) {
-    while (!feof(hFile.get())) {
+    while (feof(hFile.get()) == 0) {
       // Support 2 types of symbols files:
       // 1) AppleWin:
       //    . 0000 SYMBOL
@@ -653,7 +653,7 @@ auto CmdSymbolsLoad(int nArgs) -> Update_t {
 
   // Debugger will call us with 0 args on startup as a way to pre-load symbol
   // tables
-  if (!nArgs) {
+  if (nArgs == 0) {
     sFileName += g_file_name_symbols[iSymbolTable];
     nSymbols = ParseSymbolTable(sFileName,
                                 static_cast<SymbolTable_Index_e>(iSymbolTable));
@@ -663,7 +663,7 @@ auto CmdSymbolsLoad(int nArgs) -> Update_t {
   if (iArg <= nArgs) {
     std::string pFileName;
 
-    if (g_args[iArg].bType & TYPE_QUOTED_2) {
+    if ((g_args[iArg].bType & TYPE_QUOTED_2) != 0) {
       pFileName = g_args[iArg].sArg;
 
       sFileName = std::string(system_state.program_dir.data()) + pFileName;
@@ -788,7 +788,7 @@ auto CmdSymbolsUpdate(int nArgs, int bSymbolTables) -> Update_t {
 }
 
 static auto CmdSymbolsCommon(int nArgs, int bSymbolTables) -> Update_t {
-  if (!nArgs) {
+  if (nArgs == 0) {
     return Help_Arg_1(g_command);
   }
 
@@ -804,7 +804,7 @@ static auto CmdSymbolsCommon(int nArgs, int bSymbolTables) -> Update_t {
     int iParam = 0;
     int nParams =
         FindParam(g_args[iArg].sArg, MATCH_EXACT, iParam);  // MATCH_FUZZY
-    if (nParams) {
+    if (nParams != 0) {
       if (iParam == PARAM_CLEAR) {
         int iTable = GetSymbolTableFromFlag(bSymbolTables);
         if (iTable != NUM_SYMBOL_TABLES) {
@@ -826,7 +826,7 @@ static auto CmdSymbolsCommon(int nArgs, int bSymbolTables) -> Update_t {
 
         int iTable = GetSymbolTableFromFlag(bSymbolTables);
         if (iTable != NUM_SYMBOL_TABLES) {
-          if (bUpdate & UPDATE_SYMBOLS) {
+          if ((bUpdate & UPDATE_SYMBOLS) != 0) {
             // sprintf( sText, "  Symbol Table: %s%s%s, %sloaded symbols: %s%d"
             //	, CHC_STRING, g_symbol_table_names[ iTable ]
             //	, CHC_DEFAULT, CHC_DEFAULT
@@ -872,7 +872,7 @@ static auto CmdSymbolsCommon(int nArgs, int bSymbolTables) -> Update_t {
 
 //===========================================================================
 auto CmdSymbolsCommand(int nArgs) -> Update_t {
-  if (!nArgs) {
+  if (nArgs == 0) {
     return CmdSymbolsInfo(1);
   }
 

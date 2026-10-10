@@ -84,7 +84,7 @@ auto Args_Insert(int iSrc, int iEnd, int nLen) -> int {
     return ARG_SYNTAX_ERROR;
   }
 
-  while (nLen--) {
+  while ((nLen--) != 0) {
     g_args[iDst] = g_args[iSrc];
     iSrc--;
     iDst--;
@@ -172,7 +172,7 @@ auto ArgsGet(const char* pInput) -> int {
   // | |src_ptr
   // | pEnd
   // src_ptr
-  while ((*src_ptr) && (iArg < MAX_ARGS)) {
+  while (((*src_ptr) != 0) && (iArg < MAX_ARGS)) {
     // Technically, there shouldn't be any leading spaces,
     // since pressing the spacebar is an alias for TRACE.
     // However, there is spaces between arguments
@@ -247,7 +247,7 @@ auto ArgsGet(const char* pInput) -> int {
     }
   }
 
-  if (iArg) {
+  if (iArg != 0) {
     nArg = iArg - 1;  // first arg is command
   }
 
@@ -334,7 +334,7 @@ auto ArgsRawParse() -> void {
     nAddressValue = nAddressArg;
 
     bool bFound = false;
-    if (!(pArg->bType & TYPE_NO_SYM)) {
+    if ((pArg->bType & TYPE_NO_SYM) == 0) {
       bFound = FindAddressFromSymbol(src_ptr, &nAddressSymbol);
       if (bFound) {
         nAddressValue = nAddressSymbol;
@@ -342,7 +342,7 @@ auto ArgsRawParse() -> void {
       }
     }
 
-    if (!(pArg->bType & TYPE_VALUE)) {  // already up to date?
+    if ((pArg->bType & TYPE_VALUE) == 0) {  // already up to date?
       pArg->nValue = nAddressValue;
     }
 
@@ -408,7 +408,7 @@ auto ArgsCook(const int nArgs) -> int {
       }
     }
 
-    if (pArg->bType & TYPE_OPERATOR)  // prev op type == address?
+    if ((pArg->bType & TYPE_OPERATOR) != 0)  // prev op type == address?
     {
       pPrev = nullptr;  // pLHS
       pNext = nullptr;  // pRHS
@@ -532,7 +532,7 @@ auto ArgsCook(const int nArgs) -> int {
           if (!ArgsGetImmediateValue(pNext, &nAddressRHS)) {
             ArgsGetRegisterValue(pNext, &nAddressRHS);
           }
-          if (!nAddressRHS) {
+          if (nAddressRHS == 0u) {
             nAddressRHS = 1;  // divide by zero bug
           }
           pPrev->nValue /= nAddressRHS;
@@ -557,7 +557,7 @@ auto ArgsCook(const int nArgs) -> int {
           pArg->bSymbol = false;
 
           int nPointers = g_memory_search_results.size();
-          if (nPointers && (nAddressRHS < nPointers)) {
+          if ((nPointers != 0) && (nAddressRHS < nPointers)) {
             pArg->nValue = g_memory_search_results.at(nAddressRHS);
             pArg->bType = TYPE_VALUE | TYPE_ADDRESS | TYPE_NO_REG | TYPE_NO_SYM;
           }
@@ -634,7 +634,7 @@ auto ArgsCook(const int nArgs) -> int {
           }
         }
 
-        if (nParamLen) {
+        if (nParamLen != 0) {
           Arg_Shift(iArg + nParamLen, nArgs, iArg);
           nArg -= nParamLen;
           iArg = 0;  // reset args, to handle multiple operators
@@ -647,14 +647,14 @@ auto ArgsCook(const int nArgs) -> int {
       nAddressArg = static_cast<uint16_t>(strtoul(src_ptr, &pEnd2, BASE) &
                                           apple2_6502_mem_end);
 
-      if (!(pArg->bType & TYPE_NO_REG)) {
+      if ((pArg->bType & TYPE_NO_REG) == 0) {
         ArgsGetRegisterValue(pArg, &nAddressArg);
       }
 
       nAddressVal = nAddressArg;
 
       bool bFound = false;
-      if (!(pArg->bType & TYPE_NO_SYM)) {
+      if ((pArg->bType & TYPE_NO_SYM) == 0) {
         bFound = FindAddressFromSymbol(src_ptr, &nAddressSym);
         if (bFound) {
           nAddressVal = nAddressSym;
@@ -662,7 +662,7 @@ auto ArgsCook(const int nArgs) -> int {
         }
       }
 
-      if (!(pArg->bType & TYPE_VALUE)) {  // already up to date?
+      if ((pArg->bType & TYPE_VALUE) == 0) {  // already up to date?
         pArg->nValue = nAddressVal;
       }
 
@@ -724,8 +724,8 @@ auto FindTokenOrAlphaNumeric(const char* src_ptr, const TokenTable_t* aTokens,
 
   const char* pEnd = src_ptr;
 
-  if (src_ptr && (*src_ptr)) {
-    if (isalnum(*src_ptr)) {
+  if (src_ptr && ((*src_ptr) != 0)) {
+    if (isalnum(*src_ptr) != 0) {
       if (pToken_) {
         *pToken_ = TOKEN_ALPHANUMERIC;
       }
@@ -745,7 +745,7 @@ auto TextConvertTabsToSpaces(char* pDeTabified_, const char* text,
   int TAB_SPACING_1 = 16;
   int TAB_SPACING_2 = 21;
 
-  if (nTabStop) {
+  if (nTabStop != 0) {
     TAB_SPACING = nTabStop;
   }
 
@@ -755,9 +755,9 @@ auto TextConvertTabsToSpaces(char* pDeTabified_, const char* text,
   int nTab = 0;  // gap left to next tab
   int nGap = 0;  // actual gap
   int nCur = 0;  // current cursor position
-  while (src_ptr && *src_ptr && (nCur < nDstSize)) {
+  while (src_ptr && ((*src_ptr) != 0) && (nCur < nDstSize)) {
     if (*src_ptr == '\t') {
-      if (nTabStop) {
+      if (nTabStop != 0) {
         nTab = nCur % TAB_SPACING;
         nGap = (TAB_SPACING - nTab);
       } else {
@@ -795,7 +795,7 @@ auto TextConvertTabsToSpaces(char* pDeTabified_, const char* text,
 auto RemoveWhiteSpaceReverse(char* src_ptr) -> int {
   int nLen = strlen(src_ptr);
   char* pDst = src_ptr + nLen;
-  while (nLen--) {
+  while ((nLen--) != 0) {
     pDst--;
     if (*pDst == ' ') {
       *pDst = 0;
@@ -813,7 +813,7 @@ auto FindParam(const char* pLookupName, Match_e eMatch, int& iParam_,
   int nLen = strlen(pLookupName);
   int iParam = 0;
 
-  if (!nLen) {
+  if (nLen == 0) {
     return nFound;
   }
 
@@ -822,7 +822,7 @@ auto FindParam(const char* pLookupName, Match_e eMatch, int& iParam_,
     for (iParam = iParamBegin; iParam <= iParamEnd; iParam++) {
       const char* pParamName = g_parameters[iParam].name;
       int eCompare = strcasecmp(pLookupName, pParamName);
-      if (!eCompare)  // exact match?
+      if (eCompare == 0)  // exact match?
       {
         nFound++;
         iParam_ = g_parameters[iParam].command_id;
@@ -832,11 +832,11 @@ auto FindParam(const char* pLookupName, Match_e eMatch, int& iParam_,
   } else if (eMatch == MATCH_FUZZY) {
     for (iParam = iParamBegin; iParam <= iParamEnd; iParam++) {
       const char* pParamName = g_parameters[iParam].name;
-      if (!strncmp(pLookupName, pParamName, nLen)) {
+      if (strncmp(pLookupName, pParamName, nLen) == 0) {
         nFound++;
         iParam_ = g_parameters[iParam].command_id;
 
-        if (!strcasecmp(pLookupName, pParamName))  // exact match?
+        if (strcasecmp(pLookupName, pParamName) == 0)  // exact match?
         {
           nFound = 1;  // Exact match takes precidence over fuzzy matches
           break;
@@ -848,7 +848,7 @@ auto FindParam(const char* pLookupName, Match_e eMatch, int& iParam_,
 }
 
 auto util_strupr(char* s) -> void {
-  while (*s) {
+  while ((*s) != 0) {
     if ((*s >= 'a') && (*s <= 'z')) {
       *s = *s + 'A' - 'a';
     }
@@ -866,7 +866,7 @@ auto FindCommand(const char* pName, CmdFuncPtr_t& pFunction_, int* iCommand_)
   int nLen = strlen(pName);
   int iCommand = 0;
 
-  if (!nLen) {
+  if (nLen == 0) {
     return nFound;
   }
 
@@ -882,7 +882,7 @@ auto FindCommand(const char* pName, CmdFuncPtr_t& pFunction_, int* iCommand_)
   {
     const char* pCommandName = g_commands[iCommand].name;
 
-    if (!strncmp(sCommand, pCommandName, nLen)) {
+    if (strncmp(sCommand, pCommandName, nLen) == 0) {
       g_command = g_commands[iCommand].command_id;
 
       // Don't push the same comamnd/alias if already on the list
@@ -895,7 +895,7 @@ auto FindCommand(const char* pName, CmdFuncPtr_t& pFunction_, int* iCommand_)
           *iCommand_ = iCommand;
         }
         // !strcmp
-        if (!strcmp(sCommand, pCommandName))  // exact match?
+        if (strcmp(sCommand, pCommandName) == 0)  // exact match?
         {
           //          if (iCommand_)
           //            *iCommand_ = iCommand;

@@ -268,7 +268,7 @@ auto CmdWindowViewSymbols(int nArgs) -> Update_t {
 
 //===========================================================================
 auto CmdWindow(int nArgs) -> Update_t {
-  if (!nArgs) {
+  if (nArgs == 0) {
     return Help_Arg_1(CMD_WINDOW);
   }
 
@@ -276,7 +276,7 @@ auto CmdWindow(int nArgs) -> Update_t {
   char* pName = g_args[1].sArg;
   int nFound = FindParam(pName, MATCH_EXACT, iParam, PARAM_WINDOW_BEGIN,
                          PARAM_WINDOW_END);
-  if (nFound) {
+  if (nFound != 0) {
     switch (iParam) {
       case PARAM_CODE:
         return CmdWindowViewCode(0);
@@ -449,7 +449,7 @@ auto CmdCursorLineDown(int nArgs) -> Update_t {
   if (g_window_this == WINDOW_DATA) {
     CursorMoveDownAligned(WINDOW_DATA_BYTES_PER_LINE);
     DisasmCalcTopBotAddress();
-  } else if (nArgs)  // scroll down by 'n' bytes
+  } else if (nArgs != 0)  // scroll down by 'n' bytes
   {
     nOpbytes = nArgs;  // HACKL g_args[1].val
 

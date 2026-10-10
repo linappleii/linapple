@@ -92,7 +92,7 @@ auto CmdBookmark(int nArgs) -> Update_t { return CmdBookmarkAdd(nArgs); }
 auto CmdBookmarkAdd(int nArgs) -> Update_t {
   // BMA [address]
   // BMA # address
-  if (!nArgs) {
+  if (nArgs == 0) {
     return CmdZeroPageList(0);
   }
 
@@ -144,7 +144,7 @@ auto CmdBookmarkClear(int nArgs) -> Update_t {
 
   int iArg = 0;
   for (iArg = 1; iArg <= nArgs; iArg++) {
-    if (!strcmp(g_args[nArgs].sArg, g_parameters[PARAM_WILDSTAR].name)) {
+    if (strcmp(g_args[nArgs].sArg, g_parameters[PARAM_WILDSTAR].name) == 0) {
       for (iBookmark = 0; iBookmark < MAX_BOOKMARKS; iBookmark++) {
         if (g_bookmarks[iBookmark].bSet) {
           g_bookmarks[iBookmark].bSet = false;
@@ -163,7 +163,7 @@ auto CmdBookmarkClear(int nArgs) -> Update_t {
 }
 
 auto CmdBookmarkGoto(int nArgs) -> Update_t {
-  if (!nArgs) {
+  if (nArgs == 0) {
     return Help_Arg_1(CMD_BOOKMARK_GOTO);
   }
 
@@ -181,7 +181,7 @@ auto CmdBookmarkGoto(int nArgs) -> Update_t {
 
 auto CmdBookmarkList(int nArgs) -> Update_t {
   (void)nArgs;
-  if (!g_bookmarks_count) {
+  if (g_bookmarks_count == 0) {
     char sText[CONSOLE_WIDTH];
     ConsoleBufferPushFormat(
         sText, "  There are no current bookmarks.  (Max: %d", MAX_BOOKMARKS);
@@ -221,8 +221,8 @@ auto CmdBookmarkSave(int nArgs) -> Update_t {
     iBookmark++;
   }
 
-  if (nArgs) {
-    if (!(g_args[1].bType & TYPE_QUOTED_2)) {
+  if (nArgs != 0) {
+    if ((g_args[1].bType & TYPE_QUOTED_2) == 0) {
       return Help_Arg_1(CMD_BOOKMARK_SAVE);
     }
 

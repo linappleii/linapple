@@ -13,7 +13,7 @@ auto CmdFlagClear(int nArgs) -> Update_t {
 
   if (g_command == CMD_FLAG_CLEAR) {
     int iArg = nArgs;
-    while (iArg) {
+    while (iArg != 0) {
       iFlag = 0;
       while (iFlag < DBG_6502_NUM_FLAGS) {
         if (*g_breakpoint_source[BP_SRC_FLAG_N - iFlag] ==
@@ -37,7 +37,7 @@ auto CmdFlagSet(int nArgs) -> Update_t {
 
   if (g_command == CMD_FLAG_SET) {
     int iArg = nArgs;
-    while (iArg) {
+    while (iArg != 0) {
       iFlag = 0;
       while (iFlag < DBG_6502_NUM_FLAGS) {
         if (*g_breakpoint_source[BP_SRC_FLAG_N - iFlag] ==

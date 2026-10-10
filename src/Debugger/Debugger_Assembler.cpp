@@ -771,7 +771,7 @@ auto GetTargets(uint16_t address, int* pTargetPartial_, int* pTargetPartial2_,
 
   switch (eMode) {
     case AM_IMPLIED:
-      if (g_opcodes[nOpcode].nMemoryAccess & MEM_S)  // Stack R/W?
+      if ((g_opcodes[nOpcode].nMemoryAccess & MEM_S) != 0)  // Stack R/W?
       {
         if (nOpcode == OPCODE_RTI || nOpcode == OPCODE_RTS)  // RTI or RTS?
         {
@@ -807,7 +807,7 @@ auto GetTargets(uint16_t address, int* pTargetPartial_, int* pTargetPartial2_,
           nTarget16 = *reinterpret_cast<uint16_t*>(mem + DBG_6502_BRK_VECTOR);
         } else  // PHn/PLn
         {
-          if (g_opcodes[nOpcode].nMemoryAccess & MEM_WI) {
+          if ((g_opcodes[nOpcode].nMemoryAccess & MEM_WI) != 0) {
             nTarget16 = static_cast<uint16_t>(
                 DBG_6502_STACK_BEGIN + ((cpu_get_registers()->sp + 0) & 0xFF));
           } else {
@@ -1018,7 +1018,7 @@ auto IsOpcodeBranch(int opcode) -> bool {
     return false;
   }
 
-  if ((opcode >> 4) & 1) {
+  if (((opcode >> 4) & 1) != 0) {
     return true;
   }
 
@@ -1039,7 +1039,7 @@ auto IsOpcodeValid(int opcode) -> bool {
     return false;
   }
 
-  if (islower(g_opcodes6502[opcode].sMnemonic[0])) {
+  if (islower(g_opcodes6502[opcode].sMnemonic[0]) != 0) {
     return false;
   }
 
@@ -1067,7 +1067,7 @@ auto AssemblerHashMnemonic(const char* pMnemonic) -> uint32_t {
     }
   }
 
-  while (*text)
+  while ((*text) != 0)
   //	for( int iChar = 0; iChar < 4; iChar++ )
   {
     char c = static_cast<char>(tolower(static_cast<unsigned char>(
@@ -1076,7 +1076,7 @@ auto AssemblerHashMnemonic(const char* pMnemonic) -> uint32_t {
     nMnemonicHash = (nMnemonicHash << NUM_MSK_BITS) +
                     static_cast<unsigned int>(static_cast<unsigned char>(c));
     iHighBits = (nMnemonicHash & BIT_MSK_HIGH);
-    if (iHighBits) {
+    if (iHighBits != 0) {
       nMnemonicHash =
           (nMnemonicHash ^ (iHighBits >> NUM_LOW_BITS)) & ~BIT_MSK_HIGH;
     }
@@ -1114,7 +1114,7 @@ auto CmdAssemble(int nArgs) -> Update_t {
   // 1 : A address
   // 2+: A address mnemonic...
 
-  if (!nArgs) {
+  if (nArgs == 0) {
     //    return Help_Arg_1( CMD_ASSEMBLE );
 
     // Start assembler, continue with last assembled address
@@ -1128,9 +1128,9 @@ auto CmdAssemble(int nArgs) -> Update_t {
     int iArg = 1;
 
     // undocumented ASM *
-    if ((!strcmp(g_args[iArg].sArg, g_parameters[PARAM_WILDSTAR].name)) ||
-        (!strcmp(g_args[iArg].sArg,
-                 g_parameters[PARAM_MEM_SEARCH_WILD].name))) {
+    if ((strcmp(g_args[iArg].sArg, g_parameters[PARAM_WILDSTAR].name) == 0) ||
+        (strcmp(g_args[iArg].sArg, g_parameters[PARAM_MEM_SEARCH_WILD].name) ==
+         0)) {
       CmdAssembleHashDump();
     }
 
@@ -1150,7 +1150,7 @@ auto CmdAssemble(int nArgs) -> Update_t {
 
 //===========================================================================
 auto CmdSource(int nArgs) -> Update_t {
-  if (!nArgs) {
+  if (nArgs == 0) {
     g_source_level_debugging = false;
   } else {
     g_source_add_memory = false;
@@ -1289,7 +1289,7 @@ auto BufferAssemblyListing(const std::string& pFileName) -> bool {
   g_assembler_source_buffer.Reset();
   g_assembler_source_buffer.Read(pFileName);
 
-  if (g_assembler_source_buffer.GetNumLines()) {
+  if (g_assembler_source_buffer.GetNumLines() != 0) {
     g_source_level_debugging = true;
     bStatus = true;
   }
@@ -1904,7 +1904,7 @@ auto Assemble(int iArg, int nArgs, uint16_t address) -> bool {
   }
 
   int nOpcodes = static_cast<int>(g_asm_opcodes.size());
-  if (!nOpcodes) {
+  if (nOpcodes == 0) {
     // Check for assembler directive
 
     ConsoleBufferPush(" Syntax error: Invalid mnemonic");

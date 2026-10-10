@@ -62,7 +62,7 @@ auto CmdGo(int nArgs, const bool bFullSpeed) -> Update_t {
   g_debug_steps = -1;
   g_debug_step_cycles = 0;
   g_debug_step_start = cpu_get_registers()->pc;
-  g_debug_step_until = nArgs ? g_args[1].nValue : -1;
+  g_debug_step_until = (nArgs != 0) ? g_args[1].nValue : -1;
   g_debug_skip_start = -1;
   g_debug_skip_len = -1;
 
@@ -139,7 +139,7 @@ auto CmdBreakInvalid(int nArgs) -> Update_t {
   if (nArgs == 0) {
     g_debug_break_on_invalid ^= 1;
   } else {
-    g_debug_break_on_invalid = g_args[1].nValue != 0;
+    g_debug_break_on_invalid = static_cast<int>(g_args[1].nValue != 0);
   }
   return UPDATE_CONSOLE_DISPLAY;
 }
@@ -170,7 +170,7 @@ auto CmdStepOver(int nArgs) -> Update_t {
   // assert( g_disasm_cur_address == cpu_get_registers()->pc );
 
   //  g_debug_steps = nArgs ? g_args[1].nValue : 1;
-  uint16_t nDebugSteps = nArgs ? g_args[1].nValue : 1;
+  uint16_t nDebugSteps = (nArgs != 0) ? g_args[1].nValue : 1;
 
   while (nDebugSteps-- > 0) {
     int nOpcode = *(mem + cpu_get_registers()->pc);  // g_disasm_cur_address
@@ -208,7 +208,7 @@ auto CmdStepOut(int nArgs) -> Update_t {
 
 //===========================================================================
 auto CmdTrace(int nArgs) -> Update_t {
-  g_debug_steps = nArgs ? g_args[1].nValue : 1;
+  g_debug_steps = (nArgs != 0) ? g_args[1].nValue : 1;
   g_debug_step_cycles = 0;
   g_debug_step_start = cpu_get_registers()->pc;
   g_debug_step_until = -1;
@@ -230,7 +230,7 @@ auto CmdTraceFile(int nArgs) -> Update_t {
   } else {
     std::string sFileName;
 
-    if (nArgs) {
+    if (nArgs != 0) {
       sFileName = g_args[1].sArg;
     } else {
       sFileName = g_file_name_trace;
@@ -261,7 +261,7 @@ auto CmdTraceFile(int nArgs) -> Update_t {
 
 //===========================================================================
 auto CmdTraceLine(int nArgs) -> Update_t {
-  g_debug_steps = nArgs ? g_args[1].nValue : 1;
+  g_debug_steps = (nArgs != 0) ? g_args[1].nValue : 1;
   g_debug_step_cycles = 1;
   g_debug_step_start = cpu_get_registers()->pc;
   g_debug_step_until = -1;
@@ -276,7 +276,7 @@ auto CmdTraceLine(int nArgs) -> Update_t {
 // Unassemble
 //===========================================================================
 auto CmdUnassemble(int nArgs) -> Update_t {
-  if (!nArgs) {
+  if (nArgs == 0) {
     return Help_Arg_1(CMD_UNASSEMBLE);
   }
 
@@ -305,7 +305,7 @@ auto CmdKey(int nArgs) -> Update_t {
 
 //===========================================================================
 auto CmdIn(int nArgs) -> Update_t {
-  if (!nArgs) {
+  if (nArgs == 0) {
     return Help_Arg_1(CMD_IN);
   }
 
@@ -318,7 +318,7 @@ auto CmdIn(int nArgs) -> Update_t {
 
 //===========================================================================
 auto CmdJSR(int nArgs) -> Update_t {
-  if (!nArgs) {
+  if (nArgs == 0) {
     return Help_Arg_1(CMD_JSR);
   }
 
@@ -350,7 +350,7 @@ auto CmdNOP(int nArgs) -> Update_t {
 
   GetOpcodeOpmodeOpbyte(opcode, iOpmode, nOpbytes);
 
-  while (nOpbytes--) {
+  while ((nOpbytes--) != 0) {
     *(mem + cpu_get_registers()->pc + nOpbytes) = 0xEA;
   }
 
@@ -364,7 +364,7 @@ auto CmdOut(int nArgs) -> Update_t {
   //      (!GetAddress(g_args[1].sArg))))
   //     return DisplayHelp(CmdInput);
 
-  if (!nArgs) {
+  if (nArgs == 0) {
     Help_Arg_1(CMD_OUT);
   }
 
@@ -384,7 +384,8 @@ auto CmdRegisterSet(int nArgs) -> Update_t {
 
   char* pName = g_args[1].sArg;
   int iParam = 0;
-  if (FindParam(pName, MATCH_EXACT, iParam, PARAM_REGS_BEGIN, PARAM_REGS_END)) {
+  if (FindParam(pName, MATCH_EXACT, iParam, PARAM_REGS_BEGIN, PARAM_REGS_END) !=
+      0) {
     int iArg = 2;
     if (g_args[iArg].eToken == TOKEN_EQUAL) {
       iArg++;
@@ -443,7 +444,7 @@ static auto CheckBreakOpcode(int opcode) -> void {
   }
 
   // User wants to enter debugger on specific opcode? (NB. Can't be BRK)
-  if (g_debug_break_on_opcode && g_debug_break_on_opcode == opcode) {
+  if ((g_debug_break_on_opcode != 0) && g_debug_break_on_opcode == opcode) {
     g_debug_breakpoint_hit |= BP_HIT_OPCODE;
   }
 }
@@ -489,7 +490,7 @@ auto DebugContinueStepping(const bool bCallerWillUpdateDisplay) -> void {
         g_debug_breakpoint_hit = BP_HIT_PC_READ_FLOATING_BUS_OR_IO_MEM;
       }
 
-      if (g_debug_breakpoint_hit) {
+      if (g_debug_breakpoint_hit != 0) {
         bDoSingleStep = false;
         bForceSingleStepNext =
             true;  // Allow next single-step (after this) to execute

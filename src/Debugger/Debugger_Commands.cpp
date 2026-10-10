@@ -66,14 +66,14 @@ auto DebuggerProcessCommand(const bool bEchoConsoleInput) -> Update_t {
   }
 
   if (g_assembler_input) {
-    if (g_console_input_chars) {
+    if (g_console_input_chars != 0) {
       ParseInput(g_console_input_ptr, false);  // Don't cook the args
       bUpdateDisplay |= CmdAssemble(g_assembler_address, 0, g_arg_raw_count);
     } else {
       AssemblerOff();
 
       int nDelayedTargets = AssemblerDelayedTargetsSize();
-      if (nDelayedTargets) {
+      if (nDelayedTargets != 0) {
         snprintf(sText, sizeof(sText), " Asm: %d sym declared, not defined",
                  nDelayedTargets);
         ConsoleDisplayPush(sText);
@@ -83,7 +83,7 @@ auto DebuggerProcessCommand(const bool bEchoConsoleInput) -> Update_t {
     ConsoleInputReset();
     bUpdateDisplay |= UPDATE_CONSOLE_DISPLAY | UPDATE_CONSOLE_INPUT;
     ConsoleUpdate();  // udpate console, don't pause
-  } else if (g_console_input_chars) {
+  } else if (g_console_input_chars != 0) {
     int nArgs = ParseInput(g_console_input_ptr);
     if (nArgs == ARG_SYNTAX_ERROR) {
       snprintf(sText, sizeof(sText), "Syntax error: %s", g_args[0].sArg);
@@ -1252,8 +1252,7 @@ auto VerifyDebuggerCommandTable() -> void {
     fprintf(stderr, "*** ERROR *** Total Commands mis-matched!");
   }
 
-  if (strcmp(g_parameters[NUM_PARAMS].name, debugger_params_verify_txt) !=
-      0) {
+  if (strcmp(g_parameters[NUM_PARAMS].name, debugger_params_verify_txt) != 0) {
     fprintf(stderr, "*** ERROR *** Total Parameters mis-matched!");
   }
 }

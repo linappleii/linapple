@@ -43,7 +43,7 @@ auto CmdBenchmarkStart(int nArgs) -> Update_t {
 }
 
 auto CmdBenchmark(int nArgs) -> Update_t {
-  if (!nArgs) {
+  if (nArgs == 0) {
     g_benchmarking = false;
   } else {
     g_benchmarking = true;
@@ -56,7 +56,7 @@ auto CmdBenchmark(int nArgs) -> Update_t {
 static auto CmdProfileList(int nArgs) -> Update_t;
 
 auto CmdProfile(int nArgs) -> Update_t {
-  if (!nArgs) {
+  if (nArgs == 0) {
     return CmdProfileList(0);
   }
 

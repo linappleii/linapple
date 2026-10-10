@@ -48,7 +48,7 @@ static auto CmdMemorySearch(int nArgs, bool bTextIsAscii) -> Update_t;
 // . Add support for dumping Disk][ device
 //===========================================================================
 auto MemoryDumpCheck(int nArgs, uint16_t* pAddress_) -> bool {
-  if (!nArgs) {
+  if (nArgs == 0) {
     return false;
   }
 
@@ -94,14 +94,14 @@ auto CmdMemoryCompare(int nArgs) -> Update_t {
   uint16_t nSrcSymAddr = 0;
   uint16_t nDstSymAddr = 0;
 
-  if (!nSrcAddr) {
+  if (nSrcAddr == 0u) {
     nSrcSymAddr = GetAddressFromSymbol(g_args[1].sArg);
     if (nSrcAddr != nSrcSymAddr) {
       nSrcAddr = nSrcSymAddr;
     }
   }
 
-  if (!nDstAddr) {
+  if (nDstAddr == 0u) {
     nDstSymAddr = GetAddressFromSymbol(g_args[3].sArg);
     if (nDstAddr != nDstSymAddr) {
       nDstAddr = nDstSymAddr;
@@ -213,7 +213,7 @@ auto CmdMemoryEdit(int nArgs) -> Update_t {
 auto CmdMemoryEnterByte(int nArgs) -> Update_t {
   if ((nArgs < 2) ||
       ((g_args[2].sArg[0] != '0') &&
-       (!g_args[2].nValue)))  // arg2 not numeric or not specified
+       (g_args[2].nValue == 0u)))  // arg2 not numeric or not specified
   {
     Help_Arg_1(CMD_MEMORY_ENTER_WORD);
   }
@@ -239,7 +239,7 @@ auto CmdMemoryEnterByte(int nArgs) -> Update_t {
 auto CmdMemoryEnterWord(int nArgs) -> Update_t {
   if ((nArgs < 2) ||
       ((g_args[2].sArg[0] != '0') &&
-       (!g_args[2].nValue)))  // arg2 not numeric or not specified
+       (g_args[2].nValue == 0u)))  // arg2 not numeric or not specified
   {
     Help_Arg_1(CMD_MEMORY_ENTER_WORD);
   }
@@ -271,7 +271,7 @@ auto CmdMemoryFill(int nArgs) -> Update_t {
   // F address end value
   // F address,len value
   // F address:end value
-  if ((!nArgs) || (nArgs < 3) || (nArgs > 4)) {
+  if ((nArgs == 0) || (nArgs < 3) || (nArgs > 4)) {
     return Help_Arg_1(CMD_MEMORY_FILL);
   }
 
@@ -301,7 +301,7 @@ auto CmdMemoryFill(int nArgs) -> Update_t {
     MemMarkDirty(nAddressStart, nAddressEnd);
 
     nValue = g_args[nArgs].nValue & 0xFF;
-    while (nAddressLen--)  // v2.7.0.22
+    while ((nAddressLen--) != 0)  // v2.7.0.22
     {
       // TODO: Optimize - split into pre_io, and post_io
       if ((nAddress2 < DBG_6502_IO_BEGIN) || (nAddress2 > DBG_6502_IO_END)) {
@@ -366,7 +366,7 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
 
   bool bHaveFileName = false;
 
-  if (g_args[1].bType & TYPE_QUOTED_2) {
+  if ((g_args[1].bType & TYPE_QUOTED_2) != 0) {
     bHaveFileName = true;
   }
 
@@ -399,7 +399,7 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
   }
 
   if (nArgs >= 5) {
-    if (!(g_args[iArgBank].bType & TYPE_ADDRESS) ||
+    if (((g_args[iArgBank].bType & TYPE_ADDRESS) == 0) ||
         g_args[iArgColon].eToken != TOKEN_COLON) {
       return Help_Arg_1(CMD_MEMORY_LOAD);
     }
@@ -579,7 +579,7 @@ auto CmdMemoryMove(int nArgs) -> Update_t {
     //      uint8_t *pDst = mem + nDst;
     //      uint8_t *pEnd = src_ptr + nAddressLen;
 
-    while (nAddressLen--)  // v2.7.0.23
+    while ((nAddressLen--) != 0)  // v2.7.0.23
     {
       // TODO: Optimize - split into pre_io, and post_io
       if ((nDst < DBG_6502_IO_BEGIN) || (nDst > DBG_6502_IO_END)) {
@@ -615,9 +615,9 @@ auto CmdMemorySave(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_MEMORY_SAVE);
   }
 
-  if (!nArgs) {
+  if (nArgs == 0) {
     char sLast[CONSOLE_WIDTH] = "";
-    if (nAddressLen) {
+    if (nAddressLen != 0) {
       if (!bBankSpecified) {
         ConsoleBufferPushFormat(sLast, "Last saved: $%04X:$%04X, %04X",
                                 nAddressStart, nAddressEnd, nAddressLen);
@@ -632,7 +632,7 @@ auto CmdMemorySave(int nArgs) -> Update_t {
   } else {
     bool bHaveFileName = false;
 
-    if (g_args[1].bType & TYPE_QUOTED_2) {
+    if ((g_args[1].bType & TYPE_QUOTED_2) != 0) {
       bHaveFileName = true;
     }
 
@@ -659,7 +659,7 @@ auto CmdMemorySave(int nArgs) -> Update_t {
     }
 
     if (nArgs > 5) {
-      if (!(g_args[iArgBank].bType & TYPE_ADDRESS) ||
+      if (((g_args[iArgBank].bType & TYPE_ADDRESS) == 0) ||
           g_args[iArgColon].eToken != TOKEN_COLON) {
         return Help_Arg_1(CMD_MEMORY_SAVE);
       }
@@ -691,7 +691,7 @@ auto CmdMemorySave(int nArgs) -> Update_t {
       return Help_Arg_1(CMD_MEMORY_SAVE);
     }
 
-    if (nAddressLen && (nAddressEnd <= apple2_6502_mem_end)) {
+    if ((nAddressLen != 0) && (nAddressEnd <= apple2_6502_mem_end)) {
       if (!bHaveFileName) {
         char sMemoryLoadSaveFileName[path_max_len];
         if (!bBankSpecified) {
@@ -899,7 +899,7 @@ auto CmdTextSave(int nArgs) -> int {
 
   bool bHaveFileName = false;
 
-  if (g_args[1].bType & TYPE_QUOTED_2) {
+  if ((g_args[1].bType & TYPE_QUOTED_2) != 0) {
     bHaveFileName = true;
   }
 
@@ -1180,12 +1180,12 @@ auto CmdMemorySearch(int nArgs, bool bTextIsAscii = true) -> Update_t {
     } else {
       char* pByte = pArg->sArg;
 
-      if (pArg->bType & TYPE_QUOTED_1) {
+      if ((pArg->bType & TYPE_QUOTED_1) != 0) {
         // Convert string to hex byte(s)
         int iChar = 0;
         int nChars = pArg->nArgLen;
 
-        if (nChars) {
+        if (nChars != 0) {
           ms.type = MEM_SEARCH_BYTE_EXACT;
           ms.found = false;
 
@@ -1200,12 +1200,12 @@ auto CmdMemorySearch(int nArgs, bool bTextIsAscii = true) -> Update_t {
             }
           }
         }
-      } else if (pArg->bType & TYPE_QUOTED_2) {
+      } else if ((pArg->bType & TYPE_QUOTED_2) != 0) {
         // Convert string to hex byte(s)
         int iChar = 0;
         int nChars = pArg->nArgLen;
 
-        if (nChars) {
+        if (nChars != 0) {
           ms.type = MEM_SEARCH_BYTE_EXACT;
           ms.found = false;
 

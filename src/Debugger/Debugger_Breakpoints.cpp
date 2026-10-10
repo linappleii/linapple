@@ -37,7 +37,8 @@ const char* g_breakpoint_symbols[NUM_BREAKPOINT_OPERATORS] = {
 
 auto IsDebugBreakOnInvalid(int iOpcodeType) -> bool {
   g_debug_breakpoint_hit |=
-      ((g_debug_break_on_invalid >> iOpcodeType) & 1) ? BP_HIT_INVALID : 0;
+      (((g_debug_break_on_invalid >> iOpcodeType) & 1) != 0) ? BP_HIT_INVALID
+                                                             : 0;
   return g_debug_breakpoint_hit != 0;
 }
 
@@ -155,7 +156,7 @@ auto CmdBreakpoint(int nArgs) -> Update_t {
 }
 
 auto CmdBreakpointAddSmart(int nArgs) -> Update_t {
-  if (!nArgs) {
+  if (nArgs == 0) {
     return CmdBreakpointList(0);
   }
 
@@ -178,7 +179,7 @@ auto CmdBreakpointAddSmart(int nArgs) -> Update_t {
 }
 
 auto CmdBreakpointAddPC(int nArgs) -> Update_t {
-  if (!nArgs) {
+  if (nArgs == 0) {
     return Help_Arg_1(CMD_BREAKPOINT_ADD_PC);
   }
 
@@ -265,11 +266,11 @@ auto CmdBreakpointEdit(int nArgs) -> Update_t {
 }
 
 auto CmdBreakpointClear(int nArgs) -> Update_t {
-  if (!g_breakpoints_count) {
+  if (g_breakpoints_count == 0) {
     return console_display_error("There are no breakpoints defined.");
   }
 
-  if (!nArgs) {
+  if (nArgs == 0) {
     bwz_RemoveAll(g_breakpoints, MAX_BREAKPOINTS, g_breakpoints_count);
   } else {
     bwz_ClearViaArgs(nArgs, g_breakpoints, MAX_BREAKPOINTS,
@@ -280,11 +281,11 @@ auto CmdBreakpointClear(int nArgs) -> Update_t {
 }
 
 auto CmdBreakpointDisable(int nArgs) -> Update_t {
-  if (!g_breakpoints_count) {
+  if (g_breakpoints_count == 0) {
     return console_display_error("There are no breakpoints defined.");
   }
 
-  if (!nArgs) {
+  if (nArgs == 0) {
     return Help_Arg_1(CMD_BREAKPOINT_DISABLE);
   }
 
@@ -294,11 +295,11 @@ auto CmdBreakpointDisable(int nArgs) -> Update_t {
 }
 
 auto CmdBreakpointEnable(int nArgs) -> Update_t {
-  if (!g_breakpoints_count) {
+  if (g_breakpoints_count == 0) {
     return console_display_error("There are no breakpoints defined.");
   }
 
-  if (!nArgs) {
+  if (nArgs == 0) {
     return Help_Arg_1(CMD_BREAKPOINT_ENABLE);
   }
 
@@ -309,7 +310,7 @@ auto CmdBreakpointEnable(int nArgs) -> Update_t {
 
 auto CmdBreakpointList(int nArgs) -> Update_t {
   (void)nArgs;
-  if (!g_breakpoints_count) {
+  if (g_breakpoints_count == 0) {
     char sText[CONSOLE_WIDTH];
     snprintf(sText, sizeof(sText),
              "  There are no current breakpoints.  (Max: %d)", MAX_BREAKPOINTS);
@@ -343,8 +344,8 @@ auto CmdBreakpointSave(int nArgs) -> Update_t {
     iBreakpoint++;
   }
 
-  if (nArgs) {
-    if (!(g_args[1].bType & TYPE_QUOTED_2)) {
+  if (nArgs != 0) {
+    if ((g_args[1].bType & TYPE_QUOTED_2) == 0) {
       return Help_Arg_1(CMD_BREAKPOINT_SAVE);
     }
 
@@ -361,7 +362,7 @@ auto CmdBreakpointSave(int nArgs) -> Update_t {
 auto CmdWatch(int nArgs) -> Update_t { return CmdWatchAdd(nArgs); }
 
 auto CmdWatchAdd(int nArgs) -> Update_t {
-  if (!nArgs) {
+  if (nArgs == 0) {
     return CmdWatchList(0);
   }
 
@@ -418,11 +419,11 @@ auto CmdWatchSave(int nArgs) -> Update_t {
 }
 
 auto CmdWatchClear(int nArgs) -> Update_t {
-  if (!g_watches_count) {
+  if (g_watches_count == 0) {
     return console_display_error("There are no watches defined.");
   }
 
-  if (!nArgs) {
+  if (nArgs == 0) {
     bwz_RemoveAll((Breakpoint_t*)g_watches, MAX_WATCHES, g_watches_count);
   } else {
     bwz_ClearViaArgs(nArgs, (Breakpoint_t*)g_watches, MAX_WATCHES,
@@ -433,11 +434,11 @@ auto CmdWatchClear(int nArgs) -> Update_t {
 }
 
 auto CmdWatchDisable(int nArgs) -> Update_t {
-  if (!g_watches_count) {
+  if (g_watches_count == 0) {
     return console_display_error("There are no watches defined.");
   }
 
-  if (!nArgs) {
+  if (nArgs == 0) {
     return Help_Arg_1(CMD_WATCH_DISABLE);
   }
 
@@ -447,11 +448,11 @@ auto CmdWatchDisable(int nArgs) -> Update_t {
 }
 
 auto CmdWatchEnable(int nArgs) -> Update_t {
-  if (!g_watches_count) {
+  if (g_watches_count == 0) {
     return console_display_error("There are no watches defined.");
   }
 
-  if (!nArgs) {
+  if (nArgs == 0) {
     return Help_Arg_1(CMD_WATCH_ENABLE);
   }
 
@@ -462,7 +463,7 @@ auto CmdWatchEnable(int nArgs) -> Update_t {
 
 auto CmdWatchList(int nArgs) -> Update_t {
   (void)nArgs;
-  if (!g_watches_count) {
+  if (g_watches_count == 0) {
     char sText[CONSOLE_WIDTH];
     snprintf(sText, sizeof(sText), "  There are no current watches.  (Max: %d)",
              MAX_WATCHES);

@@ -15,7 +15,8 @@ auto DrawSubWindow_Console(Update_t bUpdate) -> void {
     return;
   }
 
-  if ((bUpdate & UPDATE_CONSOLE_DISPLAY) || (bUpdate & UPDATE_CONSOLE_INPUT)) {
+  if (((bUpdate & UPDATE_CONSOLE_DISPLAY) != 0) ||
+      ((bUpdate & UPDATE_CONSOLE_INPUT) != 0)) {
     DebuggerSetColorBG(DebuggerGetColor(BG_CONSOLE_OUTPUT));
 
     int iLine = g_console_display_start + CONSOLE_FIRST_LINE;

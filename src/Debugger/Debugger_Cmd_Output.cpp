@@ -41,7 +41,7 @@ struct PrintFormat_t {
 
 //===========================================================================
 auto DebuggerRunScript(const char* pFileName) -> void {
-  if (!pFileName || !*pFileName) {
+  if (!pFileName || ((*pFileName) == 0)) {
     return;
   }
 
@@ -79,7 +79,7 @@ auto DebuggerRunScript(const char* pFileName) -> void {
 
 //===========================================================================
 auto CmdOutputCalc(int nArgs) -> Update_t {
-  if (!nArgs) {
+  if (nArgs == 0) {
     return Help_Arg_1(CMD_OUTPUT_CALC);
   }
 
@@ -97,7 +97,7 @@ auto CmdOutputCalc(int nArgs) -> Update_t {
 
   char sBin[16] = "";
   for (nBit = 0; nBit < nWidth; nBit++) {
-    sBin[nWidth - 1 - nBit] = (address & (1 << nBit)) ? '1' : '0';
+    sBin[nWidth - 1 - nBit] = ((address & (1 << nBit)) != 0) ? '1' : '0';
   }
 
   snprintf(sText, sizeof(sText), "  $%02X = %3d = %%%s", address, address,
@@ -131,7 +131,7 @@ auto CmdOutputCalc(int nArgs) -> Update_t {
 //===========================================================================
 auto CmdOutputEcho(int nArgs) -> Update_t {
   (void)nArgs;
-  if (g_args[1].bType & TYPE_QUOTED_2) {
+  if ((g_args[1].bType & TYPE_QUOTED_2) != 0) {
     ConsoleDisplayPush(g_args[1].sArg);
   } else {
     const char* text = g_console_first_arg;  // ConsoleInputPeek();
@@ -152,12 +152,12 @@ auto CmdOutputPrint(int nArgs) -> Update_t {
   uint16_t nValue = 0;
   int iArg = 0;
 
-  if (!nArgs) {
+  if (nArgs == 0) {
     return Help_Arg_1(CMD_OUTPUT_PRINT);
   }
 
   for (iArg = 1; iArg <= nArgs; iArg++) {
-    if (g_args[iArg].bType & TYPE_QUOTED_2) {
+    if ((g_args[iArg].bType & TYPE_QUOTED_2) != 0) {
       nLen += StringCat(sText, g_args[iArg].sArg, CONSOLE_WIDTH);
       continue;
     }
@@ -169,7 +169,7 @@ auto CmdOutputPrint(int nArgs) -> Update_t {
     nLen += snprintf(&sText[nLen], sizeof(sText) - nLen, "%d", nValue);
   }
 
-  if (nLen) {
+  if (nLen != 0) {
     ConsoleBufferPush(sText);
   }
 
@@ -197,7 +197,7 @@ auto CmdOutputPrintf(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_OUTPUT_PRINTF);
   }
 
-  if (!(g_args[1].bType & TYPE_QUOTED_2)) {
+  if ((g_args[1].bType & TYPE_QUOTED_2) == 0) {
     return Help_Arg_1(CMD_OUTPUT_PRINTF);
   }
 
@@ -209,7 +209,7 @@ auto CmdOutputPrintf(int nArgs) -> Update_t {
 
   pFormat = g_args[1].sArg;
 
-  while (*pFormat) {
+  while ((*pFormat) != 0) {
     char c = *pFormat++;
 
     switch (eThis) {
@@ -261,7 +261,7 @@ auto CmdOutputPrintf(int nArgs) -> Update_t {
 
           switch (eThis) {
             case PS_NEXT_ARG_HEX:
-              if (nWidth) {
+              if (nWidth != 0) {
                 snprintf(sFormat, sizeof(sFormat), "%%0%dX", nWidth);
               } else {
                 snprintf(sFormat, sizeof(sFormat), "%%X");
@@ -271,7 +271,7 @@ auto CmdOutputPrintf(int nArgs) -> Update_t {
               break;
 
             case PS_NEXT_ARG_DEC:
-              if (nWidth) {
+              if (nWidth != 0) {
                 snprintf(sFormat, sizeof(sFormat), "%%%dd", nWidth);
               } else {
                 snprintf(sFormat, sizeof(sFormat), "%%d");
@@ -282,12 +282,13 @@ auto CmdOutputPrintf(int nArgs) -> Update_t {
 
             case PS_NEXT_ARG_BIN: {
               int nBit = 0;
-              if (!nWidth) {
+              if (nWidth == 0) {
                 nWidth = 8;
               }
 
               for (nBit = 0; nBit < nWidth; nBit++) {
-                sValue[nWidth - 1 - nBit] = (nValue & (1 << nBit)) ? '1' : '0';
+                sValue[nWidth - 1 - nBit] =
+                    ((nValue & (1 << nBit)) != 0) ? '1' : '0';
               }
               sValue[nWidth] = 0;
             } break;
@@ -317,7 +318,7 @@ auto CmdOutputPrintf(int nArgs) -> Update_t {
     }
   }
 
-  if (nLen) {
+  if (nLen != 0) {
     ConsoleBufferPush(sText);
   }
 
@@ -326,7 +327,7 @@ auto CmdOutputPrintf(int nArgs) -> Update_t {
 
 //===========================================================================
 auto CmdOutputRun(int nArgs) -> Update_t {
-  if (!nArgs) {
+  if (nArgs == 0) {
     return Help_Arg_1(CMD_OUTPUT_RUN);
   }
 

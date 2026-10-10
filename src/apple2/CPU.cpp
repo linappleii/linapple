@@ -117,15 +117,15 @@ struct CpuLoopContext {
 
   auto set_nz(uint16_t a) -> void {
     flagn = (a & 0x80);
-    flagz = !(a & 0xFF);
+    flagz = ((a & 0xFF) == 0) ? 1 : 0;
   }
 
-  auto set_z(uint16_t a) -> void { flagz = !(a & 0xFF); }
+  auto set_z(uint16_t a) -> void { flagz = ((a & 0xFF) == 0) ? 1 : 0; }
 
   auto pack_ps() const -> void {
     regs.ps = (regs.ps & ~(AF_CARRY | AF_SIGN | AF_OVERFLOW | AF_ZERO)) |
-              flagc | flagn | (flagv ? AF_OVERFLOW : 0) |
-              (flagz ? AF_ZERO : 0) | AF_RESERVED | AF_BREAK;
+              flagc | flagn | (flagv != 0 ? AF_OVERFLOW : 0) |
+              (flagz != 0 ? AF_ZERO : 0) | AF_RESERVED | AF_BREAK;
   }
 
   auto unpack_ps() -> void {
@@ -165,7 +165,7 @@ struct CpuLoopContext {
   }
 
   auto check_page_change(uint16_t b, uint16_t a) -> void {
-    if ((b ^ a) & 0xFF00) {
+    if (((b ^ a) & 0xFF00) != 0) {
       extra_cycles = 1;
     }
   }
@@ -173,7 +173,7 @@ struct CpuLoopContext {
   auto branch_taken() -> void {
     uint16_t old_pc = regs.pc;
     regs.pc += addr;
-    if ((old_pc ^ regs.pc) & 0xFF00) {
+    if (((old_pc ^ regs.pc) & 0xFF00) != 0) {
       extra_cycles = 2;
     } else {
       extra_cycles = 1;
@@ -307,38 +307,38 @@ struct CpuLoopContext {
   }
   auto op_bit() -> void {
     uint16_t val = read_byte(addr);
-    flagz = !(regs.a & val);
+    flagz = ((regs.a & val) == 0) ? 1 : 0;
     flagn = val & 0x80;
     flagv = val & 0x40;
   }
-  auto op_biti() -> void { flagz = !(regs.a & read_byte(addr)); }
+  auto op_biti() -> void { flagz = ((regs.a & read_byte(addr)) == 0) ? 1 : 0; }
   auto op_cmp() -> void {
     uint16_t val = read_byte(addr);
-    flagc = (regs.a >= val);
+    flagc = (regs.a >= val) ? 1 : 0;
     val = regs.a - val;
     set_nz(val);
   }
   auto op_cpx() -> void {
     uint16_t val = read_byte(addr);
-    flagc = (regs.x >= val);
+    flagc = (regs.x >= val) ? 1 : 0;
     val = regs.x - val;
     set_nz(val);
   }
   auto op_cpy() -> void {
     uint16_t val = read_byte(addr);
-    flagc = (regs.y >= val);
+    flagc = (regs.y >= val) ? 1 : 0;
     val = regs.y - val;
     set_nz(val);
   }
   auto op_asla() -> void {
     uint16_t val = regs.a << 1;
-    flagc = (val > 0xFF);
+    flagc = (val > 0xFF) ? 1 : 0;
     set_nz(val);
     regs.a = static_cast<uint8_t>(val);
   }
   auto op_asl() -> void {
     uint16_t val = read_byte(addr) << 1;
-    flagc = (val > 0xFF);
+    flagc = (val > 0xFF) ? 1 : 0;
     set_nz(val);
     write_byte(addr, static_cast<uint8_t>(val));
   }
@@ -358,25 +358,26 @@ struct CpuLoopContext {
   }
   auto op_rola() -> void {
     uint16_t val = (static_cast<uint16_t>(regs.a) << 1) | flagc;
-    flagc = (val > 0xFF);
+    flagc = (val > 0xFF) ? 1 : 0;
     regs.a = val & 0xFF;
     set_nz(regs.a);
   }
   auto op_rol() -> void {
     uint16_t val = (read_byte(addr) << 1) | flagc;
-    flagc = (val > 0xFF);
+    flagc = (val > 0xFF) ? 1 : 0;
     set_nz(val);
     write_byte(addr, static_cast<uint8_t>(val));
   }
   auto op_rora() -> void {
-    uint16_t val = (static_cast<uint16_t>(regs.a) >> 1) | (flagc ? 0x80 : 0);
+    uint16_t val =
+        (static_cast<uint16_t>(regs.a) >> 1) | (flagc != 0 ? 0x80 : 0);
     flagc = (regs.a & 1);
     regs.a = val & 0xFF;
     set_nz(regs.a);
   }
   auto op_ror() -> void {
     uint16_t temp = read_byte(addr);
-    uint16_t val = (temp >> 1) | (flagc ? 0x80 : 0);
+    uint16_t val = (temp >> 1) | (flagc != 0 ? 0x80 : 0);
     flagc = (temp & 1);
     set_nz(val);
     write_byte(addr, static_cast<uint8_t>(val));
@@ -475,13 +476,13 @@ struct CpuLoopContext {
   }
   auto op_trb() -> void {
     uint16_t val = read_byte(addr);
-    flagz = !(regs.a & val);
+    flagz = ((regs.a & val) == 0) ? 1 : 0;
     val &= ~regs.a;
     write_byte(addr, static_cast<uint8_t>(val));
   }
   auto op_tsb() -> void {
     uint16_t val = read_byte(addr);
-    flagz = !(regs.a & val);
+    flagz = ((regs.a & val) == 0) ? 1 : 0;
     val |= regs.a;
     write_byte(addr, static_cast<uint8_t>(val));
   }
@@ -489,11 +490,13 @@ struct CpuLoopContext {
   // Arithmetic ADC / SBC
   auto op_adc_nmos() -> void {
     uint16_t temp = read_byte(addr);
-    if (regs.ps & AF_DECIMAL) {
+    if ((regs.ps & AF_DECIMAL) != 0) {
       uint16_t val = regs.a + temp + flagc;
-      flagz = !(val & 0xFF);
+      flagz = ((val & 0xFF) == 0) ? 1 : 0;
       flagn = val & 0x80;
-      flagv = ((regs.a ^ val) & 0x80) && !((regs.a ^ temp) & 0x80);
+      flagv = (((regs.a ^ val) & 0x80) != 0 && ((regs.a ^ temp) & 0x80) == 0)
+                  ? 1
+                  : 0;
       uint16_t low = (regs.a & 0x0F) + (temp & 0x0F) + flagc;
       if (low > 0x09) {
         low += 0x06;
@@ -502,13 +505,15 @@ struct CpuLoopContext {
       if (high > 0x09) {
         high += 0x06;
       }
-      flagc = (high > 0x0F);
+      flagc = (high > 0x0F) ? 1 : 0;
       regs.a = (high << 4) | (low & 0x0F);
     } else {
       uint16_t val = regs.a + temp + flagc;
-      flagc = (val > 0xFF);
+      flagc = (val > 0xFF) ? 1 : 0;
       flagv = (((regs.a & 0x80) == (temp & 0x80)) &&
-               ((regs.a & 0x80) != (val & 0x80)));
+               ((regs.a & 0x80) != (val & 0x80)))
+                  ? 1
+                  : 0;
       regs.a = val & 0xFF;
       set_nz(regs.a);
     }
@@ -516,9 +521,9 @@ struct CpuLoopContext {
 
   auto op_adc_cmos() -> void {
     uint16_t temp = read_byte(addr);
-    flagv = !((regs.a ^ temp) & 0x80);
+    flagv = (((regs.a ^ temp) & 0x80) == 0) ? 1 : 0;
     uint16_t val = 0;
-    if (regs.ps & AF_DECIMAL) {
+    if ((regs.ps & AF_DECIMAL) != 0) {
       extra_cycles++;
       val = (regs.a & 0x0f) + (temp & 0x0f) + flagc;
       if (val >= 0x0A) {
@@ -557,26 +562,30 @@ struct CpuLoopContext {
 
   auto op_sbc_nmos() -> void {
     uint16_t temp = read_byte(addr);
-    if (regs.ps & AF_DECIMAL) {
-      uint16_t val = regs.a - temp - !flagc;
+    if ((regs.ps & AF_DECIMAL) != 0) {
+      uint16_t val = regs.a - temp - (flagc == 0 ? 1 : 0);
       flagn = val & 0x80;
-      flagv = ((regs.a ^ val) & 0x80) && ((regs.a ^ temp) & 0x80);
-      flagz = !(val & 0xFF);
-      uint16_t low = (regs.a & 0x0F) - (temp & 0x0F) - !flagc;
-      if (low & 0x10) {
+      flagv = (((regs.a ^ val) & 0x80) != 0 && ((regs.a ^ temp) & 0x80) != 0)
+                  ? 1
+                  : 0;
+      flagz = ((val & 0xFF) == 0) ? 1 : 0;
+      uint16_t low = (regs.a & 0x0F) - (temp & 0x0F) - (flagc == 0 ? 1 : 0);
+      if ((low & 0x10) != 0) {
         low -= 0x06;
       }
       uint16_t high = (regs.a >> 4) - (temp >> 4) - ((low & 0x10) >> 4);
-      if (high & 0x10) {
+      if ((high & 0x10) != 0) {
         high -= 0x06;
       }
-      flagc = !(high & 0x10);
+      flagc = ((high & 0x10) == 0) ? 1 : 0;
       regs.a = (high << 4) | (low & 0x0F);
     } else {
-      uint16_t val = regs.a - temp - !flagc;
-      flagc = (val < 0x100);
+      uint16_t val = regs.a - temp - (flagc == 0 ? 1 : 0);
+      flagc = (val < 0x100) ? 1 : 0;
       flagv = (((regs.a & 0x80) != (temp & 0x80)) &&
-               ((regs.a & 0x80) != (val & 0x80)));
+               ((regs.a & 0x80) != (val & 0x80)))
+                  ? 1
+                  : 0;
       regs.a = val & 0xFF;
       set_nz(regs.a);
     }
@@ -586,7 +595,7 @@ struct CpuLoopContext {
     uint16_t temp = read_byte(addr);
     flagv = ((regs.a ^ temp) & 0x80);
     uint16_t val = 0;
-    if (regs.ps & AF_DECIMAL) {
+    if ((regs.ps & AF_DECIMAL) != 0) {
       extra_cycles++;
       uint16_t temp2 = 0x0F + (regs.a & 0x0F) - (temp & 0x0F) + flagc;
       if (temp2 < 0x10) {
@@ -639,14 +648,14 @@ struct CpuLoopContext {
   auto op_anc() -> void {
     regs.a &= read_byte(addr);
     set_nz(regs.a);
-    flagc = !!flagn;
+    flagc = (flagn != 0) ? 1 : 0;
   }
   auto op_arr() -> void {
     uint16_t temp = regs.a & read_byte(addr);
-    if (regs.ps & AF_DECIMAL) {
-      uint16_t val = temp | (flagc ? 0x100 : 0);
+    if ((regs.ps & AF_DECIMAL) != 0) {
+      uint16_t val = temp | (flagc != 0 ? 0x100 : 0);
       val >>= 1;
-      flagn = (flagc ? 0x80 : 0);
+      flagn = (flagc != 0 ? 0x80 : 0);
       set_z(val);
       flagv = ((val ^ temp) & 0x40);
       if (((val & 0x0F) + (val & 0x01)) > 0x05) {
@@ -660,17 +669,17 @@ struct CpuLoopContext {
       }
       regs.a = val & 0xFF;
     } else {
-      uint16_t val = temp | (flagc ? 0x100 : 0);
+      uint16_t val = temp | (flagc != 0 ? 0x100 : 0);
       val >>= 1;
       set_nz(val);
-      flagc = !!(val & 0x40);
+      flagc = ((val & 0x40) != 0) ? 1 : 0;
       flagv = ((val & 0x40) ^ ((val & 0x20) << 1));
       regs.a = val & 0xFF;
     }
   }
   auto op_aso() -> void {
     uint16_t val = read_byte(addr) << 1;
-    flagc = (val > 0xFF);
+    flagc = (val > 0xFF) ? 1 : 0;
     write_byte(addr, static_cast<uint8_t>(val));
     regs.a |= val;
     set_nz(regs.a);
@@ -684,7 +693,7 @@ struct CpuLoopContext {
   auto op_dcm() -> void {
     uint16_t val = read_byte(addr) - 1;
     write_byte(addr, static_cast<uint8_t>(val));
-    flagc = (regs.a >= val);
+    flagc = (regs.a >= val) ? 1 : 0;
     val = regs.a - val;
     set_nz(val);
   }
@@ -692,26 +701,30 @@ struct CpuLoopContext {
     uint16_t val = read_byte(addr) + 1;
     write_byte(addr, static_cast<uint8_t>(val));
     uint16_t temp = val;
-    if (regs.ps & AF_DECIMAL) {
-      val = regs.a - temp - !flagc;
+    if ((regs.ps & AF_DECIMAL) != 0) {
+      val = regs.a - temp - (flagc == 0 ? 1 : 0);
       flagn = val & 0x80;
-      flagv = ((regs.a ^ val) & 0x80) && ((regs.a ^ temp) & 0x80);
-      flagz = !(val & 0xFF);
-      uint16_t low = (regs.a & 0x0F) - (temp & 0x0F) - !flagc;
-      if (low & 0x10) {
+      flagv = (((regs.a ^ val) & 0x80) != 0 && ((regs.a ^ temp) & 0x80) != 0)
+                  ? 1
+                  : 0;
+      flagz = ((val & 0xFF) == 0) ? 1 : 0;
+      uint16_t low = (regs.a & 0x0F) - (temp & 0x0F) - (flagc == 0 ? 1 : 0);
+      if ((low & 0x10) != 0) {
         low -= 0x06;
       }
       uint16_t high = (regs.a >> 4) - (temp >> 4) - ((low & 0x10) >> 4);
-      if (high & 0x10) {
+      if ((high & 0x10) != 0) {
         high -= 0x06;
       }
-      flagc = !(high & 0x10);
+      flagc = ((high & 0x10) == 0) ? 1 : 0;
       regs.a = (high << 4) | (low & 0x0F);
     } else {
-      val = regs.a - temp - !flagc;
-      flagc = (val < 0x100);
+      val = regs.a - temp - (flagc == 0 ? 1 : 0);
+      flagc = (val < 0x100) ? 1 : 0;
       flagv = (((regs.a & 0x80) != (temp & 0x80)) &&
-               ((regs.a & 0x80) != (val & 0x80)));
+               ((regs.a & 0x80) != (val & 0x80)))
+                  ? 1
+                  : 0;
       regs.a = val & 0xFF;
       set_nz(regs.a);
     }
@@ -742,22 +755,24 @@ struct CpuLoopContext {
   }
   auto op_rla() -> void {
     uint16_t val = (read_byte(addr) << 1) | flagc;
-    flagc = (val > 0xFF);
+    flagc = (val > 0xFF) ? 1 : 0;
     write_byte(addr, static_cast<uint8_t>(val));
     regs.a &= val;
     set_nz(regs.a);
   }
   auto op_rra() -> void {
     uint16_t temp = read_byte(addr);
-    uint16_t val = (temp >> 1) | (flagc ? 0x80 : 0);
+    uint16_t val = (temp >> 1) | (flagc != 0 ? 0x80 : 0);
     flagc = (temp & 1);
     write_byte(addr, static_cast<uint8_t>(val));
     temp = val;
-    if (regs.ps & AF_DECIMAL) {
+    if ((regs.ps & AF_DECIMAL) != 0) {
       val = regs.a + temp + flagc;
-      flagz = !(val & 0xFF);
+      flagz = ((val & 0xFF) == 0) ? 1 : 0;
       flagn = val & 0x80;
-      flagv = ((regs.a ^ val) & 0x80) && !((regs.a ^ temp) & 0x80);
+      flagv = (((regs.a ^ val) & 0x80) != 0 && ((regs.a ^ temp) & 0x80) == 0)
+                  ? 1
+                  : 0;
       uint16_t low = (regs.a & 0x0F) + (temp & 0x0F) + flagc;
       if (low > 0x09) {
         low += 0x06;
@@ -766,13 +781,15 @@ struct CpuLoopContext {
       if (high > 0x09) {
         high += 0x06;
       }
-      flagc = (high > 0x0F);
+      flagc = (high > 0x0F) ? 1 : 0;
       regs.a = (high << 4) | (low & 0x0F);
     } else {
       val = regs.a + temp + flagc;
-      flagc = (val > 0xFF);
+      flagc = (val > 0xFF) ? 1 : 0;
       flagv = (((regs.a & 0x80) == (temp & 0x80)) &&
-               ((regs.a & 0x80) != (val & 0x80)));
+               ((regs.a & 0x80) != (val & 0x80)))
+                  ? 1
+                  : 0;
       regs.a = val & 0xFF;
       set_nz(regs.a);
     }
@@ -780,7 +797,7 @@ struct CpuLoopContext {
   auto op_sax() -> void {
     uint16_t temp = regs.a & regs.x;
     uint16_t val = read_byte(addr);
-    flagc = (temp >= val);
+    flagc = (temp >= val) ? 1 : 0;
     regs.x = temp - val;
     set_nz(regs.x);
   }
@@ -3870,7 +3887,7 @@ auto cpu_setup_benchmark() -> void {
         *(mem + addr++) = 0x4C;
         *(mem + addr++) = jump_low;
         *(mem + addr++) = 0x03;
-        while (addr & 0x0F) {
+        while ((addr & 0x0F) != 0) {
           ++addr;
         }
       }

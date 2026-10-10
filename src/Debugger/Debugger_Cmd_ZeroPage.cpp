@@ -33,7 +33,7 @@ auto CmdZeroPage(int nArgs) -> Update_t {
 auto CmdZeroPageAdd(int nArgs) -> Update_t {
   // ZP [address]
   // ZP # address [address...]
-  if (!nArgs) {
+  if (nArgs == 0) {
     return CmdZeroPageList(0);
   }
 
@@ -85,19 +85,19 @@ auto CmdZeroPageAdd(int nArgs) -> Update_t {
 
 //===========================================================================
 auto CmdZeroPageClear(int nArgs) -> Update_t {
-  if (!g_zero_page_pointers_count) {
+  if (g_zero_page_pointers_count == 0) {
     return ZeroPage_Error();
   }
 
   // CHECK FOR ERRORS
-  if (!nArgs) {
+  if (nArgs == 0) {
     return Help_Arg_1(CMD_ZEROPAGE_POINTER_CLEAR);
   }
 
   bwz_ClearViaArgs(nArgs, (Breakpoint_t*)g_zero_page_pointers,
                    MAX_ZEROPAGE_POINTERS, g_zero_page_pointers_count);
 
-  if (!g_zero_page_pointers_count) {
+  if (g_zero_page_pointers_count == 0) {
     UpdateDisplay(UPDATE_BACKGROUND);
     return UPDATE_CONSOLE_DISPLAY;
   }
@@ -107,10 +107,10 @@ auto CmdZeroPageClear(int nArgs) -> Update_t {
 
 //===========================================================================
 auto CmdZeroPageDisable(int nArgs) -> Update_t {
-  if (!nArgs) {
+  if (nArgs == 0) {
     return Help_Arg_1(CMD_ZEROPAGE_POINTER_DISABLE);
   }
-  if (!g_zero_page_pointers_count) {
+  if (g_zero_page_pointers_count == 0) {
     return ZeroPage_Error();
   }
 
@@ -122,11 +122,11 @@ auto CmdZeroPageDisable(int nArgs) -> Update_t {
 
 //===========================================================================
 auto CmdZeroPageEnable(int nArgs) -> Update_t {
-  if (!g_zero_page_pointers_count) {
+  if (g_zero_page_pointers_count == 0) {
     return ZeroPage_Error();
   }
 
-  if (!nArgs) {
+  if (nArgs == 0) {
     return Help_Arg_1(CMD_ZEROPAGE_POINTER_ENABLE);
   }
 
@@ -139,7 +139,7 @@ auto CmdZeroPageEnable(int nArgs) -> Update_t {
 //===========================================================================
 auto CmdZeroPageList(int nArgs) -> Update_t {
   (void)nArgs;
-  if (!g_zero_page_pointers_count) {
+  if (g_zero_page_pointers_count == 0) {
     ZeroPage_Error();
   } else {
     bwz_ListAll((Breakpoint_t*)g_zero_page_pointers, MAX_ZEROPAGE_POINTERS);

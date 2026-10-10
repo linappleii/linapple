@@ -64,7 +64,7 @@ auto CmdConfigColorMono(int nArgs) -> Update_t {
     iScheme = SCHEME_COLOR;
   }
 
-  if (!nArgs) {
+  if (nArgs == 0) {
     g_color_scheme = iScheme;
     UpdateDisplay(UPDATE_BACKGROUND);
     return UPDATE_ALL;
@@ -84,7 +84,7 @@ auto CmdConfigColorMono(int nArgs) -> Update_t {
   int nFound = FindParam(g_args[1].sArg, MATCH_EXACT, iParam,
                          PARAM_GENERAL_BEGIN, PARAM_GENERAL_END);
 
-  if (nFound) {
+  if (nFound != 0) {
     if (iParam == PARAM_RESET) {
       ConfigColorsReset();
       ConsoleBufferPush(" Resetting colors.");
@@ -137,7 +137,7 @@ auto CmdConfigLoad(int nArgs) -> Update_t {
   // TODO: CmdConfigRun( gaFileNameConfig )
 
   //  char sFileNameConfig[ path_max_len ];
-  if (!nArgs) {
+  if (nArgs == 0) {
   }
 
   //  gDebugConfigName
@@ -234,7 +234,7 @@ auto CmdConfigDisasm(int nArgs) -> Update_t {
   bool bDisplayCurrentSettings = false;
 
   //  if (! strcmp( g_args[ 1 ].sArg, g_parameters[ PARAM_WILDSTAR ].m_sName ))
-  if (!nArgs) {
+  if (nArgs == 0) {
     bDisplayCurrentSettings = true;
     nArgs = PARAM_CONFIG_NUM;
   } else {
@@ -246,7 +246,7 @@ auto CmdConfigDisasm(int nArgs) -> Update_t {
   for (int iArg = 1; iArg <= nArgs; iArg++) {
     if (bDisplayCurrentSettings) {
       iParam = PARAM_CONFIG_BEGIN + iArg - 1;
-    } else if (FindParam(g_args[iArg].sArg, MATCH_FUZZY, iParam)) {
+    } else if (FindParam(g_args[iArg].sArg, MATCH_FUZZY, iParam) != 0) {
     }
 
     switch (iParam) {
@@ -415,7 +415,7 @@ auto CmdConfigFontMode(int nArgs) -> Update_t {
 auto CmdConfigFont(int nArgs) -> Update_t {
   int iArg = 0;
 
-  if (!nArgs) {
+  if (nArgs == 0) {
     return CmdConfigGetFont(nArgs);
   }
   if (nArgs <= 2)  // nArgs
@@ -423,9 +423,9 @@ auto CmdConfigFont(int nArgs) -> Update_t {
     iArg = 1;
 
     // FONT * is undocumented, like VERSION *
-    if ((!strcmp(g_args[iArg].sArg, g_parameters[PARAM_WILDSTAR].name)) ||
-        (!strcmp(g_args[iArg].sArg,
-                 g_parameters[PARAM_MEM_SEARCH_WILD].name))) {
+    if ((strcmp(g_args[iArg].sArg, g_parameters[PARAM_WILDSTAR].name) == 0) ||
+        (strcmp(g_args[iArg].sArg, g_parameters[PARAM_MEM_SEARCH_WILD].name) ==
+         0)) {
       char sText[CONSOLE_WIDTH];
       ConsoleBufferPushFormat(sText, "Lines: %d  Font Px: %d  Line Px: %d",
                               g_disasm_display_lines,
@@ -440,7 +440,7 @@ auto CmdConfigFont(int nArgs) -> Update_t {
 
     nFound = FindParam(g_args[iArg].sArg, MATCH_EXACT, iFound,
                        PARAM_GENERAL_BEGIN, PARAM_GENERAL_END);
-    if (nFound) {
+    if (nFound != 0) {
       switch (iFound) {
         case PARAM_LOAD:
           return CmdConfigFontLoad(nArgs);
@@ -457,7 +457,7 @@ auto CmdConfigFont(int nArgs) -> Update_t {
 
     nFound = FindParam(g_args[iArg].sArg, MATCH_EXACT, iFound, PARAM_FONT_BEGIN,
                        PARAM_FONT_END);
-    if (nFound && (iFound == PARAM_FONT_MODE)) {
+    if ((nFound != 0) && (iFound == PARAM_FONT_MODE)) {
       return CmdConfigFontMode(nArgs);
     }
 
@@ -475,7 +475,7 @@ auto CmdConfigSetFont(int nArgs) -> Update_t {
 
 //===========================================================================
 auto CmdConfigGetFont(int nArgs) -> Update_t {
-  if (!nArgs) {
+  if (nArgs == 0) {
     for (auto& iFont : g_font_config) {
       char sText[CONSOLE_WIDTH] = "";
       ConsoleBufferPushFormat(
@@ -492,7 +492,7 @@ auto CmdConfigGetFont(int nArgs) -> Update_t {
 // Only for FONT_DISASM_DEFAULT !
 //===========================================================================
 auto UpdateWindowFontHeights(int nFontHeight) -> void {
-  if (nFontHeight) {
+  if (nFontHeight != 0) {
     int nConsoleTopY = GetConsoleTopPixels(g_console_display_lines);
 
     int nHeight = 0;

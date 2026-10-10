@@ -55,7 +55,7 @@ static auto CmdDefineByteRange(int nArgs, int iArg, DisasmData_t& tData_)
 
   // 2.7.0.35 DW address -- round the length up to even number for convenience.
   // Example: 'DW 6062' is equivalent to: 'DW 6062:6063'
-  if ((g_command == CMD_DEFINE_DATA_WORD1) && (~nLen & 1)) {
+  if ((g_command == CMD_DEFINE_DATA_WORD1) && ((~nLen & 1) != 0)) {
     nLen++;
   }
 
@@ -220,7 +220,7 @@ auto CmdDisasmDataDefByteX(int nArgs) -> Update_t {
       g_assembler_first_directive[g_assembler_syntax] + ASM_DEFINE_BYTE;
 
   tData.eElementType = static_cast<Nopcode_e>(NOP_BYTE_1 + iCmd);
-  tData.bSymbolLookup = false;
+  tData.bSymbolLookup = 0;
   tData.nTargetAddress = 0;
 
   // Already exists, so update
@@ -272,7 +272,7 @@ auto CmdDisasmDataDefWordX(int nArgs) -> Update_t {
       g_assembler_first_directive[g_assembler_syntax] + ASM_DEFINE_WORD;
 
   tData.eElementType = static_cast<Nopcode_e>(NOP_WORD_1 + iCmd);
-  tData.bSymbolLookup = false;
+  tData.bSymbolLookup = 0;
   tData.nTargetAddress = 0;
 
   // Already exists, so update
@@ -315,7 +315,7 @@ auto CmdDisasmDataDefAddress16(int nArgs) -> Update_t {
       g_assembler_first_directive[g_assembler_syntax] + ASM_DEFINE_ADDRESS_16;
 
   tData.eElementType = NOP_ADDRESS;
-  tData.bSymbolLookup = true;
+  tData.bSymbolLookup = 1;
   tData.nTargetAddress = 0;  // dynamic -- will be filled in ...
 
   // Already exists, so update
@@ -396,7 +396,7 @@ auto CmdDisasmDataDefString(int nArgs) -> Update_t {
   tData.iDirective = FIRST_MERLIN_DIRECTIVE + ASM_MERLIN_ASCII;
 
   tData.eElementType = static_cast<Nopcode_e>(NOP_STRING_APPLE + iCmd);
-  tData.bSymbolLookup = false;
+  tData.bSymbolLookup = 0;
   tData.nTargetAddress = 0;
 
   // Already exists, so update
@@ -419,7 +419,7 @@ auto Disassembly_Enumerate(DisasmData_t* pCurrent) -> DisasmData_t* {
   DisasmData_t* data = nullptr;  // bIsNopcode = false
   int nDataTargets = g_disassembler_data.size();
 
-  if (nDataTargets) {
+  if (nDataTargets != 0) {
     DisasmData_t* pBegin = g_disassembler_data.data();
     DisasmData_t* pEnd = &g_disassembler_data[nDataTargets - 1];
 
@@ -441,7 +441,7 @@ auto Disassembly_IsDataAddress(uint16_t address) -> DisasmData_t* {
   DisasmData_t* data = nullptr;  // bIsNopcode = false
   int nDataTargets = g_disassembler_data.size();
 
-  if (nDataTargets) {
+  if (nDataTargets != 0) {
     // TODO: Replace with binary search -- should store data in sorted order,
     // via start address
     data = g_disassembler_data.data();
@@ -484,7 +484,7 @@ auto Disassembly_DelData(DisasmData_t tData) -> void {
   DisasmData_t* data = nullptr;  // bIsNopcode = false
   int nDataTargets = g_disassembler_data.size();
 
-  if (nDataTargets) {
+  if (nDataTargets != 0) {
     // TODO: Replace with binary search -- should store data in sorted order,
     // via start address
     data = g_disassembler_data.data();

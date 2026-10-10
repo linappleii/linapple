@@ -122,7 +122,7 @@ auto console_print(const char* text) -> bool {
   bool bHaveColor = false;
   char cColor = 0;
 
-  while ((x < CONSOLE_WIDTH) && (c = *src_ptr)) {
+  while ((x < CONSOLE_WIDTH) && ((c = *src_ptr) != 0)) {
     if ((c == '\n') || (x >= (CONSOLE_WIDTH - 1))) {
       *pDst = 0;
       x = 0;
@@ -150,7 +150,7 @@ auto console_print(const char* text) -> bool {
       continue;
     }
 
-    if (!src_ptr[1]) {
+    if (src_ptr[1] == 0) {
       break;
     }
 
@@ -205,7 +205,7 @@ auto ConsoleBufferPush(const char* text) -> bool {
   const char* src_ptr = text;
   conchar_t* pDst = &g_console_buffer[g_console_buffer_size][0];
 
-  while ((x < CONSOLE_WIDTH) && *src_ptr) {
+  while ((x < CONSOLE_WIDTH) && ((*src_ptr) != 0)) {
     c = static_cast<unsigned char>(*src_ptr);
     if ((c == '\n') || (x == (CONSOLE_WIDTH - 1))) {
       *pDst = 0;
@@ -257,7 +257,7 @@ auto ConsoleBufferToDisplay() -> void {
 auto ConsoleConvertFromText(conchar_t* sText, const char* text) -> void {
   const char* src_ptr = text;
   conchar_t* pDst = sText;
-  while (src_ptr && *src_ptr) {
+  while (src_ptr && ((*src_ptr) != 0)) {
     *pDst = static_cast<conchar_t>(*src_ptr & CONSOLE_COLOR_MASK);
     src_ptr++;
     pDst++;
@@ -283,7 +283,7 @@ auto ConsoleDisplayPush(const char* text) -> void {
 auto ConsoleDisplayPush(const conchar_t* text) -> void {
   int nLen = std::min(g_console_display_total,
                       CONSOLE_DISPLAY_HEIGHT - 1 - CONSOLE_FIRST_LINE);
-  while (nLen--) {
+  while ((nLen--) != 0) {
     memcpy(
         reinterpret_cast<char*>(
             g_console_display[(nLen + 1 + CONSOLE_FIRST_LINE)]),
@@ -303,7 +303,7 @@ auto ConsoleDisplayPush(const conchar_t* text) -> void {
 
 //===========================================================================
 auto ConsoleDisplayPause() -> void {
-  if (g_console_buffer_size) {
+  if (g_console_buffer_size != 0) {
     util_safe_strcpy(g_console_input, "...press SPACE continue, ESC skip...",
                      sizeof(g_console_input));
     g_console_prompt_len = static_cast<int>(strlen(g_console_input));
@@ -317,7 +317,7 @@ auto ConsoleDisplayPause() -> void {
 
 //===========================================================================
 auto ConsoleInputBackSpace() -> bool {
-  if (g_console_input_chars) {
+  if (g_console_input_chars != 0) {
     g_console_input_ptr[g_console_input_chars] = ' ';
 
     g_console_input_chars--;
@@ -338,7 +338,7 @@ auto ConsoleInputBackSpace() -> bool {
 auto ConsoleInputClear() -> bool {
   memset(g_console_input, 0, sizeof(g_console_input));
 
-  if (g_console_input_chars) {
+  if (g_console_input_chars != 0) {
     g_console_input_chars = 0;
     return true;
   }
@@ -360,11 +360,11 @@ auto ConsoleInputChar(const char ch) -> bool {
 
 //===========================================================================
 auto ConsoleUpdateCursor(char ch) -> void {
-  if (ch) {
+  if (ch != 0) {
     g_console_cursor[0] = ch;
   } else {
     ch = g_console_input[g_console_input_chars + g_console_prompt_len];
-    if (!ch) {
+    if (ch == 0) {
       ch = ' ';
     }
     g_console_cursor[0] = ch;
@@ -455,7 +455,7 @@ auto ConsoleBufferTryUnpause(int nLines) -> Update_t {
   }
 
   g_console_buffer_paused = false;
-  if (g_console_buffer_size) {
+  if (g_console_buffer_size != 0) {
     g_console_buffer_paused = true;
     ConsoleDisplayPause();
     return UPDATE_CONSOLE_INPUT | UPDATE_CONSOLE_DISPLAY;
@@ -505,7 +505,7 @@ auto DebuggerCursorUpdate() -> void {
 }
 
 auto DebuggerCursorNext() -> void {
-  g_input_cursor_visible ^= true;
+  g_input_cursor_visible ^= 1;
   if (g_input_cursor_visible) {
     ConsoleUpdateCursor(g_input_cursor[g_input_cursor_index]);
   } else {
@@ -591,7 +591,7 @@ auto debugger_process_key(int keycode) -> void {
   }
 
   if (keycode == linapple_key_backspace) {
-    if (g_console_input_chars) {
+    if (g_console_input_chars != 0) {
       ConsoleInputBackSpace();
       DebuggerCursorNext();
       DrawConsoleInput();
@@ -599,14 +599,14 @@ auto debugger_process_key(int keycode) -> void {
     }
   } else if ((keycode == linapple_key_return) ||
              (keycode == linapple_key_kp_enter)) {
-    if (g_console_input_chars) {
+    if (g_console_input_chars != 0) {
       bUpdateDisplay |=
           DebuggerProcessCommand(true);  // copy console input to console output
     } else {
       bUpdateDisplay |= CmdGoNormalSpeed(0);
     }
   } else if (keycode == linapple_key_escape) {
-    if (g_console_input_chars) {
+    if (g_console_input_chars != 0) {
       ConsoleInputReset();
       bUpdateDisplay |= UPDATE_CONSOLE_INPUT;
     } else {
@@ -623,7 +623,7 @@ auto debugger_process_key(int keycode) -> void {
 
     switch (keycode) {
       case linapple_key_tab: {
-        if (g_console_input_chars) {
+        if (g_console_input_chars != 0) {
           bUpdateDisplay |= ConsoleInputTabCompletion();
         } else {
           ToggleFullScreenConsole();
@@ -676,7 +676,7 @@ auto debugger_process_key(int keycode) -> void {
     }
   }
 
-  if (bUpdateDisplay) {
+  if (bUpdateDisplay != 0) {
     UpdateDisplay(bUpdateDisplay);
   }
 }
@@ -705,14 +705,14 @@ auto debugger_mouse_click(int /*x*/, int /*y*/) -> void {
 }
 
 static auto ConsoleInputHistoryPrev() -> Update_t {
-  if (g_history_lines_total) {
+  if (g_history_lines_total != 0) {
     // TODO: Implement history browsing
   }
   return UPDATE_NOTHING;
 }
 
 static auto ConsoleInputHistoryNext() -> Update_t {
-  if (g_history_lines_total) {
+  if (g_history_lines_total != 0) {
     // TODO: Implement history browsing
   }
   return UPDATE_NOTHING;

@@ -193,7 +193,7 @@ static auto DebuggerPrint(int x, int y, const char* text) -> void {
   char c = 0;
   const char* p = text;
 
-  while ((c = *p)) {
+  while ((c = *p) != 0) {
     if (c == '\n') {
       x = nLeft;
       y += CONSOLE_FONT_HEIGHT;
@@ -216,7 +216,7 @@ static auto DebuggerPrintColor(int x, int y, const conchar_t* text) -> void {
     return;
   }
 
-  while ((g = (*src_ptr))) {
+  while ((g = (*src_ptr)) != 0) {
     if (g == '\n') {
       x = nLeft;
       y += CONSOLE_FONT_HEIGHT;
@@ -267,7 +267,7 @@ auto PrintTextColor(const conchar_t* text, Rect_t& rRect) -> void {
   if (g_debug_screen) {
     int nLen = 0;
     const conchar_t* p = text;
-    while (*p) {
+    while ((*p) != 0) {
       if (!ConsoleColor_IsColorOrMouse(*p) && *p != '\n') {
         nLen++;
       }
@@ -312,7 +312,7 @@ static auto DebuggerDrawText(int x, int y, const char* text) -> void {
   }
   const char* src_ptr = text;
   int xCur = x;
-  while (src_ptr && *src_ptr) {
+  while (src_ptr && ((*src_ptr) != 0)) {
     DebuggerDrawChar(xCur, y, *src_ptr);
     xCur += APPLE_FONT_WIDTH;
     src_ptr++;
@@ -409,7 +409,7 @@ auto DrawConsoleLine(const conchar_t* text, int y_coord) -> void {
     return;
   }
 
-  while (src_ptr && (g = *src_ptr)) {
+  while (src_ptr && ((g = *src_ptr) != 0)) {
     DebuggerSetColorFG(ConsoleColor_GetColor(g));
     DebuggerDrawChar(x, y, ConsoleChar_GetChar(g));
     x += APPLE_FONT_WIDTH;
@@ -667,7 +667,7 @@ auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
   }
 
   unsigned int nMinBytesLen =
-      (MAX_OPCODES * (2 + g_config_disasm_opcode_spaces));
+      (MAX_OPCODES * (2 + static_cast<int>(g_config_disasm_opcode_spaces)));
 
   int bDisasmFormatFlags = 0;
   uint16_t nTarget = 0;
@@ -713,7 +713,7 @@ auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
       const char* pTargetStr = nullptr;
       const char* pSymbol = FindSymbolFromAddress(nTarget);
 
-      if (data && (!data->bSymbolLookup)) {
+      if (data && (data->bSymbolLookup == 0)) {
         pSymbol = nullptr;
       }
 
@@ -722,7 +722,7 @@ auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
         pTargetStr = pSymbol;
       }
 
-      if (!(bDisasmFormatFlags & DISASM_FORMAT_SYMBOL)) {
+      if ((bDisasmFormatFlags & DISASM_FORMAT_SYMBOL) == 0) {
         pSymbol = FindSymbolFromAddress(nTarget - 1);
         if (pSymbol) {
           bDisasmFormatFlags |= DISASM_FORMAT_SYMBOL;
@@ -732,7 +732,7 @@ auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
         }
       }
 
-      if (!(bDisasmFormatFlags & DISASM_FORMAT_SYMBOL) || data) {
+      if (((bDisasmFormatFlags & DISASM_FORMAT_SYMBOL) == 0) || data) {
         pSymbol = FindSymbolFromAddress(nTarget + 1);
         if (pSymbol) {
           bDisasmFormatFlags |= DISASM_FORMAT_SYMBOL;
@@ -742,11 +742,11 @@ auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
         }
       }
 
-      if (!(bDisasmFormatFlags & DISASM_FORMAT_SYMBOL)) {
+      if ((bDisasmFormatFlags & DISASM_FORMAT_SYMBOL) == 0) {
         pTargetStr = FormatAddress(nTarget, (iOpmode != AM_R) ? nOpbyte : 3);
       }
 
-      if (bDisasmFormatFlags & DISASM_FORMAT_OFFSET) {
+      if ((bDisasmFormatFlags & DISASM_FORMAT_OFFSET) != 0) {
         int nAbsTargetOffset = (line_.nTargetOffset > 0) ? line_.nTargetOffset
                                                          : -line_.nTargetOffset;
         snprintf(line_.sTargetOffset, sizeof(line_.sTargetOffset), "%d",
@@ -767,14 +767,14 @@ auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
         nTargetValue = *(mem + nTargetPointer) |
                        (*(mem + ((nTargetPointer + 1) & 0xffff)) << 8);
 
-        if (g_config_disasm_targets & DISASM_TARGET_ADDR) {
+        if ((g_config_disasm_targets & DISASM_TARGET_ADDR) != 0) {
           snprintf(line_.sTargetPointer, sizeof(line_.sTargetPointer), "%04X",
                    nTargetPointer & 0xFFFF);
         }
 
         if (opcode != OPCODE_JMP_NA && opcode != OPCODE_JMP_IAX) {
           bDisasmFormatFlags |= DISASM_FORMAT_TARGET_VALUE;
-          if (g_config_disasm_targets & DISASM_TARGET_VAL) {
+          if ((g_config_disasm_targets & DISASM_TARGET_VAL) != 0) {
             snprintf(line_.sTargetValue, sizeof(line_.sTargetValue), "%02X",
                      nTargetValue & 0xFF);
           }
@@ -874,17 +874,17 @@ auto DrawWindowBottom(Update_t bUpdate, int iWindow) -> void {
 
 //===========================================================================
 auto UpdateDisplay(Update_t bUpdate) -> void {
-  static int spDrawMutex = false;
+  static int spDrawMutex = 0;
 
-  if (spDrawMutex) {
+  if (spDrawMutex != 0) {
     return;
   }
 
-  spDrawMutex = true;
+  spDrawMutex = 1;
 
   AllocateDebuggerMemDC();
 
-  if (bUpdate & UPDATE_ALL) {
+  if ((bUpdate & UPDATE_ALL) != 0) {
     memset(g_debugger_virtual_text_screen, ' ',
            sizeof(g_debugger_virtual_text_screen));
     for (int y = 0; y < DEBUG_VIRTUAL_TEXT_HEIGHT; ++y) {
@@ -933,7 +933,8 @@ auto UpdateDisplay(Update_t bUpdate) -> void {
       break;
   }
 
-  if ((bUpdate & UPDATE_CONSOLE_DISPLAY) || (bUpdate & UPDATE_CONSOLE_INPUT)) {
+  if (((bUpdate & UPDATE_CONSOLE_DISPLAY) != 0) ||
+      ((bUpdate & UPDATE_CONSOLE_INPUT) != 0)) {
     DrawSubWindow_Console(bUpdate);
   }
 
@@ -941,7 +942,7 @@ auto UpdateDisplay(Update_t bUpdate) -> void {
     stretch_blt_mem_to_frame_dc();
   }
 
-  spDrawMutex = false;
+  spDrawMutex = 0;
 }
 
 auto debug_begin() -> void {

@@ -270,7 +270,7 @@ static auto DrawTriStateSoftSwitch(Rect_t& rect, int address,
     DrawSoftSwitch(rect, address, bSet, nullptr, sOn, sOff, " ", bg_default);
   } else {
     Rect_t temp = rect;
-    int iBank = (get_mem_mode() & MF_HRAM_BANK2) ? 2 : 1;
+    int iBank = ((get_mem_mode() & MF_HRAM_BANK2) != 0u) ? 2 : 1;
     bool bDisabled = ((iActive == 0) && (iBank == iBankDisplay));
 
     DrawSoftSwitchAddress(temp, address, bg_default);
@@ -308,7 +308,7 @@ static auto DrawSoftSwitchLanguageCardBank(Rect_t& rect, const int iBankDisplay,
   bool bBankWritable = (get_mem_mode() & MF_HRAM_WRITE) != 0;
   int iBankActive = 0;
   if ((get_mem_mode() & MF_HIGHRAM) != 0) {
-    iBankActive = (get_mem_mode() & MF_HRAM_BANK2) ? 2 : 1;
+    iBankActive = ((get_mem_mode() & MF_HRAM_BANK2) != 0u) ? 2 : 1;
   }
 
   char sOn[4] = "B#";
@@ -328,7 +328,7 @@ static auto DrawSoftSwitchLanguageCardBank(Rect_t& rect, const int iBankDisplay,
 
     DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_BP_S_X));
     DebuggerSetColorBG(DebuggerGetColor(bg_default));
-    PrintTextCursorX((get_mem_mode() & MF_ALTZP) ? "x" : " ", rect);
+    PrintTextCursorX(((get_mem_mode() & MF_ALTZP) != 0u) ? "x" : " ", rect);
 
     const char* pOn = "R";
     const char* pOff = "W";
@@ -439,13 +439,13 @@ auto DrawTargets(int line) -> void {
   int nFontWidth = g_font_config[FONT_INFO].font_width_avg;
 
   int iAddress = MAX_DISPLAY_TARGET_PTR_LINES;
-  while (iAddress--) {
+  while ((iAddress--) != 0) {
     char sAddress[8] = "-none-";
     char sData[8] = "";
 
     if (aTarget[iAddress] != NO_6502_TARGET) {
       snprintf(sAddress, sizeof(sAddress), "%04X", aTarget[iAddress]);
-      if (iAddress) {
+      if (iAddress != 0) {
         snprintf(sData, sizeof(sData), "%02X", *(mem + aTarget[iAddress]));
       } else {
         uint16_t val16 =
@@ -611,8 +611,8 @@ auto DrawZeroPagePointers(int line) -> void {
       }
       sText[nMaxSymbolLen] = 0;
 
-      if (nLen1 && (pSymbol1[0] == '$')) {
-      } else if (nLen2 && (pSymbol2[0] == '$')) {
+      if ((nLen1 != 0) && (pSymbol1[0] == '$')) {
+      } else if ((nLen2 != 0) && (pSymbol2[0] == '$')) {
         DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_ADDRESS));
       } else {
         int nMin = std::min(nLen1, nMaxSymbolLen);
@@ -701,7 +701,7 @@ static auto DrawSubWindow_Data(Update_t bUpdate) -> void {
     rect.right = DISPLAY_DISASM_RIGHT;
     rect.bottom = rect.top + nFontHeight;
 
-    if (iLine & 1) {
+    if ((iLine & 1) != 0) {
       iBackground = BG_DATA_1;
     } else {
       iBackground = BG_DATA_2;
