@@ -176,7 +176,7 @@ class CardHarness_t {
   CardHarness_t(CardHarness_t&&) = delete;
   auto operator=(CardHarness_t&&) -> CardHarness_t& = delete;
 
-  auto poll(uint32_t cycle) -> uint8_t {
+  static auto poll(uint32_t cycle) -> uint8_t {
     return io_map_dispatch(0, io_q6_clear, 0, 0, cycle);
   }
 

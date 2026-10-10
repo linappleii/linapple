@@ -61,11 +61,12 @@ class DiskModesHarness_t {
   DiskModesHarness_t(DiskModesHarness_t&&) = delete;
   auto operator=(DiskModesHarness_t&&) -> DiskModesHarness_t& = delete;
 
-  auto read_at(uint16_t address, uint32_t cycle) -> uint8_t {
+  static auto read_at(uint16_t address, uint32_t cycle) -> uint8_t {
     return io_map_dispatch(0, address, 0, 0, cycle);
   }
 
-  auto write_at(uint16_t address, uint32_t cycle, uint8_t value) -> void {
+  static auto write_at(uint16_t address, uint32_t cycle, uint8_t value)
+      -> void {
     io_map_dispatch(0, address, 1, value, cycle);
   }
 
@@ -88,14 +89,14 @@ class DiskModesHarness_t {
     peripheral_manager_think(cycles);
   }
 
-  auto state() const -> DiskSavedState_t {
+  static auto state() -> DiskSavedState_t {
     DiskSavedState_t saved{};
     size_t size = sizeof(saved);
     peripheral_save_state(slot_6, &saved, &size);
     return saved;
   }
 
-  auto data_register() const -> uint8_t { return state().io_latch; }
+  static auto data_register() -> uint8_t { return state().io_latch; }
 
   auto start_drive() -> void { read(io_motor_on); }
 

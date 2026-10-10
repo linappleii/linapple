@@ -57,7 +57,7 @@ class DiskMotorHarness_t {
   DiskMotorHarness_t(DiskMotorHarness_t&&) = delete;
   auto operator=(DiskMotorHarness_t&&) -> DiskMotorHarness_t& = delete;
 
-  auto run_cycles(uint64_t cycles) -> void {
+  static auto run_cycles(uint64_t cycles) -> void {
     uint64_t count = 0;
     while (count < cycles) {
       uint32_t chunk =
@@ -69,13 +69,15 @@ class DiskMotorHarness_t {
     }
   }
 
-  auto set_motor_on() -> void { io_map_dispatch(0, motor_on_switch, 0, 0, 0); }
+  static auto set_motor_on() -> void {
+    io_map_dispatch(0, motor_on_switch, 0, 0, 0);
+  }
 
-  auto set_motor_off() -> void {
+  static auto set_motor_off() -> void {
     io_map_dispatch(0, motor_off_switch, 0, 0, 0);
   }
 
-  auto is_motor_active() const -> bool { return peripheral_is_any_active(); }
+  static auto is_motor_active() -> bool { return peripheral_is_any_active(); }
 
  private:
   auto setup_spin_loop() -> void {

@@ -108,14 +108,16 @@ class ScopedMock_t {
   ScopedMock_t(ScopedMock_t&&) = delete;
   auto operator=(ScopedMock_t&&) -> ScopedMock_t& = delete;
 
-  auto descriptor() const -> Peripheral_t* { return &g_mock_descriptor; }
-  auto host() const -> HostInterface_t* { return g_mock.host; }
-  auto strobe_count() const -> int { return g_mock.strobe_count; }
+  static auto descriptor() -> Peripheral_t* { return &g_mock_descriptor; }
+  static auto host() -> HostInterface_t* { return g_mock.host; }
+  static auto strobe_count() -> int { return g_mock.strobe_count; }
 
-  auto register_strobe_on_init() -> void { g_mock.registers_strobe = true; }
-  auto answer_nothing() -> void { g_mock.answers_audio = false; }
+  static auto register_strobe_on_init() -> void {
+    g_mock.registers_strobe = true;
+  }
+  static auto answer_nothing() -> void { g_mock.answers_audio = false; }
 
-  auto answer_absolute(uint32_t rate_hz, uint32_t num_channels) -> void {
+  static auto answer_absolute(uint32_t rate_hz, uint32_t num_channels) -> void {
     g_mock.answers_audio = true;
     g_mock.info = PeripheralAudioInfo_t();
     g_mock.info.time_base = peripheral_audio_absolute;
@@ -165,8 +167,8 @@ class ScopedAnnounceRecorder_t {
   auto operator=(ScopedAnnounceRecorder_t&&)
       -> ScopedAnnounceRecorder_t& = delete;
 
-  auto count() const -> size_t { return g_announcements.size(); }
-  auto at(size_t index) const -> const AnnounceRecord_t& {
+  static auto count() -> size_t { return g_announcements.size(); }
+  static auto at(size_t index) -> const AnnounceRecord_t& {
     return g_announcements.at(index);
   }
 
@@ -214,11 +216,13 @@ class ScopedPushRecorder_t {
   ScopedPushRecorder_t(ScopedPushRecorder_t&&) = delete;
   auto operator=(ScopedPushRecorder_t&&) -> ScopedPushRecorder_t& = delete;
 
-  auto push_count() const -> size_t { return g_push_count; }
-  auto channels() const -> size_t { return g_pushed_channels; }
-  auto slot() const -> int { return g_pushed_slot; }
-  auto ids() const -> const std::vector<std::string>& { return g_pushed_ids; }
-  auto samples() const -> const std::vector<float>& { return g_pushed_samples; }
+  static auto push_count() -> size_t { return g_push_count; }
+  static auto channels() -> size_t { return g_pushed_channels; }
+  static auto slot() -> int { return g_pushed_slot; }
+  static auto ids() -> const std::vector<std::string>& { return g_pushed_ids; }
+  static auto samples() -> const std::vector<float>& {
+    return g_pushed_samples;
+  }
 
   static auto clear() -> void {
     g_pushed_samples.clear();

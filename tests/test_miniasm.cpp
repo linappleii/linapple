@@ -45,7 +45,7 @@ struct MiniAsmHarness_t {
   MiniAsmHarness_t(MiniAsmHarness_t&&) = delete;
   auto operator=(MiniAsmHarness_t&&) -> MiniAsmHarness_t& = delete;
 
-  auto write_byte(uint16_t addr, uint8_t val) -> void {
+  static auto write_byte(uint16_t addr, uint8_t val) -> void {
     if (memdirty != nullptr) {
       memdirty[addr >> 8] = 0xFF;
     }
@@ -57,7 +57,7 @@ struct MiniAsmHarness_t {
     }
   }
 
-  auto read_byte(uint16_t addr) const -> uint8_t {
+  static auto read_byte(uint16_t addr) -> uint8_t {
     if (mem != nullptr) {
       return mem[addr];
     }

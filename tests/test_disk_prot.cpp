@@ -7,10 +7,10 @@
 #include <string>
 #include <utility>
 
+#include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "core/LinAppleCore.h"
-#include "apple2/peripherals/Peripheral.h"
 #include "core/Util_Text.h"
 #include "doctest.h"
 #include "test_fixtures.h"
@@ -40,7 +40,7 @@ class DiskProtHarness_t {
   DiskProtHarness_t(DiskProtHarness_t&&) = delete;
   auto operator=(DiskProtHarness_t&&) -> DiskProtHarness_t& = delete;
 
-  auto insert_disk(const std::string& path, bool write_protected = false)
+  static auto insert_disk(const std::string& path, bool write_protected = false)
       -> void {
     DiskInsertCmd_t cmd{};
     cmd.drive = disk_drive_0;
@@ -50,7 +50,7 @@ class DiskProtHarness_t {
     peripheral_manager_think(0);
   }
 
-  auto get_status() const -> DiskStatus_t {
+  static auto get_status() -> DiskStatus_t {
     DiskStatus_t status{};
     size_t size = sizeof(status);
     peripheral_query(slot_6, disk_query_status, &status, &size);

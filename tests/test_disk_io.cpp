@@ -97,7 +97,7 @@ class DiskIoHarness_t {
   DiskIoHarness_t(DiskIoHarness_t&&) = delete;
   auto operator=(DiskIoHarness_t&&) -> DiskIoHarness_t& = delete;
 
-  auto mount_disk(const std::string& path, int drive_idx = 0) -> void {
+  static auto mount_disk(const std::string& path, int drive_idx = 0) -> void {
     DiskInsertCmd_t cmd{};
     cmd.drive = (drive_idx == 1) ? disk_drive_1 : disk_drive_0;
     cmd.write_protected = 0;
@@ -106,33 +106,33 @@ class DiskIoHarness_t {
     peripheral_manager_think(0);
   }
 
-  auto select_drive_0() -> void {
+  static auto select_drive_0() -> void {
     io_map_dispatch(0, io_drive_0_select, 0, 0, 0);
   }
 
-  auto eject_disk(int drive_idx = 0) -> void {
+  static auto eject_disk(int drive_idx = 0) -> void {
     DiskEjectCmd_t cmd{};
     cmd.drive = (drive_idx == 1) ? disk_drive_1 : disk_drive_0;
     peripheral_command(slot_6, disk_cmd_eject, &cmd, sizeof(cmd));
   }
 
-  auto power_motor_on() -> void {
+  static auto power_motor_on() -> void {
     io_map_dispatch(0, io_motor_on_switch, 0, 0, 0);
   }
 
-  auto power_motor_off() -> void {
+  static auto power_motor_off() -> void {
     io_map_dispatch(0, io_motor_off_switch, 0, 0, 0);
   }
 
-  auto select_read_mode() -> uint8_t {
+  static auto select_read_mode() -> uint8_t {
     return io_map_dispatch(0, io_read_mode_switch, 0, 0, 0);
   }
 
-  auto select_write_mode() -> uint8_t {
+  static auto select_write_mode() -> uint8_t {
     return io_map_dispatch(0, io_write_mode_switch, 0, 0, 0);
   }
 
-  auto read_switch(uint16_t switch_address, uint32_t executed_cycles)
+  static auto read_switch(uint16_t switch_address, uint32_t executed_cycles)
       -> uint8_t {
     return io_map_dispatch(0, switch_address, 0, 0, executed_cycles);
   }
@@ -168,24 +168,26 @@ class DiskIoHarness_t {
     slice_cycle_ = 0;
   }
 
-  auto write_latch(uint8_t val) -> uint8_t {
+  static auto write_latch(uint8_t val) -> uint8_t {
     return io_map_dispatch(0, io_latch_switch, 1, val, 0);
   }
 
-  auto think(uint32_t cycles) -> void { peripheral_manager_think(cycles); }
+  static auto think(uint32_t cycles) -> void {
+    peripheral_manager_think(cycles);
+  }
 
-  auto save_state(DiskSavedState_t& out_state) const -> void {
+  static auto save_state(DiskSavedState_t& out_state) -> void {
     size_t size = sizeof(out_state);
     peripheral_save_state(slot_6, &out_state, &size);
   }
 
-  auto get_saved_state() const -> DiskSavedState_t {
+  static auto get_saved_state() -> DiskSavedState_t {
     DiskSavedState_t state{};
     save_state(state);
     return state;
   }
 
-  auto load_saved_state(const DiskSavedState_t& in_state) -> void {
+  static auto load_saved_state(const DiskSavedState_t& in_state) -> void {
     peripheral_load_state(slot_6, &in_state, sizeof(in_state));
   }
 

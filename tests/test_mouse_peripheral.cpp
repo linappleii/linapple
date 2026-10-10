@@ -592,8 +592,8 @@ struct MouseMachine_t {
     linapple_reset_hard();
   }
 
-  auto run_until(uint16_t entry, uint16_t sentinel, uint32_t cap = cycle_cap)
-      -> uint32_t {
+  static auto run_until(uint16_t entry, uint16_t sentinel,
+                        uint32_t cap = cycle_cap) -> uint32_t {
     TestFixtures::enter_at({entry, 0, 0, 0});
     const uint32_t cycles = TestFixtures::step_until_pc(sentinel, cap);
     REQUIRE(cpu_get_registers()->pc == sentinel);
@@ -1052,9 +1052,9 @@ struct MouseSession_t {
     return description;
   }
 
-  auto frame_length() const -> uint64_t { return system_state.clks_per_frame; }
+  static auto frame_length() -> uint64_t { return system_state.clks_per_frame; }
 
-  auto run_frames(uint32_t frames) -> void {
+  static auto run_frames(uint32_t frames) -> void {
     for (uint32_t i = 0; i < frames; ++i) {
       linapple_run_frame(system_state.clks_per_frame);
     }
@@ -1084,7 +1084,7 @@ struct MouseSession_t {
   uint64_t last_total_cycles = 0;
   uint64_t last_loop_cycles = 0;
 
-  auto align_to_video_frame() -> void {
+  static auto align_to_video_frame() -> void {
     const std::array<uint8_t, 3> spin = {0x4C, 0x00, 0x03};
     TestFixtures::ScopedCore_t::poke(program_start, spin);
     TestFixtures::enter_at({program_start, 0, 0, 0});
@@ -2418,7 +2418,7 @@ struct BasicSession_t {
 
   // The Enhanced //e reaches its prompt with the internal $Cn00 ROM switched
   // in (IIe Technical Reference, SETSLOTCXROM at $C006).
-  auto select_slot_roms() -> void {
+  static auto select_slot_roms() -> void {
     const std::array<uint8_t, 6> program = {0x8D, 0x06, 0xC0,   // STA $C006
                                             0x4C, 0x03, 0x03};  // JMP $0303
     TestFixtures::ScopedCore_t::poke(program_start, program);

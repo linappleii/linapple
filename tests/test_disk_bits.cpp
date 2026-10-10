@@ -69,24 +69,26 @@ class DiskBitsHarness_t {
   DiskBitsHarness_t(DiskBitsHarness_t&&) = delete;
   auto operator=(DiskBitsHarness_t&&) -> DiskBitsHarness_t& = delete;
 
-  auto read(uint16_t address, uint32_t cycle) -> uint8_t {
+  static auto read(uint16_t address, uint32_t cycle) -> uint8_t {
     return io_map_dispatch(0, address, 0, 0, cycle);
   }
 
-  auto spin(uint32_t cycles) -> void { peripheral_manager_think(cycles); }
+  static auto spin(uint32_t cycles) -> void {
+    peripheral_manager_think(cycles);
+  }
 
-  auto state() const -> DiskSavedState_t {
+  static auto state() -> DiskSavedState_t {
     DiskSavedState_t saved{};
     size_t size = sizeof(saved);
     peripheral_save_state(slot_6, &saved, &size);
     return saved;
   }
 
-  auto byte_position() const -> int32_t {
+  static auto byte_position() -> int32_t {
     return state().drives[0].current_byte_pos;
   }
 
-  auto park_at_index_hole() const -> void {
+  static auto park_at_index_hole() -> void {
     DiskSavedState_t saved = state();
     saved.drives[0].current_byte_pos = 0;
     peripheral_load_state(slot_6, &saved, sizeof(saved));

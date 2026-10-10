@@ -137,7 +137,7 @@ auto HeadlessHarness_t::type_string(const std::string& text,
   linapple_set_disk_turbo(disk_turbo);
 }
 
-auto HeadlessHarness_t::get_frame_crc32() const -> uint32_t {
+auto HeadlessHarness_t::get_frame_crc32() -> uint32_t {
   video_redraw_screen();
   const uint32_t* pixels = video_get_output_buffer();
   if (pixels == nullptr) {
@@ -147,7 +147,7 @@ auto HeadlessHarness_t::get_frame_crc32() const -> uint32_t {
   return crc32_compute(pixels, pixel_count * sizeof(uint32_t));
 }
 
-auto HeadlessHarness_t::get_text_row(int row, bool trim_trailing) const
+auto HeadlessHarness_t::get_text_row(int row, bool trim_trailing)
     -> std::string {
   if (row < 0 || row >= 24 || mem == nullptr) {
     return "";
@@ -183,8 +183,7 @@ auto HeadlessHarness_t::get_audio_sample_count() const -> size_t {
   return total_audio_samples;
 }
 
-auto HeadlessHarness_t::assert_screen_matches(uint32_t golden_crc) const
-    -> void {
+auto HeadlessHarness_t::assert_screen_matches(uint32_t golden_crc) -> void {
   CHECK(get_frame_crc32() == golden_crc);
 }
 

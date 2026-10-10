@@ -140,7 +140,7 @@ struct GamePortMachine_t {
 
   // A strobe charged at cumulative cycle 0 would be recorded as cycle 1, so
   // the first instruction a fresh core runs is one that touches no I/O.
-  auto move_off_cycle_zero() const -> void {
+  static auto move_off_cycle_zero() -> void {
     constexpr uint8_t nop = 0xEA;
     TestFixtures::ScopedCore_t::poke(probe_base, &nop, 1);
     TestFixtures::enter_at({probe_base, 0, 0, 0});
@@ -192,7 +192,7 @@ struct GamePortMachine_t {
   }
 
   // One STA abs from RAM.
-  auto write_at(uint16_t addr, uint64_t counter) const -> void {
+  static auto write_at(uint16_t addr, uint64_t counter) -> void {
     g_cumulative_cycles = counter;
     const std::array<uint8_t, 3> sta = {0x8D, static_cast<uint8_t>(addr & 0xFF),
                                         static_cast<uint8_t>(addr >> 8)};

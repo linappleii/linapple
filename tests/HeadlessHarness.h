@@ -36,22 +36,22 @@ struct HeadlessHarness_t {
   auto operator=(HeadlessHarness_t&&) -> HeadlessHarness_t& = delete;
 
   // Control
-  auto mount_disk(int slot, int drive, const std::string& path) -> void;
+  static auto mount_disk(int slot, int drive, const std::string& path) -> void;
   auto mount_disk(int slot, int drive,
                   const TestFixtures::EphemeralDiskFixture_t& disk) -> void {
     mount_disk(slot, drive, disk.path());
   }
-  auto boot() -> void;
-  auto reset_soft() -> void;
-  auto run_frames(uint32_t count) -> void;
-  auto type_string(const std::string& text, uint32_t frames_per_stroke = 1)
-      -> void;
+  static auto boot() -> void;
+  static auto reset_soft() -> void;
+  static auto run_frames(uint32_t count) -> void;
+  static auto type_string(const std::string& text,
+                          uint32_t frames_per_stroke = 1) -> void;
 
   // Golden / Inspection
-  auto get_frame_crc32() const -> uint32_t;
-  auto get_text_row(int row, bool trim_trailing = true) const -> std::string;
+  static auto get_frame_crc32() -> uint32_t;
+  static auto get_text_row(int row, bool trim_trailing = true) -> std::string;
   auto get_audio_sample_count() const -> size_t;
-  auto assert_screen_matches(uint32_t golden_crc) const -> void;
+  static auto assert_screen_matches(uint32_t golden_crc) -> void;
 
   // Internal callback dispatchers
   auto handle_audio(const int16_t* samples, size_t num_samples) -> void;

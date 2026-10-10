@@ -209,15 +209,18 @@ class LssHarness_t {
   LssHarness_t(LssHarness_t&&) = delete;
   auto operator=(LssHarness_t&&) -> LssHarness_t& = delete;
 
-  auto read_at(uint16_t address, uint32_t cycle) -> uint8_t {
+  static auto read_at(uint16_t address, uint32_t cycle) -> uint8_t {
     return io_map_dispatch(0, address, 0, 0, cycle);
   }
 
-  auto write_at(uint16_t address, uint32_t cycle, uint8_t value) -> void {
+  static auto write_at(uint16_t address, uint32_t cycle, uint8_t value)
+      -> void {
     io_map_dispatch(0, address, 1, value, cycle);
   }
 
-  auto close_slice(uint32_t cycle) -> void { peripheral_manager_think(cycle); }
+  static auto close_slice(uint32_t cycle) -> void {
+    peripheral_manager_think(cycle);
+  }
 
  private:
   TestConfig_t machine_{TestConfig_t::disk_ii_only()};

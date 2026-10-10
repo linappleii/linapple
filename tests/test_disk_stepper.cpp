@@ -161,7 +161,7 @@ class DiskStepperHarness_t {
     io_map_dispatch(0, write_mode_switch, 0, 0, slice_cycle_);
   }
 
-  auto save_state(DiskSavedState_t& out_state) const -> void {
+  static auto save_state(DiskSavedState_t& out_state) -> void {
     size_t size = sizeof(out_state);
     peripheral_save_state(slot_6, &out_state, &size);
   }
@@ -176,25 +176,25 @@ class DiskStepperHarness_t {
     peripheral_load_state(slot_6, &state, sizeof(state));
   }
 
-  auto get_saved_state() const -> DiskSavedState_t {
+  static auto get_saved_state() -> DiskSavedState_t {
     DiskSavedState_t state{};
     save_state(state);
     return state;
   }
 
-  auto get_phase() const -> int32_t {
+  static auto get_phase() -> int32_t {
     return get_saved_state().drives[0].phase;
   }
 
-  auto get_track() const -> int32_t {
+  static auto get_track() -> int32_t {
     return get_saved_state().drives[0].track;
   }
 
-  auto is_dirty() const -> bool {
+  static auto is_dirty() -> bool {
     return get_saved_state().drives[0].is_dirty != 0;
   }
 
-  auto get_spinning_ticks() const -> uint32_t {
+  static auto get_spinning_ticks() -> uint32_t {
     return get_saved_state().drives[0].spinning_ticks;
   }
 
@@ -216,7 +216,7 @@ class DiskStepperHarness_t {
     peripheral_manager_think(0);
   }
 
-  auto spin_up() -> void {
+  static auto spin_up() -> void {
     DiskStatus_t status{};
     size_t status_size = sizeof(status);
     peripheral_query(slot_6, disk_query_status, &status, &status_size);
@@ -683,14 +683,14 @@ class QuarterTrackHarness_t {
   QuarterTrackHarness_t(QuarterTrackHarness_t&&) = delete;
   auto operator=(QuarterTrackHarness_t&&) -> QuarterTrackHarness_t& = delete;
 
-  auto strobe(int phase, bool on, uint32_t hold_cycles) -> void {
+  static auto strobe(int phase, bool on, uint32_t hold_cycles) -> void {
     const auto address =
         static_cast<uint16_t>(stepper_base + (phase * 2) + (on ? 1 : 0));
     io_map_dispatch(0, address, 0, 0, 0);
     peripheral_manager_think(hold_cycles);
   }
 
-  auto strobe(int phase, bool on) -> void {
+  static auto strobe(int phase, bool on) -> void {
     strobe(phase, on, magnet_hold_cycles);
   }
 
@@ -705,22 +705,24 @@ class QuarterTrackHarness_t {
     return quarter_track_;
   }
 
-  auto write_nibble(uint8_t value, uint32_t* cycle) -> void {
+  static auto write_nibble(uint8_t value, uint32_t* cycle) -> void {
     io_map_dispatch(0, latch_switch, 1, value, *cycle);
     *cycle += 4;
     io_map_dispatch(0, read_write_switch, 0, 0, *cycle);
     *cycle += 28;
   }
 
-  auto set_write_mode(uint32_t cycle) -> void {
+  static auto set_write_mode(uint32_t cycle) -> void {
     io_map_dispatch(0, write_mode_switch, 0, 0, cycle);
   }
 
-  auto set_read_mode(uint32_t cycle) -> void {
+  static auto set_read_mode(uint32_t cycle) -> void {
     io_map_dispatch(0, read_mode_switch, 0, 0, cycle);
   }
 
-  auto close_slice(uint32_t cycle) -> void { peripheral_manager_think(cycle); }
+  static auto close_slice(uint32_t cycle) -> void {
+    peripheral_manager_think(cycle);
+  }
 
  private:
   TestConfig_t machine_{TestConfig_t::disk_ii_only()};

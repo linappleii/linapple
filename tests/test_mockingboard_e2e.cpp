@@ -262,7 +262,7 @@ class MockingboardChain_t {
     append(drain(drain_frames));
   }
 
-  auto drain(size_t frames) -> std::vector<int16_t> {
+  static auto drain(size_t frames) -> std::vector<int16_t> {
     std::vector<int16_t> block(frames * 2, 0);
     audio_mixer_get_samples(block.data(), block.size());
     return block;

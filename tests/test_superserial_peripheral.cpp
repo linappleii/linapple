@@ -358,15 +358,15 @@ struct SerialMachine_t {
     linapple_reset_hard();
   }
 
-  auto run_until(uint16_t entry, uint16_t sentinel, uint32_t cap = cycle_cap)
-      -> uint32_t {
+  static auto run_until(uint16_t entry, uint16_t sentinel,
+                        uint32_t cap = cycle_cap) -> uint32_t {
     TestFixtures::enter_at({entry, 0, 0, 0});
     const uint32_t cycles = TestFixtures::step_until_pc(sentinel, cap);
     REQUIRE(cpu_get_registers()->pc == sentinel);
     return cycles;
   }
 
-  auto run_cycles(uint16_t entry, uint32_t cycles) -> void {
+  static auto run_cycles(uint16_t entry, uint32_t cycles) -> void {
     TestFixtures::enter_at({entry, 0, 0, 0});
     uint32_t ran = 0;
     while (ran < cycles) {

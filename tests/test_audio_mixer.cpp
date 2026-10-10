@@ -118,16 +118,20 @@ class MixerFixture_t {
 
   auto rate() const -> uint32_t { return rate_; }
 
-  auto set_clock(double clock_hz) -> void { current_clk_6502 = clock_hz; }
+  static auto set_clock(double clock_hz) -> void {
+    current_clk_6502 = clock_hz;
+  }
 
-  auto upload_mono(int slot, const float* samples, size_t count) -> void {
+  static auto upload_mono(int slot, const float* samples, size_t count)
+      -> void {
     const float* channels[1] = {samples};
     audio_mixer_upload_channels(SOURCE_ID, slot, channels, 1,
                                 static_cast<uint32_t>(count));
   }
 
-  auto upload_planar(int slot, const std::vector<std::vector<float>>& planes,
-                     size_t offset, size_t count) -> void {
+  static auto upload_planar(int slot,
+                            const std::vector<std::vector<float>>& planes,
+                            size_t offset, size_t count) -> void {
     std::vector<const float*> channels;
     channels.reserve(planes.size());
     for (const auto& plane : planes) {
@@ -138,7 +142,7 @@ class MixerFixture_t {
   }
 
   // Interleaved stereo, two int16_t per frame.
-  auto drain(size_t frames) -> std::vector<int16_t> {
+  static auto drain(size_t frames) -> std::vector<int16_t> {
     std::vector<int16_t> out(frames * 2, 0);
     audio_mixer_get_samples(out.data(), out.size());
     return out;
@@ -146,7 +150,7 @@ class MixerFixture_t {
 
   // Empties every ring and lets the underrun fade run to zero, so a
   // measurement on one slot cannot inherit another slot's residue.
-  auto settle() -> void {
+  static auto settle() -> void {
     drain(2048);
     drain(2048);
   }
@@ -270,8 +274,8 @@ class ScopedTap_t {
   ScopedTap_t(ScopedTap_t&&) = delete;
   auto operator=(ScopedTap_t&&) -> ScopedTap_t& = delete;
 
-  auto calls() const -> size_t { return g_tap_calls; }
-  auto samples() const -> const std::vector<float>& { return g_tapped; }
+  static auto calls() -> size_t { return g_tap_calls; }
+  static auto samples() -> const std::vector<float>& { return g_tapped; }
 };
 
 }  // namespace
