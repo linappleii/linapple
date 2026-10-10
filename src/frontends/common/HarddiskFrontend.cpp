@@ -18,9 +18,9 @@ namespace {
 
 constexpr const char* harddisk_id = "linapple.harddisk";
 
-int g_card_slot = harddisk_frontend_no_card;
+int card_slot = harddisk_frontend_no_card;
 
-HarddiskErrorReporter g_reporter = nullptr;
+HarddiskErrorReporter error_reporter = nullptr;
 
 auto is_drive_valid(int drive) -> bool {
   return drive >= 0 && drive < harddisk_drive_count;
@@ -29,7 +29,7 @@ auto is_drive_valid(int drive) -> bool {
 auto drive_error(int drive) -> int {
   HarddiskStatus_t status{};
   size_t size = sizeof(status);
-  if (peripheral_query(g_card_slot, harddisk_query_status, &status, &size) !=
+  if (peripheral_query(card_slot, harddisk_query_status, &status, &size) !=
       peripheral_ok) {
     return harddisk_err_io;
   }
@@ -59,8 +59,8 @@ auto settle_and_report(int drive, const char* inserted_path, bool record)
   } else {
     Logger::error("hard disk drive %d: %s\n", drive + 1, message);
   }
-  if (g_reporter != nullptr) {
-    g_reporter(drive, error, message);
+  if (error_reporter != nullptr) {
+    error_reporter(drive, error, message);
   }
   return error;
 }
@@ -70,7 +70,7 @@ auto insert(int drive, const char* path, bool write_protected, bool record)
   if (!is_drive_valid(drive) || path == nullptr) {
     return harddisk_err_io;
   }
-  if (g_card_slot == harddisk_frontend_no_card) {
+  if (card_slot == harddisk_frontend_no_card) {
     Logger::error("hard disk drive %d: no hard disk is installed\n", drive + 1);
     return harddisk_frontend_no_card;
   }
@@ -85,7 +85,7 @@ auto insert(int drive, const char* path, bool write_protected, bool record)
     return harddisk_err_not_found;
   }
   std::strncpy(cmd.path, inserted.c_str(), sizeof(cmd.path) - 1);
-  if (peripheral_command(g_card_slot, harddisk_cmd_insert, &cmd, sizeof(cmd)) !=
+  if (peripheral_command(card_slot, harddisk_cmd_insert, &cmd, sizeof(cmd)) !=
       peripheral_ok) {
     return harddisk_err_io;
   }
@@ -95,10 +95,10 @@ auto insert(int drive, const char* path, bool write_protected, bool record)
 }  // namespace
 
 auto harddisk_frontend_initialize() -> void {
-  g_card_slot = peripheral_slot_of(harddisk_id);
+  card_slot = peripheral_slot_of(harddisk_id);
 }
 
-auto harddisk_frontend_slot() -> int { return g_card_slot; }
+auto harddisk_frontend_slot() -> int { return card_slot; }
 
 auto harddisk_frontend_insert(int drive, const char* path, bool write_protected)
     -> int {
@@ -113,13 +113,13 @@ auto harddisk_frontend_eject(int drive) -> int {
   if (!is_drive_valid(drive)) {
     return harddisk_err_io;
   }
-  if (g_card_slot == harddisk_frontend_no_card) {
+  if (card_slot == harddisk_frontend_no_card) {
     Logger::error("hard disk drive %d: no hard disk is installed\n", drive + 1);
     return harddisk_frontend_no_card;
   }
   HarddiskEjectCmd_t cmd{};
   cmd.drive = static_cast<uint8_t>(drive);
-  if (peripheral_command(g_card_slot, harddisk_cmd_eject, &cmd, sizeof(cmd)) !=
+  if (peripheral_command(card_slot, harddisk_cmd_eject, &cmd, sizeof(cmd)) !=
       peripheral_ok) {
     return harddisk_err_io;
   }
@@ -150,5 +150,5 @@ auto harddisk_frontend_error_message(int error) -> const char* {
 
 auto harddisk_frontend_set_error_reporter(HarddiskErrorReporter reporter)
     -> void {
-  g_reporter = reporter;
+  error_reporter = reporter;
 }

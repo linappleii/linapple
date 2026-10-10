@@ -149,7 +149,6 @@ enum SoftSwitch : uint8_t {
 };
 
 using SoftSwitch_t = SoftSwitch;
-using SoftSwitch_e = SoftSwitch;
 
 enum MemoryInitPattern : uint8_t { MIP_ZERO, MIP_FF_FF_00_00, NUM_MIP };
 using MemoryInitPattern_t = MemoryInitPattern;

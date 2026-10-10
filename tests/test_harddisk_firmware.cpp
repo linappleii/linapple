@@ -436,7 +436,7 @@ auto run_frames_until_prompt(uint32_t cap) -> bool {
 
 // --- The listing, typed in ---------------------------------------------
 
-enum Mnemonic_e : uint8_t {
+enum Mnemonic : uint8_t {
   op_lda,
   op_sta,
   op_ldx,
@@ -460,7 +460,7 @@ enum Mnemonic_e : uint8_t {
   op_rts,
 };
 
-enum Mode_e : uint8_t {
+enum Mode : uint8_t {
   mode_implied,
   mode_accumulator,
   mode_immediate,
@@ -472,8 +472,8 @@ enum Mode_e : uint8_t {
 };
 
 struct Opcode_t {
-  Mnemonic_e mnemonic;
-  Mode_e mode;
+  Mnemonic mnemonic;
+  Mode mode;
   uint8_t opcode;
 };
 
@@ -497,7 +497,7 @@ constexpr std::array<Opcode_t, 28> opcodes = {
     },
 };
 
-auto mnemonic_name(Mnemonic_e mnemonic) -> const char* {
+auto mnemonic_name(Mnemonic mnemonic) -> const char* {
   switch (mnemonic) {
     case op_lda:
       return "LDA";
@@ -545,7 +545,7 @@ auto mnemonic_name(Mnemonic_e mnemonic) -> const char* {
   return "???";
 }
 
-auto instruction_length(Mode_e mode) -> uint8_t {
+auto instruction_length(Mode mode) -> uint8_t {
   switch (mode) {
     case mode_implied:
     case mode_accumulator:
@@ -560,8 +560,8 @@ auto instruction_length(Mode_e mode) -> uint8_t {
 
 struct Row_t {
   uint8_t offset;
-  Mnemonic_e mnemonic;
-  Mode_e mode;
+  Mnemonic mnemonic;
+  Mode mode;
   // The immediate or zero-page byte, the absolute address, or for a branch
   // the target's offset in the page.
   uint16_t operand;
@@ -683,7 +683,7 @@ constexpr uint8_t tail_status = 0xFE;
 constexpr uint8_t tail_entry = 0xFF;
 constexpr uint8_t status_byte = 0xDF;
 
-auto opcode_for(Mnemonic_e mnemonic, Mode_e mode) -> uint8_t {
+auto opcode_for(Mnemonic mnemonic, Mode mode) -> uint8_t {
   for (const Opcode_t& entry : opcodes) {
     if (entry.mnemonic == mnemonic && entry.mode == mode) {
       return entry.opcode;

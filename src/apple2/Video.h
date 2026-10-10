@@ -69,7 +69,6 @@ enum VideoFlag_t : uint8_t {
   VF_PAGE2 = 0x00000020,
   VF_TEXT = 0x00000040,
 };
-using VideoFlag_e = VideoFlag_t;
 
 enum AppleFont_t : uint16_t {
   APPLE_FONT_WIDTH = 14,
@@ -82,7 +81,6 @@ enum AppleFont_t : uint16_t {
   APPLE_FONT_Y_APPLE_80COL = 256,
   APPLE_FONT_Y_APPLE_40COL = 512,
 };
-using AppleFont_e = AppleFont_t;
 
 constexpr uint8_t CREAM = 0xF6;
 constexpr uint8_t MEDIUM_GRAY = 0xF7;

@@ -52,7 +52,7 @@ constexpr uint8_t slot_page = 0xC0;
 }  // namespace rom
 
 // The commands ProDOS hands a block device in $42 (6.3.2).
-enum HarddiskProdosCommand_e : uint8_t {
+enum HarddiskProdosCommand : uint8_t {
   prodos_cmd_status = 0x00,
   prodos_cmd_read = 0x01,
   prodos_cmd_write = 0x02,
@@ -64,7 +64,7 @@ enum HarddiskProdosCommand_e : uint8_t {
 // write-in opens at the first byte pushed and closes when the WRITE executes.
 // A unit write closes either, since the firmware writes the unit first in
 // every call.
-enum HarddiskDataPhase_e : uint8_t {
+enum HarddiskDataPhase : uint8_t {
   harddisk_phase_idle = 0,
   harddisk_phase_read_out = 1,
   harddisk_phase_write_in = 2,

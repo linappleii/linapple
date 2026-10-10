@@ -14,7 +14,7 @@ namespace {
 
 constexpr int slot_count = 7;
 
-std::array<PeripheralSinkKind_t, slot_count> g_kinds{};
+std::array<PeripheralSinkKind_t, slot_count> active_sink_kinds{};
 
 auto slot_index(int slot) -> size_t { return static_cast<size_t>(slot - 1); }
 
@@ -26,7 +26,7 @@ auto sink_for(int slot) -> const ByteSink_t* {
   if (!slot_is_valid(slot)) {
     return nullptr;
   }
-  switch (g_kinds.at(slot_index(slot))) {
+  switch (active_sink_kinds.at(slot_index(slot))) {
     case peripheral_sink_printer:
       return &printer_frontend_sink();
     case peripheral_sink_serial:
@@ -40,7 +40,7 @@ auto dispatch_open(void* ctx, int slot, PeripheralSinkKind_t kind) -> void {
   if (!slot_is_valid(slot)) {
     return;
   }
-  g_kinds.at(slot_index(slot)) = kind;
+  active_sink_kinds.at(slot_index(slot)) = kind;
   const ByteSink_t* sink = sink_for(slot);
   if (sink != nullptr && sink->open != nullptr) {
     sink->open(ctx, slot, kind);
@@ -65,7 +65,7 @@ auto dispatch_close(void* ctx, int slot) -> void {
     sink->close(ctx, slot);
   }
   if (slot_is_valid(slot)) {
-    g_kinds.at(slot_index(slot)) = static_cast<PeripheralSinkKind_t>(0);
+    active_sink_kinds.at(slot_index(slot)) = static_cast<PeripheralSinkKind_t>(0);
   }
 }
 
@@ -99,7 +99,7 @@ auto dispatch_get_lines(void* ctx, int slot, uint8_t* lines) -> bool {
          sink->get_lines(ctx, slot, lines);
 }
 
-const ByteSink_t g_host_sink = {
+const ByteSink_t host_byte_sink = {
     .open = dispatch_open,
     .write = dispatch_write,
     .ready = dispatch_ready,
@@ -116,6 +116,6 @@ auto host_sink_install() -> void {
   // The bridge closes every open slot through the outgoing sink, so on a
   // re-initialisation the previous run's devices close before their settings
   // change.
-  linapple_set_byte_sink(&g_host_sink, nullptr);
-  g_kinds.fill(static_cast<PeripheralSinkKind_t>(0));
+  linapple_set_byte_sink(&host_byte_sink, nullptr);
+  active_sink_kinds.fill(static_cast<PeripheralSinkKind_t>(0));
 }
