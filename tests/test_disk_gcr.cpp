@@ -24,12 +24,12 @@ constexpr uint8_t addr_4and4_mask = 0x55;
 constexpr uint8_t gcr_sync_bit_mask = 0xAA;
 
 auto encode_4and4_high(uint8_t a) -> uint8_t {
-  return static_cast<uint8_t>((((a) >> 1U) & addr_4and4_mask) |
+  return static_cast<uint8_t>(((a >> 1U) & addr_4and4_mask) |
                               gcr_sync_bit_mask);
 }
 
 auto encode_4and4_low(uint8_t a) -> uint8_t {
-  return static_cast<uint8_t>(((a)&addr_4and4_mask) | gcr_sync_bit_mask);
+  return static_cast<uint8_t>((a & addr_4and4_mask) | gcr_sync_bit_mask);
 }
 
 auto populate_test_track(std::array<uint8_t, track_data_size>& track) -> void {
@@ -355,13 +355,13 @@ TEST_CASE(
   SUBCASE("Truncated nibble stream counts do not overrun buffers") {
     const std::array<uint32_t, 4> truncated_lengths = {{100, 256, 512, 1024}};
 
-    for (size_t i = 0; i < truncated_lengths.size(); ++i) {
+    for (const uint32_t length : truncated_lengths) {
       sectors.fill(0x33);
       track_image.fill(sync_byte);
 
       CHECK(disk_encoding_denibblize_track(
                 disk_encoding_sector_order(disk_sector_order_dos), 0,
-                track_image.data(), truncated_lengths[i], sectors.data(),
+                track_image.data(), length, sectors.data(),
                 scratch.data()) == disk_err_corrupt);
 
       for (size_t b = 0; b < track_data_size; ++b) {

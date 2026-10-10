@@ -429,7 +429,7 @@ auto run_frames_until_prompt(uint32_t cap) -> bool {
 
 // --- The listing, typed in ---------------------------------------------
 
-enum Mnemonic_e {
+enum Mnemonic_e : uint8_t {
   m_lda,
   m_sta,
   m_ldx,
@@ -453,7 +453,7 @@ enum Mnemonic_e {
   m_rts
 };
 
-enum Mode_e {
+enum Mode_e : uint8_t {
   mode_implied,
   mode_accumulator,
   mode_immediate,

@@ -234,8 +234,8 @@ class MockingboardChain_t {
                            executed_cycles);
   }
 
-  static auto write_ay(uint8_t reg, uint8_t value) -> void {
-    write_via(REG_ORA, reg);
+  static auto write_ay(uint8_t address, uint8_t value) -> void {
+    write_via(REG_ORA, address);
     write_via(REG_ORB, ORB_LATCH);
     write_via(REG_ORB, ORB_INACTIVE);
     write_via(REG_ORA, value);
@@ -245,8 +245,8 @@ class MockingboardChain_t {
 
   // Port A has to stop being driven before the strobe, or the chip has
   // nothing to put the register on.
-  static auto read_ay(uint8_t reg, uint32_t executed_cycles) -> uint8_t {
-    io_map_dispatch(0, VIA_A + REG_ORA, 1, reg, executed_cycles);
+  static auto read_ay(uint8_t address, uint32_t executed_cycles) -> uint8_t {
+    io_map_dispatch(0, VIA_A + REG_ORA, 1, address, executed_cycles);
     io_map_dispatch(0, VIA_A + REG_ORB, 1, ORB_LATCH, executed_cycles);
     io_map_dispatch(0, VIA_A + REG_ORB, 1, ORB_INACTIVE, executed_cycles);
     io_map_dispatch(0, VIA_A + REG_DDRA, 1, 0x00, executed_cycles);
@@ -309,9 +309,8 @@ auto frames_until_silence(const std::vector<int16_t>& stereo) -> size_t {
   size_t last_signal = 0;
   const size_t frames = stereo.size() / 2;
   for (size_t i = 0; i < frames; ++i) {
-    const bool carries =
-        (MockingboardChain_t::left(stereo, i) != 0) ||
-        (MockingboardChain_t::right(stereo, i) != 0);
+    const bool carries = (MockingboardChain_t::left(stereo, i) != 0) ||
+                         (MockingboardChain_t::right(stereo, i) != 0);
     last_signal = carries ? (i + 1) : last_signal;
   }
   return last_signal;
@@ -384,8 +383,8 @@ TEST_CASE("Mockingboard End To End: A Tone Through The Whole Chain") {
   int16_t loudest_right = 0;
   for (size_t i = 0; i < tone.size() / 2; ++i) {
     loudest_right = std::max<int16_t>(
-        loudest_right, static_cast<int16_t>(
-                           std::abs(MockingboardChain_t::right(tone, i))));
+        loudest_right,
+        static_cast<int16_t>(std::abs(MockingboardChain_t::right(tone, i))));
   }
   CHECK(loudest_right == 0);
 

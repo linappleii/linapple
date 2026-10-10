@@ -973,9 +973,9 @@ TEST_CASE(
       {{0, 32}, {5, 43}, {15, 33}, {16, 32}, {31, 33}}};
   for (const Phase_t& phase : phases) {
     CAPTURE(phase.press_frame);
-    const uint64_t frame =
+    const uint64_t press_frame =
         run_to_phase(harness, phase.press_frame, ntsc_frame_cycles);
-    check_repeat_from_press(harness, observer, frame, phase.delay_frames,
+    check_repeat_from_press(harness, observer, press_frame, phase.delay_frames,
                             ntsc_frame_cycles);
   }
 }
@@ -991,8 +991,8 @@ TEST_CASE(
   REQUIRE(system_state.clks_per_frame == pal_frame_cycles);
   StrobeObserver_t observer;
 
-  const uint64_t frame = run_to_phase(harness, 0, pal_frame_cycles);
-  check_repeat_from_press(harness, observer, frame, 32, pal_frame_cycles);
+  const uint64_t press_frame = run_to_phase(harness, 0, pal_frame_cycles);
+  check_repeat_from_press(harness, observer, press_frame, 32, pal_frame_cycles);
 }
 
 TEST_CASE(

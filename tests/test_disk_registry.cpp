@@ -28,7 +28,8 @@ auto probe_possible(const uint8_t*, size_t, uint32_t, const char*)
 
 auto fake_open(const char*, uint32_t, bool, void** out_instance)
     -> DiskError_e {
-  *out_instance = const_cast<char*>("fake");
+  static char fake_instance = 0;
+  *out_instance = &fake_instance;
   return disk_err_none;
 }
 
@@ -44,9 +45,9 @@ auto fake_read_track_bits(void*, uint32_t, uint8_t*, uint32_t,
   return disk_err_none;
 }
 
-auto make_fake(const char* name,
-               DiskProbe_e (*probe)(const uint8_t*, size_t, uint32_t,
-                                    const char*)) -> DiskFormatDriver_t {
+auto make_fake(const char* name, DiskProbe_e (*probe)(const uint8_t*, size_t,
+                                                      uint32_t, const char*))
+    -> DiskFormatDriver_t {
   DiskFormatDriver_t driver{};
   driver.abi_version = disk_format_abi_version;
   driver.name = name;

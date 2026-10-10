@@ -102,7 +102,7 @@ class CommandLineMachine_t {
     std::vector<char*> argv;
     argv.reserve(args_.size());
     for (std::string& arg : args_) {
-      argv.push_back(&arg[0]);
+      argv.push_back(&arg.front());
     }
     // Parsed into the one configuration object, as every frontend's main
     // does, so the controller reads its paths from the instance's own

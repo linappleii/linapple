@@ -43,7 +43,7 @@ struct Arguments_t {
 
   explicit Arguments_t(const std::vector<std::string>& given) : words(given) {
     for (std::string& word : words) {
-      pointers.push_back(&word[0]);
+      pointers.push_back(&word.front());
     }
   }
   auto argc() const -> int { return static_cast<int>(pointers.size()); }

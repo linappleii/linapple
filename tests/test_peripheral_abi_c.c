@@ -171,8 +171,8 @@ typedef char
  * writes the byte and reports whether the sink was ready to take it. */
 int test_c_peripheral_sink_write(HostInterface_t* host, int slot,
                                  uint8_t byte) {
-  void* sink;
-  bool ready;
+  void* sink = NULL;
+  bool ready = false;
   if (host == NULL || host->SinkOpen == NULL || host->SinkWrite == NULL ||
       host->SinkReady == NULL) {
     return -1;

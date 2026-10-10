@@ -783,7 +783,7 @@ constexpr uint8_t storm_high = 0x0C;
 constexpr uint32_t firmware_cycle_cap = 200000;
 constexpr uint32_t lead_in_cycles = 8000;
 
-enum FirmwareEntry_t {
+enum FirmwareEntry_t : uint8_t {
   entry_set_mouse = 0,
   entry_serve_mouse = 1,
   entry_read_mouse = 2,

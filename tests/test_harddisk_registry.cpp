@@ -29,7 +29,8 @@ auto probe_no(const uint8_t*, size_t, uint64_t, const char*)
 
 auto fake_open(const char*, uint32_t, bool, void** out_instance)
     -> HarddiskError_e {
-  *out_instance = const_cast<char*>("fake");
+  static char fake_instance = 0;
+  *out_instance = &fake_instance;
   return harddisk_err_none;
 }
 
@@ -144,7 +145,8 @@ TEST_CASE(
 
   // The name alone claims an image: open is the one entry point an image
   // reaches, and it refuses by the one code that says why.
-  void* instance = const_cast<char*>("never");
+  char sentinel = 0;
+  void* instance = &sentinel;
   CHECK(nibble->open(TestFixtures::get_fixture_path("minimal.nib").c_str(), 0,
                      false, &instance) == harddisk_err_not_block_image);
   CHECK(instance == nullptr);

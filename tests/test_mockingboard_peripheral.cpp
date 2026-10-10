@@ -252,7 +252,7 @@ class MockingboardHarness {
   HostInterface_t host_{};
   bool irq_asserted_{false};
   int irq_slot_{-1};
-  std::vector<bool> irq_log_{};
+  std::vector<bool> irq_log_;
 
   int register_io_calls_{0};
   int last_registered_slot_{-1};
@@ -261,13 +261,13 @@ class MockingboardHarness {
   PeripheralIOHandler read_cx_handler_{nullptr};
   PeripheralIOHandler write_cx_handler_{nullptr};
 
-  std::vector<std::vector<float>> channels_{};
+  std::vector<std::vector<float>> channels_;
   size_t channel_count_{0};
   size_t last_push_samples_{0};
   size_t total_pushed_samples_{0};
   uint32_t push_count_{0};
 
-  std::vector<void*> instances_{};
+  std::vector<void*> instances_;
   void* primary_instance_{nullptr};
 };
 
@@ -809,8 +809,8 @@ TEST_CASE("Mockingboard Peripheral: MB-24 AY Bus Protocol Round Trip") {
   REQUIRE(harness.save_state(buffer.data(), &state_size) == peripheral_ok);
   const auto* ss =
       reinterpret_cast<const MockingboardSaveState_t*>(buffer.data());
-  for (size_t r = 0; r < MOCKINGBOARD_AY_REGS; ++r) {
-    CHECK(ss->chips[0].ay_regs[r] == 0x00);
+  for (const uint8_t ay_reg : ss->chips[0].ay_regs) {
+    CHECK(ay_reg == 0x00);
   }
   CHECK(ss->chips[0].rng == 1);
 }

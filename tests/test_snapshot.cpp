@@ -1201,7 +1201,7 @@ constexpr size_t mouse_frame_mode = 74;
 constexpr size_t mouse_frame_status = 76;
 constexpr size_t mouse_frame_button = 79;
 
-enum MouseEntry_t {
+enum MouseEntry_t : uint8_t {
   mouse_entry_set = 0,
   mouse_entry_serve = 1,
   mouse_entry_read = 2,
