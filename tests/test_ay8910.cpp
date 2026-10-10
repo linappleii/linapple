@@ -36,9 +36,9 @@ class Renderer {
       const size_t n = (remaining < scratch_ticks) ? remaining : scratch_ticks;
       ay8910_step(&chip_, n, pointers_.data(), scratch_ticks);
       last_.assign(buffers_[0].begin(),
-                   buffers_[0].begin() + static_cast<long>(n));
+                   buffers_[0].begin() + static_cast<std::ptrdiff_t>(n));
       last_b_.assign(buffers_[1].begin(),
-                     buffers_[1].begin() + static_cast<long>(n));
+                     buffers_[1].begin() + static_cast<std::ptrdiff_t>(n));
       remaining -= n;
     }
   }

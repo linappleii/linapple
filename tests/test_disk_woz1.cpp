@@ -31,17 +31,17 @@ constexpr uint32_t woz1_max_bit_count = 6646 * 8;
 const uint8_t track0_pattern[] = {0xFF, 0x3F, 0xCF, 0xF3, 0x56, 0xAA, 0x58};
 const uint8_t track1_pattern[] = {0xAA, 0xD5, 0xAA, 0xAD};
 
-constexpr long info_disk_type_offset = 21;
-constexpr long tmap_id_offset = 80;
-constexpr long tmap_entry_8_offset = 96;
-constexpr long track0_bit_count_offset = 6904;
-constexpr long track1_record_offset = 6912;
+constexpr int64_t info_disk_type_offset = 21;
+constexpr int64_t tmap_id_offset = 80;
+constexpr int64_t tmap_entry_8_offset = 96;
+constexpr int64_t track0_bit_count_offset = 6904;
+constexpr int64_t track1_record_offset = 6912;
 
-auto patch(const std::string& path, long offset, const uint8_t* bytes,
+auto patch(const std::string& path, int64_t offset, const uint8_t* bytes,
            size_t len) -> void {
   FilePtr f(fopen(path.c_str(), "r+b"), fclose);
   REQUIRE(f != nullptr);
-  REQUIRE(fseek(f.get(), offset, SEEK_SET) == 0);
+  REQUIRE(fseek(f.get(), static_cast<long>(offset), SEEK_SET) == 0);
   REQUIRE(fwrite(bytes, 1, len, f.get()) == len);
 }
 
@@ -349,9 +349,9 @@ TEST_CASE(
 
 namespace {
 
-constexpr long info_version_offset = 20;
+constexpr int64_t info_version_offset = 20;
 
-auto open_patched_v1_image(long offset, uint8_t value) -> DiskError_e {
+auto open_patched_v1_image(int64_t offset, uint8_t value) -> DiskError_e {
   auto image = TestFixtures::create_ephemeral("minimal-v1.woz");
   patch(image.path(), offset, &value, 1);
 
@@ -383,7 +383,7 @@ TEST_CASE("DiskWOZ1: a WOZ1 file accepts INFO version 1 only") {
 }
 
 namespace {
-constexpr long crc32_field_offset = 8;
+constexpr int64_t crc32_field_offset = 8;
 constexpr uint32_t v1_fixture_crc32 = 0x3E9FC695;
 }  // namespace
 

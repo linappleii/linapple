@@ -285,20 +285,20 @@ TEST_CASE("DiskWOZ: the loader strips MacBinary and reads the tracks past it") {
 
 namespace {
 
-constexpr long info_version_offset = 20;
-constexpr long info_disk_type_offset = 21;
-constexpr long trks_entry_0_offset = 256;
+constexpr int64_t info_version_offset = 20;
+constexpr int64_t info_disk_type_offset = 21;
+constexpr int64_t trks_entry_0_offset = 256;
 constexpr uint16_t widest_block_span = max_track_bits / (512 * 8);
 
-auto patch(const std::string& path, long offset, const uint8_t* bytes,
+auto patch(const std::string& path, int64_t offset, const uint8_t* bytes,
            size_t len) -> void {
   FilePtr f(fopen(path.c_str(), "r+b"), fclose);
   REQUIRE(f != nullptr);
-  REQUIRE(fseek(f.get(), offset, SEEK_SET) == 0);
+  REQUIRE(fseek(f.get(), static_cast<long>(offset), SEEK_SET) == 0);
   REQUIRE(fwrite(bytes, 1, len, f.get()) == len);
 }
 
-auto open_patched_track_image(long offset, uint8_t value) -> DiskError_e {
+auto open_patched_track_image(int64_t offset, uint8_t value) -> DiskError_e {
   auto image = TestFixtures::create_ephemeral("minimal-track.woz");
   patch(image.path(), offset, &value, 1);
 
@@ -451,8 +451,8 @@ TEST_CASE("Crc32: a WOZ fixture's body hashes to the CRC its twin carries") {
 }
 
 namespace {
-constexpr long crc32_field_offset = 8;
-constexpr long track_first_cell_offset = 1536;
+constexpr int64_t crc32_field_offset = 8;
+constexpr int64_t track_first_cell_offset = 1536;
 constexpr size_t macbinary_pad_bytes = 80;
 
 auto open_v2(const std::string& path, uint32_t base_offset) -> DiskError_e {
@@ -517,15 +517,15 @@ TEST_CASE(
 
 namespace {
 
-constexpr long trks_entry_0_bit_count_offset = trks_entry_0_offset + 4;
-constexpr long info_bit_timing_offset = 20 + 39;
-constexpr long tmap_entry_0_offset = 88;
-constexpr long tmap_entry_1_offset = tmap_entry_0_offset + 1;
-constexpr long tmap_entry_159_offset = tmap_entry_0_offset + 159;
+constexpr int64_t trks_entry_0_bit_count_offset = trks_entry_0_offset + 4;
+constexpr int64_t info_bit_timing_offset = 20 + 39;
+constexpr int64_t tmap_entry_0_offset = 88;
+constexpr int64_t tmap_entry_1_offset = tmap_entry_0_offset + 1;
+constexpr int64_t tmap_entry_159_offset = tmap_entry_0_offset + 159;
 constexpr uint32_t first_quarter_track_past_map = 160;
 constexpr size_t cells_kept_after_cut = 256;
 
-auto read_qt0_of_patched_track_image(long offset, const uint8_t* bytes,
+auto read_qt0_of_patched_track_image(int64_t offset, const uint8_t* bytes,
                                      size_t len, std::vector<uint8_t>* bits,
                                      uint32_t* bit_count, uint8_t* bit_timing)
     -> DiskError_e {

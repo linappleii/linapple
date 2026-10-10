@@ -85,7 +85,7 @@ auto square_wave(double rate_hz, double tone_hz, size_t count,
   std::vector<float> wave(count);
   for (size_t i = 0; i < count; ++i) {
     const auto half =
-        static_cast<long long>(static_cast<double>(i) / half_period);
+        static_cast<int64_t>(static_cast<double>(i) / half_period);
     wave[i] = ((half % 2) == 0) ? amplitude : -amplitude;
   }
   return wave;
