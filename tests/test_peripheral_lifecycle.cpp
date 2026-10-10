@@ -645,7 +645,7 @@ TEST_CASE(
   REQUIRE(mem[page + page_size - 1] == g_page_card_rom.at(page_size - 1));
 
   REQUIRE(peripheral_unregister(slot) == 0);
-  const uint8_t* store = mem_get_cx_rom_peripheral() + slot * page_size;
+  const uint8_t* store = mem_get_cx_rom_peripheral() + (slot * page_size);
   for (size_t i = 0; i < page_size; ++i) {
     CHECK(mem[page + i] == 0);
     CHECK(store[i] == 0);

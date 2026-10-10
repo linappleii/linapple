@@ -48,7 +48,7 @@ auto printer_in_slot_1(
 // Every access to the card's sixteen addresses strobes the byte on the bus to
 // the sink; a write from the test stands in for the firmware's STA.
 auto strobe(int slot, uint8_t byte) -> void {
-  const auto address = static_cast<uint16_t>(0xC080 + slot * 0x10);
+  const auto address = static_cast<uint16_t>(0xC080 + (slot * 0x10));
   io_map_dispatch(0, address, 1, byte, 0);
 }
 

@@ -730,8 +730,9 @@ TEST_CASE(
     const uint16_t spin = poke_bank_switch_and_copier(machine.slot, bank);
     machine.run_until(program_start, spin);
     for (size_t i = 0; i < 8; ++i) {
-      CHECK(mem[page_copy + i] ==
-            mouse_rom.at(static_cast<size_t>(bank) * mouse_rom_bank_size + i));
+      CHECK(
+          mem[page_copy + i] ==
+          mouse_rom.at((static_cast<size_t>(bank) * mouse_rom_bank_size) + i));
     }
   }
 
@@ -761,7 +762,7 @@ TEST_CASE(
   bench_select_bank(bench, card.instance(), 5);
   CHECK(bench.rom_registrations() == at_init + 2);
   CHECK(std::memcmp(bench.last_rom(),
-                    mouse_rom.data() + 5 * mouse_rom_bank_size,
+                    mouse_rom.data() + (5 * mouse_rom_bank_size),
                     mouse_rom_bank_size) == 0);
 }
 
@@ -964,7 +965,7 @@ auto poke_meter(int slot, bool serve = true, bool x_y_zero = false) -> void {
 
 // 8 cycles a turn, 7 more at every wrap of the low byte; the count wraps after
 // 65,536 turns, so two entries are compared modulo that.
-constexpr uint64_t meter_wrap = 8 * 65536 + 7 * 256;
+constexpr uint64_t meter_wrap = (8 * 65536) + (7 * 256);
 
 auto meter_delta(uint64_t from, uint64_t to) -> uint64_t {
   return (to + meter_wrap - from) % meter_wrap;
@@ -979,7 +980,7 @@ auto meter_entries() -> std::vector<uint64_t> {
     if (mem[meter_return_table + i] == inc_high_byte) {
       turns += 256;
     }
-    cycles.push_back(8 * turns + 7 * (turns >> 8));
+    cycles.push_back((8 * turns) + (7 * (turns >> 8)));
   }
   return cycles;
 }
@@ -1008,7 +1009,7 @@ auto check_period(const std::vector<uint64_t>& entries, uint64_t period)
   for (size_t i = 1; i < entries.size(); ++i) {
     CAPTURE(i);
     const uint64_t at =
-        meter_delta(entries.at(0), entries.at(i)) + i * serve_handler_cycles;
+        meter_delta(entries.at(0), entries.at(i)) + (i * serve_handler_cycles);
     const uint64_t expected = (i * period) % meter_wrap;
     const uint64_t drift = (at + meter_wrap - expected) % meter_wrap;
     CAPTURE(drift);
@@ -1077,7 +1078,7 @@ struct MouseSession_t {
     if (cpu_get_registers()->pc == meter_loop + 5) {
       turns += 256;
     }
-    last_loop_cycles = 8 * turns + 7 * (turns >> 8);
+    last_loop_cycles = (8 * turns) + (7 * (turns >> 8));
     return meter_entries();
   }
 
@@ -1110,11 +1111,12 @@ struct MouseSession_t {
 auto measured_handler_cycles(const MouseSession_t& session, size_t entries)
     -> uint64_t {
   REQUIRE(entries > 0);
-  const uint64_t wraps =
-      (session.last_total_cycles - session.last_loop_cycles + meter_wrap / 2) /
-      meter_wrap;
-  const uint64_t loop_cycles = session.last_loop_cycles + wraps * meter_wrap;
-  return (session.last_total_cycles - 2 - loop_cycles + entries / 2) / entries;
+  const uint64_t wraps = (session.last_total_cycles - session.last_loop_cycles +
+                          (meter_wrap / 2)) /
+                         meter_wrap;
+  const uint64_t loop_cycles = session.last_loop_cycles + (wraps * meter_wrap);
+  return (session.last_total_cycles - 2 - loop_cycles + (entries / 2)) /
+         entries;
 }
 
 auto press_button(int slot, bool down, uint8_t button = 0) -> void {

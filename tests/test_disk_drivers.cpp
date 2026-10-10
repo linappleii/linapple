@@ -508,7 +508,7 @@ TEST_CASE("DiskDrivers: [SEC-02] WOZ rejects a bit_count past block_count") {
   h[258] = 1;
   h[259] = 0;
   // bit_count = 512*8 + 1 (too many for 1 block)
-  uint32_t bad_bits = 512 * 8 + 1;
+  uint32_t bad_bits = (512 * 8) + 1;
   memcpy(h + 260, &bad_bits, 4);
   fwrite(h, 1, 1536, f);
 

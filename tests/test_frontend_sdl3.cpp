@@ -131,7 +131,7 @@ TEST_CASE("SDL3 Frontend draw_frame_window Scaled Stretching") {
   output[0] = 0x00FF0000;                               // Top-left: Red
   output[559] = 0x0000FF00;                             // Top-right: Green
   output[static_cast<size_t>(383) * 560] = 0x000000FF;  // Bottom-left: Blue
-  output[static_cast<size_t>(383) * 560 + 559] =
+  output[(static_cast<size_t>(383) * 560) + 559] =
       0x00FFFFFF;  // Bottom-right: White
 
   g_frame_ready = true;
@@ -145,7 +145,7 @@ TEST_CASE("SDL3 Frontend draw_frame_window Scaled Stretching") {
   CHECK(screen_pixels[0] == 0x00FF0000);
   CHECK(screen_pixels[1119] == 0x0000FF00);
   CHECK(screen_pixels[static_cast<size_t>(767) * pitch_pixels] == 0x000000FF);
-  CHECK(screen_pixels[static_cast<size_t>(767) * pitch_pixels + 1119] ==
+  CHECK(screen_pixels[(static_cast<size_t>(767) * pitch_pixels) + 1119] ==
         0x00FFFFFF);
 
   frame_destroy_window();
@@ -413,7 +413,7 @@ TEST_CASE(
   int nonzero_left_margin = 0;
   for (int y = 0; y < 1080; ++y) {
     for (int x = 0; x < 172; ++x) {
-      if (screen_pixels[y * pitch_pixels + x] != 0) {
+      if (screen_pixels[(y * pitch_pixels) + x] != 0) {
         nonzero_left_margin++;
       }
     }
@@ -423,7 +423,7 @@ TEST_CASE(
   int nonzero_right_margin = 0;
   for (int y = 0; y < 1080; ++y) {
     for (int x = 1747; x < 1920; ++x) {
-      if (screen_pixels[y * pitch_pixels + x] != 0) {
+      if (screen_pixels[(y * pitch_pixels) + x] != 0) {
         nonzero_right_margin++;
       }
     }
@@ -473,19 +473,20 @@ TEST_CASE("SDL3 Frontend Disk Chooser Modal Outline Borders Rendered") {
   const int box_h = static_cast<int>(320.0 * facy);
 
   // 1. Left border at x = 0
-  CHECK(screen_pixels[(box_y + 10) * pitch_pixels + 0] == 0x00FFFFFF);
+  CHECK(screen_pixels[((box_y + 10) * pitch_pixels) + 0] == 0x00FFFFFF);
 
   // 2. Top border at y = box_y
-  CHECK(screen_pixels[box_y * pitch_pixels + (sx / 2)] == 0x00FFFFFF);
+  CHECK(screen_pixels[(box_y * pitch_pixels) + (sx / 2)] == 0x00FFFFFF);
 
   // 3. Bottom border at y = box_y + box_h
-  CHECK(screen_pixels[(box_y + box_h) * pitch_pixels + (sx / 2)] == 0x00FFFFFF);
+  CHECK(screen_pixels[((box_y + box_h) * pitch_pixels) + (sx / 2)] ==
+        0x00FFFFFF);
 
   // 4. Right border at x = sx - 1
-  CHECK(screen_pixels[(box_y + 10) * pitch_pixels + (sx - 1)] == 0x00FFFFFF);
+  CHECK(screen_pixels[((box_y + 10) * pitch_pixels) + (sx - 1)] == 0x00FFFFFF);
 
   // 5. Vertical column separator at x = 480
-  CHECK(screen_pixels[(box_y + 10) * pitch_pixels + 480] == 0x00FFFFFF);
+  CHECK(screen_pixels[((box_y + 10) * pitch_pixels) + 480] == 0x00FFFFFF);
 
   // Teardown
   g_disk_choose_state.active = false;

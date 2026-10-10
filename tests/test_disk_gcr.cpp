@@ -75,7 +75,7 @@ auto populate_test_track(std::array<uint8_t, track_data_size>& track) -> void {
   // generator (seed 1)
   uint32_t state1 = 0x12345678U;
   for (size_t i = 0; i < sector_size; ++i) {
-    state1 = state1 * 1103515245U + 12345U;
+    state1 = (state1 * 1103515245U) + 12345U;
     track[(9 * sector_size) + i] =
         static_cast<uint8_t>((state1 >> 16U) & 0xFFU);
   }
@@ -96,14 +96,14 @@ auto populate_test_track(std::array<uint8_t, track_data_size>& track) -> void {
   // Sector 12: Linear prime distribution pattern
   for (size_t i = 0; i < sector_size; ++i) {
     track[(12 * sector_size) + i] =
-        static_cast<uint8_t>((i * 73U + 0x37U) & 0xFFU);
+        static_cast<uint8_t>(((i * 73U) + 0x37U) & 0xFFU);
   }
 
   // Sector 13: Deterministic pseudo-random bytes via linear congruential
   // generator (seed 2)
   uint32_t state2 = 0x9ABCDEF0U;
   for (size_t i = 0; i < sector_size; ++i) {
-    state2 = state2 * 1103515245U + 12345U;
+    state2 = (state2 * 1103515245U) + 12345U;
     track[(13 * sector_size) + i] =
         static_cast<uint8_t>((state2 >> 16U) & 0xFFU);
   }

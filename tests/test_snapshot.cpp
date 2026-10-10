@@ -933,7 +933,7 @@ auto page_reads_zero(int slot) -> bool {
 auto manifest_name_offset(int slot) -> size_t {
   return offsetof(Snapshot_t, manifest) +
          offsetof(SsPeripheralManifest_t, peripherals) +
-         static_cast<size_t>(slot) * sizeof(SsPeripheralInfo_t);
+         (static_cast<size_t>(slot) * sizeof(SsPeripheralInfo_t));
 }
 
 auto file_names(const std::string& path, int slot) -> std::string {

@@ -172,7 +172,7 @@ TEST_CASE(
     CHECK(bench.tdre(t + row.character));
     REQUIRE(bench.sent.size() == 2);
     CHECK(bench.sent.at(1).byte == 0xC5);
-    CHECK(acia_next_event(&bench.acia) == t + 2 * row.character);
+    CHECK(acia_next_event(&bench.acia) == t + (2 * row.character));
   }
 }
 
@@ -184,11 +184,11 @@ TEST_CASE(
   bench.write(acia_reg::data, 0x01, 100);
   bench.write(acia_reg::data, 0x02, 104);
   bench.write(acia_reg::data, 0x03, 108);
-  bench.step(100 + 2 * char_9600_8n1);
+  bench.step(100 + (2 * char_9600_8n1));
   REQUIRE(bench.sent.size() == 2);
   CHECK(bench.sent.at(0).byte == 0x01);
   CHECK(bench.sent.at(1).byte == 0x03);
-  CHECK(bench.tdre(100 + 2 * char_9600_8n1));
+  CHECK(bench.tdre(100 + (2 * char_9600_8n1)));
 }
 
 TEST_CASE(
@@ -208,12 +208,12 @@ TEST_CASE(
       ++written;
     }
   }
-  bench.step(t + 11 * char_9600_8n1);
+  bench.step(t + (11 * char_9600_8n1));
   REQUIRE(bench.sent.size() == 10);
   for (size_t i = 0; i < bench.sent.size(); ++i) {
     CHECK(bench.sent.at(i).byte == 0x10 + i);
   }
-  CHECK(bench.acia.tx_busy_until == t + 10 * char_9600_8n1);
+  CHECK(bench.acia.tx_busy_until == t + (10 * char_9600_8n1));
 }
 
 TEST_CASE(
@@ -232,15 +232,15 @@ TEST_CASE(
   CHECK_FALSE(acia_irq(&bench.acia));
   bench.step(t + char_9600_8n1);
   CHECK(acia_irq(&bench.acia));
-  CHECK(acia_next_event(&bench.acia) == t + 2 * char_9600_8n1);
+  CHECK(acia_next_event(&bench.acia) == t + (2 * char_9600_8n1));
   bench.read(acia_reg::status, t + char_9600_8n1);
-  bench.step(t + 2 * char_9600_8n1 - 1);
+  bench.step(t + (2 * char_9600_8n1) - 1);
   CHECK_FALSE(acia_irq(&bench.acia));
-  bench.step(t + 2 * char_9600_8n1);
+  bench.step(t + (2 * char_9600_8n1));
   CHECK(acia_irq(&bench.acia));
-  bench.read(acia_reg::status, t + 2 * char_9600_8n1);
+  bench.read(acia_reg::status, t + (2 * char_9600_8n1));
 
-  constexpr uint64_t t2 = t + 2 * char_9600_8n1 + 400;
+  constexpr uint64_t t2 = t + (2 * char_9600_8n1) + 400;
   bench.write(acia_reg::data, 0xC2, t2);
   CHECK(acia_irq(&bench.acia));
   bench.read(acia_reg::status, t2);
@@ -252,7 +252,7 @@ TEST_CASE(
   bench.read(acia_reg::status, t2 + char_9600_8n1);
 
   bench.write(acia_reg::command, command_no_irq, t2 + char_9600_8n1 + 10);
-  bench.step(t2 + 4 * char_9600_8n1);
+  bench.step(t2 + (4 * char_9600_8n1));
   CHECK_FALSE(acia_irq(&bench.acia));
   CHECK(acia_next_event(&bench.acia) == 0);
   CHECK(bench.sent.size() == 2);
@@ -285,13 +285,13 @@ TEST_CASE(
   CHECK((bench.acia.status_latches & acia_status::overrun) != 0);
   CHECK(acia_irq(&bench.acia));
 
-  bench.write(acia_reg::status, 0x00, 3 * char_9600_8s1 + 10);
-  CHECK(bench.read(acia_reg::control, 3 * char_9600_8s1 + 10) ==
+  bench.write(acia_reg::status, 0x00, (3 * char_9600_8s1) + 10);
+  CHECK(bench.read(acia_reg::control, (3 * char_9600_8s1) + 10) ==
         control_9600_8n1);
-  CHECK(bench.read(acia_reg::command, 3 * char_9600_8s1 + 10) == 0xE0);
+  CHECK(bench.read(acia_reg::command, (3 * char_9600_8s1) + 10) == 0xE0);
   CHECK(acia_irq(&bench.acia));
-  CHECK(bench.read(acia_reg::status, 3 * char_9600_8s1 + 20) == 0x98);
-  CHECK(bench.read(acia_reg::data, 3 * char_9600_8s1 + 30) == 0xC1);
+  CHECK(bench.read(acia_reg::status, (3 * char_9600_8s1) + 20) == 0x98);
+  CHECK(bench.read(acia_reg::data, (3 * char_9600_8s1) + 30) == 0xC1);
   CHECK(bench.line().dtr == 0);
 
   Bench_t lines;
@@ -325,7 +325,7 @@ TEST_CASE(
   bench.program(control_9600_8n1, command_dtr_only, 0);
   bench.write(acia_reg::data, 0xC8, 100);
   CHECK(bench.sent.empty());
-  CHECK_FALSE(bench.tdre(100 + 2 * char_9600_8n1));
+  CHECK_FALSE(bench.tdre(100 + (2 * char_9600_8n1)));
   bench.write(acia_reg::command, command_no_irq, 3000);
   REQUIRE(bench.sent.size() == 1);
   CHECK(bench.sent.at(0).at == 3000);
@@ -336,7 +336,7 @@ TEST_CASE(
   acia_set_lines(&cts.acia, acia_line::dsr | acia_line::dcd, 50);
   cts.write(acia_reg::data, 0xC8, 100);
   CHECK(cts.sent.empty());
-  CHECK_FALSE(cts.tdre(100 + 2 * char_9600_8n1));
+  CHECK_FALSE(cts.tdre(100 + (2 * char_9600_8n1)));
   acia_set_lines(&cts.acia, acia_line::all_asserted, 3000);
   cts.step(3000);
   REQUIRE(cts.sent.size() == 1);
@@ -420,19 +420,19 @@ TEST_CASE(
   acia_rx_start(&bench.acia, 0xC2, 0, char_9600_8n1 + 5);
   CHECK(acia_next_event(&bench.acia) == char_9600_8n1 + rdrf_9600_8n1);
 
-  bench.step(2 * char_9600_8n1 + 5);
-  bench.read(acia_reg::data, 2 * char_9600_8n1 + 300);
+  bench.step((2 * char_9600_8n1) + 5);
+  bench.read(acia_reg::data, (2 * char_9600_8n1) + 300);
   REQUIRE(acia_rx_ready(&bench.acia));
-  acia_rx_start(&bench.acia, 0xC3, 0, 2 * char_9600_8n1 + 300);
+  acia_rx_start(&bench.acia, 0xC3, 0, (2 * char_9600_8n1) + 300);
   CHECK(acia_next_event(&bench.acia) ==
-        2 * char_9600_8n1 + 300 + rdrf_9600_8n1);
+        (2 * char_9600_8n1) + 300 + rdrf_9600_8n1);
 
   bench.read(acia_reg::data, 4 * char_9600_8n1);
   bench.step(8 * char_9600_8n1);
   bench.step(9 * char_9600_8n1);
   REQUIRE(acia_rx_ready(&bench.acia));
   acia_rx_start(&bench.acia, 0xC4, 0, 9 * char_9600_8n1);
-  CHECK(acia_next_event(&bench.acia) == 9 * char_9600_8n1 + rdrf_9600_8n1);
+  CHECK(acia_next_event(&bench.acia) == (9 * char_9600_8n1) + rdrf_9600_8n1);
 }
 
 TEST_CASE(
@@ -445,9 +445,9 @@ TEST_CASE(
   acia_rx_start(&bench.acia, 0xC2, 0, char_9600_8n1);
   bench.step(2 * char_9600_8n1);
   CHECK(bench.read(acia_reg::status, 2 * char_9600_8n1) == 0x1C);
-  CHECK(bench.read(acia_reg::data, 2 * char_9600_8n1 + 1) == 0xC1);
-  CHECK(bench.read(acia_reg::status, 2 * char_9600_8n1 + 2) == 0x14);
-  CHECK(bench.read(acia_reg::data, 2 * char_9600_8n1 + 3) == 0xC1);
+  CHECK(bench.read(acia_reg::data, (2 * char_9600_8n1) + 1) == 0xC1);
+  CHECK(bench.read(acia_reg::status, (2 * char_9600_8n1) + 2) == 0x14);
+  CHECK(bench.read(acia_reg::data, (2 * char_9600_8n1) + 3) == 0xC1);
 }
 
 TEST_CASE(
@@ -464,9 +464,9 @@ TEST_CASE(
   CHECK(bench.read(acia_reg::data, char_9600_8n1 + 3) == 0xC1);
 
   acia_rx_start(&bench.acia, 0xC2, 0, char_9600_8n1 + 3);
-  bench.step(2 * char_9600_8n1 + 3);
-  CHECK(bench.read(acia_reg::status, 2 * char_9600_8n1 + 3) == 0x18);
-  CHECK(bench.read(acia_reg::data, 2 * char_9600_8n1 + 4) == 0xC2);
+  bench.step((2 * char_9600_8n1) + 3);
+  CHECK(bench.read(acia_reg::status, (2 * char_9600_8n1) + 3) == 0x18);
+  CHECK(bench.read(acia_reg::data, (2 * char_9600_8n1) + 4) == 0xC2);
 }
 
 TEST_CASE(

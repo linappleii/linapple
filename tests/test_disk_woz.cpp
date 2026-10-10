@@ -392,7 +392,7 @@ TEST_CASE("DiskWOZ: a track may span as many blocks as the buffer holds") {
                            &bit_timing) == disk_err_none);
   CHECK(bit_count == max_track_bits);
   CHECK(bits[0] == 0);
-  CHECK(bits[max_track_bits / 8 - 1] == 0);
+  CHECK(bits[(max_track_bits / 8) - 1] == 0);
 
   g_woz2_driver.close(instance);
 }

@@ -423,9 +423,9 @@ struct StrobeObserver_t {
 
   auto read_cycle(size_t k) const -> uint64_t {
     const uint64_t n = iteration(k);
-    return start_cycle + idle_iteration_cycles * (n - 1) +
-           byte_carry_cycles * (n / 256) + word_carry_cycles * (n / 65536) +
-           record_cycles * k + read_offset_cycles;
+    return start_cycle + (idle_iteration_cycles * (n - 1)) +
+           (byte_carry_cycles * (n / 256)) + (word_carry_cycles * (n / 65536)) +
+           (record_cycles * k) + read_offset_cycles;
   }
 
   auto spacing(size_t k) const -> uint64_t {
@@ -463,10 +463,10 @@ auto check_repeat_from_press(HeadlessHarness_t& harness,
   REQUIRE(observer.start_cycle / frame_cycles == press_frame);
   press(4, 'A');
   const uint64_t first_frame = press_frame + expected_delay_frames;
-  const auto frames_to_run =
-      static_cast<uint32_t>((expected_delay_frames + 3 * repeat_period_frames) *
-                                frame_cycles / ntsc_frame_cycles +
-                            2);
+  const auto frames_to_run = static_cast<uint32_t>(
+      ((expected_delay_frames + (3 * repeat_period_frames)) * frame_cycles /
+       ntsc_frame_cycles) +
+      2);
   harness.run_frames(frames_to_run);
   REQUIRE(StrobeObserver_t::strobes() >= 4);
   {
@@ -1016,7 +1016,7 @@ TEST_CASE(
   // release while the second is held changes nothing.
   const uint64_t second_frame = cpu_get_cumulative_cycles() / ntsc_frame_cycles;
   const uint64_t second_first_frame =
-      second_frame + 32 + ((16 - second_frame % 16) % 16);
+      second_frame + 32 + ((16 - (second_frame % 16)) % 16);
   press(5, 'B');
   release(4);
   const size_t before_second = StrobeObserver_t::strobes();
@@ -1288,7 +1288,7 @@ TEST_CASE(
       *mem_get_main_ptr(0x4E) |
       (static_cast<uint32_t>(*mem_get_main_ptr(0x4F)) << 8);
   // Each pass, INC $4E / BNE / BIT $C000 / BPL, is 15 cycles and counts once.
-  CHECK(seed_after >= spin_cap / 15 - 2);
+  CHECK(seed_after >= (spin_cap / 15) - 2);
 }
 
 TEST_CASE(

@@ -118,7 +118,7 @@ TEST_CASE("DiskWOZ1: mapped quarter tracks read the record's exact cells") {
     CHECK(bit_timing == 32);
     CHECK(std::memcmp(bits.data(), track1_pattern, sizeof(track1_pattern)) ==
           0);
-    CHECK(bits[(track1_bit_count + 7) / 8 - 1] == 0);
+    CHECK(bits[((track1_bit_count + 7) / 8) - 1] == 0);
   }
 
   SUBCASE("quarter track 8 is unmapped and reads as no cells at all") {

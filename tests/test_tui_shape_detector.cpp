@@ -32,8 +32,9 @@ auto make_framebuffer() -> std::vector<uint32_t> {
 auto set_pixel_rgb(std::vector<uint32_t>& fb, int x, int y, uint8_t r,
                    uint8_t g, uint8_t b) -> void {
   if (x >= 0 && x < k_fb_w && y >= 0 && y < k_fb_h) {
-    const size_t index = static_cast<size_t>(y) * static_cast<size_t>(k_fb_w) +
-                         static_cast<size_t>(x);
+    const size_t index =
+        (static_cast<size_t>(y) * static_cast<size_t>(k_fb_w)) +
+        static_cast<size_t>(x);
     fb.at(index) = (static_cast<uint32_t>(r)) |
                    (static_cast<uint32_t>(g) << 8) |
                    (static_cast<uint32_t>(b) << 16);

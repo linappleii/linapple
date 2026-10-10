@@ -363,7 +363,7 @@ TEST_CASE(
   // Six full 16 KiB chunks and a 1,000-byte tail: the tail is smaller than any
   // stdio block, so it waits in the buffer for fclose, and a size cap 100
   // bytes short of the payload fails that final flush rather than a write.
-  constexpr size_t payload_size = 6 * 16384 + 1000;
+  constexpr size_t payload_size = (6 * 16384) + 1000;
   std::vector<uint8_t> payload(payload_size);
   for (size_t i = 0; i < payload.size(); ++i) {
     payload[i] = static_cast<uint8_t>(i * 7);
@@ -490,7 +490,7 @@ TEST_CASE(
     "byte") {
   std::vector<uint8_t> plain(4096);
   for (size_t i = 0; i < plain.size(); ++i) {
-    plain[i] = static_cast<uint8_t>(i * 13 + 1);
+    plain[i] = static_cast<uint8_t>((i * 13) + 1);
   }
   TestFixtures::ScopedTempFile_t archive(".dsk.gz");
   write_file(archive.path(), plain);

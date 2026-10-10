@@ -1345,14 +1345,14 @@ TEST_CASE(
 
   uint64_t write_at = 0;
   const std::vector<Entry_t> entries = step_recording_entries(
-      program_start, 2 * static_cast<uint32_t>(char_9600_8n1) + 400, write,
+      program_start, (2 * static_cast<uint32_t>(char_9600_8n1)) + 400, write,
       &write_at);
   REQUIRE(entries.size() == 3);
   CHECK(mem[0x06] == 3);
   CHECK(entries.at(0).at >= write_at + 4);
   CHECK(entries.at(0).at <= write_at + 4 + 7 + 7);
   for (size_t i = 1; i < entries.size(); ++i) {
-    const uint64_t expected = write_at + i * char_9600_8n1;
+    const uint64_t expected = write_at + (i * char_9600_8n1);
     CHECK(entries.at(i).at >= expected + 4);
     CHECK(entries.at(i).at <= expected + 6 + 4 + 7);
   }
@@ -1885,7 +1885,7 @@ constexpr size_t metered_bytes = 16;
 // INC $06 / BNE is 8 cycles a turn; the turn that wraps $06 runs the BNE not
 // taken, INC $07 and the JMP for 15.
 auto meter_cycles(uint32_t turns) -> uint64_t {
-  return 8ULL * turns + 7ULL * (turns / 256);
+  return (8ULL * turns) + (7ULL * (turns / 256));
 }
 
 // The priming read pulls the first queued byte at once rather than at the
