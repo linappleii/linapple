@@ -140,6 +140,12 @@ More on building in <!-- Imported from: INSTALL.md -->
   Avoid `NOLINT` markers except where strictly necessary to suppress false
   positives or unavoidable architectural constraints; any `NOLINT` must be
   accompanied by a comment explaining the justification.
+- **const Preservation & Type Casts:** Never strip `const` from function
+  signatures, tables, or interface structs (such as `HostInterface` or
+  `Peripheral`) to silence `cppcoreguidelines-pro-type-const-cast`. If an
+  unavoidable external C library boundary or ABI requirement necessitates
+  casting away `const`, use a single explicit cast accompanied by a justified
+  comment and `// NOLINT(cppcoreguidelines-pro-type-const-cast)`.
 - Files that act as a C99/C++11 ABI (`Peripheral_Types.h`, command headers)
   use `NOLINTBEGIN`/`NOLINTEND` blocks to maintain C-compatible symbols
   and linkage.
