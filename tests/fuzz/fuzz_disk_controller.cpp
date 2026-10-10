@@ -140,7 +140,7 @@ auto mock_register_cx_rom(int, const uint8_t* rom_ptr) -> void {
   g_host_saw_null = g_host_saw_null || (rom_ptr == nullptr);
 }
 
-auto mock_log(void* instance, PeripheralLogLevel, const char* fmt, ...)
+auto mock_log(void* instance, PeripheralLogLevel_t, const char* fmt, ...)
     -> void {
   g_host_saw_null =
       g_host_saw_null || (instance == nullptr) || (fmt == nullptr);
