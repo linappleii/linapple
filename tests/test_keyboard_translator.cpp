@@ -21,13 +21,13 @@ constexpr uint32_t no_scancode = keyb_idx_unknown;
 
 // The translator's state is process-wide, so each case starts from a host
 // whose configuration names nothing, caps down, US, symbolic, rocker off.
-struct ScopedTranslator_t {
-  ScopedTranslator_t() { reset(); }
-  ~ScopedTranslator_t() { reset(); }
-  ScopedTranslator_t(const ScopedTranslator_t&) = delete;
-  auto operator=(const ScopedTranslator_t&) -> ScopedTranslator_t& = delete;
-  ScopedTranslator_t(ScopedTranslator_t&&) = delete;
-  auto operator=(ScopedTranslator_t&&) -> ScopedTranslator_t& = delete;
+struct ScopedTranslator {
+  ScopedTranslator() { reset(); }
+  ~ScopedTranslator() { reset(); }
+  ScopedTranslator(const ScopedTranslator&) = delete;
+  auto operator=(const ScopedTranslator&) -> ScopedTranslator& = delete;
+  ScopedTranslator(ScopedTranslator&&) = delete;
+  auto operator=(ScopedTranslator&&) -> ScopedTranslator& = delete;
 
   static auto custom(
       std::initializer_list<std::pair<const char*, const char*>> entries)
@@ -73,7 +73,7 @@ auto translate(uint32_t scancode, uint32_t keycode, bool shift, bool ctrl)
 TEST_CASE(
     "Keyboard translator: caps lock starts down and folds letters, shift "
     "reads the US shift pairs, and control clears bits 5 and 6") {
-  ScopedTranslator_t translator;
+  ScopedTranslator translator;
   CHECK(keyboard_get_caps());
   CHECK(translate(hid_a, 'a', false, false) == 0x41);
   keyboard_set_caps(false);
@@ -97,7 +97,7 @@ TEST_CASE(
 TEST_CASE(
     "Keyboard translator: positional mode reads the US table by HID usage, "
     "and a key the table leaves blank types nothing") {
-  ScopedTranslator_t translator;
+  ScopedTranslator translator;
   keyboard_set_mapping_mode(kbd_mode_positional);
   CHECK(translate(hid_a, 'q', false, false) == 0x41);
   keyboard_set_caps(false);
@@ -112,8 +112,8 @@ TEST_CASE(
     "Keyboard translator: a custom Apple key or REPT yields a switch and no "
     "code, a custom code applies to a blank key, and one custom entry leaves "
     "every other key as it was") {
-  ScopedTranslator_t translator;
-  ScopedTranslator_t::custom(
+  ScopedTranslator translator;
+  ScopedTranslator::custom(
       {{"a", "OpenApple"}, {"grave", "Rept"}, {"f1", "0x0B"}});
 
   CHECK(translate(hid_a, 'a', false, false) == -1);
@@ -132,7 +132,7 @@ TEST_CASE(
   CHECK(translate(hid_f1, linapple_key_f1, false, false) == 0x0B);
   CHECK(translate(hid_a, 'a', false, false) == -1);
 
-  ScopedTranslator_t::custom({{"b", "SolidApple"}});
+  ScopedTranslator::custom({{"b", "SolidApple"}});
   CHECK(keyboard_custom_switch(hid_b) == keyboard_custom_switch_solid_apple);
   CHECK(keyboard_custom_switch(hid_a) == keyboard_custom_switch_none);
 }
@@ -141,7 +141,7 @@ TEST_CASE(
     "Keyboard translator: Keyboard Type selects the national table in "
     "positional mode while the rocker is on, with the US table behind a "
     "blank entry") {
-  ScopedTranslator_t translator;
+  ScopedTranslator translator;
   keyboard_set_mapping_mode(kbd_mode_positional);
 
   // The German table puts ß at the minus key and the French table a right
@@ -169,7 +169,7 @@ TEST_CASE(
     "Mode, Caps Lock Mode, Quick Save Modifier and Enable Hotkeys or its alias "
     "from [Keyboard], Keyboard Type and the rocker switch from "
     "[Configuration], and the custom section") {
-  ScopedTranslator_t translator;
+  ScopedTranslator translator;
   Configuration& config = Configuration::instance();
   config.set_int("Keyboard", "Mapping Mode", 1);
   config.set_int("Keyboard", "Caps Lock Mode", 1);

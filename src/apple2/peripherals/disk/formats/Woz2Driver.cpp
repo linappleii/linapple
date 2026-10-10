@@ -43,7 +43,7 @@ constexpr uint32_t bits_per_block = data_block_size * woz::bits_per_byte;
 constexpr uint32_t max_track_blocks = max_track_bits / bits_per_block;
 }  // namespace woz2
 
-struct Woz2Instance_t {
+struct Woz2Instance {
   FilePtr file{nullptr, fclose};
   std::array<uint8_t, woz2::header_size> header{};
   uint32_t tmap_offset = 0;
@@ -53,13 +53,13 @@ struct Woz2Instance_t {
   bool format_write_protected = false;
   bool host_read_only = false;
 
-  Woz2Instance_t() = default;
-  ~Woz2Instance_t() = default;
+  Woz2Instance() = default;
+  ~Woz2Instance() = default;
 
-  Woz2Instance_t(const Woz2Instance_t&) = delete;
-  auto operator=(const Woz2Instance_t&) -> Woz2Instance_t& = delete;
-  Woz2Instance_t(Woz2Instance_t&&) = default;
-  auto operator=(Woz2Instance_t&&) -> Woz2Instance_t& = default;
+  Woz2Instance(const Woz2Instance&) = delete;
+  auto operator=(const Woz2Instance&) -> Woz2Instance& = delete;
+  Woz2Instance(Woz2Instance&&) = default;
+  auto operator=(Woz2Instance&&) -> Woz2Instance& = default;
 
   auto header_at(uint64_t offset, size_t len) const -> const uint8_t* {
     return woz_header_at(header.data(), header.size(), offset, len);
@@ -97,7 +97,7 @@ static auto woz2_open(const char* path, uint32_t file_offset, bool read_only,
   if (path == nullptr) {
     return disk_err_invalid_argument;
   }
-  auto wi_ptr = std::unique_ptr<Woz2Instance_t>(new Woz2Instance_t());
+  auto wi_ptr = std::unique_ptr<Woz2Instance>(new Woz2Instance());
 
   wi_ptr->base_offset = file_offset;
   wi_ptr->host_read_only = read_only;
@@ -175,14 +175,14 @@ static void woz2_close(void* instance) {
   if (instance == nullptr) {
     return;
   }
-  delete reinterpret_cast<Woz2Instance_t*>(instance);
+  delete reinterpret_cast<Woz2Instance*>(instance);
 }
 
 static auto woz2_is_write_protected(void* instance) -> bool {
   if (instance == nullptr) {
     return true;
   }
-  auto* wi_ptr = reinterpret_cast<Woz2Instance_t*>(instance);
+  auto* wi_ptr = reinterpret_cast<Woz2Instance*>(instance);
   return wi_ptr->host_read_only || wi_ptr->format_write_protected;
 }
 
@@ -196,7 +196,7 @@ static auto woz2_read_track_bits(void* instance_handle, uint32_t quarter_track,
   }
   *out_bit_count = 0;
 
-  auto* wi_ptr = reinterpret_cast<Woz2Instance_t*>(instance_handle);
+  auto* wi_ptr = reinterpret_cast<Woz2Instance*>(instance_handle);
   *out_bit_timing = wi_ptr->optimal_bit_timing;
 
   if (quarter_track >= static_cast<uint32_t>(woz::tmap_entries)) {
@@ -279,7 +279,7 @@ static auto woz2_read_track_bits(void* instance_handle, uint32_t quarter_track,
 
 const char* const woz2_supported_exts[] = {"woz", nullptr};
 
-extern "C" const DiskFormatDriver_t g_woz2_driver = {
+extern "C" const DiskFormatDriver woz2_driver = {
     .abi_version = disk_format_abi_version,
     .capabilities = 0,
     .name = "WOZ 2",
@@ -293,6 +293,6 @@ extern "C" const DiskFormatDriver_t g_woz2_driver = {
     .create = nullptr,
 };
 
-static const DiskFormatRegistration_t registration{&g_woz2_driver};
+static const DiskFormatRegistration registration{&woz2_driver};
 
 // NOLINTEND(google-runtime-int, cppcoreguidelines-owning-memory, bugprone-easily-swappable-parameters, modernize-make-unique)

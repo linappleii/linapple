@@ -23,18 +23,18 @@ namespace {
 constexpr size_t floppy_threshold = static_cast<size_t>(4) * 1024 * 1024;
 constexpr size_t harddisk_threshold = static_cast<size_t>(32) * 1024 * 1024;
 
-struct ScopedExtractedFile_t {
+struct ScopedExtractedFile {
   char path[512]{};
   bool is_temporary{false};
 
-  ScopedExtractedFile_t() = default;
-  ~ScopedExtractedFile_t() { cleanup(); }
+  ScopedExtractedFile() = default;
+  ~ScopedExtractedFile() { cleanup(); }
 
-  ScopedExtractedFile_t(const ScopedExtractedFile_t&) = delete;
-  auto operator=(const ScopedExtractedFile_t&)
-      -> ScopedExtractedFile_t& = delete;
-  ScopedExtractedFile_t(ScopedExtractedFile_t&&) = delete;
-  auto operator=(ScopedExtractedFile_t&&) -> ScopedExtractedFile_t& = delete;
+  ScopedExtractedFile(const ScopedExtractedFile&) = delete;
+  auto operator=(const ScopedExtractedFile&)
+      -> ScopedExtractedFile& = delete;
+  ScopedExtractedFile(ScopedExtractedFile&&) = delete;
+  auto operator=(ScopedExtractedFile&&) -> ScopedExtractedFile& = delete;
 
   auto cleanup() -> void {
     if (is_temporary && path[0] != '\0') {
@@ -81,12 +81,12 @@ auto create_test_gz(const char* gz_path, const uint8_t* data, size_t size)
 }  // namespace
 
 TEST_CASE("DiskCompression: [ZIP-1] Normal Floppy ZIP within 4MB is allowed") {
-  TestFixtures::ScopedTempFile_t test_zip(".dsk.zip");
+  TestFixtures::ScopedTempFile test_zip(".dsk.zip");
   const std::vector<uint8_t> floppy_data(143360, 0xA5);
   REQUIRE(create_test_zip(test_zip.c_str(), "disk.dsk", floppy_data.data(),
                           floppy_data.size()));
 
-  ScopedExtractedFile_t out_file;
+  ScopedExtractedFile out_file;
   const ImageContainerError result = image_container_prepare_compressed_path(
       test_zip.c_str(), out_file.path, sizeof(out_file.path), floppy_threshold,
       &out_file.is_temporary);
@@ -98,14 +98,14 @@ TEST_CASE("DiskCompression: [ZIP-1] Normal Floppy ZIP within 4MB is allowed") {
 TEST_CASE(
     "DiskCompression: [ZIP-2] All-zero Floppy up to 4MB is explicitly allowed "
     "despite extreme compression ratio") {
-  TestFixtures::ScopedTempFile_t test_zip(".dsk.zip");
+  TestFixtures::ScopedTempFile test_zip(".dsk.zip");
   // 3.5 MB of zeros compresses to ~3 KB (>1000:1 ratio)
   const std::vector<uint8_t> zeros(static_cast<size_t>(3.5 * 1024 * 1024),
                                    0x00);
   REQUIRE(create_test_zip(test_zip.c_str(), "blank.dsk", zeros.data(),
                           zeros.size()));
 
-  ScopedExtractedFile_t out_file;
+  ScopedExtractedFile out_file;
   const ImageContainerError result = image_container_prepare_compressed_path(
       test_zip.c_str(), out_file.path, sizeof(out_file.path), floppy_threshold,
       &out_file.is_temporary);
@@ -117,13 +117,13 @@ TEST_CASE(
 TEST_CASE(
     "DiskCompression: [ZIP-3] All-zero Harddisk up to 32MB is explicitly "
     "allowed despite extreme compression ratio") {
-  TestFixtures::ScopedTempFile_t test_zip(".po.zip");
+  TestFixtures::ScopedTempFile test_zip(".po.zip");
   // 32 MB of zeros (standard ProDOS 32MB volume)
   const std::vector<uint8_t> zeros(static_cast<size_t>(32) * 1024 * 1024, 0x00);
   REQUIRE(create_test_zip(test_zip.c_str(), "volume.po", zeros.data(),
                           zeros.size()));
 
-  ScopedExtractedFile_t out_file;
+  ScopedExtractedFile out_file;
   const ImageContainerError result = image_container_prepare_compressed_path(
       test_zip.c_str(), out_file.path, sizeof(out_file.path),
       harddisk_threshold, &out_file.is_temporary);
@@ -135,14 +135,14 @@ TEST_CASE(
 TEST_CASE(
     "DiskCompression: [ZIP-4] Floppy archive exceeding 4MB with ratio > 100:1 "
     "is blocked") {
-  TestFixtures::ScopedTempFile_t test_zip(".dsk.zip");
+  TestFixtures::ScopedTempFile test_zip(".dsk.zip");
   // 5 MB of zeros compresses to ~5 KB, which exceeds the 4 MB floppy gate and
   // exceeds 100:1 ratio
   const std::vector<uint8_t> zeros(static_cast<size_t>(5) * 1024 * 1024, 0x00);
   REQUIRE(create_test_zip(test_zip.c_str(), "bomb.dsk", zeros.data(),
                           zeros.size()));
 
-  ScopedExtractedFile_t out_file;
+  ScopedExtractedFile out_file;
   const ImageContainerError result = image_container_prepare_compressed_path(
       test_zip.c_str(), out_file.path, sizeof(out_file.path), floppy_threshold,
       &out_file.is_temporary);
@@ -153,13 +153,13 @@ TEST_CASE(
 TEST_CASE(
     "DiskCompression: [ZIP-5] Harddisk archive exceeding 32MB with ratio > "
     "100:1 is blocked") {
-  TestFixtures::ScopedTempFile_t test_zip(".po.zip");
+  TestFixtures::ScopedTempFile test_zip(".po.zip");
   // 34 MB of zeros exceeds the 32 MB harddisk gate and exceeds 100:1 ratio
   const std::vector<uint8_t> zeros(static_cast<size_t>(34) * 1024 * 1024, 0x00);
   REQUIRE(create_test_zip(test_zip.c_str(), "bomb_hd.po", zeros.data(),
                           zeros.size()));
 
-  ScopedExtractedFile_t out_file;
+  ScopedExtractedFile out_file;
   const ImageContainerError result = image_container_prepare_compressed_path(
       test_zip.c_str(), out_file.path, sizeof(out_file.path),
       harddisk_threshold, &out_file.is_temporary);
@@ -170,7 +170,7 @@ TEST_CASE(
 TEST_CASE(
     "DiskCompression: [GZ-1] Gzip decompression respects floppy vs harddisk "
     "thresholds") {
-  TestFixtures::ScopedTempFile_t test_gz(".dsk.gz");
+  TestFixtures::ScopedTempFile test_gz(".dsk.gz");
   // 5 MB of zeros: blocked for floppy (4 MB threshold), allowed for harddisk
   // (32 MB threshold)
   const std::vector<uint8_t> zeros(static_cast<size_t>(5) * 1024 * 1024, 0x00);
@@ -178,7 +178,7 @@ TEST_CASE(
 
   // Floppy gate: 4MB -> blocked
   {
-    ScopedExtractedFile_t floppy_out;
+    ScopedExtractedFile floppy_out;
     const ImageContainerError floppy_result =
         image_container_prepare_compressed_path(
             test_gz.c_str(), floppy_out.path, sizeof(floppy_out.path),
@@ -188,7 +188,7 @@ TEST_CASE(
 
   // Harddisk gate: 32MB -> allowed
   {
-    ScopedExtractedFile_t hd_out;
+    ScopedExtractedFile hd_out;
     const ImageContainerError hd_result =
         image_container_prepare_compressed_path(
             test_gz.c_str(), hd_out.path, sizeof(hd_out.path),
@@ -209,7 +209,7 @@ TEST_CASE("DiskCompression: [PAY-1] The payload name carries the extension") {
                                      sizeof(name)) == image_container_ok);
   CHECK(std::string(name) == "game.dsk");
 
-  TestFixtures::ScopedTempFile_t test_zip(".zip");
+  TestFixtures::ScopedTempFile test_zip(".zip");
   const std::vector<uint8_t> floppy_data(143360, 0xA5);
   REQUIRE(create_test_zip(test_zip.c_str(), "inner.po", floppy_data.data(),
                           floppy_data.size()));
@@ -224,12 +224,12 @@ TEST_CASE("DiskCompression: [PAY-1] The payload name carries the extension") {
 TEST_CASE(
     "DiskCompression: [LD-1] the loader refuses an over-ratio floppy archive "
     "as unsupported") {
-  TestFixtures::ScopedTempFile_t test_zip(".dsk.zip");
+  TestFixtures::ScopedTempFile test_zip(".dsk.zip");
   const std::vector<uint8_t> zeros(static_cast<size_t>(5) * 1024 * 1024, 0x00);
   REQUIRE(create_test_zip(test_zip.c_str(), "bomb.dsk", zeros.data(),
                           zeros.size()));
 
-  const DiskFormatDriver_t* driver = nullptr;
+  const DiskFormatDriver* driver = nullptr;
   void* instance = nullptr;
   CHECK(disk_loader_open(test_zip.c_str(), &driver, &instance) ==
         disk_err_unsupported);
@@ -240,15 +240,15 @@ TEST_CASE(
 TEST_CASE(
     "DiskCompression: [LD-2] the loader names a missing archive and a broken "
     "one apart") {
-  const TestFixtures::ScopedTempDir_t dir("linapple_compression_case_");
+  const TestFixtures::ScopedTempDir dir("linapple_compression_case_");
   const std::string missing = dir.path() + "/absent.dsk.gz";
 
-  const DiskFormatDriver_t* driver = nullptr;
+  const DiskFormatDriver* driver = nullptr;
   void* instance = nullptr;
   CHECK(disk_loader_open(missing.c_str(), &driver, &instance) ==
         disk_err_file_not_found);
 
-  TestFixtures::ScopedTempFile_t not_a_zip(".dsk.zip");
+  TestFixtures::ScopedTempFile not_a_zip(".dsk.zip");
   const std::vector<uint8_t> noise(1024, 0xA5);
   {
     FILE* f = fopen(not_a_zip.c_str(), "wb");

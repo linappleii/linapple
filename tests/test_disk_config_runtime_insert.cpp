@@ -17,11 +17,11 @@ namespace {
 // Declared rather than inherited: with no configuration the slot fallbacks in
 // peripheral_register_internal supply a printer, a Super Serial Card and a
 // Mockingboard beside the Disk II, none of which these cases touch.
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 }  // namespace
 
 TEST_CASE("DiskIntegration: [INT-04] Runtime Insert Leaves Config Alone") {
-  TestConfig_t machine(TestConfig_t::disk_ii_only());
+  TestConfig machine(TestConfig::disk_ii_only());
   machine.load();
   linapple_init();
   peripheral_manager_init();
@@ -31,7 +31,7 @@ TEST_CASE("DiskIntegration: [INT-04] Runtime Insert Leaves Config Alone") {
   Configuration::instance().set_string("Slots", cfg_disk_image1, "");
 
   std::string fixture = TestFixtures::get_fixture_path("minimal.woz");
-  DiskInsertCmd_t cmd{};
+  DiskInsertCmd cmd{};
   cmd.drive = disk_drive_0;
   strcpy(cmd.path, fixture.c_str());
 
@@ -49,9 +49,9 @@ TEST_CASE("DiskIntegration: [INT-04] Runtime Insert Leaves Config Alone") {
   saved = Configuration::instance().get_string("Slots", cfg_disk_image1);
   CHECK(saved == fixture);
 
-  DiskStatus_t status{};
+  DiskStatus status{};
   size_t size = sizeof(status);
-  PeripheralStatus_t ps =
+  PeripheralStatus ps =
       peripheral_query(6, disk_query_status, &status, &size);
   REQUIRE(ps == peripheral_ok);
   CHECK(status.drive0_loaded == true);
@@ -61,7 +61,7 @@ TEST_CASE("DiskIntegration: [INT-04] Runtime Insert Leaves Config Alone") {
   // command is still queued, so recording has to reach past the queue.
   const std::string second_fixture =
       TestFixtures::get_fixture_path("minimal.dsk");
-  DiskInsertCmd_t second{};
+  DiskInsertCmd second{};
   second.drive = disk_drive_0;
   strcpy(second.path, second_fixture.c_str());
   peripheral_command(6, disk_cmd_insert, &second, sizeof(second));

@@ -32,7 +32,7 @@ constexpr bool debug_assembler = false;
 // Addressing
 // _____________________________________________________________________________________
 
-AddressingMode_t g_opmodes[NUM_ADDRESSING_MODES] = {
+AddressingMode opmodes[NUM_ADDRESSING_MODES] = {
     // Output, but eventually used for Input when Assembler is working.
     {"", 1, "(implied)"},             // AM_IMPLIED
     {"", 1, "n/a 1"},                 // AM_1
@@ -57,18 +57,18 @@ AddressingMode_t g_opmodes[NUM_ADDRESSING_MODES] = {
 // Assembler
 // ______________________________________________________________________________________
 
-bool g_assembler_opcodes_hashed = false;
-Hash_t g_opcodes_hash[NUM_OPCODES] = {};  // for faster mnemonic lookup, for the
+bool assembler_opcodes_hashed = false;
+Hash opcodes_hash[NUM_OPCODES] = {};  // for faster mnemonic lookup, for the
                                           // assembler
-bool g_assembler_input = false;
-int g_assembler_address = 0;
+bool assembler_input = false;
+int assembler_address = 0;
 
-const Opcodes_t* g_opcodes = nullptr;  // & g_opcodes65_c02[ 0 ];
+const Opcodes* opcodes = nullptr;  // & opcodes65_c02[ 0 ];
 
 // Disassembler Data
 // _____________________________________________________________________________
 
-std::vector<DisasmData_t> g_disassembler_data;
+std::vector<DisasmData> disassembler_data;
 
 // Instructions / Opcodes
 // _________________________________________________________________________
@@ -84,7 +84,7 @@ constexpr auto S_ = MEM_S;
 constexpr auto IM = MEM_IM;
 constexpr auto SW = MEM_S | MEM_WI;
 constexpr auto SR = MEM_S | MEM_RI;
-const Opcodes_t g_opcodes65_c02[NUM_OPCODES] = {
+const Opcodes opcodes65_c02[NUM_OPCODES] = {
     {"BRK", 0, SW},      {"ORA", AM_IZX, R_},
     {"nop", AM_M, IM},   {"nop", 0, 0},  // 00 .. 03
     {"TSB", AM_Z, W_},   {"ORA", AM_Z, R_},
@@ -222,7 +222,7 @@ const Opcodes_t g_opcodes65_c02[NUM_OPCODES] = {
     {"INC", AM_AX, RW},  {"nop", 0, 0},  // FF .. FF
 };
 
-const Opcodes_t g_opcodes6502[NUM_OPCODES] = {
+const Opcodes opcodes6502[NUM_OPCODES] = {
     // Should match Cpu.cpp internal_cpu_execute() switch
     // (*(mem+cpu_get_registers()->pc++)) !!
 
@@ -427,8 +427,8 @@ const Opcodes_t g_opcodes6502[NUM_OPCODES] = {
 
 // Private __________________________________________________________________
 
-// NOTE: Keep in sync AsmDirectives_e g_assembler_directives !
-AssemblerDirective_t g_assembler_directives[NUM_ASM_DIRECTIVES] = {
+// NOTE: Keep in sync AsmDirectives assembler_directives !
+AssemblerDirective assembler_directives[NUM_ASM_DIRECTIVES] = {
     // nullptr n/a
     {"", 0},
     // Origin, Target Address, EndProg, Equate, Data, AsciiString,HexString
@@ -464,7 +464,7 @@ AssemblerDirective_t g_assembler_directives[NUM_ASM_DIRECTIVES] = {
     // Weller
     {"???", 0},
     // User-Defined
-    // NOTE: Keep in sync AsmCustomDirective_e g_assembler_directives !
+    // NOTE: Keep in sync AsmCustomDirective assembler_directives !
     {"db", 0},  // ASM_DEFINE_BYTE
     {"dw", 0},  // ASM_DEFINE_WORD
     {"da", 0},  // ASM_DEFINE_ADDRESS_16
@@ -481,8 +481,8 @@ AssemblerDirective_t g_assembler_directives[NUM_ASM_DIRECTIVES] = {
     {"dfx", 0},  // ASM_DEFINE_FLOAT_X
 };
 
-int g_assembler_syntax = ASM_CUSTOM;  // Which assembler syntax to use
-int g_assembler_first_directive[NUM_ASSEMBLERS] = {
+int assembler_syntax = ASM_CUSTOM;  // Which assembler syntax to use
+int assembler_first_directive[NUM_ASSEMBLERS] = {
     FIRST_ACME_DIRECTIVE,         FIRST_BIG_MAC_DIRECTIVE,
     FIRST_DOS_TOOL_KIT_DIRECTIVE, FIRST_LISA_DIRECTIVE,
     FIRST_MERLIN_DIRECTIVE,       FIRST_MICROSPARC_DIRECTIVE,
@@ -495,7 +495,7 @@ int g_assembler_first_directive[NUM_ASSEMBLERS] = {
 
 namespace {
 
-enum AssemblerFlags_e : uint16_t {
+enum AssemblerFlags : uint16_t {
   AF_HaveLabel = (1 << 0),
   AF_HaveComma = (1 << 1),
   AF_HaveHash = (1 << 2),
@@ -511,7 +511,7 @@ enum AssemblerFlags_e : uint16_t {
   AF_HaveTarget = (1 << 12),
 };
 
-enum AssemblerState_e : uint8_t {
+enum AssemblerState : uint8_t {
   AS_GET_MNEMONIC,
   AS_GET_MNEMONIC_PARM,
   AS_GET_HASH,
@@ -521,24 +521,24 @@ enum AssemblerState_e : uint8_t {
   AS_DONE,
 };
 
-int g_asm_flags;
-std::vector<int> g_asm_opcodes;
-int g_asm_address_mode = AM_IMPLIED;
+int asm_flags;
+std::vector<int> asm_opcodes;
+int asm_address_mode = AM_IMPLIED;
 
-struct DelayedTarget_t {
+struct DelayedTarget {
   char address_str[MAX_SYMBOLS_LEN + 1];
   uint16_t base_address;  // mem address to store symbol at
   int opcode;
-  int opmode;  // AddressingMode_e
+  int opmode;  // AddressingModeId
 };
 
-std::vector<DelayedTarget_t> g_delayed_targets;
-bool g_delayed_targets_dirty = false;
+std::vector<DelayedTarget> delayed_targets;
+bool delayed_targets_dirty = false;
 
-int g_asm_bytes = 0;
-uint16_t g_asm_base_address = 0;
-uint16_t g_asm_target_address = 0;
-uint16_t g_asm_target_value = 0;
+int asm_bytes = 0;
+uint16_t asm_base_address = 0;
+uint16_t asm_target_address = 0;
+uint16_t asm_target_value = 0;
 
 }  // namespace
 
@@ -573,11 +573,11 @@ static auto CalcRelativeOffset(int nOpcode, int nBaseAddress,
     }
 
     if ((nDistance - 2) > DBG_6502_BRANCH_POS) {
-      g_asm_address_mode = NUM_OPMODES;  // signal bad
+      asm_address_mode = NUM_OPMODES;  // signal bad
     }
 
     if ((nDistance - 2) < DBG_6502_BRANCH_NEG) {
-      g_asm_address_mode = NUM_OPMODES;  // signal bad
+      asm_address_mode = NUM_OPMODES;  // signal bad
     }
 
     return true;
@@ -588,8 +588,8 @@ static auto CalcRelativeOffset(int nOpcode, int nBaseAddress,
 
 //===========================================================================
 auto GetOpmodeOpbyte(const int nBaseAddress, int& iOpmode_, int& nOpbyte_,
-                     const DisasmData_t** pData_) -> int {
-  if (!g_opcodes) {
+                     const DisasmData** pData_) -> int {
+  if (!opcodes) {
     iOpmode_ = 0;
     nOpbyte_ = 1;
     return 0;
@@ -607,13 +607,13 @@ auto GetOpmodeOpbyte(const int nBaseAddress, int& iOpmode_, int& nOpbyte_,
     nOpbyte_ = 1;
     return 0;
   }
-  iOpmode_ = g_opcodes[iOpcode_].nAddressMode;
+  iOpmode_ = opcodes[iOpcode_].nAddressMode;
   if (iOpmode_ >= NUM_ADDRESSING_MODES) {
     iOpmode_ = 0;
     nOpbyte_ = 1;
     return 0;
   }
-  nOpbyte_ = g_opmodes[iOpmode_].bytes;
+  nOpbyte_ = opmodes[iOpmode_].bytes;
 
   // 2.6.2.25 Fixed: DB DW custom data byte sizes weren't scrolling properly in
   // the disasm view.
@@ -629,7 +629,7 @@ auto GetOpmodeOpbyte(const int nBaseAddress, int& iOpmode_, int& nOpbyte_,
   // 2.7.0.0 TODO: FIXME: Opcode length that over-lap data, should be shortened
   // ... if (nOpbyte_ > 1) if Disassembly_IsDataAddress( nBaseAddress + 1 )
   // nOpbyte_ = 1;
-  DisasmData_t* data = Disassembly_IsDataAddress(nBaseAddress);
+  DisasmData* data = Disassembly_IsDataAddress(nBaseAddress);
   if (data) {
     if (pData_) {
       *pData_ = data;
@@ -764,14 +764,14 @@ auto GetTargets(uint16_t address, int* pTargetPartial_, int* pTargetPartial2_,
   uint8_t nTarget8 = mem[(address + 1) & 0xFFFF];
   uint16_t nTarget16 = (mem[(address + 2) & 0xFFFF] << 8) | nTarget8;
 
-  int eMode = g_opcodes[nOpcode].nAddressMode;
+  int eMode = opcodes[nOpcode].nAddressMode;
 
   // We really need to use the values that are code and data assembler
   // TODO: FIXME: GetOpmodeOpbyte( iAddress, iOpmode, nOpbytes );
 
   switch (eMode) {
     case AM_IMPLIED:
-      if ((g_opcodes[nOpcode].nMemoryAccess & MEM_S) != 0)  // Stack R/W?
+      if ((opcodes[nOpcode].nMemoryAccess & MEM_S) != 0)  // Stack R/W?
       {
         if (nOpcode == OPCODE_RTI || nOpcode == OPCODE_RTS)  // RTI or RTS?
         {
@@ -807,7 +807,7 @@ auto GetTargets(uint16_t address, int* pTargetPartial_, int* pTargetPartial2_,
           nTarget16 = *reinterpret_cast<uint16_t*>(mem + DBG_6502_BRK_VECTOR);
         } else  // PHn/PLn
         {
-          if ((g_opcodes[nOpcode].nMemoryAccess & MEM_WI) != 0) {
+          if ((opcodes[nOpcode].nMemoryAccess & MEM_WI) != 0) {
             nTarget16 = static_cast<uint16_t>(
                 DBG_6502_STACK_BEGIN + ((cpu_get_registers()->sp + 0) & 0xFF));
           } else {
@@ -1039,7 +1039,7 @@ auto IsOpcodeValid(int opcode) -> bool {
     return false;
   }
 
-  if (islower(g_opcodes6502[opcode].sMnemonic[0]) != 0) {
+  if (islower(opcodes6502[opcode].sMnemonic[0]) != 0) {
     return false;
   }
 
@@ -1055,7 +1055,7 @@ auto AssemblerHashMnemonic(const char* pMnemonic) -> uint32_t {
 
   const int NUM_LOW_BITS = 19;  // 24 -> 19 prime
   const int NUM_MSK_BITS = 5;   //  4 ->  5 prime
-  const Hash_t BIT_MSK_HIGH = ((1 << NUM_MSK_BITS) - 1) << NUM_LOW_BITS;
+  const Hash BIT_MSK_HIGH = ((1 << NUM_MSK_BITS) - 1) << NUM_LOW_BITS;
 
   if (debug_assembler) {
     int nLen = strlen(text);
@@ -1088,13 +1088,13 @@ auto AssemblerHashMnemonic(const char* pMnemonic) -> uint32_t {
 
 //===========================================================================
 static auto AssemblerHashOpcodes() -> void {
-  Hash_t nMnemonicHash = 0;
+  Hash nMnemonicHash = 0;
   int opcode = 0;
 
   for (opcode = 0; opcode < NUM_OPCODES; opcode++) {
-    const char* pMnemonic = g_opcodes65_c02[opcode].sMnemonic;
+    const char* pMnemonic = opcodes65_c02[opcode].sMnemonic;
     nMnemonicHash = AssemblerHashMnemonic(pMnemonic);
-    g_opcodes_hash[opcode] = nMnemonicHash;
+    opcodes_hash[opcode] = nMnemonicHash;
     if (debug_assembler) {
       char sText[128];
       ConsolePrintFormat(sText, "%s : %08X  ", pMnemonic, nMnemonicHash);
@@ -1104,10 +1104,10 @@ static auto AssemblerHashOpcodes() -> void {
 }
 
 //===========================================================================
-auto CmdAssemble(int nArgs) -> Update_t {
-  if (!g_assembler_opcodes_hashed) {
+auto CmdAssemble(int nArgs) -> UpdateResult {
+  if (!assembler_opcodes_hashed) {
     AssemblerStartup();
-    g_assembler_opcodes_hashed = true;
+    assembler_opcodes_hashed = true;
   }
 
   // 0 : A
@@ -1122,14 +1122,14 @@ auto CmdAssemble(int nArgs) -> Update_t {
     return UPDATE_CONSOLE_DISPLAY;
   }
 
-  g_assembler_address = g_args[1].nValue;
+  assembler_address = args[1].nValue;
 
   if (nArgs == 1) {
     int iArg = 1;
 
     // undocumented ASM *
-    if ((strcmp(g_args[iArg].sArg, g_parameters[PARAM_WILDSTAR].name) == 0) ||
-        (strcmp(g_args[iArg].sArg, g_parameters[PARAM_MEM_SEARCH_WILD].name) ==
+    if ((strcmp(args[iArg].sArg, parameters[PARAM_WILDSTAR].name) == 0) ||
+        (strcmp(args[iArg].sArg, parameters[PARAM_MEM_SEARCH_WILD].name) ==
          0)) {
       CmdAssembleHashDump();
     }
@@ -1141,7 +1141,7 @@ auto CmdAssemble(int nArgs) -> Update_t {
   }
 
   if (nArgs > 1) {
-    return CmdAssemble(g_assembler_address, 2,
+    return CmdAssemble(assembler_address, 2,
                        nArgs);  // disasm, memory, watches, zeropage
   }
 
@@ -1149,23 +1149,23 @@ auto CmdAssemble(int nArgs) -> Update_t {
 }
 
 //===========================================================================
-auto CmdSource(int nArgs) -> Update_t {
+auto CmdSource(int nArgs) -> UpdateResult {
   if (nArgs == 0) {
-    g_source_level_debugging = false;
+    source_level_debugging = false;
   } else {
-    g_source_add_memory = false;
-    g_source_add_symbols = false;
+    source_add_memory = false;
+    source_add_symbols = false;
 
     for (int iArg = 1; iArg <= nArgs; iArg++) {
-      const std::string pFileName = g_args[iArg].sArg;
+      const std::string pFileName = args[iArg].sArg;
 
       int iParam = 0;
       bool bFound = FindParam(pFileName.c_str(), MATCH_EXACT, iParam,
                               PARAM_SOURCE_BEGIN, PARAM_SOURCE_END) > 0;
       if (bFound && (iParam == PARAM_SRC_SYMBOLS)) {
-        g_source_add_symbols = true;
+        source_add_symbols = true;
       } else if (bFound && (iParam == PARAM_SRC_MEMORY)) {
-        g_source_add_memory = true;
+        source_add_memory = true;
       } else {
         const std::string sFileName =
             std::string(system_state.program_dir.data()) + pFileName;
@@ -1178,14 +1178,14 @@ auto CmdSource(int nArgs) -> Update_t {
         char buffer[path_max_len] = {0};
 
         if (BufferAssemblyListing(sFileName)) {
-          g_source_file_name = pFileName;
+          source_file_name = pFileName;
 
-          if (!ParseAssemblyListing(g_source_add_memory,
-                                    g_source_add_symbols)) {
+          if (!ParseAssemblyListing(source_add_memory,
+                                    source_add_symbols)) {
             ConsoleBufferPushFormat(buffer, "Couldn't load filename: %s",
                                     sMiniFileName.c_str());
           } else {
-            g_source_level_debugging = true;
+            source_level_debugging = true;
             ConsoleBufferPushFormat(buffer, "Loaded filename: %s",
                                     sMiniFileName.c_str());
           }
@@ -1202,7 +1202,7 @@ auto CmdSource(int nArgs) -> Update_t {
 }
 
 //===========================================================================
-auto CmdSync(int nArgs) -> Update_t {
+auto CmdSync(int nArgs) -> UpdateResult {
   (void)nArgs;
   // TODO
   return UPDATE_CONSOLE_DISPLAY;
@@ -1210,32 +1210,32 @@ auto CmdSync(int nArgs) -> Update_t {
 
 //===========================================================================
 static auto AssemblerHashDirectives() -> void {
-  Hash_t nMnemonicHash = 0;
+  Hash nMnemonicHash = 0;
   int opcode = 0;
 
   for (opcode = 0; opcode < NUM_ASM_MERLIN_DIRECTIVES; opcode++) {
     int iNopcode = FIRST_MERLIN_DIRECTIVE + opcode;
-    const char* pMnemonic = g_assembler_directives[iNopcode].mnemonic;
+    const char* pMnemonic = assembler_directives[iNopcode].mnemonic;
     nMnemonicHash = AssemblerHashMnemonic(pMnemonic);
-    g_assembler_directives[iNopcode].hash = nMnemonicHash;
+    assembler_directives[iNopcode].hash = nMnemonicHash;
   }
 }
 
 // Implementation helpers originally from Debug.cpp
-bool g_source_level_debugging = false;
-bool g_source_add_symbols = false;
-bool g_source_add_memory = false;
+bool source_level_debugging = false;
+bool source_add_symbols = false;
+bool source_add_memory = false;
 
-std::string g_source_file_name;
+std::string source_file_name;
 
-MemoryTextFile_t g_assembler_source_buffer;
+MemoryTextFile assembler_source_buffer;
 
-int g_source_display_start = 0;
-int g_source_assemble_bytes = 0;
-int g_source_assembly_symbols = 0;
+int source_display_start = 0;
+int source_assemble_bytes = 0;
+int source_assembly_symbols = 0;
 
 // TODO: Support multiple source filenames
-SourceAssembly_t g_source_debug;
+SourceAssembly source_debug;
 
 auto debugger_get_file_size(FILE* file) -> size_t {
   if (file == nullptr) {
@@ -1254,16 +1254,16 @@ auto debugger_get_file_size(FILE* file) -> size_t {
   return static_cast<size_t>(pos);
 }
 
-auto CmdAssemble(uint16_t address, int iArg, int nArgs) -> Update_t {
+auto CmdAssemble(uint16_t address, int iArg, int nArgs) -> UpdateResult {
   // if AlphaNumeric
-  ArgToken_e iTokenSrc = NO_TOKEN;
-  ParserFindToken(g_console_input_ptr, g_tokens, NUM_TOKENS, &iTokenSrc);
+  ArgToken iTokenSrc = NO_TOKEN;
+  ParserFindToken(console_input_ptr, tokens, NUM_TOKENS, &iTokenSrc);
 
   if ((iTokenSrc == NO_TOKEN) &&
-      (g_console_input_ptr[0] != ' '))  // is TOKEN_ALPHANUMERIC
+      (console_input_ptr[0] != ' '))  // is TOKEN_ALPHANUMERIC
   {
     // Symbol
-    char* pSymbolName = g_args[iArg].sArg;  // pArg->sArg;
+    char* pSymbolName = args[iArg].sArg;  // pArg->sArg;
     SymbolUpdate(SYMBOLS_ASSEMBLY, pSymbolName, address, false,
                  true);  // bool bRemoveSymbol, bool bUpdateSymbol )
 
@@ -1286,11 +1286,11 @@ auto BufferAssemblyListing(const std::string& pFileName) -> bool {
     return bStatus;
   }
 
-  g_assembler_source_buffer.Reset();
-  g_assembler_source_buffer.Read(pFileName);
+  assembler_source_buffer.Reset();
+  assembler_source_buffer.Read(pFileName);
 
-  if (g_assembler_source_buffer.GetNumLines() != 0) {
-    g_source_level_debugging = true;
+  if (assembler_source_buffer.GetNumLines() != 0) {
+    source_level_debugging = true;
     bStatus = true;
   }
 
@@ -1303,8 +1303,8 @@ auto FindSourceLineFromAddress(uint16_t address) -> int {
   int iLine = 0;
   int iSourceLine = NO_SOURCE_LINE;
 
-  auto iSource = g_source_debug.begin();
-  while (iSource != g_source_debug.end()) {
+  auto iSource = source_debug.begin();
+  while (iSource != source_debug.end()) {
     iAddress = iSource->first;
     iLine = iSource->second;
 
@@ -1323,8 +1323,8 @@ auto FindSourceLineFromAddress(uint16_t address) -> int {
 auto FindAddressFromSourceLine(int nLine) -> int {
   int iAddress = NO_SOURCE_LINE;  // Reuse constant for "not found"
 
-  auto iSource = g_source_debug.begin();
-  while (iSource != g_source_debug.end()) {
+  auto iSource = source_debug.begin();
+  while (iSource != source_debug.end()) {
     if (iSource->second == nLine) {
       iAddress = iSource->first;
       break;
@@ -1345,14 +1345,14 @@ auto ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols) -> bool {
   char sLine[MAX_LINE];
   char sText[MAX_LINE];
 
-  g_source_assemble_bytes = 0;
-  g_source_assembly_symbols = 0;
+  source_assemble_bytes = 0;
+  source_assembly_symbols = 0;
 
   const uint32_t INVALID_ADDRESS = apple2_6502_mem_end + 1;
 
-  int nLines = g_assembler_source_buffer.GetNumLines();
+  int nLines = assembler_source_buffer.GetNumLines();
   for (int iLine = 0; iLine < nLines; iLine++) {
-    g_assembler_source_buffer.GetLine(iLine, sText, MAX_LINE - 1);
+    assembler_source_buffer.GetLine(iLine, sText, MAX_LINE - 1);
 
     uint32_t address = INVALID_ADDRESS;
 
@@ -1385,10 +1385,10 @@ auto ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols) -> bool {
             *(mem + (static_cast<uint16_t>(address)) + byte) = nByte;
           }
         }
-        g_source_assemble_bytes += byte;
+        source_assemble_bytes += byte;
       }
 
-      g_source_debug[static_cast<uint16_t>(address)] = iLine;
+      source_debug[static_cast<uint16_t>(address)] = iLine;
     }
 
     util_safe_strcpy(sLine, sText, sizeof(sLine));
@@ -1432,8 +1432,8 @@ auto ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols) -> bool {
           if (pAddress) {
             char* pAddressEnd = nullptr;
             address = static_cast<uint32_t>(strtol(pAddress, &pAddressEnd, 16));
-            g_symbols[SYMBOLS_SRC_2][static_cast<uint16_t>(address)] = sName;
-            g_source_assembly_symbols++;
+            symbols[SYMBOLS_SRC_2][static_cast<uint16_t>(address)] = sName;
+            source_assembly_symbols++;
           }
         }
       }
@@ -1449,7 +1449,7 @@ auto ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols) -> bool {
 auto AssemblerStartup() -> void
 
 {
-  g_opcodes = &g_opcodes65_c02[0];
+  opcodes = &opcodes65_c02[0];
   AssemblerHashOpcodes();
   AssemblerHashDirectives();
 }
@@ -1457,29 +1457,29 @@ auto AssemblerStartup() -> void
 //===========================================================================
 auto CmdAssembleHashDump() -> void {
   // #if DEBUG_ASM_HASH
-  std::vector<HashOpcode_t> vHashes;
-  HashOpcode_t tHash{};
+  std::vector<HashOpcode> vHashes;
+  HashOpcode tHash{};
   char sText[CONSOLE_WIDTH];
 
   int opcode = 0;
   for (opcode = 0; opcode < NUM_OPCODES; opcode++) {
     tHash.opcode = opcode;
-    tHash.value = g_opcodes_hash[opcode];
+    tHash.value = opcodes_hash[opcode];
     vHashes.push_back(tHash);
   }
 
-  std::sort(vHashes.begin(), vHashes.end(), HashOpcode_t());
+  std::sort(vHashes.begin(), vHashes.end(), HashOpcode());
 
   for (opcode = 0; opcode < NUM_OPCODES; opcode++) {
     tHash = vHashes.at(opcode);
 
-    Hash_t iThisHash = tHash.value;
+    Hash iThisHash = tHash.value;
     int nOpcode = tHash.opcode;
-    int nOpmode = g_opcodes[nOpcode].nAddressMode;
+    int nOpmode = opcodes[nOpcode].nAddressMode;
 
     ConsoleBufferPushFormat(sText, "%08X %02X %s %s", iThisHash, nOpcode,
-                            g_opcodes65_c02[nOpcode].sMnemonic,
-                            g_opmodes[nOpmode].name);
+                            opcodes65_c02[nOpcode].sMnemonic,
+                            opmodes[nOpmode].name);
   }
 
   ConsoleUpdate();
@@ -1490,7 +1490,7 @@ static auto AssemblerPokeAddress(const int Opcode, const int nOpmode,
                                  const uint16_t nBaseAddress,
                                  const uint16_t nTargetOffset) -> int {
   (void)Opcode;
-  int nOpbytes = g_opmodes[nOpmode].bytes;
+  int nOpbytes = opmodes[nOpmode].bytes;
 
   *(memdirty + (nBaseAddress >> 8)) |= 1;
 
@@ -1507,31 +1507,31 @@ static auto AssemblerPokeAddress(const int Opcode, const int nOpmode,
 
 //===========================================================================
 static auto AssemblerPokeOpcodeAddress(const uint16_t nBaseAddress) -> bool {
-  int iAddressMode = g_asm_address_mode;  // opmode detected from input
-  int nTargetValue = g_asm_target_value;
+  int iAddressMode = asm_address_mode;  // opmode detected from input
+  int nTargetValue = asm_target_value;
 
   int opcode = 0;
-  int nOpcodes = static_cast<int>(g_asm_opcodes.size());
+  int nOpcodes = static_cast<int>(asm_opcodes.size());
 
   for (opcode = 0; opcode < nOpcodes; opcode++) {
-    int nOpcode = g_asm_opcodes.at(opcode);
-    int nOpmode = g_opcodes[nOpcode].nAddressMode;
+    int nOpcode = asm_opcodes.at(opcode);
+    int nOpmode = opcodes[nOpcode].nAddressMode;
 
     if (nOpmode == iAddressMode) {
       *(mem + nBaseAddress) = static_cast<uint8_t>(nOpcode);
       int nOpbytes =
           AssemblerPokeAddress(nOpcode, nOpmode, nBaseAddress, nTargetValue);
 
-      if (g_delayed_targets_dirty) {
-        int nDelayedTargets = static_cast<int>(g_delayed_targets.size());
-        DelayedTarget_t* pTarget =
-            &g_delayed_targets.at(static_cast<size_t>(nDelayedTargets - 1));
+      if (delayed_targets_dirty) {
+        int nDelayedTargets = static_cast<int>(delayed_targets.size());
+        DelayedTarget* pTarget =
+            &delayed_targets.at(static_cast<size_t>(nDelayedTargets - 1));
 
         pTarget->opcode = nOpcode;
         pTarget->opmode = nOpmode;
       }
 
-      g_assembler_address += nOpbytes;
+      assembler_address += nOpbytes;
       return true;
     }
   }
@@ -1540,16 +1540,16 @@ static auto AssemblerPokeOpcodeAddress(const uint16_t nBaseAddress) -> bool {
 }
 
 //===========================================================================
-static auto TestFlag(AssemblerFlags_e eFlag) -> bool {
-  return (g_asm_flags & eFlag) != 0;
+static auto TestFlag(AssemblerFlags eFlag) -> bool {
+  return (asm_flags & eFlag) != 0;
 }
 
 //===========================================================================
-static auto SetFlag(AssemblerFlags_e eFlag, bool bValue = true) -> void {
+static auto SetFlag(AssemblerFlags eFlag, bool bValue = true) -> void {
   if (bValue) {
-    g_asm_flags |= eFlag;
+    asm_flags |= eFlag;
   } else {
-    g_asm_flags &= ~eFlag;
+    asm_flags &= ~eFlag;
   }
 }
 
@@ -1565,19 +1565,19 @@ static auto SetFlag(AssemblerFlags_e eFlag, bool bValue = true) -> void {
 static auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress)
     -> bool {
   (void)nArgs;
-  g_asm_address_mode = AM_IMPLIED;
-  AssemblerState_e eNextState = AS_GET_MNEMONIC;
+  asm_address_mode = AM_IMPLIED;
+  AssemblerState eNextState = AS_GET_MNEMONIC;
 
-  g_asm_flags = 0;
-  g_asm_target_address = 0;
+  asm_flags = 0;
+  asm_target_address = 0;
 
   int nBase = 10;
 
   // Sync up to Raw Args for matching mnemonic
   // Process them instead of the cooked args, since we need the orginal tokens
-  Arg_t* pArg = &g_arg_raw[iArg];
+  Arg* pArg = &arg_raw[iArg];
 
-  while (iArg < g_arg_raw_count) {
+  while (iArg < arg_raw_count) {
     int iToken = pArg->eToken;
 
     if (iToken == TOKEN_HASH) {
@@ -1592,9 +1592,9 @@ static auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress)
       }
       SetFlag(AF_HaveHash);
 
-      g_asm_address_mode = AM_M;  // Immediate
+      asm_address_mode = AM_M;  // Immediate
       eNextState = AS_GET_TARGET;
-      g_asm_bytes = 1;
+      asm_bytes = 1;
     } else if (iToken == TOKEN_DOLLAR) {
       if (TestFlag(AF_HaveDollar)) {
         ConsoleBufferPush(
@@ -1606,10 +1606,10 @@ static auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress)
 
       if (!TestFlag(AF_HaveHash)) {
         SetFlag(AF_HaveDollar);
-        g_asm_address_mode = AM_A;  // Absolute
+        asm_address_mode = AM_A;  // Absolute
       }
       eNextState = AS_GET_TARGET;
-      g_asm_bytes = 2;
+      asm_bytes = 2;
     } else if (iToken == TOKEN_PAREN_L) {
       if (TestFlag(AF_HaveLeftParen)) {
         ConsoleBufferPush(
@@ -1619,7 +1619,7 @@ static auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress)
       SetFlag(AF_HaveLeftParen);
 
       // Indexed or Indirect
-      g_asm_address_mode = AM_INDIRECT;
+      asm_address_mode = AM_INDIRECT;
     } else if (iToken == TOKEN_PAREN_R) {
       if (TestFlag(AF_HaveRightParen)) {
         ConsoleBufferPush(
@@ -1629,7 +1629,7 @@ static auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress)
       SetFlag(AF_HaveRightParen);
 
       // Indexed or Indirect
-      g_asm_address_mode = AM_INDIRECT;
+      asm_address_mode = AM_INDIRECT;
     } else if (iToken == TOKEN_COMMA) {
       if (TestFlag(AF_HaveComma)) {
         ConsoleBufferPush(
@@ -1653,23 +1653,23 @@ static auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress)
       if (eNextState == AS_GET_TARGET) {
         SetFlag(AF_HaveTarget);
 
-        ArgsGetValue(pArg, &g_asm_target_address, nBase);
+        ArgsGetValue(pArg, &asm_target_address, nBase);
 
         // Do Symbol Lookup
         uint16_t nSymbolAddress = 0;
         bool bExists = FindAddressFromSymbol(pArg->sArg, &nSymbolAddress);
         if (bExists) {
-          g_asm_target_address = nSymbolAddress;
+          asm_target_address = nSymbolAddress;
 
-          if (g_asm_address_mode == AM_IMPLIED) {
-            g_asm_address_mode = AM_A;
+          if (asm_address_mode == AM_IMPLIED) {
+            asm_address_mode = AM_A;
           }
         } else {
           // if valid hex address, don't have delayed target
           char sAddress[32];
-          snprintf(sAddress, sizeof(sAddress), "%X", g_asm_target_address);
+          snprintf(sAddress, sizeof(sAddress), "%X", asm_target_address);
           if (strcmp(sAddress, pArg->sArg) != 0) {
-            DelayedTarget_t tDelayedTarget{};
+            DelayedTarget tDelayedTarget{};
 
             tDelayedTarget.base_address = nBaseAddress;
             util_safe_strcpy(tDelayedTarget.address_str, pArg->sArg,
@@ -1677,23 +1677,23 @@ static auto AssemblerGetArgs(int iArg, int nArgs, uint16_t nBaseAddress)
 
             // Flag this target that we need to update it when we have the
             // relevent info
-            g_delayed_targets_dirty = true;
+            delayed_targets_dirty = true;
 
             tDelayedTarget.opcode = 0;
-            tDelayedTarget.opmode = g_asm_address_mode;
+            tDelayedTarget.opmode = asm_address_mode;
 
-            g_delayed_targets.push_back(tDelayedTarget);
+            delayed_targets.push_back(tDelayedTarget);
 
-            g_asm_target_address = 0;
+            asm_target_address = 0;
           }
         }
 
-        if (((g_asm_address_mode != AM_M) &&
-             (g_asm_address_mode != AM_IMPLIED) &&
-             (!g_delayed_targets_dirty)) &&
-            (g_asm_target_address <= DBG_6502_ZEROPAGE_END)) {
-          g_asm_address_mode = AM_Z;
-          g_asm_bytes = 1;
+        if (((asm_address_mode != AM_M) &&
+             (asm_address_mode != AM_IMPLIED) &&
+             (!delayed_targets_dirty)) &&
+            (asm_target_address <= DBG_6502_ZEROPAGE_END)) {
+          asm_address_mode = AM_Z;
+          asm_bytes = 1;
         }
       }
       if ((eNextState == AS_GET_INDEX) && (pArg->nArgLen == 1)) {
@@ -1746,57 +1746,57 @@ static auto AssemblerUpdateAddressingMode() -> bool {
 
   if (TestFlag(AF_HaveBothParen) && TestFlag(AF_HaveComma)) {
     if (TestFlag(AF_HaveRegisterX)) {
-      g_asm_address_mode = AM_AX;
-      g_asm_bytes = 2;
-      if (g_asm_target_address <= DBG_6502_ZEROPAGE_END) {
-        g_asm_address_mode = AM_ZX;
-        g_asm_bytes = 1;
+      asm_address_mode = AM_AX;
+      asm_bytes = 2;
+      if (asm_target_address <= DBG_6502_ZEROPAGE_END) {
+        asm_address_mode = AM_ZX;
+        asm_bytes = 1;
       }
     }
     if (TestFlag(AF_HaveRegisterY)) {
-      g_asm_address_mode = AM_AY;
-      g_asm_bytes = 2;
-      if (g_asm_target_address <= DBG_6502_ZEROPAGE_END) {
-        g_asm_address_mode = AM_ZY;
-        g_asm_bytes = 1;
+      asm_address_mode = AM_AY;
+      asm_bytes = 2;
+      if (asm_target_address <= DBG_6502_ZEROPAGE_END) {
+        asm_address_mode = AM_ZY;
+        asm_bytes = 1;
       }
     }
   }
 
-  if (((g_asm_address_mode == AM_A) || (g_asm_address_mode == AM_Z)) &&
+  if (((asm_address_mode == AM_A) || (asm_address_mode == AM_Z)) &&
       !TestFlag(AF_HaveEitherParen)) {
     if (TestFlag(AF_HaveComma) && TestFlag(AF_HaveRegisterX)) {
-      if (g_asm_address_mode == AM_Z) {
-        g_asm_address_mode = AM_ZX;
+      if (asm_address_mode == AM_Z) {
+        asm_address_mode = AM_ZX;
       } else {
-        g_asm_address_mode = AM_AX;
+        asm_address_mode = AM_AX;
       }
     }
     if (TestFlag(AF_HaveComma) && TestFlag(AF_HaveRegisterY)) {
-      if (g_asm_address_mode == AM_Z) {
-        g_asm_address_mode = AM_ZY;
+      if (asm_address_mode == AM_Z) {
+        asm_address_mode = AM_ZY;
       } else {
-        g_asm_address_mode = AM_AY;
+        asm_address_mode = AM_AY;
       }
     }
   }
 
-  if (g_asm_address_mode == AM_INDIRECT && !TestFlag(AF_HaveEitherParen)) {
+  if (asm_address_mode == AM_INDIRECT && !TestFlag(AF_HaveEitherParen)) {
     // Indirect Zero Page
     // Indirect Absolute
   }
 
-  g_asm_target_value = g_asm_target_address;
+  asm_target_value = asm_target_address;
 
-  int nOpcode = g_asm_opcodes.at(
+  int nOpcode = asm_opcodes.at(
       0);  // branch opcodes don't vary (only 1 Addressing Mode)
-  if (CalcRelativeOffset(nOpcode, g_asm_base_address, g_asm_target_address,
-                         &g_asm_target_value)) {
-    if (g_asm_address_mode == NUM_OPMODES) {
+  if (CalcRelativeOffset(nOpcode, asm_base_address, asm_target_address,
+                         &asm_target_value)) {
+    if (asm_address_mode == NUM_OPMODES) {
       return false;
     }
 
-    g_asm_address_mode = AM_R;
+    asm_address_mode = AM_R;
   }
 
   return true;
@@ -1804,7 +1804,7 @@ static auto AssemblerUpdateAddressingMode() -> bool {
 
 //===========================================================================
 auto AssemblerDelayedTargetsSize() -> int {
-  int nSize = static_cast<int>(g_delayed_targets.size());
+  int nSize = static_cast<int>(delayed_targets.size());
   return nSize;
 }
 
@@ -1815,17 +1815,17 @@ auto AssemblerDelayedTargetsSize() -> int {
 // <enter>
 //===========================================================================
 static auto AssemblerProcessDelayedSymols() -> void {
-  g_delayed_targets_dirty =
+  delayed_targets_dirty =
       false;  // assembler set signal if new symbol was added
 
   bool bModified = false;
   while (!bModified) {
     bModified = false;
 
-    std::vector<DelayedTarget_t>::iterator iSymbol;
-    for (iSymbol = g_delayed_targets.begin();
-         iSymbol != g_delayed_targets.end(); ++iSymbol) {
-      DelayedTarget_t* pTarget = &(*iSymbol);
+    std::vector<DelayedTarget>::iterator iSymbol;
+    for (iSymbol = delayed_targets.begin();
+         iSymbol != delayed_targets.end(); ++iSymbol) {
+      DelayedTarget* pTarget = &(*iSymbol);
 
       uint16_t nTargetAddress = 0;
       bool bExists =
@@ -1836,7 +1836,7 @@ static auto AssemblerProcessDelayedSymols() -> void {
         bModified = true;
 
         int nOpcode = pTarget->opcode;
-        int nOpmode = g_opcodes[nOpcode].nAddressMode;
+        int nOpmode = opcodes[nOpcode].nAddressMode;
 
         // 300: D0 7E BNE $380
         // ^       ^      ^
@@ -1847,7 +1847,7 @@ static auto AssemblerProcessDelayedSymols() -> void {
 
         if (CalcRelativeOffset(nOpcode, pTarget->base_address, nTargetAddress,
                                &nTargetValue) &&
-            (g_asm_address_mode == NUM_OPMODES)) {
+            (asm_address_mode == NUM_OPMODES)) {
           nTargetValue = 0;
           bModified = false;
         }
@@ -1857,7 +1857,7 @@ static auto AssemblerProcessDelayedSymols() -> void {
                                nTargetValue);
           *(memdirty + (pTarget->base_address >> 8)) |= 1;
 
-          g_delayed_targets.erase(iSymbol);
+          delayed_targets.erase(iSymbol);
 
           // iterators are invalid after the point of deletion
           // need to restart enumeration
@@ -1881,9 +1881,9 @@ auto Assemble(int iArg, int nArgs, uint16_t address) -> bool {
   // we need to buffer the target address fix-ups.
   AssemblerProcessDelayedSymols();
 
-  g_asm_base_address = address;
+  asm_base_address = address;
 
-  char* pMnemonic = g_args[iArg].sArg;
+  char* pMnemonic = args[iArg].sArg;
   uint32_t nMnemonicHash = AssemblerHashMnemonic(pMnemonic);
 
   if (debug_assembler) {
@@ -1893,17 +1893,17 @@ auto Assemble(int iArg, int nArgs, uint16_t address) -> bool {
                        CHC_NUM_HEX, nMnemonicHash);
   }
 
-  g_asm_opcodes.clear();  // Candiate opcodes
+  asm_opcodes.clear();  // Candiate opcodes
   int opcode = 0;
 
   // Ugh! Linear search.
   for (opcode = 0; opcode < NUM_OPCODES; opcode++) {
-    if (nMnemonicHash == g_opcodes_hash[opcode]) {
-      g_asm_opcodes.push_back(opcode);
+    if (nMnemonicHash == opcodes_hash[opcode]) {
+      asm_opcodes.push_back(opcode);
     }
   }
 
-  int nOpcodes = static_cast<int>(g_asm_opcodes.size());
+  int nOpcodes = static_cast<int>(asm_opcodes.size());
   if (nOpcodes == 0) {
     // Check for assembler directive
 
@@ -1924,14 +1924,14 @@ auto Assemble(int iArg, int nArgs, uint16_t address) -> bool {
 
 //===========================================================================
 auto AssemblerOn() -> void {
-  g_assembler_input = true;
-  g_console_prompt_str[0] = g_console_prompt[PROMPT_ASSEMBLER];
+  assembler_input = true;
+  console_prompt_str[0] = console_prompt[PROMPT_ASSEMBLER];
 }
 
 //===========================================================================
 auto AssemblerOff() -> void {
-  g_assembler_input = false;
-  g_console_prompt_str[0] = g_console_prompt[PROMPT_COMMAND];
+  assembler_input = false;
+  console_prompt_str[0] = console_prompt[PROMPT_COMMAND];
 }
 
 // Window

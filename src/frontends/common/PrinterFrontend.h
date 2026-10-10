@@ -15,6 +15,6 @@ struct PrinterFrontendSettings {
 
 auto printer_frontend_install(const PrinterFrontendSettings& settings) -> void;
 
-auto printer_frontend_sink() -> const ByteSink_t&;
+auto printer_frontend_sink() -> const ByteSink&;
 
 auto printer_frontend_output_path(int slot) -> std::string;

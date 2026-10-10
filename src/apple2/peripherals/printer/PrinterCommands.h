@@ -27,7 +27,7 @@ typedef struct {
   uint8_t status_latch;
   uint8_t is_online;
   uint8_t is_busy;
-} PrinterSaveState_t;
+} PrinterSaveState;
 
 #ifdef __cplusplus
 }

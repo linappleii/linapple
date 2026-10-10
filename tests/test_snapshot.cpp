@@ -54,11 +54,11 @@ namespace {
 // Declared rather than inherited. Nothing here reaches a card, and the slot
 // fallbacks in peripheral_register_internal would put four of them in the
 // snapshot.
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 }  // namespace
 
 TEST_CASE("Snapshot: [RoundTrip] Serialize and Deserialize") {
-  TestConfig_t machine(TestConfig_t::enhanced_2e_only());
+  TestConfig machine(TestConfig::enhanced_2e_only());
   machine.load();
   linapple_init();
   peripheral_manager_init();
@@ -82,14 +82,14 @@ TEST_CASE("Snapshot: [RoundTrip] Serialize and Deserialize") {
   cpu_get_registers()->y = 0x33;
   cpu_get_registers()->pc = 0x1000;
   cpu_get_registers()->sp = 0x1FF;
-  g_cumulative_cycles = 12345;
+  cumulative_cycles = 12345;
 
   mem_get_active_context()->mem_mode =
       MF_HRAM_BANK2 | MF_SLOTCXROM | MF_HRAM_WRITE;
   mem_get_active_context()->last_write_ram = true;
   *mem_2000 = 0x55;
 
-  auto snapshot = std::unique_ptr<Snapshot_t>(new Snapshot_t());
+  auto snapshot = std::unique_ptr<Snapshot>(new Snapshot());
   snapshot_serialize(snapshot.get());
 
   cpu_get_registers()->a = 0xFF;
@@ -97,7 +97,7 @@ TEST_CASE("Snapshot: [RoundTrip] Serialize and Deserialize") {
   cpu_get_registers()->y = 0xFF;
   cpu_get_registers()->pc = 0x9999;
   cpu_get_registers()->sp = 0x100;
-  g_cumulative_cycles = 99999;
+  cumulative_cycles = 99999;
 
   mem_get_active_context()->mem_mode = MF_80STORE | MF_ALTZP;
   mem_get_active_context()->last_write_ram = false;
@@ -123,7 +123,7 @@ TEST_CASE("Snapshot: [RoundTrip] Serialize and Deserialize") {
   cpu_get_registers()->y = orig_y;
   cpu_get_registers()->pc = orig_pc;
   cpu_get_registers()->sp = orig_sp;
-  g_cumulative_cycles = orig_cycles;
+  cumulative_cycles = orig_cycles;
 
   mem_get_active_context()->mem_mode = orig_mem_mode;
   mem_get_active_context()->last_write_ram = orig_last_write_ram;
@@ -133,7 +133,7 @@ TEST_CASE("Snapshot: [RoundTrip] Serialize and Deserialize") {
 }
 
 TEST_CASE("SaveStateManager: Filename management and Load/Save flow") {
-  TestConfig_t machine(TestConfig_t::enhanced_2e_only());
+  TestConfig machine(TestConfig::enhanced_2e_only());
   machine.load();
   linapple_init();
   peripheral_manager_init();
@@ -145,14 +145,14 @@ TEST_CASE("SaveStateManager: Filename management and Load/Save flow") {
   save_state_set_filename(nullptr);
   CHECK(strcmp(save_state_get_filename(), "") == 0);
 
-  TestFixtures::ScopedTempFile_t test_file(".aws");
+  TestFixtures::ScopedTempFile test_file(".aws");
   save_state_set_filename(test_file.c_str());
   save_state_save();
 
   CHECK(access(test_file.c_str(), F_OK) == 0);
   struct stat written{};
   REQUIRE(stat(test_file.c_str(), &written) == 0);
-  CHECK(static_cast<size_t>(written.st_size) == sizeof(Snapshot_t));
+  CHECK(static_cast<size_t>(written.st_size) == sizeof(Snapshot));
   CHECK(save_state_load());
 
   linapple_shutdown();
@@ -164,23 +164,23 @@ constexpr size_t fake_state_size = 32;
 
 // A card whose whole state is 32 bytes: too big for the 16-byte regions the
 // fixed body gives slots 1, 3 and 7, an exact fit for slot 2's.
-struct FakeCard_t {
+struct FakeCard {
   std::array<uint8_t, fake_state_size> state{};
   size_t last_load_size = 0;
 };
 
-std::array<FakeCard_t*, num_slots> g_fake_cards{};
+std::array<FakeCard*, num_slots> fake_cards{};
 
-auto fake_init(int slot, HostInterface_t* host) -> void* {
+auto fake_init(int slot, HostInterface* host) -> void* {
   (void)host;
-  auto* card = new FakeCard_t();
-  g_fake_cards.at(static_cast<size_t>(slot)) = card;
+  auto* card = new FakeCard();
+  fake_cards.at(static_cast<size_t>(slot)) = card;
   return card;
 }
 
 auto fake_shutdown(void* instance) -> void {
-  auto* card = static_cast<FakeCard_t*>(instance);
-  for (auto*& slot : g_fake_cards) {
+  auto* card = static_cast<FakeCard*>(instance);
+  for (auto*& slot : fake_cards) {
     if (slot == card) {
       slot = nullptr;
     }
@@ -189,7 +189,7 @@ auto fake_shutdown(void* instance) -> void {
 }
 
 auto fake_save_state(void* instance, void* buffer, size_t* size)
-    -> PeripheralStatus_t {
+    -> PeripheralStatus {
   if (size == nullptr) {
     return peripheral_error;
   }
@@ -200,15 +200,15 @@ auto fake_save_state(void* instance, void* buffer, size_t* size)
   if (instance == nullptr || *size < fake_state_size) {
     return peripheral_error;
   }
-  memcpy(buffer, static_cast<FakeCard_t*>(instance)->state.data(),
+  memcpy(buffer, static_cast<FakeCard*>(instance)->state.data(),
          fake_state_size);
   *size = fake_state_size;
   return peripheral_ok;
 }
 
 auto fake_load_state(void* instance, const void* buffer, size_t size)
-    -> PeripheralStatus_t {
-  auto* card = static_cast<FakeCard_t*>(instance);
+    -> PeripheralStatus {
+  auto* card = static_cast<FakeCard*>(instance);
   if (card == nullptr) {
     return peripheral_error;
   }
@@ -220,7 +220,7 @@ auto fake_load_state(void* instance, const void* buffer, size_t size)
   return peripheral_ok;
 }
 
-Peripheral_t g_fake_card = {
+Peripheral fake_card = {
     LINAPPLE_ABI_VERSION,
     "test.fake_card",
     "Fake Card",
@@ -251,23 +251,23 @@ auto pattern_for(int slot) -> std::array<uint8_t, fake_state_size> {
 }  // namespace
 
 TEST_CASE("Snapshot: A 32-byte card state rides the trailer through any slot") {
-  TestConfig_t config(TestConfig_t::enhanced_2e_only());
-  TestFixtures::ScopedCore_t core(config);
+  TestConfig config(TestConfig::enhanced_2e_only());
+  TestFixtures::ScopedCore core(config);
 
   const std::array<int, 3> slots = {1, 4, 2};
   for (int slot : slots) {
-    REQUIRE(peripheral_register(&g_fake_card, slot) == 0);
-    REQUIRE(g_fake_cards.at(static_cast<size_t>(slot)) != nullptr);
-    g_fake_cards.at(static_cast<size_t>(slot))->state = pattern_for(slot);
+    REQUIRE(peripheral_register(&fake_card, slot) == 0);
+    REQUIRE(fake_cards.at(static_cast<size_t>(slot)) != nullptr);
+    fake_cards.at(static_cast<size_t>(slot))->state = pattern_for(slot);
   }
 
-  auto snapshot = std::unique_ptr<Snapshot_t>(new Snapshot_t());
+  auto snapshot = std::unique_ptr<Snapshot>(new Snapshot());
   snapshot_serialize(snapshot.get());
 
   CHECK(snapshot->hdr.version == snapshot_version);
-  CHECK(snapshot->slot_trailer.unit_hdr.length == sizeof(SsSlotTrailer_t));
+  CHECK(snapshot->slot_trailer.unit_hdr.length == sizeof(SsSlotTrailer));
   for (int slot : slots) {
-    const SsSlotState_t& entry = snapshot->slot_trailer.slots[slot - 1];
+    const SsSlotState& entry = snapshot->slot_trailer.slots[slot - 1];
     CHECK(entry.length == fake_state_size);
     CHECK(memcmp(entry.data, pattern_for(slot).data(), fake_state_size) == 0);
   }
@@ -280,33 +280,33 @@ TEST_CASE("Snapshot: A 32-byte card state rides the trailer through any slot") {
   CHECK(sizeof(snapshot->apple2_unit.comms) == fake_state_size);
 
   for (int slot : slots) {
-    g_fake_cards.at(static_cast<size_t>(slot))->state.fill(0xFF);
-    g_fake_cards.at(static_cast<size_t>(slot))->last_load_size = 0;
+    fake_cards.at(static_cast<size_t>(slot))->state.fill(0xFF);
+    fake_cards.at(static_cast<size_t>(slot))->last_load_size = 0;
   }
 
   REQUIRE(snapshot_deserialize(snapshot.get()));
 
   for (int slot : slots) {
-    const FakeCard_t* card = g_fake_cards.at(static_cast<size_t>(slot));
+    const FakeCard* card = fake_cards.at(static_cast<size_t>(slot));
     CHECK(card->state == pattern_for(slot));
     CHECK(card->last_load_size == fake_state_size);
   }
 }
 
 TEST_CASE("Snapshot: An impossible slot length refuses the file untouched") {
-  TestConfig_t config(TestConfig_t::enhanced_2e_only());
-  TestFixtures::ScopedCore_t core(config);
-  REQUIRE(peripheral_register(&g_fake_card, 1) == 0);
-  FakeCard_t* card = g_fake_cards.at(1);
+  TestConfig config(TestConfig::enhanced_2e_only());
+  TestFixtures::ScopedCore core(config);
+  REQUIRE(peripheral_register(&fake_card, 1) == 0);
+  FakeCard* card = fake_cards.at(1);
   REQUIRE(card != nullptr);
 
-  auto snapshot = std::unique_ptr<Snapshot_t>(new Snapshot_t());
+  auto snapshot = std::unique_ptr<Snapshot>(new Snapshot());
   snapshot_serialize(snapshot.get());
   snapshot->slot_trailer.slots[0].length = snapshot_slot_state_capacity + 1;
 
   card->state.fill(0x77);
   card->last_load_size = 0;
-  const uint8_t a_before = cpu_get_registers()->a = 0x42;
+  const uint8_t accum_before = cpu_get_registers()->a = 0x42;
 
   CHECK(snapshot_deserialize(snapshot.get()) == false);
   CHECK(card->last_load_size == 0);
@@ -315,7 +315,7 @@ TEST_CASE("Snapshot: An impossible slot length refuses the file untouched") {
                            0x77, 0x77, 0x77, 0x77, 0x77, 0x77, 0x77, 0x77,
                            0x77, 0x77, 0x77, 0x77, 0x77, 0x77, 0x77, 0x77,
                            0x77, 0x77, 0x77, 0x77, 0x77, 0x77, 0x77, 0x77});
-  CHECK(cpu_get_registers()->a == a_before);
+  CHECK(cpu_get_registers()->a == accum_before);
 }
 
 // minimal.aws names a Parallel Printer, an SSC and a Mockingboard, so the
@@ -325,12 +325,12 @@ TEST_CASE("Snapshot: An impossible slot length refuses the file untouched") {
     defined(ENABLE_PERIPHERAL_MOCKINGBOARD)
 TEST_CASE("Snapshot: A fixed-body file loads with its slots intact") {
   // Verify snapshot matches golden fixture written by legacy writer.
-  TestConfig_t::Description_t description;
+  TestConfig::Description description;
   description.slots[0] = "Parallel Printer";
   description.slots[1] = "Super Serial Card";
   description.slots[3] = "Mockingboard";
-  TestConfig_t config(description);
-  TestFixtures::ScopedCore_t core(config);
+  TestConfig config(description);
+  TestFixtures::ScopedCore core(config);
 
   const std::string path = TestFixtures::get_fixture_path("minimal.aws");
   REQUIRE(access(path.c_str(), R_OK) == 0);
@@ -339,7 +339,7 @@ TEST_CASE("Snapshot: A fixed-body file loads with its slots intact") {
   CHECK(static_cast<size_t>(on_disk.st_size) == snapshot_size_fixed_body);
   {
     std::ifstream in(path, std::ios::binary);
-    SsFileHdr_t hdr{};
+    SsFileHdr hdr{};
     in.read(reinterpret_cast<char*>(&hdr), sizeof(hdr));
     REQUIRE(in.good());
     CHECK(hdr.tag == aw_ss_tag);
@@ -366,8 +366,8 @@ TEST_CASE("Snapshot: A fixed-body file loads with its slots intact") {
   // The built-ins register before any module, in descending-id order, so slot
   // 0's front is the first built-in with default_slot 0: the speaker in a
   // static build, whichever built-in remains in a plugin build.
-  const Peripheral_t* front = nullptr;
-  for (const Peripheral_t* p : peripheral_get_builtin_registry()) {
+  const Peripheral* front = nullptr;
+  for (const Peripheral* p : peripheral_get_builtin_registry()) {
     if (p != nullptr && p->default_slot == 0) {
       front = p;
       break;
@@ -385,7 +385,7 @@ TEST_CASE("Snapshot: A fixed-body file loads with its slots intact") {
 }
 #endif
 
-using TestFixtures::ScopedLogCapture_t;
+using TestFixtures::ScopedLogCapture;
 
 #if defined(ENABLE_PERIPHERAL_PRINTER) &&      \
     defined(ENABLE_PERIPHERAL_SUPER_SERIAL) && \
@@ -403,18 +403,18 @@ constexpr size_t comms_region_size = 32;
 TEST_CASE(
     "Snapshot: A fixed-body file leaves the serial card at reset and says so "
     "once") {
-  TestConfig_t::Description_t description;
+  TestConfig::Description description;
   description.slots[0] = "Parallel Printer";
   description.slots[1] = "Super Serial Card";
   description.slots[3] = "Mockingboard";
-  TestConfig_t config(description);
-  TestFixtures::ScopedCore_t core(config);
+  TestConfig config(description);
+  TestFixtures::ScopedCore core(config);
 
   const std::string path = TestFixtures::get_fixture_path("minimal.aws");
   REQUIRE(access(path.c_str(), R_OK) == 0);
   save_state_set_filename(path.c_str());
   {
-    ScopedLogCapture_t log;
+    ScopedLogCapture log;
     REQUIRE(save_state_load());
     CHECK(log.count_containing("Slot 2: Super Serial Card refused") == 1);
     CHECK(log.count_containing("Slot 2:") == 1);
@@ -432,7 +432,7 @@ TEST_CASE(
   CHECK(frame[serial_frame_control] == 0);
   CHECK(frame[serial_frame_command] == 0);
 
-  TestFixtures::ScopedTempFile_t written(".aws");
+  TestFixtures::ScopedTempFile written(".aws");
   save_state_set_filename(written.c_str());
   save_state_save();
   std::ifstream in(written.path(), std::ios::binary);
@@ -445,8 +445,8 @@ TEST_CASE(
     CHECK(byte == 0);
   }
   const std::streamoff trailer_slot_2 =
-      static_cast<std::streamoff>(offsetof(Snapshot_t, slot_trailer.slots)) +
-      static_cast<std::streamoff>(sizeof(SsSlotState_t));
+      static_cast<std::streamoff>(offsetof(Snapshot, slot_trailer.slots)) +
+      static_cast<std::streamoff>(sizeof(SsSlotState));
   in.seekg(trailer_slot_2);
   uint32_t length = 0;
   in.read(reinterpret_cast<char*>(&length), sizeof(length));
@@ -456,23 +456,23 @@ TEST_CASE(
 #endif
 
 TEST_CASE("Snapshot: The file's length says whether a trailer follows") {
-  TestConfig_t config(TestConfig_t::enhanced_2e_only());
-  TestFixtures::ScopedCore_t core(config);
-  REQUIRE(peripheral_register(&g_fake_card, 1) == 0);
-  FakeCard_t* card = g_fake_cards.at(1);
+  TestConfig config(TestConfig::enhanced_2e_only());
+  TestFixtures::ScopedCore core(config);
+  REQUIRE(peripheral_register(&fake_card, 1) == 0);
+  FakeCard* card = fake_cards.at(1);
   REQUIRE(card != nullptr);
   card->state = pattern_for(1);
 
-  TestFixtures::ScopedTempFile_t file(".aws");
+  TestFixtures::ScopedTempFile file(".aws");
   save_state_set_filename(file.c_str());
   save_state_save();
 
   struct stat written{};
   REQUIRE(stat(file.c_str(), &written) == 0);
-  CHECK(static_cast<size_t>(written.st_size) == sizeof(Snapshot_t));
+  CHECK(static_cast<size_t>(written.st_size) == sizeof(Snapshot));
   {
     std::ifstream in(file.path(), std::ios::binary);
-    SsFileHdr_t hdr{};
+    SsFileHdr hdr{};
     in.read(reinterpret_cast<char*>(&hdr), sizeof(hdr));
     REQUIRE(in.good());
     CHECK(hdr.version == snapshot_version);
@@ -494,23 +494,23 @@ TEST_CASE("Snapshot: The file's length says whether a trailer follows") {
                      static_cast<off_t>(snapshot_size_fixed_body)) == 0);
     REQUIRE(save_state_load());
     // Fall back to fixed body when snapshot trailer is missing.
-    CHECK(card->last_load_size == sizeof(SsCardEmpty_t));
+    CHECK(card->last_load_size == sizeof(SsCardEmpty));
     CHECK(card->state == untouched);
   }
 }
 
 TEST_CASE("Snapshot: A file of any other length is refused") {
-  TestConfig_t config(TestConfig_t::enhanced_2e_only());
-  TestFixtures::ScopedCore_t core(config);
+  TestConfig config(TestConfig::enhanced_2e_only());
+  TestFixtures::ScopedCore core(config);
 
-  TestFixtures::ScopedTempFile_t file(".aws");
+  TestFixtures::ScopedTempFile file(".aws");
   save_state_set_filename(file.c_str());
   save_state_save();
   REQUIRE(save_state_load());
 
   SUBCASE("one byte short of the trailer") {
     REQUIRE(truncate(file.c_str(),
-                     static_cast<off_t>(sizeof(Snapshot_t) - 1)) == 0);
+                     static_cast<off_t>(sizeof(Snapshot) - 1)) == 0);
     CHECK(save_state_load() == false);
   }
   SUBCASE("one byte past the trailer") {
@@ -533,8 +533,8 @@ TEST_CASE("Snapshot: A file of any other length is refused") {
 
 TEST_CASE("Snapshot: A manifest naming any slot-0 device is the same machine") {
   // Snapshots must verify independently of static vs plugin registration order.
-  TestConfig_t config(TestConfig_t::enhanced_2e_only());
-  TestFixtures::ScopedCore_t core(config);
+  TestConfig config(TestConfig::enhanced_2e_only());
+  TestFixtures::ScopedCore core(config);
 
   SS_PERIPHERAL_MANIFEST manifest;
   peripheral_get_manifest(&manifest);
@@ -574,19 +574,19 @@ constexpr size_t keyboard_region_size = 552;
 constexpr uint32_t minimal_aws_crc32 = 0x1DFDECD4;
 
 // The model is process-wide and a harness-built machine leaves it behind.
-struct EnhancedIIe_t {
-  struct Model_t {
+struct EnhancedIIe {
+  struct Model {
     Apple2Type saved = current_apple2_type;
-    Model_t() { current_apple2_type = A2TYPE_APPLE2EENHANCED; }
-    ~Model_t() { current_apple2_type = saved; }
-    Model_t(const Model_t&) = delete;
-    auto operator=(const Model_t&) -> Model_t& = delete;
-    Model_t(Model_t&&) = delete;
-    auto operator=(Model_t&&) -> Model_t& = delete;
+    Model() { current_apple2_type = A2TYPE_APPLE2EENHANCED; }
+    ~Model() { current_apple2_type = saved; }
+    Model(const Model&) = delete;
+    auto operator=(const Model&) -> Model& = delete;
+    Model(Model&&) = delete;
+    auto operator=(Model&&) -> Model& = delete;
   };
-  Model_t model;
-  TestConfig_t config{TestConfig_t::enhanced_2e_only()};
-  TestFixtures::ScopedCore_t core{config};
+  Model model;
+  TestConfig config{TestConfig::enhanced_2e_only()};
+  TestFixtures::ScopedCore core{config};
 };
 
 auto press(uint8_t code) -> void {
@@ -620,12 +620,12 @@ TEST_CASE(
     "Snapshot: an .aws gives the keyboard back its latch and strobe with no "
     "key down, a fixed-body image whose keyboard region is zero loads with "
     "the card at reset, and minimal.aws is the file it was") {
-  static_assert(offsetof(Snapshot_t, apple2_unit.keyboard) == 80,
+  static_assert(offsetof(Snapshot, apple2_unit.keyboard) == 80,
                 "the keyboard region sits at byte 80 of the file");
-  static_assert(sizeof(SsKeyboardRegion_t) == keyboard_region_size,
+  static_assert(sizeof(SsKeyboardRegion) == keyboard_region_size,
                 "the keyboard region is the card's 552-byte frame");
-  EnhancedIIe_t machine;
-  TestFixtures::ScopedTempFile_t file(".aws");
+  EnhancedIIe machine;
+  TestFixtures::ScopedTempFile file(".aws");
 
   press(0x5A);
   REQUIRE(keyboard_data() == (0x5A | strobe_bit));
@@ -654,7 +654,7 @@ TEST_CASE(
     REQUIRE(patch.good());
     const std::array<char, keyboard_region_size> zeros{};
     patch.seekp(static_cast<std::streamoff>(
-        offsetof(Snapshot_t, apple2_unit.keyboard)));
+        offsetof(Snapshot, apple2_unit.keyboard)));
     patch.write(zeros.data(), zeros.size());
     REQUIRE(patch.good());
   }
@@ -675,7 +675,7 @@ TEST_CASE(
 TEST_CASE(
     "Snapshot: the .aws an earlier card wrote loads on a machine with nothing "
     "in any slot and gives back its latch and strobe with no key down") {
-  EnhancedIIe_t machine;
+  EnhancedIIe machine;
   press(0x41);
   REQUIRE(any_key_down());
 
@@ -708,7 +708,7 @@ constexpr uint16_t probe_address = 0x0300;
 // Runs one instruction at probe_address and leaves the registers as the
 // instruction left them, for the caller to read.
 auto step_one(const std::array<uint8_t, 3>& instruction) -> void {
-  TestFixtures::ScopedCore_t::poke(probe_address, instruction);
+  TestFixtures::ScopedCore::poke(probe_address, instruction);
   cpu_get_registers()->pc = probe_address;
   REQUIRE(cpu_execute(0) > 0);
 }
@@ -716,19 +716,19 @@ auto step_one(const std::array<uint8_t, 3>& instruction) -> void {
 }  // namespace
 
 TEST_CASE("Snapshot: The game port's eight bytes are written as zeros") {
-  static_assert(offsetof(Snapshot_t, apple2_unit.joystick) == 72,
+  static_assert(offsetof(Snapshot, apple2_unit.joystick) == 72,
                 "the game port's field sits at byte 72 of the file");
-  static_assert(sizeof(SsIoJoystick_t) == 8,
+  static_assert(sizeof(SsIoJoystick) == 8,
                 "the game port's field is eight bytes long");
 
-  TestConfig_t config(TestConfig_t::enhanced_2e_only());
-  TestFixtures::ScopedCore_t core(config);
+  TestConfig config(TestConfig::enhanced_2e_only());
+  TestFixtures::ScopedCore core(config);
   REQUIRE(cpu_execute(cycles_per_frame) >= cycles_per_frame);
   // Any access to $C070 triggers the paddle timers (Apple II Reference Manual,
   // 1979, p. 99), so the card holds a running timer when the file is written.
   step_one({0xAD, 0x70, 0xC0});
 
-  TestFixtures::ScopedTempFile_t file(".aws");
+  TestFixtures::ScopedTempFile file(".aws");
   save_state_set_filename(file.c_str());
   save_state_save();
 
@@ -737,21 +737,21 @@ TEST_CASE("Snapshot: The game port's eight bytes are written as zeros") {
   CHECK(static_cast<size_t>(written.st_size) == 134200);
 
   std::ifstream in(file.path(), std::ios::binary);
-  std::array<char, sizeof(SsIoJoystick_t)> field{};
-  in.seekg(offsetof(Snapshot_t, apple2_unit.joystick));
+  std::array<char, sizeof(SsIoJoystick)> field{};
+  in.seekg(offsetof(Snapshot, apple2_unit.joystick));
   in.read(field.data(), field.size());
   REQUIRE(in.good());
-  CHECK(field == std::array<char, sizeof(SsIoJoystick_t)>{});
+  CHECK(field == std::array<char, sizeof(SsIoJoystick)>{});
 }
 
 #ifdef ENABLE_PERIPHERAL_JOYSTICK
 TEST_CASE("Snapshot: A loaded file starts with every paddle timer expired") {
   constexpr uint8_t bit7 = 0x80;
-  TestFixtures::ScopedTempFile_t file(".aws");
+  TestFixtures::ScopedTempFile file(".aws");
   uint64_t saved_cycles = 0;
   {
-    TestConfig_t config(TestConfig_t::enhanced_2e_only());
-    TestFixtures::ScopedCore_t core(config);
+    TestConfig config(TestConfig::enhanced_2e_only());
+    TestFixtures::ScopedCore core(config);
     // A frame of running puts the counter the file restores well past the
     // longest pulse, so only a trigger carried by the file could read high.
     REQUIRE(cpu_execute(cycles_per_frame) >= cycles_per_frame);
@@ -762,8 +762,8 @@ TEST_CASE("Snapshot: A loaded file starts with every paddle timer expired") {
     save_state_save();
   }
 
-  TestConfig_t config(TestConfig_t::enhanced_2e_only());
-  TestFixtures::ScopedCore_t core(config);
+  TestConfig config(TestConfig::enhanced_2e_only());
+  TestFixtures::ScopedCore core(config);
   save_state_set_filename(file.c_str());
   REQUIRE(save_state_load());
   REQUIRE(cpu_get_cumulative_cycles() == saved_cycles);
@@ -789,11 +789,11 @@ constexpr uint8_t ssc_control_9600_8n1 = 0x1E;
 constexpr uint8_t ssc_command_rx_irq = 0x09;
 constexpr uint8_t ssc_latch_rdrf = 0x08;
 
-using SscFrame_t = std::array<uint8_t, ssc_frame_size>;
+using SscFrame = std::array<uint8_t, ssc_frame_size>;
 
 // A received byte with the receive interrupt latched.
-auto ssc_frame_with_interrupt() -> SscFrame_t {
-  SscFrame_t frame{};
+auto ssc_frame_with_interrupt() -> SscFrame {
+  SscFrame frame{};
   frame.at(0) = 0x01;
   frame.at(4) = static_cast<uint8_t>(ssc_frame_size);
   frame.at(ssc_control) = ssc_control_9600_8n1;
@@ -804,8 +804,8 @@ auto ssc_frame_with_interrupt() -> SscFrame_t {
   return frame;
 }
 
-auto ssc_saved_frame(int slot) -> SscFrame_t {
-  SscFrame_t frame{};
+auto ssc_saved_frame(int slot) -> SscFrame {
+  SscFrame frame{};
   frame.fill(0xFF);
   size_t size = frame.size();
   peripheral_save_state(slot, frame.data(), &size);
@@ -816,21 +816,21 @@ auto ssc_saved_frame(int slot) -> SscFrame_t {
 // snapshot_deserialize restores the CPU before the slots load, so the card's
 // AssertIrq during load_state sticks and a CLI loop afterwards can prove it.
 auto ssc_survives_the_file(int slot) -> void {
-  TestFixtures::ScopedByteSink_t sink;
-  TestFixtures::ScopedTestConfig_t::Description_t description;
+  TestFixtures::ScopedByteSink sink;
+  TestFixtures::ScopedTestConfig::Description description;
   description.slots.at(static_cast<size_t>(slot - 1)) = "Super Serial Card";
-  TestFixtures::ScopedTestConfig_t config(description);
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedTestConfig config(description);
+  TestFixtures::ScopedCore core(config);
   peripheral_manager_init();
   linapple_register_peripherals();
   linapple_reset_hard();
 
-  const SscFrame_t saved = ssc_frame_with_interrupt();
+  const SscFrame saved = ssc_frame_with_interrupt();
   REQUIRE(peripheral_load_state(slot, saved.data(), saved.size()) ==
           peripheral_ok);
   CHECK(ssc_saved_frame(slot) == saved);
 
-  TestFixtures::ScopedTempFile_t file(".aws");
+  TestFixtures::ScopedTempFile file(".aws");
   save_state_set_filename(file.c_str());
   save_state_save();
 
@@ -844,20 +844,20 @@ auto ssc_survives_the_file(int slot) -> void {
   const auto hi = static_cast<uint8_t>(0xC0 + slot);
   const auto status = static_cast<uint8_t>(0x89 + (slot << 4));
   const std::array<uint8_t, 4> handler = {0xE6, 0x06, 0xAD, status};
-  TestFixtures::ScopedCore_t::poke(0x0380, handler);
+  TestFixtures::ScopedCore::poke(0x0380, handler);
   const std::array<uint8_t, 2> handler_tail = {0x40, 0x00};
-  TestFixtures::ScopedCore_t::poke(0x0384, handler_tail);
+  TestFixtures::ScopedCore::poke(0x0384, handler_tail);
   const std::array<uint8_t, 2> vector = {0x80, 0x03};
-  TestFixtures::ScopedCore_t::poke(0xFFFE, vector);
+  TestFixtures::ScopedCore::poke(0xFFFE, vector);
   // $C0n1 advances the card without touching the ACIA.
   const std::array<uint8_t, 7> main_loop = {
       0x58,            // CLI
       0xAD, 0x81, hi,  // LDA $C0n1
       0x4C, 0x01, 0x03,
   };
-  TestFixtures::ScopedCore_t::poke(0x0300, main_loop);
+  TestFixtures::ScopedCore::poke(0x0300, main_loop);
   mem[0x06] = 0;
-  CpuRegisters_t* regs = cpu_get_registers();
+  CpuRegisters* regs = cpu_get_registers();
   regs->pc = 0x0300;
   regs->ps |= 0x04;
   uint32_t ran = 0;
@@ -892,8 +892,8 @@ constexpr const char* mouse_card_id = "linapple.mouse";
 
 // The shipped [Slots] with the key set: the machine a user of the key has had
 // since the key stopped being read.
-auto key_machine() -> TestConfig_t::Description_t {
-  TestConfig_t::Description_t description;
+auto key_machine() -> TestConfig::Description {
+  TestConfig::Description description;
   description.slots[0] = "Parallel Printer";
   description.slots[1] = "Super Serial Card";
   description.slots[3] = "Mockingboard";
@@ -935,9 +935,9 @@ auto page_reads_zero(int slot) -> bool {
 }
 
 auto manifest_name_offset(int slot) -> size_t {
-  return offsetof(Snapshot_t, manifest) +
-         offsetof(SsPeripheralManifest_t, peripherals) +
-         (static_cast<size_t>(slot) * sizeof(SsPeripheralInfo_t));
+  return offsetof(Snapshot, manifest) +
+         offsetof(SsPeripheralManifest, peripherals) +
+         (static_cast<size_t>(slot) * sizeof(SsPeripheralInfo));
 }
 
 auto file_names(const std::string& path, int slot) -> std::string {
@@ -952,13 +952,13 @@ auto file_names(const std::string& path, int slot) -> std::string {
 }
 
 auto patched_copy(const std::string& source,
-                  const TestFixtures::ScopedTempFile_t& destination, size_t at,
+                  const TestFixtures::ScopedTempFile& destination, size_t at,
                   const std::vector<uint8_t>& bytes) -> void {
   std::ifstream in(source, std::ios::binary);
   REQUIRE(in.good());
   std::vector<char> image((std::istreambuf_iterator<char>(in)),
                           std::istreambuf_iterator<char>());
-  REQUIRE(image.size() == sizeof(Snapshot_t));
+  REQUIRE(image.size() == sizeof(Snapshot));
   REQUIRE(at + bytes.size() <= image.size());
   for (size_t i = 0; i < bytes.size(); ++i) {
     image.at(at + i) = static_cast<char>(bytes[i]);
@@ -978,9 +978,9 @@ auto name_bytes(const std::string& name) -> std::vector<uint8_t> {
 }
 
 auto legacy_file_loads_with_the_mockingboard(
-    const TestConfig_t::Description_t& description, bool strip_slot_4_line)
+    const TestConfig::Description& description, bool strip_slot_4_line)
     -> void {
-  TestConfig_t config(description);
+  TestConfig config(description);
   if (strip_slot_4_line) {
     std::ifstream in(config.path());
     REQUIRE(in.is_open());
@@ -997,14 +997,14 @@ auto legacy_file_loads_with_the_mockingboard(
       out << kept_line << "\n";
     }
   }
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedCore core(config);
   REQUIRE(mouse_in_slot(mouse_key_slot));
   mouse_frontend_initialize();
   REQUIRE(mouse_frontend_card_present());
 
   save_state_set_filename(legacy_key_fixture().c_str());
   {
-    ScopedLogCapture_t log;
+    ScopedLogCapture log;
     REQUIRE(save_state_load());
     CHECK(log.count_containing("for this session") == 1);
     CHECK(log.count_containing(
@@ -1017,7 +1017,7 @@ auto legacy_file_loads_with_the_mockingboard(
   CHECK(page_reads_zero(mouse_key_slot));
   CHECK_FALSE(mouse_frontend_card_present());
 
-  TestFixtures::ScopedTempFile_t written(".aws");
+  TestFixtures::ScopedTempFile written(".aws");
   save_state_set_filename(written.c_str());
   save_state_save();
   CHECK(file_names(written.path(), mouse_key_slot) == "Mockingboard");
@@ -1035,7 +1035,7 @@ TEST_CASE(
     legacy_file_loads_with_the_mockingboard(key_machine(), true);
   }
   SUBCASE("Slot 4 = linapple.mockingboard, the id spelling") {
-    TestConfig_t::Description_t description = key_machine();
+    TestConfig::Description description = key_machine();
     description.slots[3] = "linapple.mockingboard";
     legacy_file_loads_with_the_mockingboard(description, false);
   }
@@ -1044,16 +1044,16 @@ TEST_CASE(
 TEST_CASE(
     "Snapshot: the legacy file and a file this build wrote swap slot 4 back "
     "and forth within one session") {
-  TestConfig_t config(key_machine());
-  TestFixtures::ScopedCore_t core(config);
+  TestConfig config(key_machine());
+  TestFixtures::ScopedCore core(config);
   REQUIRE(mouse_in_slot(mouse_key_slot));
 
-  TestFixtures::ScopedTempFile_t mine(".aws");
+  TestFixtures::ScopedTempFile mine(".aws");
   save_state_set_filename(mine.c_str());
   save_state_save();
   REQUIRE(file_names(mine.path(), mouse_key_slot) == "Mouse Interface");
 
-  ScopedLogCapture_t log;
+  ScopedLogCapture log;
   save_state_set_filename(legacy_key_fixture().c_str());
   REQUIRE(save_state_load());
   CHECK_FALSE(mouse_in_slot(mouse_key_slot));
@@ -1081,16 +1081,16 @@ TEST_CASE(
     "Snapshot: the swap is refused for any other difference, and a refused "
     "file leaves slot 4 alone") {
   SUBCASE("the key at 0 with Slot 4 = Mouse Interface names both cards") {
-    TestConfig_t::Description_t description = key_machine();
+    TestConfig::Description description = key_machine();
     description.slots[3] = "Mouse Interface";
     description.extras.clear();
     description.extras.push_back({"Configuration", "Mouse in slot 4", "0"});
-    TestConfig_t config(description);
-    TestFixtures::ScopedCore_t core(config);
+    TestConfig config(description);
+    TestFixtures::ScopedCore core(config);
     REQUIRE(mouse_in_slot(mouse_key_slot));
 
     save_state_set_filename(legacy_key_fixture().c_str());
-    ScopedLogCapture_t log;
+    ScopedLogCapture log;
     CHECK(save_state_load() == false);
     CHECK(log.count_containing("Slot 4: the save state names Mockingboard "
                                "where the machine holds Mouse Interface") == 1);
@@ -1099,29 +1099,29 @@ TEST_CASE(
   }
 
   SUBCASE("a file naming the Clock Card in slot 4 under the key") {
-    TestConfig_t config(key_machine());
-    TestFixtures::ScopedCore_t core(config);
-    TestFixtures::ScopedTempFile_t copy(".aws");
+    TestConfig config(key_machine());
+    TestFixtures::ScopedCore core(config);
+    TestFixtures::ScopedTempFile copy(".aws");
     patched_copy(legacy_key_fixture(), copy,
                  manifest_name_offset(mouse_key_slot),
                  name_bytes("Clock Card"));
 
     save_state_set_filename(copy.c_str());
-    ScopedLogCapture_t log;
+    ScopedLogCapture log;
     CHECK(save_state_load() == false);
     CHECK(log.count_containing("for this session") == 0);
     CHECK(mouse_in_slot(mouse_key_slot));
   }
 
   SUBCASE("a file differing in slot 2 is refused before slot 4 is swapped") {
-    TestConfig_t config(key_machine());
-    TestFixtures::ScopedCore_t core(config);
-    TestFixtures::ScopedTempFile_t copy(".aws");
+    TestConfig config(key_machine());
+    TestFixtures::ScopedCore core(config);
+    TestFixtures::ScopedTempFile copy(".aws");
     patched_copy(legacy_key_fixture(), copy, manifest_name_offset(2),
                  name_bytes("Clock Card"));
 
     save_state_set_filename(copy.c_str());
-    ScopedLogCapture_t log;
+    ScopedLogCapture log;
     CHECK(save_state_load() == false);
     CHECK(log.count_containing("Slot 2: the save state names Clock Card") == 1);
     CHECK(log.count_containing("for this session") == 0);
@@ -1132,14 +1132,14 @@ TEST_CASE(
   SUBCASE(
       "a file differing in slot 5, walked after slot 4, is refused with slot 4 "
       "kept") {
-    TestConfig_t config(key_machine());
-    TestFixtures::ScopedCore_t core(config);
-    TestFixtures::ScopedTempFile_t copy(".aws");
+    TestConfig config(key_machine());
+    TestFixtures::ScopedCore core(config);
+    TestFixtures::ScopedTempFile copy(".aws");
     patched_copy(legacy_key_fixture(), copy, manifest_name_offset(5),
                  name_bytes("Clock Card"));
 
     save_state_set_filename(copy.c_str());
-    ScopedLogCapture_t log;
+    ScopedLogCapture log;
     CHECK(save_state_load() == false);
     CHECK(log.count_containing("Slot 5: the save state names Clock Card") == 1);
     CHECK(log.count_containing("for this session") == 0);
@@ -1149,31 +1149,31 @@ TEST_CASE(
   }
 
   SUBCASE("a Slot 4 naming a card that does not exist displaced nothing") {
-    TestConfig_t::Description_t description = key_machine();
+    TestConfig::Description description = key_machine();
     description.slots[3] = "No Such Card";
-    TestConfig_t config(description);
-    TestFixtures::ScopedCore_t core(config);
+    TestConfig config(description);
+    TestFixtures::ScopedCore core(config);
     REQUIRE(mouse_in_slot(mouse_key_slot));
 
     save_state_set_filename(legacy_key_fixture().c_str());
-    ScopedLogCapture_t log;
+    ScopedLogCapture log;
     CHECK(save_state_load() == false);
     CHECK(log.count_containing("for this session") == 0);
     CHECK(mouse_in_slot(mouse_key_slot));
   }
 
   SUBCASE("an impossible trailer length is refused before the swap") {
-    TestConfig_t config(key_machine());
-    TestFixtures::ScopedCore_t core(config);
-    TestFixtures::ScopedTempFile_t copy(".aws");
-    const size_t slot_1_length = offsetof(Snapshot_t, slot_trailer) +
-                                 offsetof(SsSlotTrailer_t, slots) +
-                                 offsetof(SsSlotState_t, length);
+    TestConfig config(key_machine());
+    TestFixtures::ScopedCore core(config);
+    TestFixtures::ScopedTempFile copy(".aws");
+    const size_t slot_1_length = offsetof(Snapshot, slot_trailer) +
+                                 offsetof(SsSlotTrailer, slots) +
+                                 offsetof(SsSlotState, length);
     patched_copy(legacy_key_fixture(), copy, slot_1_length,
                  {0xFF, 0xFF, 0x00, 0x00});
 
     save_state_set_filename(copy.c_str());
-    ScopedLogCapture_t log;
+    ScopedLogCapture log;
     CHECK(save_state_load() == false);
     CHECK(log.count_containing("claims 65535 bytes, more than a slot holds") ==
           1);
@@ -1205,7 +1205,7 @@ constexpr size_t mouse_frame_mode = 74;
 constexpr size_t mouse_frame_status = 76;
 constexpr size_t mouse_frame_button = 79;
 
-enum MouseEntry_t : uint8_t {
+enum MouseEntry : uint8_t {
   mouse_entry_set = 0,
   mouse_entry_serve = 1,
   mouse_entry_read = 2,
@@ -1213,7 +1213,7 @@ enum MouseEntry_t : uint8_t {
   mouse_entry_clamp = 5,
 };
 
-using MouseFrame_t = std::array<uint8_t, mouse_frame_size>;
+using MouseFrame = std::array<uint8_t, mouse_frame_size>;
 
 // The table at $Cn12 holds the low bytes of the entries (manual p. 49), so
 // every call goes through it indirectly: LDA $Cn12+k / STA $07 / LDA #$Cn /
@@ -1244,7 +1244,7 @@ auto emit_mouse_call(std::vector<uint8_t>& program, int slot, int entry,
   };
   program.insert(program.end(), call.begin(), call.end());
   const std::array<uint8_t, 3> jump = {0x6C, 0x07, 0x00};
-  TestFixtures::ScopedCore_t::poke(mouse_indirect_jump, jump);
+  TestFixtures::ScopedCore::poke(mouse_indirect_jump, jump);
 }
 
 auto call_mouse_firmware(int slot, int entry, uint8_t a) -> bool {
@@ -1254,7 +1254,7 @@ auto call_mouse_firmware(int slot, int entry, uint8_t a) -> bool {
   program.push_back(0x4C);
   program.push_back(static_cast<uint8_t>(spin & 0xFF));
   program.push_back(static_cast<uint8_t>(spin >> 8));
-  TestFixtures::ScopedCore_t::poke(mouse_program, program.data(),
+  TestFixtures::ScopedCore::poke(mouse_program, program.data(),
                                    program.size());
   TestFixtures::enter_at({mouse_program, 0, 0, 0});
   TestFixtures::step_until_pc(spin, mouse_cycle_cap);
@@ -1262,32 +1262,32 @@ auto call_mouse_firmware(int slot, int entry, uint8_t a) -> bool {
   return (cpu_get_registers()->ps & 0x01) != 0;
 }
 
-auto mouse_frame(int slot) -> MouseFrame_t {
-  MouseFrame_t frame{};
+auto mouse_frame(int slot) -> MouseFrame {
+  MouseFrame frame{};
   size_t size = frame.size();
   peripheral_save_state(slot, frame.data(), &size);
   REQUIRE(size == frame.size());
   return frame;
 }
 
-auto mouse_frame_word(const MouseFrame_t& frame, size_t at) -> uint32_t {
+auto mouse_frame_word(const MouseFrame& frame, size_t at) -> uint32_t {
   return static_cast<uint32_t>(frame.at(at)) |
          (static_cast<uint32_t>(frame.at(at + 1)) << 8) |
          (static_cast<uint32_t>(frame.at(at + 2)) << 16) |
          (static_cast<uint32_t>(frame.at(at + 3)) << 24);
 }
 
-struct MouseReading_t {
+struct MouseReading {
   int16_t x;
   int16_t y;
   uint8_t status;
 };
 
 // READMOUSE through the table, then the slot's holes (manual p. 44).
-auto read_mouse_holes(int slot) -> MouseReading_t {
+auto read_mouse_holes(int slot) -> MouseReading {
   REQUIRE_FALSE(call_mouse_firmware(slot, mouse_entry_read, 0));
   const auto n = static_cast<uint16_t>(slot);
-  MouseReading_t reading{};
+  MouseReading reading{};
   reading.x = static_cast<int16_t>(static_cast<uint16_t>(
       mem[0x478 + n] | (static_cast<uint16_t>(mem[0x578 + n]) << 8)));
   reading.y = static_cast<int16_t>(static_cast<uint16_t>(
@@ -1298,18 +1298,18 @@ auto read_mouse_holes(int slot) -> MouseReading_t {
 
 auto poke_mouse_byte(uint16_t at, uint8_t value) -> void {
   const std::array<uint8_t, 1> byte = {value};
-  TestFixtures::ScopedCore_t::poke(at, byte);
+  TestFixtures::ScopedCore::poke(at, byte);
 }
 
 auto press_mouse_button(int slot, bool down) -> void {
-  MouseButtonPayload_t payload{0, static_cast<uint8_t>(down ? 1 : 0), {0, 0}};
+  MouseButtonPayload payload{0, static_cast<uint8_t>(down ? 1 : 0), {0, 0}};
   REQUIRE(peripheral_command(slot, mouse_cmd_set_button, &payload,
                              sizeof(payload)) == peripheral_ok);
   peripheral_manager_think(0);
 }
 
 auto move_mouse_by(int slot, int32_t dx, int32_t dy) -> void {
-  MouseMovePayload_t payload{dx, dy};
+  MouseMovePayload payload{dx, dy};
   REQUIRE(peripheral_command(slot, mouse_cmd_move, &payload, sizeof(payload)) ==
           peripheral_ok);
   peripheral_manager_think(0);
@@ -1330,16 +1330,16 @@ auto enter_mouse_cli_loop(int slot) -> void {
   std::vector<uint8_t> handler = {0xE6, mouse_entry_count};
   emit_mouse_call(handler, slot, mouse_entry_serve, 0);
   handler.push_back(0x40);
-  TestFixtures::ScopedCore_t::poke(mouse_handler, handler.data(),
+  TestFixtures::ScopedCore::poke(mouse_handler, handler.data(),
                                    handler.size());
   const std::array<uint8_t, 2> vector = {
       static_cast<uint8_t>(mouse_handler & 0xFF),
       static_cast<uint8_t>(mouse_handler >> 8),
   };
-  TestFixtures::ScopedCore_t::poke(IRQ_VECTOR_ADDR, vector);
+  TestFixtures::ScopedCore::poke(IRQ_VECTOR_ADDR, vector);
   poke_mouse_byte(mouse_entry_count, 0);
   const std::array<uint8_t, 4> loop = {0x58, 0x4C, 0x01, 0x03};
-  TestFixtures::ScopedCore_t::poke(mouse_program, loop);
+  TestFixtures::ScopedCore::poke(mouse_program, loop);
   TestFixtures::enter_at({mouse_program, 0, 0, 0});
 }
 
@@ -1366,8 +1366,8 @@ auto cycles_until_mouse_entries(uint8_t count, uint64_t cap) -> uint64_t {
   return entered;
 }
 
-auto mouse_machine_in(int slot) -> TestConfig_t::Description_t {
-  TestConfig_t::Description_t description;
+auto mouse_machine_in(int slot) -> TestConfig::Description {
+  TestConfig::Description description;
   description.slots.at(static_cast<size_t>(slot - 1)) = "Mouse Interface";
   return description;
 }
@@ -1375,8 +1375,8 @@ auto mouse_machine_in(int slot) -> TestConfig_t::Description_t {
 // snapshot_deserialize restores the CPU before the slots load, so the card's
 // AssertIrq during load_state sticks and a CLI loop afterwards proves it.
 auto mouse_survives_the_file(int slot) -> void {
-  TestConfig_t config(mouse_machine_in(slot));
-  TestFixtures::ScopedCore_t core(config);
+  TestConfig config(mouse_machine_in(slot));
+  TestFixtures::ScopedCore core(config);
   peripheral_manager_init();
   linapple_register_peripherals();
   linapple_reset_hard();
@@ -1393,7 +1393,7 @@ auto mouse_survives_the_file(int slot) -> void {
   step_with_think(mouse_tick_period);
   move_mouse_by(slot, 1, 0);
 
-  const MouseFrame_t saved = mouse_frame(slot);
+  const MouseFrame saved = mouse_frame(slot);
   CHECK(saved.at(mouse_frame_mode) == 0x0F);
   CHECK(mouse_frame_word(saved, 16) == 100);
   CHECK(mouse_frame_word(saved, 20) == 200);
@@ -1403,7 +1403,7 @@ auto mouse_survives_the_file(int slot) -> void {
   CHECK(saved.at(mouse_frame_irq) == 1);
   CHECK((saved.at(mouse_frame_status) & 0x0E) == 0x0C);
 
-  TestFixtures::ScopedTempFile_t file(".aws");
+  TestFixtures::ScopedTempFile file(".aws");
   save_state_set_filename(file.c_str());
   save_state_save();
 
@@ -1423,7 +1423,7 @@ auto mouse_survives_the_file(int slot) -> void {
   CHECK(cpu_get_cumulative_cycles() - loaded_at <= mouse_tick_period + 32);
   CHECK((mem[0x778 + slot] & 0x0E) == 0x0A);
 
-  const MouseReading_t reading = read_mouse_holes(slot);
+  const MouseReading reading = read_mouse_holes(slot);
   CHECK(reading.x == 100);
   CHECK(reading.y == 0);
   CHECK(reading.status == 0xA0);
@@ -1443,8 +1443,8 @@ namespace {
 
 // The machine minimal.aws was written on, with the mouse where its Mockingboard
 // was.
-auto mouse_minimal_machine() -> TestConfig_t::Description_t {
-  TestConfig_t::Description_t description;
+auto mouse_minimal_machine() -> TestConfig::Description {
+  TestConfig::Description description;
   description.slots[0] = "Parallel Printer";
   description.slots[1] = "Super Serial Card";
   description.slots[3] = "Mouse Interface";
@@ -1460,8 +1460,8 @@ TEST_CASE(
     "Snapshot: a fixed-body file whose slot-4 region is not a mouse frame "
     "loads with the card at reset and says so once, and minimal.aws is "
     "refused at the manifest") {
-  TestConfig_t config(mouse_minimal_machine());
-  TestFixtures::ScopedCore_t core(config);
+  TestConfig config(mouse_minimal_machine());
+  TestFixtures::ScopedCore core(config);
   peripheral_manager_init();
   linapple_register_peripherals();
   linapple_reset_hard();
@@ -1474,7 +1474,7 @@ TEST_CASE(
   REQUIRE_FALSE(call_mouse_firmware(4, mouse_entry_pos, 0));
   REQUIRE(read_mouse_holes(4).x == 150);
 
-  TestFixtures::ScopedTempFile_t file(".aws");
+  TestFixtures::ScopedTempFile file(".aws");
   save_state_set_filename(file.c_str());
   save_state_save();
   REQUIRE(truncate(file.c_str(),
@@ -1485,20 +1485,20 @@ TEST_CASE(
     REQUIRE(patch.good());
     const std::array<char, 4> no_version = {0, 0, 0, 0};
     patch.seekp(
-        static_cast<std::streamoff>(offsetof(Snapshot_t, mockingboard1)));
+        static_cast<std::streamoff>(offsetof(Snapshot, mockingboard1)));
     patch.write(no_version.data(), no_version.size());
     REQUIRE(patch.good());
   }
 
   {
-    ScopedLogCapture_t log;
+    ScopedLogCapture log;
     REQUIRE(save_state_load());
     CHECK(log.count_containing("Slot 4: Mouse Interface refused the 104-byte "
                                "fixed-body region and stays at reset") == 1);
     CHECK(log.count_containing("Slot 4:") == 1);
   }
   REQUIRE_FALSE(call_mouse_firmware(4, mouse_entry_set, 0x01));
-  MouseReading_t reading = read_mouse_holes(4);
+  MouseReading reading = read_mouse_holes(4);
   CHECK(reading.x == 0);
   CHECK(reading.y == 0);
   move_mouse_by(4, 2000, 2000);
@@ -1512,7 +1512,7 @@ TEST_CASE(
   CHECK(static_cast<size_t>(on_disk.st_size) == snapshot_size_fixed_body);
   save_state_set_filename(minimal.c_str());
   {
-    ScopedLogCapture_t log;
+    ScopedLogCapture log;
     CHECK(save_state_load() == false);
     CHECK(log.count_containing("Slot 4: the save state names Mockingboard "
                                "where the machine holds Mouse Interface") == 1);
@@ -1527,8 +1527,8 @@ TEST_CASE(
 namespace {
 
 // The machine the two slot-4 fixtures were written on.
-auto mouse_fixture_machine() -> TestConfig_t::Description_t {
-  TestConfig_t::Description_t description;
+auto mouse_fixture_machine() -> TestConfig::Description {
+  TestConfig::Description description;
   description.slots[0] = "Parallel Printer";
   description.slots[1] = "Super Serial Card";
   description.slots[3] = "Mouse Interface";
@@ -1541,8 +1541,8 @@ auto mouse_fixture_machine() -> TestConfig_t::Description_t {
 constexpr int harddisk_slot = 7;
 constexpr uint16_t harddisk_io_base = 0xC080 + (harddisk_slot << 4);
 
-auto harddisk_status() -> HarddiskStatus_t {
-  HarddiskStatus_t out{};
+auto harddisk_status() -> HarddiskStatus {
+  HarddiskStatus out{};
   size_t size = sizeof(out);
   REQUIRE(peripheral_query(harddisk_slot, harddisk_query_status, &out, &size) ==
           peripheral_ok);
@@ -1557,7 +1557,7 @@ auto load_mouse_fixture(const std::string& name) -> void {
   REQUIRE(access(path.c_str(), R_OK) == 0);
 
   const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
-  HarddiskInsertCmd_t insert{};
+  HarddiskInsertCmd insert{};
   insert.drive = harddisk_drive_0;
   std::strncpy(insert.path, image.c_str(), sizeof(insert.path) - 1);
   REQUIRE(peripheral_command(harddisk_slot, harddisk_cmd_insert, &insert,
@@ -1567,7 +1567,7 @@ auto load_mouse_fixture(const std::string& name) -> void {
   io_map_dispatch(0, harddisk_io_base + 2, 1, 0x05, 0);
 
   save_state_set_filename(path.c_str());
-  ScopedLogCapture_t log;
+  ScopedLogCapture log;
   REQUIRE(save_state_load());
   CHECK(log.count_containing("Slot 7: Harddisk refused the 16-byte "
                              "fixed-body region and stays at reset") == 1);
@@ -1577,7 +1577,7 @@ auto load_mouse_fixture(const std::string& name) -> void {
   CHECK(io_map_dispatch(0, harddisk_io_base + 1, 0, 0, 0) == 0);
   CHECK(io_map_dispatch(0, harddisk_io_base + 2, 0, 0, 0) == 0);
   CHECK(io_map_dispatch(0, harddisk_io_base + 5, 0, 0, 0) == 0);
-  const HarddiskStatus_t after = harddisk_status();
+  const HarddiskStatus after = harddisk_status();
   CHECK(after.drive0_loaded == 1);
   CHECK(std::string(after.drive0_full_path) == image.path());
 }
@@ -1587,14 +1587,14 @@ auto load_mouse_fixture(const std::string& name) -> void {
 // window's 1023 x 1023 range where the phase now travels, status $80 with the
 // button in bit 7, and zeros where the rate, pending sources and line travel.
 auto mouse_fixture_loads(const std::string& name) -> void {
-  TestConfig_t config(mouse_fixture_machine());
-  TestFixtures::ScopedCore_t core(config);
+  TestConfig config(mouse_fixture_machine());
+  TestFixtures::ScopedCore core(config);
   peripheral_manager_init();
   linapple_register_peripherals();
   linapple_reset_hard();
 
   load_mouse_fixture(name);
-  const MouseFrame_t loaded = mouse_frame(4);
+  const MouseFrame loaded = mouse_frame(4);
   CHECK(loaded.at(mouse_frame_mode) == 0x0B);
   CHECK(mouse_frame_word(loaded, mouse_frame_phase) == mouse_legacy_phase);
   CHECK(loaded.at(mouse_frame_rate) == 0);
@@ -1608,7 +1608,7 @@ auto mouse_fixture_loads(const std::string& name) -> void {
   CHECK(cycles_until_mouse_entries(1, 300) >= 300);
   CHECK(mem[mouse_entry_count] == 0);
 
-  MouseReading_t reading = read_mouse_holes(4);
+  MouseReading reading = read_mouse_holes(4);
   CHECK(mem[0x47C] == 0x7B);
   CHECK(mem[0x57C] == 0x00);
   CHECK(mem[0x4FC] == 0xC8);
@@ -1630,10 +1630,10 @@ auto mouse_fixture_loads(const std::string& name) -> void {
 
   load_mouse_fixture(name);
   const std::array<uint8_t, 3> spin = {0x4C, 0x00, 0x03};
-  TestFixtures::ScopedCore_t::poke(mouse_program, spin);
+  TestFixtures::ScopedCore::poke(mouse_program, spin);
   TestFixtures::enter_at({mouse_program, 0, 0, 0});
   step_with_think(mouse_legacy_phase + 24);
-  const MouseFrame_t ticked = mouse_frame(4);
+  const MouseFrame ticked = mouse_frame(4);
   CHECK(ticked.at(mouse_frame_irq) == 1);
   CHECK((ticked.at(mouse_frame_status) & 0x0E) == 0x08);
   CHECK(ticked.at(mouse_frame_pending) == 0);
@@ -1664,28 +1664,28 @@ TEST_CASE(
 // on every load.
 TEST_CASE("Snapshot: every frame that rides the slot trailer fits its entry") {
 #ifdef ENABLE_PERIPHERAL_HARDDISK
-  static_assert(sizeof(HarddiskSaveState_t) <= snapshot_slot_state_capacity,
+  static_assert(sizeof(HarddiskSaveState) <= snapshot_slot_state_capacity,
                 "the hard disk's frame rides the trailer");
-  CHECK(sizeof(HarddiskSaveState_t) == 20);
+  CHECK(sizeof(HarddiskSaveState) == 20);
 #endif
 #ifdef ENABLE_PERIPHERAL_MOUSE
-  static_assert(sizeof(MouseSaveState_t) <= snapshot_slot_state_capacity,
+  static_assert(sizeof(MouseSaveState) <= snapshot_slot_state_capacity,
                 "the mouse's frame rides the trailer");
 #endif
 #ifdef ENABLE_PERIPHERAL_CLOCK
-  static_assert(sizeof(ClockCardSaveState_t) <= snapshot_slot_state_capacity,
+  static_assert(sizeof(ClockCardSaveState) <= snapshot_slot_state_capacity,
                 "the clock's frame rides the trailer");
 #endif
 #ifdef ENABLE_PERIPHERAL_PRINTER
-  static_assert(sizeof(PrinterSaveState_t) <= snapshot_slot_state_capacity,
+  static_assert(sizeof(PrinterSaveState) <= snapshot_slot_state_capacity,
                 "the printer's frame rides the trailer");
 #endif
 #ifdef ENABLE_PERIPHERAL_SUPER_SERIAL
-  static_assert(sizeof(SuperSerialSaveState_t) <= snapshot_slot_state_capacity,
+  static_assert(sizeof(SuperSerialSaveState) <= snapshot_slot_state_capacity,
                 "the serial card's frame rides the trailer");
 #endif
 #ifdef ENABLE_PERIPHERAL_MOCKINGBOARD
-  static_assert(sizeof(MockingboardSaveState_t) <= snapshot_slot_state_capacity,
+  static_assert(sizeof(MockingboardSaveState) <= snapshot_slot_state_capacity,
                 "the Mockingboard's frame rides the trailer");
 #endif
   CHECK(snapshot_slot_state_capacity == 256);
@@ -1695,10 +1695,10 @@ TEST_CASE("Snapshot: every frame that rides the slot trailer fits its entry") {
 TEST_CASE(
     "Snapshot: An .aws carries the hard disk's registers in the slot-7 "
     "trailer entry and gives them back, with no warning about its size") {
-  TestConfig_t::Description_t description;
+  TestConfig::Description description;
   description.slots[6] = "Harddisk";
-  TestConfig_t config(description);
-  TestFixtures::ScopedCore_t core(config);
+  TestConfig config(description);
+  TestFixtures::ScopedCore core(config);
   peripheral_manager_init();
   linapple_register_peripherals();
   linapple_reset_hard();
@@ -1716,10 +1716,10 @@ TEST_CASE(
   CHECK(saved.at(12) == 0x34);
   CHECK(saved.at(13) == 0x12);
 
-  TestFixtures::ScopedTempFile_t file(".aws");
+  TestFixtures::ScopedTempFile file(".aws");
   save_state_set_filename(file.c_str());
   {
-    ScopedLogCapture_t log;
+    ScopedLogCapture log;
     save_state_save();
     CHECK(log.count_containing("exceeds the") == 0);
   }
@@ -1727,8 +1727,8 @@ TEST_CASE(
   REQUIRE(in.is_open());
   CHECK(in.tellg() == static_cast<std::streamoff>(134200));
   const std::streamoff slot7_entry = static_cast<std::streamoff>(
-      offsetof(Snapshot_t, slot_trailer) + offsetof(SsSlotTrailer_t, slots) +
-      (6 * sizeof(SsSlotState_t)));
+      offsetof(Snapshot, slot_trailer) + offsetof(SsSlotTrailer, slots) +
+      (6 * sizeof(SsSlotState)));
   in.seekg(slot7_entry);
   std::array<uint8_t, 28> entry{};
   in.read(reinterpret_cast<char*>(entry.data()), entry.size());

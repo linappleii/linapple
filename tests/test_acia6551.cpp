@@ -29,16 +29,16 @@ constexpr uint8_t command_break = 0x0F;
 constexpr uint8_t command_echo = 0x11;
 constexpr uint8_t command_space_parity_rx_irq = 0xE9;
 
-struct Out_t {
+struct Out {
   uint64_t at;
   uint8_t byte;
 };
 
-struct Bench_t {
+struct Bench {
   Acia6551 acia;
-  std::vector<Out_t> sent;
+  std::vector<Out> sent;
 
-  Bench_t() {
+  Bench() {
     acia_set_clock_mhz(&acia, ntsc_clock_mhz);
     acia_reset(&acia, 0);
   }
@@ -84,7 +84,7 @@ struct Bench_t {
 TEST_CASE(
     "6551: hardware reset clears control and command, sets TDRE, reads the "
     "inputs asserted and keeps the receive data register") {
-  Bench_t bench;
+  Bench bench;
   bench.program(control_9600_8n1, command_no_irq, 0);
   acia_rx_start(&bench.acia, 0xC1, 0, 0);
   bench.step(char_9600_8n1);
@@ -103,7 +103,7 @@ TEST_CASE(
 TEST_CASE(
     "6551: a received byte sets RDRF and IRQ together, the status read "
     "clears IRQ alone and the data read clears RDRF alone") {
-  Bench_t bench;
+  Bench bench;
   bench.program(control_9600_8n1, command_rx_irq, 0);
   REQUIRE(acia_rx_ready(&bench.acia));
   acia_rx_start(&bench.acia, 0xC1, 0, 0);
@@ -125,7 +125,7 @@ TEST_CASE(
     "6551: with the data read first the status read returns $90 and only "
     "then releases IRQ; with the receiver interrupt disabled nothing is "
     "raised") {
-  Bench_t bench;
+  Bench bench;
   bench.program(control_9600_8n1, command_rx_irq, 0);
   acia_rx_start(&bench.acia, 0xC1, 0, 0);
   CHECK(bench.read(acia_reg::data, 1100) == 0xC1);
@@ -134,7 +134,7 @@ TEST_CASE(
   CHECK_FALSE(acia_irq(&bench.acia));
   CHECK(bench.read(acia_reg::status, 1120) == 0x10);
 
-  Bench_t quiet;
+  Bench quiet;
   quiet.program(control_9600_8n1, command_no_irq, 0);
   acia_rx_start(&quiet.acia, 0xC1, 0, 0);
   CHECK(quiet.read(acia_reg::status, 1100) == 0x18);
@@ -147,18 +147,18 @@ TEST_CASE(
     "6551: a byte written to an idle transmitter leaves at the write and "
     "TDRE is set at the first read; one written behind it waits exactly one "
     "character time at 9600, 50 baud and 5N1.5") {
-  struct Row_t {
+  struct Row {
     uint8_t control;
     uint64_t character;
   };
-  const Row_t rows[] = {
+  const Row rows[] = {
       {control_9600_8n1, char_9600_8n1},
       {control_50_8n1, char_50_8n1},
       {control_9600_5n15, char_9600_5n15},
   };
-  for (const Row_t& row : rows) {
+  for (const Row& row : rows) {
     CAPTURE(row.character);
-    Bench_t bench;
+    Bench bench;
     bench.program(row.control, command_no_irq, 0);
     constexpr uint64_t t = 100;
     bench.write(acia_reg::data, 0xC8, t);
@@ -181,7 +181,7 @@ TEST_CASE(
 TEST_CASE(
     "6551: three writes four cycles apart deliver the first and third bytes, "
     "the second having been replaced in the TDR before the shifter freed") {
-  Bench_t bench;
+  Bench bench;
   bench.program(control_9600_8n1, command_no_irq, 0);
   bench.write(acia_reg::data, 0x01, 100);
   bench.write(acia_reg::data, 0x02, 104);
@@ -196,7 +196,7 @@ TEST_CASE(
 TEST_CASE(
     "6551: a full TDR moves at the character boundary and not at the poll "
     "that notices it, so ten bytes behind a poll take ten character times") {
-  Bench_t bench;
+  Bench bench;
   bench.program(control_9600_8n1, command_no_irq, 0);
   constexpr uint64_t t = 1000;
   constexpr uint64_t poll_period = 27;
@@ -222,7 +222,7 @@ TEST_CASE(
     "6551: with TIC 01 the interrupt is raised at the write that empties the "
     "TDR and then once per character time while it stays empty, each write "
     "re-anchoring the clock") {
-  Bench_t bench;
+  Bench bench;
   bench.program(control_9600_8n1, command_tx_irq, 0);
   constexpr uint64_t t = 500;
   bench.write(acia_reg::data, 0xC1, t);
@@ -263,7 +263,7 @@ TEST_CASE(
 TEST_CASE(
     "6551: setting TIC 01 with the TDR already empty raises the first "
     "interrupt within one character time") {
-  Bench_t bench;
+  Bench bench;
   bench.program(control_9600_8n1, command_no_irq, 0);
   bench.write(acia_reg::command, command_tx_irq, 300);
   const uint64_t next = acia_next_event(&bench.acia);
@@ -278,7 +278,7 @@ TEST_CASE(
 TEST_CASE(
     "6551: a programmed reset clears command bits 4-0 and the overrun bit, "
     "keeps control, RDRF and a data interrupt, and releases a DSR/DCD one") {
-  Bench_t bench;
+  Bench bench;
   bench.program(control_9600_8n1, command_space_parity_rx_irq, 0);
   acia_rx_start(&bench.acia, 0xC1, 0, 0);
   bench.step(char_9600_8s1);
@@ -296,7 +296,7 @@ TEST_CASE(
   CHECK(bench.read(acia_reg::data, (3 * char_9600_8s1) + 30) == 0xC1);
   CHECK(bench.line().dtr == 0);
 
-  Bench_t lines;
+  Bench lines;
   lines.program(control_9600_8n1, command_no_irq, 0);
   acia_set_lines(&lines.acia, acia_line::cts | acia_line::dcd, 100);
   CHECK(acia_irq(&lines.acia));
@@ -307,7 +307,7 @@ TEST_CASE(
 TEST_CASE(
     "6551: with DTR deasserted the receiver takes nothing and no interrupt "
     "is raised; with DCD deasserted the receiver stops") {
-  Bench_t bench;
+  Bench bench;
   bench.program(control_9600_8n1, 0x08, 0);
   CHECK_FALSE(acia_rx_ready(&bench.acia));
   acia_set_lines(&bench.acia, acia_line::cts, 10);
@@ -323,7 +323,7 @@ TEST_CASE(
 TEST_CASE(
     "6551: TIC 00 parks a written byte until the transmitter is turned on, "
     "and a deasserted CTS parks it until CTS is asserted again") {
-  Bench_t bench;
+  Bench bench;
   bench.program(control_9600_8n1, command_dtr_only, 0);
   bench.write(acia_reg::data, 0xC8, 100);
   CHECK(bench.sent.empty());
@@ -333,7 +333,7 @@ TEST_CASE(
   CHECK(bench.sent.at(0).at == 3000);
   CHECK(bench.tdre(3000));
 
-  Bench_t cts;
+  Bench cts;
   cts.program(control_9600_8n1, command_no_irq, 0);
   acia_set_lines(&cts.acia, acia_line::dsr | acia_line::dcd, 50);
   cts.write(acia_reg::data, 0xC8, 100);
@@ -348,7 +348,7 @@ TEST_CASE(
 TEST_CASE(
     "6551: TIC 11 sends nothing and reports the break level from the next "
     "character boundary until the mode is left") {
-  Bench_t bench;
+  Bench bench;
   bench.program(control_9600_8n1, command_no_irq, 0);
   bench.write(acia_reg::data, 0xC1, 100);
   bench.write(acia_reg::command, command_break, 200);
@@ -369,7 +369,7 @@ TEST_CASE(
 }
 
 TEST_CASE("6551: echo mode sends each received byte out again") {
-  Bench_t bench;
+  Bench bench;
   bench.program(control_9600_8n1, command_echo, 0);
   acia_rx_start(&bench.acia, 0xC1, 0, 0);
   bench.step(rdrf_9600_8n1 - 1);
@@ -382,18 +382,18 @@ TEST_CASE("6551: echo mode sends each received byte out again") {
 TEST_CASE(
     "6551: RDRF is set 9/16 into the stop bit and the receiver is free at the "
     "frame's end, the two wake points coming in turn, at 9600 and 50 baud") {
-  struct Row_t {
+  struct Row {
     uint8_t control;
     uint64_t rdrf;
     uint64_t free;
   };
-  const Row_t rows[] = {
+  const Row rows[] = {
       {control_9600_8n1, rdrf_9600_8n1, char_9600_8n1},
       {control_50_8n1, rdrf_50_8n1, char_50_8n1},
   };
-  for (const Row_t& row : rows) {
+  for (const Row& row : rows) {
     CAPTURE(row.free);
-    Bench_t bench;
+    Bench bench;
     bench.program(row.control, command_no_irq, 0);
     acia_rx_start(&bench.acia, 0xC1, 0, 0);
     CHECK(acia_next_event(&bench.acia) == row.rdrf);
@@ -415,7 +415,7 @@ TEST_CASE(
 TEST_CASE(
     "6551: a byte pulled at the first opportunity starts at the free point or "
     "the data read, and one that waited starts when it is noticed") {
-  Bench_t bench;
+  Bench bench;
   bench.program(control_9600_8n1, command_no_irq, 0);
   acia_rx_start(&bench.acia, 0xC1, 0, 0);
   bench.read(acia_reg::data, rdrf_9600_8n1 + 20);
@@ -442,7 +442,7 @@ TEST_CASE(
 TEST_CASE(
     "6551: a byte completing into a full RDR sets overrun, leaves the RDR "
     "unchanged and is lost") {
-  Bench_t bench;
+  Bench bench;
   bench.program(control_9600_8n1, command_no_irq, 0);
   acia_rx_start(&bench.acia, 0xC1, 0, 0);
   bench.step(char_9600_8n1);
@@ -457,7 +457,7 @@ TEST_CASE(
 TEST_CASE(
     "6551: framing and parity errors come with the byte and clear after a "
     "data read and the next clean byte; an empty read returns the last byte") {
-  Bench_t bench;
+  Bench bench;
   bench.program(control_9600_8n1, command_no_irq, 0);
   acia_rx_start(&bench.acia, 0xC1,
                 acia_status::framing_error | acia_status::parity_error, 0);
@@ -476,7 +476,7 @@ TEST_CASE(
 TEST_CASE(
     "6551: two stop bits except with 8 data bits and parity, 1.5 with 5 data "
     "bits and no parity, and the line view says so") {
-  Bench_t bench;
+  Bench bench;
   bench.program(control_9600_8n1, command_no_irq, 0);
   CHECK(acia_frame_sixteenths(&bench.acia) == 160);
   CHECK(acia_rdrf_sixteenths(&bench.acia) == 153);
@@ -516,7 +516,7 @@ TEST_CASE(
 TEST_CASE(
     "6551: baud code 0 or an external receiver clock moves nothing and leaves "
     "TDRE as it was") {
-  Bench_t bench;
+  Bench bench;
   bench.program(0x10, command_no_irq, 0);
   CHECK(bench.tdre(0));
   bench.write(acia_reg::data, 0xC8, 10);
@@ -539,7 +539,7 @@ TEST_CASE(
 TEST_CASE(
     "6551: a change on DSR or DCD raises IRQ only with DTR asserted, and a "
     "command write that disables a source leaves a set latch alone") {
-  Bench_t bench;
+  Bench bench;
   bench.program(control_9600_8n1, command_rx_irq, 0);
   acia_set_lines(&bench.acia, acia_line::cts | acia_line::dcd, 10);
   CHECK(acia_irq(&bench.acia));
@@ -560,7 +560,7 @@ TEST_CASE(
 TEST_CASE(
     "6551: a now below synced advances nothing, and a character in flight "
     "keeps the time it had left") {
-  Bench_t bench;
+  Bench bench;
   bench.program(control_9600_8n1, command_no_irq, 0);
   bench.write(acia_reg::data, 0xC1, 5000);
   bench.write(acia_reg::data, 0xC2, 5004);

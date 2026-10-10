@@ -20,45 +20,45 @@
 
 namespace {
 
-struct ScopedConfigPathReset_t {
+struct ScopedConfigPathReset {
   std::string original_path_{Configuration::instance().get_path()};
 
-  ScopedConfigPathReset_t() = default;
-  ~ScopedConfigPathReset_t() {
+  ScopedConfigPathReset() = default;
+  ~ScopedConfigPathReset() {
     Configuration::instance().set_path(original_path_);
   }
 
-  ScopedConfigPathReset_t(const ScopedConfigPathReset_t&) = delete;
-  auto operator=(const ScopedConfigPathReset_t&)
-      -> ScopedConfigPathReset_t& = delete;
-  ScopedConfigPathReset_t(ScopedConfigPathReset_t&&) = delete;
-  auto operator=(ScopedConfigPathReset_t&&)
-      -> ScopedConfigPathReset_t& = delete;
+  ScopedConfigPathReset(const ScopedConfigPathReset&) = delete;
+  auto operator=(const ScopedConfigPathReset&)
+      -> ScopedConfigPathReset& = delete;
+  ScopedConfigPathReset(ScopedConfigPathReset&&) = delete;
+  auto operator=(ScopedConfigPathReset&&)
+      -> ScopedConfigPathReset& = delete;
 };
 
-struct ScopedLoggerReset_t {
+struct ScopedLoggerReset {
   LogLevel original_verbosity_{Logger::get_verbosity()};
 
-  ScopedLoggerReset_t() = default;
-  ~ScopedLoggerReset_t() {
+  ScopedLoggerReset() = default;
+  ~ScopedLoggerReset() {
     Logger::set_callback(nullptr);
     Logger::set_verbosity(original_verbosity_);
   }
 
-  ScopedLoggerReset_t(const ScopedLoggerReset_t&) = delete;
-  auto operator=(const ScopedLoggerReset_t&) -> ScopedLoggerReset_t& = delete;
-  ScopedLoggerReset_t(ScopedLoggerReset_t&&) = delete;
-  auto operator=(ScopedLoggerReset_t&&) -> ScopedLoggerReset_t& = delete;
+  ScopedLoggerReset(const ScopedLoggerReset&) = delete;
+  auto operator=(const ScopedLoggerReset&) -> ScopedLoggerReset& = delete;
+  ScopedLoggerReset(ScopedLoggerReset&&) = delete;
+  auto operator=(ScopedLoggerReset&&) -> ScopedLoggerReset& = delete;
 };
 
-class ScopedEnvVar_t {
+class ScopedEnvVar {
  private:
   std::string name_;
   std::string prev_value_;
   bool had_value_{false};
 
  public:
-  explicit ScopedEnvVar_t(std::string name, const char* new_value)
+  explicit ScopedEnvVar(std::string name, const char* new_value)
       : name_(std::move(name)) {
     const char* prev = std::getenv(name_.c_str());
     if (prev != nullptr) {
@@ -72,7 +72,7 @@ class ScopedEnvVar_t {
     }
   }
 
-  ~ScopedEnvVar_t() {
+  ~ScopedEnvVar() {
     if (had_value_) {
       setenv(name_.c_str(), prev_value_.c_str(), 1);
     } else {
@@ -80,27 +80,27 @@ class ScopedEnvVar_t {
     }
   }
 
-  ScopedEnvVar_t(const ScopedEnvVar_t&) = delete;
-  auto operator=(const ScopedEnvVar_t&) -> ScopedEnvVar_t& = delete;
-  ScopedEnvVar_t(ScopedEnvVar_t&&) = delete;
-  auto operator=(ScopedEnvVar_t&&) -> ScopedEnvVar_t& = delete;
+  ScopedEnvVar(const ScopedEnvVar&) = delete;
+  auto operator=(const ScopedEnvVar&) -> ScopedEnvVar& = delete;
+  ScopedEnvVar(ScopedEnvVar&&) = delete;
+  auto operator=(ScopedEnvVar&&) -> ScopedEnvVar& = delete;
 };
 
-LogLevel g_last_log_level = LogLevel::silent;
-int g_log_callback_count = 0;
+LogLevel last_log_level = LogLevel::silent;
+int log_callback_count = 0;
 
 auto test_log_callback(LogLevel level, const char* /*message*/) -> void {
-  g_last_log_level = level;
-  ++g_log_callback_count;
+  last_log_level = level;
+  ++log_callback_count;
 }
 
 }  // namespace
 
 TEST_CASE("AppEnvironment: Path Resolution Override") {
-  ScopedConfigPathReset_t config_path_guard;
+  ScopedConfigPathReset config_path_guard;
 
   SUBCASE("Explicit configuration file override is honored") {
-    TestFixtures::ScopedTempFile_t tmp_conf(".conf");
+    TestFixtures::ScopedTempFile tmp_conf(".conf");
     {
       std::ofstream out(tmp_conf.path());
       out << "[Test]\nvalue=1\n";
@@ -124,7 +124,7 @@ TEST_CASE("AppEnvironment: Path Resolution Override") {
 }
 
 TEST_CASE("AppEnvironment: Logger Verbosity") {
-  ScopedLoggerReset_t logger_reset;
+  ScopedLoggerReset logger_reset;
   Logger::set_callback(test_log_callback);
 
   SUBCASE("Verbose mode sets perf verbosity and delivers perf logs") {
@@ -135,11 +135,11 @@ TEST_CASE("AppEnvironment: Logger Verbosity") {
 
     CHECK(Logger::get_verbosity() == LogLevel::perf);
 
-    g_log_callback_count = 0;
-    g_last_log_level = LogLevel::silent;
+    log_callback_count = 0;
+    last_log_level = LogLevel::silent;
     Logger::perf("test perf\n");
-    CHECK(g_log_callback_count == 1);
-    CHECK(g_last_log_level == LogLevel::perf);
+    CHECK(log_callback_count == 1);
+    CHECK(last_log_level == LogLevel::perf);
   }
 
   SUBCASE("Logging mode sets info verbosity and filters perf logs") {
@@ -151,15 +151,15 @@ TEST_CASE("AppEnvironment: Logger Verbosity") {
 
     CHECK(Logger::get_verbosity() == LogLevel::info);
 
-    g_log_callback_count = 0;
-    g_last_log_level = LogLevel::silent;
+    log_callback_count = 0;
+    last_log_level = LogLevel::silent;
     Logger::perf("test perf\n");
-    CHECK(g_log_callback_count == 0);
-    CHECK(g_last_log_level == LogLevel::silent);
+    CHECK(log_callback_count == 0);
+    CHECK(last_log_level == LogLevel::silent);
 
     Logger::info("test info\n");
-    CHECK(g_log_callback_count == 1);
-    CHECK(g_last_log_level == LogLevel::info);
+    CHECK(log_callback_count == 1);
+    CHECK(last_log_level == LogLevel::info);
   }
 
   SUBCASE("Default mode sets warning verbosity and filters info logs") {
@@ -171,21 +171,21 @@ TEST_CASE("AppEnvironment: Logger Verbosity") {
 
     CHECK(Logger::get_verbosity() == LogLevel::warning);
 
-    g_log_callback_count = 0;
-    g_last_log_level = LogLevel::silent;
+    log_callback_count = 0;
+    last_log_level = LogLevel::silent;
     Logger::info("test info\n");
-    CHECK(g_log_callback_count == 0);
-    CHECK(g_last_log_level == LogLevel::silent);
+    CHECK(log_callback_count == 0);
+    CHECK(last_log_level == LogLevel::silent);
 
     Logger::warning("test warning\n");
-    CHECK(g_log_callback_count == 1);
-    CHECK(g_last_log_level == LogLevel::warning);
+    CHECK(log_callback_count == 1);
+    CHECK(last_log_level == LogLevel::warning);
   }
 }
 
 TEST_CASE("AppEnvironment: XDG Config Dirs Data Paths") {
   SUBCASE("Default XDG config fallback when XDG_CONFIG_DIRS is unset") {
-    ScopedEnvVar_t env_guard("XDG_CONFIG_DIRS", nullptr);
+    ScopedEnvVar env_guard("XDG_CONFIG_DIRS", nullptr);
     const auto paths = Path::get_data_search_paths();
     CHECK(std::find(paths.begin(), paths.end(), "/etc/xdg/linapple/") !=
           paths.end());
@@ -194,7 +194,7 @@ TEST_CASE("AppEnvironment: XDG Config Dirs Data Paths") {
   }
 
   SUBCASE("Custom XDG_CONFIG_DIRS paths are included in search paths") {
-    ScopedEnvVar_t env_guard("XDG_CONFIG_DIRS", "/custom/share:/other/dir");
+    ScopedEnvVar env_guard("XDG_CONFIG_DIRS", "/custom/share:/other/dir");
     const auto paths = Path::get_data_search_paths();
     CHECK(std::find(paths.begin(), paths.end(), "/custom/share/linapple/") !=
           paths.end());

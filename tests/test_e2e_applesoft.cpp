@@ -5,12 +5,12 @@
 #include "test_fixtures.h"
 
 namespace {
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 }  // namespace
 
 TEST_CASE("Headless E2E: Boot and Applesoft Expression Evaluation (TASK-2)") {
-  TestConfig_t config(TestConfig_t::disk_ii_only());
-  HeadlessHarness_t harness(config);
+  TestConfig config(TestConfig::disk_ii_only());
+  HeadlessHarness harness(config);
 
   SUBCASE("Cold boot, monitor prompt, and Applesoft entry") {
     auto disk = TestFixtures::create_ephemeral("minimal.dsk");

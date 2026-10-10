@@ -14,20 +14,20 @@
 
 namespace {
 
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 
 constexpr const char* harddisk_id = "linapple.harddisk";
 constexpr int card_slot = 7;
 constexpr const char* image_key = "Harddisk Image 2";
 
-auto harddisk_in_slot_7() -> TestConfig_t::Description_t {
-  TestConfig_t::Description_t description;
+auto harddisk_in_slot_7() -> TestConfig::Description {
+  TestConfig::Description description;
   description.slots[card_slot - 1] = "Harddisk";
   return description;
 }
 
-auto status() -> HarddiskStatus_t {
-  HarddiskStatus_t out{};
+auto status() -> HarddiskStatus {
+  HarddiskStatus out{};
   size_t size = sizeof(out);
   REQUIRE(peripheral_query(card_slot, harddisk_query_status, &out, &size) ==
           peripheral_ok);
@@ -39,8 +39,8 @@ auto status() -> HarddiskStatus_t {
 TEST_CASE(
     "Harddisk configuration at a run-time eject: the helper empties the "
     "drive's key and field and saves") {
-  TestConfig_t config(harddisk_in_slot_7());
-  TestFixtures::ScopedCore_t core(config);
+  TestConfig config(harddisk_in_slot_7());
+  TestFixtures::ScopedCore core(config);
   REQUIRE(peripheral_present(card_slot, harddisk_id));
   harddisk_frontend_initialize();
   REQUIRE(harddisk_frontend_slot() == card_slot);
@@ -64,10 +64,10 @@ TEST_CASE(
 TEST_CASE(
     "Harddisk configuration at a run-time eject: with no hard disk in the "
     "machine the helper says so in the log and does nothing") {
-  TestConfig_t config(TestConfig_t::enhanced_2e_only());
-  TestFixtures::ScopedCore_t core(config);
+  TestConfig config(TestConfig::enhanced_2e_only());
+  TestFixtures::ScopedCore core(config);
   harddisk_frontend_initialize();
-  TestFixtures::ScopedLogCapture_t log;
+  TestFixtures::ScopedLogCapture log;
 
   CHECK(harddisk_frontend_eject(0) == harddisk_frontend_no_card);
   CHECK(log.count_containing("no hard disk is installed") == 1);

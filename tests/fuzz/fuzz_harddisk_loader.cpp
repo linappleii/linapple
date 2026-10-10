@@ -65,7 +65,7 @@ auto temp_dir() -> std::string {
 auto probe_every_driver(const uint8_t* data, size_t size) -> void {
   const uint32_t count = harddisk_loader_driver_count();
   for (uint32_t i = 0; i < count; ++i) {
-    const HarddiskFormatDriver_t* driver = harddisk_loader_driver_at(i);
+    const HarddiskFormatDriver* driver = harddisk_loader_driver_at(i);
     if (driver == nullptr || driver->probe == nullptr) {
       continue;
     }
@@ -76,7 +76,7 @@ auto probe_every_driver(const uint8_t* data, size_t size) -> void {
 // A probe only reads a header; the blocks are what make the driver walk the
 // file the fuzzer wrote: the first, the last, one past the end, and one
 // written back when the medium allows it.
-auto exercise(const HarddiskFormatDriver_t* driver, void* instance) -> void {
+auto exercise(const HarddiskFormatDriver* driver, void* instance) -> void {
   static std::array<uint8_t, block_size> buffer{};
   const uint32_t total = driver->get_total_blocks(instance);
   driver->read_block(instance, 0, buffer.data());
@@ -93,7 +93,7 @@ auto exercise(const HarddiskFormatDriver_t* driver, void* instance) -> void {
 auto open_every_driver(const char* path) -> void {
   const uint32_t count = harddisk_loader_driver_count();
   for (uint32_t i = 0; i < count; ++i) {
-    const HarddiskFormatDriver_t* driver = harddisk_loader_driver_at(i);
+    const HarddiskFormatDriver* driver = harddisk_loader_driver_at(i);
     if (driver == nullptr || driver->open == nullptr ||
         driver->close == nullptr) {
       continue;
@@ -146,7 +146,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     return 0;
   }
 
-  const HarddiskFormatDriver_t* out_driver = nullptr;
+  const HarddiskFormatDriver* out_driver = nullptr;
   void* out_instance = nullptr;
   if (harddisk_loader_open(path.data(), &out_driver, &out_instance) ==
           harddisk_err_none &&

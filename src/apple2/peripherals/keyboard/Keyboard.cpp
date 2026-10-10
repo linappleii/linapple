@@ -16,17 +16,17 @@
 
 namespace {
 
-static_assert(sizeof(KeyboardSaveState_t) == 552,
+static_assert(sizeof(KeyboardSaveState) == 552,
               "the version-1 frame is part of the plugin ABI");
-static_assert(offsetof(KeyboardSaveState_t, repeat_key) == 12,
+static_assert(offsetof(KeyboardSaveState, repeat_key) == 12,
               "repeat_key is where every frame written has it");
-static_assert(offsetof(KeyboardSaveState_t, current_latch) == 24,
+static_assert(offsetof(KeyboardSaveState, current_latch) == 24,
               "current_latch is where every frame written has it");
-static_assert(offsetof(KeyboardSaveState_t, strobe) == 25,
+static_assert(offsetof(KeyboardSaveState, strobe) == 25,
               "strobe is where every frame written has it");
-static_assert(offsetof(KeyboardSaveState_t, caps_lock) == 31,
+static_assert(offsetof(KeyboardSaveState, caps_lock) == 31,
               "caps_lock is where every frame written has it");
-static_assert(offsetof(KeyboardSaveState_t, auto_repeat_enabled) == 35,
+static_assert(offsetof(KeyboardSaveState, auto_repeat_enabled) == 35,
               "auto_repeat_enabled is where every frame written has it");
 
 constexpr uint8_t key_strobe_bit = 0x80;
@@ -63,7 +63,7 @@ constexpr double rept_rate_apple2_plus_hz = 15.0;
 // 7-11), so no bound is the hardware's; sixteen is more than a hand.
 constexpr size_t held_key_capacity = 16;
 
-struct KeyboardHardware_t {
+struct KeyboardHardware {
   uint8_t current_latch = 0;
   bool strobe = false;
   std::array<uint32_t, held_key_capacity> held{};
@@ -73,18 +73,18 @@ struct KeyboardHardware_t {
   uint64_t next_strobe = 0;
 };
 
-struct KeyboardPeripheral_t {
-  KeyboardHardware_t logic{};
-  HostInterface_t* host = nullptr;
+struct KeyboardPeripheral {
+  KeyboardHardware logic{};
+  HostInterface* host = nullptr;
   int slot = 0;
-  PeripheralMachine_t machine = peripheral_machine_apple2e;
+  PeripheralMachine machine = peripheral_machine_apple2e;
 };
 
-auto any_key_down(const KeyboardPeripheral_t* kp) -> bool {
+auto any_key_down(const KeyboardPeripheral* kp) -> bool {
   return kp->logic.held_count > 0;
 }
 
-auto held_index(const KeyboardPeripheral_t* kp, uint32_t host_key) -> size_t {
+auto held_index(const KeyboardPeripheral* kp, uint32_t host_key) -> size_t {
   for (size_t i = 0; i < kp->logic.held_count; ++i) {
     if (kp->logic.held.at(i) == host_key) {
       return i;
@@ -93,7 +93,7 @@ auto held_index(const KeyboardPeripheral_t* kp, uint32_t host_key) -> size_t {
   return kp->logic.held_count;
 }
 
-auto hold_key(KeyboardPeripheral_t* kp, uint32_t host_key) -> void {
+auto hold_key(KeyboardPeripheral* kp, uint32_t host_key) -> void {
   if (held_index(kp, host_key) < kp->logic.held_count) {
     return;
   }
@@ -107,7 +107,7 @@ auto hold_key(KeyboardPeripheral_t* kp, uint32_t host_key) -> void {
   kp->logic.held_count++;
 }
 
-auto let_go_key(KeyboardPeripheral_t* kp, uint32_t host_key) -> void {
+auto let_go_key(KeyboardPeripheral* kp, uint32_t host_key) -> void {
   const size_t index = held_index(kp, host_key);
   if (index == kp->logic.held_count) {
     return;
@@ -118,12 +118,12 @@ auto let_go_key(KeyboardPeripheral_t* kp, uint32_t host_key) -> void {
   kp->logic.held_count--;
 }
 
-auto frame_cycles(const KeyboardPeripheral_t* kp) -> uint64_t {
+auto frame_cycles(const KeyboardPeripheral* kp) -> uint64_t {
   const uint32_t cycles = kp->host->GetFrameCycles();
   return cycles != 0 ? cycles : ntsc_frame_cycles;
 }
 
-auto rept_period(const KeyboardPeripheral_t* kp) -> uint64_t {
+auto rept_period(const KeyboardPeripheral* kp) -> uint64_t {
   const double rate = kp->machine == peripheral_machine_apple2
                           ? rept_rate_apple2_hz
                           : rept_rate_apple2_plus_hz;
@@ -131,18 +131,18 @@ auto rept_period(const KeyboardPeripheral_t* kp) -> uint64_t {
   return period != 0 ? period : 1;
 }
 
-auto arm(KeyboardPeripheral_t* kp, uint64_t at_cycle) -> void {
+auto arm(KeyboardPeripheral* kp, uint64_t at_cycle) -> void {
   kp->logic.next_strobe = at_cycle;
   kp->host->ScheduleEvent(kp, at_cycle);
 }
 
-auto disarm(KeyboardPeripheral_t* kp) -> void {
+auto disarm(KeyboardPeripheral* kp) -> void {
   kp->logic.next_strobe = 0;
   kp->host->ScheduleEvent(kp, 0);
 }
 
 // KSTRB restarts the delay generator, so a second key counts 32 frames afresh.
-auto arm_auto_repeat(KeyboardPeripheral_t* kp) -> void {
+auto arm_auto_repeat(KeyboardPeripheral* kp) -> void {
   const uint64_t frame = frame_cycles(kp);
   const uint64_t press_frame = kp->host->GetCycles() / frame;
   const uint64_t phase =
@@ -151,13 +151,13 @@ auto arm_auto_repeat(KeyboardPeripheral_t* kp) -> void {
   arm(kp, (press_frame + repeat_delay_frames + phase) * frame);
 }
 
-auto arm_rept(KeyboardPeripheral_t* kp) -> void {
+auto arm_rept(KeyboardPeripheral* kp) -> void {
   arm(kp, kp->host->GetCycles() + rept_period(kp));
 }
 
 // The repeat sets KEYSTROBE alone, so the latch keeps the last code pressed
 // while any matrix key is held (Apple IIe Technical Reference Manual, p. 10).
-auto repeat_strobe(KeyboardPeripheral_t* kp, uint64_t now, uint64_t period)
+auto repeat_strobe(KeyboardPeripheral* kp, uint64_t now, uint64_t period)
     -> void {
   kp->logic.strobe = true;
   // A wake far past due collapses into one strobe with the phase kept.
@@ -179,7 +179,7 @@ auto keyboard_io_read_data(void* instance, uint16_t pc, uint16_t addr,
   if (instance == nullptr) {
     return 0;
   }
-  const auto* kp = static_cast<const KeyboardPeripheral_t*>(instance);
+  const auto* kp = static_cast<const KeyboardPeripheral*>(instance);
 
   uint8_t data = kp->logic.current_latch & key_code_mask;
   if (kp->logic.strobe) {
@@ -203,7 +203,7 @@ auto keyboard_io_strobe_apple2e(void* instance, uint16_t pc, uint16_t addr,
   if (instance == nullptr) {
     return 0;
   }
-  auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
+  auto* kp = static_cast<KeyboardPeripheral*>(instance);
   kp->logic.strobe = false;
 
   uint8_t data = kp->logic.current_latch & key_code_mask;
@@ -227,14 +227,14 @@ auto keyboard_io_strobe_apple2(void* instance, uint16_t pc, uint16_t addr,
   if (instance == nullptr) {
     return 0;
   }
-  auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
+  auto* kp = static_cast<KeyboardPeripheral*>(instance);
   kp->logic.strobe = false;
   return kp->host->ReadFloatingBus(executed_cycles);
 }
 
 // Better no card than a phantom one that cannot be reached, timed or told its
 // board; the log names the missing member.
-auto missing_host_member(const HostInterface_t* host) -> const char* {
+auto missing_host_member(const HostInterface* host) -> const char* {
   if (host->RegisterDirectIO == nullptr) {
     return "RegisterDirectIO";
   }
@@ -259,7 +259,7 @@ auto missing_host_member(const HostInterface_t* host) -> const char* {
   return nullptr;
 }
 
-auto keyboard_abi_init(int slot, HostInterface_t* host) -> void* {
+auto keyboard_abi_init(int slot, HostInterface* host) -> void* {
   if (host == nullptr) {
     return nullptr;
   }
@@ -272,8 +272,8 @@ auto keyboard_abi_init(int slot, HostInterface_t* host) -> void* {
     return nullptr;
   }
 
-  std::unique_ptr<KeyboardPeripheral_t> kp_ptr(new (std::nothrow)
-                                                   KeyboardPeripheral_t{});
+  std::unique_ptr<KeyboardPeripheral> kp_ptr(new (std::nothrow)
+                                                   KeyboardPeripheral{});
   if (!kp_ptr) {
     return nullptr;
   }
@@ -316,7 +316,7 @@ auto keyboard_abi_reset(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
-  auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
+  auto* kp = static_cast<KeyboardPeripheral*>(instance);
   kp->logic.current_latch = 0;
   kp->logic.strobe = false;
   kp->logic.held_count = 0;
@@ -328,8 +328,8 @@ auto keyboard_abi_shutdown(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
-  std::unique_ptr<KeyboardPeripheral_t> kp(
-      static_cast<KeyboardPeripheral_t*>(instance));
+  std::unique_ptr<KeyboardPeripheral> kp(
+      static_cast<KeyboardPeripheral*>(instance));
 }
 
 // A wake and a command drain's think look alike, so time is GetCycles against
@@ -339,7 +339,7 @@ auto keyboard_abi_think(void* instance, uint32_t cycles) -> void {
   if (instance == nullptr) {
     return;
   }
-  auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
+  auto* kp = static_cast<KeyboardPeripheral*>(instance);
   if (kp->logic.next_strobe == 0) {
     return;
   }
@@ -364,7 +364,7 @@ auto keyboard_abi_think(void* instance, uint32_t cycles) -> void {
 
 // The encoder's KSTRB pulse loads the latch and sets the strobe (Apple II
 // Reference Manual 1979, p. 102; Sather, Understanding the Apple IIe, 7-4).
-auto press_key(KeyboardPeripheral_t* kp, uint32_t host_key, uint8_t code)
+auto press_key(KeyboardPeripheral* kp, uint32_t host_key, uint8_t code)
     -> void {
   // The II and II Plus keyboards produce upper-case ASCII only (Apple II
   // Reference Manual 1979, p. 5; Sather, Understanding the Apple II, 7-13).
@@ -381,7 +381,7 @@ auto press_key(KeyboardPeripheral_t* kp, uint32_t host_key, uint8_t code)
   }
 }
 
-auto release_key(KeyboardPeripheral_t* kp, uint32_t host_key) -> void {
+auto release_key(KeyboardPeripheral* kp, uint32_t host_key) -> void {
   let_go_key(kp, host_key);
   if (!any_key_down(kp)) {
     disarm(kp);
@@ -391,7 +391,7 @@ auto release_key(KeyboardPeripheral_t* kp, uint32_t host_key) -> void {
 // REPT alone on a II produces "a duplicate of the last code that was
 // generated" (Apple II Reference Manual 1979, p. 7); the II Plus's oscillator
 // is gated by ANY KEY DOWN, so REPT alone does nothing. A //e has no REPT key.
-auto set_rept(KeyboardPeripheral_t* kp, bool down) -> void {
+auto set_rept(KeyboardPeripheral* kp, bool down) -> void {
   kp->logic.rept_down = down;
   if (kp->machine == peripheral_machine_apple2e) {
     return;
@@ -408,11 +408,11 @@ auto set_rept(KeyboardPeripheral_t* kp, bool down) -> void {
 }
 
 auto keyboard_abi_command(void* instance, uint32_t cmd_id, const void* data,
-                          size_t size) -> PeripheralStatus_t {
+                          size_t size) -> PeripheralStatus {
   if (instance == nullptr) {
     return peripheral_error;
   }
-  auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
+  auto* kp = static_cast<KeyboardPeripheral*>(instance);
 
   if (!peripheral_cmd_is_mine(cmd_id, PERIPHERAL_SUBSYSTEM_KEYBOARD)) {
     return peripheral_incompatible;  // another peripheral in the slot owns it
@@ -422,12 +422,12 @@ auto keyboard_abi_command(void* instance, uint32_t cmd_id, const void* data,
     return peripheral_error;
   }
 
-  switch (static_cast<KeyboardCmd_t>(cmd_id)) {
+  switch (static_cast<KeyboardCmd>(cmd_id)) {
     case keyboard_cmd_key: {
-      if (size != sizeof(KeyboardKeyEvent_t)) {
+      if (size != sizeof(KeyboardKeyEvent)) {
         return peripheral_error;
       }
-      const auto* ev = static_cast<const KeyboardKeyEvent_t*>(data);
+      const auto* ev = static_cast<const KeyboardKeyEvent*>(data);
       if (ev->apple_code > key_code_mask) {
         return peripheral_error;
       }
@@ -459,12 +459,12 @@ auto keyboard_abi_command(void* instance, uint32_t cmd_id, const void* data,
 }
 
 auto keyboard_abi_save_state(void* instance, void* buffer, size_t* size)
-    -> PeripheralStatus_t {
+    -> PeripheralStatus {
   if (size == nullptr) {
     return peripheral_error;
   }
 
-  const size_t required = sizeof(KeyboardSaveState_t);
+  const size_t required = sizeof(KeyboardSaveState);
 
   if (buffer == nullptr) {
     *size = required;
@@ -476,12 +476,12 @@ auto keyboard_abi_save_state(void* instance, void* buffer, size_t* size)
     return peripheral_error;
   }
 
-  const auto* kp = static_cast<const KeyboardPeripheral_t*>(instance);
-  auto* ss = static_cast<KeyboardSaveState_t*>(buffer);
-  std::memset(ss, 0, sizeof(KeyboardSaveState_t));
+  const auto* kp = static_cast<const KeyboardPeripheral*>(instance);
+  auto* ss = static_cast<KeyboardSaveState*>(buffer);
+  std::memset(ss, 0, sizeof(KeyboardSaveState));
 
   ss->version = KEYBOARD_STATE_VERSION;
-  ss->struct_size = static_cast<uint32_t>(sizeof(KeyboardSaveState_t));
+  ss->struct_size = static_cast<uint32_t>(sizeof(KeyboardSaveState));
   ss->current_latch = kp->logic.current_latch;
   ss->strobe = kp->logic.strobe ? 1U : 0U;
   // The held keys and a repeat in progress are the player's hands, not the
@@ -497,20 +497,20 @@ auto keyboard_abi_save_state(void* instance, void* buffer, size_t* size)
 
 // A longer buffer loads up to struct_size; another version or size is refused.
 auto keyboard_abi_load_state(void* instance, const void* buffer, size_t size)
-    -> PeripheralStatus_t {
+    -> PeripheralStatus {
   if (instance == nullptr || buffer == nullptr ||
-      size < sizeof(KeyboardSaveState_t)) {
+      size < sizeof(KeyboardSaveState)) {
     return peripheral_error;
   }
-  const auto* ss = static_cast<const KeyboardSaveState_t*>(buffer);
+  const auto* ss = static_cast<const KeyboardSaveState*>(buffer);
   if (ss->version != KEYBOARD_STATE_VERSION ||
-      ss->struct_size != sizeof(KeyboardSaveState_t)) {
+      ss->struct_size != sizeof(KeyboardSaveState)) {
     return peripheral_error;
   }
 
   // Only the latch and the strobe are the machine's; the rest of the frame is
   // the writer's hands or host configuration, read past.
-  auto* kp = static_cast<KeyboardPeripheral_t*>(instance);
+  auto* kp = static_cast<KeyboardPeripheral*>(instance);
   kp->logic.current_latch = ss->current_latch & key_code_mask;
   kp->logic.strobe = (ss->strobe != 0);
   kp->logic.held_count = 0;
@@ -523,7 +523,7 @@ auto keyboard_abi_load_state(void* instance, const void* buffer, size_t size)
 // The keyboard has no queries: its state is read through $C000 and $C010.
 // NOLINTBEGIN(readability-non-const-parameter) - signature defined by PeripheralQueryFn ABI
 auto keyboard_abi_query(void* instance, uint32_t cmd_id, void* out,
-                        size_t* out_size) -> PeripheralStatus_t {
+                        size_t* out_size) -> PeripheralStatus {
   (void)instance;
   (void)cmd_id;
   (void)out;
@@ -534,7 +534,7 @@ auto keyboard_abi_query(void* instance, uint32_t cmd_id, void* out,
 }
 // NOLINTEND(readability-non-const-parameter)
 
-Peripheral_t keyboard_peripheral = {
+Peripheral keyboard_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.keyboard",
     .name = "Keyboard",
@@ -557,7 +557,7 @@ Peripheral_t keyboard_peripheral = {
 }  // namespace
 
 // Peripheral registry requires non-const pointer.
-extern "C" auto keyboard_get_descriptor() -> Peripheral_t* {
+extern "C" auto keyboard_get_descriptor() -> Peripheral* {
   return &keyboard_peripheral;
 }
 

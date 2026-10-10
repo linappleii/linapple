@@ -47,7 +47,7 @@ auto handle_mouse_button_down(const SDL_MouseButtonEvent& button,
   const bool release_modifier =
       (key_mod & (SDL_KMOD_SHIFT | SDL_KMOD_CTRL)) != 0;
   const bool debugger_click = mouse_input_button_down(
-      host_button(button.button), release_modifier, g_buttondown != -1);
+      host_button(button.button), release_modifier, buttondown != -1);
 #if ENABLE_DEBUGGER
   if (debugger_click) {
     debugger_mouse_click(static_cast<int>(button.x),
@@ -104,7 +104,7 @@ auto sdl_handle_event(SDL_Event* event) -> void {
 
     case SDL_EVENT_WINDOW_FOCUS_LOST:
       frame_on_focus(false);
-      g_buttondown = -1;
+      buttondown = -1;
       mouse_input_release();
       break;
 
@@ -134,9 +134,9 @@ auto sdl_handle_event(SDL_Event* event) -> void {
       }
 
       if (keyboard_get_hotkeys_enabled() && (mysym >= SDLK_F1) &&
-          (mysym <= SDLK_F12) && (g_buttondown == -1)) {
+          (mysym <= SDLK_F12) && (buttondown == -1)) {
         mouse_input_release();
-        g_buttondown = static_cast<int>(mysym - SDLK_F1);
+        buttondown = static_cast<int>(mysym - SDLK_F1);
       } else if (mysym == SDLK_KP_PLUS) {
         const uint32_t speed = linapple_speed_increase();
         std::printf("Now speed=%u\n", speed);
@@ -182,7 +182,7 @@ auto sdl_handle_event(SDL_Event* event) -> void {
                  (system_state.mode == app_mode_logo) ||
                  (system_state.mode == app_mode_stepping)) {
 #if ENABLE_DEBUGGER
-        g_debugger_eat_key = false;
+        debugger_eat_key = false;
 #endif
         const bool extended = is_extended_scancode(myscancode);
         if ((mymod & SDL_KMOD_RCTRL) != 0) {
@@ -209,8 +209,8 @@ auto sdl_handle_event(SDL_Event* event) -> void {
       const SDL_Scancode myscancode = event->key.scancode;
 
       if ((mysym >= SDLK_F1) && (mysym <= SDLK_F12) &&
-          (g_buttondown == static_cast<int>(mysym - SDLK_F1))) {
-        g_buttondown = -1;
+          (buttondown == static_cast<int>(mysym - SDLK_F1))) {
+        buttondown = -1;
         process_button_click(static_cast<int>(mysym - SDLK_F1), mymod);
       } else if (frontend_handle_event(mysym, false)) {
         break;

@@ -14,8 +14,8 @@ auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
 
 namespace {
 
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
-using TestFixtures::ScopedCore_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
+using TestFixtures::ScopedCore;
 
 constexpr int MOCK_SLOT = 2;
 // $C080 + slot * 16, and the slot's own $Cn00 page.
@@ -29,17 +29,17 @@ constexpr uint32_t EXECUTED_WRITE_C0 = 24;
 constexpr uint32_t EXECUTED_READ_CX = 36;
 constexpr uint32_t EXECUTED_WRITE_CX = 48;
 
-struct MockState_t {
-  HostInterface_t* host = nullptr;
+struct MockState {
+  HostInterface* host = nullptr;
   std::vector<uint64_t> observed;
 };
 
-MockState_t g_mock;
+MockState mock;
 
 auto record_cycles(void* instance, uint16_t /*unused*/, uint16_t /*unused*/,
                    uint8_t /*unused*/, uint8_t /*unused*/, uint32_t /*unused*/)
     -> uint8_t {
-  auto* state = static_cast<MockState_t*>(instance);
+  auto* state = static_cast<MockState*>(instance);
   if (state != nullptr && state->host != nullptr &&
       state->host->GetCycles != nullptr) {
     state->observed.push_back(state->host->GetCycles());
@@ -47,19 +47,19 @@ auto record_cycles(void* instance, uint16_t /*unused*/, uint16_t /*unused*/,
   return 0;
 }
 
-auto mock_init(int slot, HostInterface_t* host) -> void* {
+auto mock_init(int slot, HostInterface* host) -> void* {
   if (host == nullptr || host->RegisterIO == nullptr) {
     return nullptr;
   }
-  g_mock.host = host;
+  mock.host = host;
   host->RegisterIO(slot, record_cycles, record_cycles, record_cycles,
                    record_cycles);
-  return &g_mock;
+  return &mock;
 }
 
 auto mock_shutdown(void* instance) -> void { (void)instance; }
 
-Peripheral_t g_mock_descriptor = {
+Peripheral mock_descriptor = {
     LINAPPLE_ABI_VERSION,
     "test.mock.slot",
     "MockSlotCard",
@@ -85,24 +85,24 @@ Peripheral_t g_mock_descriptor = {
  * The descriptor is a C-ABI struct of free functions, so what the handlers
  * record has to live in a file-static; this bounds its lifetime to one case.
  */
-class ScopedMock_t {
+class ScopedMock {
  public:
-  ScopedMock_t() { g_mock = MockState_t(); }
-  ~ScopedMock_t() { g_mock = MockState_t(); }
+  ScopedMock() { mock = MockState(); }
+  ~ScopedMock() { mock = MockState(); }
 
-  ScopedMock_t(const ScopedMock_t&) = delete;
-  auto operator=(const ScopedMock_t&) -> ScopedMock_t& = delete;
-  ScopedMock_t(ScopedMock_t&&) = delete;
-  auto operator=(ScopedMock_t&&) -> ScopedMock_t& = delete;
+  ScopedMock(const ScopedMock&) = delete;
+  auto operator=(const ScopedMock&) -> ScopedMock& = delete;
+  ScopedMock(ScopedMock&&) = delete;
+  auto operator=(ScopedMock&&) -> ScopedMock& = delete;
 
-  static auto descriptor() -> Peripheral_t* { return &g_mock_descriptor; }
+  static auto descriptor() -> Peripheral* { return &mock_descriptor; }
   static auto observed() -> const std::vector<uint64_t>& {
-    return g_mock.observed;
+    return mock.observed;
   }
 };
 
-auto mockingboard_in_slot_4() -> TestConfig_t::Description_t {
-  TestConfig_t::Description_t description;
+auto mockingboard_in_slot_4() -> TestConfig::Description {
+  TestConfig::Description description;
   description.slots[3] = "Mockingboard";
   return description;
 }
@@ -143,10 +143,10 @@ TEST_CASE("Mockingboard Core Seam: A Slot Handler Sees The Executed Cycles") {
   // boundary, every card either reads stale time or adds the executed cycles
   // itself -- and double-counts the moment a $C0xx handler ran first in the
   // same slice.
-  TestConfig_t config(mockingboard_in_slot_4());
-  ScopedCore_t core(config);
-  ScopedMock_t mock;
-  REQUIRE(peripheral_register(ScopedMock_t::descriptor(), MOCK_SLOT) == 0);
+  TestConfig config(mockingboard_in_slot_4());
+  ScopedCore core(config);
+  ScopedMock mock;
+  REQUIRE(peripheral_register(ScopedMock::descriptor(), MOCK_SLOT) == 0);
 
   const uint64_t slice_start = cpu_get_cumulative_cycles();
 
@@ -155,26 +155,26 @@ TEST_CASE("Mockingboard Core Seam: A Slot Handler Sees The Executed Cycles") {
   io_map_dispatch(0, ADDR_IO_SELECT, 0, 0, EXECUTED_READ_CX);
   io_map_dispatch(0, ADDR_IO_SELECT, 1, 0x55, EXECUTED_WRITE_CX);
 
-  REQUIRE(ScopedMock_t::observed().size() == 4);
-  CHECK(ScopedMock_t::observed()[0] == slice_start + EXECUTED_READ_C0);
-  CHECK(ScopedMock_t::observed()[1] == slice_start + EXECUTED_WRITE_C0);
-  CHECK(ScopedMock_t::observed()[2] == slice_start + EXECUTED_READ_CX);
-  CHECK(ScopedMock_t::observed()[3] == slice_start + EXECUTED_WRITE_CX);
+  REQUIRE(ScopedMock::observed().size() == 4);
+  CHECK(ScopedMock::observed()[0] == slice_start + EXECUTED_READ_C0);
+  CHECK(ScopedMock::observed()[1] == slice_start + EXECUTED_WRITE_C0);
+  CHECK(ScopedMock::observed()[2] == slice_start + EXECUTED_READ_CX);
+  CHECK(ScopedMock::observed()[3] == slice_start + EXECUTED_WRITE_CX);
 }
 
 TEST_CASE("Mockingboard Core Seam: A Timer Interrupt Reaches The 6502") {
-  TestConfig_t config(mockingboard_in_slot_4());
-  ScopedCore_t core(config);
+  TestConfig config(mockingboard_in_slot_4());
+  ScopedCore core(config);
 
-  ScopedCore_t::poke(HANDLER_ADDR, irq_handler);
-  ScopedCore_t::poke(PROGRAM_ADDR, spin_program);
+  ScopedCore::poke(HANDLER_ADDR, irq_handler);
+  ScopedCore::poke(PROGRAM_ADDR, spin_program);
   const std::array<uint8_t, 2> vector = {
       {
           static_cast<uint8_t>(HANDLER_ADDR & 0xFF),
           static_cast<uint8_t>(HANDLER_ADDR >> 8),
       },
   };
-  ScopedCore_t::poke(IRQ_VECTOR_ADDR, vector);
+  ScopedCore::poke(IRQ_VECTOR_ADDR, vector);
 
   io_map_dispatch(0, VIA_A_ORB, 1, 0x04, 0);
   io_map_dispatch(0, VIA_A_ACR, 1, 0x40, 0);
@@ -183,7 +183,7 @@ TEST_CASE("Mockingboard Core Seam: A Timer Interrupt Reaches The 6502") {
   io_map_dispatch(0, VIA_A_T1C_H, 1, static_cast<uint8_t>(TIMER1_LATCH >> 8),
                   0);
 
-  CpuRegisters_t* regs = cpu_get_registers();
+  CpuRegisters* regs = cpu_get_registers();
   regs->pc = PROGRAM_ADDR;
   regs->sp = 0x01FF;
   regs->ps = 0x20;

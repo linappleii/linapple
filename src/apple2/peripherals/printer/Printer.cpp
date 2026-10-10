@@ -60,9 +60,9 @@ constexpr size_t wait_image_source = 0x80;
 constexpr size_t wait_image_target = 0xC0;
 constexpr size_t wait_image_length = 0x40;
 
-struct PrinterCard_t {
+struct PrinterCard {
   std::array<uint8_t, page_size> waiting_page{};
-  HostInterface_t* host = nullptr;
+  HostInterface* host = nullptr;
   void* sink = nullptr;
   int slot = 0;
   uint8_t data_latch = 0;
@@ -77,7 +77,7 @@ struct PrinterCard_t {
 // then read 90 FE and B0 FE, branches to themselves, and spin until the
 // acknowledge arrives. Source, target and length are all inside one 256-byte
 // page by their definitions above, so the copy cannot run off either array.
-auto build_waiting_page(PrinterCard_t* card) -> void {
+auto build_waiting_page(PrinterCard* card) -> void {
   static_assert(wait_image_source + wait_image_length == wait_image_target,
                 "the altered half begins where the images end");
   static_assert(wait_image_target + wait_image_length == page_size,
@@ -101,7 +101,7 @@ auto build_waiting_page(PrinterCard_t* card) -> void {
 // be superseded by the store's, as the card's strobe generator supersedes it
 // ("an indexed store operation from the 6502 will cause a false DEV the cycle
 // prior to the legitimate store operation", same section).
-auto follow_sink_readiness(PrinterCard_t* card) -> void {
+auto follow_sink_readiness(PrinterCard* card) -> void {
   const bool waiting = !card->host->SinkReady(card->sink);
   if (waiting == card->waiting) {
     return;
@@ -134,7 +134,7 @@ auto printer_io_access(void* instance, uint16_t program_counter,
   if (instance == nullptr) {
     return 0;
   }
-  auto* card = static_cast<PrinterCard_t*>(instance);
+  auto* card = static_cast<PrinterCard*>(instance);
   const uint8_t byte =
       is_write != 0 ? data_value : card->host->ReadFloatingBus(executed_cycles);
   card->data_latch = byte;
@@ -147,7 +147,7 @@ auto printer_io_access(void* instance, uint16_t program_counter,
 // store reaches nothing, without the bus a read has no byte to latch, and
 // without the sink the bytes have nowhere to go: better no card than a
 // phantom one, and the log says which member was missing.
-auto missing_host_member(const HostInterface_t* host) -> const char* {
+auto missing_host_member(const HostInterface* host) -> const char* {
   if (host->RegisterIO == nullptr) {
     return "RegisterIO";
   }
@@ -172,7 +172,7 @@ auto missing_host_member(const HostInterface_t* host) -> const char* {
   return nullptr;
 }
 
-auto printer_abi_init(int slot, HostInterface_t* host) -> void* {
+auto printer_abi_init(int slot, HostInterface* host) -> void* {
   if (host == nullptr) {
     return nullptr;
   }
@@ -196,7 +196,7 @@ auto printer_abi_init(int slot, HostInterface_t* host) -> void* {
   }
 
   auto card =
-      std::unique_ptr<PrinterCard_t>(new (std::nothrow) PrinterCard_t());
+      std::unique_ptr<PrinterCard>(new (std::nothrow) PrinterCard());
   if (!card) {
     return nullptr;
   }
@@ -232,7 +232,7 @@ auto printer_abi_shutdown(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
-  std::unique_ptr<PrinterCard_t> card(static_cast<PrinterCard_t*>(instance));
+  std::unique_ptr<PrinterCard> card(static_cast<PrinterCard*>(instance));
   card->host->SinkClose(card->sink);
 }
 
@@ -244,7 +244,7 @@ auto printer_abi_think(void* instance, uint32_t elapsed_cycles) -> void {
   if (instance == nullptr) {
     return;
   }
-  auto* card = static_cast<PrinterCard_t*>(instance);
+  auto* card = static_cast<PrinterCard*>(instance);
   if (card->waiting) {
     follow_sink_readiness(card);
   }
@@ -254,7 +254,7 @@ auto printer_abi_think(void* instance, uint32_t elapsed_cycles) -> void {
 // state is the byte on its data lines.
 auto printer_abi_command(void* instance, uint32_t command_id,
                          const void* payload, size_t payload_size)
-    -> PeripheralStatus_t {
+    -> PeripheralStatus {
   (void)command_id;
   (void)payload;
   (void)payload_size;
@@ -266,7 +266,7 @@ auto printer_abi_command(void* instance, uint32_t command_id,
 
 // NOLINTBEGIN(readability-non-const-parameter) - signature defined by PeripheralQueryFn ABI
 auto printer_abi_query(void* instance, uint32_t query_id, void* output,
-                       size_t* output_size) -> PeripheralStatus_t {
+                       size_t* output_size) -> PeripheralStatus {
   (void)instance;
   (void)query_id;
   (void)output;
@@ -277,33 +277,33 @@ auto printer_abi_query(void* instance, uint32_t query_id, void* output,
 }
 // NOLINTEND(readability-non-const-parameter)
 
-static_assert(sizeof(PrinterSaveState_t) == 24,
+static_assert(sizeof(PrinterSaveState) == 24,
               "the printer card's state frame is part of the plugin ABI");
-static_assert(offsetof(PrinterSaveState_t, version) == 0,
+static_assert(offsetof(PrinterSaveState, version) == 0,
               "the frame header is version then size");
-static_assert(offsetof(PrinterSaveState_t, struct_size) == 4,
+static_assert(offsetof(PrinterSaveState, struct_size) == 4,
               "the frame header is version then size");
-static_assert(offsetof(PrinterSaveState_t, total_chars_printed) == 8,
+static_assert(offsetof(PrinterSaveState, total_chars_printed) == 8,
               "the dead fields keep their place so every frame written loads");
-static_assert(offsetof(PrinterSaveState_t, busy_cycles) == 16,
+static_assert(offsetof(PrinterSaveState, busy_cycles) == 16,
               "the dead fields keep their place so every frame written loads");
-static_assert(offsetof(PrinterSaveState_t, data_latch) == 20,
+static_assert(offsetof(PrinterSaveState, data_latch) == 20,
               "the data latch sits where every frame written has it");
-static_assert(offsetof(PrinterSaveState_t, status_latch) == 21,
+static_assert(offsetof(PrinterSaveState, status_latch) == 21,
               "the dead fields keep their place so every frame written loads");
-static_assert(offsetof(PrinterSaveState_t, is_online) == 22,
+static_assert(offsetof(PrinterSaveState, is_online) == 22,
               "the dead fields keep their place so every frame written loads");
-static_assert(offsetof(PrinterSaveState_t, is_busy) == 23,
+static_assert(offsetof(PrinterSaveState, is_busy) == 23,
               "the dead fields keep their place so every frame written loads");
 
 // Value-initialised, so the dead fields go out as zeros; the latch is the only
 // hardware state the card has.
 auto printer_abi_save_state(void* instance, void* state_buffer,
-                            size_t* buffer_size) -> PeripheralStatus_t {
+                            size_t* buffer_size) -> PeripheralStatus {
   if (buffer_size == nullptr) {
     return peripheral_error;
   }
-  constexpr size_t required_size = sizeof(PrinterSaveState_t);
+  constexpr size_t required_size = sizeof(PrinterSaveState);
   if (state_buffer == nullptr) {
     *buffer_size = required_size;
     return peripheral_ok;
@@ -312,8 +312,8 @@ auto printer_abi_save_state(void* instance, void* state_buffer,
     return peripheral_error;
   }
 
-  const auto* card = static_cast<const PrinterCard_t*>(instance);
-  PrinterSaveState_t state{};
+  const auto* card = static_cast<const PrinterCard*>(instance);
+  PrinterSaveState state{};
   state.version = PRINTER_STATE_VERSION;
   state.struct_size = static_cast<uint32_t>(required_size);
   state.data_latch = card->data_latch;
@@ -330,15 +330,15 @@ auto printer_abi_save_state(void* instance, void* state_buffer,
 // while parked drops one byte and parks again, as the hardware does after a
 // reset.
 auto printer_abi_load_state(void* instance, const void* state_buffer,
-                            size_t buffer_size) -> PeripheralStatus_t {
+                            size_t buffer_size) -> PeripheralStatus {
   constexpr size_t header_size =
-      offsetof(PrinterSaveState_t, total_chars_printed);
+      offsetof(PrinterSaveState, total_chars_printed);
   if (instance == nullptr || state_buffer == nullptr ||
       buffer_size < header_size) {
     return peripheral_error;
   }
 
-  PrinterSaveState_t state{};
+  PrinterSaveState state{};
   std::memcpy(&state, state_buffer, header_size);
   if (state.struct_size != sizeof(state) || buffer_size < state.struct_size) {
     return peripheral_error;
@@ -348,7 +348,7 @@ auto printer_abi_load_state(void* instance, const void* state_buffer,
   }
 
   std::memcpy(&state, state_buffer, state.struct_size);
-  auto* card = static_cast<PrinterCard_t*>(instance);
+  auto* card = static_cast<PrinterCard*>(instance);
   card->data_latch = state.data_latch;
   card->waiting = false;
   card->host->RegisterCxROM(card->slot, printer_rom.data());
@@ -357,7 +357,7 @@ auto printer_abi_load_state(void* instance, const void* state_buffer,
 
 }  // namespace
 
-static Peripheral_t printer_peripheral = {
+static Peripheral printer_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.printer",
     .name = "Parallel Printer",
@@ -378,6 +378,6 @@ static Peripheral_t printer_peripheral = {
 };
 
 // Peripheral registry requires non-const pointer.
-auto printer_get_descriptor() -> Peripheral_t* { return &printer_peripheral; }
+auto printer_get_descriptor() -> Peripheral* { return &printer_peripheral; }
 
 PERIPHERAL_REGISTER(printer_peripheral)

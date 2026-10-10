@@ -27,7 +27,7 @@ auto is_drive_valid(int drive) -> bool {
 }
 
 auto drive_error(int drive) -> int {
-  HarddiskStatus_t status{};
+  HarddiskStatus status{};
   size_t size = sizeof(status);
   if (peripheral_query(card_slot, harddisk_query_status, &status, &size) !=
       peripheral_ok) {
@@ -78,7 +78,7 @@ auto insert(int drive, const char* path, bool write_protected, bool record)
   // recording the insert rewrites, so the path is copied before anything
   // else happens.
   const std::string inserted(path);
-  HarddiskInsertCmd_t cmd{};
+  HarddiskInsertCmd cmd{};
   cmd.drive = static_cast<uint8_t>(drive);
   cmd.write_protected = write_protected ? 1 : 0;
   if (inserted.size() >= sizeof(cmd.path)) {
@@ -117,7 +117,7 @@ auto harddisk_frontend_eject(int drive) -> int {
     Logger::error("hard disk drive %d: no hard disk is installed\n", drive + 1);
     return harddisk_frontend_no_card;
   }
-  HarddiskEjectCmd_t cmd{};
+  HarddiskEjectCmd cmd{};
   cmd.drive = static_cast<uint8_t>(drive);
   if (peripheral_command(card_slot, harddisk_cmd_eject, &cmd, sizeof(cmd)) !=
       peripheral_ok) {

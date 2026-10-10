@@ -26,14 +26,14 @@ constexpr int64_t PAL_PERIOD_NS =
 
 // The injected clock. A pacer under test never waits: the fake sleep simply
 // moves the clock to the deadline, which is what a perfect sleep would do.
-int64_t g_now_ns = 0;
-std::vector<int64_t> g_sleeps;
+int64_t now_ns = 0;
+std::vector<int64_t> sleeps;
 
-auto fake_now() -> int64_t { return g_now_ns; }
+auto fake_now() -> int64_t { return now_ns; }
 
 auto fake_sleep_until(int64_t deadline_ns) -> void {
-  g_sleeps.push_back(deadline_ns);
-  g_now_ns = deadline_ns;
+  sleeps.push_back(deadline_ns);
+  now_ns = deadline_ns;
 }
 
 /**
@@ -49,15 +49,15 @@ class ScopedPacerWorld {
         previous_clock_(current_clk_6502) {
     system_state.clks_per_frame = clks_per_frame;
     current_clk_6502 = clock_hz;
-    g_now_ns = 0;
-    g_sleeps.clear();
+    now_ns = 0;
+    sleeps.clear();
   }
 
   ~ScopedPacerWorld() {
     system_state.clks_per_frame = previous_cycles_;
     current_clk_6502 = previous_clock_;
-    g_now_ns = 0;
-    g_sleeps.clear();
+    now_ns = 0;
+    sleeps.clear();
   }
 
   ScopedPacerWorld(const ScopedPacerWorld&) = delete;
@@ -105,15 +105,15 @@ TEST_CASE("Frame Pacer: A Thousand Frames Accumulate Without Drift") {
   FramePacer pacer(fake_now, fake_sleep_until);
 
   constexpr int frames = 1000;
-  const int64_t start = g_now_ns;
+  const int64_t start = now_ns;
   for (int frame = 0; frame < frames; ++frame) {
     pacer.wait_for_next_frame();
   }
 
-  CHECK(g_sleeps.size() == frames);
-  CHECK(g_now_ns - start == frames * NTSC_PERIOD_NS);
+  CHECK(sleeps.size() == frames);
+  CHECK(now_ns - start == frames * NTSC_PERIOD_NS);
   for (int frame = 0; frame < frames; ++frame) {
-    CHECK(g_sleeps[static_cast<size_t>(frame)] ==
+    CHECK(sleeps[static_cast<size_t>(frame)] ==
           start + ((frame + 1) * NTSC_PERIOD_NS));
   }
 }
@@ -127,15 +127,15 @@ TEST_CASE("Frame Pacer: Work Inside The Frame Comes Out Of The Sleep") {
 
   constexpr int64_t work_ns = 8000000;
   constexpr int frames = 100;
-  const int64_t start = g_now_ns;
+  const int64_t start = now_ns;
   for (int frame = 0; frame < frames; ++frame) {
-    g_now_ns += work_ns;
+    now_ns += work_ns;
     pacer.wait_for_next_frame();
   }
 
   // The first frame's work is outside the grid because the deadline is armed
   // on the first wait, which is the only moment the pacer knows anything.
-  CHECK(g_now_ns - start == work_ns + (frames * NTSC_PERIOD_NS));
+  CHECK(now_ns - start == work_ns + (frames * NTSC_PERIOD_NS));
 
   CHECK(work_ns < NTSC_PERIOD_NS);
 }
@@ -146,19 +146,19 @@ TEST_CASE("Frame Pacer: A Frame Or Two Late Is Caught Up, Not Resynced") {
   ScopedPacerWorld world(NTSC_FRAME_CYCLES, clock_6502_ntsc);
   FramePacer pacer(fake_now, fake_sleep_until);
 
-  const int64_t start = g_now_ns;
+  const int64_t start = now_ns;
   pacer.wait_for_next_frame();
 
-  g_now_ns += 2 * NTSC_PERIOD_NS;
-  const size_t sleeps_before = g_sleeps.size();
+  now_ns += 2 * NTSC_PERIOD_NS;
+  const size_t sleeps_before = sleeps.size();
   pacer.wait_for_next_frame();
   pacer.wait_for_next_frame();
-  CHECK(g_sleeps.size() == sleeps_before);
+  CHECK(sleeps.size() == sleeps_before);
 
   // And the third is back on the original grid, not on a new one.
   pacer.wait_for_next_frame();
-  CHECK(g_sleeps.size() == sleeps_before + 1);
-  CHECK(g_sleeps.back() == start + (4 * NTSC_PERIOD_NS));
+  CHECK(sleeps.size() == sleeps_before + 1);
+  CHECK(sleeps.back() == start + (4 * NTSC_PERIOD_NS));
 }
 
 TEST_CASE("Frame Pacer: Falling Far Behind Starts Again From Now") {
@@ -170,17 +170,17 @@ TEST_CASE("Frame Pacer: Falling Far Behind Starts Again From Now") {
   pacer.wait_for_next_frame();
 
   // Ten periods of stall, well past the four-frame tolerance.
-  g_now_ns += 10 * NTSC_PERIOD_NS;
-  const int64_t stalled_at = g_now_ns;
-  const size_t sleeps_before = g_sleeps.size();
+  now_ns += 10 * NTSC_PERIOD_NS;
+  const int64_t stalled_at = now_ns;
+  const size_t sleeps_before = sleeps.size();
   pacer.wait_for_next_frame();
-  CHECK(g_sleeps.size() == sleeps_before);
+  CHECK(sleeps.size() == sleeps_before);
 
   // The very next frame is a full period after the stall ended, so one late
   // frame costs one frame rather than ten.
   pacer.wait_for_next_frame();
-  CHECK(g_sleeps.size() == sleeps_before + 1);
-  CHECK(g_sleeps.back() == stalled_at + NTSC_PERIOD_NS);
+  CHECK(sleeps.size() == sleeps_before + 1);
+  CHECK(sleeps.back() == stalled_at + NTSC_PERIOD_NS);
 }
 
 TEST_CASE("Frame Pacer: Resync Drops The Deadline") {
@@ -190,12 +190,12 @@ TEST_CASE("Frame Pacer: Resync Drops The Deadline") {
   FramePacer pacer(fake_now, fake_sleep_until);
 
   pacer.wait_for_next_frame();
-  g_now_ns += 5 * NTSC_PERIOD_NS;
+  now_ns += 5 * NTSC_PERIOD_NS;
 
   pacer.resync();
-  const int64_t resumed_at = g_now_ns;
+  const int64_t resumed_at = now_ns;
   pacer.wait_for_next_frame();
-  CHECK(g_sleeps.back() == resumed_at + NTSC_PERIOD_NS);
+  CHECK(sleeps.back() == resumed_at + NTSC_PERIOD_NS);
 }
 
 TEST_CASE("Frame Pacer: A Machine Type Change Takes Effect Next Frame") {
@@ -205,10 +205,10 @@ TEST_CASE("Frame Pacer: A Machine Type Change Takes Effect Next Frame") {
   FramePacer pacer(fake_now, fake_sleep_until);
 
   pacer.wait_for_next_frame();
-  const int64_t after_ntsc = g_now_ns;
+  const int64_t after_ntsc = now_ns;
 
   system_state.clks_per_frame = PAL_FRAME_CYCLES;
   current_clk_6502 = clock_6502_pal;
   pacer.wait_for_next_frame();
-  CHECK(g_now_ns - after_ntsc == PAL_PERIOD_NS);
+  CHECK(now_ns - after_ntsc == PAL_PERIOD_NS);
 }

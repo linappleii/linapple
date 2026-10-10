@@ -90,14 +90,14 @@ TEST_CASE("ProgramLoader: [PRG-02] Missing File (FILE_ERROR)") {
 // PRG-03: Zero-Byte and Sub-Header Short Files
 TEST_CASE("ProgramLoader: [PRG-03] Short Files (< 9 bytes) & Zero-Byte Files") {
   setup_clean_machine();
-  TestFixtures::ScopedTempFile_t empty_file(".bin");
+  TestFixtures::ScopedTempFile empty_file(".bin");
   // 0-byte file
   CHECK(program_loader_try_load(empty_file.c_str()) ==
         program_load_not_a_program);
 
   // Files of size 1 to 8 bytes (all < 9 bytes)
   for (size_t sz = 1; sz <= 8; ++sz) {
-    TestFixtures::ScopedTempFile_t short_file(".bin");
+    TestFixtures::ScopedTempFile short_file(".bin");
     std::vector<uint8_t> dummy(sz, 0xEE);
     {
       FilePtr f(fopen(short_file.c_str(), "wb"), fclose);
@@ -115,7 +115,7 @@ TEST_CASE("ProgramLoader: [PRG-03] Short Files (< 9 bytes) & Zero-Byte Files") {
 // PRG-04: Non-Program File Rejection (Preserves Machine State)
 TEST_CASE("ProgramLoader: [PRG-04] DSK Image Detection Failure") {
   setup_clean_machine();
-  TestFixtures::ScopedTempFile_t dsk_file(".dsk");
+  TestFixtures::ScopedTempFile dsk_file(".dsk");
   {
     FilePtr f(fopen(dsk_file.c_str(), "wb"), fclose);
     std::vector<uint8_t> zeroes(143360, 0);
@@ -134,17 +134,17 @@ TEST_CASE("ProgramLoader: [PRG-05] Exact $C000 Boundary Tests") {
   // Case A: Last valid byte in RAM ($BFFF + 1 byte = ends at $C000) -> OK
   {
     setup_clean_machine();
-    TestFixtures::ScopedTempFile_t f_valid(".apl");
+    TestFixtures::ScopedTempFile file_valid(".apl");
     uint16_t addr = ADDR_BFFF;
     uint16_t len = 1;
     uint8_t payload = 0x42;
     {
-      FilePtr f(fopen(f_valid.c_str(), "wb"), fclose);
+      FilePtr f(fopen(file_valid.c_str(), "wb"), fclose);
       fwrite(&addr, 1, 2, f.get());
       fwrite(&len, 1, 2, f.get());
       fwrite(&payload, 1, 1, f.get());
     }
-    CHECK(program_loader_try_load(f_valid.c_str()) == program_load_ok);
+    CHECK(program_loader_try_load(file_valid.c_str()) == program_load_ok);
     CHECK(mem[ADDR_BFFF] == 0x42);
     CHECK(mem[0xBFFE] == SENTINEL_BYTE);     // Guard before
     CHECK(mem[ADDR_C000] == SENTINEL_BYTE);  // Guard at $C000 untouched
@@ -156,17 +156,17 @@ TEST_CASE("ProgramLoader: [PRG-05] Exact $C000 Boundary Tests") {
   // INVALID
   {
     setup_clean_machine();
-    TestFixtures::ScopedTempFile_t f_over(".apl");
+    TestFixtures::ScopedTempFile file_over(".apl");
     uint16_t addr = ADDR_BFFF;
     uint16_t len = 2;
     std::array<uint8_t, 2> payload = {0x11, 0x22};
     {
-      FilePtr f(fopen(f_over.c_str(), "wb"), fclose);
+      FilePtr f(fopen(file_over.c_str(), "wb"), fclose);
       fwrite(&addr, 1, 2, f.get());
       fwrite(&len, 1, 2, f.get());
       fwrite(payload.data(), 1, payload.size(), f.get());
     }
-    CHECK(program_loader_try_load(f_over.c_str()) == program_load_invalid);
+    CHECK(program_loader_try_load(file_over.c_str()) == program_load_invalid);
     assert_memory_unmodified();
     assert_memdirty_unmodified();
     CHECK(cpu_get_registers()->pc == 0x1234);
@@ -175,68 +175,68 @@ TEST_CASE("ProgramLoader: [PRG-05] Exact $C000 Boundary Tests") {
   // Case C: Start exactly at $C000 -> INVALID
   {
     setup_clean_machine();
-    TestFixtures::ScopedTempFile_t f_c000(".apl");
+    TestFixtures::ScopedTempFile file_c000(".apl");
     uint16_t addr = ADDR_C000;
     uint16_t len = 1;
     uint8_t payload = 0xAA;
     {
-      FilePtr f(fopen(f_c000.c_str(), "wb"), fclose);
+      FilePtr f(fopen(file_c000.c_str(), "wb"), fclose);
       fwrite(&addr, 1, 2, f.get());
       fwrite(&len, 1, 2, f.get());
       fwrite(&payload, 1, 1, f.get());
     }
-    CHECK(program_loader_try_load(f_c000.c_str()) == program_load_invalid);
+    CHECK(program_loader_try_load(file_c000.c_str()) == program_load_invalid);
     assert_memory_unmodified();
   }
 
   // Case D: Start at $CFFF -> INVALID
   {
     setup_clean_machine();
-    TestFixtures::ScopedTempFile_t f_cfff(".apl");
+    TestFixtures::ScopedTempFile file_cfff(".apl");
     uint16_t addr = ADDR_CFFF;
     uint16_t len = 1;
     uint8_t payload = 0xAA;
     {
-      FilePtr f(fopen(f_cfff.c_str(), "wb"), fclose);
+      FilePtr f(fopen(file_cfff.c_str(), "wb"), fclose);
       fwrite(&addr, 1, 2, f.get());
       fwrite(&len, 1, 2, f.get());
       fwrite(&payload, 1, 1, f.get());
     }
-    CHECK(program_loader_try_load(f_cfff.c_str()) == program_load_invalid);
+    CHECK(program_loader_try_load(file_cfff.c_str()) == program_load_invalid);
     assert_memory_unmodified();
   }
 
   // Case E: Start at $D000 (Language Card / ROM) -> INVALID
   {
     setup_clean_machine();
-    TestFixtures::ScopedTempFile_t f_d000(".apl");
+    TestFixtures::ScopedTempFile file_d000(".apl");
     uint16_t addr = ADDR_D000;
     uint16_t len = 1;
     uint8_t payload = 0xAA;
     {
-      FilePtr f(fopen(f_d000.c_str(), "wb"), fclose);
+      FilePtr f(fopen(file_d000.c_str(), "wb"), fclose);
       fwrite(&addr, 1, 2, f.get());
       fwrite(&len, 1, 2, f.get());
       fwrite(&payload, 1, 1, f.get());
     }
-    CHECK(program_loader_try_load(f_d000.c_str()) == program_load_invalid);
+    CHECK(program_loader_try_load(file_d000.c_str()) == program_load_invalid);
     assert_memory_unmodified();
   }
 
   // Case F: 16-bit Integer Overflow / Wraparound ($FFFF + 2 bytes) -> INVALID
   {
     setup_clean_machine();
-    TestFixtures::ScopedTempFile_t f_wrap(".apl");
+    TestFixtures::ScopedTempFile file_wrap(".apl");
     uint16_t addr = ADDR_FFFF;
     uint16_t len = 2;
     std::array<uint8_t, 2> payload = {0x01, 0x02};
     {
-      FilePtr f(fopen(f_wrap.c_str(), "wb"), fclose);
+      FilePtr f(fopen(file_wrap.c_str(), "wb"), fclose);
       fwrite(&addr, 1, 2, f.get());
       fwrite(&len, 1, 2, f.get());
       fwrite(payload.data(), 1, payload.size(), f.get());
     }
-    CHECK(program_loader_try_load(f_wrap.c_str()) == program_load_invalid);
+    CHECK(program_loader_try_load(file_wrap.c_str()) == program_load_invalid);
     assert_memory_unmodified();
   }
 }
@@ -247,7 +247,7 @@ TEST_CASE("ProgramLoader: [PRG-06] PRG Magic Validation") {
 
   // Sub-case: Corrupted last magic byte
   {
-    TestFixtures::ScopedTempFile_t bad_magic_file(".prg");
+    TestFixtures::ScopedTempFile bad_magic_file(".prg");
     uint32_t bad_magic = 0x214C4700;  // 0x0A replaced with 0x00
     uint8_t pad1 = 0;
     uint16_t addr = ADDR_1000;
@@ -270,7 +270,7 @@ TEST_CASE("ProgramLoader: [PRG-06] PRG Magic Validation") {
 
   // Sub-case: Big-endian reversed magic
   {
-    TestFixtures::ScopedTempFile_t be_magic_file(".prg");
+    TestFixtures::ScopedTempFile be_magic_file(".prg");
     uint32_t be_magic = 0x0A474C21;
     uint8_t pad1 = 0;
     uint16_t addr = ADDR_1000;
@@ -297,42 +297,42 @@ TEST_CASE("ProgramLoader: [PRG-07] PRG Word Length Arithmetic & Overflow") {
   // Case A: word_len = 0x8000 -> 0x10000 bytes (exceeds $C000) -> INVALID
   {
     setup_clean_machine();
-    TestFixtures::ScopedTempFile_t f_over(".prg");
+    TestFixtures::ScopedTempFile file_over(".prg");
     uint32_t magic = PRG_MAGIC_VAL;
     uint8_t pad1 = 0;
     uint16_t addr = 0x0000;
     uint16_t word_len = 0x8000;  // 32768 words = 65536 bytes
     std::array<uint8_t, 128 - 9> pad{};
     {
-      FilePtr f(fopen(f_over.c_str(), "wb"), fclose);
+      FilePtr f(fopen(file_over.c_str(), "wb"), fclose);
       fwrite(&magic, 1, 4, f.get());
       fwrite(&pad1, 1, 1, f.get());
       fwrite(&addr, 1, 2, f.get());
       fwrite(&word_len, 1, 2, f.get());
       fwrite(pad.data(), 1, pad.size(), f.get());
     }
-    CHECK(program_loader_try_load(f_over.c_str()) == program_load_invalid);
+    CHECK(program_loader_try_load(file_over.c_str()) == program_load_invalid);
     assert_memory_unmodified();
   }
 
   // Case B: word_len = 0xFFFF -> 131070 bytes -> INVALID
   {
     setup_clean_machine();
-    TestFixtures::ScopedTempFile_t f_max(".prg");
+    TestFixtures::ScopedTempFile file_max(".prg");
     uint32_t magic = PRG_MAGIC_VAL;
     uint8_t pad1 = 0;
     uint16_t addr = 0x0000;
     uint16_t word_len = 0xFFFF;
     std::array<uint8_t, 128 - 9> pad{};
     {
-      FilePtr f(fopen(f_max.c_str(), "wb"), fclose);
+      FilePtr f(fopen(file_max.c_str(), "wb"), fclose);
       fwrite(&magic, 1, 4, f.get());
       fwrite(&pad1, 1, 1, f.get());
       fwrite(&addr, 1, 2, f.get());
       fwrite(&word_len, 1, 2, f.get());
       fwrite(pad.data(), 1, pad.size(), f.get());
     }
-    CHECK(program_loader_try_load(f_max.c_str()) == program_load_invalid);
+    CHECK(program_loader_try_load(file_max.c_str()) == program_load_invalid);
     assert_memory_unmodified();
   }
 }
@@ -342,7 +342,7 @@ TEST_CASE("ProgramLoader: [PRG-08] Truncated File Preserves Memory Atomicity") {
   // Case A: APL header claims 200 bytes, but file only has 10 bytes payload
   {
     setup_clean_machine();
-    TestFixtures::ScopedTempFile_t trunc_apl(".apl");
+    TestFixtures::ScopedTempFile trunc_apl(".apl");
     uint16_t addr = ADDR_1000;
     uint16_t len = 200;
     std::array<uint8_t, 10> partial_payload{};
@@ -364,7 +364,7 @@ TEST_CASE("ProgramLoader: [PRG-08] Truncated File Preserves Memory Atomicity") {
   // bytes
   {
     setup_clean_machine();
-    TestFixtures::ScopedTempFile_t trunc_prg(".prg");
+    TestFixtures::ScopedTempFile trunc_prg(".prg");
     uint32_t magic = PRG_MAGIC_VAL;
     uint8_t pad1 = 0;
     uint16_t addr = ADDR_1000;
@@ -390,7 +390,7 @@ TEST_CASE("ProgramLoader: [PRG-08] Truncated File Preserves Memory Atomicity") {
 // PRG-09: APL Sector-Padded File Recognition & Over-read Guard
 TEST_CASE("ProgramLoader: [PRG-09] 256-Byte Sector Padded APL File") {
   setup_clean_machine();
-  TestFixtures::ScopedTempFile_t padded_apl(".apl");
+  TestFixtures::ScopedTempFile padded_apl(".apl");
 
   uint16_t addr = ADDR_0800;
   uint16_t len = 10;  // 10 bytes payload
@@ -429,7 +429,7 @@ TEST_CASE("ProgramLoader: [PRG-10] Zero-Length Payloads (len = 0)") {
   // APL with len = 0 (file size = 4 bytes)
   {
     setup_clean_machine();
-    TestFixtures::ScopedTempFile_t empty_apl(".apl");
+    TestFixtures::ScopedTempFile empty_apl(".apl");
     uint16_t addr = ADDR_1000;
     uint16_t len = 0;
     {
@@ -444,7 +444,7 @@ TEST_CASE("ProgramLoader: [PRG-10] Zero-Length Payloads (len = 0)") {
   // PRG with word_len = 0 (header 128 bytes, 0 payload)
   {
     setup_clean_machine();
-    TestFixtures::ScopedTempFile_t empty_prg(".prg");
+    TestFixtures::ScopedTempFile empty_prg(".prg");
     uint32_t magic = PRG_MAGIC_VAL;
     uint8_t pad1 = 0;
     uint16_t addr = ADDR_1000;
@@ -468,7 +468,7 @@ TEST_CASE("ProgramLoader: [PRG-10] Zero-Length Payloads (len = 0)") {
 // PRG-11: Full APL Loading & DOS 3.3 Vectors
 TEST_CASE("ProgramLoader: [PRG-11] Full APL Loading & Side-Effects") {
   setup_clean_machine();
-  TestFixtures::ScopedTempFile_t test_apl(".apl");
+  TestFixtures::ScopedTempFile test_apl(".apl");
   std::array<uint8_t, 16> data{};
   for (size_t i = 0; i < data.size(); ++i) {
     data[i] = static_cast<uint8_t>(i + 1);
@@ -502,7 +502,7 @@ TEST_CASE("ProgramLoader: [PRG-11] Full APL Loading & Side-Effects") {
 // PRG-12: Full PRG Loading & DOS 3.3 Vectors
 TEST_CASE("ProgramLoader: [PRG-12] Full PRG Loading & Side-Effects") {
   setup_clean_machine();
-  TestFixtures::ScopedTempFile_t test_prg(".prg");
+  TestFixtures::ScopedTempFile test_prg(".prg");
   std::array<uint8_t, 16> data{};
   for (size_t i = 0; i < data.size(); ++i) {
     data[i] = static_cast<uint8_t>(0xAA ^ i);
@@ -565,7 +565,7 @@ TEST_CASE("ProgramLoader: [PRG-13] Result Enum Properties and Interop") {
 TEST_CASE(
     "ProgramLoader: [PRG-14] Pure Stream Inspection (Zero Side-Effects)") {
   setup_clean_machine();
-  TestFixtures::ScopedTempFile_t test_apl(".apl");
+  TestFixtures::ScopedTempFile test_apl(".apl");
   uint16_t addr = 0x2000;
   uint16_t len = 64;
   std::vector<uint8_t> payload(64, 0x33);
@@ -596,7 +596,7 @@ TEST_CASE(
 // PRG-15: Raw Binary Program Loading
 TEST_CASE("ProgramLoader: [PRG-15] Raw Binary Loading") {
   setup_clean_machine();
-  TestFixtures::ScopedTempFile_t test_bin(".bin");
+  TestFixtures::ScopedTempFile test_bin(".bin");
   std::vector<uint8_t> bin_data(256, 0x77);
   {
     FilePtr f(fopen(test_bin.c_str(), "wb"), fclose);

@@ -264,7 +264,7 @@ struct ResamplerState {
 struct AudioSourceSlot {
   // Read on the audio thread, written on the emulation thread.
   std::atomic<bool> active{false};
-  PeripheralAudioInfo_t info{};
+  PeripheralAudioInfo info{};
   std::array<ChannelPan, max_channels_per_slot> pan{};
   std::array<ResamplerState, max_channels_per_slot> resampler{};
   float gain = 1.0F;
@@ -274,7 +274,7 @@ struct AudioSourceSlot {
 std::array<AudioSourceSlot, max_audio_slots> mixer_slots;
 AudioChannelTapCallback channel_tap_cb = nullptr;
 
-auto source_rate_hz(const PeripheralAudioInfo_t& info) -> double {
+auto source_rate_hz(const PeripheralAudioInfo& info) -> double {
   if (info.time_base == peripheral_audio_cpu_clocked) {
     const uint32_t divisor = (info.cycle_divisor == 0) ? 1 : info.cycle_divisor;
     return current_clk_6502 / static_cast<double>(divisor);
@@ -290,7 +290,7 @@ auto source_rate_hz(const PeripheralAudioInfo_t& info) -> double {
 // spend the music on the clip rail. The floor of one keeps a source that pans
 // a single channel part-way from being amplified instead. The speaker's one
 // channel at (1, 1) leaves its 1/2.0 untouched.
-auto default_source_gain(const PeripheralAudioInfo_t& info) -> float {
+auto default_source_gain(const PeripheralAudioInfo& info) -> float {
   if (info.peak_magnitude <= 0.0F) {
     return 1.0F;
   }
@@ -388,7 +388,7 @@ auto audio_mixer_initialize(uint32_t output_rate_hz_val) -> void {
     }
     sample_buffer_reinit(mixer_slots[i].buffer.get());
     mixer_slots[i].active.store(false, std::memory_order_relaxed);
-    mixer_slots[i].info = PeripheralAudioInfo_t{};
+    mixer_slots[i].info = PeripheralAudioInfo{};
     mixer_slots[i].gain = 1.0F;
     for (size_t c = 0; c < max_channels_per_slot; ++c) {
       mixer_slots[i].pan[c] = {1.0F, 1.0F};
@@ -416,8 +416,8 @@ auto audio_mixer_clear_buffers() -> void {
   }
 }
 
-static auto audio_info_equal(const PeripheralAudioInfo_t& a,
-                             const PeripheralAudioInfo_t& b) -> bool {
+static auto audio_info_equal(const PeripheralAudioInfo& a,
+                             const PeripheralAudioInfo& b) -> bool {
   if (a.time_base != b.time_base || a.cycle_divisor != b.cycle_divisor ||
       a.sample_rate != b.sample_rate || a.num_channels != b.num_channels ||
       a.peak_magnitude != b.peak_magnitude) {
@@ -436,14 +436,14 @@ static auto audio_info_equal(const PeripheralAudioInfo_t& a,
 }
 
 auto audio_mixer_register_source(int slot, const char* peripheral_id,
-                                 const PeripheralAudioInfo_t* info) -> void {
+                                 const PeripheralAudioInfo* info) -> void {
   (void)peripheral_id;
   if (slot < 0 || slot >= static_cast<int>(max_audio_slots) ||
       info == nullptr) {
     return;
   }
   // A source that cannot say what its samples mean in time cannot be
-  // resampled, and a zeroed PeripheralAudioInfo_t is invalid by construction
+  // resampled, and a zeroed PeripheralAudioInfo is invalid by construction
   // because the time-base enumeration starts at one.
   if (info->time_base != peripheral_audio_cpu_clocked &&
       info->time_base != peripheral_audio_absolute) {
@@ -566,15 +566,15 @@ auto audio_mixer_upload_channels(const char* peripheral_id, int slot,
 
     std::array<float, resample_scratch_frames * 2> stereo_chunk{};
     for (size_t i = 0; i < produced; ++i) {
-      float l_acc = 0.0F;
-      float r_acc = 0.0F;
+      float left_acc = 0.0F;
+      float right_acc = 0.0F;
       for (size_t c = 0; c < num_channels; ++c) {
         const float sample = resampled[c][i] * s.gain;
-        l_acc += sample * s.pan[c].left;
-        r_acc += sample * s.pan[c].right;
+        left_acc += sample * s.pan[c].left;
+        right_acc += sample * s.pan[c].right;
       }
-      stereo_chunk[i * 2] = l_acc;
-      stereo_chunk[(i * 2) + 1] = r_acc;
+      stereo_chunk[i * 2] = left_acc;
+      stereo_chunk[(i * 2) + 1] = right_acc;
     }
 
     sample_buffer_upload(s.buffer.get(), stereo_chunk.data(), produced * 2);

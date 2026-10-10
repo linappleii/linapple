@@ -31,10 +31,10 @@
 
 namespace {
 
-using TestFixtures::ScopedLogCapture_t;
-using TestFixtures::ScopedTempDir_t;
-using TestFixtures::ScopedTempFile_t;
-using TestFixtures::ScopedTestConfig_t;
+using TestFixtures::ScopedLogCapture;
+using TestFixtures::ScopedTempDir;
+using TestFixtures::ScopedTempFile;
+using TestFixtures::ScopedTestConfig;
 
 constexpr int card_slot = 2;
 constexpr int second_card_slot = 4;
@@ -42,9 +42,9 @@ constexpr int peer_wait_ms = 2000;
 
 auto serial_in_slot_2(
     const std::string& port,
-    const std::vector<ScopedTestConfig_t::Entry_t>& extras = {})
-    -> ScopedTestConfig_t::Description_t {
-  ScopedTestConfig_t::Description_t description;
+    const std::vector<ScopedTestConfig::Entry>& extras = {})
+    -> ScopedTestConfig::Description {
+  ScopedTestConfig::Description description;
   description.slots[card_slot - 1] = "Super Serial Card";
   description.extras.push_back({"Configuration", "Serial Port", port});
   for (const auto& entry : extras) {
@@ -53,27 +53,27 @@ auto serial_in_slot_2(
   return description;
 }
 
-auto sink() -> const ByteSink_t& { return super_serial_frontend_sink(); }
+auto sink() -> const ByteSink& { return super_serial_frontend_sink(); }
 
 auto read_switch_register(int slot, int offset) -> uint8_t {
   const auto address = static_cast<uint16_t>(0xC080 + (slot * 0x10) + offset);
   return io_map_dispatch(0, address, 0, 0, 0);
 }
 
-class Peer_t {
+class Peer {
  public:
-  explicit Peer_t(const std::string& path)
+  explicit Peer(const std::string& path)
       : fd_(open(path.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK)),
         error_(errno) {}
-  ~Peer_t() {
+  ~Peer() {
     if (fd_ >= 0) {
       close(fd_);
     }
   }
-  Peer_t(const Peer_t&) = delete;
-  auto operator=(const Peer_t&) -> Peer_t& = delete;
-  Peer_t(Peer_t&&) = delete;
-  auto operator=(Peer_t&&) -> Peer_t& = delete;
+  Peer(const Peer&) = delete;
+  auto operator=(const Peer&) -> Peer& = delete;
+  Peer(Peer&&) = delete;
+  auto operator=(Peer&&) -> Peer& = delete;
 
   auto fd() const -> int { return fd_; }
   auto error_text() const -> const char* { return std::strerror(error_); }
@@ -106,13 +106,13 @@ class Peer_t {
   // One wait overall, so a stream that stops short fails on its contents
   // rather than on time.
   auto read_bytes(size_t count) const -> std::vector<uint8_t> {
-    using Clock_t = std::chrono::steady_clock;
+    using Clock = std::chrono::steady_clock;
     const auto deadline =
-        Clock_t::now() + std::chrono::milliseconds(peer_wait_ms);
+        Clock::now() + std::chrono::milliseconds(peer_wait_ms);
     std::vector<uint8_t> out;
     while (out.size() < count) {
       const auto left = std::chrono::duration_cast<std::chrono::milliseconds>(
-          deadline - Clock_t::now());
+          deadline - Clock::now());
       if (left.count() <= 0) {
         break;
       }
@@ -169,39 +169,39 @@ auto write_file(const std::string& path, const std::string& text) -> void {
   out << text;
 }
 
-struct TokenProbe_t {
-  HostInterface_t* host = nullptr;
+struct TokenProbe {
+  HostInterface* host = nullptr;
   void* token = nullptr;
   int slot = 0;
 };
 
-TokenProbe_t g_serial_probe;
-TokenProbe_t g_printer_probe;
+TokenProbe serial_probe;
+TokenProbe printer_probe;
 
-auto serial_probe_init(int slot, HostInterface_t* host) -> void* {
-  g_serial_probe = TokenProbe_t();
-  g_serial_probe.host = host;
-  g_serial_probe.slot = slot;
-  g_serial_probe.token =
-      host->SinkOpen(&g_serial_probe, slot, peripheral_sink_serial);
-  return &g_serial_probe;
+auto serial_probe_init(int slot, HostInterface* host) -> void* {
+  serial_probe = TokenProbe();
+  serial_probe.host = host;
+  serial_probe.slot = slot;
+  serial_probe.token =
+      host->SinkOpen(&serial_probe, slot, peripheral_sink_serial);
+  return &serial_probe;
 }
 
-auto printer_probe_init(int slot, HostInterface_t* host) -> void* {
-  g_printer_probe = TokenProbe_t();
-  g_printer_probe.host = host;
-  g_printer_probe.slot = slot;
-  g_printer_probe.token =
-      host->SinkOpen(&g_printer_probe, slot, peripheral_sink_printer);
-  return &g_printer_probe;
+auto printer_probe_init(int slot, HostInterface* host) -> void* {
+  printer_probe = TokenProbe();
+  printer_probe.host = host;
+  printer_probe.slot = slot;
+  printer_probe.token =
+      host->SinkOpen(&printer_probe, slot, peripheral_sink_printer);
+  return &printer_probe;
 }
 
 auto probe_shutdown(void* instance) -> void {
-  auto* probe = static_cast<TokenProbe_t*>(instance);
+  auto* probe = static_cast<TokenProbe*>(instance);
   probe->host->SinkClose(probe->token);
 }
 
-Peripheral_t g_serial_probe_card = {
+Peripheral serial_probe_card = {
     LINAPPLE_ABI_VERSION,
     "test.serial_token_probe",
     "SerialTokenProbe",
@@ -221,7 +221,7 @@ Peripheral_t g_serial_probe_card = {
     nullptr,
 };
 
-Peripheral_t g_printer_probe_card = {
+Peripheral printer_probe_card = {
     LINAPPLE_ABI_VERSION,
     "test.printer_token_probe",
     "PrinterTokenProbe",
@@ -249,29 +249,29 @@ constexpr int printer_probe_slot = 5;
 TEST_CASE(
     "Serial Frontend: the frontend's sink is installed, and a serial token "
     "opened through it reads no byte and reports no lines") {
-  ScopedTestConfig_t config(ScopedTestConfig_t::enhanced_2e_only());
-  HeadlessHarness_t harness(config);
-  REQUIRE(peripheral_register(&g_serial_probe_card, serial_probe_slot) == 0);
-  REQUIRE(peripheral_register(&g_printer_probe_card, printer_probe_slot) == 0);
-  REQUIRE(g_serial_probe.token != nullptr);
-  REQUIRE(g_printer_probe.token != nullptr);
-  HostInterface_t* host = g_serial_probe.host;
+  ScopedTestConfig config(ScopedTestConfig::enhanced_2e_only());
+  HeadlessHarness harness(config);
+  REQUIRE(peripheral_register(&serial_probe_card, serial_probe_slot) == 0);
+  REQUIRE(peripheral_register(&printer_probe_card, printer_probe_slot) == 0);
+  REQUIRE(serial_probe.token != nullptr);
+  REQUIRE(printer_probe.token != nullptr);
+  HostInterface* host = serial_probe.host;
 
   // A printer slot is ready the moment it is opened, which proves the
   // dispatcher is in and forwarding by kind.
-  CHECK(host->SinkReady(g_printer_probe.token));
+  CHECK(host->SinkReady(printer_probe.token));
 
   uint8_t byte = 0x5A;
-  CHECK(host->SinkRead(g_serial_probe.token, &byte) == false);
+  CHECK(host->SinkRead(serial_probe.token, &byte) == false);
   CHECK(byte == 0x5A);
   uint8_t lines = 0xA5;
-  CHECK(host->SinkGetLines(g_serial_probe.token, &lines) == false);
+  CHECK(host->SinkGetLines(serial_probe.token, &lines) == false);
   CHECK(lines == 0xA5);
-  CHECK(host->SinkReady(g_serial_probe.token) == false);
-  host->SinkWrite(g_serial_probe.token, 0xC8);
-  const PeripheralSerialLine_t line = {9600, 8, 0, 2, 1, 1, 0, {0, 0}};
-  host->SinkSetLine(g_serial_probe.token, &line);
-  CHECK(host->SinkRead(g_serial_probe.token, &byte) == false);
+  CHECK(host->SinkReady(serial_probe.token) == false);
+  host->SinkWrite(serial_probe.token, 0xC8);
+  const PeripheralSerialLine line = {9600, 8, 0, 2, 1, 1, 0, {0, 0}};
+  host->SinkSetLine(serial_probe.token, &line);
+  CHECK(host->SinkRead(serial_probe.token, &byte) == false);
   CHECK(byte == 0x5A);
 
   peripheral_unregister(serial_probe_slot);
@@ -282,15 +282,15 @@ TEST_CASE(
     "Serial Frontend: Serial Port = pty creates a pseudo-terminal whose peer "
     "receives what the card writes, and a byte the peer writes reaches read "
     "within one tick") {
-  ScopedTestConfig_t config(serial_in_slot_2("pty"));
-  ScopedLogCapture_t log;
-  HeadlessHarness_t harness(config);
+  ScopedTestConfig config(serial_in_slot_2("pty"));
+  ScopedLogCapture log;
+  HeadlessHarness harness(config);
   REQUIRE(super_serial_frontend_primary_slot() == card_slot);
   const std::string path = super_serial_frontend_device_path(card_slot);
   REQUIRE_MESSAGE(!path.empty(),
                   "the pseudo-terminal could not be created: " << log.joined());
   CHECK(path.rfind("/dev/pts/", 0) == 0);
-  Peer_t peer(path);
+  Peer peer(path);
   REQUIRE_MESSAGE(peer.fd() >= 0,
                   "cannot open " << path << ": " << peer.error_text());
 
@@ -321,15 +321,15 @@ TEST_CASE(
     "Serial Frontend: a peer that writes and closes is followed by a second "
     "peer on the same path, which still crosses a byte each way, with no log "
     "line for the gap") {
-  ScopedTestConfig_t config(serial_in_slot_2("pty"));
-  HeadlessHarness_t harness(config);
+  ScopedTestConfig config(serial_in_slot_2("pty"));
+  HeadlessHarness harness(config);
   const std::string path = super_serial_frontend_device_path(card_slot);
   REQUIRE(!path.empty());
-  ScopedLogCapture_t log;
+  ScopedLogCapture log;
 
   uint8_t byte = 0;
   {
-    Peer_t first(path);
+    Peer first(path);
     REQUIRE_MESSAGE(first.fd() >= 0, first.error_text());
     REQUIRE(first.write_byte(0x31));
     sink().tick(nullptr);
@@ -348,7 +348,7 @@ TEST_CASE(
   CHECK(lines == 0x07);
 
   {
-    Peer_t second(path);
+    Peer second(path);
     REQUIRE_MESSAGE(second.fd() >= 0, second.error_text());
     sink().write(nullptr, card_slot, 0x33);
     CHECK(second.read_byte() == 0x33);
@@ -363,8 +363,8 @@ TEST_CASE(
 TEST_CASE(
     "Serial Frontend: Serial Port = loopback returns the byte the card "
     "writes to the same slot") {
-  ScopedTestConfig_t config(serial_in_slot_2("loopback"));
-  HeadlessHarness_t harness(config);
+  ScopedTestConfig config(serial_in_slot_2("loopback"));
+  HeadlessHarness harness(config);
   REQUIRE(super_serial_frontend_primary_slot() == card_slot);
   CHECK(super_serial_frontend_device_path(card_slot).empty());
   CHECK(sink().ready(nullptr, card_slot));
@@ -386,8 +386,8 @@ TEST_CASE(
 TEST_CASE(
     "Serial Frontend: an empty Serial Port drops writes, reads nothing, "
     "reports no lines and is not ready") {
-  ScopedTestConfig_t config(serial_in_slot_2(""));
-  HeadlessHarness_t harness(config);
+  ScopedTestConfig config(serial_in_slot_2(""));
+  HeadlessHarness harness(config);
   REQUIRE(super_serial_frontend_primary_slot() == card_slot);
   CHECK(super_serial_frontend_device_path(card_slot).empty());
 
@@ -406,11 +406,11 @@ TEST_CASE(
     "Serial Frontend: a path that cannot be opened is logged once, reads "
     "nothing, reports CTS deasserted, and is retried after sixty ticks, not "
     "before") {
-  ScopedTempDir_t dir("linapple_serial_test_");
+  ScopedTempDir dir("linapple_serial_test_");
   const std::string path = dir.path() + "/line.txt";
-  ScopedTestConfig_t config(serial_in_slot_2(path));
-  ScopedLogCapture_t log;
-  HeadlessHarness_t harness(config);
+  ScopedTestConfig config(serial_in_slot_2(path));
+  ScopedLogCapture log;
+  HeadlessHarness harness(config);
   REQUIRE(super_serial_frontend_primary_slot() == card_slot);
   CHECK(super_serial_frontend_device_path(card_slot) == path);
   CHECK(log.count_containing("cannot open") == 1);
@@ -443,11 +443,11 @@ TEST_CASE(
 TEST_CASE(
     "Serial Frontend: a regular file receives the written bytes after what "
     "it held and delivers none") {
-  ScopedTempFile_t file(".txt");
+  ScopedTempFile file(".txt");
   write_file(file.path(), "AB");
-  ScopedTestConfig_t config(serial_in_slot_2(file.path()));
-  ScopedLogCapture_t log;
-  HeadlessHarness_t harness(config);
+  ScopedTestConfig config(serial_in_slot_2(file.path()));
+  ScopedLogCapture log;
+  HeadlessHarness harness(config);
   REQUIRE(super_serial_frontend_primary_slot() == card_slot);
   CHECK(sink().ready(nullptr, card_slot));
 
@@ -469,9 +469,9 @@ TEST_CASE(
 TEST_CASE(
     "Serial Frontend: /dev/null is a character device that is not a tty, "
     "takes writes, delivers nothing and logs nothing") {
-  ScopedTestConfig_t config(serial_in_slot_2("/dev/null"));
-  ScopedLogCapture_t log;
-  HeadlessHarness_t harness(config);
+  ScopedTestConfig config(serial_in_slot_2("/dev/null"));
+  ScopedLogCapture log;
+  HeadlessHarness harness(config);
   REQUIRE(super_serial_frontend_primary_slot() == card_slot);
   CHECK(sink().ready(nullptr, card_slot));
 
@@ -484,7 +484,7 @@ TEST_CASE(
   uint8_t lines = 0;
   CHECK(sink().get_lines(nullptr, card_slot, &lines));
   CHECK(lines == 0x07);
-  const PeripheralSerialLine_t line = {9600, 8, 0, 2, 1, 1, 0, {0, 0}};
+  const PeripheralSerialLine line = {9600, 8, 0, 2, 1, 1, 0, {0, 0}};
   sink().set_line(nullptr, card_slot, &line);
   INFO(log.joined());
   CHECK(log.count_containing("serial port") == 0);
@@ -495,14 +495,14 @@ TEST_CASE(
     "Serial Frontend: set_line at 9600 8N1 sets B9600, CS8, no PARENB and no "
     "CSTOPB on the pseudo-terminal, odd parity sets PARODD, 7E2 sets CSTOPB "
     "and B300 (a pseudo-terminal forces CS8), and baud 0 leaves the speed") {
-  ScopedTestConfig_t config(serial_in_slot_2("pty"));
-  HeadlessHarness_t harness(config);
+  ScopedTestConfig config(serial_in_slot_2("pty"));
+  HeadlessHarness harness(config);
   const std::string path = super_serial_frontend_device_path(card_slot);
   REQUIRE(!path.empty());
-  Peer_t peer(path);
+  Peer peer(path);
   REQUIRE_MESSAGE(peer.fd() >= 0, peer.error_text());
 
-  PeripheralSerialLine_t line = {
+  PeripheralSerialLine line = {
       9600, 8, peripheral_serial_parity_none, 2, 1, 1, 0, {0, 0},
   };
   sink().set_line(nullptr, card_slot, &line);
@@ -548,34 +548,34 @@ TEST_CASE(
     "is logged once, an empty row falls back silently, and a well-formed row "
     "in either case reaches the card") {
   SUBCASE("a malformed first row and an empty second row") {
-    ScopedTestConfig_t config(serial_in_slot_2(
+    ScopedTestConfig config(serial_in_slot_2(
         "", {
                 {"Configuration", "Serial Switches 1", "ON ON MAYBE"},
                 {"Configuration", "Serial Switches 2", ""},
             }));
-    ScopedLogCapture_t log;
-    HeadlessHarness_t harness(config);
+    ScopedLogCapture log;
+    HeadlessHarness harness(config);
     CHECK(read_switch_register(card_slot, 1) == 0xEC);
     CHECK(read_switch_register(card_slot, 2) == 0x52);
     CHECK(log.count_containing("Serial Switches 1") == 1);
     CHECK(log.count_containing("Serial Switches 2") == 0);
   }
   SUBCASE("six tokens and eight tokens are both malformed") {
-    ScopedTestConfig_t config(serial_in_slot_2(
+    ScopedTestConfig config(serial_in_slot_2(
         "",
         {
             {"Configuration", "Serial Switches 1", "ON ON ON ON ON ON"},
             {"Configuration", "Serial Switches 2", "ON ON ON ON ON ON ON ON"},
         }));
-    ScopedLogCapture_t log;
-    HeadlessHarness_t harness(config);
+    ScopedLogCapture log;
+    HeadlessHarness harness(config);
     CHECK(read_switch_register(card_slot, 1) == 0xEC);
     CHECK(read_switch_register(card_slot, 2) == 0x52);
     CHECK(log.count_containing("Serial Switches 1") == 1);
     CHECK(log.count_containing("Serial Switches 2") == 1);
   }
   SUBCASE("the manual's printer-mode rows, in any case and with commas") {
-    ScopedTestConfig_t config(serial_in_slot_2(
+    ScopedTestConfig config(serial_in_slot_2(
         "",
         {
             {"Configuration", "Serial Switches 1", "off off off on off on on"},
@@ -585,8 +585,8 @@ TEST_CASE(
                 "ON, ON, OFF, ON, OFF, OFF, OFF",
             },
         }));
-    ScopedLogCapture_t log;
-    HeadlessHarness_t harness(config);
+    ScopedLogCapture log;
+    HeadlessHarness harness(config);
     CHECK(read_switch_register(card_slot, 1) == 0xEE);
     CHECK(read_switch_register(card_slot, 2) == 0x5A);
     CHECK(log.count_containing("Serial Switches") == 0);
@@ -596,10 +596,10 @@ TEST_CASE(
 TEST_CASE(
     "Serial Frontend: with two cards the lower slot is the primary, and the "
     "second reads no lines and drops writes") {
-  ScopedTestConfig_t::Description_t description = serial_in_slot_2("loopback");
+  ScopedTestConfig::Description description = serial_in_slot_2("loopback");
   description.slots[second_card_slot - 1] = "Super Serial Card";
-  ScopedTestConfig_t config(description);
-  HeadlessHarness_t harness(config);
+  ScopedTestConfig config(description);
+  HeadlessHarness harness(config);
   REQUIRE(super_serial_frontend_primary_slot() == card_slot);
   CHECK(super_serial_frontend_device_path(second_card_slot).empty());
 
@@ -624,12 +624,12 @@ TEST_CASE(
 TEST_CASE(
     "Serial Frontend: configure with no card in any slot sends nothing, has "
     "no primary and opens no device") {
-  ScopedTestConfig_t::Description_t description =
-      ScopedTestConfig_t::enhanced_2e_only();
+  ScopedTestConfig::Description description =
+      ScopedTestConfig::enhanced_2e_only();
   description.extras.push_back({"Configuration", "Serial Port", "loopback"});
-  ScopedTestConfig_t config(description);
-  ScopedLogCapture_t log;
-  HeadlessHarness_t harness(config);
+  ScopedTestConfig config(description);
+  ScopedLogCapture log;
+  HeadlessHarness harness(config);
   CHECK(super_serial_frontend_primary_slot() == 0);
   for (int slot = 1; slot <= 7; ++slot) {
     CHECK(super_serial_frontend_device_path(slot).empty());
@@ -646,7 +646,7 @@ namespace {
 constexpr uint32_t prompt_frame_cap = 300;
 constexpr uint32_t session_frame_cap = 60;
 
-auto screen_has_row(const HeadlessHarness_t& harness, const std::string& text)
+auto screen_has_row(const HeadlessHarness& harness, const std::string& text)
     -> bool {
   for (int row = 0; row < 24; ++row) {
     if (harness.get_text_row(row) == text) {
@@ -657,7 +657,7 @@ auto screen_has_row(const HeadlessHarness_t& harness, const std::string& text)
 }
 
 // No disk controller, so the Autostart scan falls through to Applesoft.
-auto boot_to_prompt(HeadlessHarness_t& harness) -> void {
+auto boot_to_prompt(HeadlessHarness& harness) -> void {
   harness.boot();
   uint32_t frames = 0;
   while (!screen_has_row(harness, "]") && frames < prompt_frame_cap) {
@@ -669,8 +669,8 @@ auto boot_to_prompt(HeadlessHarness_t& harness) -> void {
 }
 
 // The cap turns a byte that never arrives into a failed check, not a hang.
-template <typename Condition_t>
-auto run_frames_until(HeadlessHarness_t& harness, Condition_t condition)
+template <typename Condition>
+auto run_frames_until(HeadlessHarness& harness, Condition condition)
     -> uint32_t {
   uint32_t frames = 0;
   while (!condition() && frames < session_frame_cap) {
@@ -693,7 +693,7 @@ auto clear_input_buffer() -> void {
 }
 #endif
 
-auto open_peer(const ScopedLogCapture_t& log) -> std::string {
+auto open_peer(const ScopedLogCapture& log) -> std::string {
   REQUIRE(super_serial_frontend_primary_slot() == card_slot);
   const std::string path = super_serial_frontend_device_path(card_slot);
   REQUIRE_MESSAGE(!path.empty(),
@@ -710,10 +710,10 @@ TEST_CASE(
     "Serial Frontend: IN#2 at the Applesoft prompt takes HELLO written to the "
     "pseudo-terminal's peer into the input buffer, and the next line the peer "
     "writes is executed") {
-  ScopedTestConfig_t config(serial_in_slot_2("pty"));
-  ScopedLogCapture_t log;
-  HeadlessHarness_t harness(config);
-  Peer_t peer(open_peer(log));
+  ScopedTestConfig config(serial_in_slot_2("pty"));
+  ScopedLogCapture log;
+  HeadlessHarness harness(config);
+  Peer peer(open_peer(log));
   REQUIRE_MESSAGE(peer.fd() >= 0, peer.error_text());
   boot_to_prompt(harness);
 
@@ -750,10 +750,10 @@ TEST_CASE(
     "Serial Frontend: PR#2 at the Applesoft prompt programs the line the peer "
     "sees to 9600 baud and streams the session to the pseudo-terminal's peer "
     "with bit 7 set and no line feeds") {
-  ScopedTestConfig_t config(serial_in_slot_2("pty"));
-  ScopedLogCapture_t log;
-  HeadlessHarness_t harness(config);
-  Peer_t peer(open_peer(log));
+  ScopedTestConfig config(serial_in_slot_2("pty"));
+  ScopedLogCapture log;
+  HeadlessHarness harness(config);
+  Peer peer(open_peer(log));
   REQUIRE_MESSAGE(peer.fd() >= 0, peer.error_text());
   boot_to_prompt(harness);
   CHECK(peer.has_byte() == false);
@@ -786,14 +786,14 @@ TEST_CASE(
     "Serial Frontend: the switch keys set to the manual's printer-mode rows "
     "reach the card before the first frame, so $C0A1 reads $EE and $C0A2 "
     "reads $5A with no think between") {
-  ScopedTestConfig_t config(serial_in_slot_2(
+  ScopedTestConfig config(serial_in_slot_2(
       "pty",
       {
           {"Configuration", "Serial Switches 1", "OFF OFF OFF ON OFF ON ON"},
           {"Configuration", "Serial Switches 2", "ON ON OFF ON OFF OFF OFF"},
       }));
-  ScopedLogCapture_t log;
-  HeadlessHarness_t harness(config);
+  ScopedLogCapture log;
+  HeadlessHarness harness(config);
   open_peer(log);
   // No frame or think has run since the constructor: configure itself
   // drained the switch command.

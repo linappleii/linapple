@@ -47,14 +47,14 @@ auto save_state_set_filename(const char* filename) -> void {
 // backward compatibility.
 static auto snapshot_layout_size(size_t file_size) -> size_t {
   if (file_size == snapshot_size_fixed_body ||
-      file_size == sizeof(Snapshot_t)) {
+      file_size == sizeof(Snapshot)) {
     return file_size;
   }
   return 0;
 }
 
 auto save_state_load() -> bool {
-  auto snapshot = std::unique_ptr<Snapshot_t>(new Snapshot_t());
+  auto snapshot = std::unique_ptr<Snapshot>(new Snapshot());
   const char* filename = resolve_snapshot_filename();
 
   FilePtr file{fopen(filename, "rb"), fclose};
@@ -83,7 +83,7 @@ auto save_state_load() -> bool {
 
   auto* body = reinterpret_cast<uint8_t*>(snapshot.get()) + header_read;
   const size_t body_read =
-      fread(body, 1, sizeof(Snapshot_t) - header_read, file.get());
+      fread(body, 1, sizeof(Snapshot) - header_read, file.get());
   const bool at_end = (fgetc(file.get()) == EOF);
   file.reset();
 
@@ -93,7 +93,7 @@ auto save_state_load() -> bool {
         "Save state file %s is %s%zu bytes; a save state is %zu bytes, or %zu "
         "with the slot trailer\n",
         filename, at_end ? "" : "more than ", file_size,
-        snapshot_size_fixed_body, sizeof(Snapshot_t));
+        snapshot_size_fixed_body, sizeof(Snapshot));
     return false;
   }
 
@@ -109,7 +109,7 @@ auto save_state_load() -> bool {
 }
 
 auto save_state_save() -> void {
-  auto snapshot = std::unique_ptr<Snapshot_t>(new Snapshot_t());
+  auto snapshot = std::unique_ptr<Snapshot>(new Snapshot());
   snapshot_serialize(snapshot.get());
 
   const char* filename = resolve_snapshot_filename();
@@ -123,16 +123,16 @@ auto save_state_save() -> void {
   }
 
   const size_t bytes_written =
-      fwrite(snapshot.get(), 1, sizeof(Snapshot_t), file.get());
+      fwrite(snapshot.get(), 1, sizeof(Snapshot), file.get());
   const bool flush_ok = (fflush(file.get()) == 0);
   file.reset();
 
-  if (bytes_written != sizeof(Snapshot_t) || !flush_ok) {
+  if (bytes_written != sizeof(Snapshot) || !flush_ok) {
     unlink(temp_filename.c_str());
     Logger::error(
         "Failed to write complete save state data to %s (wrote %zu of %zu "
         "bytes)\n",
-        filename, bytes_written, sizeof(Snapshot_t));
+        filename, bytes_written, sizeof(Snapshot));
     return;
   }
 

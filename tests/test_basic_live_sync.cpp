@@ -36,22 +36,22 @@ constexpr uint8_t val_himem_h = 0x96;
 
 std::array<uint8_t, test_mem_size> mock_ram{};
 
-struct ScopedMemoryContext_t {
+struct ScopedMemoryContext {
   uint8_t* original_mem{mem};
   Apple2Type original_type{current_apple2_type};
 
-  ScopedMemoryContext_t() = default;
+  ScopedMemoryContext() = default;
 
-  ~ScopedMemoryContext_t() {
+  ~ScopedMemoryContext() {
     mem = original_mem;
     current_apple2_type = original_type;
   }
 
-  ScopedMemoryContext_t(const ScopedMemoryContext_t&) = delete;
-  auto operator=(const ScopedMemoryContext_t&)
-      -> ScopedMemoryContext_t& = delete;
-  ScopedMemoryContext_t(ScopedMemoryContext_t&&) = delete;
-  auto operator=(ScopedMemoryContext_t&&) -> ScopedMemoryContext_t& = delete;
+  ScopedMemoryContext(const ScopedMemoryContext&) = delete;
+  auto operator=(const ScopedMemoryContext&)
+      -> ScopedMemoryContext& = delete;
+  ScopedMemoryContext(ScopedMemoryContext&&) = delete;
+  auto operator=(ScopedMemoryContext&&) -> ScopedMemoryContext& = delete;
 };
 
 auto setup_mock_memory() -> void {
@@ -83,7 +83,7 @@ auto setup_mock_memory() -> void {
 }  // namespace
 
 TEST_CASE("BasicLiveSync: Explicit Line Mode Roundtrip") {
-  ScopedMemoryContext_t mem_guard;
+  ScopedMemoryContext mem_guard;
   setup_mock_memory();
   current_apple2_type = A2TYPE_APPLE2EENHANCED;
 
@@ -111,7 +111,7 @@ TEST_CASE("BasicLiveSync: Explicit Line Mode Roundtrip") {
 }
 
 TEST_CASE("BasicLiveSync: Positional Line Mode") {
-  ScopedMemoryContext_t mem_guard;
+  ScopedMemoryContext mem_guard;
   setup_mock_memory();
   current_apple2_type = A2TYPE_APPLE2EENHANCED;
 
@@ -147,7 +147,7 @@ TEST_CASE("BasicLiveSync: Positional Line Mode") {
 }
 
 TEST_CASE("BasicLiveSync: REM and Quoted String Keyword Protection") {
-  ScopedMemoryContext_t mem_guard;
+  ScopedMemoryContext mem_guard;
   setup_mock_memory();
   current_apple2_type = A2TYPE_APPLE2EENHANCED;
 
@@ -164,7 +164,7 @@ TEST_CASE("BasicLiveSync: REM and Quoted String Keyword Protection") {
 }
 
 TEST_CASE("BasicLiveSync: Character Filtering & Hardware Casing") {
-  ScopedMemoryContext_t mem_guard;
+  ScopedMemoryContext mem_guard;
   setup_mock_memory();
 
   // Test Apple ][+ mode (uppercase only)
@@ -185,7 +185,7 @@ TEST_CASE("BasicLiveSync: Character Filtering & Hardware Casing") {
 }
 
 TEST_CASE("BasicLiveSync: HIMEM Memory Overflow Protection") {
-  ScopedMemoryContext_t mem_guard;
+  ScopedMemoryContext mem_guard;
   setup_mock_memory();
   current_apple2_type = A2TYPE_APPLE2EENHANCED;
 
@@ -215,7 +215,7 @@ TEST_CASE("BasicLiveSync: HIMEM Memory Overflow Protection") {
 }
 
 TEST_CASE("BasicLiveSync: Line Length Truncation") {
-  ScopedMemoryContext_t mem_guard;
+  ScopedMemoryContext mem_guard;
   setup_mock_memory();
   current_apple2_type = A2TYPE_APPLE2EENHANCED;
 
@@ -232,7 +232,7 @@ TEST_CASE("BasicLiveSync: Line Length Truncation") {
 }
 
 TEST_CASE("BasicLiveSync: Math Tokens Longest-Prefix Matching") {
-  ScopedMemoryContext_t mem_guard;
+  ScopedMemoryContext mem_guard;
   setup_mock_memory();
   current_apple2_type = A2TYPE_APPLE2EENHANCED;
 
@@ -256,7 +256,7 @@ TEST_CASE("BasicLiveSync: Math Tokens Longest-Prefix Matching") {
 }
 
 TEST_CASE("BasicLiveSync: Raw Buffer Import Overload") {
-  ScopedMemoryContext_t mem_guard;
+  ScopedMemoryContext mem_guard;
   setup_mock_memory();
   current_apple2_type = A2TYPE_APPLE2EENHANCED;
 
@@ -288,7 +288,7 @@ TEST_CASE("BasicLiveSync: Raw Buffer Import Overload") {
 }
 
 TEST_CASE("BasicLiveSync: Line Number Overflow Safety") {
-  ScopedMemoryContext_t mem_guard;
+  ScopedMemoryContext mem_guard;
   setup_mock_memory();
   current_apple2_type = A2TYPE_APPLE2EENHANCED;
 
@@ -304,7 +304,7 @@ TEST_CASE("BasicLiveSync: Line Number Overflow Safety") {
 }
 
 TEST_CASE("BasicLiveSync: Lifecycle and Configuration") {
-  ScopedMemoryContext_t mem_guard;
+  ScopedMemoryContext mem_guard;
   setup_mock_memory();
 
   // Ensure starting state is inactive
@@ -349,7 +349,7 @@ TEST_CASE("BasicLiveSync: Lifecycle and Configuration") {
 }
 
 TEST_CASE("BasicLiveSync: File Export and Import Roundtrip") {
-  ScopedMemoryContext_t mem_guard;
+  ScopedMemoryContext mem_guard;
   setup_mock_memory();
   current_apple2_type = A2TYPE_APPLE2EENHANCED;
 

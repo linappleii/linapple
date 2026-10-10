@@ -18,7 +18,7 @@
 
 namespace {
 
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 
 constexpr uint16_t addr_keyboard_data = 0xC000;
 constexpr uint16_t addr_keyboard_strobe = 0xC010;
@@ -54,11 +54,11 @@ constexpr uint32_t reset_routine_cycle_cap = 100000;
 // The text page and the II's blanking page are filled with normal spaces so
 // the undriven bus carries bit 7 at every scanner position, and a default
 // that fell through to the bus would show in the sweep.
-struct SwitchMachine_t {
-  TestConfig_t config;
-  HeadlessHarness_t harness;
+struct SwitchMachine {
+  TestConfig config;
+  HeadlessHarness harness;
 
-  explicit SwitchMachine_t(const TestConfig_t::Description_t& description)
+  explicit SwitchMachine(const TestConfig::Description& description)
       : config(description), harness(config) {
     harness.boot();
     const std::array<uint8_t, text_page_size> spaces =
@@ -67,20 +67,20 @@ struct SwitchMachine_t {
       page.fill(normal_space);
       return page;
     }();
-    TestFixtures::ScopedCore_t::poke(text_page, spaces);
-    TestFixtures::ScopedCore_t::poke(text_page_hbl_mirror, spaces);
+    TestFixtures::ScopedCore::poke(text_page, spaces);
+    TestFixtures::ScopedCore::poke(text_page_hbl_mirror, spaces);
   }
 
   // A known byte at position 0's scanner address, so bits 0-6 are known.
   static auto place_bus_marker(uint8_t marker) -> void {
-    TestFixtures::ScopedCore_t::poke(video_get_scanner_address(nullptr, 0),
+    TestFixtures::ScopedCore::poke(video_get_scanner_address(nullptr, 0),
                                      &marker, 1);
   }
 };
 
-auto describe(TestConfig_t::MachineType_t model,
-              const char* joystick0 = nullptr) -> TestConfig_t::Description_t {
-  TestConfig_t::Description_t description = TestConfig_t::enhanced_2e_only();
+auto describe(TestConfig::MachineType model,
+              const char* joystick0 = nullptr) -> TestConfig::Description {
+  TestConfig::Description description = TestConfig::enhanced_2e_only();
   description.machine_type = model;
   if (joystick0 != nullptr) {
     description.extras.push_back({"Configuration", "Joystick 0", joystick0});
@@ -127,9 +127,9 @@ auto hold_shift(bool shift) -> void {
   settle();
 }
 
-const std::initializer_list<TestConfig_t::MachineType_t> both_models = {
-    TestConfig_t::machine_apple2e_enhanced,
-    TestConfig_t::machine_apple2_plus,
+const std::initializer_list<TestConfig::MachineType> both_models = {
+    TestConfig::machine_apple2e_enhanced,
+    TestConfig::machine_apple2_plus,
 };
 
 }  // namespace
@@ -137,8 +137,8 @@ const std::initializer_list<TestConfig_t::MachineType_t> both_models = {
 TEST_CASE(
     "Switch inputs: $C010 reads bit 7 clear on an Enhanced //e with no key "
     "held") {
-  TestConfig_t config(TestConfig_t::enhanced_2e_only());
-  TestFixtures::ScopedCore_t core(config);
+  TestConfig config(TestConfig::enhanced_2e_only());
+  TestFixtures::ScopedCore core(config);
   CHECK((io_map_dispatch(0, addr_keyboard_strobe, 0, 0, 0) & bit7) == 0);
 }
 
@@ -146,16 +146,16 @@ TEST_CASE(
     "Switch inputs: no phantom key: with the text page full of spaces $C000 "
     "reads bit 7 clear at every scanner position on both models, and so "
     "does $C010 on the //e") {
-  for (TestConfig_t::MachineType_t model : both_models) {
+  for (TestConfig::MachineType model : both_models) {
     CAPTURE(model);
-    SwitchMachine_t machine(describe(model));
+    SwitchMachine machine(describe(model));
     // The cassette input is the undriven bus on every model, so it shows the
     // sweep can tell a default from the bus.
     REQUIRE(samples_with_bit7(addr_cassette_in, true) == scanner_positions);
     CHECK(samples_with_bit7(addr_keyboard_data, false) == scanner_positions);
     // On a II or II Plus $C010 is the undriven bus (Sather, Understanding
     // the Apple II, 5-25), so only the //e's any-key-down flag reads 0.
-    if (model == TestConfig_t::machine_apple2e_enhanced) {
+    if (model == TestConfig::machine_apple2e_enhanced) {
       CHECK(samples_with_bit7(addr_keyboard_strobe, false) ==
             scanner_positions);
     }
@@ -173,7 +173,7 @@ TEST_CASE(
     "Switch inputs: keyboard unplugged, inferred from the open 74LS257 "
     "inputs: a II Plus reads $C000 as $7F, $C010-$C01F as the undriven bus, "
     "and its reset routine reaches $FA7E") {
-  SwitchMachine_t machine(describe(TestConfig_t::machine_apple2_plus));
+  SwitchMachine machine(describe(TestConfig::machine_apple2_plus));
   CHECK(read_at(addr_keyboard_data, 0) == 0x7F);
   // Any access to $C01X resets the strobe flip-flop and nothing drives the
   // bus on the read, the flags of $C011-$C01F being the //e's (Sather,
@@ -201,9 +201,9 @@ TEST_CASE(
 TEST_CASE(
     "Switch inputs: with the shipped two-button controller PB0 and PB1 rest "
     "low and PB2 high on both models, at $C061-$C063 and their mirrors") {
-  for (TestConfig_t::MachineType_t model : both_models) {
+  for (TestConfig::MachineType model : both_models) {
     CAPTURE(model);
-    SwitchMachine_t machine(describe(model, "2"));
+    SwitchMachine machine(describe(model, "2"));
     CHECK(line_level(0) == 0);
     CHECK(line_level(1) == 0);
     CHECK(line_level(2) == 1);
@@ -216,7 +216,7 @@ TEST_CASE(
 TEST_CASE(
     "Switch inputs: with no controller configured a II Plus reads its three "
     "buttons open, since nothing on its board or keyboard pulls them down") {
-  SwitchMachine_t machine(describe(TestConfig_t::machine_apple2_plus, "0"));
+  SwitchMachine machine(describe(TestConfig::machine_apple2_plus, "0"));
   for (uint8_t line = 0; line < switch_input_count; ++line) {
     CAPTURE(line);
     CHECK(line_level(line) == 1);
@@ -228,8 +228,8 @@ TEST_CASE(
 TEST_CASE(
     "Switch inputs: with no controller configured a //e with its keyboard "
     "reads PB0 and PB1 low through the keyboard's 470 ohm resistors") {
-  SwitchMachine_t machine(
-      describe(TestConfig_t::machine_apple2e_enhanced, "0"));
+  SwitchMachine machine(
+      describe(TestConfig::machine_apple2e_enhanced, "0"));
   CHECK(line_level(0) == 0);
   CHECK(line_level(1) == 0);
   CHECK(line_level(2) == 1);
@@ -238,8 +238,8 @@ TEST_CASE(
 TEST_CASE(
     "Switch inputs: with no controller configured a //e with its keyboard "
     "unplugged reads PB0 and PB1 high through the board's 12 k pull-ups") {
-  SwitchMachine_t machine(
-      describe(TestConfig_t::machine_apple2e_enhanced, "0"));
+  SwitchMachine machine(
+      describe(TestConfig::machine_apple2e_enhanced, "0"));
   CHECK(line_level(0) == 1);
   CHECK(line_level(1) == 1);
   CHECK(line_level(2) == 1);
@@ -250,10 +250,10 @@ TEST_CASE(
     "Switch inputs: a second stick configured but not found: the configured "
     "plug pulls PB2 down until the frontend reports the devices it opened, "
     "and PB2 is open afterwards") {
-  TestConfig_t::Description_t description =
-      describe(TestConfig_t::machine_apple2e_enhanced);
+  TestConfig::Description description =
+      describe(TestConfig::machine_apple2e_enhanced);
   description.extras.push_back({"Configuration", "Joystick 1", "1"});
-  SwitchMachine_t machine(description);
+  SwitchMachine machine(description);
   // The configured baseline: joystick 1's button sits on PB2 and PB1, so its
   // plug's resistors pull both down beside joystick 0's PB0.
   CHECK(line_level(0) == 0);
@@ -272,7 +272,7 @@ TEST_CASE(
     "Switch inputs: the mask a terminal sends with /dev/input/js0 open, PB0 "
     "and PB1 beside the configured controller's lines, pulls both down on a II "
     "Plus with no controller configured") {
-  SwitchMachine_t machine(describe(TestConfig_t::machine_apple2_plus, "0"));
+  SwitchMachine machine(describe(TestConfig::machine_apple2_plus, "0"));
   REQUIRE(line_level(0) == 1);
   REQUIRE(line_level(1) == 1);
   REQUIRE(line_level(2) == 1);
@@ -293,7 +293,7 @@ TEST_CASE(
 TEST_CASE(
     "Switch inputs: an override replaces the hardware's pull-downs and -1 "
     "restores them") {
-  SwitchMachine_t machine(describe(TestConfig_t::machine_apple2e_enhanced));
+  SwitchMachine machine(describe(TestConfig::machine_apple2e_enhanced));
   REQUIRE(line_level(0) == 0);
   REQUIRE(line_level(2) == 1);
   switch_inputs_override_pulldowns(0);
@@ -314,7 +314,7 @@ TEST_CASE(
 TEST_CASE(
     "Switch inputs: with no game port card every paddle reads high at every "
     "scanner position and PREAD returns 255") {
-  SwitchMachine_t machine(describe(TestConfig_t::machine_apple2e_enhanced));
+  SwitchMachine machine(describe(TestConfig::machine_apple2e_enhanced));
   constexpr uint16_t addr_paddle0 = 0xC064;
   constexpr uint16_t addr_mirror_paddle0 = 0xC06C;
   for (uint8_t paddle = 0; paddle < 4; ++paddle) {
@@ -333,7 +333,7 @@ TEST_CASE(
   constexpr uint32_t pread_cycle_cap = 4000;
   const std::array<uint8_t, 6> caller = {0xA2, 0x00, 0x20, 0x1E, 0xFB, 0xEA};
   constexpr uint16_t sentinel = program_base + 5;
-  TestFixtures::ScopedCore_t::poke(program_base, caller);
+  TestFixtures::ScopedCore::poke(program_base, caller);
   TestFixtures::enter_at({program_base, 0, 0, 0});
   TestFixtures::step_until_pc(rom_pread, pread_cycle_cap);
   REQUIRE(cpu_get_registers()->pc == rom_pread);
@@ -346,9 +346,9 @@ TEST_CASE(
 TEST_CASE(
     "Switch inputs: Open Apple and Solid Apple from the host read on PB0 and "
     "PB1 on both models and survive a hard reset") {
-  for (TestConfig_t::MachineType_t model : both_models) {
+  for (TestConfig::MachineType model : both_models) {
     CAPTURE(model);
-    SwitchMachine_t machine(describe(model, "2"));
+    SwitchMachine machine(describe(model, "2"));
     REQUIRE(line_level(0) == 0);
     REQUIRE(line_level(1) == 0);
 
@@ -379,7 +379,7 @@ TEST_CASE(
     "Switch inputs: a line reads the OR of its connector button and its Apple "
     "key over the pull-down, with bits 0-6 the undriven bus, at $C061 and "
     "$C069") {
-  SwitchMachine_t machine(describe(TestConfig_t::machine_apple2e_enhanced));
+  SwitchMachine machine(describe(TestConfig::machine_apple2e_enhanced));
 
   // The //e wires Open Apple and Solid Apple in parallel with PB0 and PB1
   // (IIe Tech Ref pp. 13 and 41), so either switch, or both, drives the line
@@ -406,7 +406,7 @@ TEST_CASE(
   // bits 0-6 are whatever the bus holds).
   for (uint8_t marker : {marker_low, marker_high}) {
     CAPTURE(marker);
-    SwitchMachine_t::place_bus_marker(marker);
+    SwitchMachine::place_bus_marker(marker);
     linapple_set_game_switch(0, true);
     CHECK(read_at(addr_switch0, 0) == marker_high);
     CHECK(read_at(addr_mirror_switch0, 0) == marker_high);
@@ -425,7 +425,7 @@ TEST_CASE(
 TEST_CASE(
     "Switch inputs: PB2 follows its button only over a pull-down, and the "
     "shift key only through the jumper, which then overrides the button") {
-  SwitchMachine_t machine(describe(TestConfig_t::machine_apple2e_enhanced));
+  SwitchMachine machine(describe(TestConfig::machine_apple2e_enhanced));
 
   // Jumper out: PB2 is open with a two-button plug, so 1 at rest and 1 with
   // the button; a three-button plug's pull-down makes the button visible; the
@@ -477,7 +477,7 @@ TEST_CASE(
 TEST_CASE(
     "Switch inputs: the jumper and the pull-down mask survive a hard reset "
     "and a loaded game-port frame") {
-  SwitchMachine_t machine(describe(TestConfig_t::machine_apple2e_enhanced));
+  SwitchMachine machine(describe(TestConfig::machine_apple2e_enhanced));
 
   // Soldered, not state: neither a reset nor a frame carries the mask or the
   // jumper away.
@@ -520,9 +520,9 @@ TEST_CASE(
     "Switch inputs: the bridge records the host's four modifier levels, Open "
     "Apple and Solid Apple reach PB0 and PB1 on both models, and letting go "
     "of every key releases them") {
-  for (TestConfig_t::MachineType_t model : both_models) {
+  for (TestConfig::MachineType model : both_models) {
     CAPTURE(model);
-    SwitchMachine_t machine(describe(model, "2"));
+    SwitchMachine machine(describe(model, "2"));
     bool shift = true;
     bool ctrl = true;
     bool open_apple = true;
@@ -578,7 +578,7 @@ TEST_CASE(
     "Switch inputs: the Enhanced //e ROM run from its reset vector takes the "
     "self-test at $C600 with Solid Apple held and the cold-start check at "
     "$C2E2 with both Apple keys up") {
-  SwitchMachine_t machine(describe(TestConfig_t::machine_apple2e_enhanced));
+  SwitchMachine machine(describe(TestConfig::machine_apple2e_enhanced));
 
   // Without the key the reset routine passes the check at $C2BB and reaches
   // the power-up byte check; with it, the JMP at $C2C0 is taken.
@@ -603,8 +603,8 @@ TEST_CASE(
     "Switch inputs: a //e told its keyboard is unplugged, with no plug, reads "
     "PB1 high through the board's pull-ups and its reset takes the self-test "
     "on every one of sixteen reset phases") {
-  SwitchMachine_t machine(
-      describe(TestConfig_t::machine_apple2e_enhanced, "0"));
+  SwitchMachine machine(
+      describe(TestConfig::machine_apple2e_enhanced, "0"));
   constexpr uint16_t rom_read_solid_apple = 0xC2BB;
   constexpr uint32_t phase_step_cycles = 1931;
   constexpr int phase_count = 16;

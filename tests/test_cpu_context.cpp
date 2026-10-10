@@ -6,7 +6,7 @@
 
 TEST_CASE("CPU Context: Encapsulation and Context-Switching") {
   // 1. Get original context
-  CpuInstance_t* original_context = cpu_get_active_context();
+  CpuInstance* original_context = cpu_get_active_context();
   REQUIRE(original_context != nullptr);
 
   // Set values on original context
@@ -15,12 +15,12 @@ TEST_CASE("CPU Context: Encapsulation and Context-Switching") {
   cpu_get_registers()->y = 0x33;
   cpu_get_registers()->pc = 0x1000;
   cpu_get_registers()->sp = 0x1FF;
-  g_cumulative_cycles = 100;
+  cumulative_cycles = 100;
   cpu_irq_assert(is_speech);
   cpu_nmi_assert(is_speech);
 
   // 2. Setup secondary context
-  CpuInstance_t second_context{};
+  CpuInstance second_context{};
   second_context.cpu_regs.a = 0xAA;
   second_context.cpu_regs.x = 0xBB;
   second_context.cpu_regs.y = 0xCC;
@@ -47,7 +47,7 @@ TEST_CASE("CPU Context: Encapsulation and Context-Switching") {
 
   // Modify registers and interrupt state on active secondary context
   cpu_get_registers()->x = 0x99;
-  g_cumulative_cycles = 600;
+  cumulative_cycles = 600;
   cpu_irq_assert(is_6522);
 
   // 4. Switch back to original context

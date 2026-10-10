@@ -351,16 +351,16 @@ auto tui_shape_detect_cell(const uint32_t* pixels, int pitch, int x_start,
   constexpr uint64_t quad_bl_mask = 0x0F0F0F0F00000000ULL;
   constexpr uint64_t quad_br_mask = 0xF0F0F0F000000000ULL;
 
-  const int q_tl = __builtin_popcountll(cell_bits & quad_tl_mask);
-  const int q_tr = __builtin_popcountll(cell_bits & quad_tr_mask);
-  const int q_bl = __builtin_popcountll(cell_bits & quad_bl_mask);
-  const int q_br = __builtin_popcountll(cell_bits & quad_br_mask);
+  const int quad_tl = __builtin_popcountll(cell_bits & quad_tl_mask);
+  const int quad_tr = __builtin_popcountll(cell_bits & quad_tr_mask);
+  const int quad_bl = __builtin_popcountll(cell_bits & quad_bl_mask);
+  const int quad_br = __builtin_popcountll(cell_bits & quad_br_mask);
 
   const auto quad_mask =
-      static_cast<uint8_t>(((q_tl >= quadrant_active_threshold ? 1 : 0) << 3) |
-                           ((q_tr >= quadrant_active_threshold ? 1 : 0) << 2) |
-                           ((q_bl >= quadrant_active_threshold ? 1 : 0) << 1) |
-                           (q_br >= quadrant_active_threshold ? 1 : 0));
+      static_cast<uint8_t>(((quad_tl >= quadrant_active_threshold ? 1 : 0) << 3) |
+                           ((quad_tr >= quadrant_active_threshold ? 1 : 0) << 2) |
+                           ((quad_bl >= quadrant_active_threshold ? 1 : 0) << 1) |
+                           (quad_br >= quadrant_active_threshold ? 1 : 0));
 
   set_utf8_glyph(out_cell, quadrant_glyphs.at(quad_mask));
   out_cell->fg = fg_color;

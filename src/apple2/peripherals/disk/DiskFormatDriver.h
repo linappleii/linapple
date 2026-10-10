@@ -47,7 +47,7 @@ typedef enum {
    to a byte, the first cell in the most significant bit of byte zero. How
    those cells group into bytes is the controller's reading of them, not the
    driver's. */
-typedef struct DiskFormatDriver_t {
+typedef struct DiskFormatDriver {
   int abi_version;
   uint32_t capabilities;
   const char* name;
@@ -96,7 +96,7 @@ typedef struct DiskFormatDriver_t {
                                   const uint8_t* bits, uint32_t bit_count);
 
   DiskError (*create)(const char* path);
-} DiskFormatDriver_t;
+} DiskFormatDriver;
 
 #ifdef __cplusplus
 }

@@ -17,22 +17,22 @@
 
 namespace {
 
-struct MachineHarness_t {
-  MachineHarness_t() {
+struct MachineHarness {
+  MachineHarness() {
     current_apple2_type = A2TYPE_APPLE2EENHANCED;
     mem_initialize();
     cpu_initialize();
   }
 
-  ~MachineHarness_t() {
+  ~MachineHarness() {
     cpu_destroy();
     mem_destroy();
   }
 
-  MachineHarness_t(const MachineHarness_t&) = delete;
-  auto operator=(const MachineHarness_t&) -> MachineHarness_t& = delete;
-  MachineHarness_t(MachineHarness_t&&) = delete;
-  auto operator=(MachineHarness_t&&) -> MachineHarness_t& = delete;
+  MachineHarness(const MachineHarness&) = delete;
+  auto operator=(const MachineHarness&) -> MachineHarness& = delete;
+  MachineHarness(MachineHarness&&) = delete;
+  auto operator=(MachineHarness&&) -> MachineHarness& = delete;
 
   auto bus_read(uint16_t addr) const -> uint8_t {
     if ((addr & IO_REGION_MASK) == IO_REGION_START) {
@@ -59,7 +59,7 @@ struct MachineHarness_t {
 }  // namespace
 
 TEST_CASE("Exhaustive: [MEM-EX-01] Language Card Softswitch Sequence Matrix") {
-  MachineHarness_t harness;
+  MachineHarness harness;
 
   const std::array<uint16_t, 16> lc_switches = {
       0xC080, 0xC081, 0xC082, 0xC083, 0xC084, 0xC085, 0xC086, 0xC087,
@@ -161,7 +161,7 @@ TEST_CASE("Exhaustive: [MEM-EX-01] Language Card Softswitch Sequence Matrix") {
 }
 
 TEST_CASE("Exhaustive: [MEM-EX-02] 4-Step Language Card Transition Paths") {
-  MachineHarness_t harness;
+  MachineHarness harness;
 
   const std::array<uint16_t, 8> lc_switches = {0xC080, 0xC081, 0xC082, 0xC083,
                                                0xC088, 0xC089, 0xC08A, 0xC08B};
@@ -192,7 +192,7 @@ TEST_CASE("Exhaustive: [MEM-EX-02] 4-Step Language Card Transition Paths") {
 }
 
 TEST_CASE("Exhaustive: [MEM-EX-03] Auxiliary Memory 64-State Routing Matrix") {
-  MachineHarness_t harness;
+  MachineHarness harness;
 
   // 6 binary switches:
   // 80STORE (C000/C001), RAMRD (C002/C003), RAMWRT (C004/C005),
@@ -236,7 +236,7 @@ TEST_CASE("Exhaustive: [MEM-EX-03] Auxiliary Memory 64-State Routing Matrix") {
 TEST_CASE(
     "Exhaustive: [MEM-EX-04] Language Card Observable Banking and Write "
     "Protection") {
-  MachineHarness_t harness;
+  MachineHarness harness;
 
   const uint8_t rom_byte = harness.bus_read(0xD000);
   const uint8_t test_byte_bank2 = (rom_byte == 0x42) ? 0x43 : 0x42;

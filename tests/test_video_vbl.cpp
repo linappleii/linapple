@@ -37,7 +37,7 @@ constexpr uint16_t sample_table = 0x0400;
  * frame cycle the way the core would reach it, and a stepped run is accounted
  * instruction by instruction as the core accounts a frame.
  */
-struct FrameClock_t {
+struct FrameClock {
   uint32_t cycle = 0;
 
   auto advance_to(uint32_t target) -> void {
@@ -52,7 +52,7 @@ struct FrameClock_t {
   }
 
   auto run_until(uint16_t sentinel, uint32_t cap) -> uint32_t {
-    const CpuRegisters_t* regs = cpu_get_registers();
+    const CpuRegisters* regs = cpu_get_registers();
     uint32_t total = 0;
     while (regs->pc != sentinel && total < cap) {
       const uint32_t executed = cpu_execute(0);
@@ -92,13 +92,13 @@ constexpr uint32_t sampler_exit_cycles = 4 + 5 + 2 + 3;
 constexpr uint32_t sampler_cycles =
     ((sampled_lines - 1) * cycles_per_line) + sampler_exit_cycles;
 
-struct Probe_t {
+struct Probe {
   uint32_t line;
   uint32_t cycle_in_line;
   const char* where;
 };
 
-constexpr std::array<Probe_t, 6> probes = {
+constexpr std::array<Probe, 6> probes = {
     {
         {0, 0, "first cycle of the first visible line"},
         {96, 0, "middle of the visible area"},
@@ -117,19 +117,19 @@ constexpr std::array<Probe_t, 6> probes = {
 
 TEST_CASE(
     "Video: $C019 reads high while the screen is drawn and low in blanking") {
-  TestFixtures::ScopedTestConfig_t config(
-      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedTestConfig config(
+      TestFixtures::ScopedTestConfig::enhanced_2e_only());
+  TestFixtures::ScopedCore core(config);
   REQUIRE(system_state.video_scanner_ntsc);
   REQUIRE(system_state.clks_per_frame == frame_cycles);
   REQUIRE(blanking_start == 12480);
   REQUIRE(frame_cycles == 17030);
 
-  FrameClock_t frame;
+  FrameClock frame;
 
   // RDVBLBAR is VBL inverted, so bit 7 is set exactly on the visible lines.
-  TestFixtures::ScopedCore_t::poke(program_start, probe_program);
-  for (const Probe_t& probe : probes) {
+  TestFixtures::ScopedCore::poke(program_start, probe_program);
+  for (const Probe& probe : probes) {
     const uint32_t cycle = (probe.line * cycles_per_line) + probe.cycle_in_line;
     const bool visible = probe.line < visible_lines;
     INFO(std::string(probe.where));
@@ -142,7 +142,7 @@ TEST_CASE(
 
   // The same reading taken by a running program, one sample a line from the
   // top of the frame.
-  TestFixtures::ScopedCore_t::poke(program_start, sampler_program);
+  TestFixtures::ScopedCore::poke(program_start, sampler_program);
   frame.advance_to(0);
   TestFixtures::enter_at({program_start, 0, 0, 0});
   REQUIRE(frame.run_until(sampler_done, sampler_cycles * 2) == sampler_cycles);

@@ -24,81 +24,81 @@ namespace {
 // card was rewritten still has to load. A field that moved would be read out of
 // a neighbour's bytes and no test would necessarily notice, so the layout is
 // nailed down here rather than trusted to declaration order.
-static_assert(sizeof(MockingboardSaveState_t) == 232,
-              "MockingboardSaveState_t must be exactly 232 bytes");
-static_assert(sizeof(MockingboardChipSaveState_t) == 88,
-              "MockingboardChipSaveState_t must be exactly 88 bytes");
+static_assert(sizeof(MockingboardSaveState) == 232,
+              "MockingboardSaveState must be exactly 232 bytes");
+static_assert(sizeof(MockingboardChipSaveState) == 88,
+              "MockingboardChipSaveState must be exactly 88 bytes");
 
-static_assert(offsetof(MockingboardSaveState_t, version) == 0,
+static_assert(offsetof(MockingboardSaveState, version) == 0,
               "version must stay at byte 0 of the v1 card layout");
-static_assert(offsetof(MockingboardSaveState_t, struct_size) == 4,
+static_assert(offsetof(MockingboardSaveState, struct_size) == 4,
               "struct_size must stay at byte 4 of the v1 card layout");
-static_assert(offsetof(MockingboardSaveState_t, chips) == 8,
+static_assert(offsetof(MockingboardSaveState, chips) == 8,
               "chips must stay at byte 8 of the v1 card layout");
-static_assert(offsetof(MockingboardSaveState_t, psg_remainder) == 184,
+static_assert(offsetof(MockingboardSaveState, psg_remainder) == 184,
               "psg_remainder must stay at byte 184 of the v1 card layout");
 
-static_assert(offsetof(MockingboardChipSaveState_t, orb) == 0,
+static_assert(offsetof(MockingboardChipSaveState, orb) == 0,
               "orb must stay at byte 0 of the v1 chip layout");
-static_assert(offsetof(MockingboardChipSaveState_t, ora) == 1,
+static_assert(offsetof(MockingboardChipSaveState, ora) == 1,
               "ora must stay at byte 1 of the v1 chip layout");
-static_assert(offsetof(MockingboardChipSaveState_t, ddrb) == 2,
+static_assert(offsetof(MockingboardChipSaveState, ddrb) == 2,
               "ddrb must stay at byte 2 of the v1 chip layout");
-static_assert(offsetof(MockingboardChipSaveState_t, ddra) == 3,
+static_assert(offsetof(MockingboardChipSaveState, ddra) == 3,
               "ddra must stay at byte 3 of the v1 chip layout");
-static_assert(offsetof(MockingboardChipSaveState_t, t1_counter) == 4,
+static_assert(offsetof(MockingboardChipSaveState, t1_counter) == 4,
               "t1_counter must stay at byte 4 of the v1 chip layout");
-static_assert(offsetof(MockingboardChipSaveState_t, t1_latch) == 6,
+static_assert(offsetof(MockingboardChipSaveState, t1_latch) == 6,
               "t1_latch must stay at byte 6 of the v1 chip layout");
-static_assert(offsetof(MockingboardChipSaveState_t, t2_counter) == 8,
+static_assert(offsetof(MockingboardChipSaveState, t2_counter) == 8,
               "t2_counter must stay at byte 8 of the v1 chip layout");
-static_assert(offsetof(MockingboardChipSaveState_t, t2_latch) == 10,
+static_assert(offsetof(MockingboardChipSaveState, t2_latch) == 10,
               "t2_latch must stay at byte 10 of the v1 chip layout");
-static_assert(offsetof(MockingboardChipSaveState_t, serial_shift) == 12,
+static_assert(offsetof(MockingboardChipSaveState, serial_shift) == 12,
               "serial_shift must stay at byte 12 of the v1 chip layout");
-static_assert(offsetof(MockingboardChipSaveState_t, acr) == 13,
+static_assert(offsetof(MockingboardChipSaveState, acr) == 13,
               "acr must stay at byte 13 of the v1 chip layout");
-static_assert(offsetof(MockingboardChipSaveState_t, pcr) == 14,
+static_assert(offsetof(MockingboardChipSaveState, pcr) == 14,
               "pcr must stay at byte 14 of the v1 chip layout");
-static_assert(offsetof(MockingboardChipSaveState_t, ifr) == 15,
+static_assert(offsetof(MockingboardChipSaveState, ifr) == 15,
               "ifr must stay at byte 15 of the v1 chip layout");
-static_assert(offsetof(MockingboardChipSaveState_t, ier) == 16,
+static_assert(offsetof(MockingboardChipSaveState, ier) == 16,
               "ier must stay at byte 16 of the v1 chip layout");
-static_assert(offsetof(MockingboardChipSaveState_t, ora_no_hs) == 17,
+static_assert(offsetof(MockingboardChipSaveState, ora_no_hs) == 17,
               "ora_no_hs must stay at byte 17 of the v1 chip layout");
-static_assert(offsetof(MockingboardChipSaveState_t, via_flags) == 18,
+static_assert(offsetof(MockingboardChipSaveState, via_flags) == 18,
               "via_flags must stay at byte 18 of the v1 chip layout");
-static_assert(offsetof(MockingboardChipSaveState_t, ay_regs) == 20,
+static_assert(offsetof(MockingboardChipSaveState, ay_regs) == 20,
               "ay_regs must stay at byte 20 of the v1 chip layout");
-static_assert(offsetof(MockingboardChipSaveState_t, count_a) == 36,
+static_assert(offsetof(MockingboardChipSaveState, count_a) == 36,
               "count_a must stay at byte 36 of the v1 chip layout");
-static_assert(offsetof(MockingboardChipSaveState_t, count_b) == 38,
+static_assert(offsetof(MockingboardChipSaveState, count_b) == 38,
               "count_b must stay at byte 38 of the v1 chip layout");
-static_assert(offsetof(MockingboardChipSaveState_t, count_c) == 40,
+static_assert(offsetof(MockingboardChipSaveState, count_c) == 40,
               "count_c must stay at byte 40 of the v1 chip layout");
-static_assert(offsetof(MockingboardChipSaveState_t, out_a) == 42,
+static_assert(offsetof(MockingboardChipSaveState, out_a) == 42,
               "out_a must stay at byte 42 of the v1 chip layout");
-static_assert(offsetof(MockingboardChipSaveState_t, out_b) == 43,
+static_assert(offsetof(MockingboardChipSaveState, out_b) == 43,
               "out_b must stay at byte 43 of the v1 chip layout");
-static_assert(offsetof(MockingboardChipSaveState_t, out_c) == 44,
+static_assert(offsetof(MockingboardChipSaveState, out_c) == 44,
               "out_c must stay at byte 44 of the v1 chip layout");
-static_assert(offsetof(MockingboardChipSaveState_t, out_n) == 45,
+static_assert(offsetof(MockingboardChipSaveState, out_n) == 45,
               "out_n must stay at byte 45 of the v1 chip layout");
-static_assert(offsetof(MockingboardChipSaveState_t, count_n) == 48,
+static_assert(offsetof(MockingboardChipSaveState, count_n) == 48,
               "count_n must stay at byte 48 of the v1 chip layout");
-static_assert(offsetof(MockingboardChipSaveState_t, rng) == 52,
+static_assert(offsetof(MockingboardChipSaveState, rng) == 52,
               "rng must stay at byte 52 of the v1 chip layout");
-static_assert(offsetof(MockingboardChipSaveState_t, count_e) == 56,
+static_assert(offsetof(MockingboardChipSaveState, count_e) == 56,
               "count_e must stay at byte 56 of the v1 chip layout");
-static_assert(offsetof(MockingboardChipSaveState_t, envelope_step) == 60,
+static_assert(offsetof(MockingboardChipSaveState, envelope_step) == 60,
               "envelope_step must stay at byte 60 of the v1 chip layout");
-static_assert(offsetof(MockingboardChipSaveState_t, envelope_vol) == 64,
+static_assert(offsetof(MockingboardChipSaveState, envelope_vol) == 64,
               "envelope_vol must stay at byte 64 of the v1 chip layout");
-static_assert(offsetof(MockingboardChipSaveState_t, env_holding) == 65,
+static_assert(offsetof(MockingboardChipSaveState, env_holding) == 65,
               "env_holding must stay at byte 65 of the v1 chip layout");
-static_assert(offsetof(MockingboardChipSaveState_t, ay_current_register) == 66,
+static_assert(offsetof(MockingboardChipSaveState, ay_current_register) == 66,
               "ay_current_register must stay at byte 66 of the v1 chip layout");
-static_assert(offsetof(MockingboardChipSaveState_t, env_attack) == 68,
+static_assert(offsetof(MockingboardChipSaveState, env_attack) == 68,
               "env_attack must stay at byte 68 of the v1 chip layout");
 
 constexpr size_t chips_per_card = 2;
@@ -156,16 +156,16 @@ constexpr const char* channel_names[voices_per_card] = {
     "AY1 Voice A", "AY1 Voice B", "AY1 Voice C",
 };
 
-struct DcBlock_t {
+struct DcBlock {
   double previous_input = 0.0;
   double previous_output = 0.0;
 };
 
-struct Mockingboard_t {
+struct Mockingboard {
   std::array<Via6522, chips_per_card> via = {};
   std::array<Ay8910, chips_per_card> ay = {};
   std::array<uint8_t, chips_per_card> ay_latched_register = {};
-  std::array<DcBlock_t, voices_per_card> dc = {};
+  std::array<DcBlock, voices_per_card> dc = {};
   std::array<std::array<float, scratch_ticks>, voices_per_card> scratch = {};
   // CPU cycles of this slice already consumed, and CPU cycles not yet worth a
   // whole AY tick. Together they are why no cycle is ever counted twice.
@@ -173,10 +173,10 @@ struct Mockingboard_t {
   uint32_t psg_remainder = 0;
   bool irq_line = false;
   int slot = 0;
-  HostInterface_t* host = nullptr;
+  HostInterface* host = nullptr;
 };
 
-auto update_irq(Mockingboard_t* mb) -> void {
+auto update_irq(Mockingboard* mb) -> void {
   const bool line = via_irq(mb->via.data()) || via_irq(&mb->via[1]);
   if (line == mb->irq_line) {
     return;
@@ -187,7 +187,7 @@ auto update_irq(Mockingboard_t* mb) -> void {
   }
 }
 
-auto run_dc_block(DcBlock_t* f, float* buffer, size_t count) -> bool {
+auto run_dc_block(DcBlock* f, float* buffer, size_t count) -> bool {
   bool any_signal = false;
   for (size_t i = 0; i < count; ++i) {
     const double input = buffer[i];
@@ -206,7 +206,7 @@ auto run_dc_block(DcBlock_t* f, float* buffer, size_t count) -> bool {
   return any_signal;
 }
 
-auto render_chunk(Mockingboard_t* mb, size_t ticks) -> void {
+auto render_chunk(Mockingboard* mb, size_t ticks) -> void {
   for (size_t chip = 0; chip < chips_per_card; ++chip) {
     std::array<float*, ay8910_num_voices> voices = {
         {
@@ -234,7 +234,7 @@ auto render_chunk(Mockingboard_t* mb, size_t ticks) -> void {
   }
 }
 
-auto advance(Mockingboard_t* mb, uint32_t cycles) -> void {
+auto advance(Mockingboard* mb, uint32_t cycles) -> void {
   if (cycles == 0) {
     return;
   }
@@ -268,7 +268,7 @@ auto advance(Mockingboard_t* mb, uint32_t cycles) -> void {
 // The mark only ever moves forward. The 6502 is monotonic within a slice, but
 // a caller that is not would otherwise rewind it and have the cycles between
 // the two marks charged to the card a second time.
-auto sync_to(Mockingboard_t* mb, uint32_t executed_cycles) -> void {
+auto sync_to(Mockingboard* mb, uint32_t executed_cycles) -> void {
   if (executed_cycles <= mb->synced) {
     return;
   }
@@ -276,7 +276,7 @@ auto sync_to(Mockingboard_t* mb, uint32_t executed_cycles) -> void {
   mb->synced = executed_cycles;
 }
 
-auto ay_bus_cycle(Mockingboard_t* mb, size_t chip, uint8_t orb) -> void {
+auto ay_bus_cycle(Mockingboard* mb, size_t chip, uint8_t orb) -> void {
   Ay8910& psg = mb->ay[chip];
   if ((orb & ay_bus::reset_n) == 0) {
     ay8910_reset(&psg);
@@ -316,7 +316,7 @@ auto cx_read(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
   (void)pc;
   (void)write;
   (void)val;
-  auto* mb = static_cast<Mockingboard_t*>(instance);
+  auto* mb = static_cast<Mockingboard*>(instance);
   if (mb == nullptr) {
     return 0;
   }
@@ -334,7 +334,7 @@ auto cx_write(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
               uint8_t val, uint32_t executed_cycles) -> uint8_t {
   (void)pc;
   (void)write;
-  auto* mb = static_cast<Mockingboard_t*>(instance);
+  auto* mb = static_cast<Mockingboard*>(instance);
   if (mb == nullptr) {
     return 0;
   }
@@ -353,12 +353,12 @@ auto cx_write(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
 }
 // NOLINTEND(bugprone-easily-swappable-parameters)
 
-auto mb_abi_init(int slot, HostInterface_t* host) -> void* {
+auto mb_abi_init(int slot, HostInterface* host) -> void* {
   if (host == nullptr || host->RegisterIO == nullptr) {
     return nullptr;
   }
   auto card =
-      std::unique_ptr<Mockingboard_t>(new (std::nothrow) Mockingboard_t{});
+      std::unique_ptr<Mockingboard>(new (std::nothrow) Mockingboard{});
   if (!card) {
     return nullptr;
   }
@@ -369,7 +369,7 @@ auto mb_abi_init(int slot, HostInterface_t* host) -> void* {
 }
 
 auto mb_abi_reset(void* instance) -> void {
-  auto* mb = static_cast<Mockingboard_t*>(instance);
+  auto* mb = static_cast<Mockingboard*>(instance);
   if (mb == nullptr) {
     return;
   }
@@ -383,7 +383,7 @@ auto mb_abi_reset(void* instance) -> void {
     latched = 0;
   }
   for (auto& f : mb->dc) {
-    f = DcBlock_t{};
+    f = DcBlock{};
   }
   mb->synced = 0;
   mb->psg_remainder = 0;
@@ -396,11 +396,11 @@ auto mb_abi_reset(void* instance) -> void {
 }
 
 auto mb_abi_shutdown(void* instance) -> void {
-  delete static_cast<Mockingboard_t*>(instance);
+  delete static_cast<Mockingboard*>(instance);
 }
 
 auto mb_abi_think(void* instance, uint32_t cycles) -> void {
-  auto* mb = static_cast<Mockingboard_t*>(instance);
+  auto* mb = static_cast<Mockingboard*>(instance);
   if (mb == nullptr) {
     return;
   }
@@ -440,12 +440,12 @@ auto unpack_phase(uint8_t flags, uint8_t shift) -> ViaTimerPhase {
 }
 
 auto mb_abi_save_state(void* instance, void* buffer, size_t* size)
-    -> PeripheralStatus_t {
+    -> PeripheralStatus {
   if (size == nullptr) {
     return peripheral_error;
   }
 
-  const size_t required = sizeof(MockingboardSaveState_t);
+  const size_t required = sizeof(MockingboardSaveState);
   if (buffer == nullptr) {
     *size = required;
     return peripheral_ok;
@@ -455,8 +455,8 @@ auto mb_abi_save_state(void* instance, void* buffer, size_t* size)
     return peripheral_error;
   }
 
-  auto* mb = static_cast<Mockingboard_t*>(instance);
-  auto* ss = static_cast<MockingboardSaveState_t*>(buffer);
+  auto* mb = static_cast<Mockingboard*>(instance);
+  auto* ss = static_cast<MockingboardSaveState*>(buffer);
   std::memset(ss, 0, required);
 
   ss->version = MOCKINGBOARD_STATE_VERSION;
@@ -465,7 +465,7 @@ auto mb_abi_save_state(void* instance, void* buffer, size_t* size)
   for (size_t i = 0; i < chips_per_card; ++i) {
     const Via6522& v = mb->via[i];
     const Ay8910& psg = mb->ay[i];
-    MockingboardChipSaveState_t& dst = ss->chips[i];
+    MockingboardChipSaveState& dst = ss->chips[i];
 
     dst.orb = v.orb;
     dst.ora = v.ora;
@@ -510,22 +510,22 @@ auto mb_abi_save_state(void* instance, void* buffer, size_t* size)
 }
 
 auto mb_abi_load_state(void* instance, const void* buffer, size_t size)
-    -> PeripheralStatus_t {
+    -> PeripheralStatus {
   if (instance == nullptr || buffer == nullptr ||
-      size != sizeof(MockingboardSaveState_t)) {
+      size != sizeof(MockingboardSaveState)) {
     return peripheral_error;
   }
 
-  const auto* ss = static_cast<const MockingboardSaveState_t*>(buffer);
+  const auto* ss = static_cast<const MockingboardSaveState*>(buffer);
   if (ss->version != MOCKINGBOARD_STATE_VERSION ||
-      ss->struct_size != sizeof(MockingboardSaveState_t)) {
+      ss->struct_size != sizeof(MockingboardSaveState)) {
     return peripheral_error;
   }
 
-  auto* mb = static_cast<Mockingboard_t*>(instance);
+  auto* mb = static_cast<Mockingboard*>(instance);
 
   for (size_t i = 0; i < chips_per_card; ++i) {
-    const MockingboardChipSaveState_t& src = ss->chips[i];
+    const MockingboardChipSaveState& src = ss->chips[i];
     Via6522& v = mb->via[i];
     Ay8910& psg = mb->ay[i];
 
@@ -579,15 +579,15 @@ auto mb_abi_load_state(void* instance, const void* buffer, size_t size)
   // Transient: from a full-scale step the coupling settles below an output
   // LSB in about 50 ms, so it is cheaper to restart it than to carry it.
   for (auto& f : mb->dc) {
-    f = DcBlock_t{};
+    f = DcBlock{};
   }
   update_irq(mb);
 
   return peripheral_ok;
 }
 
-auto query_audio_info(void* out, size_t* out_size) -> PeripheralStatus_t {
-  const size_t required = sizeof(PeripheralAudioInfo_t);
+auto query_audio_info(void* out, size_t* out_size) -> PeripheralStatus {
+  const size_t required = sizeof(PeripheralAudioInfo);
   if (out == nullptr) {
     *out_size = required;
     return peripheral_ok;
@@ -598,7 +598,7 @@ auto query_audio_info(void* out, size_t* out_size) -> PeripheralStatus_t {
   }
 
   std::memset(out, 0, required);
-  auto& info = *static_cast<PeripheralAudioInfo_t*>(out);
+  auto& info = *static_cast<PeripheralAudioInfo*>(out);
   info.time_base = peripheral_audio_cpu_clocked;
   info.cycle_divisor = cycles_per_ay_tick;
   info.num_channels = voices_per_card;
@@ -620,7 +620,7 @@ auto query_audio_info(void* out, size_t* out_size) -> PeripheralStatus_t {
 }
 
 auto mb_abi_query(void* instance, uint32_t cmd_id, void* out, size_t* out_size)
-    -> PeripheralStatus_t {
+    -> PeripheralStatus {
   if (instance == nullptr || out_size == nullptr) {
     return peripheral_error;
   }
@@ -630,7 +630,7 @@ auto mb_abi_query(void* instance, uint32_t cmd_id, void* out, size_t* out_size)
   return peripheral_incompatible;
 }
 
-Peripheral_t mockingboard_peripheral = {
+Peripheral mockingboard_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.mockingboard",
     .name = "Mockingboard",
@@ -655,7 +655,7 @@ Peripheral_t mockingboard_peripheral = {
 }  // namespace
 
 // Peripheral registry requires non-const pointer.
-extern "C" auto mockingboard_get_descriptor() -> Peripheral_t* {
+extern "C" auto mockingboard_get_descriptor() -> Peripheral* {
   return &mockingboard_peripheral;
 }
 

@@ -39,8 +39,8 @@
 
 namespace {
 
-int g_joy_fd = -1;
-std::vector<uint8_t> g_input_queue;
+int joy_fd = -1;
+std::vector<uint8_t> input_queue;
 
 constexpr uint8_t a2_key_up = 0x0B;
 constexpr uint8_t a2_key_down = 0x0A;
@@ -84,16 +84,16 @@ struct HeldKey {
   bool open_apple;
 };
 
-std::vector<HeldKey> g_held_keys;
+std::vector<HeldKey> held_keys;
 
 auto release_held_keys() -> void {
-  for (const HeldKey& key : g_held_keys) {
+  for (const HeldKey& key : held_keys) {
     linapple_set_key(key.host_key, key.code, false);
     if (key.open_apple) {
       linapple_set_modifiers(false, false, false, false);
     }
   }
-  g_held_keys.clear();
+  held_keys.clear();
 }
 
 // A terminal has no scancodes, so the byte is read symbolically and doubles
@@ -108,7 +108,7 @@ auto map_key(uint8_t a2_code, bool open_apple = false) -> void {
     linapple_set_modifiers(false, false, true, false);
   }
   linapple_set_key(a2_code, code, true);
-  g_held_keys.push_back({a2_code, code, open_apple});
+  held_keys.push_back({a2_code, code, open_apple});
 }
 
 // 0x7F is what most terminals send for Backspace, the Apple's left arrow;
@@ -131,7 +131,7 @@ auto read_more_input() -> void {
   const ssize_t extra_n =
       read(STDIN_FILENO, extra_buf.data(), extra_buf.size());
   for (ssize_t j = 0; j < extra_n; ++j) {
-    g_input_queue.push_back(extra_buf.at(static_cast<size_t>(j)));
+    input_queue.push_back(extra_buf.at(static_cast<size_t>(j)));
   }
 }
 
@@ -159,11 +159,11 @@ auto utf8_continuation_count(uint8_t lead) -> size_t {
 }
 
 auto utf8_sequence_at(size_t i, size_t continuation) -> bool {
-  if (i + continuation >= g_input_queue.size()) {
+  if (i + continuation >= input_queue.size()) {
     return false;
   }
   for (size_t k = 1; k <= continuation; ++k) {
-    const uint8_t byte = g_input_queue.at(i + k);
+    const uint8_t byte = input_queue.at(i + k);
     if (byte < utf8_continuation_min || byte > utf8_continuation_max) {
       return false;
     }
@@ -216,7 +216,7 @@ auto toggle_debugger() -> void {
 
 auto save_configuration() -> void {
   Configuration::instance().set_int("Configuration", "Video Emulation",
-                                    static_cast<int>(g_videotype));
+                                    static_cast<int>(videotype));
   Configuration::instance().set_int("Configuration", "Emulation Speed",
                                     system_state.speed);
   Configuration::instance().set_int("Configuration", "Fullscreen",
@@ -225,9 +225,9 @@ auto save_configuration() -> void {
 }
 
 auto cycle_video_mode() -> void {
-  g_videotype++;
-  if (g_videotype >= VT_NUM_MODES) {
-    g_videotype = 0;
+  videotype++;
+  if (videotype >= VT_NUM_MODES) {
+    videotype = 0;
   }
   video_reinitialize();
   if (system_state.mode != app_mode_logo) {
@@ -267,12 +267,12 @@ auto toggle_scroll_lock() -> void { linapple_toggle_turbo(); }
 // report's position within the drawn Apple screen is mapped onto the card's
 // clamp window, in pixels once the terminal has said it reports them and a
 // cell size is known, in cells otherwise.
-bool g_tracking = false;
-bool g_pixel_reports = false;
-int g_pixel_mode_setting = -1;
-int g_cell_width_px = 0;
-int g_cell_height_px = 0;
-bool g_left_held = false;
+bool tracking = false;
+bool pixel_reports = false;
+int pixel_mode_setting = -1;
+int cell_width_px = 0;
+int cell_height_px = 0;
+bool left_held = false;
 
 constexpr int sgr_left_button = 0;
 constexpr int pixel_report_mode = 1016;
@@ -291,7 +291,7 @@ auto tracking_wanted() -> bool {
 }
 
 auto cell_size_known() -> bool {
-  return g_cell_width_px > 0 && g_cell_height_px > 0;
+  return cell_width_px > 0 && cell_height_px > 0;
 }
 
 // xterm fills ws_xpixel and ws_ypixel; many terminals leave them zero.
@@ -301,64 +301,64 @@ auto read_cell_size_from_window() -> void {
       w.ws_row == 0 || w.ws_xpixel == 0 || w.ws_ypixel == 0) {
     return;
   }
-  g_cell_width_px = w.ws_xpixel / w.ws_col;
-  g_cell_height_px = w.ws_ypixel / w.ws_row;
+  cell_width_px = w.ws_xpixel / w.ws_col;
+  cell_height_px = w.ws_ypixel / w.ws_row;
 }
 
 // An unconditional ?1016 could bring pixel reports with no cell size to scale
 // them by, so pixels wait until the terminal has answered both queries.
 auto decide_report_unit() -> void {
-  if (g_pixel_reports) {
+  if (pixel_reports) {
     return;
   }
   if (cell_size_known()) {
-    if (g_pixel_mode_setting == mode_reset) {
+    if (pixel_mode_setting == mode_reset) {
       write_terminal("\x1b[?1016h");
-      g_pixel_reports = true;
-    } else if (g_pixel_mode_setting == mode_set ||
-               g_pixel_mode_setting == mode_set_permanently) {
-      g_pixel_reports = true;
+      pixel_reports = true;
+    } else if (pixel_mode_setting == mode_set ||
+               pixel_mode_setting == mode_set_permanently) {
+      pixel_reports = true;
     }
     return;
   }
-  if (g_pixel_mode_setting == mode_set ||
-      g_pixel_mode_setting == mode_set_permanently) {
+  if (pixel_mode_setting == mode_set ||
+      pixel_mode_setting == mode_set_permanently) {
     // Another program left pixel reporting on.
     write_terminal("\x1b[?1016l");
-    g_pixel_mode_setting = mode_reset;
+    pixel_mode_setting = mode_reset;
   }
 }
 
 // The DECRQM and XTWINOPS replies arrive through the input queue.
 auto start_tracking() -> void {
-  g_tracking = true;
-  g_pixel_reports = false;
-  g_pixel_mode_setting = -1;
-  g_cell_width_px = 0;
-  g_cell_height_px = 0;
-  g_left_held = false;
+  tracking = true;
+  pixel_reports = false;
+  pixel_mode_setting = -1;
+  cell_width_px = 0;
+  cell_height_px = 0;
+  left_held = false;
   read_cell_size_from_window();
   write_terminal("\x1b[?1003h\x1b[?1006h\x1b[?1016$p\x1b[16t");
 }
 
 auto stop_tracking() -> void {
-  if (!g_tracking) {
+  if (!tracking) {
     return;
   }
-  if (g_left_held) {
-    g_left_held = false;
+  if (left_held) {
+    left_held = false;
     mouse_frontend_button(false);
   }
   write_terminal("\x1b[?1016l\x1b[?1006l\x1b[?1003l");
-  g_tracking = false;
-  g_pixel_reports = false;
+  tracking = false;
+  pixel_reports = false;
 }
 
 auto follow_machine() -> void {
-  if (tracking_wanted() == g_tracking) {
+  if (tracking_wanted() == tracking) {
     return;
   }
-  if (g_tracking) {
+  if (tracking) {
     stop_tracking();
   } else {
     start_tracking();
@@ -373,11 +373,11 @@ auto load_state() -> void {
 
 auto picture_in_report_units() -> MousePictureRect {
   MousePictureRect box = tui_video_picture_box();
-  if (g_pixel_reports) {
-    box.x *= g_cell_width_px;
-    box.y *= g_cell_height_px;
-    box.w *= g_cell_width_px;
-    box.h *= g_cell_height_px;
+  if (pixel_reports) {
+    box.x *= cell_width_px;
+    box.y *= cell_height_px;
+    box.w *= cell_width_px;
+    box.h *= cell_height_px;
   }
   return box;
 }
@@ -389,11 +389,11 @@ auto handle_mouse_report(const MouseSgrEvent& event) -> void {
   if (event.motion) {
     mouse_frontend_follow(event.x - 1, event.y - 1, picture_in_report_units());
   } else if (event.button == sgr_left_button) {
-    if (event.pressed && !g_left_held) {
-      g_left_held = true;
+    if (event.pressed && !left_held) {
+      left_held = true;
       mouse_frontend_button(true);
-    } else if (event.released && g_left_held) {
-      g_left_held = false;
+    } else if (event.released && left_held) {
+      left_held = false;
       mouse_frontend_button(false);
     }
   }
@@ -404,7 +404,7 @@ auto handle_terminal_reply(const uint8_t* seq, size_t len) -> void {
   int setting = 0;
   if (mouse_frontend_decode_mode_report(seq, len, &mode, &setting)) {
     if (mode == pixel_report_mode) {
-      g_pixel_mode_setting = setting;
+      pixel_mode_setting = setting;
       decide_report_unit();
     }
     return;
@@ -413,21 +413,21 @@ auto handle_terminal_reply(const uint8_t* seq, size_t len) -> void {
   int height = 0;
   if (mouse_frontend_decode_cell_size_report(seq, len, &width, &height) &&
       width > 0 && height > 0) {
-    g_cell_width_px = width;
-    g_cell_height_px = height;
+    cell_width_px = width;
+    cell_height_px = height;
     decide_report_unit();
   }
 }
 
 auto process_sequences() -> void {
   size_t i = 0;
-  while (i < g_input_queue.size()) {
-    if (g_input_queue.at(i) == a2_key_esc) {
-      if (i + 1 >= g_input_queue.size()) {
+  while (i < input_queue.size()) {
+    if (input_queue.at(i) == a2_key_esc) {
+      if (i + 1 >= input_queue.size()) {
         read_more_input();
       }
 
-      if (i + 1 >= g_input_queue.size()) {
+      if (i + 1 >= input_queue.size()) {
         if (tui_disk_select_is_active()) {
           tui_disk_select_close();
         } else if (tui_video_is_help_visible()) {
@@ -439,11 +439,11 @@ auto process_sequences() -> void {
         continue;
       }
 
-      if (g_input_queue.at(i + 1) == 'O') {
-        if (i + 2 >= g_input_queue.size()) {
+      if (input_queue.at(i + 1) == 'O') {
+        if (i + 2 >= input_queue.size()) {
           break;
         }
-        uint8_t ss3_cmd = g_input_queue.at(i + 2);
+        uint8_t ss3_cmd = input_queue.at(i + 2);
         if (ss3_cmd == 'P') {  // F1
           tui_video_toggle_help();
         } else if (ss3_cmd == 'Q') {  // F2
@@ -527,34 +527,34 @@ auto process_sequences() -> void {
         continue;
       }
 
-      if (g_input_queue.at(i + 1) == '[') {
-        if (i + 2 < g_input_queue.size() && g_input_queue.at(i + 2) == '[') {
-          if (i + 3 < g_input_queue.size()) {
-            if (g_input_queue.at(i + 3) == 'A') {  // Linux Console F1
+      if (input_queue.at(i + 1) == '[') {
+        if (i + 2 < input_queue.size() && input_queue.at(i + 2) == '[') {
+          if (i + 3 < input_queue.size()) {
+            if (input_queue.at(i + 3) == 'A') {  // Linux Console F1
               tui_video_toggle_help();
-            } else if (g_input_queue.at(i + 3) == 'B') {  // Linux Console F2
+            } else if (input_queue.at(i + 3) == 'B') {  // Linux Console F2
               reset_machine();
-            } else if (g_input_queue.at(i + 3) == 'C') {  // Linux Console F3
+            } else if (input_queue.at(i + 3) == 'C') {  // Linux Console F3
               tui_video_close_help();
               tui_disk_select_open(6, 0);
-            } else if (g_input_queue.at(i + 3) == 'D') {  // Linux Console F4
+            } else if (input_queue.at(i + 3) == 'D') {  // Linux Console F4
               tui_video_close_help();
               tui_disk_select_open(6, 1);
-            } else if (g_input_queue.at(i + 3) == 'E') {  // Linux Console F5
+            } else if (input_queue.at(i + 3) == 'E') {  // Linux Console F5
               swap_drives();
-            } else if (g_input_queue.at(i + 3) == 'F') {  // Linux Console F6
+            } else if (input_queue.at(i + 3) == 'F') {  // Linux Console F6
               tui_video_toggle_fullscreen();
-            } else if (g_input_queue.at(i + 3) == 'G') {  // Linux Console F7
+            } else if (input_queue.at(i + 3) == 'G') {  // Linux Console F7
               toggle_debugger();
-            } else if (g_input_queue.at(i + 3) == 'H') {  // Linux Console F8
+            } else if (input_queue.at(i + 3) == 'H') {  // Linux Console F8
               tui_video_save_screenshot();
-            } else if (g_input_queue.at(i + 3) == 'I') {  // Linux Console F9
+            } else if (input_queue.at(i + 3) == 'I') {  // Linux Console F9
               cycle_video_mode();
-            } else if (g_input_queue.at(i + 3) == 'J') {  // Linux Console F10
+            } else if (input_queue.at(i + 3) == 'J') {  // Linux Console F10
               load_state();
-            } else if (g_input_queue.at(i + 3) == 'K') {  // Linux Console F11
+            } else if (input_queue.at(i + 3) == 'K') {  // Linux Console F11
               save_state_save();
-            } else if (g_input_queue.at(i + 3) == 'L') {  // Linux Console F12
+            } else if (input_queue.at(i + 3) == 'L') {  // Linux Console F12
               raise(SIGINT);
             } else if (tui_video_is_help_visible()) {
               tui_video_close_help();
@@ -566,31 +566,31 @@ auto process_sequences() -> void {
         }
 
         size_t end = i + 2;
-        while (end < g_input_queue.size() && (end - i) < max_escape_length &&
-               (g_input_queue.at(end) < ansi_final_byte_min ||
-                g_input_queue.at(end) > ansi_final_byte_max)) {
+        while (end < input_queue.size() && (end - i) < max_escape_length &&
+               (input_queue.at(end) < ansi_final_byte_min ||
+                input_queue.at(end) > ansi_final_byte_max)) {
           end++;
         }
 
-        if (end < g_input_queue.size() &&
-            g_input_queue.at(end) >= ansi_final_byte_min &&
-            g_input_queue.at(end) <= ansi_final_byte_max) {
-          uint8_t cmd = g_input_queue.at(end);
+        if (end < input_queue.size() &&
+            input_queue.at(end) >= ansi_final_byte_min &&
+            input_queue.at(end) <= ansi_final_byte_max) {
+          uint8_t cmd = input_queue.at(end);
 
-          if (g_input_queue.at(i + 2) == '<') {
+          if (input_queue.at(i + 2) == '<') {
             MouseSgrEvent event{};
-            if (mouse_frontend_sgr_decode(&g_input_queue.at(i), end - i + 1,
+            if (mouse_frontend_sgr_decode(&input_queue.at(i), end - i + 1,
                                           &event)) {
               handle_mouse_report(event);
             }
           } else if (cmd == 'y' || cmd == 't') {
-            handle_terminal_reply(&g_input_queue.at(i), end - i + 1);
+            handle_terminal_reply(&input_queue.at(i), end - i + 1);
           } else if (cmd == 'P') {  // Pause key (\x1b[P); F1 is \x1bOP (SS3)
             toggle_pause();
           } else if (cmd == 'Q') {  // xterm F2 / Shift+F2 / Ctrl+F2
             const std::string token(
-                g_input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
-                g_input_queue.begin() + static_cast<std::ptrdiff_t>(end));
+                input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
+                input_queue.begin() + static_cast<std::ptrdiff_t>(end));
             if (token.find(";2") != std::string::npos || token == "1;2") {
               restart_machine();
             } else {
@@ -599,8 +599,8 @@ auto process_sequences() -> void {
           } else if (cmd == 'R') {  // xterm F3 / Shift+F3 (\x1b[R / \x1b[1;2R)
             tui_video_close_help();
             const std::string token(
-                g_input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
-                g_input_queue.begin() + static_cast<std::ptrdiff_t>(end));
+                input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
+                input_queue.begin() + static_cast<std::ptrdiff_t>(end));
             if (token.find(";2") != std::string::npos || token == "1;2") {
               tui_disk_select_open(harddisk_frontend_slot(), 0);
             } else {
@@ -609,8 +609,8 @@ auto process_sequences() -> void {
           } else if (cmd == 'S') {  // xterm F4 / Shift+F4 (\x1b[S / \x1b[1;2S)
             tui_video_close_help();
             const std::string token(
-                g_input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
-                g_input_queue.begin() + static_cast<std::ptrdiff_t>(end));
+                input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
+                input_queue.begin() + static_cast<std::ptrdiff_t>(end));
             if (token.find(";2") != std::string::npos || token == "1;2") {
               tui_disk_select_open(harddisk_frontend_slot(), 1);
             } else {
@@ -618,8 +618,8 @@ auto process_sequences() -> void {
             }
           } else if (cmd == 'W') {  // xterm F8 / Shift+F8 (\x1b[W / \x1b[1;2W)
             const std::string token(
-                g_input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
-                g_input_queue.begin() + static_cast<std::ptrdiff_t>(end));
+                input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
+                input_queue.begin() + static_cast<std::ptrdiff_t>(end));
             if (token.find(";2") != std::string::npos || token == "1;2") {
               save_configuration();
             } else {
@@ -627,8 +627,8 @@ auto process_sequences() -> void {
             }
           } else if (cmd == 'X') {  // xterm F9 / Shift+F9 (\x1b[X / \x1b[1;2X)
             const std::string token(
-                g_input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
-                g_input_queue.begin() + static_cast<std::ptrdiff_t>(end));
+                input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
+                input_queue.begin() + static_cast<std::ptrdiff_t>(end));
             if (token.find(";2") != std::string::npos || token == "1;2") {
               tui_video_toggle_render_mode();
             } else {
@@ -646,8 +646,8 @@ auto process_sequences() -> void {
             }
           } else if (cmd == '^') {  // rxvt Ctrl modifier
             const std::string token(
-                g_input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
-                g_input_queue.begin() + static_cast<std::ptrdiff_t>(end));
+                input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
+                input_queue.begin() + static_cast<std::ptrdiff_t>(end));
             if (token == "12") {  // rxvt Ctrl+F2 (\x1b[12^)
               reset_machine();
             } else if (token == "21") {  // rxvt Ctrl+F10 (\x1b[21^)
@@ -655,8 +655,8 @@ auto process_sequences() -> void {
             }
           } else if (cmd == '$' || cmd == '@') {  // rxvt Shift modifier
             const std::string token(
-                g_input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
-                g_input_queue.begin() + static_cast<std::ptrdiff_t>(end));
+                input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
+                input_queue.begin() + static_cast<std::ptrdiff_t>(end));
             if (token == "12") {  // rxvt Shift+F2 (\x1b[12$)
               restart_machine();
             } else if (token == "13" || token == "25") {
@@ -677,8 +677,8 @@ auto process_sequences() -> void {
           } else if (cmd == '~') {
             if (end > i + 2) {
               const std::string token(
-                  g_input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
-                  g_input_queue.begin() + static_cast<std::ptrdiff_t>(end));
+                  input_queue.begin() + static_cast<std::ptrdiff_t>(i + 2),
+                  input_queue.begin() + static_cast<std::ptrdiff_t>(end));
               if (token == "12;2") {  // VT Shift+F2 (\x1b[12;2~)
                 restart_machine();
               } else if (token == "13;2" || token == "25" || token == "25;2") {
@@ -827,7 +827,7 @@ auto process_sequences() -> void {
       // A terminal with metaSendsEscape sends Alt+key as ESC then the byte:
       // Open Apple with that key. A second ESC or an eighth-bit byte leaves
       // this ESC a key of its own.
-      const uint8_t after_esc = g_input_queue.at(i + 1);
+      const uint8_t after_esc = input_queue.at(i + 1);
       if (after_esc != a2_key_esc && after_esc < eighth_bit) {
         if (!tui_disk_select_is_active() && !tui_video_is_help_visible() &&
             system_state.mode != app_mode_debug) {
@@ -852,14 +852,14 @@ auto process_sequences() -> void {
       continue;
     }
 
-    uint8_t b = g_input_queue.at(i);
+    uint8_t b = input_queue.at(i);
 
     // A UTF-8 terminal sends Alt+key as the ESC prefix, so a valid UTF-8
     // sequence is a character the Apple has no code for; only a high byte that
     // begins no sequence is a non-UTF-8 terminal's Alt+key.
     const size_t continuation = utf8_continuation_count(b);
     if (continuation > 0) {
-      if (i + continuation >= g_input_queue.size()) {
+      if (i + continuation >= input_queue.size()) {
         read_more_input();
       }
       if (utf8_sequence_at(i, continuation)) {
@@ -902,8 +902,8 @@ auto process_sequences() -> void {
 
     i++;
   }
-  g_input_queue.erase(g_input_queue.begin(),
-                      g_input_queue.begin() + static_cast<std::ptrdiff_t>(i));
+  input_queue.erase(input_queue.begin(),
+                      input_queue.begin() + static_cast<std::ptrdiff_t>(i));
 }
 
 }  // namespace
@@ -912,22 +912,22 @@ auto tui_input_initialize() -> void {
   if (tracking_wanted()) {
     start_tracking();
   }
-  g_joy_fd = open("/dev/input/js0", O_RDONLY | O_NONBLOCK);
-  if (g_joy_fd == -1) {
+  joy_fd = open("/dev/input/js0", O_RDONLY | O_NONBLOCK);
+  if (joy_fd == -1) {
     return;
   }
   // A second plug on the connector, with a 560 ohm pull-down on each line it
   // has a button for (Sather, Understanding the Apple II, 7-9 and 7-11).
   uint8_t buttons = 0;
   const bool three_buttons =
-      ioctl(g_joy_fd, JSIOCGBUTTONS, &buttons) == 0 && buttons >= 3;
+      ioctl(joy_fd, JSIOCGBUTTONS, &buttons) == 0 && buttons >= 3;
   linapple_set_game_pulldowns(joystick_config_pulldown_mask() |
                               joystick_line_pb0 | joystick_line_pb1 |
                               (three_buttons ? joystick_line_pb2 : 0));
 }
 
 auto tui_input_on_resize() -> void {
-  if (!g_tracking) {
+  if (!tracking) {
     return;
   }
   read_cell_size_from_window();
@@ -937,14 +937,14 @@ auto tui_input_on_resize() -> void {
 
 auto tui_input_shutdown() -> void {
   stop_tracking();
-  if (g_joy_fd != -1) {
-    close(g_joy_fd);
-    g_joy_fd = -1;
+  if (joy_fd != -1) {
+    close(joy_fd);
+    joy_fd = -1;
   }
-  g_input_queue.clear();
-  g_input_queue.shrink_to_fit();
-  g_held_keys.clear();
-  g_held_keys.shrink_to_fit();
+  input_queue.clear();
+  input_queue.shrink_to_fit();
+  held_keys.clear();
+  held_keys.shrink_to_fit();
 }
 
 auto tui_input_poll() -> void {
@@ -953,14 +953,14 @@ auto tui_input_poll() -> void {
   ssize_t n = read(STDIN_FILENO, buf.data(), buf.size());
   if (n > 0) {
     for (ssize_t j = 0; j < n; ++j) {
-      g_input_queue.push_back(buf.at(static_cast<size_t>(j)));
+      input_queue.push_back(buf.at(static_cast<size_t>(j)));
     }
     process_sequences();
   }
 
-  if (g_joy_fd != -1) {
+  if (joy_fd != -1) {
     struct js_event js{};
-    while (read(g_joy_fd, &js, sizeof(js)) > 0) {
+    while (read(joy_fd, &js, sizeof(js)) > 0) {
       // The port has three pushbutton inputs (Apple II Reference Manual, 1979,
       // p. 100); a device with more buttons keeps the rest to itself.
       if ((js.type & JS_EVENT_BUTTON) != 0 && js.number < 3) {

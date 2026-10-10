@@ -8,11 +8,11 @@
 
 #include "apple2/Apple2Types.h"
 
-struct SsBaseMemory_t;
+struct SsBaseMemory;
 
 using IoFunction = uint8_t (*)(uint16_t pc, uint16_t addr, uint8_t write_flag,
                                uint8_t write_value, uint32_t executed_cycles);
-using IoFunction_t = IoFunction;
+using IoFunction = IoFunction;
 using iofunction = IoFunction;
 
 // Memory Mode Flags
@@ -148,18 +148,18 @@ enum SoftSwitch : uint8_t {
   SS_AN3_ON = 0x5F,
 };
 
-using SoftSwitch_t = SoftSwitch;
+using SoftSwitch = SoftSwitch;
 
 enum MemoryInitPattern : uint8_t { MIP_ZERO, MIP_FF_FF_00_00, NUM_MIP };
-using MemoryInitPattern_t = MemoryInitPattern;
-extern MemoryInitPattern g_memory_init_pattern;
+using MemoryInitPattern = MemoryInitPattern;
+extern MemoryInitPattern memory_init_pattern;
 
 enum ExpansionRomType : uint8_t {
   EXP_ROM_NULL = 0,
   EXP_ROM_INTERNAL,
   EXP_ROM_PERIPHERAL,
 };
-using ExpansionRomType_t = ExpansionRomType;
+using ExpansionRomType = ExpansionRomType;
 
 struct MemoryInstance {
   std::vector<uint8_t> buf_memmain;
@@ -203,26 +203,26 @@ struct MemoryInstance {
   MemoryInstance(MemoryInstance&&) noexcept = default;
   auto operator=(MemoryInstance&&) noexcept -> MemoryInstance& = default;
 };
-using MemoryInstance_t = MemoryInstance;
+using MemoryInstance = MemoryInstance;
 
 auto mem_get_active_context() noexcept -> MemoryInstance*;
 auto mem_set_active_context(MemoryInstance* context) noexcept -> void;
 
-extern IoFunction_t* g_io_read;
-extern IoFunction_t* g_io_write;
-extern IoFunction_t*& IORead;
-extern IoFunction_t*& IOWrite;
+extern IoFunction* io_read;
+extern IoFunction* io_write;
+extern IoFunction*& IORead;
+extern IoFunction*& IOWrite;
 extern uint8_t** memwrite;
 extern uint8_t* mem;
 extern uint8_t* memdirty;
 
-auto register_io_handler(uint32_t slot, IoFunction_t io_read_c0,
-                         IoFunction_t io_write_c0, IoFunction_t io_read_cx,
-                         IoFunction_t io_write_cx, void* slot_parameter,
+auto register_io_handler(uint32_t slot, IoFunction io_read_c0,
+                         IoFunction io_write_c0, IoFunction io_read_cx,
+                         IoFunction io_write_cx, void* slot_parameter,
                          const uint8_t* expansion_rom) noexcept -> void;
 
-auto register_direct_io_handler(uint16_t addr, IoFunction_t read,
-                                IoFunction_t write, void* instance) noexcept
+auto register_direct_io_handler(uint16_t addr, IoFunction read,
+                                IoFunction write, void* instance) noexcept
     -> void;
 
 auto mem_destroy() -> void;
@@ -251,8 +251,8 @@ auto mem_read_floating_bus(uint8_t highbit, uint32_t executed_cycles) noexcept
 auto mem_reset() noexcept -> void;
 auto mem_reset_paging() noexcept -> void;
 auto mem_get_slot_parameters(uint32_t slot) noexcept -> void*;
-auto mem_get_snapshot(SsBaseMemory_t* snapshot) -> uint32_t;
-auto mem_set_snapshot(const SsBaseMemory_t* snapshot) -> uint32_t;
+auto mem_get_snapshot(SsBaseMemory* snapshot) -> uint32_t;
+auto mem_set_snapshot(const SsBaseMemory* snapshot) -> uint32_t;
 auto io_null(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
              uint32_t cycles) -> uint8_t;
 auto mem_update_paging(bool initialize, bool updatewriteonly) -> void;

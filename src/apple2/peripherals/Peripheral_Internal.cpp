@@ -20,7 +20,7 @@
 
 namespace {
 struct LoadedPlugin {
-  Peripheral_t* p;
+  Peripheral* p;
   void* handle;
   std::string path;
 };
@@ -63,7 +63,7 @@ auto peripheral_request_card_for_run(const char* id) -> void {
 auto peripheral_requested_slot() -> int { return requested_slot; }
 
 static auto slot_takes_card(const SS_PERIPHERAL_MANIFEST& manifest,
-                            const Peripheral_t& card, int slot) -> bool {
+                            const Peripheral& card, int slot) -> bool {
   if (slot < 1 || slot >= static_cast<int>(num_slots)) {
     return false;
   }
@@ -78,7 +78,7 @@ static auto apply_run_request(const std::string& id) -> void {
   if (id.empty()) {
     return;
   }
-  Peripheral_t* card = peripheral_find_internal(id.c_str());
+  Peripheral* card = peripheral_find_internal(id.c_str());
   if (card == nullptr) {
     return;
   }
@@ -132,7 +132,7 @@ auto peripheral_legacy_override(int* slot, const char** key_card,
   return true;
 }
 
-auto peripheral_find_internal(const char* name) -> Peripheral_t* {
+auto peripheral_find_internal(const char* name) -> Peripheral* {
   if (name == nullptr) {
     return nullptr;
   }
@@ -214,7 +214,7 @@ auto peripheral_register_internal() -> void {
 
   uint32_t mouse_key = 0;
   config_load_int(cfg_sec_configuration, cfg_mouse_in_slot4, &mouse_key);
-  const Peripheral_t* mouse_key_card = nullptr;
+  const Peripheral* mouse_key_card = nullptr;
   if (mouse_key != 0) {
     mouse_key_card = peripheral_find_internal(mouse_card_id);
     if (mouse_key_card == nullptr) {
@@ -243,7 +243,7 @@ auto peripheral_register_internal() -> void {
 
     if (in_config) {
       if (slot == harddisk_key_slot && harddisk_key != 0) {
-        const Peripheral_t* named = peripheral_find_internal(name.c_str());
+        const Peripheral* named = peripheral_find_internal(name.c_str());
         if (named == nullptr || strcmp(named->id, harddisk_card_id) != 0) {
           Logger::info(
               "Harddisk Enable is set, but [Slots] names %s for slot %d; the "
@@ -269,7 +269,7 @@ auto peripheral_register_internal() -> void {
     }
 
     if (slot == mouse_key_slot && mouse_key_card != nullptr) {
-      const Peripheral_t* displaced =
+      const Peripheral* displaced =
           name.empty() ? nullptr : peripheral_find_internal(name.c_str());
       if (displaced != mouse_key_card) {
         legacy_override.slot = slot;
@@ -288,7 +288,7 @@ auto peripheral_register_internal() -> void {
       continue;
     }
 
-    Peripheral_t* p = peripheral_find_internal(name.c_str());
+    Peripheral* p = peripheral_find_internal(name.c_str());
     if (p != nullptr) {
       peripheral_register(p, slot);
     }
@@ -379,7 +379,7 @@ auto peripheral_plugins_init(const char* plugin_dir) -> void {
         const std::string full_path = Path::join(path, filename);
         void* handle = dlopen(full_path.c_str(), RTLD_NOW | RTLD_LOCAL);
         if (handle != nullptr) {
-          auto* p = reinterpret_cast<Peripheral_t*>(
+          auto* p = reinterpret_cast<Peripheral*>(
               dlsym(handle, "linapple_peripheral_descriptor"));
           if (p != nullptr) {
             if (p->abi_version != LINAPPLE_ABI_VERSION) {

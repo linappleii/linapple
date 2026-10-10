@@ -27,31 +27,31 @@ constexpr uint16_t card_page = 0xC400;
 
 // Eight control bytes and one candidate save state, so a wrong byte anywhere
 // in the layout is part of the search rather than a separate harness.
-constexpr size_t record_size = 8 + sizeof(MockingboardSaveState_t);
+constexpr size_t record_size = 8 + sizeof(MockingboardSaveState);
 
-std::vector<size_t> g_push_sizes;
-bool g_samples_in_range = true;
-bool g_shape_ok = true;
+std::vector<size_t> push_sizes;
+bool samples_in_range = true;
+bool shape_ok = true;
 
 // The card is the only thing that drives the line, and it may only report a
 // change. /RES is the exception: it reports the line inactive whether or not
 // that is news, so the alternation restarts there.
-bool g_irq_line = false;
-bool g_in_reset = false;
-bool g_irq_alternates = true;
+bool irq_line = false;
+bool in_reset = false;
+bool irq_alternates = true;
 
 auto mock_assert_irq(int slot, bool assert_irq) -> void {
   (void)slot;
-  if (g_in_reset) {
-    g_irq_line = assert_irq;
+  if (in_reset) {
+    irq_line = assert_irq;
     return;
   }
-  g_irq_alternates = g_irq_alternates && (assert_irq != g_irq_line);
-  g_irq_line = assert_irq;
+  irq_alternates = irq_alternates && (assert_irq != irq_line);
+  irq_line = assert_irq;
 }
 
-PeripheralIOHandler g_read_cx = nullptr;
-PeripheralIOHandler g_write_cx = nullptr;
+PeripheralIOHandler read_cx = nullptr;
+PeripheralIOHandler write_cx = nullptr;
 
 auto mock_register_io(int slot, PeripheralIOHandler read_c0,
                       PeripheralIOHandler write_c0, PeripheralIOHandler read_cx,
@@ -59,36 +59,36 @@ auto mock_register_io(int slot, PeripheralIOHandler read_c0,
   (void)slot;
   (void)read_c0;
   (void)write_c0;
-  g_read_cx = read_cx;
-  g_write_cx = write_cx;
+  read_cx = read_cx;
+  write_cx = write_cx;
 }
 
 auto mock_audio_push_channels(void* instance, const float* const* channels,
                               size_t num_channels, size_t num_samples) -> void {
   (void)instance;
-  g_shape_ok = g_shape_ok && (channels != nullptr) &&
+  shape_ok = shape_ok && (channels != nullptr) &&
                (num_channels == card_voices) && (num_samples > 0) &&
                (num_samples <= ticks_per_chunk);
   if (channels == nullptr || num_channels != card_voices) {
     return;
   }
-  g_push_sizes.push_back(num_samples);
+  push_sizes.push_back(num_samples);
   for (size_t c = 0; c < num_channels; ++c) {
     if (channels[c] == nullptr) {
-      g_shape_ok = false;
+      shape_ok = false;
       continue;
     }
     for (size_t i = 0; i < num_samples; ++i) {
       const float sample = channels[c][i];
       // The card's output stage is AC coupled, so what leaves it is bipolar
       // and bounded by the peak magnitude it declares.
-      g_samples_in_range = g_samples_in_range && (std::isfinite(sample) != 0) &&
+      samples_in_range = samples_in_range && (std::isfinite(sample) != 0) &&
                            (sample >= -1.0F) && (sample <= 1.0F);
     }
   }
 }
 
-auto mock_log(void* instance, PeripheralLogLevel_t level, const char* fmt, ...)
+auto mock_log(void* instance, PeripheralLogLevel level, const char* fmt, ...)
     -> void {
   (void)instance;
   (void)level;
@@ -96,9 +96,9 @@ auto mock_log(void* instance, PeripheralLogLevel_t level, const char* fmt, ...)
 }
 
 auto begin_observation() -> void {
-  g_push_sizes.clear();
-  g_samples_in_range = true;
-  g_shape_ok = true;
+  push_sizes.clear();
+  samples_in_range = true;
+  shape_ok = true;
 }
 
 /**
@@ -118,27 +118,27 @@ auto check_pushes(uint32_t advanced, uint32_t* carry) -> void {
       (ticks + ticks_per_chunk - 1) / ticks_per_chunk;
   const size_t tail = static_cast<size_t>(ticks % ticks_per_chunk);
 
-  assert(g_samples_in_range);
-  assert(g_shape_ok);
-  assert(g_irq_alternates);
-  assert(g_push_sizes.size() <= implied_chunks);
+  assert(samples_in_range);
+  assert(shape_ok);
+  assert(irq_alternates);
+  assert(push_sizes.size() <= implied_chunks);
 
   uint64_t pushed = 0;
-  for (size_t i = 0; i < g_push_sizes.size(); ++i) {
-    const bool is_last = (i + 1 == g_push_sizes.size());
-    const bool whole_chunk = (g_push_sizes[i] == ticks_per_chunk);
-    const bool is_tail = is_last && (tail != 0) && (g_push_sizes[i] == tail);
+  for (size_t i = 0; i < push_sizes.size(); ++i) {
+    const bool is_last = (i + 1 == push_sizes.size());
+    const bool whole_chunk = (push_sizes[i] == ticks_per_chunk);
+    const bool is_tail = is_last && (tail != 0) && (push_sizes[i] == tail);
     assert(whole_chunk || is_tail);
-    pushed += g_push_sizes[i];
+    pushed += push_sizes[i];
   }
   assert(pushed <= ticks);
-  if (g_push_sizes.size() == implied_chunks) {
+  if (push_sizes.size() == implied_chunks) {
     assert(pushed == ticks);
   }
 }
 
-auto read_carry(Peripheral_t* card, void* instance) -> uint32_t {
-  MockingboardSaveState_t state{};
+auto read_carry(Peripheral* card, void* instance) -> uint32_t {
+  MockingboardSaveState state{};
   size_t size = sizeof(state);
   if (card->save_state(instance, &state, &size) != peripheral_ok) {
     return 0;
@@ -149,18 +149,18 @@ auto read_carry(Peripheral_t* card, void* instance) -> uint32_t {
 }  // namespace
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
-  Peripheral_t* card = mockingboard_get_descriptor();
+  Peripheral* card = mockingboard_get_descriptor();
 
-  HostInterface_t host{};
+  HostInterface host{};
   host.Log = mock_log;
   host.AssertIrq = mock_assert_irq;
   host.RegisterIO = mock_register_io;
   host.AudioPushChannels = mock_audio_push_channels;
 
-  g_read_cx = nullptr;
-  g_write_cx = nullptr;
-  g_irq_line = false;
-  g_irq_alternates = true;
+  read_cx = nullptr;
+  write_cx = nullptr;
+  irq_line = false;
+  irq_alternates = true;
 
   void* instance = card->init(card_slot, &host);
   if (instance == nullptr) {
@@ -180,13 +180,13 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
                            (static_cast<uint32_t>(record[6]) << 8);
 
     if ((flags & 0x01) != 0) {
-      g_in_reset = true;
+      in_reset = true;
       card->reset(instance);
-      g_in_reset = false;
+      in_reset = false;
       carry = 0;
     }
     if ((flags & 0x02) != 0) {
-      MockingboardSaveState_t candidate{};
+      MockingboardSaveState candidate{};
       std::memcpy(&candidate, record + 8, sizeof(candidate));
       // The claimed size comes out of the input too, so a load that lies about
       // its length is part of the search space.
@@ -202,10 +202,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     if ((flags & 0x08) != 0) {
       begin_observation();
       const uint32_t advanced = (executed > synced) ? executed - synced : 0;
-      if ((flags & 0x10) != 0 && g_write_cx != nullptr) {
-        g_write_cx(instance, 0, addr, 1, value, executed);
-      } else if (g_read_cx != nullptr) {
-        g_read_cx(instance, 0, addr, 0, 0, executed);
+      if ((flags & 0x10) != 0 && write_cx != nullptr) {
+        write_cx(instance, 0, addr, 1, value, executed);
+      } else if (read_cx != nullptr) {
+        read_cx(instance, 0, addr, 0, 0, executed);
       }
       synced = (executed > synced) ? executed : synced;
       check_pushes(advanced, &carry);

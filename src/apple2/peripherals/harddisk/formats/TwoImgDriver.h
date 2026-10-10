@@ -32,7 +32,7 @@ typedef struct {
   uint32_t data_length;
   uint32_t block_count;
   bool locked;
-} TwoImgHeader_t;
+} TwoImgHeader;
 
 /* Reads the 64-byte header of a file of file_size bytes. Refuses a magic
    other than 2IMG, a header size under 64 or past the file, a data offset
@@ -43,9 +43,9 @@ typedef struct {
    with harddisk_err_invalid_format; a nibble image with
    harddisk_err_not_block_image. The version field is read and ignored. */
 HarddiskError two_img_parse(const uint8_t* header, uint64_t file_size,
-                              TwoImgHeader_t* out);
+                              TwoImgHeader* out);
 
-extern const HarddiskFormatDriver_t g_two_img_driver;
+extern const HarddiskFormatDriver two_img_driver;
 
 #ifdef __cplusplus
 }

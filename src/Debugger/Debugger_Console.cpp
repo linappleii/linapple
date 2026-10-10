@@ -21,77 +21,77 @@
 #include "core/Util_Text.h"
 
 // Globals originally from Debug.cpp
-const char g_input_cursor[] = "_\x7F";  // insert over-write
-bool g_input_cursor_visible = false;
-int g_input_cursor_index = CURSOR_OVERSTRIKE;  // which cursor to use
-const int g_input_cursor_count = sizeof(g_input_cursor);
+const char input_cursor[] = "_\x7F";  // insert over-write
+bool input_cursor_visible = false;
+int input_cursor_index = CURSOR_OVERSTRIKE;  // which cursor to use
+const int input_cursor_count = sizeof(input_cursor);
 
-bool g_ignore_next_key = false;
+bool ignore_next_key = false;
 
-static auto ConsoleInputHistoryPrev() -> Update_t;
-static auto ConsoleInputHistoryNext() -> Update_t;
+static auto ConsoleInputHistoryPrev() -> UpdateResult;
+static auto ConsoleInputHistoryNext() -> UpdateResult;
 
 // Console
 // ________________________________________________________________________________________
 
 // See ConsoleInputReset() for why the console input
-// is tied to the zero'th output of g_console_display
-// and not using a seperate var: g_console_input[ CONSOLE_WIDTH ];
+// is tied to the zero'th output of console_display
+// and not using a seperate var: console_input[ CONSOLE_WIDTH ];
 //
-//          :          g_console_buffer[4] |      ^ g_console_display[5] : :
-//          g_console_buffer[3] |      | g_console_display[4]  <-
-//          g_console_display_total
-// g_console_buffer_size -> g_console_buffer[2] |      | g_console_display[3] :
-//          :          g_console_buffer[1] v      | g_console_display[2] : .
-//          g_console_buffer[0] -----> | g_console_display[1]        .
+//          :          console_buffer[4] |      ^ console_display[5] : :
+//          console_buffer[3] |      | console_display[4]  <-
+//          console_display_total
+// console_buffer_size -> console_buffer[2] |      | console_display[3] :
+//          :          console_buffer[1] v      | console_display[2] : .
+//          console_buffer[0] -----> | console_display[1]        .
 //                                                |
-// g_buffered_input[0] -----> ConsoleInput ---->  | g_console_display[0]
-// g_buffered_input[1] ^
-// g_buffered_input[2] |
-// g_buffered_input[3] |
+// buffered_input[0] -----> ConsoleInput ---->  | console_display[0]
+// buffered_input[1] ^
+// buffered_input[2] |
+// buffered_input[3] |
 
 // Buffer
-bool g_console_buffer_paused =
+bool console_buffer_paused =
     false;  // buffered output is waiting for user to continue
-int g_console_buffer_size = 0;
-conchar_t g_console_buffer[CONSOLE_BUFFER_HEIGHT]
-                          [CONSOLE_WIDTH];  // TODO: std::vector< line_t >
+int console_buffer_size = 0;
+ConChar console_buffer[CONSOLE_BUFFER_HEIGHT]
+                          [CONSOLE_WIDTH];  // TODO: std::vector< Line >
 
 // Cursor
-char g_console_cursor[] = "_";
+char console_cursor[] = "_";
 
 // Display
-char g_console_prompt[] = ">!";     // input, assembler // NUM_PROMPTS
-char g_console_prompt_str[] = ">";  // No, NOT Integer Basic!  The nostalgic '*'
+char console_prompt[] = ">!";     // input, assembler // NUM_PROMPTS
+char console_prompt_str[] = ">";  // No, NOT Integer Basic!  The nostalgic '*'
                                     // "Monitor" doesn't look as good, IMHO. :-(
-int g_console_prompt_len = 1;
+int console_prompt_len = 1;
 
-bool g_console_full_width = true;  // false
+bool console_full_width = true;  // false
 
-int g_console_display_start = 0;  // to allow scrolling
-int g_console_display_total = 0;  // number of lines added to console
-int g_console_display_lines = 0;
-int g_console_display_width = 0;
-conchar_t g_console_display[CONSOLE_DISPLAY_HEIGHT][CONSOLE_WIDTH];
+int console_display_start = 0;  // to allow scrolling
+int console_display_total = 0;  // number of lines added to console
+int console_display_lines = 0;
+int console_display_width = 0;
+ConChar console_display[CONSOLE_DISPLAY_HEIGHT][CONSOLE_WIDTH];
 
 // Input History
-int g_history_lines_start = 0;
-int g_history_lines_total = 0;  // number of commands entered
-char g_history_lines[HISTORY_HEIGHT][HISTORY_WIDTH] = {""};
+int history_lines_start = 0;
+int history_lines_total = 0;  // number of commands entered
+char history_lines[HISTORY_HEIGHT][HISTORY_WIDTH] = {""};
 
 // Input Line
 
 // Raw input Line (has prompt)
-char g_console_input[CONSOLE_WIDTH + 16];  // = g_console_display[0];
+char console_input[CONSOLE_WIDTH + 16];  // = console_display[0];
 
 // Cooked input line (no prompt)
-int g_console_input_chars = 0;
-char* g_console_input_ptr = nullptr;        // points to past prompt
-const char* g_console_first_arg = nullptr;  // points to first arg
-bool g_console_input_quoted = false;        // Allows lower-case to be entered
-int g_console_input_skip = 0;
+int console_input_chars = 0;
+char* console_input_ptr = nullptr;        // points to past prompt
+const char* console_first_arg = nullptr;  // points to first arg
+bool console_input_quoted = false;        // Allows lower-case to be entered
+int console_input_skip = 0;
 
-int g_console_color[NUM_CONSOLE_COLORS] = {
+int console_color[NUM_CONSOLE_COLORS] = {
     WHITE, RED,   GREEN,  YELLOW,     BLUE,       MAGENTA,
     CYAN,  WHITE, ORANGE, LIGHT_GRAY, LIGHT_BLUE,
 };
@@ -101,23 +101,23 @@ int g_console_color[NUM_CONSOLE_COLORS] = {
 // ________________________________________________________________________________________
 
 //===========================================================================
-auto ConsoleBufferPeek() -> const conchar_t* { return g_console_buffer[0]; }
+auto ConsoleBufferPeek() -> const ConChar* { return console_buffer[0]; }
 
 //===========================================================================
 auto console_print(const char* text) -> bool {
-  while (g_console_buffer_size >= CONSOLE_BUFFER_HEIGHT) {
+  while (console_buffer_size >= CONSOLE_BUFFER_HEIGHT) {
     ConsoleBufferToDisplay();
   }
 
   // Convert color string to native console color text
-  // Ignores g_console_display_width
+  // Ignores console_display_width
   char c = 0;
 
   int x = 0;
   const char* src_ptr = text;
-  conchar_t* pDst = &g_console_buffer[g_console_buffer_size][0];
+  ConChar* pDst = &console_buffer[console_buffer_size][0];
 
-  conchar_t g = 0;
+  ConChar g = 0;
   bool bHaveColor = false;
   char cColor = 0;
 
@@ -125,12 +125,12 @@ auto console_print(const char* text) -> bool {
     if ((c == '\n') || (x >= (CONSOLE_WIDTH - 1))) {
       *pDst = 0;
       x = 0;
-      if (g_console_buffer_size >= CONSOLE_BUFFER_HEIGHT) {
+      if (console_buffer_size >= CONSOLE_BUFFER_HEIGHT) {
         ConsoleBufferToDisplay();
       } else {
-        g_console_buffer_size++;
+        console_buffer_size++;
       }
-      pDst = &g_console_buffer[g_console_buffer_size][0];
+      pDst = &console_buffer[console_buffer_size][0];
       continue;
     }
 
@@ -173,7 +173,7 @@ auto console_print(const char* text) -> bool {
     src_ptr += 2;
   }
   *pDst = 0;
-  g_console_buffer_size++;
+  console_buffer_size++;
 
   return true;
 }
@@ -194,28 +194,28 @@ auto ConsoleBufferPushVa(char* buf, size_t bufsz, const char* pFormat,
 // Shifts the buffered console output lines "Up"
 //===========================================================================
 auto ConsoleBufferPush(const char* text) -> bool {
-  while (g_console_buffer_size >= CONSOLE_BUFFER_HEIGHT) {
+  while (console_buffer_size >= CONSOLE_BUFFER_HEIGHT) {
     ConsoleBufferToDisplay();
   }
 
-  conchar_t c = 0;
+  ConChar c = 0;
 
   int x = 0;
   const char* src_ptr = text;
-  conchar_t* pDst = &g_console_buffer[g_console_buffer_size][0];
+  ConChar* pDst = &console_buffer[console_buffer_size][0];
 
   while ((x < CONSOLE_WIDTH) && ((*src_ptr) != 0)) {
     c = static_cast<unsigned char>(*src_ptr);
     if ((c == '\n') || (x == (CONSOLE_WIDTH - 1))) {
       *pDst = 0;
       x = 0;
-      if (g_console_buffer_size >= CONSOLE_BUFFER_HEIGHT) {
+      if (console_buffer_size >= CONSOLE_BUFFER_HEIGHT) {
         ConsoleBufferToDisplay();
       } else {
-        g_console_buffer_size++;
+        console_buffer_size++;
       }
       src_ptr++;
-      pDst = &g_console_buffer[g_console_buffer_size][0];
+      pDst = &console_buffer[console_buffer_size][0];
       continue;
     }
 
@@ -225,7 +225,7 @@ auto ConsoleBufferPush(const char* text) -> bool {
     pDst++;
   }
   *pDst = 0;
-  g_console_buffer_size++;
+  console_buffer_size++;
 
   return true;
 }
@@ -234,14 +234,14 @@ auto ConsoleBufferPush(const char* text) -> bool {
 //===========================================================================
 auto ConsoleBufferPop() -> void {
   int y = 0;
-  while (y < g_console_buffer_size) {
-    memcpy(g_console_buffer[y], g_console_buffer[y + 1],
-           sizeof(conchar_t) * CONSOLE_WIDTH);
+  while (y < console_buffer_size) {
+    memcpy(console_buffer[y], console_buffer[y + 1],
+           sizeof(ConChar) * CONSOLE_WIDTH);
     y++;
   }
 
-  g_console_buffer_size--;
-  g_console_buffer_size = std::max(g_console_buffer_size, 0);
+  console_buffer_size--;
+  console_buffer_size = std::max(console_buffer_size, 0);
 }
 
 // Remove string from buffered output
@@ -253,11 +253,11 @@ auto ConsoleBufferToDisplay() -> void {
 
 // No mark-up. Straight ASCII conversion
 //===========================================================================
-auto ConsoleConvertFromText(conchar_t* sText, const char* text) -> void {
+auto ConsoleConvertFromText(ConChar* sText, const char* text) -> void {
   const char* src_ptr = text;
-  conchar_t* pDst = sText;
+  ConChar* pDst = sText;
   while (src_ptr && ((*src_ptr) != 0)) {
-    *pDst = static_cast<conchar_t>(*src_ptr & CONSOLE_COLOR_MASK);
+    *pDst = static_cast<ConChar>(*src_ptr & CONSOLE_COLOR_MASK);
     src_ptr++;
     pDst++;
   }
@@ -265,50 +265,50 @@ auto ConsoleConvertFromText(conchar_t* sText, const char* text) -> void {
 }
 
 //===========================================================================
-auto console_display_error(const char* text) -> Update_t {
+auto console_display_error(const char* text) -> UpdateResult {
   ConsoleBufferPush(text);
   return ConsoleUpdate();
 }
 
 //===========================================================================
 auto ConsoleDisplayPush(const char* text) -> void {
-  conchar_t sText[CONSOLE_WIDTH * 2];
+  ConChar sText[CONSOLE_WIDTH * 2];
   ConsoleConvertFromText(sText, text);
   ConsoleDisplayPush(sText);
 }
 
 // Shifts the console display lines "up"
 //===========================================================================
-auto ConsoleDisplayPush(const conchar_t* text) -> void {
-  int nLen = std::min(g_console_display_total,
+auto ConsoleDisplayPush(const ConChar* text) -> void {
+  int nLen = std::min(console_display_total,
                       CONSOLE_DISPLAY_HEIGHT - 1 - CONSOLE_FIRST_LINE);
   while ((nLen--) != 0) {
     memcpy(
         reinterpret_cast<char*>(
-            g_console_display[(nLen + 1 + CONSOLE_FIRST_LINE)]),
-        reinterpret_cast<char*>(g_console_display[nLen + CONSOLE_FIRST_LINE]),
-        sizeof(conchar_t) * CONSOLE_WIDTH);
+            console_display[(nLen + 1 + CONSOLE_FIRST_LINE)]),
+        reinterpret_cast<char*>(console_display[nLen + CONSOLE_FIRST_LINE]),
+        sizeof(ConChar) * CONSOLE_WIDTH);
   }
 
   if (text) {
-    memcpy(reinterpret_cast<char*>(g_console_display[CONSOLE_FIRST_LINE]), text,
-           sizeof(conchar_t) * CONSOLE_WIDTH);
+    memcpy(reinterpret_cast<char*>(console_display[CONSOLE_FIRST_LINE]), text,
+           sizeof(ConChar) * CONSOLE_WIDTH);
   }
 
-  g_console_display_total++;
-  g_console_display_total = std::min(
-      g_console_display_total, CONSOLE_DISPLAY_HEIGHT - CONSOLE_FIRST_LINE);
+  console_display_total++;
+  console_display_total = std::min(
+      console_display_total, CONSOLE_DISPLAY_HEIGHT - CONSOLE_FIRST_LINE);
 }
 
 //===========================================================================
 auto ConsoleDisplayPause() -> void {
-  if (g_console_buffer_size != 0) {
-    util_safe_strcpy(g_console_input, "...press SPACE continue, ESC skip...",
-                     sizeof(g_console_input));
-    g_console_prompt_len = static_cast<int>(strlen(g_console_input));
-    g_console_input_ptr = &g_console_input[g_console_prompt_len];
-    g_console_input_chars = 0;
-    g_console_buffer_paused = true;
+  if (console_buffer_size != 0) {
+    util_safe_strcpy(console_input, "...press SPACE continue, ESC skip...",
+                     sizeof(console_input));
+    console_prompt_len = static_cast<int>(strlen(console_input));
+    console_input_ptr = &console_input[console_prompt_len];
+    console_input_chars = 0;
+    console_buffer_paused = true;
   } else {
     ConsoleInputReset();
   }
@@ -316,17 +316,17 @@ auto ConsoleDisplayPause() -> void {
 
 //===========================================================================
 auto ConsoleInputBackSpace() -> bool {
-  if (g_console_input_chars != 0) {
-    g_console_input_ptr[g_console_input_chars] = ' ';
+  if (console_input_chars != 0) {
+    console_input_ptr[console_input_chars] = ' ';
 
-    g_console_input_chars--;
+    console_input_chars--;
 
-    if ((g_console_input_ptr[g_console_input_chars] == '"') ||
-        (g_console_input_ptr[g_console_input_chars] == '\'')) {
-      g_console_input_quoted = !g_console_input_quoted;
+    if ((console_input_ptr[console_input_chars] == '"') ||
+        (console_input_ptr[console_input_chars] == '\'')) {
+      console_input_quoted = !console_input_quoted;
     }
 
-    g_console_input_ptr[g_console_input_chars] = ' ';
+    console_input_ptr[console_input_chars] = ' ';
     return true;
   }
   return false;
@@ -335,10 +335,10 @@ auto ConsoleInputBackSpace() -> bool {
 // Clears prompt too
 //===========================================================================
 auto ConsoleInputClear() -> bool {
-  memset(g_console_input, 0, sizeof(g_console_input));
+  memset(console_input, 0, sizeof(console_input));
 
-  if (g_console_input_chars != 0) {
-    g_console_input_chars = 0;
+  if (console_input_chars != 0) {
+    console_input_chars = 0;
     return true;
   }
   return false;
@@ -346,11 +346,11 @@ auto ConsoleInputClear() -> bool {
 
 //===========================================================================
 auto ConsoleInputChar(const char ch) -> bool {
-  if (g_console_input_chars < g_console_display_width)  // bug? include prompt?
+  if (console_input_chars < console_display_width)  // bug? include prompt?
   {
-    g_console_input_ptr[g_console_input_chars] = ch;
-    g_console_input_chars++;
-    g_console_input_ptr[g_console_input_chars] = '\0';
+    console_input_ptr[console_input_chars] = ch;
+    console_input_chars++;
+    console_input_ptr[console_input_chars] = '\0';
     return true;
   }
 
@@ -360,102 +360,102 @@ auto ConsoleInputChar(const char ch) -> bool {
 //===========================================================================
 auto ConsoleUpdateCursor(char ch) -> void {
   if (ch != 0) {
-    g_console_cursor[0] = ch;
+    console_cursor[0] = ch;
   } else {
-    ch = g_console_input[g_console_input_chars + g_console_prompt_len];
+    ch = console_input[console_input_chars + console_prompt_len];
     if (ch == 0) {
       ch = ' ';
     }
-    g_console_cursor[0] = ch;
+    console_cursor[0] = ch;
   }
 }
 
 //===========================================================================
 auto ConsoleInputPeek() -> const char* {
-  //	return g_console_display[0];
-  //	return g_console_input_ptr;
-  return g_console_input;
+  //	return console_display[0];
+  //	return console_input_ptr;
+  return console_input;
 }
 
 //===========================================================================
 auto ConsoleInputReset() -> void {
-  // Not using g_console_input since we get drawing of the input Line for "Free"
+  // Not using console_input since we get drawing of the input Line for "Free"
   // Even if we add console scrolling, we don't need any special logic to draw
   // the input line.
-  g_console_input_quoted = false;
+  console_input_quoted = false;
 
   ConsoleInputClear();
 
-  //	strcpy( g_console_input, g_console_prompt_str ); // Assembler can change
+  //	strcpy( console_input, console_prompt_str ); // Assembler can change
   // prompt
-  g_console_input[0] = g_console_prompt_str[0];
-  g_console_prompt_len = 1;
+  console_input[0] = console_prompt_str[0];
+  console_prompt_len = 1;
 
-  g_console_input_ptr = &g_console_input[g_console_prompt_len];
-  g_console_input_chars = 0;
+  console_input_ptr = &console_input[console_prompt_len];
+  console_input_chars = 0;
 }
 
 //===========================================================================
 auto ConsoleInputTabCompletion() -> int { return UPDATE_CONSOLE_INPUT; }
 
 //===========================================================================
-auto ConsoleScrollHome() -> Update_t {
-  g_console_display_start = g_console_display_total - CONSOLE_FIRST_LINE;
-  g_console_display_start = std::max(g_console_display_start, 0);
+auto ConsoleScrollHome() -> UpdateResult {
+  console_display_start = console_display_total - CONSOLE_FIRST_LINE;
+  console_display_start = std::max(console_display_start, 0);
 
   return UPDATE_CONSOLE_DISPLAY;
 }
 
 //===========================================================================
-auto ConsoleScrollEnd() -> Update_t {
-  g_console_display_start = 0;
+auto ConsoleScrollEnd() -> UpdateResult {
+  console_display_start = 0;
 
   return UPDATE_CONSOLE_DISPLAY;
 }
 
 //===========================================================================
-auto ConsoleScrollUp(int nLines) -> Update_t {
-  g_console_display_start += nLines;
+auto ConsoleScrollUp(int nLines) -> UpdateResult {
+  console_display_start += nLines;
 
-  g_console_display_start = std::min(
-      g_console_display_start, g_console_display_total - CONSOLE_FIRST_LINE);
+  console_display_start = std::min(
+      console_display_start, console_display_total - CONSOLE_FIRST_LINE);
 
-  g_console_display_start = std::max(g_console_display_start, 0);
-
-  return UPDATE_CONSOLE_DISPLAY;
-}
-
-//===========================================================================
-auto ConsoleScrollDn(int nLines) -> Update_t {
-  g_console_display_start -= nLines;
-  g_console_display_start = std::max(g_console_display_start, 0);
+  console_display_start = std::max(console_display_start, 0);
 
   return UPDATE_CONSOLE_DISPLAY;
 }
 
 //===========================================================================
-auto ConsoleScrollPageUp() -> Update_t {
-  ConsoleScrollUp(g_console_display_lines - CONSOLE_FIRST_LINE);
+auto ConsoleScrollDn(int nLines) -> UpdateResult {
+  console_display_start -= nLines;
+  console_display_start = std::max(console_display_start, 0);
 
   return UPDATE_CONSOLE_DISPLAY;
 }
 
 //===========================================================================
-auto ConsoleScrollPageDn() -> Update_t {
-  ConsoleScrollDn(g_console_display_lines - CONSOLE_FIRST_LINE);
+auto ConsoleScrollPageUp() -> UpdateResult {
+  ConsoleScrollUp(console_display_lines - CONSOLE_FIRST_LINE);
 
   return UPDATE_CONSOLE_DISPLAY;
 }
 
 //===========================================================================
-auto ConsoleBufferTryUnpause(int nLines) -> Update_t {
+auto ConsoleScrollPageDn() -> UpdateResult {
+  ConsoleScrollDn(console_display_lines - CONSOLE_FIRST_LINE);
+
+  return UPDATE_CONSOLE_DISPLAY;
+}
+
+//===========================================================================
+auto ConsoleBufferTryUnpause(int nLines) -> UpdateResult {
   for (int y = 0; y < nLines; y++) {
     ConsoleBufferToDisplay();
   }
 
-  g_console_buffer_paused = false;
-  if (g_console_buffer_size != 0) {
-    g_console_buffer_paused = true;
+  console_buffer_paused = false;
+  if (console_buffer_size != 0) {
+    console_buffer_paused = true;
     ConsoleDisplayPause();
     return UPDATE_CONSOLE_INPUT | UPDATE_CONSOLE_DISPLAY;
   }
@@ -466,9 +466,9 @@ auto ConsoleBufferTryUnpause(int nLines) -> Update_t {
 
 // Flush the console
 //===========================================================================
-auto ConsoleUpdate() -> Update_t {
-  if (!g_console_buffer_paused) {
-    int nLines = std::min(g_console_buffer_size, g_console_display_lines - 1);
+auto ConsoleUpdate() -> UpdateResult {
+  if (!console_buffer_paused) {
+    int nLines = std::min(console_buffer_size, console_display_lines - 1);
     return ConsoleBufferTryUnpause(nLines);
   }
 
@@ -477,7 +477,7 @@ auto ConsoleUpdate() -> Update_t {
 
 //===========================================================================
 auto ConsoleFlush() -> void {
-  int nLines = g_console_buffer_size;
+  int nLines = console_buffer_size;
   ConsoleBufferTryUnpause(nLines);
 }
 
@@ -504,9 +504,9 @@ auto DebuggerCursorUpdate() -> void {
 }
 
 auto DebuggerCursorNext() -> void {
-  g_input_cursor_visible ^= 1;
-  if (g_input_cursor_visible) {
-    ConsoleUpdateCursor(g_input_cursor[g_input_cursor_index]);
+  input_cursor_visible ^= 1;
+  if (input_cursor_visible) {
+    ConsoleUpdateCursor(input_cursor[input_cursor_index]);
   } else {
     ConsoleUpdateCursor(0);  // show char under cursor
   }
@@ -521,12 +521,12 @@ auto debugger_input_console_char(char ch) -> void {
     return;
   }
 
-  if (g_console_buffer_paused) {
+  if (console_buffer_paused) {
     return;
   }
 
-  if (g_ignore_next_key) {
-    g_ignore_next_key = false;
+  if (ignore_next_key) {
+    ignore_next_key = false;
     return;
   }
 
@@ -535,10 +535,10 @@ auto debugger_input_console_char(char ch) -> void {
   }
 
   if ((ch == '"') || (ch == '\'')) {
-    g_console_input_quoted = !g_console_input_quoted;
+    console_input_quoted = !console_input_quoted;
   }
 
-  if (!g_console_input_quoted) {
+  if (!console_input_quoted) {
     ch = static_cast<char>(toupper(ch));
   }
   ConsoleInputChar(ch);
@@ -550,7 +550,7 @@ auto debugger_input_console_char(char ch) -> void {
 }
 
 auto ToggleFullScreenConsole() -> void {
-  if (g_window_this != WINDOW_CONSOLE) {
+  if (window_this != WINDOW_CONSOLE) {
     CmdWindowViewConsole(0);
     return;
   }
@@ -575,22 +575,22 @@ auto debugger_process_key(int keycode) -> void {
     return;
   }
 
-  Update_t bUpdateDisplay = UPDATE_NOTHING;
+  UpdateResult bUpdateDisplay = UPDATE_NOTHING;
 
   // For long output, allow user to read it
-  if (g_console_buffer_size != 0 &&
+  if (console_buffer_size != 0 &&
       ((linapple_key_space == keycode) || (linapple_key_return == keycode) ||
        (linapple_key_tab == keycode) || (linapple_key_escape == keycode))) {
     int nLines =
         (linapple_key_escape == keycode)
-            ? g_console_buffer_size
-            : std::min(g_console_buffer_size, g_console_display_lines - 1);
+            ? console_buffer_size
+            : std::min(console_buffer_size, console_display_lines - 1);
     ConsoleBufferTryUnpause(nLines);
     keycode = 0;  // don't single-step
   }
 
   if (keycode == linapple_key_backspace) {
-    if (g_console_input_chars != 0) {
+    if (console_input_chars != 0) {
       ConsoleInputBackSpace();
       DebuggerCursorNext();
       DrawConsoleInput();
@@ -598,14 +598,14 @@ auto debugger_process_key(int keycode) -> void {
     }
   } else if ((keycode == linapple_key_return) ||
              (keycode == linapple_key_kp_enter)) {
-    if (g_console_input_chars != 0) {
+    if (console_input_chars != 0) {
       bUpdateDisplay |=
           DebuggerProcessCommand(true);  // copy console input to console output
     } else {
       bUpdateDisplay |= CmdGoNormalSpeed(0);
     }
   } else if (keycode == linapple_key_escape) {
-    if (g_console_input_chars != 0) {
+    if (console_input_chars != 0) {
       ConsoleInputReset();
       bUpdateDisplay |= UPDATE_CONSOLE_INPUT;
     } else {
@@ -622,7 +622,7 @@ auto debugger_process_key(int keycode) -> void {
 
     switch (keycode) {
       case linapple_key_tab: {
-        if (g_console_input_chars != 0) {
+        if (console_input_chars != 0) {
           bUpdateDisplay |= ConsoleInputTabCompletion();
         } else {
           ToggleFullScreenConsole();
@@ -696,22 +696,22 @@ auto debugger_mouse_click(int /*x*/, int /*y*/) -> void {
   iAltCtrlShift |= shift ? 1 << 2 : 0;
 
   // GH#462 disasm click #
-  if (iAltCtrlShift != g_config_disasm_click) {
+  if (iAltCtrlShift != config_disasm_click) {
     return;
   }
 
   // TODO: WindowMouseClick( x, y );
 }
 
-static auto ConsoleInputHistoryPrev() -> Update_t {
-  if (g_history_lines_total != 0) {
+static auto ConsoleInputHistoryPrev() -> UpdateResult {
+  if (history_lines_total != 0) {
     // TODO: Implement history browsing
   }
   return UPDATE_NOTHING;
 }
 
-static auto ConsoleInputHistoryNext() -> Update_t {
-  if (g_history_lines_total != 0) {
+static auto ConsoleInputHistoryNext() -> UpdateResult {
+  if (history_lines_total != 0) {
     // TODO: Implement history browsing
   }
   return UPDATE_NOTHING;

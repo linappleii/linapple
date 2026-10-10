@@ -17,28 +17,28 @@ using AppConfig = Configuration;
  * advancement, scripted keyboard typing, and output verification (framebuffer
  * CRC32, text row decoding, audio sampling).
  */
-struct HeadlessHarness_t {
+struct HeadlessHarness {
   size_t total_audio_samples = 0;
   bool is_initialized = false;
 
-  explicit HeadlessHarness_t(const TestFixtures::ScopedTestConfig_t& config);
+  explicit HeadlessHarness(const TestFixtures::ScopedTestConfig& config);
   // The machine a user gets from the command line: the arguments are parsed as
   // the frontends parse them and the initial media loaded as they load it. The
   // declared configuration still names the machine, whatever the arguments say.
-  HeadlessHarness_t(const TestFixtures::ScopedTestConfig_t& config, int argc,
+  HeadlessHarness(const TestFixtures::ScopedTestConfig& config, int argc,
                     char** argv);
-  ~HeadlessHarness_t();
+  ~HeadlessHarness();
 
   // Non-copyable, non-movable (stack-scoped test fixture)
-  HeadlessHarness_t(const HeadlessHarness_t&) = delete;
-  auto operator=(const HeadlessHarness_t&) -> HeadlessHarness_t& = delete;
-  HeadlessHarness_t(HeadlessHarness_t&&) = delete;
-  auto operator=(HeadlessHarness_t&&) -> HeadlessHarness_t& = delete;
+  HeadlessHarness(const HeadlessHarness&) = delete;
+  auto operator=(const HeadlessHarness&) -> HeadlessHarness& = delete;
+  HeadlessHarness(HeadlessHarness&&) = delete;
+  auto operator=(HeadlessHarness&&) -> HeadlessHarness& = delete;
 
   // Control
   static auto mount_disk(int slot, int drive, const std::string& path) -> void;
   auto mount_disk(int slot, int drive,
-                  const TestFixtures::EphemeralDiskFixture_t& disk) -> void {
+                  const TestFixtures::EphemeralDiskFixture& disk) -> void {
     mount_disk(slot, drive, disk.path());
   }
   static auto boot() -> void;
@@ -57,6 +57,6 @@ struct HeadlessHarness_t {
   auto handle_audio(const int16_t* samples, size_t num_samples) -> void;
 
  private:
-  auto start(const TestFixtures::ScopedTestConfig_t& test_config,
+  auto start(const TestFixtures::ScopedTestConfig& test_config,
              AppConfig* config) -> void;
 };

@@ -45,7 +45,7 @@ auto patch(const std::string& path, int64_t offset, const uint8_t* bytes,
   REQUIRE(fwrite(bytes, 1, len, f.get()) == len);
 }
 
-auto read_quarter_track(const DiskFormatDriver_t& driver, void* instance,
+auto read_quarter_track(const DiskFormatDriver& driver, void* instance,
                         uint32_t quarter_track, std::vector<uint8_t>* bits,
                         uint32_t* bit_count, uint8_t* bit_timing)
     -> DiskError {
@@ -70,13 +70,13 @@ TEST_CASE("DiskWOZ1: the loader hands a 1.0 image to the WOZ 1 driver") {
   auto image = TestFixtures::create_ephemeral("minimal-v1.woz");
   disk_loader_reset();
 
-  const DiskFormatDriver_t* driver = nullptr;
+  const DiskFormatDriver* driver = nullptr;
   void* instance = nullptr;
   REQUIRE(disk_loader_open(image.c_str(), &driver, &instance) == disk_err_none);
   REQUIRE(driver != nullptr);
   REQUIRE(instance != nullptr);
   CHECK(std::string(driver->name) == "WOZ 1");
-  CHECK(driver == &g_woz1_driver);
+  CHECK(driver == &woz1_driver);
   CHECK(driver->is_write_protected(instance) == false);
   driver->close(instance);
 }
@@ -84,7 +84,7 @@ TEST_CASE("DiskWOZ1: the loader hands a 1.0 image to the WOZ 1 driver") {
 TEST_CASE("DiskWOZ1: mapped quarter tracks read the record's exact cells") {
   auto image = TestFixtures::create_ephemeral("minimal-v1.woz");
   void* instance = nullptr;
-  REQUIRE(g_woz1_driver.open(image.c_str(), 0, false, &instance) ==
+  REQUIRE(woz1_driver.open(image.c_str(), 0, false, &instance) ==
           disk_err_none);
 
   std::vector<uint8_t> bits;
@@ -92,7 +92,7 @@ TEST_CASE("DiskWOZ1: mapped quarter tracks read the record's exact cells") {
   uint8_t bit_timing = 0;
 
   SUBCASE("quarter track 0 is track 0") {
-    CHECK(read_quarter_track(g_woz1_driver, instance, 0, &bits, &bit_count,
+    CHECK(read_quarter_track(woz1_driver, instance, 0, &bits, &bit_count,
                              &bit_timing) == disk_err_none);
     CHECK(bit_count == track0_bit_count);
     CHECK(bit_timing == 32);
@@ -104,7 +104,7 @@ TEST_CASE("DiskWOZ1: mapped quarter tracks read the record's exact cells") {
   }
 
   SUBCASE("quarter track 3 is still track 0") {
-    CHECK(read_quarter_track(g_woz1_driver, instance, 3, &bits, &bit_count,
+    CHECK(read_quarter_track(woz1_driver, instance, 3, &bits, &bit_count,
                              &bit_timing) == disk_err_none);
     CHECK(bit_count == track0_bit_count);
     CHECK(std::memcmp(bits.data(), track0_pattern, sizeof(track0_pattern)) ==
@@ -112,7 +112,7 @@ TEST_CASE("DiskWOZ1: mapped quarter tracks read the record's exact cells") {
   }
 
   SUBCASE("quarter track 4 is track 1, with a bit count off a byte edge") {
-    CHECK(read_quarter_track(g_woz1_driver, instance, 4, &bits, &bit_count,
+    CHECK(read_quarter_track(woz1_driver, instance, 4, &bits, &bit_count,
                              &bit_timing) == disk_err_none);
     CHECK(bit_count == track1_bit_count);
     CHECK(bit_timing == 32);
@@ -122,19 +122,19 @@ TEST_CASE("DiskWOZ1: mapped quarter tracks read the record's exact cells") {
   }
 
   SUBCASE("quarter track 8 is unmapped and reads as no cells at all") {
-    CHECK(read_quarter_track(g_woz1_driver, instance, 8, &bits, &bit_count,
+    CHECK(read_quarter_track(woz1_driver, instance, 8, &bits, &bit_count,
                              &bit_timing) == disk_err_none);
     CHECK(bit_count == 0);
     CHECK(bit_timing == 32);
   }
 
-  g_woz1_driver.close(instance);
+  woz1_driver.close(instance);
 }
 
 TEST_CASE("DiskWOZ1: the driver offers no writer") {
-  CHECK(g_woz1_driver.write_track_bits == nullptr);
-  CHECK(g_woz1_driver.create == nullptr);
-  CHECK((g_woz1_driver.capabilities & disk_driver_cap_write) == 0);
+  CHECK(woz1_driver.write_track_bits == nullptr);
+  CHECK(woz1_driver.create == nullptr);
+  CHECK((woz1_driver.capabilities & disk_driver_cap_write) == 0);
 }
 
 TEST_CASE("DiskWOZ1: the two WOZ drivers refuse each other's magic") {
@@ -143,22 +143,22 @@ TEST_CASE("DiskWOZ1: the two WOZ drivers refuse each other's magic") {
   const std::vector<uint8_t> v1 = load_header(v1_path, woz1_probe_size);
   const std::vector<uint8_t> v2 = load_header(v2_path, 1536);
 
-  CHECK(g_woz1_driver.probe(v1.data(), v1.size(), 13568, ".woz") ==
+  CHECK(woz1_driver.probe(v1.data(), v1.size(), 13568, ".woz") ==
         disk_probe_definite);
-  CHECK(g_woz2_driver.probe(v1.data(), v1.size(), 13568, ".woz") ==
+  CHECK(woz2_driver.probe(v1.data(), v1.size(), 13568, ".woz") ==
         disk_probe_no);
-  CHECK(g_woz2_driver.probe(v2.data(), v2.size(), 1536, ".woz") ==
+  CHECK(woz2_driver.probe(v2.data(), v2.size(), 1536, ".woz") ==
         disk_probe_definite);
-  CHECK(g_woz1_driver.probe(v2.data(), v2.size(), 1536, ".woz") ==
+  CHECK(woz1_driver.probe(v2.data(), v2.size(), 1536, ".woz") ==
         disk_probe_no);
 
   auto v2_image = TestFixtures::create_ephemeral("minimal.woz");
   disk_loader_reset();
-  const DiskFormatDriver_t* driver = nullptr;
+  const DiskFormatDriver* driver = nullptr;
   void* instance = nullptr;
   REQUIRE(disk_loader_open(v2_image.c_str(), &driver, &instance) ==
           disk_err_none);
-  CHECK(driver == &g_woz2_driver);
+  CHECK(driver == &woz2_driver);
   driver->close(instance);
 }
 
@@ -167,19 +167,19 @@ TEST_CASE("DiskWOZ1: a file cut short of a record is corrupt at that track") {
   REQUIRE(truncate(image.c_str(), track1_record_offset + 100) == 0);
 
   void* instance = nullptr;
-  REQUIRE(g_woz1_driver.open(image.c_str(), 0, false, &instance) ==
+  REQUIRE(woz1_driver.open(image.c_str(), 0, false, &instance) ==
           disk_err_none);
 
   std::vector<uint8_t> bits;
   uint32_t bit_count = 0;
   uint8_t bit_timing = 0;
-  CHECK(read_quarter_track(g_woz1_driver, instance, 0, &bits, &bit_count,
+  CHECK(read_quarter_track(woz1_driver, instance, 0, &bits, &bit_count,
                            &bit_timing) == disk_err_none);
   CHECK(bit_count == track0_bit_count);
-  CHECK(read_quarter_track(g_woz1_driver, instance, 4, &bits, &bit_count,
+  CHECK(read_quarter_track(woz1_driver, instance, 4, &bits, &bit_count,
                            &bit_timing) == disk_err_corrupt);
   CHECK(bit_count == 0);
-  g_woz1_driver.close(instance);
+  woz1_driver.close(instance);
 }
 
 TEST_CASE("DiskWOZ1: a file cut short of its chunk headers will not open") {
@@ -187,7 +187,7 @@ TEST_CASE("DiskWOZ1: a file cut short of its chunk headers will not open") {
   REQUIRE(truncate(image.c_str(), 100) == 0);
 
   void* instance = nullptr;
-  CHECK(g_woz1_driver.open(image.c_str(), 0, false, &instance) == disk_err_io);
+  CHECK(woz1_driver.open(image.c_str(), 0, false, &instance) == disk_err_io);
   CHECK(instance == nullptr);
 }
 
@@ -197,16 +197,16 @@ TEST_CASE("DiskWOZ1: a TMAP entry past the last record is corrupt") {
   patch(image.c_str(), tmap_entry_8_offset, &third_record, 1);
 
   void* instance = nullptr;
-  REQUIRE(g_woz1_driver.open(image.c_str(), 0, false, &instance) ==
+  REQUIRE(woz1_driver.open(image.c_str(), 0, false, &instance) ==
           disk_err_none);
 
   std::vector<uint8_t> bits;
   uint32_t bit_count = 0;
   uint8_t bit_timing = 0;
-  CHECK(read_quarter_track(g_woz1_driver, instance, 8, &bits, &bit_count,
+  CHECK(read_quarter_track(woz1_driver, instance, 8, &bits, &bit_count,
                            &bit_timing) == disk_err_corrupt);
   CHECK(bit_count == 0);
-  g_woz1_driver.close(instance);
+  woz1_driver.close(instance);
 }
 
 TEST_CASE("DiskWOZ1: a bit count past the record's cells is corrupt") {
@@ -219,16 +219,16 @@ TEST_CASE("DiskWOZ1: a bit count past the record's cells is corrupt") {
   patch(image.c_str(), track0_bit_count_offset, bit_count_le, 2);
 
   void* instance = nullptr;
-  REQUIRE(g_woz1_driver.open(image.c_str(), 0, false, &instance) ==
+  REQUIRE(woz1_driver.open(image.c_str(), 0, false, &instance) ==
           disk_err_none);
 
   std::vector<uint8_t> bits;
   uint32_t bit_count = 0;
   uint8_t bit_timing = 0;
-  CHECK(read_quarter_track(g_woz1_driver, instance, 0, &bits, &bit_count,
+  CHECK(read_quarter_track(woz1_driver, instance, 0, &bits, &bit_count,
                            &bit_timing) == disk_err_corrupt);
   CHECK(bit_count == 0);
-  g_woz1_driver.close(instance);
+  woz1_driver.close(instance);
 }
 
 TEST_CASE("DiskWOZ1: a 3.5\" INFO disk type is an unsupported format") {
@@ -237,7 +237,7 @@ TEST_CASE("DiskWOZ1: a 3.5\" INFO disk type is an unsupported format") {
   patch(image.c_str(), info_disk_type_offset, &disk_type_3_5, 1);
 
   void* instance = nullptr;
-  CHECK(g_woz1_driver.open(image.c_str(), 0, false, &instance) ==
+  CHECK(woz1_driver.open(image.c_str(), 0, false, &instance) ==
         disk_err_unsupported_format);
   CHECK(instance == nullptr);
 }
@@ -248,7 +248,7 @@ TEST_CASE("DiskWOZ1: a missing TMAP chunk is corrupt") {
   patch(image.c_str(), tmap_id_offset, not_a_map, sizeof(not_a_map));
 
   void* instance = nullptr;
-  CHECK(g_woz1_driver.open(image.c_str(), 0, false, &instance) ==
+  CHECK(woz1_driver.open(image.c_str(), 0, false, &instance) ==
         disk_err_corrupt);
   CHECK(instance == nullptr);
 }
@@ -264,7 +264,7 @@ auto file_size_of(const std::string& path) -> uint32_t {
   return static_cast<uint32_t>(Path::file_size(f.get()));
 }
 
-auto check_wrapped_track_reads(const DiskFormatDriver_t& driver, void* instance)
+auto check_wrapped_track_reads(const DiskFormatDriver& driver, void* instance)
     -> void {
   std::vector<uint8_t> bits;
   uint32_t bit_count = 0;
@@ -301,13 +301,13 @@ TEST_CASE(
           macbinary_header_size + v1_fixture_bytes);
 
   void* instance = nullptr;
-  REQUIRE(g_woz1_driver.open(image.c_str(), macbinary_header_size, false,
+  REQUIRE(woz1_driver.open(image.c_str(), macbinary_header_size, false,
                              &instance) == disk_err_none);
   REQUIRE(instance != nullptr);
 
-  check_wrapped_track_reads(g_woz1_driver, instance);
+  check_wrapped_track_reads(woz1_driver, instance);
 
-  g_woz1_driver.close(instance);
+  woz1_driver.close(instance);
 }
 
 TEST_CASE(
@@ -317,20 +317,20 @@ TEST_CASE(
                    macbinary_header_size + v1_fixture_bytes - 1) == 0);
 
   void* instance = nullptr;
-  REQUIRE(g_woz1_driver.open(image.c_str(), macbinary_header_size, false,
+  REQUIRE(woz1_driver.open(image.c_str(), macbinary_header_size, false,
                              &instance) == disk_err_none);
 
   std::vector<uint8_t> bits;
   uint32_t bit_count = 0;
   uint8_t bit_timing = 0;
-  CHECK(read_quarter_track(g_woz1_driver, instance, 0, &bits, &bit_count,
+  CHECK(read_quarter_track(woz1_driver, instance, 0, &bits, &bit_count,
                            &bit_timing) == disk_err_none);
   CHECK(bit_count == track0_bit_count);
-  CHECK(read_quarter_track(g_woz1_driver, instance, 4, &bits, &bit_count,
+  CHECK(read_quarter_track(woz1_driver, instance, 4, &bits, &bit_count,
                            &bit_timing) == disk_err_corrupt);
   CHECK(bit_count == 0);
 
-  g_woz1_driver.close(instance);
+  woz1_driver.close(instance);
 }
 
 TEST_CASE(
@@ -338,10 +338,10 @@ TEST_CASE(
   auto image = TestFixtures::create_ephemeral("minimal-macbinary-v1.woz");
   disk_loader_reset();
 
-  const DiskFormatDriver_t* driver = nullptr;
+  const DiskFormatDriver* driver = nullptr;
   void* instance = nullptr;
   REQUIRE(disk_loader_open(image.c_str(), &driver, &instance) == disk_err_none);
-  REQUIRE(driver == &g_woz1_driver);
+  REQUIRE(driver == &woz1_driver);
   REQUIRE(instance != nullptr);
 
   check_wrapped_track_reads(*driver, instance);
@@ -359,9 +359,9 @@ auto open_patched_v1_image(int64_t offset, uint8_t value) -> DiskError {
 
   void* instance = nullptr;
   const DiskError err =
-      g_woz1_driver.open(image.c_str(), 0, false, &instance);
+      woz1_driver.open(image.c_str(), 0, false, &instance);
   if (instance != nullptr) {
-    g_woz1_driver.close(instance);
+    woz1_driver.close(instance);
   }
   return err;
 }
@@ -395,14 +395,14 @@ TEST_CASE("DiskWOZ1: a 1.0 image's CRC32 is verified over its chunks") {
   patch(image.path(), crc32_field_offset, crc_le, sizeof(crc_le));
 
   void* instance = nullptr;
-  REQUIRE(g_woz1_driver.open(image.c_str(), 0, false, &instance) ==
+  REQUIRE(woz1_driver.open(image.c_str(), 0, false, &instance) ==
           disk_err_none);
-  g_woz1_driver.close(instance);
+  woz1_driver.close(instance);
   instance = nullptr;
 
   const uint8_t flipped = static_cast<uint8_t>(track0_pattern[0] ^ 0x80);
   patch(image.path(), 256, &flipped, 1);
-  CHECK(g_woz1_driver.open(image.c_str(), 0, false, &instance) ==
+  CHECK(woz1_driver.open(image.c_str(), 0, false, &instance) ==
         disk_err_corrupt);
   CHECK(instance == nullptr);
 }
@@ -460,48 +460,48 @@ TEST_CASE(
   patch(image.path(), track0_bit_count_offset, no_cells, sizeof(no_cells));
 
   void* instance = nullptr;
-  REQUIRE(g_woz1_driver.open(image.c_str(), 0, false, &instance) ==
+  REQUIRE(woz1_driver.open(image.c_str(), 0, false, &instance) ==
           disk_err_none);
 
   std::vector<uint8_t> bits;
   uint32_t bit_count = 0;
   uint8_t bit_timing = 0;
-  CHECK(read_quarter_track(g_woz1_driver, instance, 0, &bits, &bit_count,
+  CHECK(read_quarter_track(woz1_driver, instance, 0, &bits, &bit_count,
                            &bit_timing) == disk_err_corrupt);
   CHECK(bit_count == 0);
   CHECK(bit_timing == 32);
   CHECK(bits[0] == 0xEE);
 
-  CHECK(read_quarter_track(g_woz1_driver, instance, 4, &bits, &bit_count,
+  CHECK(read_quarter_track(woz1_driver, instance, 4, &bits, &bit_count,
                            &bit_timing) == disk_err_none);
   CHECK(bit_count == track1_bit_count);
 
-  g_woz1_driver.close(instance);
+  woz1_driver.close(instance);
 }
 
 TEST_CASE("DiskWOZ1: a quarter track past the map is a bad argument") {
   auto image = TestFixtures::create_ephemeral("minimal-v1.woz");
   void* instance = nullptr;
-  REQUIRE(g_woz1_driver.open(image.c_str(), 0, false, &instance) ==
+  REQUIRE(woz1_driver.open(image.c_str(), 0, false, &instance) ==
           disk_err_none);
 
   std::vector<uint8_t> bits;
   uint32_t bit_count = 0;
   uint8_t bit_timing = 0;
-  CHECK(read_quarter_track(g_woz1_driver, instance,
+  CHECK(read_quarter_track(woz1_driver, instance,
                            first_quarter_track_past_map, &bits, &bit_count,
                            &bit_timing) == disk_err_invalid_argument);
   CHECK(bit_count == 0);
   CHECK(bit_timing == 32);
   CHECK(bits[0] == 0xEE);
 
-  CHECK(read_quarter_track(g_woz1_driver, instance, UINT32_MAX, &bits,
+  CHECK(read_quarter_track(woz1_driver, instance, UINT32_MAX, &bits,
                            &bit_count,
                            &bit_timing) == disk_err_invalid_argument);
   CHECK(bit_count == 0);
   CHECK(bits[0] == 0xEE);
 
-  g_woz1_driver.close(instance);
+  woz1_driver.close(instance);
 }
 
 TEST_CASE("DiskWOZ1: a META chunk after TRKS leaves the record count alone") {
@@ -512,29 +512,29 @@ TEST_CASE("DiskWOZ1: a META chunk after TRKS leaves the record count alone") {
           v1_fixture_bytes + chunk_header_size + meta_chunk_data_size);
 
   void* instance = nullptr;
-  REQUIRE(g_woz1_driver.open(image.c_str(), 0, false, &instance) ==
+  REQUIRE(woz1_driver.open(image.c_str(), 0, false, &instance) ==
           disk_err_none);
   REQUIRE(instance != nullptr);
 
   std::vector<uint8_t> bits;
   uint32_t bit_count = 0;
   uint8_t bit_timing = 0;
-  CHECK(read_quarter_track(g_woz1_driver, instance, 0, &bits, &bit_count,
+  CHECK(read_quarter_track(woz1_driver, instance, 0, &bits, &bit_count,
                            &bit_timing) == disk_err_none);
   CHECK(bit_count == track0_bit_count);
   CHECK(std::memcmp(bits.data(), track0_pattern, sizeof(track0_pattern)) == 0);
 
-  CHECK(read_quarter_track(g_woz1_driver, instance, 4, &bits, &bit_count,
+  CHECK(read_quarter_track(woz1_driver, instance, 4, &bits, &bit_count,
                            &bit_timing) == disk_err_none);
   CHECK(bit_count == track1_bit_count);
   CHECK(std::memcmp(bits.data(), track1_pattern, sizeof(track1_pattern)) == 0);
 
   // The META bytes sit where a third record would start; TRKS still declares
   // two, so the entry naming a third is corrupt rather than a read of META.
-  CHECK(read_quarter_track(g_woz1_driver, instance, 8, &bits, &bit_count,
+  CHECK(read_quarter_track(woz1_driver, instance, 8, &bits, &bit_count,
                            &bit_timing) == disk_err_corrupt);
   CHECK(bit_count == 0);
   CHECK(bits[0] == 0xEE);
 
-  g_woz1_driver.close(instance);
+  woz1_driver.close(instance);
 }

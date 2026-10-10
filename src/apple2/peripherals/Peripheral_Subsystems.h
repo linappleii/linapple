@@ -25,7 +25,7 @@ typedef enum {
   PERIPHERAL_SUBSYSTEM_MOCKINGBOARD = 0x000A0000,
   PERIPHERAL_SUBSYSTEM_MASK = (int)0xFFFF0000,
   PERIPHERAL_COMMAND_INDEX_MASK = 0x0000FFFF,
-} PeripheralSubsystem_t;
+} PeripheralSubsystem;
 
 /* Verify command ID belongs to this subsystem or generic namespace. */
 static inline bool peripheral_cmd_is_mine(uint32_t cmd_id, uint32_t subsystem) {

@@ -95,22 +95,22 @@ static auto copy_row_or4(const uint32_t* src, int src_w, uint32_t* dst,
   copy_row_or(src, src_w, dst, dst_x, dst_w, max_w);
 }
 
-static uint32_t g_palette_lut[256] = {};
-static const VideoColor* g_last_palette = nullptr;
+static uint32_t palette_lut[256] = {};
+static const VideoColor* last_palette = nullptr;
 
 static auto update_palette_lut(const VideoColor* palette) -> void {
   if (!palette) {
     return;
   }
-  if (palette == g_last_palette) {
+  if (palette == last_palette) {
     return;
   }
 
   for (int i = 0; i < 256; ++i) {
-    g_palette_lut[i] =
+    palette_lut[i] =
         (palette[i].r << 16) | (palette[i].g << 8) | palette[i].b;
   }
-  g_last_palette = palette;
+  last_palette = palette;
 }
 
 static auto copy_row1to4(const uint8_t* src, int src_w, uint32_t* dst,
@@ -127,7 +127,7 @@ static auto copy_row1to4(const uint8_t* src, int src_w, uint32_t* dst,
     for (int i = 0; i < dst_w; ++i) {
       int cur_x = dst_x + i;
       if (cur_x >= 0 && cur_x < max_w) {
-        dst[cur_x] = g_palette_lut[src[i]];
+        dst[cur_x] = palette_lut[src[i]];
       }
     }
     return;
@@ -139,7 +139,7 @@ static auto copy_row1to4(const uint8_t* src, int src_w, uint32_t* dst,
     }
     int cur_x = dst_x + i;
     if (cur_x >= 0 && cur_x < max_w) {
-      dst[cur_x] = g_palette_lut[src[src_x]];
+      dst[cur_x] = palette_lut[src[src_x]];
     }
   }
 }
@@ -158,7 +158,7 @@ static auto copy_row_or1to4(const uint8_t* src, int src_w, uint32_t* dst,
     for (int i = 0; i < dst_w; ++i) {
       int cur_x = dst_x + i;
       if (cur_x >= 0 && cur_x < max_w) {
-        dst[cur_x] |= g_palette_lut[src[i]];
+        dst[cur_x] |= palette_lut[src[i]];
       }
     }
     return;
@@ -170,7 +170,7 @@ static auto copy_row_or1to4(const uint8_t* src, int src_w, uint32_t* dst,
     }
     int cur_x = dst_x + i;
     if (cur_x >= 0 && cur_x < max_w) {
-      dst[cur_x] |= g_palette_lut[src[src_x]];
+      dst[cur_x] |= palette_lut[src[src_x]];
     }
   }
 }
@@ -543,9 +543,9 @@ auto font_print_centered(int x, int y, const char* text,
   font_print(x - offset, y, text, surface, kx, ky);
 }
 
-auto surface_fader(VideoSurface* surface, float r_factor, float g_factor,
-                   float b_factor, float a_factor, const VideoRect* r) -> void {
-  (void)a_factor;
+auto surface_fader(VideoSurface* surface, float red_factor, float green_factor,
+                   float blue_factor, float alpha_factor, const VideoRect* r) -> void {
+  (void)alpha_factor;
   (void)r;
   int i = 0;
   VideoColor* colors = nullptr;
@@ -556,9 +556,9 @@ auto surface_fader(VideoSurface* surface, float r_factor, float g_factor,
 
   colors = surface->palette.data();
   for (i = 0; i < 256; i++) {
-    colors[i].r = static_cast<uint8_t>(colors[i].r * r_factor);
-    colors[i].g = static_cast<uint8_t>(colors[i].g * g_factor);
-    colors[i].b = static_cast<uint8_t>(colors[i].b * b_factor);
+    colors[i].r = static_cast<uint8_t>(colors[i].r * red_factor);
+    colors[i].g = static_cast<uint8_t>(colors[i].g * green_factor);
+    colors[i].b = static_cast<uint8_t>(colors[i].b * blue_factor);
   }
 }
 

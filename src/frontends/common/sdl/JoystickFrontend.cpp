@@ -204,7 +204,7 @@ auto flush_switch_queues() -> void {
 auto send_axis(uint8_t joy_num, uint8_t axis, int position) -> void {
   const int trimmed =
       clamp_val(position + (axis == 0 ? trim_x : trim_y), pdl_min, pdl_max);
-  const JoystickAxisPayload_t payload = {
+  const JoystickAxisPayload payload = {
       joy_num,
       axis,
       static_cast<uint8_t>(trimmed),

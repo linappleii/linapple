@@ -33,55 +33,55 @@ static constexpr uint8_t bench_opcodes[] = {
 };
 constexpr uint8_t bench_opcodes_count = sizeof(bench_opcodes);
 
-static CpuInstance g_cpu_context{};
-static CpuInstance* g_active_cpu = &g_cpu_context;
+static CpuInstance cpu_context{};
+static CpuInstance* active_cpu = &cpu_context;
 
 static CpuRegisters regs;
-uint64_t g_cumulative_cycles = 0;
-static uint32_t g_cycles_submitted;
-static uint32_t g_cycles_executed;
-// Frame-relative like g_cycles_executed; a handler may lower it while
-// g_in_slice is true.
-static uint32_t g_cycles_limit;
-static bool g_in_slice = false;
-static std::atomic<uint32_t> g_bm_irq{0};
-static std::atomic<uint32_t> g_bm_nmi{0};
-static std::atomic<bool> g_nmi_flank{
+uint64_t cumulative_cycles = 0;
+static uint32_t cycles_submitted;
+static uint32_t cycles_executed;
+// Frame-relative like cycles_executed; a handler may lower it while
+// in_slice is true.
+static uint32_t cycles_limit;
+static bool in_slice = false;
+static std::atomic<uint32_t> bm_irq{0};
+static std::atomic<uint32_t> bm_nmi{0};
+static std::atomic<bool> nmi_flank{
     false};  // Positive going flank on NMI line
-static std::mutex g_interrupt_mutex;
+static std::mutex interrupt_mutex;
 
 auto cpu_get_registers() noexcept -> CpuRegisters* { return &regs; }
 auto cpu_get_cumulative_cycles() noexcept -> uint64_t {
-  return g_cumulative_cycles;
+  return cumulative_cycles;
 }
 auto cpu_add_cumulative_cycles(uint32_t cycles) noexcept -> void {
-  g_cumulative_cycles += cycles;
+  cumulative_cycles += cycles;
 }
-auto cpu_get_active_context() noexcept -> CpuInstance* { return g_active_cpu; }
+auto cpu_get_active_context() noexcept -> CpuInstance* { return active_cpu; }
 auto cpu_set_active_context(CpuInstance* context) noexcept -> void {
   if (context == nullptr) {
     return;
   }
-  g_active_cpu->cpu_regs = regs;
-  g_active_cpu->cumulative_cycles = g_cumulative_cycles;
-  g_active_cpu->cycles_submitted = g_cycles_submitted;
-  g_active_cpu->cycles_executed = g_cycles_executed;
+  active_cpu->cpu_regs = regs;
+  active_cpu->cumulative_cycles = cumulative_cycles;
+  active_cpu->cycles_submitted = cycles_submitted;
+  active_cpu->cycles_executed = cycles_executed;
 
   {
-    std::lock_guard<std::mutex> lock(g_interrupt_mutex);
-    g_active_cpu->bm_irq = g_bm_irq.load();
-    g_active_cpu->bm_nmi = g_bm_nmi.load();
-    g_active_cpu->nmi_flank = g_nmi_flank.load();
+    std::lock_guard<std::mutex> lock(interrupt_mutex);
+    active_cpu->bm_irq = bm_irq.load();
+    active_cpu->bm_nmi = bm_nmi.load();
+    active_cpu->nmi_flank = nmi_flank.load();
 
-    g_active_cpu = context;
+    active_cpu = context;
 
-    regs = g_active_cpu->cpu_regs;
-    g_cumulative_cycles = g_active_cpu->cumulative_cycles;
-    g_cycles_submitted = g_active_cpu->cycles_submitted;
-    g_cycles_executed = g_active_cpu->cycles_executed;
-    g_bm_irq.store(g_active_cpu->bm_irq);
-    g_bm_nmi.store(g_active_cpu->bm_nmi);
-    g_nmi_flank.store(g_active_cpu->nmi_flank);
+    regs = active_cpu->cpu_regs;
+    cumulative_cycles = active_cpu->cumulative_cycles;
+    cycles_submitted = active_cpu->cycles_submitted;
+    cycles_executed = active_cpu->cycles_executed;
+    bm_irq.store(active_cpu->bm_irq);
+    bm_nmi.store(active_cpu->bm_nmi);
+    nmi_flank.store(active_cpu->nmi_flank);
   }
 }
 
@@ -834,7 +834,7 @@ struct CpuLoopContext {
 
   template <bool cmos>
   auto check_nmi() -> void {
-    if (g_nmi_flank.exchange(false)) {
+    if (nmi_flank.exchange(false)) {
       push(regs.pc >> 8);
       push(regs.pc & 0xFF);
       pack_ps();
@@ -850,7 +850,7 @@ struct CpuLoopContext {
 
   template <bool cmos>
   auto check_irq() -> void {
-    if (g_bm_irq && !(regs.ps & AF_INTERRUPT)) {
+    if (bm_irq && !(regs.ps & AF_INTERRUPT)) {
       push(regs.pc >> 8);
       push(regs.pc & 0xFF);
       pack_ps();
@@ -3740,7 +3740,7 @@ static const OpcodeDesc opcodes_cmos[256] = {
     /* 0xFF */ {op_nop, 2},  // nop
 };
 
-// g_cycles_limit is re-read each turn because a handler may lower it.
+// cycles_limit is re-read each turn because a handler may lower it.
 template <bool is_cmos>
 static auto cpu_execute_loop(uint32_t start_cycles) -> uint32_t {
   CpuLoopContext ctx;
@@ -3761,7 +3761,7 @@ static auto cpu_execute_loop(uint32_t start_cycles) -> uint32_t {
     ctx.pack_ps();
     ctx.check_nmi<is_cmos>();
     ctx.check_irq<is_cmos>();
-  } while (ctx.executed_cycles < g_cycles_limit);
+  } while (ctx.executed_cycles < cycles_limit);
 
   return ctx.executed_cycles;
 }
@@ -3779,8 +3779,8 @@ static auto internal_cpu_execute(uint32_t start_cycles) -> uint32_t {
 namespace {
 
 struct SliceGuard {
-  SliceGuard() noexcept { g_in_slice = true; }
-  ~SliceGuard() { g_in_slice = false; }
+  SliceGuard() noexcept { in_slice = true; }
+  ~SliceGuard() { in_slice = false; }
   SliceGuard(const SliceGuard&) = delete;
   auto operator=(const SliceGuard&) -> SliceGuard& = delete;
   SliceGuard(SliceGuard&&) = delete;
@@ -3794,61 +3794,61 @@ struct SliceGuard {
 auto cpu_destroy() noexcept -> void {}
 
 auto cpu_calc_cycles(uint32_t executed_cycles) noexcept -> void {
-  uint32_t cycles = executed_cycles - g_cycles_executed;
-  g_cycles_executed += cycles;
-  g_cumulative_cycles += cycles;
+  uint32_t cycles = executed_cycles - cycles_executed;
+  cycles_executed += cycles;
+  cumulative_cycles += cycles;
 }
 
 auto cpu_get_cycles_this_frame(uint32_t executed_cycles) noexcept -> uint32_t {
   cpu_calc_cycles(executed_cycles);
-  return g_cycles_executed;
+  return cycles_executed;
 }
 
 auto cpu_execute(uint32_t total_cycles) -> uint32_t {
-  g_cycles_submitted = total_cycles;
-  g_cycles_executed = 0;
-  g_cycles_limit = total_cycles;
+  cycles_submitted = total_cycles;
+  cycles_executed = 0;
+  cycles_limit = total_cycles;
 
   uint32_t executed_cycles = internal_cpu_execute(0);
 
-  uint32_t remaining_cycles = executed_cycles - g_cycles_executed;
-  g_cumulative_cycles += remaining_cycles;
+  uint32_t remaining_cycles = executed_cycles - cycles_executed;
+  cumulative_cycles += remaining_cycles;
 
   return executed_cycles;
 }
 
 auto cpu_begin_frame(uint32_t frame_cycles) noexcept -> void {
-  g_cycles_submitted = frame_cycles;
-  g_cycles_executed = 0;
+  cycles_submitted = frame_cycles;
+  cycles_executed = 0;
 }
 
 auto cpu_limit_cycles(uint64_t at_cumulative) noexcept -> void {
-  if (!g_in_slice || at_cumulative == UINT64_MAX) {
+  if (!in_slice || at_cumulative == UINT64_MAX) {
     return;
   }
   // Inside a handler both counts stand at the running instruction's first
   // cycle, so the offset is exact; a target at or behind now ends the slice
   // at the next instruction boundary.
-  uint64_t bound = g_cycles_executed;
-  if (at_cumulative > g_cumulative_cycles) {
-    bound += at_cumulative - g_cumulative_cycles;
+  uint64_t bound = cycles_executed;
+  if (at_cumulative > cumulative_cycles) {
+    bound += at_cumulative - cumulative_cycles;
   }
-  if (bound < g_cycles_limit) {
-    g_cycles_limit = static_cast<uint32_t>(bound);
+  if (bound < cycles_limit) {
+    cycles_limit = static_cast<uint32_t>(bound);
   }
 }
 
 auto cpu_execute_slice(uint32_t frame_cycles, uint64_t until_cycle)
     -> uint32_t {
   const SliceGuard slice;
-  g_cycles_limit = frame_cycles;
+  cycles_limit = frame_cycles;
   cpu_limit_cycles(until_cycle);
 
-  uint32_t executed_cycles = internal_cpu_execute(g_cycles_executed);
+  uint32_t executed_cycles = internal_cpu_execute(cycles_executed);
 
-  uint32_t remaining_cycles = executed_cycles - g_cycles_executed;
-  g_cumulative_cycles += remaining_cycles;
-  g_cycles_executed = executed_cycles;
+  uint32_t remaining_cycles = executed_cycles - cycles_executed;
+  cumulative_cycles += remaining_cycles;
+  cycles_executed = executed_cycles;
 
   return executed_cycles;
 }
@@ -3897,37 +3897,37 @@ auto cpu_setup_benchmark() -> void {
 }
 
 auto cpu_irq_reset() noexcept -> void {
-  const std::lock_guard<std::mutex> lock(g_interrupt_mutex);
-  g_bm_irq = 0;
+  const std::lock_guard<std::mutex> lock(interrupt_mutex);
+  bm_irq = 0;
 }
 
-auto cpu_irq_assert(IrqSrc_t device) noexcept -> void {
-  const std::lock_guard<std::mutex> lock(g_interrupt_mutex);
-  g_bm_irq |= 1U << device;
+auto cpu_irq_assert(IrqSrc device) noexcept -> void {
+  const std::lock_guard<std::mutex> lock(interrupt_mutex);
+  bm_irq |= 1U << device;
 }
 
-auto cpu_irq_deassert(IrqSrc_t device) noexcept -> void {
-  const std::lock_guard<std::mutex> lock(g_interrupt_mutex);
-  g_bm_irq &= ~(1U << device);
+auto cpu_irq_deassert(IrqSrc device) noexcept -> void {
+  const std::lock_guard<std::mutex> lock(interrupt_mutex);
+  bm_irq &= ~(1U << device);
 }
 
 auto cpu_nmi_reset() noexcept -> void {
-  const std::lock_guard<std::mutex> lock(g_interrupt_mutex);
-  g_bm_nmi = 0;
-  g_nmi_flank = false;
+  const std::lock_guard<std::mutex> lock(interrupt_mutex);
+  bm_nmi = 0;
+  nmi_flank = false;
 }
 
-auto cpu_nmi_assert(IrqSrc_t device) noexcept -> void {
-  const std::lock_guard<std::mutex> lock(g_interrupt_mutex);
-  if (g_bm_nmi == 0) {  // NMI line is just becoming active
-    g_nmi_flank = true;
+auto cpu_nmi_assert(IrqSrc device) noexcept -> void {
+  const std::lock_guard<std::mutex> lock(interrupt_mutex);
+  if (bm_nmi == 0) {  // NMI line is just becoming active
+    nmi_flank = true;
   }
-  g_bm_nmi |= 1U << device;
+  bm_nmi |= 1U << device;
 }
 
-auto cpu_nmi_deassert(IrqSrc_t device) noexcept -> void {
-  const std::lock_guard<std::mutex> lock(g_interrupt_mutex);
-  g_bm_nmi &= ~(1U << device);
+auto cpu_nmi_deassert(IrqSrc device) noexcept -> void {
+  const std::lock_guard<std::mutex> lock(interrupt_mutex);
+  bm_nmi &= ~(1U << device);
 }
 
 auto cpu_reset() noexcept -> void {
@@ -3942,12 +3942,12 @@ auto cpu_reset() noexcept -> void {
   regs.is_jammed = false;
 }
 
-auto cpu_get_snapshot(SsCpu6502_t* snapshot) noexcept -> uint32_t {
+auto cpu_get_snapshot(SsCpu6502* snapshot) noexcept -> uint32_t {
   if (!snapshot) {
     return 1;
   }
-  g_active_cpu->cpu_regs = regs;
-  g_active_cpu->cumulative_cycles = g_cumulative_cycles;
+  active_cpu->cpu_regs = regs;
+  active_cpu->cumulative_cycles = cumulative_cycles;
 
   snapshot->a = regs.a;
   snapshot->x = regs.x;
@@ -3955,12 +3955,12 @@ auto cpu_get_snapshot(SsCpu6502_t* snapshot) noexcept -> uint32_t {
   snapshot->p = regs.ps | AF_RESERVED | AF_BREAK;
   snapshot->s = static_cast<uint8_t>(regs.sp & 0xff);
   snapshot->pc = regs.pc;
-  snapshot->cumulative_cycles = g_cumulative_cycles;
+  snapshot->cumulative_cycles = cumulative_cycles;
 
   return 0;
 }
 
-auto cpu_set_snapshot(const SsCpu6502_t* snapshot) noexcept -> uint32_t {
+auto cpu_set_snapshot(const SsCpu6502* snapshot) noexcept -> uint32_t {
   if (!snapshot) {
     return 1;
   }
@@ -3972,10 +3972,10 @@ auto cpu_set_snapshot(const SsCpu6502_t* snapshot) noexcept -> uint32_t {
   regs.pc = snapshot->pc;
   cpu_irq_reset();
   cpu_nmi_reset();
-  g_cumulative_cycles = snapshot->cumulative_cycles;
+  cumulative_cycles = snapshot->cumulative_cycles;
 
-  g_active_cpu->cpu_regs = regs;
-  g_active_cpu->cumulative_cycles = g_cumulative_cycles;
+  active_cpu->cpu_regs = regs;
+  active_cpu->cumulative_cycles = cumulative_cycles;
 
   return 0;
 }

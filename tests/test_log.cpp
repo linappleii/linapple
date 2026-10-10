@@ -14,7 +14,7 @@
 
 namespace {
 
-struct LogCapture_t {
+struct LogCapture {
   std::vector<LogLevel> levels;
   std::vector<std::string> messages;
 
@@ -24,7 +24,7 @@ struct LogCapture_t {
   }
 };
 
-LogCapture_t test_capture;
+LogCapture test_capture;
 
 auto global_test_callback(LogLevel level, const char* message) -> void {
   test_capture.levels.push_back(level);
@@ -33,7 +33,7 @@ auto global_test_callback(LogLevel level, const char* message) -> void {
 
 auto context_test_callback(LogLevel level, const char* message, void* user_data)
     -> void {
-  auto* cap = static_cast<LogCapture_t*>(user_data);
+  auto* cap = static_cast<LogCapture*>(user_data);
   if (cap != nullptr) {
     cap->levels.push_back(level);
     cap->messages.emplace_back(message != nullptr ? message : "");
@@ -49,11 +49,11 @@ auto context_test_callback(LogLevel level, const char* message, void* user_data)
   va_end(args);
 }
 
-struct ScopedLoggerReset_t {
+struct ScopedLoggerReset {
   LogLevel orig_level;
   bool orig_file_logging;
 
-  ScopedLoggerReset_t()
+  ScopedLoggerReset()
       : orig_level(Logger::get_verbosity()),
         orig_file_logging(Logger::is_file_logging_enabled()) {
     Logger::destroy();
@@ -61,17 +61,17 @@ struct ScopedLoggerReset_t {
     test_capture.clear();
   }
 
-  ~ScopedLoggerReset_t() {
+  ~ScopedLoggerReset() {
     Logger::destroy();
     Logger::set_verbosity(orig_level);
     Logger::enable_file_logging(orig_file_logging);
     test_capture.clear();
   }
 
-  ScopedLoggerReset_t(const ScopedLoggerReset_t&) = delete;
-  auto operator=(const ScopedLoggerReset_t&) -> ScopedLoggerReset_t& = delete;
-  ScopedLoggerReset_t(ScopedLoggerReset_t&&) = delete;
-  auto operator=(ScopedLoggerReset_t&&) -> ScopedLoggerReset_t& = delete;
+  ScopedLoggerReset(const ScopedLoggerReset&) = delete;
+  auto operator=(const ScopedLoggerReset&) -> ScopedLoggerReset& = delete;
+  ScopedLoggerReset(ScopedLoggerReset&&) = delete;
+  auto operator=(ScopedLoggerReset&&) -> ScopedLoggerReset& = delete;
 };
 
 }  // namespace
@@ -103,7 +103,7 @@ TEST_CASE("Logger: [LOG-01] Enum Values and String Conversion") {
 
 // LOG-02: Verbosity Filtering
 TEST_CASE("Logger: [LOG-02] Verbosity Filtering") {
-  ScopedLoggerReset_t guard;
+  ScopedLoggerReset guard;
   Logger::set_callback(global_test_callback);
 
   // Set to warning: error and warning should pass, info/perf/debug dropped
@@ -131,7 +131,7 @@ TEST_CASE("Logger: [LOG-02] Verbosity Filtering") {
 
 // LOG-03: Format string argument expansion
 TEST_CASE("Logger: [LOG-03] Format String Argument Expansion") {
-  ScopedLoggerReset_t guard;
+  ScopedLoggerReset guard;
   Logger::set_callback(global_test_callback);
   Logger::set_verbosity(LogLevel::debug);
 
@@ -142,7 +142,7 @@ TEST_CASE("Logger: [LOG-03] Format String Argument Expansion") {
 
 // LOG-04: Large message heap reallocation (>1024 bytes)
 TEST_CASE("Logger: [LOG-04] Large Buffer Heap Reallocation") {
-  ScopedLoggerReset_t guard;
+  ScopedLoggerReset guard;
   Logger::set_callback(global_test_callback);
   Logger::set_verbosity(LogLevel::info);
 
@@ -159,8 +159,8 @@ TEST_CASE("Logger: [LOG-04] Large Buffer Heap Reallocation") {
 
 // LOG-05: Contextual callback with user_data pointer
 TEST_CASE("Logger: [LOG-05] Contextual Callback Dispatch") {
-  ScopedLoggerReset_t guard;
-  LogCapture_t local_capture;
+  ScopedLoggerReset guard;
+  LogCapture local_capture;
   Logger::set_callback_with_context(context_test_callback, &local_capture);
   Logger::set_verbosity(LogLevel::info);
 
@@ -171,7 +171,7 @@ TEST_CASE("Logger: [LOG-05] Contextual Callback Dispatch") {
 
 // LOG-06: Reentrancy & Deadlock Prevention
 TEST_CASE("Logger: [LOG-06] Reentrancy & Deadlock Safety") {
-  ScopedLoggerReset_t guard;
+  ScopedLoggerReset guard;
   static int recursion_depth = 0;
   recursion_depth = 0;
 
@@ -191,8 +191,8 @@ TEST_CASE("Logger: [LOG-06] Reentrancy & Deadlock Safety") {
 
 // LOG-07: Custom log file output & ISO timestamp formatting
 TEST_CASE("Logger: [LOG-07] File Logging Output and Timestamps") {
-  ScopedLoggerReset_t guard;
-  TestFixtures::ScopedTempFile_t tmp_log(".log");
+  ScopedLoggerReset guard;
+  TestFixtures::ScopedTempFile tmp_log(".log");
 
   Logger::set_log_path(tmp_log.c_str());
   Logger::enable_file_logging(true);
@@ -222,8 +222,8 @@ TEST_CASE("Logger: [LOG-07] File Logging Output and Timestamps") {
 
 // LOG-08: File logging disable toggle
 TEST_CASE("Logger: [LOG-08] File Logging Disabled Toggle") {
-  ScopedLoggerReset_t guard;
-  TestFixtures::ScopedTempFile_t tmp_log(".log");
+  ScopedLoggerReset guard;
+  TestFixtures::ScopedTempFile tmp_log(".log");
 
   Logger::set_log_path(tmp_log.c_str());
   Logger::enable_file_logging(false);
@@ -243,7 +243,7 @@ TEST_CASE("Logger: [LOG-08] File Logging Disabled Toggle") {
 
 // LOG-09: Variadic list dispatch, null safety, and silent suppression
 TEST_CASE("Logger: [LOG-09] Variadic List Dispatch and Edge Cases") {
-  ScopedLoggerReset_t guard;
+  ScopedLoggerReset guard;
   Logger::set_callback(global_test_callback);
   Logger::set_verbosity(LogLevel::debug);
 

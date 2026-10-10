@@ -15,7 +15,7 @@ enum {
   PERIPHERAL_QUERY_AUDIO_INFO = 0x00000010,
 };
 
-// Enumerators start at 1 so that a zeroed PeripheralAudioInfo_t is invalid
+// Enumerators start at 1 so that a zeroed PeripheralAudioInfo is invalid
 // rather than silently meaning one of the two forms.
 typedef enum {
   peripheral_audio_cpu_clocked = 1, /**< One sample per cycle_divisor 6502
@@ -23,13 +23,13 @@ typedef enum {
   peripheral_audio_absolute = 2     /**< sample_rate is the rate in Hz; the card
                                        carries its own oscillator */
   ,
-} PeripheralAudioTimeBase_t;
+} PeripheralAudioTimeBase;
 
-typedef struct PeripheralAudioChannelInfo_t {
+typedef struct PeripheralAudioChannelInfo {
   char name[PERIPHERAL_AUDIO_NAME_MAX];
   float default_pan_left;  /**< Default gain to Left output (0.0 to 1.0) */
   float default_pan_right; /**< Default gain to Right output (0.0 to 1.0) */
-} PeripheralAudioChannelInfo_t;
+} PeripheralAudioChannelInfo;
 
 /**
  * @brief How a peripheral describes the audio it emits.
@@ -48,8 +48,8 @@ typedef struct PeripheralAudioChannelInfo_t {
  * the output format belong to the mixer. peak_magnitude is how a source that
  * legitimately exceeds full scale says so.
  */
-typedef struct PeripheralAudioInfo_t {
-  PeripheralAudioTimeBase_t time_base; /**< Which of the two forms below is
+typedef struct PeripheralAudioInfo {
+  PeripheralAudioTimeBase time_base; /**< Which of the two forms below is
                                           meaningful */
   uint32_t cycle_divisor; /**< CPU-clocked form: 6502 cycles per sample */
   uint32_t sample_rate;   /**< Absolute form: native synthesis rate in Hz */
@@ -57,8 +57,8 @@ typedef struct PeripheralAudioInfo_t {
   float peak_magnitude;   /**< Largest absolute channel value this source will
                              ever emit; a fact about the signal, not a
                              recommendation */
-  PeripheralAudioChannelInfo_t channels[PERIPHERAL_AUDIO_MAX_CHANNELS];
-} PeripheralAudioInfo_t;
+  PeripheralAudioChannelInfo channels[PERIPHERAL_AUDIO_MAX_CHANNELS];
+} PeripheralAudioInfo;
 
 // NOLINTEND(modernize-use-using, cppcoreguidelines-use-enum-class, readability-identifier-naming)
 

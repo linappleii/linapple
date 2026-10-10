@@ -16,7 +16,7 @@
 extern "C" {
 #endif
 
-typedef struct SectorDiskImage_t SectorDiskImage_t;
+typedef struct SectorDiskImage SectorDiskImage;
 
 /* The largest file the sector family opens: a 35-track image of 143,360 bytes
    behind a 128-byte wrapper. Every size the probe admits is that image with
@@ -43,7 +43,7 @@ DiskError sector_disk_image_open(const char* path, uint32_t file_offset,
                                    bool is_dos_order, bool read_only,
                                    void** out_instance);
 
-/* These five carry the DiskFormatDriver_t signatures, instance being the
+/* These five carry the DiskFormatDriver signatures, instance being the
    pointer open handed out, so a driver descriptor names them directly and the
    order-specific code in a driver is its probe and its open. */
 void sector_disk_image_close(void* instance);

@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-extern const HarddiskFormatDriver_t g_do_block_driver;
+extern const HarddiskFormatDriver do_block_driver;
 
 #ifdef __cplusplus
 }

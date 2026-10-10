@@ -13,7 +13,7 @@
 
 #include "doctest.h"
 
-using TestFixtures::EphemeralDiskFixture_t;
+using TestFixtures::EphemeralDiskFixture;
 
 TEST_CASE("EphemeralDiskFixture: Lifecycle and Isolation (TASK-1)") {
   SUBCASE("Creation, Suffix Preservation, and Automatic Cleanup") {
@@ -61,14 +61,14 @@ TEST_CASE("EphemeralDiskFixture: Lifecycle and Isolation (TASK-1)") {
       CHECK(!captured_path.empty());
 
       // Move construct
-      EphemeralDiskFixture_t fixture2(std::move(fixture1));
+      EphemeralDiskFixture fixture2(std::move(fixture1));
       // NOLINTNEXTLINE(bugprone-use-after-move) - Explicitly validating post-move state
       CHECK(fixture1.path().empty());
       CHECK(fixture2.path() == captured_path);
       CHECK(access(captured_path.c_str(), F_OK) == 0);
 
       // Move assign (overwriting an existing fixture)
-      EphemeralDiskFixture_t fixture3 =
+      EphemeralDiskFixture fixture3 =
           TestFixtures::create_ephemeral("minimal.dsk");
       std::string replaced_path = fixture3.path();
       CHECK(access(replaced_path.c_str(), F_OK) == 0);
@@ -145,10 +145,10 @@ TEST_CASE("EphemeralDiskFixture: Lifecycle and Isolation (TASK-1)") {
     CHECK(access(ephemeral.c_str(), R_OK) == 0);
   }
 
-  SUBCASE("ScopedTempFile_t Lifecycle") {
+  SUBCASE("ScopedTempFile Lifecycle") {
     std::string temp_path;
     {
-      TestFixtures::ScopedTempFile_t tmp(".tmp");
+      TestFixtures::ScopedTempFile tmp(".tmp");
       temp_path = tmp.path();
       CHECK(!temp_path.empty());
       CHECK(access(temp_path.c_str(), F_OK) == 0);

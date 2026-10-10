@@ -6,13 +6,13 @@
 /* Announces a driver to the loader before main() runs. Survives
    harddisk_loader_reset, which is what separates a driver compiled into the
    binary from one a test pushes in by hand. */
-void harddisk_loader_register_permanent(const HarddiskFormatDriver_t* driver);
+void harddisk_loader_register_permanent(const HarddiskFormatDriver* driver);
 
 // A driver declares one of these at the end of its own translation unit, which
 // is the whole of what adding a format costs: nothing central names it.
-struct HarddiskFormatRegistration_t {
-  explicit HarddiskFormatRegistration_t(
-      const HarddiskFormatDriver_t* driver) noexcept {
+struct HarddiskFormatRegistration {
+  explicit HarddiskFormatRegistration(
+      const HarddiskFormatDriver* driver) noexcept {
     try {
       harddisk_loader_register_permanent(driver);
     } catch (...) {

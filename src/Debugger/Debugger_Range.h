@@ -5,14 +5,14 @@
 
 #include "Debugger_Types.h"
 
-struct RangeEndLen_t {
+struct RangeEndLen {
   uint16_t nAddressEnd;
   int nAddressLen;
 };
 
 auto Range_Get(uint16_t& nAddress1_, uint16_t& nAddress2_, int iArg = 1)
-    -> RangeType_t;
+    -> RangeType;
 
-auto Range_CalcEndLen(RangeType_t eRange, const uint16_t& nAddress1,
-                      const uint16_t& nAddress2, RangeEndLen_t& tEndLen_)
+auto Range_CalcEndLen(RangeType eRange, const uint16_t& nAddress1,
+                      const uint16_t& nAddress2, RangeEndLen& tEndLen_)
     -> bool;

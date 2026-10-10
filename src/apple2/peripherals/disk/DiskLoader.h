@@ -23,7 +23,7 @@ extern "C" {
    whose name is already registered is refused and the refusal recorded: the
    name is how a user and disk_loader_create pick a format, so it must pick
    exactly one. */
-void disk_loader_register(const DiskFormatDriver_t* driver);
+void disk_loader_register(const DiskFormatDriver* driver);
 
 /* Restores the drivers that registered themselves and forgets everything else,
    refusals included. Test-only: a suite that pushes a synthetic driver in
@@ -31,16 +31,16 @@ void disk_loader_register(const DiskFormatDriver_t* driver);
 void disk_loader_reset(void);
 
 /* Reports one driver the loader refused. */
-typedef void (*DiskDriverRejectionFn_t)(void* context, const char* driver_name,
+typedef void (*DiskDriverRejectionFn)(void* context, const char* driver_name,
                                         const char* reason);
 
 /* Hands over every refusal recorded so far and forgets them. Registration runs
    during static initialisation, when no host exists to be told, so the loader
    holds refusals until a caller with somewhere to put them asks. */
-void disk_loader_drain_rejections(DiskDriverRejectionFn_t sink, void* context);
+void disk_loader_drain_rejections(DiskDriverRejectionFn sink, void* context);
 
 DiskError disk_loader_open(const char* image_path,
-                             const DiskFormatDriver_t** out_driver,
+                             const DiskFormatDriver** out_driver,
                              void** out_instance);
 
 /* Lists the extensions the registered drivers accept and then the container
@@ -54,7 +54,7 @@ size_t disk_loader_get_supported_extensions(char* out_buffer,
 /* How many drivers are registered, and the one at an index. The order is by
    driver name and an index is only valid until the next registration. */
 uint32_t disk_loader_driver_count(void);
-const DiskFormatDriver_t* disk_loader_driver_at(uint32_t index);
+const DiskFormatDriver* disk_loader_driver_at(uint32_t index);
 
 /* Make a blank image at path in the named driver's format. Refuses a path that
    already exists with disk_err_io, and removes a file it created if the driver

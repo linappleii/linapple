@@ -15,7 +15,7 @@ namespace {
 constexpr int eol_null = 0;
 }  // namespace
 
-auto MemoryTextFile_t::Read(const std::string& filename) -> bool {
+auto MemoryTextFile::Read(const std::string& filename) -> bool {
   FilePtr file_handle(fopen(filename.c_str(), "rb"), fclose);
   if (!file_handle) {
     return false;
@@ -42,7 +42,7 @@ auto MemoryTextFile_t::Read(const std::string& filename) -> bool {
   return true;
 }
 
-auto MemoryTextFile_t::GetLine(const int line_index, char* line_out,
+auto MemoryTextFile::GetLine(const int line_index, char* line_out,
                                const int max_chars) -> void {
   if (dirty_) {
     GetLinePointers();
@@ -58,7 +58,7 @@ auto MemoryTextFile_t::GetLine(const int line_index, char* line_out,
 }
 
 // cr/new lines are converted into null, string terminators
-auto MemoryTextFile_t::GetLinePointers() -> void {
+auto MemoryTextFile::GetLinePointers() -> void {
   if (!dirty_) {
     return;
   }
@@ -102,7 +102,7 @@ auto MemoryTextFile_t::GetLinePointers() -> void {
   dirty_ = false;
 }
 
-auto MemoryTextFile_t::PushLine(char* line) -> void {
+auto MemoryTextFile::PushLine(char* line) -> void {
   char* src_ptr = line;
   while (src_ptr != nullptr && *src_ptr != 0) {
     if (*src_ptr == '\r' || *src_ptr == '\n') {

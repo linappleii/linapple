@@ -607,7 +607,7 @@ auto disk_browser_confirm(DiskBrowser* b) -> bool {
                                        system_state.current_dir.data());
   Configuration::instance().save();
 
-  DiskInsertCmd_t cmd{};
+  DiskInsertCmd cmd{};
   cmd.drive = static_cast<uint8_t>(b->drive);
   util_safe_strcpy(cmd.path, full_path.c_str(), sizeof(cmd.path));
   cmd.write_protected = 0;

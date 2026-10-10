@@ -8,9 +8,9 @@
 extern "C" {
 #endif
 
-struct Peripheral_t;
+struct Peripheral;
 
-auto mockingboard_get_descriptor() -> struct Peripheral_t*;
+auto mockingboard_get_descriptor() -> struct Peripheral*;
 
 #ifdef __cplusplus
 }

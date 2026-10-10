@@ -2,7 +2,7 @@
 
 #include "frontends/common/KeyboardMaps.h"
 
-const Apple2KeyboardMap_t map_us = {
+const Apple2KeyboardMap map_us = {
     "US",
     {
         [keyb_idx_a] = 'a',           [keyb_idx_b] = 'b',
@@ -107,9 +107,9 @@ const Apple2KeyboardMap_t map_us = {
 
 // UK layout is identical to US but produces £ (0x23) instead of # (0x23) in the
 // UK Video ROM.
-const Apple2KeyboardMap_t map_uk = {"UK", {0}, {0}, {0}};
+const Apple2KeyboardMap map_uk = {"UK", {0}, {0}, {0}};
 
-const Apple2KeyboardMap_t map_fr = {
+const Apple2KeyboardMap map_fr = {
     "French",
     {
         [keyb_idx_q] = 'a',
@@ -155,7 +155,7 @@ const Apple2KeyboardMap_t map_fr = {
     {0},  // Standard bitmask Ctrl suffices
 };
 
-const Apple2KeyboardMap_t map_de = {
+const Apple2KeyboardMap map_de = {
     "German",
     {
         [keyb_idx_y] = 'z',
@@ -178,7 +178,7 @@ const Apple2KeyboardMap_t map_de = {
     {0},
 };
 
-const Apple2KeyboardMap_t map_es = {
+const Apple2KeyboardMap map_es = {
     "Spanish",
     {
         [keyb_idx_semicolon] = 0x5C,     // Ñ
@@ -195,7 +195,7 @@ const Apple2KeyboardMap_t map_es = {
     {0},
 };
 
-const Apple2KeyboardMap_t map_it = {
+const Apple2KeyboardMap map_it = {
     "Italian",
     {
         [keyb_idx_leftbracket] = 0x5B,   // °
@@ -211,7 +211,7 @@ const Apple2KeyboardMap_t map_it = {
     {0},
 };
 
-const Apple2KeyboardMap_t map_se = {
+const Apple2KeyboardMap map_se = {
     "Swedish",
     {
         [keyb_idx_leftbracket] = 0x7D,  // å
@@ -226,7 +226,7 @@ const Apple2KeyboardMap_t map_se = {
     {0},
 };
 
-const Apple2KeyboardMap_t map_dk = {
+const Apple2KeyboardMap map_dk = {
     "Danish",
     {
         [keyb_idx_leftbracket] = 0x7D,  // å
@@ -241,7 +241,7 @@ const Apple2KeyboardMap_t map_dk = {
     {0},
 };
 
-const Apple2KeyboardMap_t map_ch = {
+const Apple2KeyboardMap map_ch = {
     "Swiss",
     {
         [keyb_idx_y] = 'z',
@@ -258,7 +258,7 @@ const Apple2KeyboardMap_t map_ch = {
     {0},
 };
 
-const Apple2KeyboardMap_t map_ca = {
+const Apple2KeyboardMap map_ca = {
     "Canadian French",
     {
         [keyb_idx_semicolon] = 0x7B,   // é
@@ -273,10 +273,10 @@ const Apple2KeyboardMap_t map_ca = {
 };
 
 // Japanese Roman layout (Standard QWERTY)
-const Apple2KeyboardMap_t map_jp_roman = {"Japanese (Roman)", {0}, {0}, {0}};
+const Apple2KeyboardMap map_jp_roman = {"Japanese (Roman)", {0}, {0}, {0}};
 
 // Japanese Kana layout (Standard JIS layout translation codes)
-const Apple2KeyboardMap_t map_jp_kana = {
+const Apple2KeyboardMap map_jp_kana = {
     "Japanese (Kana)",
     {
         [keyb_idx_a] = 't', [keyb_idx_b] = 'c', [keyb_idx_c] = 's',

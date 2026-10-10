@@ -23,20 +23,20 @@ namespace TestFixtures {
  * The callback and the verbosity are process globals, so both are put back on
  * destruction and the next case measures only its own lines.
  */
-class ScopedLogCapture_t {
+class ScopedLogCapture {
  public:
-  ScopedLogCapture_t() : verbosity_(Logger::get_verbosity()) {
+  ScopedLogCapture() : verbosity_(Logger::get_verbosity()) {
     Logger::set_verbosity(LogLevel::info);
     Logger::set_callback_with_context(collect, &lines_);
   }
-  ~ScopedLogCapture_t() {
+  ~ScopedLogCapture() {
     Logger::set_callback_with_context(nullptr, nullptr);
     Logger::set_verbosity(verbosity_);
   }
-  ScopedLogCapture_t(const ScopedLogCapture_t&) = delete;
-  auto operator=(const ScopedLogCapture_t&) -> ScopedLogCapture_t& = delete;
-  ScopedLogCapture_t(ScopedLogCapture_t&&) = delete;
-  auto operator=(ScopedLogCapture_t&&) -> ScopedLogCapture_t& = delete;
+  ScopedLogCapture(const ScopedLogCapture&) = delete;
+  auto operator=(const ScopedLogCapture&) -> ScopedLogCapture& = delete;
+  ScopedLogCapture(ScopedLogCapture&&) = delete;
+  auto operator=(ScopedLogCapture&&) -> ScopedLogCapture& = delete;
 
   auto lines() const -> const std::vector<std::string>& { return lines_; }
   auto lines_containing(const std::string& needle) const
@@ -75,31 +75,31 @@ class ScopedLogCapture_t {
 };
 
 /** Retrieve snapshot fixture path. */
-class ScopedLocalTimeProvider_t {
+class ScopedLocalTimeProvider {
  public:
-  explicit ScopedLocalTimeProvider_t(const HostLocalTime_t& frozen)
+  explicit ScopedLocalTimeProvider(const HostLocalTime& frozen)
       : frozen_(frozen) {
     linapple_set_local_time_provider(answer, this);
   }
 
-  ~ScopedLocalTimeProvider_t() {
+  ~ScopedLocalTimeProvider() {
     linapple_set_local_time_provider(nullptr, nullptr);
   }
 
-  ScopedLocalTimeProvider_t(const ScopedLocalTimeProvider_t&) = delete;
-  auto operator=(const ScopedLocalTimeProvider_t&)
-      -> ScopedLocalTimeProvider_t& = delete;
-  ScopedLocalTimeProvider_t(ScopedLocalTimeProvider_t&&) = delete;
-  auto operator=(ScopedLocalTimeProvider_t&&)
-      -> ScopedLocalTimeProvider_t& = delete;
+  ScopedLocalTimeProvider(const ScopedLocalTimeProvider&) = delete;
+  auto operator=(const ScopedLocalTimeProvider&)
+      -> ScopedLocalTimeProvider& = delete;
+  ScopedLocalTimeProvider(ScopedLocalTimeProvider&&) = delete;
+  auto operator=(ScopedLocalTimeProvider&&)
+      -> ScopedLocalTimeProvider& = delete;
 
-  auto set(const HostLocalTime_t& frozen) -> void { frozen_ = frozen; }
-  auto value() const -> const HostLocalTime_t& { return frozen_; }
+  auto set(const HostLocalTime& frozen) -> void { frozen_ = frozen; }
+  auto value() const -> const HostLocalTime& { return frozen_; }
   auto calls() const -> unsigned { return calls_; }
 
  private:
-  static auto answer(void* ctx, HostLocalTime_t* out) -> bool {
-    auto* self = static_cast<ScopedLocalTimeProvider_t*>(ctx);
+  static auto answer(void* ctx, HostLocalTime* out) -> bool {
+    auto* self = static_cast<ScopedLocalTimeProvider*>(ctx);
     if (self == nullptr || out == nullptr) {
       return false;
     }
@@ -108,7 +108,7 @@ class ScopedLocalTimeProvider_t {
     return true;
   }
 
-  HostLocalTime_t frozen_;
+  HostLocalTime frozen_;
   unsigned calls_ = 0;
 };
 
@@ -125,9 +125,9 @@ class ScopedLocalTimeProvider_t {
  * reads. The sink is a process global, so the guard is neither copyable nor
  * movable.
  */
-class ScopedByteSink_t {
+class ScopedByteSink {
  public:
-  struct Byte_t {
+  struct Byte {
     int slot;
     uint8_t byte;
   };
@@ -135,24 +135,24 @@ class ScopedByteSink_t {
   static constexpr uint8_t all_lines_asserted = 0x07;
   static constexpr size_t slot_count = 8;
 
-  ScopedByteSink_t() : previous_(linapple_set_byte_sink(&vtable_, this)) {}
+  ScopedByteSink() : previous_(linapple_set_byte_sink(&vtable_, this)) {}
 
-  ~ScopedByteSink_t() {
+  ~ScopedByteSink() {
     linapple_set_byte_sink(previous_.vtable, previous_.ctx);
   }
 
-  ScopedByteSink_t(const ScopedByteSink_t&) = delete;
-  auto operator=(const ScopedByteSink_t&) -> ScopedByteSink_t& = delete;
-  ScopedByteSink_t(ScopedByteSink_t&&) = delete;
-  auto operator=(ScopedByteSink_t&&) -> ScopedByteSink_t& = delete;
+  ScopedByteSink(const ScopedByteSink&) = delete;
+  auto operator=(const ScopedByteSink&) -> ScopedByteSink& = delete;
+  ScopedByteSink(ScopedByteSink&&) = delete;
+  auto operator=(ScopedByteSink&&) -> ScopedByteSink& = delete;
 
-  auto bytes() const -> const std::vector<Byte_t>& { return bytes_; }
+  auto bytes() const -> const std::vector<Byte>& { return bytes_; }
   auto dropped() const -> unsigned { return dropped_; }
   auto ready_polls() const -> unsigned { return ready_polls_; }
   auto opens() const -> unsigned { return opens_; }
   auto closes() const -> unsigned { return closes_; }
   auto ticks() const -> unsigned { return ticks_; }
-  auto last_open_kind() const -> PeripheralSinkKind_t { return last_kind_; }
+  auto last_open_kind() const -> PeripheralSinkKind { return last_kind_; }
   auto ready() const -> bool { return ready_; }
   auto set_ready(bool ready) -> void { ready_ = ready; }
 
@@ -169,15 +169,15 @@ class ScopedByteSink_t {
   }
   auto set_lines(uint8_t mask) -> void { lines_ = mask; }
   auto lines() const -> uint8_t { return lines_; }
-  auto last_line() const -> const PeripheralSerialLine_t& { return last_line_; }
+  auto last_line() const -> const PeripheralSerialLine& { return last_line_; }
   auto line_sets() const -> unsigned { return line_sets_; }
 
  private:
-  static auto self(void* ctx) -> ScopedByteSink_t* {
-    return static_cast<ScopedByteSink_t*>(ctx);
+  static auto self(void* ctx) -> ScopedByteSink* {
+    return static_cast<ScopedByteSink*>(ctx);
   }
 
-  static auto open(void* ctx, int slot, PeripheralSinkKind_t kind) -> void {
+  static auto open(void* ctx, int slot, PeripheralSinkKind kind) -> void {
     (void)slot;
     if (self(ctx) != nullptr) {
       ++self(ctx)->opens_;
@@ -233,7 +233,7 @@ class ScopedByteSink_t {
     return true;
   }
 
-  static auto set_line(void* ctx, int slot, const PeripheralSerialLine_t* line)
+  static auto set_line(void* ctx, int slot, const PeripheralSerialLine* line)
       -> void {
     (void)slot;
     if (self(ctx) == nullptr || line == nullptr) {
@@ -252,10 +252,10 @@ class ScopedByteSink_t {
     return true;
   }
 
-  const ByteSink_t vtable_ = {open, write, ready,    close,
+  const ByteSink vtable_ = {open, write, ready,    close,
                               tick, read,  set_line, get_lines};
-  ByteSinkBinding_t previous_;
-  std::vector<Byte_t> bytes_;
+  ByteSinkBinding previous_;
+  std::vector<Byte> bytes_;
   std::array<std::vector<uint8_t>, slot_count> rx_{};
   std::array<unsigned, slot_count> reads_{};
   unsigned dropped_ = 0;
@@ -264,8 +264,8 @@ class ScopedByteSink_t {
   unsigned closes_ = 0;
   unsigned ticks_ = 0;
   unsigned line_sets_ = 0;
-  PeripheralSinkKind_t last_kind_ = peripheral_sink_printer;
-  PeripheralSerialLine_t last_line_{};
+  PeripheralSinkKind last_kind_ = peripheral_sink_printer;
+  PeripheralSerialLine last_line_{};
   uint8_t lines_ = all_lines_asserted;
   bool ready_ = true;
 };
@@ -276,24 +276,24 @@ class ScopedByteSink_t {
  * The context is a process global, so a case that leaves a half-run one
  * behind changes what the next case measures.
  */
-struct ScopedCpuContext_t {
-  CpuInstance_t* previous = nullptr;
-  CpuInstance_t fresh{};
+struct ScopedCpuContext {
+  CpuInstance* previous = nullptr;
+  CpuInstance fresh{};
 
-  ScopedCpuContext_t() : previous(cpu_get_active_context()) {
+  ScopedCpuContext() : previous(cpu_get_active_context()) {
     cpu_set_active_context(&fresh);
   }
 
-  ~ScopedCpuContext_t() {
+  ~ScopedCpuContext() {
     if (previous != nullptr) {
       cpu_set_active_context(previous);
     }
   }
 
-  ScopedCpuContext_t(const ScopedCpuContext_t&) = delete;
-  auto operator=(const ScopedCpuContext_t&) -> ScopedCpuContext_t& = delete;
-  ScopedCpuContext_t(ScopedCpuContext_t&&) = delete;
-  auto operator=(ScopedCpuContext_t&&) -> ScopedCpuContext_t& = delete;
+  ScopedCpuContext(const ScopedCpuContext&) = delete;
+  auto operator=(const ScopedCpuContext&) -> ScopedCpuContext& = delete;
+  ScopedCpuContext(ScopedCpuContext&&) = delete;
+  auto operator=(ScopedCpuContext&&) -> ScopedCpuContext& = delete;
 };
 
 /**
@@ -304,24 +304,24 @@ struct ScopedCpuContext_t {
  * core holds is cleared on the way out: they are process globals, and a
  * dangling one would fire during the next case's shutdown.
  */
-class ScopedCore_t {
+class ScopedCore {
  public:
-  explicit ScopedCore_t(const ScopedTestConfig_t& config) {
+  explicit ScopedCore(const ScopedTestConfig& config) {
     config.load();
     linapple_init();
   }
 
-  ~ScopedCore_t() {
+  ~ScopedCore() {
     linapple_set_audio_channel_callback(nullptr);
     linapple_set_audio_source_register_callback(nullptr);
     linapple_set_audio_source_unregister_callback(nullptr);
     linapple_shutdown();
   }
 
-  ScopedCore_t(const ScopedCore_t&) = delete;
-  auto operator=(const ScopedCore_t&) -> ScopedCore_t& = delete;
-  ScopedCore_t(ScopedCore_t&&) = delete;
-  auto operator=(ScopedCore_t&&) -> ScopedCore_t& = delete;
+  ScopedCore(const ScopedCore&) = delete;
+  auto operator=(const ScopedCore&) -> ScopedCore& = delete;
+  ScopedCore(ScopedCore&&) = delete;
+  auto operator=(ScopedCore&&) -> ScopedCore& = delete;
 
   /**
    * @brief Load bytes where the 6502 will fetch them.
@@ -351,7 +351,7 @@ class ScopedCore_t {
   }
 
  private:
-  ScopedCpuContext_t cpu_;
+  ScopedCpuContext cpu_;
 };
 
 /**
@@ -360,17 +360,17 @@ class ScopedCore_t {
  * The stack sits at the top of page 1 and interrupts are masked, as the
  * Monitor leaves them for a routine entered from a JSR.
  */
-struct EntryRegisters_t {
+struct EntryRegisters {
   uint16_t pc;
   uint8_t a;
   uint8_t x;
   uint8_t y;
 };
 
-inline auto enter_at(const EntryRegisters_t& entry) -> void {
+inline auto enter_at(const EntryRegisters& entry) -> void {
   constexpr uint16_t stack_top = 0x01FF;
   constexpr uint8_t status_interrupts_masked = 0x24;
-  CpuRegisters_t* regs = cpu_get_registers();
+  CpuRegisters* regs = cpu_get_registers();
   regs->pc = entry.pc;
   regs->sp = stack_top;
   regs->a = entry.a;
@@ -390,7 +390,7 @@ inline auto enter_at(const EntryRegisters_t& entry) -> void {
  * caller checks the PC afterwards: the cap is what ends a runaway.
  */
 inline auto step_until_pc(uint16_t sentinel, uint32_t cap) -> uint32_t {
-  const CpuRegisters_t* regs = cpu_get_registers();
+  const CpuRegisters* regs = cpu_get_registers();
   uint32_t cycles = 0;
   while (regs->pc != sentinel && cycles < cap) {
     cycles += cpu_execute(0);

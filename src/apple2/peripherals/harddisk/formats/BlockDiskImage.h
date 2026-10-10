@@ -43,7 +43,7 @@ HarddiskError block_disk_image_open(const char* path, uint32_t file_offset,
                                       uint32_t block_count, bool read_only,
                                       void** out_instance);
 
-/* These five carry the HarddiskFormatDriver_t signatures, instance being the
+/* These five carry the HarddiskFormatDriver signatures, instance being the
    pointer open handed out, so a driver descriptor names them directly and the
    format-specific code in a driver is its probe and its open. A failure to
    sync the file on close is recorded through harddisk_loader_note. */

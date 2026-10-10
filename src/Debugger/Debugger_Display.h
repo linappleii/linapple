@@ -7,9 +7,9 @@
 #include "Debugger_Color.h"
 #include "Debugger_Console.h"
 
-struct Rect_t;
+struct Rect;
 
-enum ConsoleFontSize_e : uint8_t {
+enum ConsoleFontSize : uint8_t {
   CONSOLE_FONT_GRID_X = 8,
   CONSOLE_FONT_GRID_Y = 8,
 
@@ -17,11 +17,11 @@ enum ConsoleFontSize_e : uint8_t {
   CONSOLE_FONT_HEIGHT = 8,
 };
 
-extern ColorRef_t g_console_brush_fg;
-extern ColorRef_t g_console_brush_bg;
+extern ColorRef console_brush_fg;
+extern ColorRef console_brush_bg;
 struct VideoSurface;
-extern VideoSurface* g_debug_screen;
-extern int g_display_memory_lines;
+extern VideoSurface* debug_screen;
+extern int display_memory_lines;
 
 enum : uint16_t {
   DISPLAY_WIDTH = 560,
@@ -32,33 +32,33 @@ enum : uint16_t {
 
 auto GetConsoleTopPixels(int y) -> int;
 
-extern FontConfig_t g_font_config[NUM_FONTS];
+extern FontConfig font_config[NUM_FONTS];
 
-auto DebuggerSetColorFG(ColorRef_t nRGB) -> void;
-auto DebuggerSetColorBG(ColorRef_t nRGB, bool bTransparent = false) -> void;
+auto DebuggerSetColorFG(ColorRef nRGB) -> void;
+auto DebuggerSetColorBG(ColorRef nRGB, bool bTransparent = false) -> void;
 
 auto PrintGlyph(int x, int y, int glyph) -> void;
-auto PrintText(const char* text, Rect_t& rRect) -> int;
-auto PrintTextCursorX(const char* text, Rect_t& rRect) -> int;
-auto PrintTextCursorY(const char* text, Rect_t& rRect) -> int;
+auto PrintText(const char* text, Rect& rRect) -> int;
+auto PrintTextCursorX(const char* text, Rect& rRect) -> int;
+auto PrintTextCursorY(const char* text, Rect& rRect) -> int;
 
-auto PrintTextColor(const conchar_t* text, Rect_t& rRect) -> void;
+auto PrintTextColor(const ConChar* text, Rect& rRect) -> void;
 
 auto GetDebugViewPortScale(float* x, float* y) -> void;
 
-auto DrawWindow_Source(Update_t bUpdate) -> void;
+auto DrawWindow_Source(UpdateResult bUpdate) -> void;
 
 auto DrawBreakpoints(int line) -> void;
 auto DrawConsoleInput() -> void;
-auto DrawConsoleLine(const conchar_t* text, int y) -> void;
+auto DrawConsoleLine(const ConChar* text, int y) -> void;
 auto DrawConsoleCursor() -> void;
 
-auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int;
+auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine& line_) -> int;
 auto DrawDisassemblyLine(int iLine, uint16_t nBaseAddress) -> uint16_t;
-auto FormatDisassemblyLine(const DisasmLine_t& line, char* sDisassembly_,
+auto FormatDisassemblyLine(const DisasmLine& line, char* sDisassembly_,
                            int nBufferSize) -> void;
-auto FormatOpcodeBytes(uint16_t nBaseAddress, DisasmLine_t& line_) -> void;
-auto FormatNopcodeBytes(uint16_t nBaseAddress, DisasmLine_t& line_) -> void;
+auto FormatOpcodeBytes(uint16_t nBaseAddress, DisasmLine& line_) -> void;
+auto FormatNopcodeBytes(uint16_t nBaseAddress, DisasmLine& line_) -> void;
 
 auto DrawFlags(int line, uint16_t nRegFlags, char* pFlagNames_) -> void;
 auto DrawStack(int line) -> void;
@@ -76,32 +76,32 @@ extern auto stretch_blt_mem_to_frame_dc(void) -> void;
 auto can_draw_debugger(void) -> bool;
 
 auto InitDisasm(void) -> void;
-auto UpdateDisplay(Update_t bUpdate) -> void;
+auto UpdateDisplay(UpdateResult bUpdate) -> void;
 
-enum DebugVirtualTextScreen_e : uint8_t {
+enum DebugVirtualTextScreen : uint8_t {
   DEBUG_VIRTUAL_TEXT_WIDTH = 80,
   DEBUG_VIRTUAL_TEXT_HEIGHT = 48,
 };
 
-extern char g_debugger_virtual_text_screen[DEBUG_VIRTUAL_TEXT_HEIGHT]
+extern char debugger_virtual_text_screen[DEBUG_VIRTUAL_TEXT_HEIGHT]
                                           [DEBUG_VIRTUAL_TEXT_WIDTH];
-extern ColorRef_t g_debugger_virtual_text_screen_fg[DEBUG_VIRTUAL_TEXT_HEIGHT]
+extern ColorRef debugger_virtual_text_screen_fg[DEBUG_VIRTUAL_TEXT_HEIGHT]
                                                    [DEBUG_VIRTUAL_TEXT_WIDTH];
-extern ColorRef_t g_debugger_virtual_text_screen_bg[DEBUG_VIRTUAL_TEXT_HEIGHT]
+extern ColorRef debugger_virtual_text_screen_bg[DEBUG_VIRTUAL_TEXT_HEIGHT]
                                                    [DEBUG_VIRTUAL_TEXT_WIDTH];
 extern auto Util_GetDebuggerText(char*& pText_)
     -> size_t;  // Same API as Util_GetTextScreen()
 
-auto DrawWindow_Code(Update_t bUpdate) -> void;
-auto DrawWindow_Console(Update_t bUpdate) -> void;
-auto DrawWindow_Data(Update_t bUpdate) -> void;
-auto DrawWindow_IO(Update_t bUpdate) -> void;
-auto DrawWindow_Symbols(Update_t bUpdate) -> void;
-auto DrawWindow_ZeroPage(Update_t bUpdate) -> void;
+auto DrawWindow_Code(UpdateResult bUpdate) -> void;
+auto DrawWindow_Console(UpdateResult bUpdate) -> void;
+auto DrawWindow_Data(UpdateResult bUpdate) -> void;
+auto DrawWindow_IO(UpdateResult bUpdate) -> void;
+auto DrawWindow_Symbols(UpdateResult bUpdate) -> void;
+auto DrawWindow_ZeroPage(UpdateResult bUpdate) -> void;
 
-auto DrawSourceLine(int iSourceLine, Rect_t& rect) -> void;
+auto DrawSourceLine(int iSourceLine, Rect& rect) -> void;
 
-auto ColorizeSpecialChar(char* sText, uint8_t nData, MemoryView_e iView,
+auto ColorizeSpecialChar(char* sText, uint8_t nData, MemoryView iView,
                          int iAsciBackground = BG_INFO,
                          int iTextForeground = FG_DISASM_CHAR,
                          int iHighBackground = BG_INFO_CHAR,
@@ -116,16 +116,16 @@ auto SetupColorsHiLoBits(bool bHighBit, bool bCtrlBit, int iTextBG, int iTextFG,
 auto ColorizeFlags(bool bSet, int bg_default = BG_INFO,
                    int fg_default = FG_INFO_REG) -> void;
 
-auto DrawWindowBottom(Update_t bUpdate, int iWindow) -> void;
-auto DrawSubWindow_Info(Update_t bUpdate, int iWindow) -> void;
+auto DrawWindowBottom(UpdateResult bUpdate, int iWindow) -> void;
+auto DrawSubWindow_Info(UpdateResult bUpdate, int iWindow) -> void;
 auto DrawSubWindow_Code(int iWindow) -> void;
-auto DrawSubWindow_Source(Update_t bUpdate) -> void;
-auto DrawSubWindow_Source2(Update_t bUpdate) -> void;
-auto DrawSubWindow_IO(Update_t bUpdate) -> void;
-auto FillRect(const Rect_t* r, int Brush) -> void;
-auto DrawSubWindow_Symbols(Update_t bUpdate) -> void;
-auto DrawSubWindow_ZeroPage(Update_t bUpdate) -> void;
-auto DrawSubWindow_Console(Update_t bUpdate) -> void;
+auto DrawSubWindow_Source(UpdateResult bUpdate) -> void;
+auto DrawSubWindow_Source2(UpdateResult bUpdate) -> void;
+auto DrawSubWindow_IO(UpdateResult bUpdate) -> void;
+auto FillRect(const Rect* r, int Brush) -> void;
+auto DrawSubWindow_Symbols(UpdateResult bUpdate) -> void;
+auto DrawSubWindow_ZeroPage(UpdateResult bUpdate) -> void;
+auto DrawSubWindow_Console(UpdateResult bUpdate) -> void;
 
 auto DrawWindowBackground_Main(int iWindow) -> void;
 auto DrawWindowBackground_Info(int iWindow) -> void;
@@ -133,4 +133,4 @@ auto DrawRegister(int line, const char* name, int nBytes, uint16_t nValue,
                   int iSource) -> void;
 auto GetTargets_IgnoreDirectJSRJMP(uint8_t opcode, int& nTargetPointer) -> void;
 
-extern VideoScannerDisplayInfo_t g_video_scanner_display_info;
+extern VideoScannerDisplayInfo video_scanner_display_info;

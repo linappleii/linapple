@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-extern const HarddiskFormatDriver_t g_nibble_refusal_driver;
+extern const HarddiskFormatDriver nibble_refusal_driver;
 
 #ifdef __cplusplus
 }

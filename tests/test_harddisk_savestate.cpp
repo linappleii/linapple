@@ -23,7 +23,7 @@
 
 namespace {
 
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 
 constexpr const char* harddisk_id = "linapple.harddisk";
 constexpr size_t block_size = 512;
@@ -45,19 +45,19 @@ constexpr uint8_t prodos_write = 0x02;
 constexpr uint8_t prodos_ok = 0x00;
 constexpr uint8_t prodos_io_error = 0x27;
 
-using Frame_t = std::array<uint8_t, frame_size>;
+using Frame = std::array<uint8_t, frame_size>;
 
-auto machine_with_card(int slot) -> TestConfig_t::Description_t {
-  TestConfig_t::Description_t description;
+auto machine_with_card(int slot) -> TestConfig::Description {
+  TestConfig::Description description;
   description.slots.at(static_cast<size_t>(slot - 1)) = "Harddisk";
   return description;
 }
 
-struct Machine_t {
-  TestConfig_t config;
-  TestFixtures::ScopedCore_t core;
+struct Machine {
+  TestConfig config;
+  TestFixtures::ScopedCore core;
 
-  explicit Machine_t(const TestConfig_t::Description_t& description)
+  explicit Machine(const TestConfig::Description& description)
       : config(description), core(config) {
     peripheral_manager_init();
     linapple_register_peripherals();
@@ -84,7 +84,7 @@ auto poke(uint16_t addr, uint8_t value) -> void {
 auto settle() -> void { peripheral_manager_think(0); }
 
 auto insert(int slot, int drive, const std::string& path) -> void {
-  HarddiskInsertCmd_t cmd{};
+  HarddiskInsertCmd cmd{};
   cmd.drive = static_cast<uint8_t>(drive);
   std::strncpy(cmd.path, path.c_str(), sizeof(cmd.path) - 1);
   REQUIRE(peripheral_command(slot, harddisk_cmd_insert, &cmd, sizeof(cmd)) ==
@@ -92,16 +92,16 @@ auto insert(int slot, int drive, const std::string& path) -> void {
   settle();
 }
 
-auto status(int slot) -> HarddiskStatus_t {
-  HarddiskStatus_t out{};
+auto status(int slot) -> HarddiskStatus {
+  HarddiskStatus out{};
   size_t size = sizeof(out);
   REQUIRE(peripheral_query(slot, harddisk_query_status, &out, &size) ==
           peripheral_ok);
   return out;
 }
 
-auto saved_frame(int slot) -> Frame_t {
-  Frame_t frame{};
+auto saved_frame(int slot) -> Frame {
+  Frame frame{};
   size_t size = frame.size();
   peripheral_save_state(slot, frame.data(), &size);
   REQUIRE(size == frame.size());
@@ -116,7 +116,7 @@ auto ramp() -> std::array<uint8_t, block_size> {
   return bytes;
 }
 
-struct CallResult_t {
+struct CallResult {
   uint8_t a;
   uint8_t p;
   auto carry() const -> bool { return (p & 0x01) != 0; }
@@ -124,7 +124,7 @@ struct CallResult_t {
 
 // The MLI's parameter block, a JSR to the driver and A and P stored.
 auto call_driver(int slot, uint8_t command, uint8_t unit, uint16_t buffer,
-                 uint16_t block) -> CallResult_t {
+                 uint16_t block) -> CallResult {
   const uint16_t entry =
       static_cast<uint16_t>(0xC000 + (slot << 8) + driver_offset);
   const std::array<uint8_t, 38> program = {
@@ -168,11 +168,11 @@ auto call_driver(int slot, uint8_t command, uint8_t unit, uint16_t buffer,
       static_cast<uint8_t>((program_start + 35) >> 8),
   };
   const uint16_t sentinel = program_start + 35;
-  TestFixtures::ScopedCore_t::poke(program_start, program);
+  TestFixtures::ScopedCore::poke(program_start, program);
   TestFixtures::enter_at({program_start, 0, 0, 0});
   TestFixtures::step_until_pc(sentinel, call_cycle_cap);
   REQUIRE(cpu_get_registers()->pc == sentinel);
-  return CallResult_t{mem[results_at], mem[results_at + 1]};
+  return CallResult{mem[results_at], mem[results_at + 1]};
 }
 
 // Boots block 0 through the card, which issues the STATUS that loads the
@@ -186,8 +186,8 @@ auto boot_write_ramp_and_start_reading(int slot, const std::string& image)
   TestFixtures::step_until_pc(boot_entry, boot_cycle_cap);
   REQUIRE(cpu_get_registers()->pc == boot_entry);
 
-  TestFixtures::ScopedCore_t::poke(write_buffer, ramp());
-  const CallResult_t written = call_driver(
+  TestFixtures::ScopedCore::poke(write_buffer, ramp());
+  const CallResult written = call_driver(
       slot, prodos_write, unit_for(slot, 0), write_buffer, ramp_block);
   REQUIRE_FALSE(written.carry());
   REQUIRE(written.a == prodos_ok);
@@ -202,8 +202,8 @@ auto boot_write_ramp_and_start_reading(int slot, const std::string& image)
   }
 }
 
-auto expected_frame(int slot, uint8_t phase) -> Frame_t {
-  Frame_t frame = {
+auto expected_frame(int slot, uint8_t phase) -> Frame {
+  Frame frame = {
       {
           0x01, 0x00, 0x00, 0x00, 0x14, 0x00, 0x00, 0x00, 0x70, 0x01,
           0x00, 0x01, 0x03, 0x00, 0x64, 0x00, 0x10, 0x00, 0x00, 0x00,
@@ -215,15 +215,15 @@ auto expected_frame(int slot, uint8_t phase) -> Frame_t {
 }
 
 // What the registers read back, with the data port left alone.
-struct Registers_t {
+struct Registers {
   uint8_t result;
   uint8_t unit;
   uint16_t block;
   uint16_t count;
 };
 
-auto registers(int slot) -> Registers_t {
-  Registers_t regs{};
+auto registers(int slot) -> Registers {
+  Registers regs{};
   regs.result = peek(io_base(slot) + 0);
   regs.unit = peek(io_base(slot) + 1);
   regs.block = static_cast<uint16_t>(peek(io_base(slot) + 2) |
@@ -234,7 +234,7 @@ auto registers(int slot) -> Registers_t {
 }
 
 auto check_resumed_read_out(int slot) -> void {
-  const Registers_t regs = registers(slot);
+  const Registers regs = registers(slot);
   CHECK(regs.result == prodos_ok);
   CHECK(regs.unit == unit_for(slot, 0));
   CHECK(regs.block == ramp_block);
@@ -252,23 +252,23 @@ TEST_CASE(
     "Harddisk save state: the frame is the controller's twenty bytes of "
     "registers, a read-out in flight recorded as such, in slot 7 and in slot "
     "5") {
-  static_assert(sizeof(HarddiskSaveState_t) == frame_size,
+  static_assert(sizeof(HarddiskSaveState) == frame_size,
                 "the frame is twenty bytes");
-  static_assert(offsetof(HarddiskSaveState_t, unit) == 8 &&
-                    offsetof(HarddiskSaveState_t, command) == 9 &&
-                    offsetof(HarddiskSaveState_t, result) == 10 &&
-                    offsetof(HarddiskSaveState_t, data_phase) == 11 &&
-                    offsetof(HarddiskSaveState_t, block) == 12 &&
-                    offsetof(HarddiskSaveState_t, data_index) == 14 &&
-                    offsetof(HarddiskSaveState_t, block_count) == 16 &&
-                    offsetof(HarddiskSaveState_t, reserved) == 18,
+  static_assert(offsetof(HarddiskSaveState, unit) == 8 &&
+                    offsetof(HarddiskSaveState, command) == 9 &&
+                    offsetof(HarddiskSaveState, result) == 10 &&
+                    offsetof(HarddiskSaveState, data_phase) == 11 &&
+                    offsetof(HarddiskSaveState, block) == 12 &&
+                    offsetof(HarddiskSaveState, data_index) == 14 &&
+                    offsetof(HarddiskSaveState, block_count) == 16 &&
+                    offsetof(HarddiskSaveState, reserved) == 18,
                 "every field sits where a file written earlier put it");
-  static_assert(sizeof(HarddiskSaveState_t) <= snapshot_slot_state_capacity,
+  static_assert(sizeof(HarddiskSaveState) <= snapshot_slot_state_capacity,
                 "the frame rides the slot trailer");
 
   for (const int slot : {7, 5}) {
     CAPTURE(slot);
-    Machine_t machine(machine_with_card(slot));
+    Machine machine(machine_with_card(slot));
     REQUIRE(peripheral_present(slot, harddisk_id));
     const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
     boot_write_ramp_and_start_reading(slot, image.path());
@@ -284,7 +284,7 @@ TEST_CASE(
     "Harddisk save state: a write-in in flight is recorded as phase 2 with "
     "the index where the push stopped") {
   const int slot = 7;
-  Machine_t machine(machine_with_card(slot));
+  Machine machine(machine_with_card(slot));
   REQUIRE(peripheral_present(slot, harddisk_id));
   const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
   insert(slot, 0, image.path());
@@ -298,7 +298,7 @@ TEST_CASE(
   for (uint16_t i = 0; i < taken; ++i) {
     poke(io_base(slot) + 4, static_cast<uint8_t>(i));
   }
-  Frame_t expected = expected_frame(slot, 2);
+  Frame expected = expected_frame(slot, 2);
   // No READ ran, so the command register still holds the boot's last one.
   expected.at(9) = prodos_read;
   CHECK(saved_frame(slot) == expected);
@@ -308,15 +308,15 @@ TEST_CASE(
     "Harddisk save state: a real .aws round trip gives the registers back "
     "and re-reads the block in flight from the mounted image") {
   const int slot = 7;
-  Machine_t machine(machine_with_card(slot));
+  Machine machine(machine_with_card(slot));
   REQUIRE(peripheral_present(slot, harddisk_id));
   const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
   boot_write_ramp_and_start_reading(slot, image.path());
 
-  TestFixtures::ScopedTempFile_t file(".aws");
+  TestFixtures::ScopedTempFile file(".aws");
   save_state_set_filename(file.c_str());
   {
-    TestFixtures::ScopedLogCapture_t log;
+    TestFixtures::ScopedLogCapture log;
     save_state_save();
     CHECK(log.count_containing("exceeds the") == 0);
   }
@@ -325,7 +325,7 @@ TEST_CASE(
   CHECK(registers(slot).count == 0);
   CHECK(saved_frame(slot) != expected_frame(slot, 1));
 
-  TestFixtures::ScopedLogCapture_t log;
+  TestFixtures::ScopedLogCapture log;
   REQUIRE(save_state_load());
   CHECK(log.count_containing("resuming against drive 1") == 1);
   CHECK(log.count_containing(image.path()) == 1);
@@ -338,7 +338,7 @@ TEST_CASE(
     "Harddisk save state: the pinned .aws fixture loads the same way against "
     "a freshly mounted image") {
   const int slot = 7;
-  Machine_t machine(machine_with_card(slot));
+  Machine machine(machine_with_card(slot));
   REQUIRE(peripheral_present(slot, harddisk_id));
   const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
   boot_write_ramp_and_start_reading(slot, image.path());
@@ -348,7 +348,7 @@ TEST_CASE(
       TestFixtures::get_fixture_path("harddisk-read-out.aws");
   REQUIRE(access(path.c_str(), R_OK) == 0);
   save_state_set_filename(path.c_str());
-  TestFixtures::ScopedLogCapture_t log;
+  TestFixtures::ScopedLogCapture log;
   REQUIRE(save_state_load());
   CHECK(log.count_containing("resuming against drive 1") == 1);
   CHECK(saved_frame(slot) == expected_frame(slot, 1));
@@ -360,7 +360,7 @@ TEST_CASE(
     "with the card at reset, its slot-7 entry refused once, and a READ then "
     "serves the mounted image") {
   const int slot = 7;
-  Machine_t machine(machine_with_card(slot));
+  Machine machine(machine_with_card(slot));
   REQUIRE(peripheral_present(slot, harddisk_id));
   const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
   boot_write_ramp_and_start_reading(slot, image.path());
@@ -370,20 +370,20 @@ TEST_CASE(
       TestFixtures::get_fixture_path("harddisk-81d55907.aws");
   REQUIRE(access(path.c_str(), R_OK) == 0);
   save_state_set_filename(path.c_str());
-  TestFixtures::ScopedLogCapture_t log;
+  TestFixtures::ScopedLogCapture log;
   REQUIRE(save_state_load());
   CHECK(log.count_containing("Slot 7: Harddisk refused the 16-byte "
                              "fixed-body region and stays at reset") == 1);
   CHECK(log.count_containing("resuming against") == 0);
 
-  const Registers_t regs = registers(slot);
+  const Registers regs = registers(slot);
   CHECK(regs.result == prodos_ok);
   CHECK(regs.unit == 0);
   CHECK(regs.block == 0);
   CHECK(regs.count == 0);
   CHECK(status(slot).drive0_loaded == 1);
 
-  const CallResult_t read =
+  const CallResult read =
       call_driver(slot, prodos_read, unit_for(slot, 0), write_buffer, 1);
   CHECK_FALSE(read.carry());
   CHECK(read.a == prodos_ok);
@@ -398,16 +398,16 @@ TEST_CASE(
     "or size, or a 2,160-byte frame is refused with every register "
     "untouched") {
   const int slot = 7;
-  Machine_t machine(machine_with_card(slot));
+  Machine machine(machine_with_card(slot));
   REQUIRE(peripheral_present(slot, harddisk_id));
   const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
   boot_write_ramp_and_start_reading(slot, image.path());
-  const Frame_t before = saved_frame(slot);
+  const Frame before = saved_frame(slot);
 
   CHECK(peripheral_load_state(slot, nullptr, frame_size) == peripheral_error);
   CHECK(saved_frame(slot) == before);
 
-  Frame_t frame = expected_frame(slot, 1);
+  Frame frame = expected_frame(slot, 1);
   CHECK(peripheral_load_state(slot, frame.data(), frame_size - 1) ==
         peripheral_error);
   CHECK(saved_frame(slot) == before);
@@ -444,7 +444,7 @@ TEST_CASE(
     "Harddisk save state: a write in flight at the save is lost, so the "
     "next WRITE fails once with an I/O error and the one after succeeds") {
   const int slot = 7;
-  Machine_t machine(machine_with_card(slot));
+  Machine machine(machine_with_card(slot));
   REQUIRE(peripheral_present(slot, harddisk_id));
   const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
   insert(slot, 0, image.path());
@@ -452,10 +452,10 @@ TEST_CASE(
   TestFixtures::step_until_pc(boot_entry, boot_cycle_cap);
   REQUIRE(cpu_get_registers()->pc == boot_entry);
 
-  Frame_t frame = expected_frame(slot, 2);
+  Frame frame = expected_frame(slot, 2);
   frame.at(14) = 200;
   frame.at(15) = 0;
-  TestFixtures::ScopedLogCapture_t log;
+  TestFixtures::ScopedLogCapture log;
   REQUIRE(peripheral_load_state(slot, frame.data(), frame.size()) ==
           peripheral_ok);
   CHECK(log.count_containing("a block write in flight at the save was lost") ==
@@ -464,8 +464,8 @@ TEST_CASE(
     CHECK(peek(io_base(slot) + 4) == 0);
   }
 
-  TestFixtures::ScopedCore_t::poke(write_buffer, ramp());
-  CallResult_t result = call_driver(slot, prodos_write, unit_for(slot, 0),
+  TestFixtures::ScopedCore::poke(write_buffer, ramp());
+  CallResult result = call_driver(slot, prodos_write, unit_for(slot, 0),
                                     write_buffer, ramp_block);
   CHECK(result.carry());
   CHECK(result.a == prodos_io_error);

@@ -144,7 +144,7 @@ auto mouse_frontend_button(bool down) -> void {
   if (card_slot == 0) {
     return;
   }
-  MouseButtonPayload_t payload{0, static_cast<uint8_t>(down ? 1 : 0), {0, 0}};
+  MouseButtonPayload payload{0, static_cast<uint8_t>(down ? 1 : 0), {0, 0}};
   peripheral_command_by_id(card_slot, mouse_card_id, mouse_cmd_set_button,
                            &payload, sizeof(payload));
 }
@@ -154,7 +154,7 @@ auto mouse_frontend_motion(int dx, int dy, int picture_w, int picture_h)
   if (card_slot == 0) {
     return;
   }
-  MouseMovePayload_t payload{
+  MouseMovePayload payload{
       counts_for(&carry_x, dx, mouse_counts_across, picture_w),
       counts_for(&carry_y, dy, mouse_counts_down, picture_h),
   };
@@ -170,14 +170,14 @@ auto mouse_frontend_follow(int host_x, int host_y, MousePictureRect picture)
   if (card_slot == 0) {
     return;
   }
-  MousePositionReport_t card{};
+  MousePositionReport card{};
   size_t size = sizeof(card);
   if (peripheral_query_by_id(card_slot, mouse_card_id, mouse_query_position,
                              &card, &size) != peripheral_ok ||
       card.tracking == 0) {
     return;
   }
-  const MouseMovePayload_t payload{
+  const MouseMovePayload payload{
       follow_axis(host_x - picture.x, picture.w, card.min_x, card.max_x) -
           card.x,
       follow_axis(host_y - picture.y, picture.h, card.min_y, card.max_y) -

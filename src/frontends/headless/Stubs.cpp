@@ -47,7 +47,7 @@ auto stretch_blt_mem_to_frame_dc() -> void;
                                               void* /*unused*/) noexcept
     -> void {}
 
-[[gnu::weak]] uint64_t g_cumulative_cycles = 0;
+[[gnu::weak]] uint64_t cumulative_cycles = 0;
 [[gnu::weak]] SystemState system_state = {};
 [[gnu::weak]] Apple2Type current_apple2_type = A2TYPE_APPLE2EENHANCED;
-[[gnu::weak]] uint32_t g_videotype = 0;
+[[gnu::weak]] uint32_t videotype = 0;

@@ -29,7 +29,7 @@ struct CurlGlobalGuard {
 };
 #endif
 
-using CurlGlobalGuard_t = CurlGlobalGuard;
+using CurlGlobalGuard = CurlGlobalGuard;
 
 class FtpClient {
  public:

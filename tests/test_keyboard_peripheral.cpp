@@ -34,7 +34,7 @@
 
 namespace {
 
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 
 constexpr uint16_t addr_keyboard_data = 0xC000;
 constexpr uint16_t addr_keyboard_strobe = 0xC010;
@@ -97,24 +97,24 @@ auto error_of(uint64_t value, uint64_t expected) -> int64_t {
   return static_cast<int64_t>(value) - static_cast<int64_t>(expected);
 }
 
-auto describe(TestConfig_t::MachineType_t model)
-    -> TestConfig_t::Description_t {
-  TestConfig_t::Description_t description = TestConfig_t::enhanced_2e_only();
+auto describe(TestConfig::MachineType model)
+    -> TestConfig::Description {
+  TestConfig::Description description = TestConfig::enhanced_2e_only();
   description.machine_type = model;
   return description;
 }
 
 // The branches a reset routine took are its order of visits, not a cycle
 // literal.
-struct Trace_t {
+struct Trace {
   std::vector<uint16_t> pcs;
   bool reached = false;
   uint32_t cycles = 0;
 };
 
-auto trace_until(uint16_t sentinel, uint32_t cap) -> Trace_t {
-  Trace_t trace;
-  const CpuRegisters_t* regs = cpu_get_registers();
+auto trace_until(uint16_t sentinel, uint32_t cap) -> Trace {
+  Trace trace;
+  const CpuRegisters* regs = cpu_get_registers();
   while (regs->pc != sentinel && trace.cycles < cap) {
     trace.pcs.push_back(regs->pc);
     trace.cycles += cpu_execute(0);
@@ -123,7 +123,7 @@ auto trace_until(uint16_t sentinel, uint32_t cap) -> Trace_t {
   return trace;
 }
 
-auto visited(const Trace_t& trace, uint16_t pc) -> bool {
+auto visited(const Trace& trace, uint16_t pc) -> bool {
   for (uint16_t seen : trace.pcs) {
     if (seen == pc) {
       return true;
@@ -138,7 +138,7 @@ auto visited(const Trace_t& trace, uint16_t pc) -> bool {
 auto peek(uint16_t addr) -> uint8_t {
   constexpr uint16_t probe_base = 0x0200;
   constexpr uint16_t probe_store = 0x0010;
-  const CpuRegisters_t saved = *cpu_get_registers();
+  const CpuRegisters saved = *cpu_get_registers();
   const std::array<uint8_t, 6> probe = {
       0xAD,
       static_cast<uint8_t>(addr & 0xFF),
@@ -147,7 +147,7 @@ auto peek(uint16_t addr) -> uint8_t {
       probe_store,
       0xEA,
   };
-  TestFixtures::ScopedCore_t::poke(probe_base, probe);
+  TestFixtures::ScopedCore::poke(probe_base, probe);
   TestFixtures::enter_at({probe_base, 0, 0, 0});
   TestFixtures::step_until_pc(probe_base + 5, program_cycle_cap);
   REQUIRE(cpu_get_registers()->pc == probe_base + 5);
@@ -155,7 +155,7 @@ auto peek(uint16_t addr) -> uint8_t {
   return *mem_get_main_ptr(probe_store);
 }
 
-auto find_row(const HeadlessHarness_t& harness, const std::string& text)
+auto find_row(const HeadlessHarness& harness, const std::string& text)
     -> int {
   for (int row = 0; row < text_rows; ++row) {
     if (harness.get_text_row(row) == text) {
@@ -165,7 +165,7 @@ auto find_row(const HeadlessHarness_t& harness, const std::string& text)
   return -1;
 }
 
-auto screen(const HeadlessHarness_t& harness) -> std::vector<std::string> {
+auto screen(const HeadlessHarness& harness) -> std::vector<std::string> {
   std::vector<std::string> rows;
   rows.reserve(text_rows);
   for (int row = 0; row < text_rows; ++row) {
@@ -175,7 +175,7 @@ auto screen(const HeadlessHarness_t& harness) -> std::vector<std::string> {
 }
 
 // With no disk controller the Autostart scan falls through to Applesoft.
-auto boot_to_prompt(HeadlessHarness_t& harness) -> void {
+auto boot_to_prompt(HeadlessHarness& harness) -> void {
   constexpr uint32_t prompt_frame_cap = 300;
   harness.boot();
   uint32_t frames = 0;
@@ -188,7 +188,7 @@ auto boot_to_prompt(HeadlessHarness_t& harness) -> void {
 }
 
 // Held two frames and released two; the repeat delay is far longer.
-auto tap(HeadlessHarness_t& harness, uint8_t code) -> void {
+auto tap(HeadlessHarness& harness, uint8_t code) -> void {
   linapple_set_key_state(code, true);
   harness.run_frames(2);
   linapple_set_key_state(code, false);
@@ -196,13 +196,13 @@ auto tap(HeadlessHarness_t& harness, uint8_t code) -> void {
 }
 
 // Through the registry, so one binary covers the built-in card and a plugin.
-auto keyboard_card() -> Peripheral_t* {
-  Peripheral_t* descriptor = peripheral_find_internal("linapple.keyboard");
+auto keyboard_card() -> Peripheral* {
+  Peripheral* descriptor = peripheral_find_internal("linapple.keyboard");
   REQUIRE(descriptor != nullptr);
   return descriptor;
 }
 
-struct BenchHandler_t {
+struct BenchHandler {
   void* instance;
   PeripheralIOHandler read;
   PeripheralIOHandler write;
@@ -210,10 +210,10 @@ struct BenchHandler_t {
 
 // For what the real host cannot show: the handlers registered, the status
 // returned and the line logged.
-class BenchHost_t {
+class BenchHost {
  public:
-  explicit BenchHost_t(
-      PeripheralMachine_t target_machine = peripheral_machine_apple2e) {
+  explicit BenchHost(
+      PeripheralMachine target_machine = peripheral_machine_apple2e) {
     active = this;
     machine = target_machine;
     host_.Log = bench_log;
@@ -226,19 +226,19 @@ class BenchHost_t {
     host_.GetFrameCycles = bench_get_frame_cycles;
   }
 
-  ~BenchHost_t() {
+  ~BenchHost() {
     if (instance_ != nullptr) {
       keyboard_card()->shutdown(instance_);
     }
     active = nullptr;
   }
 
-  BenchHost_t(const BenchHost_t&) = delete;
-  auto operator=(const BenchHost_t&) -> BenchHost_t& = delete;
-  BenchHost_t(BenchHost_t&&) = delete;
-  auto operator=(BenchHost_t&&) -> BenchHost_t& = delete;
+  BenchHost(const BenchHost&) = delete;
+  auto operator=(const BenchHost&) -> BenchHost& = delete;
+  BenchHost(BenchHost&&) = delete;
+  auto operator=(BenchHost&&) -> BenchHost& = delete;
 
-  auto host() -> HostInterface_t* { return &host_; }
+  auto host() -> HostInterface* { return &host_; }
 
   auto create() -> void* {
     instance_ = keyboard_card()->init(0, &host_);
@@ -270,21 +270,21 @@ class BenchHost_t {
   }
 
   auto command(uint32_t cmd_id, const void* data, size_t size)
-      -> PeripheralStatus_t {
+      -> PeripheralStatus {
     return keyboard_card()->command(instance_, cmd_id, data, size);
   }
 
-  auto press(uint32_t host_key, uint8_t code) -> PeripheralStatus_t {
-    const KeyboardKeyEvent_t event{host_key, code, 1, {0, 0, 0, 0, 0, 0}};
+  auto press(uint32_t host_key, uint8_t code) -> PeripheralStatus {
+    const KeyboardKeyEvent event{host_key, code, 1, {0, 0, 0, 0, 0, 0}};
     return command(keyboard_cmd_key, &event, sizeof(event));
   }
 
-  auto release(uint32_t host_key) -> PeripheralStatus_t {
-    const KeyboardKeyEvent_t event{host_key, 0, 0, {0, 0, 0, 0, 0, 0}};
+  auto release(uint32_t host_key) -> PeripheralStatus {
+    const KeyboardKeyEvent event{host_key, 0, 0, {0, 0, 0, 0, 0, 0}};
     return command(keyboard_cmd_key, &event, sizeof(event));
   }
 
-  auto rept(bool down) -> PeripheralStatus_t {
+  auto rept(bool down) -> PeripheralStatus {
     const uint8_t level = down ? 1 : 0;
     return command(keyboard_cmd_rept, &level, sizeof(level));
   }
@@ -292,15 +292,15 @@ class BenchHost_t {
   auto last_log() const -> const std::string& { return last_log_; }
 
  private:
-  HostInterface_t host_{};
-  std::map<uint16_t, BenchHandler_t> handlers_;
+  HostInterface host_{};
+  std::map<uint16_t, BenchHandler> handlers_;
   void* instance_ = nullptr;
   std::string last_log_;
 
-  static BenchHost_t* active;
-  static PeripheralMachine_t machine;
+  static BenchHost* active;
+  static PeripheralMachine machine;
 
-  static auto bench_log(void* instance, PeripheralLogLevel_t level,
+  static auto bench_log(void* instance, PeripheralLogLevel level,
                         const char* fmt, ...) -> void {
     (void)instance;
     (void)level;
@@ -319,7 +319,7 @@ class BenchHost_t {
                                        PeripheralIOHandler read,
                                        PeripheralIOHandler write) -> void {
     if (active != nullptr) {
-      active->handlers_[addr] = BenchHandler_t{instance, read, write};
+      active->handlers_[addr] = BenchHandler{instance, read, write};
     }
   }
 
@@ -337,13 +337,13 @@ class BenchHost_t {
     (void)at_cycle;
   }
 
-  static auto bench_get_machine() -> PeripheralMachine_t { return machine; }
+  static auto bench_get_machine() -> PeripheralMachine { return machine; }
 
   static auto bench_get_frame_cycles() -> uint32_t { return ntsc_frame_cycles; }
 };
 
-BenchHost_t* BenchHost_t::active = nullptr;
-PeripheralMachine_t BenchHost_t::machine = peripheral_machine_apple2e;
+BenchHost* BenchHost::active = nullptr;
+PeripheralMachine BenchHost::machine = peripheral_machine_apple2e;
 
 // A think drains the command queue, as a running machine does once a frame.
 auto settle() -> void { peripheral_manager_think(0); }
@@ -370,7 +370,7 @@ auto keyboard_data() -> uint8_t {
 // last store is the sentinel.
 template <size_t N>
 auto run_program(const std::array<uint8_t, N>& program) -> void {
-  TestFixtures::ScopedCore_t::poke(program_base, program);
+  TestFixtures::ScopedCore::poke(program_base, program);
   TestFixtures::enter_at({program_base, 0, 0, 0});
   const auto sentinel = static_cast<uint16_t>(program_base + N - 1);
   TestFixtures::step_until_pc(sentinel, program_cycle_cap);
@@ -383,7 +383,7 @@ auto run_program(const std::array<uint8_t, N>& program) -> void {
 // cycles, so a strobe's cycle is known to one iteration, which tells 68,120
 // from 68,000; a carry into the middle byte costs 7 more, into the high byte
 // 11, and a recorded strobe 38, which the arithmetic puts back.
-struct StrobeObserver_t {
+struct StrobeObserver {
   static constexpr uint16_t table_low = 0x0380;
   static constexpr uint16_t table_middle = 0x03C0;
   static constexpr uint16_t table_high = 0x0340;
@@ -405,11 +405,11 @@ struct StrobeObserver_t {
         0x9D, 0x80, 0x03, 0xA5, 0x09, 0x9D, 0xC0, 0x03, 0xA5, 0x0A, 0x9D,
         0x40, 0x03, 0xE8, 0x86, 0x06, 0x4C, 0x00, 0x03,
     };
-    TestFixtures::ScopedCore_t::poke(program_base, loop);
+    TestFixtures::ScopedCore::poke(program_base, loop);
     const std::array<uint8_t, 5> zero_page{};
-    TestFixtures::ScopedCore_t::poke(strobe_count, zero_page);
+    TestFixtures::ScopedCore::poke(strobe_count, zero_page);
     const std::array<uint8_t, 192> empty_tables{};
-    TestFixtures::ScopedCore_t::poke(table_high, empty_tables);
+    TestFixtures::ScopedCore::poke(table_high, empty_tables);
     TestFixtures::enter_at({program_base, 0, 0, 0});
   }
 
@@ -441,7 +441,7 @@ struct StrobeObserver_t {
 
 // Runs to a frame boundary whose frame number has the asked phase in F3's
 // sixteen-frame period.
-auto run_to_phase(HeadlessHarness_t& harness, uint64_t phase,
+auto run_to_phase(HeadlessHarness& harness, uint64_t phase,
                   uint64_t frame_cycles) -> uint64_t {
   constexpr uint64_t phase_frames = 16;
   for (uint64_t frames = 0; frames < 2 * phase_frames; ++frames) {
@@ -457,11 +457,11 @@ auto run_to_phase(HeadlessHarness_t& harness, uint64_t phase,
 
 // The press's own strobe is the first entry; the first repeat lands on F3's
 // edge 32 or more frames after the press frame, then every four.
-auto check_repeat_from_press(HeadlessHarness_t& harness,
-                             StrobeObserver_t& observer, uint64_t press_frame,
+auto check_repeat_from_press(HeadlessHarness& harness,
+                             StrobeObserver& observer, uint64_t press_frame,
                              uint64_t expected_delay_frames,
                              uint64_t frame_cycles) -> void {
-  StrobeObserver_t::install();
+  StrobeObserver::install();
   observer.begin();
   REQUIRE(observer.start_cycle / frame_cycles == press_frame);
   press(4, 'A');
@@ -471,7 +471,7 @@ auto check_repeat_from_press(HeadlessHarness_t& harness,
        ntsc_frame_cycles) +
       2);
   harness.run_frames(frames_to_run);
-  REQUIRE(StrobeObserver_t::strobes() >= 4);
+  REQUIRE(StrobeObserver::strobes() >= 4);
   {
     const int64_t error =
         error_of(observer.read_cycle(1), first_frame * frame_cycles);
@@ -479,7 +479,7 @@ auto check_repeat_from_press(HeadlessHarness_t& harness,
     CHECK(error >= -observer_tolerance);
     CHECK(error <= observer_tolerance);
   }
-  for (size_t k = 1; k + 1 < StrobeObserver_t::strobes(); ++k) {
+  for (size_t k = 1; k + 1 < StrobeObserver::strobes(); ++k) {
     const int64_t error =
         error_of(observer.spacing(k), repeat_period_frames * frame_cycles);
     CAPTURE(k);
@@ -487,32 +487,32 @@ auto check_repeat_from_press(HeadlessHarness_t& harness,
     CHECK(error >= -observer_tolerance);
     CHECK(error <= observer_tolerance);
   }
-  CHECK((StrobeObserver_t::latch() & 0x7F) == 'A');
+  CHECK((StrobeObserver::latch() & 0x7F) == 'A');
   release(4);
 }
 
 // The model is process-wide and a harness-built machine leaves it behind.
-struct EnhancedIIe_t {
-  struct Model_t {
+struct EnhancedIIe {
+  struct Model {
     Apple2Type saved = current_apple2_type;
-    Model_t() { current_apple2_type = A2TYPE_APPLE2EENHANCED; }
-    ~Model_t() { current_apple2_type = saved; }
-    Model_t(const Model_t&) = delete;
-    auto operator=(const Model_t&) -> Model_t& = delete;
-    Model_t(Model_t&&) = delete;
-    auto operator=(Model_t&&) -> Model_t& = delete;
+    Model() { current_apple2_type = A2TYPE_APPLE2EENHANCED; }
+    ~Model() { current_apple2_type = saved; }
+    Model(const Model&) = delete;
+    auto operator=(const Model&) -> Model& = delete;
+    Model(Model&&) = delete;
+    auto operator=(Model&&) -> Model& = delete;
   };
-  Model_t model;
-  TestConfig_t config{TestConfig_t::enhanced_2e_only()};
-  TestFixtures::ScopedCore_t core{config};
+  Model model;
+  TestConfig config{TestConfig::enhanced_2e_only()};
+  TestFixtures::ScopedCore core{config};
 };
 
-using Frame_t = std::array<uint8_t, frame_size>;
+using Frame = std::array<uint8_t, frame_size>;
 
 // Header, no key down, the no-repeat word, the latch and strobe, and the
 // caps-down and repeat-on bytes an older reader takes as its state.
-auto frame_after_z_held() -> Frame_t {
-  Frame_t frame{};
+auto frame_after_z_held() -> Frame {
+  Frame frame{};
   const std::array<uint8_t, 48> head = {
       0x01, 0x00, 0x00, 0x00, 0x28, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -526,8 +526,8 @@ auto frame_after_z_held() -> Frame_t {
 // An earlier card's frame after the same Z: caps off, rocker on, the French
 // table, repeat off and one custom key, with one key counted and the repeat
 // armed on Z.
-auto frame_from_earlier_card() -> Frame_t {
-  Frame_t frame{};
+auto frame_from_earlier_card() -> Frame {
+  Frame frame{};
   const std::array<uint8_t, 36> head = {
       0x01, 0x00, 0x00, 0x00, 0x28, 0x02, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
       0x5A, 0x00, 0x00, 0x00, 0x5A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -541,8 +541,8 @@ auto frame_from_earlier_card() -> Frame_t {
   return frame;
 }
 
-auto saved_frame() -> Frame_t {
-  Frame_t frame{};
+auto saved_frame() -> Frame {
+  Frame frame{};
   size_t size = frame.size();
   peripheral_save_state_by_name(0, "Keyboard", frame.data(), &size);
   REQUIRE(size == frame.size());
@@ -558,7 +558,7 @@ auto load_frame(const void* bytes, size_t size) -> void {
 TEST_CASE(
     "Keyboard: the registry resolves the card by id and by name, and the "
     "descriptor is the motherboard's keyboard") {
-  Peripheral_t* descriptor = keyboard_card();
+  Peripheral* descriptor = keyboard_card();
   CHECK(peripheral_find_internal("Keyboard") == descriptor);
 
   CHECK(descriptor->abi_version == LINAPPLE_ABI_VERSION);
@@ -577,7 +577,7 @@ TEST_CASE(
   CHECK(descriptor->query != nullptr);
 
   // The bridge puts the keyboard in slot 0 beside the speaker.
-  EnhancedIIe_t machine;
+  EnhancedIIe machine;
   CHECK(peripheral_present(0, "linapple.keyboard"));
   CHECK(peripheral_present(0, "linapple.speaker"));
   CHECK_FALSE(peripheral_present(1, "linapple.keyboard"));
@@ -587,54 +587,54 @@ TEST_CASE(
 TEST_CASE(
     "Keyboard: a null host gets no card and the entry points take a null "
     "instance") {
-  Peripheral_t* descriptor = keyboard_card();
+  Peripheral* descriptor = keyboard_card();
   CHECK(descriptor->init(0, nullptr) == nullptr);
   descriptor->reset(nullptr);
   descriptor->shutdown(nullptr);
   descriptor->think(nullptr, 1000);
 
-  BenchHost_t bench;
+  BenchHost bench;
   CHECK(bench.create() != nullptr);
 }
 
 TEST_CASE(
     "Keyboard: init refuses a host lacking a member it needs and names the "
     "member, and a host without a log is refused silently") {
-  const std::vector<std::pair<const char*, void (*)(HostInterface_t*)>>
+  const std::vector<std::pair<const char*, void (*)(HostInterface*)>>
       members = {
           {
               "RegisterDirectIO",
-              [](HostInterface_t* h) -> void { h->RegisterDirectIO = nullptr; },
+              [](HostInterface* h) -> void { h->RegisterDirectIO = nullptr; },
           },
           {
               "ReadFloatingBus",
-              [](HostInterface_t* h) -> void { h->ReadFloatingBus = nullptr; },
+              [](HostInterface* h) -> void { h->ReadFloatingBus = nullptr; },
           },
           {"GetCycles",
-           [](HostInterface_t* h) -> void { h->GetCycles = nullptr; }},
+           [](HostInterface* h) -> void { h->GetCycles = nullptr; }},
           {
               "ScheduleEvent",
-              [](HostInterface_t* h) -> void { h->ScheduleEvent = nullptr; },
+              [](HostInterface* h) -> void { h->ScheduleEvent = nullptr; },
           },
           {"GetClockHz",
-           [](HostInterface_t* h) -> void { h->GetClockHz = nullptr; }},
+           [](HostInterface* h) -> void { h->GetClockHz = nullptr; }},
           {"GetMachine",
-           [](HostInterface_t* h) -> void { h->GetMachine = nullptr; }},
+           [](HostInterface* h) -> void { h->GetMachine = nullptr; }},
           {
               "GetFrameCycles",
-              [](HostInterface_t* h) -> void { h->GetFrameCycles = nullptr; },
+              [](HostInterface* h) -> void { h->GetFrameCycles = nullptr; },
           },
   };
   for (const auto& member : members) {
     CAPTURE(member.first);
-    BenchHost_t bench;
+    BenchHost bench;
     member.second(bench.host());
     CHECK(bench.create() == nullptr);
     CHECK(bench.last_log().find(member.first) != std::string::npos);
     CHECK(bench.last_log().find("Keyboard in slot 0") != std::string::npos);
   }
 
-  BenchHost_t silent;
+  BenchHost silent;
   silent.host()->Log = nullptr;
   silent.host()->GetMachine = nullptr;
   CHECK(silent.create() == nullptr);
@@ -644,7 +644,7 @@ TEST_CASE(
 TEST_CASE(
     "Keyboard: an id from another subsystem is incompatible for command and "
     "query, so a neighbour in the slot still gets asked") {
-  BenchHost_t bench;
+  BenchHost bench;
   void* card = bench.create();
   REQUIRE(card != nullptr);
 
@@ -668,7 +668,7 @@ TEST_CASE(
 TEST_CASE(
     "Keyboard: an id inside the keyboard's own subsystem that the card does "
     "not know is incompatible too") {
-  BenchHost_t bench;
+  BenchHost bench;
   void* card = bench.create();
   REQUIRE(card != nullptr);
 
@@ -687,7 +687,7 @@ TEST_CASE(
 TEST_CASE(
     "Keyboard: the save-state sizing probe answers 552 bytes and the C99 view "
     "of the frame and of the key payload matches the C++ one") {
-  BenchHost_t bench;
+  BenchHost bench;
   void* card = bench.create();
   REQUIRE(card != nullptr);
 
@@ -701,35 +701,35 @@ TEST_CASE(
   CHECK(keyboard_card()->save_state(card, scratch.data(), nullptr) ==
         peripheral_error);
 
-  static_assert(sizeof(KeyboardSaveState_t) == frame_size,
+  static_assert(sizeof(KeyboardSaveState) == frame_size,
                 "the version-1 frame is 552 bytes");
   CHECK(keyboard_abi_c_frame_size() == frame_size);
   CHECK(keyboard_abi_c_state_version() == KEYBOARD_STATE_VERSION);
   CHECK(keyboard_abi_c_repeat_key_offset() == 12);
   CHECK(keyboard_abi_c_repeat_key_offset() ==
-        offsetof(KeyboardSaveState_t, repeat_key));
+        offsetof(KeyboardSaveState, repeat_key));
   CHECK(keyboard_abi_c_latch_offset() == 24);
   CHECK(keyboard_abi_c_latch_offset() ==
-        offsetof(KeyboardSaveState_t, current_latch));
+        offsetof(KeyboardSaveState, current_latch));
   CHECK(keyboard_abi_c_strobe_offset() == 25);
   CHECK(keyboard_abi_c_strobe_offset() ==
-        offsetof(KeyboardSaveState_t, strobe));
+        offsetof(KeyboardSaveState, strobe));
   CHECK(keyboard_abi_c_caps_lock_offset() == 31);
   CHECK(keyboard_abi_c_caps_lock_offset() ==
-        offsetof(KeyboardSaveState_t, caps_lock));
+        offsetof(KeyboardSaveState, caps_lock));
   CHECK(keyboard_abi_c_auto_repeat_offset() == 35);
   CHECK(keyboard_abi_c_auto_repeat_offset() ==
-        offsetof(KeyboardSaveState_t, auto_repeat_enabled));
-  static_assert(sizeof(KeyboardKeyEvent_t) == 12,
+        offsetof(KeyboardSaveState, auto_repeat_enabled));
+  static_assert(sizeof(KeyboardKeyEvent) == 12,
                 "the key payload is 12 bytes");
-  CHECK(keyboard_abi_c_key_event_size() == sizeof(KeyboardKeyEvent_t));
+  CHECK(keyboard_abi_c_key_event_size() == sizeof(KeyboardKeyEvent));
 }
 
 TEST_CASE(
     "Keyboard: a seven-bit code sent down latches under the strobe at $C000, "
     "a code above 127 is refused and changes nothing, and so is a payload of "
     "the wrong size") {
-  BenchHost_t bench;
+  BenchHost bench;
   void* card = bench.create();
   REQUIRE(card != nullptr);
   CHECK((bench.read(addr_keyboard_data) & strobe_bit) == 0);
@@ -740,7 +740,7 @@ TEST_CASE(
   CHECK(bench.press(5, 0x80) == peripheral_error);
   CHECK(bench.read(addr_keyboard_data) == ('A' | strobe_bit));
 
-  const KeyboardKeyEvent_t event{6, 'B', 1, {0, 0, 0, 0, 0, 0}};
+  const KeyboardKeyEvent event{6, 'B', 1, {0, 0, 0, 0, 0, 0}};
   CHECK(bench.command(keyboard_cmd_key, &event, sizeof(event) - 1) ==
         peripheral_error);
   std::array<uint8_t, sizeof(event) + 1> long_event{};
@@ -763,7 +763,7 @@ TEST_CASE(
 TEST_CASE(
     "Keyboard: any-key-down at $C010 follows the keys the host holds and "
     "release_all, which takes no payload, lets go of every one") {
-  BenchHost_t bench;
+  BenchHost bench;
   void* card = bench.create();
   REQUIRE(card != nullptr);
   CHECK((bench.read(addr_keyboard_strobe) & strobe_bit) == 0);
@@ -788,7 +788,7 @@ TEST_CASE(
     "Keyboard: on a //e $C010 is read and written and $C011-$C01F written "
     "only, while on a II Plus every one of the sixteen is read and written, "
     "clears the strobe and reads the undriven bus") {
-  BenchHost_t iie(peripheral_machine_apple2e);
+  BenchHost iie(peripheral_machine_apple2e);
   REQUIRE(iie.create() != nullptr);
   CHECK(iie.has_read_handler(addr_keyboard_strobe));
   CHECK(iie.has_write_handler(addr_keyboard_strobe));
@@ -809,7 +809,7 @@ TEST_CASE(
   REQUIRE(iie.release(4) == peripheral_ok);
   CHECK(iie.read(addr_keyboard_strobe) == 0x61);
 
-  BenchHost_t ii_plus(peripheral_machine_apple2_plus);
+  BenchHost ii_plus(peripheral_machine_apple2_plus);
   REQUIRE(ii_plus.create() != nullptr);
   for (uint16_t addr = addr_keyboard_strobe; addr <= addr_keyboard_strobe_last;
        ++addr) {
@@ -831,7 +831,7 @@ TEST_CASE(
 TEST_CASE(
     "Keyboard: REPT alone strobes once on a II with the latch unchanged and "
     "does nothing on a II Plus or a //e") {
-  BenchHost_t ii(peripheral_machine_apple2);
+  BenchHost ii(peripheral_machine_apple2);
   REQUIRE(ii.create() != nullptr);
   REQUIRE(ii.press(4, 'A') == peripheral_ok);
   REQUIRE(ii.release(4) == peripheral_ok);
@@ -841,10 +841,10 @@ TEST_CASE(
   CHECK(ii.read(addr_keyboard_data) == ('A' | strobe_bit));
   REQUIRE(ii.rept(false) == peripheral_ok);
 
-  for (PeripheralMachine_t machine :
+  for (PeripheralMachine machine :
        {peripheral_machine_apple2_plus, peripheral_machine_apple2e}) {
     CAPTURE(static_cast<int>(machine));
-    BenchHost_t bench(machine);
+    BenchHost bench(machine);
     REQUIRE(bench.create() != nullptr);
     REQUIRE(bench.press(4, 'A') == peripheral_ok);
     REQUIRE(bench.release(4) == peripheral_ok);
@@ -860,7 +860,7 @@ TEST_CASE(
     "Keyboard: through the bridge, the 6502 reads the code under the strobe "
     "at $C000 until an access to $C010-$C01F clears the strobe and leaves "
     "the code") {
-  EnhancedIIe_t machine;
+  EnhancedIIe machine;
 
   press('a', 0x61);
 
@@ -904,7 +904,7 @@ TEST_CASE(
     "Keyboard: $C010 bit 7 says whether any key is held, through a second "
     "key, a stray release, sixteen keys and a seventeenth that evicts the "
     "first, and release_all") {
-  EnhancedIIe_t machine;
+  EnhancedIIe machine;
   REQUIRE_FALSE(any_key_down());
 
   press(1, 'A');
@@ -954,7 +954,7 @@ TEST_CASE(
 TEST_CASE(
     "Keyboard: a hard reset is power-on and clears the latch, the strobe and "
     "the held keys, while a soft reset leaves the card alone") {
-  EnhancedIIe_t machine;
+  EnhancedIIe machine;
 
   press(1, 'A');
   REQUIRE(keyboard_data() == ('A' | strobe_bit));
@@ -978,22 +978,22 @@ TEST_CASE(
     "after its press on F3's edge, 32, 43, 33, 32 and 33 frames for presses "
     "at phases 0, 5, 15, 16 and 31 of the flash counter, then every four "
     "frames with the latch unchanged") {
-  TestConfig_t config(TestConfig_t::enhanced_2e_only());
-  HeadlessHarness_t harness(config);
+  TestConfig config(TestConfig::enhanced_2e_only());
+  HeadlessHarness harness(config);
   harness.boot();
-  StrobeObserver_t observer;
+  StrobeObserver observer;
 
   // Sather's 32 to 48 scans (Understanding the Apple IIe, 2-17) with the
   // delay generator clocked by F3 (3-18): the first repeat falls on F3's edge
   // 32 or more frames after the press frame.
-  struct Phase_t {
+  struct Phase {
     uint64_t press_frame;
     uint64_t delay_frames;
   };
-  const std::array<Phase_t, 5> phases = {
+  const std::array<Phase, 5> phases = {
       {{0, 32}, {5, 43}, {15, 33}, {16, 32}, {31, 33}},
   };
-  for (const Phase_t& phase : phases) {
+  for (const Phase& phase : phases) {
     CAPTURE(phase.press_frame);
     const uint64_t press_frame =
         run_to_phase(harness, phase.press_frame, ntsc_frame_cycles);
@@ -1005,13 +1005,13 @@ TEST_CASE(
 TEST_CASE(
     "Keyboard: on a PAL //e the repeat counts its frames in 20,280 cycles, so "
     "the strobes come 81,120 cycles apart") {
-  TestConfig_t::Description_t description = TestConfig_t::enhanced_2e_only();
+  TestConfig::Description description = TestConfig::enhanced_2e_only();
   description.extras.push_back({"Configuration", "Video Emulation", "2"});
-  TestConfig_t config(description);
-  HeadlessHarness_t harness(config);
+  TestConfig config(description);
+  HeadlessHarness harness(config);
   harness.boot();
   REQUIRE(system_state.clks_per_frame == pal_frame_cycles);
-  StrobeObserver_t observer;
+  StrobeObserver observer;
 
   const uint64_t press_frame = run_to_phase(harness, 0, pal_frame_cycles);
   check_repeat_from_press(harness, observer, press_frame, 32, pal_frame_cycles);
@@ -1022,16 +1022,16 @@ TEST_CASE(
     "restarts the delay from its own frame, the first key's release changes "
     "nothing while the second is held, the host's warp leaves the spacing at "
     "four frames, and it stops when every key is up") {
-  TestConfig_t config(TestConfig_t::enhanced_2e_only());
-  HeadlessHarness_t harness(config);
+  TestConfig config(TestConfig::enhanced_2e_only());
+  HeadlessHarness harness(config);
   harness.boot();
 
-  StrobeObserver_t observer;
-  StrobeObserver_t::install();
+  StrobeObserver observer;
+  StrobeObserver::install();
   observer.begin();
   press(4, 'A');
   harness.run_frames(50);
-  REQUIRE(StrobeObserver_t::strobes() >= 2);
+  REQUIRE(StrobeObserver::strobes() >= 2);
 
   // A second key restarts the delay from its own frame, and the first key's
   // release while the second is held changes nothing.
@@ -1040,10 +1040,10 @@ TEST_CASE(
       second_frame + 32 + ((16 - (second_frame % 16)) % 16);
   press(5, 'B');
   release(4);
-  const size_t before_second = StrobeObserver_t::strobes();
+  const size_t before_second = StrobeObserver::strobes();
   harness.run_frames(static_cast<uint32_t>(second_first_frame - second_frame) +
                      10);
-  REQUIRE(StrobeObserver_t::strobes() >= before_second + 3);
+  REQUIRE(StrobeObserver::strobes() >= before_second + 3);
   // Entry before_second is the second key's own strobe; the next is its
   // first repeat.
   {
@@ -1058,30 +1058,30 @@ TEST_CASE(
     CHECK(spacing_error >= -observer_tolerance);
     CHECK(spacing_error <= observer_tolerance);
   }
-  CHECK((StrobeObserver_t::latch() & 0x7F) == 'B');
+  CHECK((StrobeObserver::latch() & 0x7F) == 'B');
 
   // Every key up: the repeat stops.
   release(5);
-  const size_t after_release = StrobeObserver_t::strobes();
+  const size_t after_release = StrobeObserver::strobes();
   harness.run_frames(40);
-  CHECK(StrobeObserver_t::strobes() == after_release);
+  CHECK(StrobeObserver::strobes() == after_release);
 
   // The host's warp runs the machine faster; the repeat keeps its frames.
   press(4, 'A');
-  const size_t before_warp = StrobeObserver_t::strobes();
+  const size_t before_warp = StrobeObserver::strobes();
   linapple_set_speed(emulation_speed_max);
   harness.run_frames(1);
   linapple_speed_reset();
-  REQUIRE(StrobeObserver_t::strobes() >= before_warp + 4);
+  REQUIRE(StrobeObserver::strobes() >= before_warp + 4);
   // Entry before_warp is the press's own strobe.
-  for (size_t k = before_warp + 1; k + 1 < StrobeObserver_t::strobes(); ++k) {
+  for (size_t k = before_warp + 1; k + 1 < StrobeObserver::strobes(); ++k) {
     const int64_t error = error_of(observer.spacing(k), repeat_period_cycles);
     CAPTURE(k);
     CAPTURE(error);
     CHECK(error >= -observer_tolerance);
     CHECK(error <= observer_tolerance);
   }
-  CHECK((StrobeObserver_t::latch() & 0x7F) == 'A');
+  CHECK((StrobeObserver::latch() & 0x7F) == 'A');
   release(4);
 }
 
@@ -1089,19 +1089,19 @@ TEST_CASE(
     "Keyboard: a II Plus never repeats a held key by itself; REPT with a key "
     "held strobes one period after and then at the keyboard's 15 Hz, REPT "
     "alone does nothing, and REPT up stops") {
-  TestConfig_t::Description_t description = TestConfig_t::enhanced_2e_only();
-  description.machine_type = TestConfig_t::machine_apple2_plus;
-  TestConfig_t config(description);
-  HeadlessHarness_t harness(config);
+  TestConfig::Description description = TestConfig::enhanced_2e_only();
+  description.machine_type = TestConfig::machine_apple2_plus;
+  TestConfig config(description);
+  HeadlessHarness harness(config);
   harness.boot();
 
-  StrobeObserver_t observer;
-  StrobeObserver_t::install();
+  StrobeObserver observer;
+  StrobeObserver::install();
   observer.begin();
 
   press(4, 'A');
   harness.run_frames(120);
-  CHECK(StrobeObserver_t::strobes() == 1);
+  CHECK(StrobeObserver::strobes() == 1);
 
   const uint64_t rept_period =
       static_cast<uint64_t>(linapple_get_clock_hz() / 15.0);
@@ -1109,7 +1109,7 @@ TEST_CASE(
   linapple_set_rept(true);
   settle();
   harness.run_frames(60);
-  REQUIRE(StrobeObserver_t::strobes() >= 8);
+  REQUIRE(StrobeObserver::strobes() >= 8);
   {
     const int64_t error =
         error_of(observer.read_cycle(1), rept_cycle + rept_period);
@@ -1117,26 +1117,26 @@ TEST_CASE(
     CHECK(error >= -observer_tolerance);
     CHECK(error <= observer_tolerance);
   }
-  for (size_t k = 1; k + 1 < StrobeObserver_t::strobes(); ++k) {
+  for (size_t k = 1; k + 1 < StrobeObserver::strobes(); ++k) {
     const int64_t error = error_of(observer.spacing(k), rept_period);
     CAPTURE(k);
     CAPTURE(error);
     CHECK(error >= -observer_tolerance);
     CHECK(error <= observer_tolerance);
   }
-  CHECK((StrobeObserver_t::latch() & 0x7F) == 'A');
+  CHECK((StrobeObserver::latch() & 0x7F) == 'A');
 
   linapple_set_rept(false);
   settle();
-  const size_t after_rept_up = StrobeObserver_t::strobes();
+  const size_t after_rept_up = StrobeObserver::strobes();
   harness.run_frames(30);
-  CHECK(StrobeObserver_t::strobes() == after_rept_up);
+  CHECK(StrobeObserver::strobes() == after_rept_up);
 
   release(4);
   linapple_set_rept(true);
   settle();
   harness.run_frames(30);
-  CHECK(StrobeObserver_t::strobes() == after_rept_up);
+  CHECK(StrobeObserver::strobes() == after_rept_up);
   linapple_set_rept(false);
   settle();
 }
@@ -1145,17 +1145,17 @@ TEST_CASE(
     "Keyboard: a II never repeats a held key by itself; REPT with a key held "
     "strobes one period after and then at the 555's ten a second, REPT alone "
     "strobes once with the latch unchanged, and REPT up stops") {
-  TestConfig_t config(describe(TestConfig_t::machine_apple2));
-  HeadlessHarness_t harness(config);
+  TestConfig config(describe(TestConfig::machine_apple2));
+  HeadlessHarness harness(config);
   harness.boot();
 
-  StrobeObserver_t observer;
-  StrobeObserver_t::install();
+  StrobeObserver observer;
+  StrobeObserver::install();
   observer.begin();
 
   press(4, 'A');
   harness.run_frames(120);
-  CHECK(StrobeObserver_t::strobes() == 1);
+  CHECK(StrobeObserver::strobes() == 1);
 
   // The 555 at U3 with R3 = 220 k runs at about ten presses a second, wall
   // time (Apple II Reference Manual 1979, pp. 7 and 102).
@@ -1165,7 +1165,7 @@ TEST_CASE(
   linapple_set_rept(true);
   settle();
   harness.run_frames(60);
-  REQUIRE(StrobeObserver_t::strobes() >= 8);
+  REQUIRE(StrobeObserver::strobes() >= 8);
   {
     const int64_t error =
         error_of(observer.read_cycle(1), rept_cycle + rept_period);
@@ -1173,20 +1173,20 @@ TEST_CASE(
     CHECK(error >= -observer_tolerance);
     CHECK(error <= observer_tolerance);
   }
-  for (size_t k = 1; k + 1 < StrobeObserver_t::strobes(); ++k) {
+  for (size_t k = 1; k + 1 < StrobeObserver::strobes(); ++k) {
     const int64_t error = error_of(observer.spacing(k), rept_period);
     CAPTURE(k);
     CAPTURE(error);
     CHECK(error >= -observer_tolerance);
     CHECK(error <= observer_tolerance);
   }
-  CHECK((StrobeObserver_t::latch() & 0x7F) == 'A');
+  CHECK((StrobeObserver::latch() & 0x7F) == 'A');
 
   linapple_set_rept(false);
   settle();
-  const size_t after_rept_up = StrobeObserver_t::strobes();
+  const size_t after_rept_up = StrobeObserver::strobes();
   harness.run_frames(30);
-  CHECK(StrobeObserver_t::strobes() == after_rept_up);
+  CHECK(StrobeObserver::strobes() == after_rept_up);
 
   // REPT pressed alone duplicates the last code generated (1979 p. 7): one
   // strobe, the latch as it was, and no more.
@@ -1194,21 +1194,21 @@ TEST_CASE(
   linapple_set_rept(true);
   settle();
   harness.run_frames(30);
-  CHECK(StrobeObserver_t::strobes() == after_rept_up + 1);
-  CHECK((StrobeObserver_t::latch() & 0x7F) == 'A');
+  CHECK(StrobeObserver::strobes() == after_rept_up + 1);
+  CHECK((StrobeObserver::latch() & 0x7F) == 'A');
   linapple_set_rept(false);
   settle();
   harness.run_frames(10);
-  CHECK(StrobeObserver_t::strobes() == after_rept_up + 1);
+  CHECK(StrobeObserver::strobes() == after_rept_up + 1);
 }
 
 TEST_CASE(
     "Keyboard: on a II Plus a read of $C011 clears the strobe and returns "
     "the undriven bus, and $C010 reads the undriven bus, never the latch") {
-  TestConfig_t::Description_t description = TestConfig_t::enhanced_2e_only();
-  description.machine_type = TestConfig_t::machine_apple2_plus;
-  TestConfig_t config(description);
-  HeadlessHarness_t harness(config);
+  TestConfig::Description description = TestConfig::enhanced_2e_only();
+  description.machine_type = TestConfig::machine_apple2_plus;
+  TestConfig config(description);
+  HeadlessHarness harness(config);
   harness.boot();
 
   // The text page full of normal spaces makes the undriven bus a literal $A0.
@@ -1217,8 +1217,8 @@ TEST_CASE(
     page.fill(0xA0);
     return page;
   }();
-  TestFixtures::ScopedCore_t::poke(0x0400, spaces);
-  TestFixtures::ScopedCore_t::poke(0x1400, spaces);
+  TestFixtures::ScopedCore::poke(0x0400, spaces);
+  TestFixtures::ScopedCore::poke(0x1400, spaces);
 
   press(4, 'A');
   // LDA $C000 / STA $10 / LDA $C011 / STA $11 / LDA $C000 / STA $12 /
@@ -1238,7 +1238,7 @@ TEST_CASE(
 TEST_CASE(
     "Keyboard: on a //e a read of $C011 leaves the strobe set and returns the "
     "language card's bank in bit 7, 1 with bank 2 selected and 0 with bank 1") {
-  EnhancedIIe_t machine;
+  EnhancedIIe machine;
   press(4, 'A');
 
   // LDA $C083 / LDA $C011 / STA $10 / LDA $C000 / STA $11 / LDA $C08B /
@@ -1261,8 +1261,8 @@ TEST_CASE(
     "Keyboard: the II Plus Monitor's KEYIN, entered through JSR $FD1B, returns "
     "a pending key with bit 7 set, clears the strobe and advances the random "
     "seed, and with no key pending spins in its poll loop") {
-  TestConfig_t config(describe(TestConfig_t::machine_apple2_plus));
-  HeadlessHarness_t harness(config);
+  TestConfig config(describe(TestConfig::machine_apple2_plus));
+  HeadlessHarness harness(config);
   harness.boot();
 
   // JSR $FD1B / NOP; BASL points the cursor store at the top of the text
@@ -1271,13 +1271,13 @@ TEST_CASE(
   const uint16_t sentinel = program_base + 3;
   const std::array<uint8_t, 2> basl = {0x00, 0x04};
   const std::array<uint8_t, 2> seed = {0x00, 0x00};
-  TestFixtures::ScopedCore_t::poke(program_base, caller);
-  TestFixtures::ScopedCore_t::poke(0x0028, basl);
+  TestFixtures::ScopedCore::poke(program_base, caller);
+  TestFixtures::ScopedCore::poke(0x0028, basl);
 
   press(4, 'A');
-  TestFixtures::ScopedCore_t::poke(0x004E, seed);
+  TestFixtures::ScopedCore::poke(0x004E, seed);
   TestFixtures::enter_at({program_base, 0, 0, 0});
-  Trace_t pending = trace_until(sentinel, program_cycle_cap);
+  Trace pending = trace_until(sentinel, program_cycle_cap);
   REQUIRE(pending.reached);
   CHECK(visited(pending, rom_keyin));
   CHECK(visited(pending, rom_keyin_read));
@@ -1291,9 +1291,9 @@ TEST_CASE(
 
   // Nothing pending: KEYIN counts in $4E/$4F and polls $C000 until the cap.
   constexpr uint32_t spin_cap = 2000;
-  TestFixtures::ScopedCore_t::poke(0x004E, seed);
+  TestFixtures::ScopedCore::poke(0x004E, seed);
   TestFixtures::enter_at({program_base, 0, 0, 0});
-  Trace_t spinning = trace_until(sentinel, spin_cap);
+  Trace spinning = trace_until(sentinel, spin_cap);
   CHECK_FALSE(spinning.reached);
   bool entered = false;
   for (uint16_t pc : spinning.pcs) {
@@ -1318,41 +1318,41 @@ TEST_CASE(
     "Keyboard: the //e Monitor's KEYIN goes through $FBB4 into the internal "
     "ROM, polls $C000 there, and clears the strobe with STA $C010, on the "
     "Enhanced and the unenhanced ROM") {
-  struct Rom_t {
-    TestConfig_t::MachineType_t model;
+  struct Rom {
+    TestConfig::MachineType model;
     uint16_t poll;
     uint16_t clear;
   };
-  const std::array<Rom_t, 2> roms = {
+  const std::array<Rom, 2> roms = {
       {
           {
-              TestConfig_t::machine_apple2e_enhanced,
+              TestConfig::machine_apple2e_enhanced,
               rom_2e_keyin_poll,
               rom_2e_keyin_clear,
           },
           {
-              TestConfig_t::machine_apple2e,
+              TestConfig::machine_apple2e,
               rom_2e_un_keyin_poll,
               rom_2e_un_keyin_clear,
           },
       },
   };
-  for (const Rom_t& rom : roms) {
+  for (const Rom& rom : roms) {
     CAPTURE(rom.model);
-    TestConfig_t config(describe(rom.model));
-    HeadlessHarness_t harness(config);
+    TestConfig config(describe(rom.model));
+    HeadlessHarness harness(config);
     harness.boot();
 
     const std::array<uint8_t, 4> caller = {0x20, 0x1B, 0xFD, 0xEA};
     const uint16_t sentinel = program_base + 3;
     const std::array<uint8_t, 2> basl = {0x00, 0x04};
-    TestFixtures::ScopedCore_t::poke(program_base, caller);
-    TestFixtures::ScopedCore_t::poke(0x0028, basl);
+    TestFixtures::ScopedCore::poke(program_base, caller);
+    TestFixtures::ScopedCore::poke(0x0028, basl);
 
     press(4, 'A');
     TestFixtures::enter_at({program_base, 0, 0, 0});
     constexpr uint32_t keyin_cap = 2000;
-    Trace_t trace = trace_until(sentinel, keyin_cap);
+    Trace trace = trace_until(sentinel, keyin_cap);
     REQUIRE(trace.reached);
     CHECK(visited(trace, rom_internal_entry));
     CHECK(visited(trace, rom.poll));
@@ -1367,8 +1367,8 @@ TEST_CASE(
     "Keyboard: Applesoft's GETLN on a machine with no disk controller echoes "
     "what is typed and runs it, a $21 arrives as the exclamation mark, and a "
     "$03 at the prompt breaks nothing") {
-  TestConfig_t config(TestConfig_t::enhanced_2e_only());
-  HeadlessHarness_t harness(config);
+  TestConfig config(TestConfig::enhanced_2e_only());
+  HeadlessHarness harness(config);
   boot_to_prompt(harness);
 
   harness.type_string("PRINT 2+2\r", 2);
@@ -1405,8 +1405,8 @@ TEST_CASE(
 TEST_CASE(
     "Keyboard: a running Applesoft program breaks on code $03 and on no other, "
     "and its output pauses on $13 at a carriage return until any key") {
-  TestConfig_t config(TestConfig_t::enhanced_2e_only());
-  HeadlessHarness_t harness(config);
+  TestConfig config(TestConfig::enhanced_2e_only());
+  HeadlessHarness harness(config);
   boot_to_prompt(harness);
 
   harness.type_string("10 GOTO 10\r", 2);
@@ -1455,15 +1455,15 @@ TEST_CASE(
     "to BIT $C010 at $FA7E, and a hard reset reaches $FA7E, the bell and, with "
     "no Apple key held, $C2E2, never the self-test or the page scribble, with "
     "no key down afterwards") {
-  TestConfig_t config(TestConfig_t::enhanced_2e_only());
-  HeadlessHarness_t harness(config);
+  TestConfig config(TestConfig::enhanced_2e_only());
+  HeadlessHarness harness(config);
   harness.boot();
 
   press(4, 'A');
   REQUIRE(peek(addr_keyboard_data) == ('A' | strobe_bit));
   harness.reset_soft();
   REQUIRE(cpu_get_registers()->pc == rom_reset);
-  Trace_t soft = trace_until(rom_reset_clears_strobe, reset_routine_cycle_cap);
+  Trace soft = trace_until(rom_reset_clears_strobe, reset_routine_cycle_cap);
   REQUIRE(soft.reached);
   // RESET' leaves the latch alone (Sather, Understanding the Apple II, 6-17;
   // Understanding the Apple IIe, 7-5): the strobe is still set here.
@@ -1476,7 +1476,7 @@ TEST_CASE(
   press(4, 'A');
   REQUIRE((peek(addr_keyboard_strobe) & strobe_bit) != 0);
   linapple_reset_hard();
-  Trace_t hard = trace_until(rom_reset_bell, reset_routine_cycle_cap);
+  Trace hard = trace_until(rom_reset_bell, reset_routine_cycle_cap);
   REQUIRE(hard.reached);
   CHECK(visited(hard, rom_2e_read_solid_apple));
   CHECK(visited(hard, rom_2e_read_open_apple));
@@ -1495,8 +1495,8 @@ TEST_CASE(
     "Keyboard: the Apple keys at reset on a //e with its keyboard: Open Apple "
     "takes the page scribble to the cold start, Solid Apple the self-test, "
     "neither the warm start, and letting every key go clears Open Apple too") {
-  TestConfig_t config(TestConfig_t::enhanced_2e_only());
-  HeadlessHarness_t harness(config);
+  TestConfig config(TestConfig::enhanced_2e_only());
+  HeadlessHarness harness(config);
   // Whether a game port card shares the lines changes nothing below.
   const bool game_port = peripheral_present(0, "linapple.joystick");
   CAPTURE(game_port);
@@ -1505,7 +1505,7 @@ TEST_CASE(
   boot_to_prompt(harness);
 
   harness.reset_soft();
-  Trace_t plain = trace_until(rom_power_up_byte_good, reset_and_bell_cycle_cap);
+  Trace plain = trace_until(rom_power_up_byte_good, reset_and_bell_cycle_cap);
   REQUIRE(plain.reached);
   CHECK(visited(plain, rom_2e_past_apple_keys));
   CHECK_FALSE(visited(plain, rom_2e_self_test_jump));
@@ -1518,7 +1518,7 @@ TEST_CASE(
   linapple_set_modifiers(false, false, true, false);
   settle();
   harness.reset_soft();
-  Trace_t open_apple = trace_until(rom_cold_start, reset_and_bell_cycle_cap);
+  Trace open_apple = trace_until(rom_cold_start, reset_and_bell_cycle_cap);
   REQUIRE(open_apple.reached);
   CHECK(visited(open_apple, rom_2e_scribble_pages));
   CHECK_FALSE(visited(open_apple, rom_2e_self_test_jump));
@@ -1529,7 +1529,7 @@ TEST_CASE(
   linapple_set_modifiers(false, false, false, false);
   settle();
   harness.reset_soft();
-  Trace_t released =
+  Trace released =
       trace_until(rom_2e_past_apple_keys, reset_routine_cycle_cap);
   REQUIRE(released.reached);
   CHECK_FALSE(visited(released, rom_2e_self_test_jump));
@@ -1542,7 +1542,7 @@ TEST_CASE(
   linapple_set_key_release_all();
   settle();
   harness.reset_soft();
-  Trace_t let_go = trace_until(rom_2e_past_apple_keys, reset_routine_cycle_cap);
+  Trace let_go = trace_until(rom_2e_past_apple_keys, reset_routine_cycle_cap);
   REQUIRE(let_go.reached);
   CHECK_FALSE(visited(let_go, rom_2e_scribble_pages));
   CHECK_FALSE(visited(let_go, rom_2e_self_test_jump));
@@ -1552,7 +1552,7 @@ TEST_CASE(
   linapple_set_modifiers(false, false, false, true);
   settle();
   harness.reset_soft();
-  Trace_t solid_apple = trace_until(rom_2e_self_test, reset_routine_cycle_cap);
+  Trace solid_apple = trace_until(rom_2e_self_test, reset_routine_cycle_cap);
   REQUIRE(solid_apple.reached);
   CHECK(visited(solid_apple, rom_2e_self_test_jump));
   CHECK_FALSE(visited(solid_apple, rom_2e_read_open_apple));
@@ -1572,14 +1572,14 @@ namespace {
 
 // The national character ROM is chosen when the core comes up, so the
 // language is set before the machine.
-struct GermanCharacterRom_t {
+struct GermanCharacterRom {
   Apple2Language saved = linapple_get_language();
-  GermanCharacterRom_t() { linapple_set_language(A2LANG_DE); }
-  ~GermanCharacterRom_t() { linapple_set_language(saved); }
-  GermanCharacterRom_t(const GermanCharacterRom_t&) = delete;
-  auto operator=(const GermanCharacterRom_t&) -> GermanCharacterRom_t& = delete;
-  GermanCharacterRom_t(GermanCharacterRom_t&&) = delete;
-  auto operator=(GermanCharacterRom_t&&) -> GermanCharacterRom_t& = delete;
+  GermanCharacterRom() { linapple_set_language(A2LANG_DE); }
+  ~GermanCharacterRom() { linapple_set_language(saved); }
+  GermanCharacterRom(const GermanCharacterRom&) = delete;
+  auto operator=(const GermanCharacterRom&) -> GermanCharacterRom& = delete;
+  GermanCharacterRom(GermanCharacterRom&&) = delete;
+  auto operator=(GermanCharacterRom&&) -> GermanCharacterRom& = delete;
 };
 
 auto frame_crc32() -> uint32_t {
@@ -1597,8 +1597,8 @@ TEST_CASE(
     "video follows it: with the German character ROM a row of letters and "
     "the national code points renders as one half of the ROM with the switch "
     "off and the other with it on") {
-  GermanCharacterRom_t german;
-  EnhancedIIe_t machine;
+  GermanCharacterRom german;
+  EnhancedIIe machine;
   REQUIRE_FALSE(linapple_get_rocker_switch());
 
   // Row 0, normal video: the letters and the eight code points the German
@@ -1609,7 +1609,7 @@ TEST_CASE(
   for (size_t i = 0; i < row.size(); ++i) {
     row.at(i) = static_cast<uint8_t>(text[i] | 0x80);
   }
-  TestFixtures::ScopedCore_t::poke(0x0400, row);
+  TestFixtures::ScopedCore::poke(0x0400, row);
 
   const uint32_t rocker_off = frame_crc32();
   linapple_set_rocker_switch(true);
@@ -1627,7 +1627,7 @@ TEST_CASE(
 TEST_CASE(
     "Keyboard: the frame written with Z held and the strobe set is the "
     "552-byte literal, with no key down and no repeat armed") {
-  EnhancedIIe_t machine;
+  EnhancedIIe machine;
 
   press('Z', 0x5A);
   CHECK(saved_frame() == frame_after_z_held());
@@ -1637,7 +1637,7 @@ TEST_CASE(
   REQUIRE(any_key_down());
   release('Z');
   CHECK_FALSE(any_key_down());
-  Frame_t released = frame_after_z_held();
+  Frame released = frame_after_z_held();
   released.at(25) = 0;
   CHECK(saved_frame() == released);
 }
@@ -1647,21 +1647,21 @@ TEST_CASE(
     "with $C000 and $C010 untouched, a longer buffer with a valid frame "
     "loads, and the frame an earlier card wrote restores the latch and strobe "
     "alone") {
-  EnhancedIIe_t machine;
+  EnhancedIIe machine;
 
   press(4, 'A');
   REQUIRE(keyboard_data() == ('A' | strobe_bit));
 
-  const Frame_t earlier = frame_from_earlier_card();
+  const Frame earlier = frame_from_earlier_card();
   load_frame(nullptr, earlier.size());
   CHECK(keyboard_data() == ('A' | strobe_bit));
   load_frame(earlier.data(), earlier.size() - 1);
   CHECK(keyboard_data() == ('A' | strobe_bit));
-  Frame_t wrong_version = earlier;
+  Frame wrong_version = earlier;
   wrong_version.at(0) = 2;
   load_frame(wrong_version.data(), wrong_version.size());
   CHECK(keyboard_data() == ('A' | strobe_bit));
-  Frame_t wrong_size = earlier;
+  Frame wrong_size = earlier;
   wrong_size.at(4) = 0xF4;
   wrong_size.at(5) = 0x01;
   load_frame(wrong_size.data(), wrong_size.size());
@@ -1688,7 +1688,7 @@ TEST_CASE(
     "Keyboard: the .aws an earlier build wrote loads on a machine with nothing "
     "in any slot and gives back the latch and strobe, the rocker and the "
     "host's custom table untouched") {
-  EnhancedIIe_t machine;
+  EnhancedIIe machine;
   keyboard_apply_custom_mappings();
   REQUIRE(keyboard_custom_switch(4) == keyboard_custom_switch_none);
   REQUIRE_FALSE(linapple_get_rocker_switch());
@@ -1714,8 +1714,8 @@ TEST_CASE(
     "Keyboard: an .aws written by this build keeps the keyboard region where "
     "every file has it and gives back the latch and strobe with no key down "
     "though one was held at the save") {
-  EnhancedIIe_t machine;
-  TestFixtures::ScopedTempDir_t dir("linapple_keyboard_test_");
+  EnhancedIIe machine;
+  TestFixtures::ScopedTempDir dir("linapple_keyboard_test_");
   const std::string path = dir.path() + "/keyboard.aws";
 
   press('Z', 0x5A);
@@ -1725,7 +1725,7 @@ TEST_CASE(
   std::ifstream in(path, std::ios::binary);
   REQUIRE(in.good());
   in.seekg(80);
-  Frame_t region{};
+  Frame region{};
   in.read(reinterpret_cast<char*>(region.data()), region.size());
   REQUIRE(in.good());
   CHECK(region == frame_after_z_held());

@@ -3,7 +3,7 @@
 # Peripherals implement standardized C ABI dispatch tables and callback signatures
 # (e.g. init(slot, host), command, query) where specific hardware implementations
 # intentionally leave slot/host parameters unused or cannot change parameter types
-# without violating Peripheral_t function pointer signatures.
+# without violating Peripheral function pointer signatures.
 
 InheritParentConfig: true
 

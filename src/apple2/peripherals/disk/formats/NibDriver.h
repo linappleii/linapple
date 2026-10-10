@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-extern const DiskFormatDriver_t g_nib_driver;
+extern const DiskFormatDriver nib_driver;
 
 #ifdef __cplusplus
 }

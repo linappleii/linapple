@@ -26,39 +26,39 @@ constexpr uint8_t FLAG_N = 0x80;
 
 constexpr uint16_t CODE_BASE_ADDR = 0x0300;
 
-struct CpuTestFixture_t {
-  CpuTestFixture_t() {
+struct CpuTestFixture {
+  CpuTestFixture() {
     current_apple2_type = A2TYPE_APPLE2EENHANCED;
     mem_initialize();
     cpu_initialize();
   }
 
-  ~CpuTestFixture_t() {
+  ~CpuTestFixture() {
     cpu_destroy();
     mem_destroy();
   }
 
-  CpuTestFixture_t(const CpuTestFixture_t&) = delete;
-  auto operator=(const CpuTestFixture_t&) -> CpuTestFixture_t& = delete;
-  CpuTestFixture_t(CpuTestFixture_t&&) = delete;
-  auto operator=(CpuTestFixture_t&&) -> CpuTestFixture_t& = delete;
+  CpuTestFixture(const CpuTestFixture&) = delete;
+  auto operator=(const CpuTestFixture&) -> CpuTestFixture& = delete;
+  CpuTestFixture(CpuTestFixture&&) = delete;
+  auto operator=(CpuTestFixture&&) -> CpuTestFixture& = delete;
 };
 
 }  // namespace
 
 TEST_CASE("Exhaustive: [CPU-EX-01] Binary Mode ADC Execution") {
-  CpuTestFixture_t fixture;
+  CpuTestFixture fixture;
   auto* regs = cpu_get_registers();
 
   // Helper lambda for named edge case assertions
-  auto test_adc_named = [regs](uint8_t a_in, uint8_t operand, bool carry_in,
+  auto test_adc_named = [regs](uint8_t accum_in, uint8_t operand, bool carry_in,
                                uint8_t expected_a, bool expected_v,
                                bool expected_c, bool expected_n,
                                bool expected_z) {
     mem[CODE_BASE_ADDR] = 0x69;  // ADC #imm
     mem[CODE_BASE_ADDR + 1] = operand;
     regs->pc = CODE_BASE_ADDR;
-    regs->a = a_in;
+    regs->a = accum_in;
     regs->ps = carry_in ? FLAG_C : 0;
     cpu_execute(0);
 
@@ -101,19 +101,19 @@ TEST_CASE("Exhaustive: [CPU-EX-01] Binary Mode ADC Execution") {
 
   for (int carry_in = 0; carry_in < 2; ++carry_in) {
     uint8_t initial_ps = (carry_in != 0) ? FLAG_C : 0;
-    for (int a_in = 0; a_in < 256; ++a_in) {
+    for (int accum_in = 0; accum_in < 256; ++accum_in) {
       for (int operand = 0; operand < 256; ++operand) {
         mem[CODE_BASE_ADDR + 1] = static_cast<uint8_t>(operand);
         regs->pc = CODE_BASE_ADDR;
-        regs->a = static_cast<uint8_t>(a_in);
+        regs->a = static_cast<uint8_t>(accum_in);
         regs->ps = initial_ps;
 
         cpu_execute(0);
 
-        int sum = a_in + operand + carry_in;
+        int sum = accum_in + operand + carry_in;
         uint8_t expected_a = static_cast<uint8_t>(sum & 0xFF);
         bool expected_c = (sum > 0xFF);
-        bool expected_v = (~(a_in ^ operand) & (a_in ^ expected_a) & 0x80) != 0;
+        bool expected_v = (~(accum_in ^ operand) & (accum_in ^ expected_a) & 0x80) != 0;
         bool expected_z = (expected_a == 0);
         bool expected_n = (expected_a & 0x80) != 0;
 
@@ -135,18 +135,18 @@ TEST_CASE("Exhaustive: [CPU-EX-01] Binary Mode ADC Execution") {
 }
 
 TEST_CASE("Exhaustive: [CPU-EX-02] Binary Mode SBC Execution") {
-  CpuTestFixture_t fixture;
+  CpuTestFixture fixture;
   auto* regs = cpu_get_registers();
 
   // Helper lambda for named edge case assertions
-  auto test_sbc_named = [regs](uint8_t a_in, uint8_t operand, bool carry_in,
+  auto test_sbc_named = [regs](uint8_t accum_in, uint8_t operand, bool carry_in,
                                uint8_t expected_a, bool expected_v,
                                bool expected_c, bool expected_n,
                                bool expected_z) {
     mem[CODE_BASE_ADDR] = 0xE9;  // SBC #imm
     mem[CODE_BASE_ADDR + 1] = operand;
     regs->pc = CODE_BASE_ADDR;
-    regs->a = a_in;
+    regs->a = accum_in;
     regs->ps = carry_in ? FLAG_C : 0;
     cpu_execute(0);
 
@@ -185,19 +185,19 @@ TEST_CASE("Exhaustive: [CPU-EX-02] Binary Mode SBC Execution") {
 
   for (int carry_in = 0; carry_in < 2; ++carry_in) {
     uint8_t initial_ps = (carry_in != 0) ? FLAG_C : 0;
-    for (int a_in = 0; a_in < 256; ++a_in) {
+    for (int accum_in = 0; accum_in < 256; ++accum_in) {
       for (int operand = 0; operand < 256; ++operand) {
         mem[CODE_BASE_ADDR + 1] = static_cast<uint8_t>(operand);
         regs->pc = CODE_BASE_ADDR;
-        regs->a = static_cast<uint8_t>(a_in);
+        regs->a = static_cast<uint8_t>(accum_in);
         regs->ps = initial_ps;
 
         cpu_execute(0);
 
-        int diff = a_in - operand - (1 - carry_in);
+        int diff = accum_in - operand - (1 - carry_in);
         uint8_t expected_a = static_cast<uint8_t>(diff & 0xFF);
         bool expected_c = (diff >= 0);
-        bool expected_v = ((a_in ^ operand) & (a_in ^ expected_a) & 0x80) != 0;
+        bool expected_v = ((accum_in ^ operand) & (accum_in ^ expected_a) & 0x80) != 0;
         bool expected_z = (expected_a == 0);
         bool expected_n = (expected_a & 0x80) != 0;
 
@@ -219,7 +219,7 @@ TEST_CASE("Exhaustive: [CPU-EX-02] Binary Mode SBC Execution") {
 }
 
 TEST_CASE("Exhaustive: [CPU-EX-03] Comparison (CMP/CPX/CPY) Execution") {
-  CpuTestFixture_t fixture;
+  CpuTestFixture fixture;
   auto* regs = cpu_get_registers();
 
   // Helper lambda for named comparison assertions
@@ -365,17 +365,17 @@ TEST_CASE("Exhaustive: [CPU-EX-03] Comparison (CMP/CPX/CPY) Execution") {
 }
 
 TEST_CASE("Exhaustive: [CPU-EX-04] Logic (AND, ORA, EOR) Execution") {
-  CpuTestFixture_t fixture;
+  CpuTestFixture fixture;
   auto* regs = cpu_get_registers();
 
   // Helper lambda for named logic assertions
-  auto test_logic_named = [regs](uint8_t opcode, uint8_t a_in, uint8_t operand,
+  auto test_logic_named = [regs](uint8_t opcode, uint8_t accum_in, uint8_t operand,
                                  uint8_t expected_a, bool expected_z,
                                  bool expected_n) {
     mem[CODE_BASE_ADDR] = opcode;
     mem[CODE_BASE_ADDR + 1] = operand;
     regs->pc = CODE_BASE_ADDR;
-    regs->a = a_in;
+    regs->a = accum_in;
     regs->ps = 0;
 
     cpu_execute(0);
@@ -411,16 +411,16 @@ TEST_CASE("Exhaustive: [CPU-EX-04] Logic (AND, ORA, EOR) Execution") {
   {
     mem[CODE_BASE_ADDR] = 0x29;
     uint32_t and_failures = 0;
-    for (int a_in = 0; a_in < 256; ++a_in) {
+    for (int accum_in = 0; accum_in < 256; ++accum_in) {
       for (int operand = 0; operand < 256; ++operand) {
         mem[CODE_BASE_ADDR + 1] = static_cast<uint8_t>(operand);
         regs->pc = CODE_BASE_ADDR;
-        regs->a = static_cast<uint8_t>(a_in);
+        regs->a = static_cast<uint8_t>(accum_in);
         regs->ps = 0;
 
         cpu_execute(0);
 
-        uint8_t expected_a = static_cast<uint8_t>(a_in & operand);
+        uint8_t expected_a = static_cast<uint8_t>(accum_in & operand);
         bool expected_z = (expected_a == 0);
         bool expected_n = (expected_a & 0x80) != 0;
 
@@ -440,16 +440,16 @@ TEST_CASE("Exhaustive: [CPU-EX-04] Logic (AND, ORA, EOR) Execution") {
   {
     mem[CODE_BASE_ADDR] = 0x09;
     uint32_t ora_failures = 0;
-    for (int a_in = 0; a_in < 256; ++a_in) {
+    for (int accum_in = 0; accum_in < 256; ++accum_in) {
       for (int operand = 0; operand < 256; ++operand) {
         mem[CODE_BASE_ADDR + 1] = static_cast<uint8_t>(operand);
         regs->pc = CODE_BASE_ADDR;
-        regs->a = static_cast<uint8_t>(a_in);
+        regs->a = static_cast<uint8_t>(accum_in);
         regs->ps = 0;
 
         cpu_execute(0);
 
-        uint8_t expected_a = static_cast<uint8_t>(a_in | operand);
+        uint8_t expected_a = static_cast<uint8_t>(accum_in | operand);
         bool expected_z = (expected_a == 0);
         bool expected_n = (expected_a & 0x80) != 0;
 
@@ -469,16 +469,16 @@ TEST_CASE("Exhaustive: [CPU-EX-04] Logic (AND, ORA, EOR) Execution") {
   {
     mem[CODE_BASE_ADDR] = 0x49;
     uint32_t eor_failures = 0;
-    for (int a_in = 0; a_in < 256; ++a_in) {
+    for (int accum_in = 0; accum_in < 256; ++accum_in) {
       for (int operand = 0; operand < 256; ++operand) {
         mem[CODE_BASE_ADDR + 1] = static_cast<uint8_t>(operand);
         regs->pc = CODE_BASE_ADDR;
-        regs->a = static_cast<uint8_t>(a_in);
+        regs->a = static_cast<uint8_t>(accum_in);
         regs->ps = 0;
 
         cpu_execute(0);
 
-        uint8_t expected_a = static_cast<uint8_t>(a_in ^ operand);
+        uint8_t expected_a = static_cast<uint8_t>(accum_in ^ operand);
         bool expected_z = (expected_a == 0);
         bool expected_n = (expected_a & 0x80) != 0;
 
@@ -498,16 +498,16 @@ TEST_CASE("Exhaustive: [CPU-EX-04] Logic (AND, ORA, EOR) Execution") {
 TEST_CASE(
     "Exhaustive: [CPU-EX-05] Shifts and Rotates (ASL, LSR, ROL, ROR) "
     "Execution") {
-  CpuTestFixture_t fixture;
+  CpuTestFixture fixture;
   auto* regs = cpu_get_registers();
 
   // Helper lambda for named shift/rotate assertions
-  auto test_shift_named = [regs](uint8_t opcode, uint8_t a_in, bool carry_in,
+  auto test_shift_named = [regs](uint8_t opcode, uint8_t accum_in, bool carry_in,
                                  uint8_t expected_a, bool expected_c,
                                  bool expected_z, bool expected_n) {
     mem[CODE_BASE_ADDR] = opcode;
     regs->pc = CODE_BASE_ADDR;
-    regs->a = a_in;
+    regs->a = accum_in;
     regs->ps = carry_in ? FLAG_C : 0;
 
     cpu_execute(0);
@@ -607,8 +607,8 @@ TEST_CASE(
   {
     mem[CODE_BASE_ADDR] = 0x2A;
     uint32_t rol_failures = 0;
-    for (int c_in = 0; c_in < 2; ++c_in) {
-      uint8_t initial_ps = (c_in != 0) ? FLAG_C : 0;
+    for (int carry_in = 0; carry_in < 2; ++carry_in) {
+      uint8_t initial_ps = (carry_in != 0) ? FLAG_C : 0;
       for (int val = 0; val < 256; ++val) {
         regs->pc = CODE_BASE_ADDR;
         regs->a = static_cast<uint8_t>(val);
@@ -616,7 +616,7 @@ TEST_CASE(
 
         cpu_execute(0);
 
-        uint8_t expected_a = static_cast<uint8_t>(((val << 1) | c_in) & 0xFF);
+        uint8_t expected_a = static_cast<uint8_t>(((val << 1) | carry_in) & 0xFF);
         bool expected_c = (val & 0x80) != 0;
         bool expected_z = (expected_a == 0);
         bool expected_n = (expected_a & 0x80) != 0;
@@ -638,8 +638,8 @@ TEST_CASE(
   {
     mem[CODE_BASE_ADDR] = 0x6A;
     uint32_t ror_failures = 0;
-    for (int c_in = 0; c_in < 2; ++c_in) {
-      uint8_t initial_ps = (c_in != 0) ? FLAG_C : 0;
+    for (int carry_in = 0; carry_in < 2; ++carry_in) {
+      uint8_t initial_ps = (carry_in != 0) ? FLAG_C : 0;
       for (int val = 0; val < 256; ++val) {
         regs->pc = CODE_BASE_ADDR;
         regs->a = static_cast<uint8_t>(val);
@@ -648,7 +648,7 @@ TEST_CASE(
         cpu_execute(0);
 
         uint8_t expected_a =
-            static_cast<uint8_t>(((val >> 1) | (c_in << 7)) & 0xFF);
+            static_cast<uint8_t>(((val >> 1) | (carry_in << 7)) & 0xFF);
         bool expected_c = (val & 0x01) != 0;
         bool expected_z = (expected_a == 0);
         bool expected_n = (expected_a & 0x80) != 0;

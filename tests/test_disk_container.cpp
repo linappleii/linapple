@@ -50,35 +50,35 @@ auto read_file(const std::string& path) -> std::vector<uint8_t> {
   return data;
 }
 
-struct OpenedImage_t {
-  const DiskFormatDriver_t* driver = nullptr;
+struct OpenedImage {
+  const DiskFormatDriver* driver = nullptr;
   void* instance = nullptr;
 
-  explicit OpenedImage_t(const std::string& path) {
+  explicit OpenedImage(const std::string& path) {
     REQUIRE(disk_loader_open(path.c_str(), &driver, &instance) ==
             disk_err_none);
     REQUIRE(driver != nullptr);
     REQUIRE(instance != nullptr);
   }
-  ~OpenedImage_t() {
+  ~OpenedImage() {
     if (driver != nullptr && instance != nullptr) {
       driver->close(instance);
     }
   }
-  OpenedImage_t(const OpenedImage_t&) = delete;
-  auto operator=(const OpenedImage_t&) -> OpenedImage_t& = delete;
-  OpenedImage_t(OpenedImage_t&&) = delete;
-  auto operator=(OpenedImage_t&&) -> OpenedImage_t& = delete;
+  OpenedImage(const OpenedImage&) = delete;
+  auto operator=(const OpenedImage&) -> OpenedImage& = delete;
+  OpenedImage(OpenedImage&&) = delete;
+  auto operator=(OpenedImage&&) -> OpenedImage& = delete;
 };
 
-struct Track_t {
+struct Track {
   uint32_t bit_count = 0;
   std::vector<uint8_t> nibbles;
   std::vector<uint8_t> sectors;
 };
 
-auto read_track0(const OpenedImage_t& image) -> Track_t {
-  Track_t track;
+auto read_track0(const OpenedImage& image) -> Track {
+  Track track;
   std::vector<uint8_t> bits(max_track_bits / 8, 0);
   uint8_t timing = 0;
   REQUIRE(image.driver->read_track_bits(image.instance, 0, bits.data(),
@@ -110,11 +110,11 @@ TEST_CASE(
       read_file(TestFixtures::get_fixture_path("minimal.dsk"));
   REQUIRE(bare.size() == dsk_image_size);
 
-  const OpenedImage_t wrapped(
+  const OpenedImage wrapped(
       TestFixtures::get_fixture_path("minimal-macbinary.dsk"));
   CHECK(std::string(wrapped.driver->name) == "DOS Order");
 
-  const Track_t track = read_track0(wrapped);
+  const Track track = read_track0(wrapped);
   CHECK(track.bit_count == dsk_track_bit_count);
   REQUIRE(track.nibbles.size() > first_data_field_at + 343);
   CHECK(track.nibbles[0] == 0xFF);
@@ -128,8 +128,8 @@ TEST_CASE(
   CHECK(track.nibbles[first_data_field_at + 3 + 342] == zero_sector_nibble);
   CHECK(memcmp(track.sectors.data(), bare.data(), dos_track_size) == 0);
 
-  const OpenedImage_t plain(TestFixtures::get_fixture_path("minimal.dsk"));
-  const Track_t bare_track = read_track0(plain);
+  const OpenedImage plain(TestFixtures::get_fixture_path("minimal.dsk"));
+  const Track bare_track = read_track0(plain);
   CHECK(bare_track.bit_count == track.bit_count);
   CHECK(bare_track.nibbles == track.nibbles);
 }
@@ -148,9 +148,9 @@ TEST_CASE(
                                          static_cast<uint32_t>(image.size())) ==
         0);
 
-  const OpenedImage_t opened(path);
+  const OpenedImage opened(path);
   CHECK(std::string(opened.driver->name) == "DOS Order");
-  const Track_t track = read_track0(opened);
+  const Track track = read_track0(opened);
   CHECK(track.bit_count == dsk_track_bit_count);
   CHECK(track.sectors[0] == 0x00);
   CHECK(track.sectors[1] == 0x05);

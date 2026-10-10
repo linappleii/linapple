@@ -21,7 +21,7 @@ namespace TestFixtures {
  *
  * Declared rather than defined because this header is also included by test
  * targets that deliberately do not link the core (test-fixtures,
- * test-audio-dumper). A fixture that never calls ScopedTestConfig_t::load()
+ * test-audio-dumper). A fixture that never calls ScopedTestConfig::load()
  * never references this symbol.
  */
 auto load_configuration_file(const std::string& path) -> bool;
@@ -34,9 +34,9 @@ inline auto get_fixture_path(const std::string& filename) -> std::string {
   }
 #endif
 #ifdef SOURCE_RES_DIR
-  std::string p_res = std::string(SOURCE_RES_DIR) + "/" + filename;
-  if (access(p_res.c_str(), R_OK) == 0) {
-    return p_res;
+  std::string path_res = std::string(SOURCE_RES_DIR) + "/" + filename;
+  if (access(path_res.c_str(), R_OK) == 0) {
+    return path_res;
   }
 #endif
   return filename;
@@ -48,10 +48,10 @@ inline auto get_fixture_path(const std::string& filename) -> std::string {
  * Ensures test isolation by cloning the source disk template to a temporary
  * file and automatically unlinking it upon destruction.
  */
-struct EphemeralDiskFixture_t {
+struct EphemeralDiskFixture {
   std::string temp_path;
 
-  explicit EphemeralDiskFixture_t(const std::string& fixture_name) {
+  explicit EphemeralDiskFixture(const std::string& fixture_name) {
     std::string src_path = get_fixture_path(fixture_name);
     if (access(src_path.c_str(), R_OK) != 0) {
       throw std::runtime_error(
@@ -108,22 +108,22 @@ struct EphemeralDiskFixture_t {
     }
   }
 
-  ~EphemeralDiskFixture_t() { cleanup(); }
+  ~EphemeralDiskFixture() { cleanup(); }
 
   // Non-copyable (enforcing single ownership)
-  EphemeralDiskFixture_t(const EphemeralDiskFixture_t&) = delete;
-  auto operator=(const EphemeralDiskFixture_t&)
-      -> EphemeralDiskFixture_t& = delete;
+  EphemeralDiskFixture(const EphemeralDiskFixture&) = delete;
+  auto operator=(const EphemeralDiskFixture&)
+      -> EphemeralDiskFixture& = delete;
 
   // Move-constructible
-  EphemeralDiskFixture_t(EphemeralDiskFixture_t&& other) noexcept
+  EphemeralDiskFixture(EphemeralDiskFixture&& other) noexcept
       : temp_path(std::move(other.temp_path)) {
     other.temp_path.clear();
   }
 
   // Move-assignable
-  auto operator=(EphemeralDiskFixture_t&& other) noexcept
-      -> EphemeralDiskFixture_t& {
+  auto operator=(EphemeralDiskFixture&& other) noexcept
+      -> EphemeralDiskFixture& {
     if (this != &other) {
       cleanup();
       temp_path = std::move(other.temp_path);
@@ -148,10 +148,10 @@ struct EphemeralDiskFixture_t {
     }
   }
 
-  EphemeralDiskFixture_t() = default;
+  EphemeralDiskFixture() = default;
 
   static auto create_blank(const std::string& filename, size_t size_bytes)
-      -> EphemeralDiskFixture_t {
+      -> EphemeralDiskFixture {
     std::string ext;
     size_t dot_pos = filename.find_last_of('.');
     if (dot_pos != std::string::npos) {
@@ -184,21 +184,21 @@ struct EphemeralDiskFixture_t {
     }
     ::close(fd);
 
-    EphemeralDiskFixture_t fixture;
+    EphemeralDiskFixture fixture;
     fixture.temp_path = template_buf.data();
     return fixture;
   }
 };
 
 inline auto create_ephemeral(const std::string& fixture_name)
-    -> EphemeralDiskFixture_t {
-  return EphemeralDiskFixture_t(fixture_name);
+    -> EphemeralDiskFixture {
+  return EphemeralDiskFixture(fixture_name);
 }
 
 inline auto create_ephemeral_blank(const std::string& filename,
                                    size_t size_bytes)
-    -> EphemeralDiskFixture_t {
-  return EphemeralDiskFixture_t::create_blank(filename, size_bytes);
+    -> EphemeralDiskFixture {
+  return EphemeralDiskFixture::create_blank(filename, size_bytes);
 }
 
 /**
@@ -207,12 +207,12 @@ inline auto create_ephemeral_blank(const std::string& filename,
  * Creates a unique empty temporary file with an optional suffix and unlinks it
  * upon destruction.
  */
-class ScopedTempFile_t {
+class ScopedTempFile {
  private:
   std::string path_;
 
  public:
-  explicit ScopedTempFile_t(const std::string& ext = "") {
+  explicit ScopedTempFile(const std::string& ext = "") {
     const char* tmpdir = std::getenv("TMPDIR");
     std::string base_dir =
         (tmpdir != nullptr && tmpdir[0] != '\0') ? tmpdir : "/tmp";
@@ -231,17 +231,17 @@ class ScopedTempFile_t {
     }
   }
 
-  ~ScopedTempFile_t() { unlink_file(); }
+  ~ScopedTempFile() { unlink_file(); }
 
-  ScopedTempFile_t(const ScopedTempFile_t&) = delete;
-  auto operator=(const ScopedTempFile_t&) -> ScopedTempFile_t& = delete;
+  ScopedTempFile(const ScopedTempFile&) = delete;
+  auto operator=(const ScopedTempFile&) -> ScopedTempFile& = delete;
 
-  ScopedTempFile_t(ScopedTempFile_t&& other) noexcept
+  ScopedTempFile(ScopedTempFile&& other) noexcept
       : path_(std::move(other.path_)) {
     other.path_.clear();
   }
 
-  auto operator=(ScopedTempFile_t&& other) noexcept -> ScopedTempFile_t& {
+  auto operator=(ScopedTempFile&& other) noexcept -> ScopedTempFile& {
     if (this != &other) {
       unlink_file();
       path_ = std::move(other.path_);
@@ -267,7 +267,7 @@ class ScopedTempFile_t {
  * Creates a unique empty temporary directory under TMPDIR or /tmp and
  * recursively removes all child files and subdirectories upon destruction.
  */
-class ScopedTempDir_t {
+class ScopedTempDir {
  private:
   std::string path_;
 
@@ -296,7 +296,7 @@ class ScopedTempDir_t {
   }
 
  public:
-  explicit ScopedTempDir_t(
+  explicit ScopedTempDir(
       const std::string& prefix = "linapple_browser_test_") {
     const char* tmpdir = std::getenv("TMPDIR");
     std::string base_dir =
@@ -317,17 +317,17 @@ class ScopedTempDir_t {
     path_ = created_dir;
   }
 
-  ~ScopedTempDir_t() { cleanup(); }
+  ~ScopedTempDir() { cleanup(); }
 
-  ScopedTempDir_t(const ScopedTempDir_t&) = delete;
-  auto operator=(const ScopedTempDir_t&) -> ScopedTempDir_t& = delete;
+  ScopedTempDir(const ScopedTempDir&) = delete;
+  auto operator=(const ScopedTempDir&) -> ScopedTempDir& = delete;
 
-  ScopedTempDir_t(ScopedTempDir_t&& other) noexcept
+  ScopedTempDir(ScopedTempDir&& other) noexcept
       : path_(std::move(other.path_)) {
     other.path_.clear();
   }
 
-  auto operator=(ScopedTempDir_t&& other) noexcept -> ScopedTempDir_t& {
+  auto operator=(ScopedTempDir&& other) noexcept -> ScopedTempDir& {
     if (this != &other) {
       cleanup();
       path_ = std::move(other.path_);
@@ -347,14 +347,14 @@ class ScopedTempDir_t {
   }
 };
 
-class ScopedEnvVar_t {
+class ScopedEnvVar {
  private:
   std::string name_;
   std::string previous_;
   bool had_previous_ = false;
 
  public:
-  ScopedEnvVar_t(const char* name, const std::string& value) : name_(name) {
+  ScopedEnvVar(const char* name, const std::string& value) : name_(name) {
     const char* prev = std::getenv(name);
     had_previous_ = (prev != nullptr);
     if (had_previous_) {
@@ -363,7 +363,7 @@ class ScopedEnvVar_t {
     ::setenv(name, value.c_str(), 1);
   }
 
-  ~ScopedEnvVar_t() {
+  ~ScopedEnvVar() {
     if (had_previous_) {
       ::setenv(name_.c_str(), previous_.c_str(), 1);
     } else {
@@ -371,10 +371,10 @@ class ScopedEnvVar_t {
     }
   }
 
-  ScopedEnvVar_t(const ScopedEnvVar_t&) = delete;
-  auto operator=(const ScopedEnvVar_t&) -> ScopedEnvVar_t& = delete;
-  ScopedEnvVar_t(ScopedEnvVar_t&&) = delete;
-  auto operator=(ScopedEnvVar_t&&) -> ScopedEnvVar_t& = delete;
+  ScopedEnvVar(const ScopedEnvVar&) = delete;
+  auto operator=(const ScopedEnvVar&) -> ScopedEnvVar& = delete;
+  ScopedEnvVar(ScopedEnvVar&&) = delete;
+  auto operator=(ScopedEnvVar&&) -> ScopedEnvVar& = delete;
 };
 
 /**
@@ -391,10 +391,10 @@ class ScopedEnvVar_t {
  * pointed at it, so nothing under $HOME is read or created. Any slot the
  * description leaves blank is written as None.
  */
-class ScopedTestConfig_t {
+class ScopedTestConfig {
  public:
   // Not the A2TYPE_* enum; these are the config file's own integers.
-  enum MachineType_t {
+  enum MachineType {
     machine_apple2 = 0,
     machine_apple2_plus = 1,
     machine_apple2e = 2,
@@ -403,33 +403,33 @@ class ScopedTestConfig_t {
 
   enum { slot_count = 7 };
 
-  struct Entry_t {
+  struct Entry {
     std::string section;
     std::string key;
     std::string value;
   };
 
-  struct Description_t {
+  struct Description {
     int machine_type = machine_apple2e_enhanced;
     // Index 0 is Slot 1. An empty entry means None.
     std::array<std::string, slot_count> slots;
-    std::vector<Entry_t> extras;
+    std::vector<Entry> extras;
   };
 
   // An Enhanced //e with nothing in any slot: the internal speaker, keyboard
   // and joystick, and no card anywhere.
-  static auto enhanced_2e_only() -> Description_t { return Description_t(); }
+  static auto enhanced_2e_only() -> Description { return Description(); }
 
   // Disk turbo is stated rather than inherited from whatever config happens
   // to be on the machine running the suite.
-  static auto disk_ii_only() -> Description_t {
-    Description_t description;
+  static auto disk_ii_only() -> Description {
+    Description description;
     description.slots[5] = "Disk II";
     description.extras.push_back({"Configuration", "Disk Turbo", "1"});
     return description;
   }
 
-  explicit ScopedTestConfig_t(const Description_t& description)
+  explicit ScopedTestConfig(const Description& description)
       : dir_("linapple_test_config_"),
         path_(dir_.path() + "/linapple.conf"),
         config_home_("XDG_CONFIG_HOME", dir_.path()),
@@ -459,7 +459,7 @@ class ScopedTestConfig_t {
 
     // Each extra repeats its own section header. The INI parser simply
     // switches the current section, so grouping is unnecessary.
-    for (const Entry_t& entry : description.extras) {
+    for (const Entry& entry : description.extras) {
       out << "\n[" << entry.section << "]\n"
           << entry.key << " = " << entry.value << "\n";
     }
@@ -470,10 +470,10 @@ class ScopedTestConfig_t {
     }
   }
 
-  ScopedTestConfig_t(const ScopedTestConfig_t&) = delete;
-  auto operator=(const ScopedTestConfig_t&) -> ScopedTestConfig_t& = delete;
-  ScopedTestConfig_t(ScopedTestConfig_t&&) = delete;
-  auto operator=(ScopedTestConfig_t&&) -> ScopedTestConfig_t& = delete;
+  ScopedTestConfig(const ScopedTestConfig&) = delete;
+  auto operator=(const ScopedTestConfig&) -> ScopedTestConfig& = delete;
+  ScopedTestConfig(ScopedTestConfig&&) = delete;
+  auto operator=(ScopedTestConfig&&) -> ScopedTestConfig& = delete;
 
   auto path() const -> const std::string& { return path_; }
   auto c_str() const -> const char* { return path_.c_str(); }
@@ -483,11 +483,11 @@ class ScopedTestConfig_t {
   auto load() const -> bool { return load_configuration_file(path_); }
 
  private:
-  ScopedTempDir_t dir_;
+  ScopedTempDir dir_;
   std::string path_;
-  ScopedEnvVar_t config_home_;
-  ScopedEnvVar_t data_home_;
-  ScopedEnvVar_t config_dirs_;
+  ScopedEnvVar config_home_;
+  ScopedEnvVar data_home_;
+  ScopedEnvVar config_dirs_;
 };
 
 }  // namespace TestFixtures

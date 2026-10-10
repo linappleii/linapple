@@ -15,24 +15,24 @@
 
 namespace {
 
-struct Slot0Fixture_t {
+struct Slot0Fixture {
   int32_t slot;
 };
 
-auto fixture_init(int slot, HostInterface_t* host) -> void* {
+auto fixture_init(int slot, HostInterface* host) -> void* {
   (void)host;
-  std::unique_ptr<Slot0Fixture_t> device(new Slot0Fixture_t());
+  std::unique_ptr<Slot0Fixture> device(new Slot0Fixture());
   device->slot = static_cast<int32_t>(slot);
   return device.release();
 }
 
 auto fixture_shutdown(void* instance) -> void {
-  std::unique_ptr<Slot0Fixture_t> reclaimed(
-      static_cast<Slot0Fixture_t*>(instance));
+  std::unique_ptr<Slot0Fixture> reclaimed(
+      static_cast<Slot0Fixture*>(instance));
 }
 
 auto fixture_query(void* instance, uint32_t cmd_id, void* out, size_t* out_size)
-    -> PeripheralStatus_t {
+    -> PeripheralStatus {
   if (cmd_id != slot0_fixture_query_slot) {
     return peripheral_incompatible;
   }
@@ -47,12 +47,12 @@ auto fixture_query(void* instance, uint32_t cmd_id, void* out, size_t* out_size)
   if (*out_size < required) {
     return peripheral_error;
   }
-  *static_cast<int32_t*>(out) = static_cast<Slot0Fixture_t*>(instance)->slot;
+  *static_cast<int32_t*>(out) = static_cast<Slot0Fixture*>(instance)->slot;
   *out_size = required;
   return peripheral_ok;
 }
 
-const Peripheral_t g_slot0_fixture_peripheral = {
+const Peripheral slot0_fixture_peripheral = {
     LINAPPLE_ABI_VERSION,
     SLOT0_FIXTURE_ID,
     SLOT0_FIXTURE_NAME,
@@ -74,4 +74,4 @@ const Peripheral_t g_slot0_fixture_peripheral = {
 
 }  // namespace
 
-PERIPHERAL_REGISTER(g_slot0_fixture_peripheral)
+PERIPHERAL_REGISTER(slot0_fixture_peripheral)

@@ -17,24 +17,24 @@ enum { MOUSE_STATE_VERSION = 1 };
 // Id 0x0000 carried an absolute host position and range; retired, never reused.
 typedef enum {
   mouse_cmd_set_button = PERIPHERAL_SUBSYSTEM_MOUSE |
-      0x0001, /**< data: MouseButtonPayload_t */
+      0x0001, /**< data: MouseButtonPayload */
   mouse_cmd_move = PERIPHERAL_SUBSYSTEM_MOUSE |
-      0x0002, /**< data: MouseMovePayload_t */
-} MouseCmd_t;
+      0x0002, /**< data: MouseMovePayload */
+} MouseCmd;
 
 typedef enum {
   mouse_query_is_active = PERIPHERAL_SUBSYSTEM_MOUSE |
       0x0001, /**< out: uint8_t (0=inactive, 1=active) */
   mouse_query_position = PERIPHERAL_SUBSYSTEM_MOUSE |
-      0x0002, /**< out: MousePositionReport_t */
-} MouseQuery_t;
+      0x0002, /**< out: MousePositionReport */
+} MouseQuery;
 
 // Counts of the mouse's quadrature, about 0.020 inch a step (AppleMouse II
 // User's Manual p. 45): X positive to the right, Y positive toward the user.
 typedef struct {
   int32_t dx;
   int32_t dy;
-} MouseMovePayload_t;
+} MouseMovePayload;
 
 // The counters and clamp window as the card holds them, and whether SETMOUSE
 // has motion on (mode bit 0): a host that places the pointer rather than moves
@@ -48,7 +48,7 @@ typedef struct {
   int32_t max_y;
   uint8_t tracking; /**< 0 off, 1 on */
   uint8_t padding[3];
-} MousePositionReport_t;
+} MousePositionReport;
 
 // The card has one button (schematic 050-0101-A: SW on J1-4 to the 6805's
 // PB7); button 1 is accepted and ignored.
@@ -56,7 +56,7 @@ typedef struct {
   uint8_t button; /**< 0 or 1 */
   uint8_t down;   /**< 0 released, 1 pressed */
   uint8_t padding[2];
-} MouseButtonPayload_t;
+} MouseButtonPayload;
 
 // Every field keeps its offset: the frame has ridden the slot trailer and the
 // slot-4 fixed region of every .aws written with the card. Positions and clamps
@@ -106,7 +106,7 @@ typedef struct {
   uint8_t reserved5;
   uint8_t buffer[8];
   uint8_t padding[3];
-} MouseSaveState_t;
+} MouseSaveState;
 
 #ifdef __cplusplus
 }

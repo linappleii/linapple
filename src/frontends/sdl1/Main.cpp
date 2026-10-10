@@ -26,9 +26,9 @@
 
 namespace {
 
-bool g_ds_available = false;
-std::string g_audio_dump_file;
-AudioDumper g_audio_dumper;
+bool ds_available = false;
+std::string audio_dump_file;
+AudioDumper audio_dumper;
 
 auto SDLCALL sdl1_audio_callback(void* userdata, Uint8* stream, int len)
     -> void {
@@ -41,8 +41,8 @@ auto SDLCALL sdl1_audio_callback(void* userdata, Uint8* stream, int len)
   int num_samples = len / (static_cast<int>(sizeof(int16_t)));
   audio_mixer_get_samples(temp_buf, static_cast<size_t>(num_samples));
 
-  if (audio_dumper_is_active(&g_audio_dumper)) {
-    audio_dumper_put_samples(&g_audio_dumper, temp_buf,
+  if (audio_dumper_is_active(&audio_dumper)) {
+    audio_dumper_put_samples(&audio_dumper, temp_buf,
                              static_cast<uint32_t>(num_samples));
   }
 }
@@ -50,7 +50,7 @@ auto SDLCALL sdl1_audio_callback(void* userdata, Uint8* stream, int len)
 }  // namespace
 
 auto ds_init() -> bool {
-  if (g_ds_available) {
+  if (ds_available) {
     return true;
   }
 
@@ -77,19 +77,19 @@ auto ds_init() -> bool {
 
   const auto device_rate_hz = static_cast<uint32_t>(obtained.freq);
 
-  if (!g_audio_dump_file.empty()) {
-    audio_dumper_initialize(&g_audio_dumper, g_audio_dump_file.c_str(),
+  if (!audio_dump_file.empty()) {
+    audio_dumper_initialize(&audio_dumper, audio_dump_file.c_str(),
                             device_rate_hz, 2);
   }
 
   SDL_PauseAudio(0);
-  g_ds_available = true;
+  ds_available = true;
 
   audio_mixer_initialize(device_rate_hz);
 
   linapple_set_audio_source_register_callback(
       [](int slot, const char* peripheral_id,
-         const PeripheralAudioInfo_t* info) -> void {
+         const PeripheralAudioInfo* info) -> void {
         audio_mixer_register_source(slot, peripheral_id, info);
       });
 
@@ -111,16 +111,16 @@ auto ds_shutdown() -> void {
   linapple_set_audio_source_register_callback(nullptr);
   linapple_set_audio_source_unregister_callback(nullptr);
 
-  if (g_ds_available) {
+  if (ds_available) {
     SDL_PauseAudio(1);
     SDL_CloseAudio();
-    g_ds_available = false;
+    ds_available = false;
   }
 
   audio_mixer_destroy();
 
-  if (audio_dumper_is_active(&g_audio_dumper)) {
-    audio_dumper_finalize(&g_audio_dumper);
+  if (audio_dumper_is_active(&audio_dumper)) {
+    audio_dumper_finalize(&audio_dumper);
   }
 }
 
@@ -171,7 +171,7 @@ auto main(int argc, char** argv) -> int {
   // Store the audio dump file name explicitly since AppConfig only holds it
   // in a buffer and ds_init needs it later.
   if (config.audio_dump_path.at(0) != '\0') {
-    g_audio_dump_file = config.audio_dump_path.data();
+    audio_dump_file = config.audio_dump_path.data();
   }
 
   if (sys_init() != 0) {

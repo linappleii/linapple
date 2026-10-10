@@ -71,7 +71,7 @@ static auto lowest_configured_printer_slot() -> int {
     if (name.empty() || name == "None") {
       continue;
     }
-    const Peripheral_t* card = peripheral_find_internal(name.c_str());
+    const Peripheral* card = peripheral_find_internal(name.c_str());
     if (card != nullptr && std::strcmp(card->id, "linapple.printer") == 0) {
       return slot;
     }
@@ -230,7 +230,7 @@ static auto autoload_startup_disks(const AppConfig* config) -> void {
     return;
   }
 
-  DiskInsertCmd_t cmd{};
+  DiskInsertCmd cmd{};
   cmd.drive = disk_drive_0;
   util_safe_strcpy(cmd.path, disk1.c_str(), disk_insert_path_max);
   cmd.write_protected = 0;
@@ -241,7 +241,7 @@ static auto autoload_startup_disks(const AppConfig* config) -> void {
        config_load_string("Configuration", cfg_disk_image2, &disk2) ||
        config_load_string("Preferences", cfg_disk_image2, &disk2)) &&
       (!disk2.empty())) {
-    DiskInsertCmd_t cmd2{};
+    DiskInsertCmd cmd2{};
     cmd2.drive = disk_drive_1;
     util_safe_strcpy(cmd2.path, disk2.c_str(), disk_insert_path_max);
     cmd2.write_protected = 0;
@@ -286,12 +286,12 @@ auto app_controller_initialize(AppConfig* config) -> int {
   apply_screen_factor();
 
   if (config->is_pal) {
-    g_videotype = VT_COLOR_TVEMU;
+    videotype = VT_COLOR_TVEMU;
     system_state.video_scanner_ntsc = false;
     system_state.clks_per_frame = clks_per_frame_pal;
     current_clk_6502 = clock_6502_pal;
   } else {
-    g_videotype = VT_COLOR_STANDARD;
+    videotype = VT_COLOR_STANDARD;
     system_state.video_scanner_ntsc = true;
     system_state.clks_per_frame = clks_per_frame_ntsc;
     current_clk_6502 = clock_6502_ntsc;
@@ -399,7 +399,7 @@ auto app_controller_handle_diagnostic_commands(const AppConfig* config)
   }
 
   if (config->hardware_info_name.at(0) != '\0') {
-    const Peripheral_t* card =
+    const Peripheral* card =
         peripheral_find_internal(config->hardware_info_name.data());
     if (card == nullptr) {
       fprintf(stderr, "error: Unknown hardware '%s'\n",
@@ -459,7 +459,7 @@ static auto load_initial_disk(int drive, const char* path) -> void {
     return;
   }
 
-  DiskInsertCmd_t cmd{};
+  DiskInsertCmd cmd{};
   cmd.drive = static_cast<uint8_t>(drive);
   util_safe_strcpy(&cmd.path[0], actual_path.c_str(), disk_insert_path_max);
   if (peripheral_command(disk_default_slot, disk_cmd_insert, &cmd,
@@ -562,7 +562,7 @@ auto app_controller_save_disk_config(int drive) -> void {
   // that is what the configuration records, including empty after a failure.
   peripheral_manager_think(0);
 
-  DiskStatus_t status{};
+  DiskStatus status{};
   size_t size = sizeof(status);
   if (peripheral_query(disk_default_slot, disk_query_status, &status, &size) !=
       peripheral_ok) {
@@ -582,7 +582,7 @@ auto app_controller_save_harddisk_config(int drive) -> void {
 
   peripheral_manager_think(0);
 
-  HarddiskStatus_t status{};
+  HarddiskStatus status{};
   size_t size = sizeof(status);
   if (peripheral_query(harddisk_frontend_slot(), harddisk_query_status, &status,
                        &size) != peripheral_ok) {

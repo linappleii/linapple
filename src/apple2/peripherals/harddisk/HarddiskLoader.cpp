@@ -27,41 +27,41 @@ namespace {
 // A driver may register itself during static initialisation, so the registry
 // has to come into existence on first use rather than wait its turn in an
 // initialisation order it cannot see.
-auto registry() -> std::vector<const HarddiskFormatDriver_t*>& {
-  static std::vector<const HarddiskFormatDriver_t*> drivers;
+auto registry() -> std::vector<const HarddiskFormatDriver*>& {
+  static std::vector<const HarddiskFormatDriver*> drivers;
   return drivers;
 }
 
 // A driver compiled into the binary outlives any registry a test builds, so it
 // is remembered separately and handed back by harddisk_loader_reset.
-auto permanent_registry() -> std::vector<const HarddiskFormatDriver_t*>& {
-  static std::vector<const HarddiskFormatDriver_t*> drivers;
+auto permanent_registry() -> std::vector<const HarddiskFormatDriver*>& {
+  static std::vector<const HarddiskFormatDriver*> drivers;
   return drivers;
 }
 
-struct DriverNote_t {
+struct DriverNote {
   std::string subject;
   std::string text;
 };
 
 // Registration happens during static initialisation, with no host to tell, so
 // a refusal waits here for a caller that has somewhere to put it.
-auto notes() -> std::vector<DriverNote_t>& {
-  static std::vector<DriverNote_t> pending;
+auto notes() -> std::vector<DriverNote>& {
+  static std::vector<DriverNote> pending;
   return pending;
 }
 
-auto driver_label(const HarddiskFormatDriver_t* driver) -> const char* {
+auto driver_label(const HarddiskFormatDriver* driver) -> const char* {
   return (driver != nullptr && driver->name != nullptr) ? driver->name
                                                         : "<unnamed>";
 }
 
-auto refuse(const HarddiskFormatDriver_t* driver, const char* reason) -> bool {
-  notes().push_back(DriverNote_t{driver_label(driver), reason});
+auto refuse(const HarddiskFormatDriver* driver, const char* reason) -> bool {
+  notes().push_back(DriverNote{driver_label(driver), reason});
   return false;
 }
 
-auto driver_is_usable(const HarddiskFormatDriver_t* driver) -> bool {
+auto driver_is_usable(const HarddiskFormatDriver* driver) -> bool {
   if (driver == nullptr) {
     return refuse(driver, "null driver");
   }
@@ -86,14 +86,14 @@ auto driver_is_usable(const HarddiskFormatDriver_t* driver) -> bool {
   return true;
 }
 
-auto already_registered(const HarddiskFormatDriver_t* driver) -> bool {
+auto already_registered(const HarddiskFormatDriver* driver) -> bool {
   return std::find(registry().begin(), registry().end(), driver) !=
          registry().end();
 }
 
 // The name is what settles an ambiguous image and what a note names, so two
 // drivers answering to one name would leave one of them unreachable.
-auto name_is_taken(const HarddiskFormatDriver_t* driver) -> bool {
+auto name_is_taken(const HarddiskFormatDriver* driver) -> bool {
   for (const auto* registered : registry()) {
     if (strcmp(driver_label(registered), driver_label(driver)) == 0) {
       return true;
@@ -102,7 +102,7 @@ auto name_is_taken(const HarddiskFormatDriver_t* driver) -> bool {
   return false;
 }
 
-auto admit(const HarddiskFormatDriver_t* driver) -> bool {
+auto admit(const HarddiskFormatDriver* driver) -> bool {
   if (!driver_is_usable(driver) || already_registered(driver)) {
     return false;
   }
@@ -116,11 +116,11 @@ auto admit(const HarddiskFormatDriver_t* driver) -> bool {
 // "possible", so the order drivers sit in decides which one opens an ambiguous
 // image. Link order is not an answer a user can reason about; alphabetical by
 // name is.
-auto insert_by_name(std::vector<const HarddiskFormatDriver_t*>& drivers,
-                    const HarddiskFormatDriver_t* driver) -> void {
+auto insert_by_name(std::vector<const HarddiskFormatDriver*>& drivers,
+                    const HarddiskFormatDriver* driver) -> void {
   const auto at = std::upper_bound(
       drivers.begin(), drivers.end(), driver,
-      [](const HarddiskFormatDriver_t* lhs, const HarddiskFormatDriver_t* rhs)
+      [](const HarddiskFormatDriver* lhs, const HarddiskFormatDriver* rhs)
           -> bool { return strcmp(driver_label(lhs), driver_label(rhs)) < 0; });
   drivers.insert(at, driver);
 }
@@ -162,24 +162,24 @@ auto container_error_to_harddisk_error(ImageContainerError error)
 // The temporary an archive was unwrapped into is unlinked the moment the open
 // returns, whatever happened; the driver's handle keeps the inode alive, and
 // nothing written to it would outlive the session anyway.
-struct TemporaryFile_t {
+struct TemporaryFile {
   char path[path_max_len] = {};
-  explicit TemporaryFile_t(const char* p) {
+  explicit TemporaryFile(const char* p) {
     if (p != nullptr) {
       util_safe_strcpy(path, p, path_max_len);
     } else {
       path[0] = '\0';
     }
   }
-  ~TemporaryFile_t() {
+  ~TemporaryFile() {
     if (path[0] != '\0') {
       unlink(path);
     }
   }
-  TemporaryFile_t(const TemporaryFile_t&) = delete;
-  auto operator=(const TemporaryFile_t&) -> TemporaryFile_t& = delete;
-  TemporaryFile_t(TemporaryFile_t&&) = delete;
-  auto operator=(TemporaryFile_t&&) -> TemporaryFile_t& = delete;
+  TemporaryFile(const TemporaryFile&) = delete;
+  auto operator=(const TemporaryFile&) -> TemporaryFile& = delete;
+  TemporaryFile(TemporaryFile&&) = delete;
+  auto operator=(TemporaryFile&&) -> TemporaryFile& = delete;
 };
 
 auto extension_hint(const char* payload_name, char* ext_hint, size_t size)
@@ -197,8 +197,8 @@ auto extension_hint(const char* payload_name, char* ext_hint, size_t size)
 
 auto find_best_driver(const uint8_t* header_ptr, size_t header_size,
                       uint64_t file_size, const char* ext_hint)
-    -> const HarddiskFormatDriver_t* {
-  const HarddiskFormatDriver_t* possible_driver = nullptr;
+    -> const HarddiskFormatDriver* {
+  const HarddiskFormatDriver* possible_driver = nullptr;
   for (const auto* driver : registry()) {
     const HarddiskProbe result =
         driver->probe(header_ptr, header_size, file_size, ext_hint);
@@ -212,7 +212,7 @@ auto find_best_driver(const uint8_t* header_ptr, size_t header_size,
   return possible_driver;
 }
 
-auto driver_lists_extension(const HarddiskFormatDriver_t* driver,
+auto driver_lists_extension(const HarddiskFormatDriver* driver,
                             const char* ext_hint) -> bool {
   if (driver->supported_exts == nullptr || ext_hint[0] != '.') {
     return false;
@@ -230,7 +230,7 @@ auto driver_lists_extension(const HarddiskFormatDriver_t* driver,
 // name is served as its contents say, and the user is told the name that
 // would say the same, since a later tool going by the name alone would read
 // it wrongly.
-auto note_name_overridden(const HarddiskFormatDriver_t* chosen,
+auto note_name_overridden(const HarddiskFormatDriver* chosen,
                           const char* payload_name, const char* ext_hint)
     -> void {
   if (ext_hint[0] == '\0' || driver_lists_extension(chosen, ext_hint)) {
@@ -260,14 +260,14 @@ auto note_name_overridden(const HarddiskFormatDriver_t* chosen,
 
 }  // namespace
 
-auto harddisk_loader_register(const HarddiskFormatDriver_t* driver) -> void {
+auto harddisk_loader_register(const HarddiskFormatDriver* driver) -> void {
   if (!admit(driver)) {
     return;
   }
   insert_by_name(registry(), driver);
 }
 
-auto harddisk_loader_register_permanent(const HarddiskFormatDriver_t* driver)
+auto harddisk_loader_register_permanent(const HarddiskFormatDriver* driver)
     -> void {
   if (!admit(driver)) {
     return;
@@ -281,7 +281,7 @@ auto harddisk_loader_reset(void) -> void {
   notes().clear();
 }
 
-auto harddisk_loader_drain_rejections(HarddiskDriverRejectionFn_t sink,
+auto harddisk_loader_drain_rejections(HarddiskDriverRejectionFn sink,
                                       void* context) -> void {
   if (sink != nullptr) {
     for (const auto& note : notes()) {
@@ -295,11 +295,11 @@ auto harddisk_loader_note(const char* subject, const char* text) -> void {
   if (subject == nullptr || text == nullptr) {
     return;
   }
-  notes().push_back(DriverNote_t{subject, text});
+  notes().push_back(DriverNote{subject, text});
 }
 
 auto harddisk_loader_open(const char* image_path,
-                          const HarddiskFormatDriver_t** out_driver,
+                          const HarddiskFormatDriver** out_driver,
                           void** out_instance) -> HarddiskError {
   if (out_driver != nullptr) {
     *out_driver = nullptr;
@@ -322,7 +322,7 @@ auto harddisk_loader_open(const char* image_path,
     return container_error_to_harddisk_error(prepared);
   }
 
-  TemporaryFile_t temporary(is_temporary ? load_path : nullptr);
+  TemporaryFile temporary(is_temporary ? load_path : nullptr);
 
   FilePtr image_file{fopen(load_path, "rb"), fclose};
   if (image_file == nullptr) {
@@ -387,7 +387,7 @@ auto harddisk_loader_driver_count(void) -> uint32_t {
 }
 
 auto harddisk_loader_driver_at(uint32_t index)
-    -> const HarddiskFormatDriver_t* {
+    -> const HarddiskFormatDriver* {
   if (index >= registry().size()) {
     return nullptr;
   }

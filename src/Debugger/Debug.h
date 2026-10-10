@@ -12,23 +12,23 @@
 #include "core/Util_Path.h"
 
 // Globals
-extern bool g_debugger_eat_key;
-extern uint16_t g_break_memory_address;
-extern int g_command;
-extern std::vector<Command_t> g_sorted_commands;
+extern bool debugger_eat_key;
+extern uint16_t break_memory_address;
+extern int command;
+extern std::vector<Command> sorted_commands;
 
 // Benchmarking
 extern uint32_t extbench;
-extern bool g_benchmarking;
+extern bool benchmarking;
 
 // Profile
-extern bool g_profiling;
-extern ProfileOpcode_t g_profile_opcodes[NUM_OPCODES];
-extern ProfileOpmode_t g_profile_opmodes[NUM_OPMODES];
-extern uint64_t g_profile_begin_cycles;
-extern const char* const g_file_name_profile;
-extern int g_profile_line_count;
-extern char g_profile_line[NUM_PROFILE_LINES][CONSOLE_WIDTH];
+extern bool profiling;
+extern ProfileOpcode profile_opcodes[NUM_OPCODES];
+extern ProfileOpmode profile_opmodes[NUM_OPMODES];
+extern uint64_t profile_begin_cycles;
+extern const char* const file_name_profile;
+extern int profile_line_count;
+extern char profile_line[NUM_PROFILE_LINES][CONSOLE_WIDTH];
 
 auto ProfileReset() -> void;
 auto ProfileSave() -> bool;
@@ -40,11 +40,11 @@ auto ProfileLineReset() -> void;
 auto DisasmCalcTopBotAddress() -> void;
 
 // Window
-extern int g_console_display_lines;
-extern bool g_console_full_width;
-extern int g_console_display_width;
-extern int g_disasm_win_height;
-extern int g_disasm_cur_line;
+extern int console_display_lines;
+extern bool console_full_width;
+extern int console_display_width;
+extern int disasm_win_height;
+extern int disasm_cur_line;
 
 auto WindowUpdateDisasmSize() -> void;
 auto WindowUpdateConsoleDisplayedSize() -> void;
@@ -53,26 +53,26 @@ auto WindowGetHeight(int iWindow) -> int;
 
 auto FormatChar4Font(uint8_t b, bool* pWasHi_, bool* pWasLo_) -> char;
 
-extern int g_debug_steps;
-extern uint32_t g_debug_step_cycles;
-extern int g_debug_step_start;
-extern int g_debug_step_until;
-extern int g_debug_skip_start;
-extern int g_debug_skip_len;
+extern int debug_steps;
+extern uint32_t debug_step_cycles;
+extern int debug_step_start;
+extern int debug_step_until;
+extern int debug_skip_start;
+extern int debug_skip_len;
 
-extern bool g_debug_full_speed;
-extern bool g_last_go_cmd_was_full_speed;
-extern bool g_go_cmd_reinit_flag;
+extern bool debug_full_speed;
+extern bool last_go_cmd_was_full_speed;
+extern bool go_cmd_reinit_flag;
 
-extern FilePtr g_trace_file;
-extern bool g_trace_header;
-extern bool g_trace_file_with_video_scanner;
-extern char g_file_name_trace[];
+extern FilePtr trace_file;
+extern bool trace_header;
+extern bool trace_file_with_video_scanner;
+extern char file_name_trace[];
 
 // Bookmarks
 
 // Breakpoints
-enum BreakpointHit_t : uint8_t {
+enum BreakpointHit : uint8_t {
   BP_HIT_NONE = 0,
   BP_HIT_INVALID = (1 << 0),
   BP_HIT_OPCODE = (1 << 1),
@@ -82,79 +82,79 @@ enum BreakpointHit_t : uint8_t {
   BP_HIT_MEMW = (1 << 5),
   BP_HIT_PC_READ_FLOATING_BUS_OR_IO_MEM = (1 << 6),
 };
-extern int g_debug_break_on_opcode;
+extern int debug_break_on_opcode;
 
 // Commands
 
-extern Command_t g_commands[];
-extern Command_t g_parameters[];
+extern Command commands[];
+extern Command parameters[];
 extern const int NUM_COMMANDS_WITH_ALIASES;
 
 class commands_functor_compare {
  public:
-  auto operator()(const Command_t& rLHS, const Command_t& rRHS) const -> bool {
+  auto operator()(const Command& rLHS, const Command& rRHS) const -> bool {
     // return true if lhs<rhs
     return (strcmp(rLHS.name, rRHS.name) <= 0);
   }
 };
 
 // Config - FileName
-extern const char* const g_file_name_config;
+extern const char* const file_name_config;
 
 // Cursor
-extern uint16_t g_disasm_top_address;
-extern uint16_t g_disasm_bot_address;
-extern uint16_t g_disasm_cur_address;
+extern uint16_t disasm_top_address;
+extern uint16_t disasm_bot_address;
+extern uint16_t disasm_cur_address;
 
-extern bool g_disasm_cur_bad;
+extern bool disasm_cur_bad;
 // Aligned to Top or Center
-extern int g_disasm_cur_state;
+extern int disasm_cur_state;
 
 extern const int WINDOW_DATA_BYTES_PER_LINE;
 
 // Config - Disassembly
-extern bool g_config_disasm_address_view;
-extern int g_config_disasm_click;  // GH#462
-extern bool g_config_disasm_address_colon;
-extern bool g_config_disasm_opcodes_view;
-extern bool g_config_disasm_opcode_spaces;
-extern int g_config_disasm_targets;
-extern int g_config_disasm_branch_type;
-extern int g_config_disasm_immediate_char;
+extern bool config_disasm_address_view;
+extern int config_disasm_click;  // GH#462
+extern bool config_disasm_address_colon;
+extern bool config_disasm_opcodes_view;
+extern bool config_disasm_opcode_spaces;
+extern int config_disasm_targets;
+extern int config_disasm_branch_type;
+extern int config_disasm_immediate_char;
 
 // Config - info
-extern bool g_config_info_target_pointer;
+extern bool config_info_target_pointer;
 
 // Font
-extern int g_font_height;
-extern int g_font_spacing;
+extern int font_height;
+extern int font_spacing;
 
 // Memory
 
 // Source Level Debugging
-extern std::string g_source_file_name;
-extern MemoryTextFile_t g_assembler_source_buffer;
+extern std::string source_file_name;
+extern MemoryTextFile assembler_source_buffer;
 
-extern int g_source_display_start;
-extern int g_source_assemble_bytes;
-extern int g_source_assembly_symbols;
+extern int source_display_start;
+extern int source_assemble_bytes;
+extern int source_assembly_symbols;
 
 // Version
 extern const int DEBUGGER_VERSION;
 
 // Watches
-extern int g_watches_count;
-extern Watches_t g_watches[MAX_WATCHES];
+extern int watches_count;
+extern Watches watches[MAX_WATCHES];
 
 // Window
-extern int g_window_last;
-extern int g_window_this;
-extern WindowSplit_t g_window_config[NUM_WINDOWS];
+extern int window_last;
+extern int window_this;
+extern WindowConfig window_config[NUM_WINDOWS];
 
 // Zero Page
-extern int g_zero_page_pointers_count;
-extern ZeroPagePointers_t
-    g_zero_page_pointers[MAX_ZEROPAGE_POINTERS];  // TODO: use vector<> ?
+extern int zero_page_pointers_count;
+extern ZeroPagePointers
+    zero_page_pointers[MAX_ZEROPAGE_POINTERS];  // TODO: use vector<> ?
 
 // Prototypes
 
@@ -235,9 +235,9 @@ class DebugVideoMode  // NB. Implemented as a singleton
   static DebugVideoMode instance_;
 };
 
-auto DebuggerProcessCommand(bool bEchoConsoleInput) -> Update_t;
+auto DebuggerProcessCommand(bool bEchoConsoleInput) -> UpdateResult;
 
-auto UpdateDisplay(Update_t bUpdate) -> void;
+auto UpdateDisplay(UpdateResult bUpdate) -> void;
 
 // Prototypes
 
@@ -265,12 +265,12 @@ auto debug_end() -> void;
 auto debug_initialize() -> void;
 
 // Cursor/Input
-extern bool g_input_cursor_visible;
-extern int g_input_cursor_index;
-extern const char g_input_cursor[];
-extern bool g_console_input_quoted;
-extern int g_console_input_skip;
-extern bool g_ignore_next_key;
+extern bool input_cursor_visible;
+extern int input_cursor_index;
+extern const char input_cursor[];
+extern bool console_input_quoted;
+extern int console_input_skip;
+extern bool ignore_next_key;
 
 auto DebuggerUpdate() -> void;
 auto DebuggerCursorUpdate() -> void;

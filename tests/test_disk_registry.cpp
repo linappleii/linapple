@@ -50,8 +50,8 @@ auto fake_read_track_bits(void* /*unused*/, uint32_t /*unused*/,
 
 auto make_fake(const char* name, DiskProbe (*probe)(const uint8_t*, size_t,
                                                       uint32_t, const char*))
-    -> DiskFormatDriver_t {
-  DiskFormatDriver_t driver{};
+    -> DiskFormatDriver {
+  DiskFormatDriver driver{};
   driver.abi_version = disk_format_abi_version;
   driver.name = name;
   driver.probe = probe;
@@ -62,10 +62,10 @@ auto make_fake(const char* name, DiskProbe (*probe)(const uint8_t*, size_t,
   return driver;
 }
 
-struct ScopedRandomFile_t {
+struct ScopedRandomFile {
   char path[64] = "/tmp/linapple_registry_XXXXXX";
 
-  ScopedRandomFile_t() {
+  ScopedRandomFile() {
     const int fd = mkstemp(path);
     if (fd >= 0) {
       // An odd length no real driver recognises, so only the fakes answer.
@@ -75,12 +75,12 @@ struct ScopedRandomFile_t {
       close(fd);
     }
   }
-  ~ScopedRandomFile_t() { unlink(path); }
+  ~ScopedRandomFile() { unlink(path); }
 
-  ScopedRandomFile_t(const ScopedRandomFile_t&) = delete;
-  auto operator=(const ScopedRandomFile_t&) -> ScopedRandomFile_t& = delete;
-  ScopedRandomFile_t(ScopedRandomFile_t&&) = delete;
-  auto operator=(ScopedRandomFile_t&&) -> ScopedRandomFile_t& = delete;
+  ScopedRandomFile(const ScopedRandomFile&) = delete;
+  auto operator=(const ScopedRandomFile&) -> ScopedRandomFile& = delete;
+  ScopedRandomFile(ScopedRandomFile&&) = delete;
+  auto operator=(ScopedRandomFile&&) -> ScopedRandomFile& = delete;
 };
 
 auto count_rejections(std::vector<std::string>* names) -> void {
@@ -103,7 +103,7 @@ TEST_CASE("DiskRegistry: the same driver registers once") {
   disk_loader_reset();
   const uint32_t baseline = disk_loader_driver_count();
 
-  DiskFormatDriver_t fake = make_fake("Fake Once", probe_no);
+  DiskFormatDriver fake = make_fake("Fake Once", probe_no);
   disk_loader_register(&fake);
   disk_loader_register(&fake);
   disk_loader_register(&fake);
@@ -117,7 +117,7 @@ TEST_CASE("DiskRegistry: a foreign ABI is refused and reported") {
   disk_loader_reset();
   const uint32_t baseline = disk_loader_driver_count();
 
-  DiskFormatDriver_t fake = make_fake("Fake Future", probe_no);
+  DiskFormatDriver fake = make_fake("Fake Future", probe_no);
   fake.abi_version = disk_format_abi_version + 1;
   disk_loader_register(&fake);
 
@@ -132,10 +132,10 @@ TEST_CASE("DiskRegistry: a foreign ABI is refused and reported") {
 }
 
 TEST_CASE("DiskRegistry: an ambiguous image always resolves the same way") {
-  const ScopedRandomFile_t image;
+  const ScopedRandomFile image;
 
-  DiskFormatDriver_t first = make_fake("AAA Fake", probe_possible);
-  DiskFormatDriver_t second = make_fake("AAB Fake", probe_possible);
+  DiskFormatDriver first = make_fake("AAA Fake", probe_possible);
+  DiskFormatDriver second = make_fake("AAB Fake", probe_possible);
 
   for (int attempt = 0; attempt < 4; ++attempt) {
     disk_loader_reset();
@@ -143,7 +143,7 @@ TEST_CASE("DiskRegistry: an ambiguous image always resolves the same way") {
     disk_loader_register(&second);
     disk_loader_register(&first);
 
-    const DiskFormatDriver_t* chosen = nullptr;
+    const DiskFormatDriver* chosen = nullptr;
     void* instance = nullptr;
     CHECK(disk_loader_open(image.path, &chosen, &instance) == disk_err_none);
     CHECK(chosen == &first);
@@ -156,11 +156,11 @@ TEST_CASE("DiskRegistry: a driver missing read or protect is refused by name") {
   disk_loader_reset();
   const uint32_t baseline = disk_loader_driver_count();
 
-  DiskFormatDriver_t unreadable = make_fake("Fake Unreadable", probe_no);
+  DiskFormatDriver unreadable = make_fake("Fake Unreadable", probe_no);
   unreadable.read_track_bits = nullptr;
   disk_loader_register(&unreadable);
 
-  DiskFormatDriver_t unprotected = make_fake("Fake Unprotected", probe_no);
+  DiskFormatDriver unprotected = make_fake("Fake Unprotected", probe_no);
   unprotected.is_write_protected = nullptr;
   disk_loader_register(&unprotected);
 
@@ -179,7 +179,7 @@ TEST_CASE("DiskRegistry: a second driver with a registered name is refused") {
   disk_loader_reset();
   const uint32_t baseline = disk_loader_driver_count();
 
-  DiskFormatDriver_t impostor = make_fake("DOS Order", probe_no);
+  DiskFormatDriver impostor = make_fake("DOS Order", probe_no);
   disk_loader_register(&impostor);
 
   CHECK(disk_loader_driver_count() == baseline);
@@ -219,11 +219,11 @@ TEST_CASE("DiskRegistry: the create bit and the create entry must agree") {
   disk_loader_reset();
   const uint32_t baseline = disk_loader_driver_count();
 
-  DiskFormatDriver_t claims_without = make_fake("Fake Claims Create", probe_no);
+  DiskFormatDriver claims_without = make_fake("Fake Claims Create", probe_no);
   claims_without.capabilities = disk_driver_cap_create;
   disk_loader_register(&claims_without);
 
-  DiskFormatDriver_t creates_unclaimed =
+  DiskFormatDriver creates_unclaimed =
       make_fake("Fake Hidden Create", probe_no);
   creates_unclaimed.create = [](const char*) -> DiskError {
     return disk_err_none;

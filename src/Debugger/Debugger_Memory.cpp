@@ -26,19 +26,19 @@
 #include "core/Util_Text.h"
 
 // Globals
-MemoryDump_t g_mem_dump[NUM_MEM_DUMPS] = {
+MemoryDump mem_dump[NUM_MEM_DUMPS] = {
     {true, 0, DEV_MEMORY, MEM_VIEW_HEX},
     {false, 0, DEV_MEMORY, MEM_VIEW_HEX},
 };
 
 // Made global so operator @# can be used with other commands.
-MemorySearchResults_t g_memory_search_results;
+MemorySearchResults memory_search_results;
 
-auto CmdWindowViewCommon(int iNewWindow) -> Update_t;
+auto CmdWindowViewCommon(int iNewWindow) -> UpdateResult;
 
 // Internal helpers
-static auto CmdMemoryDump(int nArgs, int iWhich, int iView) -> Update_t;
-static auto CmdMemorySearch(int nArgs, bool bTextIsAscii) -> Update_t;
+static auto CmdMemoryDump(int nArgs, int iWhich, int iView) -> UpdateResult;
+static auto CmdMemorySearch(int nArgs, bool bTextIsAscii) -> UpdateResult;
 
 // Memory Functions
 // Memory
@@ -52,20 +52,20 @@ auto MemoryDumpCheck(int nArgs, uint16_t* pAddress_) -> bool {
     return false;
   }
 
-  Arg_t* pArg = &g_args[1];
+  Arg* pArg = &args[1];
   uint16_t address = pArg->nValue;
   bool bUpdate = false;
 
   pArg->eDevice = DEV_MEMORY;  // Default
 
-  if (strncmp(g_args[1].sArg, "SY", 2) == 0)  // Sy6522_t
+  if (strncmp(args[1].sArg, "SY", 2) == 0)  // Sy6522
   {
-    address = (g_args[1].sArg[2] - '0') & 3;
+    address = (args[1].sArg[2] - '0') & 3;
     pArg->eDevice = DEV_SY6522;
     bUpdate = true;
-  } else if (strncmp(g_args[1].sArg, "AY", 2) == 0)  // Ay8910_t
+  } else if (strncmp(args[1].sArg, "AY", 2) == 0)  // Ay8910
   {
-    address = (g_args[1].sArg[2] - '0') & 3;
+    address = (args[1].sArg[2] - '0') & 3;
     pArg->eDevice = DEV_AY8910;
     bUpdate = true;
   }
@@ -83,26 +83,26 @@ auto MemoryDumpCheck(int nArgs, uint16_t* pAddress_) -> bool {
 }
 
 //===========================================================================
-auto CmdMemoryCompare(int nArgs) -> Update_t {
+auto CmdMemoryCompare(int nArgs) -> UpdateResult {
   if (nArgs < 3) {
     return Help_Arg_1(CMD_MEMORY_COMPARE);
   }
 
-  uint16_t nSrcAddr = g_args[1].nValue;
-  uint16_t nDstAddr = g_args[3].nValue;
+  uint16_t nSrcAddr = args[1].nValue;
+  uint16_t nDstAddr = args[3].nValue;
 
   uint16_t nSrcSymAddr = 0;
   uint16_t nDstSymAddr = 0;
 
   if (nSrcAddr == 0U) {
-    nSrcSymAddr = GetAddressFromSymbol(g_args[1].sArg);
+    nSrcSymAddr = GetAddressFromSymbol(args[1].sArg);
     if (nSrcAddr != nSrcSymAddr) {
       nSrcAddr = nSrcSymAddr;
     }
   }
 
   if (nDstAddr == 0U) {
-    nDstSymAddr = GetAddressFromSymbol(g_args[3].sArg);
+    nDstSymAddr = GetAddressFromSymbol(args[3].sArg);
     if (nDstAddr != nDstSymAddr) {
       nDstAddr = nDstSymAddr;
     }
@@ -115,24 +115,24 @@ auto CmdMemoryCompare(int nArgs) -> Update_t {
 }
 
 //===========================================================================
-static auto CmdMemoryDump(int nArgs, int iWhich, int iView) -> Update_t {
+static auto CmdMemoryDump(int nArgs, int iWhich, int iView) -> UpdateResult {
   uint16_t address = 0;
 
   if (!MemoryDumpCheck(nArgs, &address)) {
-    return Help_Arg_1(g_command);
+    return Help_Arg_1(command);
   }
 
-  g_mem_dump[iWhich].address = address;
-  g_mem_dump[iWhich].eDevice = g_args[1].eDevice;
-  g_mem_dump[iWhich].bActive = true;
-  g_mem_dump[iWhich].eView = static_cast<MemoryView_e>(iView);
+  mem_dump[iWhich].address = address;
+  mem_dump[iWhich].eDevice = args[1].eDevice;
+  mem_dump[iWhich].bActive = true;
+  mem_dump[iWhich].eView = static_cast<MemoryView>(iView);
 
   if (iWhich == 0) {
-    g_disasm_cur_address = address;
+    disasm_cur_address = address;
   }
 
   // make sure data window is visible
-  if (g_window_this != WINDOW_DATA) {
+  if (window_this != WINDOW_DATA) {
     CmdWindowViewCommon(WINDOW_DATA);
   }
 
@@ -153,8 +153,8 @@ auto MemoryCheckMiniDump(int iWhich) -> bool {
 }
 
 //===========================================================================
-auto CmdMemoryMiniDumpHex(int nArgs) -> Update_t {
-  int iWhich = g_command - CMD_MEM_MINI_DUMP_HEX_1;
+auto CmdMemoryMiniDumpHex(int nArgs) -> UpdateResult {
+  int iWhich = command - CMD_MEM_MINI_DUMP_HEX_1;
   if (MemoryCheckMiniDump(iWhich)) {
     return UPDATE_CONSOLE_DISPLAY;
   }
@@ -163,8 +163,8 @@ auto CmdMemoryMiniDumpHex(int nArgs) -> Update_t {
 }
 
 //===========================================================================
-auto CmdMemoryMiniDumpAscii(int nArgs) -> Update_t {
-  int iWhich = g_command - CMD_MEM_MINI_DUMP_ASCII_1;
+auto CmdMemoryMiniDumpAscii(int nArgs) -> UpdateResult {
+  int iWhich = command - CMD_MEM_MINI_DUMP_ASCII_1;
   if (MemoryCheckMiniDump(iWhich)) {
     return UPDATE_CONSOLE_DISPLAY;
   }
@@ -173,8 +173,8 @@ auto CmdMemoryMiniDumpAscii(int nArgs) -> Update_t {
 }
 
 //===========================================================================
-auto CmdMemoryMiniDumpApple(int nArgs) -> Update_t {
-  int iWhich = g_command - CMD_MEM_MINI_DUMP_APPLE_1;
+auto CmdMemoryMiniDumpApple(int nArgs) -> UpdateResult {
+  int iWhich = command - CMD_MEM_MINI_DUMP_APPLE_1;
   if (MemoryCheckMiniDump(iWhich)) {
     return UPDATE_CONSOLE_DISPLAY;
   }
@@ -183,9 +183,9 @@ auto CmdMemoryMiniDumpApple(int nArgs) -> Update_t {
 }
 
 //===========================================================================
-// Update_t CmdMemoryMiniDumpLow (int nArgs)
+// UpdateResult CmdMemoryMiniDumpLow (int nArgs)
 //{
-//  int iWhich = g_command - CMD_MEM_MINI_DUMP_TXT_LO_1;
+//  int iWhich = command - CMD_MEM_MINI_DUMP_TXT_LO_1;
 //  if (MemoryCheckMiniDump( iWhich ))
 //    return UPDATE_CONSOLE_DISPLAY;
 //
@@ -193,9 +193,9 @@ auto CmdMemoryMiniDumpApple(int nArgs) -> Update_t {
 //}
 
 //===========================================================================
-// Update_t CmdMemoryMiniDumpHigh (int nArgs)
+// UpdateResult CmdMemoryMiniDumpHigh (int nArgs)
 //{
-//  int iWhich = g_command - CMD_MEM_MINI_DUMP_TXT_HI_1;
+//  int iWhich = command - CMD_MEM_MINI_DUMP_TXT_HI_1;
 //  if (MemoryCheckMiniDump( iWhich ))
 //    return UPDATE_CONSOLE_DISPLAY;
 //
@@ -203,24 +203,24 @@ auto CmdMemoryMiniDumpApple(int nArgs) -> Update_t {
 //}
 
 //===========================================================================
-auto CmdMemoryEdit(int nArgs) -> Update_t {
+auto CmdMemoryEdit(int nArgs) -> UpdateResult {
   (void)nArgs;
   return UPDATE_CONSOLE_DISPLAY;
 }
 
 // MEB addr 8_bit_value
 //===========================================================================
-auto CmdMemoryEnterByte(int nArgs) -> Update_t {
+auto CmdMemoryEnterByte(int nArgs) -> UpdateResult {
   if ((nArgs < 2) ||
-      ((g_args[2].sArg[0] != '0') &&
-       (g_args[2].nValue == 0U)))  // arg2 not numeric or not specified
+      ((args[2].sArg[0] != '0') &&
+       (args[2].nValue == 0U)))  // arg2 not numeric or not specified
   {
     Help_Arg_1(CMD_MEMORY_ENTER_WORD);
   }
 
-  uint16_t address = g_args[1].nValue;
+  uint16_t address = args[1].nValue;
   while (nArgs >= 2) {
-    uint16_t nData = g_args[nArgs].nValue;
+    uint16_t nData = args[nArgs].nValue;
     if (nData > 0xFF) {
       *(mem + address + nArgs - 2) = static_cast<uint8_t>(nData >> 0);
       *(mem + address + nArgs - 1) = static_cast<uint8_t>(nData >> 8);
@@ -236,17 +236,17 @@ auto CmdMemoryEnterByte(int nArgs) -> Update_t {
 
 // MEW addr 16-bit_vaue
 //===========================================================================
-auto CmdMemoryEnterWord(int nArgs) -> Update_t {
+auto CmdMemoryEnterWord(int nArgs) -> UpdateResult {
   if ((nArgs < 2) ||
-      ((g_args[2].sArg[0] != '0') &&
-       (g_args[2].nValue == 0U)))  // arg2 not numeric or not specified
+      ((args[2].sArg[0] != '0') &&
+       (args[2].nValue == 0U)))  // arg2 not numeric or not specified
   {
     Help_Arg_1(CMD_MEMORY_ENTER_WORD);
   }
 
-  uint16_t address = g_args[1].nValue;
+  uint16_t address = args[1].nValue;
   while (nArgs >= 2) {
-    uint16_t nData = g_args[nArgs].nValue;
+    uint16_t nData = args[nArgs].nValue;
 
     // Little Endian
     *(mem + address + nArgs - 2) = static_cast<uint8_t>(nData >> 0);
@@ -267,7 +267,7 @@ static auto MemMarkDirty(uint16_t nAddressStart, uint16_t nAddressEnd) -> void {
 }
 
 //===========================================================================
-auto CmdMemoryFill(int nArgs) -> Update_t {
+auto CmdMemoryFill(int nArgs) -> UpdateResult {
   // F address end value
   // F address,len value
   // F address:end value
@@ -282,14 +282,14 @@ auto CmdMemoryFill(int nArgs) -> Update_t {
   uint8_t nValue = 0;
 
   if (nArgs == 3) {
-    nAddressStart = g_args[1].nValue;
-    nAddressEnd = g_args[2].nValue;
+    nAddressStart = args[1].nValue;
+    nAddressEnd = args[2].nValue;
     nAddressLen = std::min(static_cast<int>(apple2_6502_mem_end),
                            nAddressEnd - nAddressStart + 1);
   } else {
-    RangeType_t eRange = Range_Get(nAddressStart, nAddress2, 1);
+    RangeType eRange = Range_Get(nAddressStart, nAddress2, 1);
 
-    RangeEndLen_t tEndLen = {nAddressEnd, nAddressLen};
+    RangeEndLen tEndLen = {nAddressEnd, nAddressLen};
     if (!Range_CalcEndLen(eRange, nAddressStart, nAddress2, tEndLen)) {
       nAddressEnd = tEndLen.nAddressEnd;
       nAddressLen = tEndLen.nAddressLen;
@@ -300,7 +300,7 @@ auto CmdMemoryFill(int nArgs) -> Update_t {
   if ((nAddressLen > 0) && (nAddressEnd <= apple2_6502_mem_end)) {
     MemMarkDirty(nAddressStart, nAddressEnd);
 
-    nValue = g_args[nArgs].nValue & 0xFF;
+    nValue = args[nArgs].nValue & 0xFF;
     while ((nAddressLen--) != 0)  // v2.7.0.22
     {
       // TODO: Optimize - split into pre_io, and post_io
@@ -314,11 +314,11 @@ auto CmdMemoryFill(int nArgs) -> Update_t {
   return UPDATE_ALL;  // UPDATE_CONSOLE_DISPLAY;
 }
 
-static std::string g_memory_load_save_file_name;
+static std::string memory_load_save_file_name;
 
 // "PWD"
 //===========================================================================
-auto CmdConfigGetDebugDir(int nArgs) -> Update_t {
+auto CmdConfigGetDebugDir(int nArgs) -> UpdateResult {
   if (nArgs != 0) {
     return Help_Arg_1(CMD_CONFIG_GET_DEBUG_DIR);
   }
@@ -332,7 +332,7 @@ auto CmdConfigGetDebugDir(int nArgs) -> Update_t {
 
 // "CD"
 //===========================================================================
-auto CmdConfigSetDebugDir(int nArgs) -> Update_t {
+auto CmdConfigSetDebugDir(int nArgs) -> UpdateResult {
   if (nArgs > 1) {
     return Help_Arg_1(CMD_CONFIG_SET_DEBUG_DIR);
   }
@@ -347,7 +347,7 @@ auto CmdConfigSetDebugDir(int nArgs) -> Update_t {
 }
 
 //===========================================================================
-auto CmdMemoryLoad(int nArgs) -> Update_t {
+auto CmdMemoryLoad(int nArgs) -> UpdateResult {
   // Active memory:
   // BLOAD ["Filename"] , addr[, len]
   // BLOAD ["Filename"] , addr[: end]
@@ -366,11 +366,11 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
 
   bool bHaveFileName = false;
 
-  if ((g_args[1].bType & TYPE_QUOTED_2) != 0) {
+  if ((args[1].bType & TYPE_QUOTED_2) != 0) {
     bHaveFileName = true;
   }
 
-  //  if (g_args[2].bType & TOKEN_QUOTE_DOUBLE)
+  //  if (args[2].bType & TOKEN_QUOTE_DOUBLE)
   //    bHaveFileName = true;
 
   int iArgComma1 = 2;
@@ -399,12 +399,12 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
   }
 
   if (nArgs >= 5) {
-    if (((g_args[iArgBank].bType & TYPE_ADDRESS) == 0) ||
-        g_args[iArgColon].eToken != TOKEN_COLON) {
+    if (((args[iArgBank].bType & TYPE_ADDRESS) == 0) ||
+        args[iArgColon].eToken != TOKEN_COLON) {
       return Help_Arg_1(CMD_MEMORY_LOAD);
     }
 
-    bank = g_args[iArgBank].nValue;
+    bank = args[iArgBank].nValue;
     bBankSpecified = true;
 
     iArgAddress += 2;
@@ -414,22 +414,22 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
     bBankSpecified = false;
   }
 
-  struct KnownFileType_t {
+  struct KnownFileType {
     const char* pExtension;
     int address;
     int nLength;
   };
 
-  const KnownFileType_t aFileTypes[] = {
+  const KnownFileType aFileTypes[] = {
       {"", 0, 0}  // n/a
       ,
       {".hgr", 0x2000, 0x2000},
       {".hgr2", 0x4000, 0x2000},  // TODO: extension ".dhgr", ".dhgr2"
   };
-  const int nFileTypes = sizeof(aFileTypes) / sizeof(KnownFileType_t);
-  const KnownFileType_t* pFileType = nullptr;
+  const int nFileTypes = sizeof(aFileTypes) / sizeof(KnownFileType);
+  const KnownFileType* pFileType = nullptr;
 
-  char* pFileName = g_args[1].sArg;
+  char* pFileName = args[1].sArg;
   int nLen = strlen(pFileName);
   char* pEnd = pFileName + nLen - 1;
   while (pEnd > pFileName) {
@@ -449,7 +449,7 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
     pEnd--;
   }
 
-  if ((!pFileType) && (g_args[iArgComma1].eToken != TOKEN_COMMA)) {
+  if ((!pFileType) && (args[iArgComma1].eToken != TOKEN_COMMA)) {
     return Help_Arg_1(CMD_MEMORY_LOAD);
   }
 
@@ -464,9 +464,9 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
     nAddressEnd = pFileType->nLength + nAddressLen;
   }
 
-  RangeType_t eRange = RANGE_MISSING_ARG_2;
+  RangeType eRange = RANGE_MISSING_ARG_2;
 
-  if (g_args[iArgComma1].eToken == TOKEN_COMMA) {
+  if (args[iArgComma1].eToken == TOKEN_COMMA) {
     eRange = Range_Get(nAddressStart, nAddress2, iArgAddress);
   }
 
@@ -476,7 +476,7 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
     }
 
     //    if (eRange == RANGE_MISSING_ARG_2)
-    RangeEndLen_t tEndLen = {nAddressEnd, nAddressLen};
+    RangeEndLen tEndLen = {nAddressEnd, nAddressLen};
     if (!Range_CalcEndLen(eRange, nAddressStart, nAddress2, tEndLen)) {
       nAddressEnd = tEndLen.nAddressEnd;
       nAddressLen = tEndLen.nAddressLen;
@@ -485,11 +485,11 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
   }
 
   if (bHaveFileName) {
-    g_memory_load_save_file_name = pFileName;
+    memory_load_save_file_name = pFileName;
   }
   const std::string sLoadSaveFilePath =
       std::string(system_state.current_dir.data()) +
-      g_memory_load_save_file_name;  // TODO: g_debug_dir
+      memory_load_save_file_name;  // TODO: debug_dir
 
   uint8_t* const pMemBankBase = bBankSpecified ? mem_get_bank_ptr(bank) : mem;
   if (!pMemBankBase) {
@@ -537,7 +537,7 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
 
     char sFile[path_max_len + 8];
     ConsoleBufferPushFormat(sFile,
-                            "File: ", g_memory_load_save_file_name.c_str());
+                            "File: ", memory_load_save_file_name.c_str());
   }
 
   return ConsoleUpdate();
@@ -545,7 +545,7 @@ auto CmdMemoryLoad(int nArgs) -> Update_t {
 
 // dst src : len
 //===========================================================================
-auto CmdMemoryMove(int nArgs) -> Update_t {
+auto CmdMemoryMove(int nArgs) -> UpdateResult {
   // M destaddr address end
   // M destaddr address,len
   // M destaddr address:end
@@ -554,18 +554,18 @@ auto CmdMemoryMove(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_MEMORY_MOVE);
   }
 
-  uint16_t nDst = g_args[1].nValue;
-  //  uint16_t nSrc = g_args[2].nValue;
-  //  uint16_t nLen = g_args[3].nValue - nSrc;
+  uint16_t nDst = args[1].nValue;
+  //  uint16_t nSrc = args[2].nValue;
+  //  uint16_t nLen = args[3].nValue - nSrc;
   uint16_t nAddress2 = 0;
   uint16_t nAddressStart = 0;
   uint16_t nAddressEnd = 0;
   int nAddressLen = 0;
 
-  RangeType_t eRange = Range_Get(nAddressStart, nAddress2, 2);
+  RangeType eRange = Range_Get(nAddressStart, nAddress2, 2);
 
   //    if (eRange == RANGE_MISSING_ARG_2)
-  RangeEndLen_t tEndLen = {nAddressEnd, nAddressLen};
+  RangeEndLen tEndLen = {nAddressEnd, nAddressLen};
   if (!Range_CalcEndLen(eRange, nAddressStart, nAddress2, tEndLen)) {
     nAddressEnd = tEndLen.nAddressEnd;
     nAddressLen = tEndLen.nAddressLen;
@@ -595,7 +595,7 @@ auto CmdMemoryMove(int nArgs) -> Update_t {
   return UPDATE_CONSOLE_DISPLAY;
 }
 
-auto CmdMemorySave(int nArgs) -> Update_t {
+auto CmdMemorySave(int nArgs) -> UpdateResult {
   // Active memory:
   // BSAVE ["Filename"] , addr , len
   // BSAVE ["Filename"] , addr : end
@@ -632,7 +632,7 @@ auto CmdMemorySave(int nArgs) -> Update_t {
   } else {
     bool bHaveFileName = false;
 
-    if ((g_args[1].bType & TYPE_QUOTED_2) != 0) {
+    if ((args[1].bType & TYPE_QUOTED_2) != 0) {
       bHaveFileName = true;
     }
 
@@ -659,12 +659,12 @@ auto CmdMemorySave(int nArgs) -> Update_t {
     }
 
     if (nArgs > 5) {
-      if (((g_args[iArgBank].bType & TYPE_ADDRESS) == 0) ||
-          g_args[iArgColon].eToken != TOKEN_COLON) {
+      if (((args[iArgBank].bType & TYPE_ADDRESS) == 0) ||
+          args[iArgColon].eToken != TOKEN_COLON) {
         return Help_Arg_1(CMD_MEMORY_SAVE);
       }
 
-      bank = g_args[iArgBank].nValue;
+      bank = args[iArgBank].nValue;
       bBankSpecified = true;
 
       iArgAddress += 2;
@@ -674,17 +674,17 @@ auto CmdMemorySave(int nArgs) -> Update_t {
       bBankSpecified = false;
     }
 
-    //    if ((g_args[ iArgComma1 ].eToken != TOKEN_COMMA) ||
-    //      (g_args[ iArgComma2 ].eToken != TOKEN_COLON))
+    //    if ((args[ iArgComma1 ].eToken != TOKEN_COMMA) ||
+    //      (args[ iArgComma2 ].eToken != TOKEN_COLON))
     //      return Help_Arg_1( CMD_MEMORY_SAVE );
 
     std::string sLoadSaveFilePath =
         system_state.current_dir.data();  // system_state.program_dir
 
-    RangeType_t eRange = Range_Get(nAddressStart, nAddress2, iArgAddress);
+    RangeType eRange = Range_Get(nAddressStart, nAddress2, iArgAddress);
 
     //    if (eRange == RANGE_MISSING_ARG_2)
-    RangeEndLen_t tEndLen = {nAddressEnd, nAddressLen};
+    RangeEndLen tEndLen = {nAddressEnd, nAddressLen};
     if (!Range_CalcEndLen(eRange, nAddressStart, nAddress2, tEndLen)) {
       nAddressEnd = tEndLen.nAddressEnd;
       nAddressLen = tEndLen.nAddressLen;
@@ -701,11 +701,11 @@ auto CmdMemorySave(int nArgs) -> Update_t {
           snprintf(sMemoryLoadSaveFileName, sizeof(sMemoryLoadSaveFileName),
                    "%04X.%04X.bank%02X.bin", nAddressStart, nAddressLen, bank);
         }
-        g_memory_load_save_file_name = sMemoryLoadSaveFileName;
+        memory_load_save_file_name = sMemoryLoadSaveFileName;
       } else {
-        g_memory_load_save_file_name = g_args[1].sArg;
+        memory_load_save_file_name = args[1].sArg;
       }
-      sLoadSaveFilePath += g_memory_load_save_file_name;
+      sLoadSaveFilePath += memory_load_save_file_name;
 
       const uint8_t* const pMemBankBase =
           bBankSpecified ? mem_get_bank_ptr(bank) : mem;
@@ -741,10 +741,10 @@ auto CmdMemorySave(int nArgs) -> Update_t {
   return ConsoleUpdate();
 }
 
-static char g_text_screen[DEBUG_VIRTUAL_TEXT_HEIGHT *
+static char text_screen[DEBUG_VIRTUAL_TEXT_HEIGHT *
                           (DEBUG_VIRTUAL_TEXT_WIDTH +
                            4)];  // (80 column + CR + LF) * 24 rows + NUL
-static int g_text_screen_count = 0;
+static int text_screen_count = 0;
 
 /*
   $FBC1 BASCALC  IN: A=row, OUT: $28=low, $29=hi
@@ -808,17 +808,17 @@ static auto RemapChar(const char c) -> char {
 }
 
 auto Util_GetDebuggerText(char*& pText_) -> size_t {
-  char* pBeg = &g_text_screen[0];
-  char* pEnd = &g_text_screen[0];
+  char* pBeg = &text_screen[0];
+  char* pEnd = &text_screen[0];
 
-  g_text_screen_count = 0;
-  memset(pBeg, 0, sizeof(g_text_screen));
+  text_screen_count = 0;
+  memset(pBeg, 0, sizeof(text_screen));
 
-  memset(g_debugger_virtual_text_screen, 0,
-         sizeof(g_debugger_virtual_text_screen));
+  memset(debugger_virtual_text_screen, 0,
+         sizeof(debugger_virtual_text_screen));
   debug_display();
 
-  for (const auto& y : g_debugger_virtual_text_screen) {
+  for (const auto& y : debugger_virtual_text_screen) {
     for (char c : y) {
       if ((c < 0x20) || (c >= 0x7F)) {
         c = ' ';  // convert null to spaces to keep everything non-proptional
@@ -829,24 +829,24 @@ auto Util_GetDebuggerText(char*& pText_) -> size_t {
   }
 
   *pEnd = 0;
-  g_text_screen_count = pEnd - pBeg;
+  text_screen_count = pEnd - pBeg;
 
   pText_ = pBeg;
-  return g_text_screen_count;
+  return text_screen_count;
 }
 
 static auto Util_GetTextScreen(char*& pText_) -> size_t {
   uint16_t nAddressStart = 0;
 
-  char* pBeg = &g_text_screen[0];
-  char* pEnd = &g_text_screen[0];
+  char* pBeg = &text_screen[0];
+  char* pEnd = &text_screen[0];
 
-  g_text_screen_count = 0;
-  memset(pBeg, 0, sizeof(g_text_screen));
+  text_screen_count = 0;
+  memset(pBeg, 0, sizeof(text_screen));
 
   uint32_t uBank2 = video_get_sw_page2() ? 1 : 0;
-  uint8_t* g_text_bank1 = mem_get_aux_ptr(0x400 << uBank2);
-  uint8_t* g_text_bank0 = mem_get_main_ptr(0x400 << uBank2);
+  uint8_t* text_bank1 = mem_get_aux_ptr(0x400 << uBank2);
+  uint8_t* text_bank0 = mem_get_main_ptr(0x400 << uBank2);
 
   for (int y = 0; y < 24; y++) {
     // nAddressStart = 0x400 + (y%8)*0x80 + (y/8)*0x28;
@@ -858,12 +858,12 @@ static auto Util_GetTextScreen(char*& pText_) -> size_t {
       char c = 0;  // TODO: FormatCharTxtCtrl() ?
 
       if (video_get_sw_80col()) {  // AUX
-        c = g_text_bank1[nAddressStart] & 0x7F;
+        c = text_bank1[nAddressStart] & 0x7F;
         c = RemapChar(c);
         *pEnd++ = c;
       }  // MAIN -- NOTE: intentional indent & outside if() !
 
-      c = g_text_bank0[nAddressStart] & 0x7F;
+      c = text_bank0[nAddressStart] & 0x7F;
       c = RemapChar(c);
       *pEnd++ = c;
 
@@ -875,14 +875,14 @@ static auto Util_GetTextScreen(char*& pText_) -> size_t {
   }
   *pEnd = 0;
 
-  g_text_screen_count = pEnd - pBeg;
+  text_screen_count = pEnd - pBeg;
 
   pText_ = pBeg;
-  return g_text_screen_count;
+  return text_screen_count;
 }
 
 //===========================================================================
-auto CmdNTSC(int nArgs) -> Update_t {
+auto CmdNTSC(int nArgs) -> UpdateResult {
   (void)nArgs;
   return ConsoleUpdate();
 }
@@ -899,7 +899,7 @@ auto CmdTextSave(int nArgs) -> int {
 
   bool bHaveFileName = false;
 
-  if ((g_args[1].bType & TYPE_QUOTED_2) != 0) {
+  if ((args[1].bType & TYPE_QUOTED_2) != 0) {
     bHaveFileName = true;
   }
 
@@ -910,16 +910,16 @@ auto CmdTextSave(int nArgs) -> int {
       system_state.current_dir.data();  // system_state.program_dir
 
   if (bHaveFileName) {
-    g_memory_load_save_file_name = g_args[1].sArg;
+    memory_load_save_file_name = args[1].sArg;
   } else {
     if (video_get_sw_80col()) {
-      g_memory_load_save_file_name = "AppleWin_Text80.txt";
+      memory_load_save_file_name = "AppleWin_Text80.txt";
     } else {
-      g_memory_load_save_file_name = "AppleWin_Text40.txt";
+      memory_load_save_file_name = "AppleWin_Text40.txt";
     }
   }
 
-  sLoadSaveFilePath += g_memory_load_save_file_name;
+  sLoadSaveFilePath += memory_load_save_file_name;
 
   FilePtr hFile(fopen(sLoadSaveFilePath.c_str(), "rb"), fclose);
   if (hFile) {
@@ -933,7 +933,7 @@ auto CmdTextSave(int nArgs) -> int {
     if (nWrote == 1) {
       char text[CONSOLE_WIDTH] = "";
       ConsoleBufferPushFormat(text, "Saved: %s",
-                              g_memory_load_save_file_name.c_str());
+                              memory_load_save_file_name.c_str());
     } else {
       ConsoleBufferPush("error saving.");
     }
@@ -945,13 +945,13 @@ auto CmdTextSave(int nArgs) -> int {
 }
 
 //===========================================================================
-static auto SearchMemoryFind(MemorySearchValues_t vMemorySearchValues,
+static auto SearchMemoryFind(MemorySearchValues vMemorySearchValues,
                              uint16_t nAddressStart, uint16_t nAddressEnd)
     -> int {
   int nFound = 0;
-  g_memory_search_results.erase(g_memory_search_results.begin(),
-                                g_memory_search_results.end());
-  g_memory_search_results.push_back(NO_6502_TARGET);
+  memory_search_results.erase(memory_search_results.begin(),
+                                memory_search_results.end());
+  memory_search_results.push_back(NO_6502_TARGET);
 
   uint16_t address = 0;
   for (address = nAddressStart; address < nAddressEnd; address++) {
@@ -961,7 +961,7 @@ static auto SearchMemoryFind(MemorySearchValues_t vMemorySearchValues,
 
     int nMemBlocks = vMemorySearchValues.size();
     for (int iBlock = 0; iBlock < nMemBlocks; iBlock++, nAddress2++) {
-      MemorySearch_t ms = vMemorySearchValues.at(iBlock);
+      MemorySearch ms = vMemorySearchValues.at(iBlock);
       ms.found = false;
 
       if ((ms.type == MEM_SEARCH_BYTE_EXACT) ||
@@ -994,7 +994,7 @@ static auto SearchMemoryFind(MemorySearchValues_t vMemorySearchValues,
           continue;
         }
 
-        //        MemorySearch_t ms2 = vMemorySearchValues.at( iBlock + 1 );
+        //        MemorySearch ms2 = vMemorySearchValues.at( iBlock + 1 );
 
         uint16_t nAddress3 = nAddress2;
         for (nAddress3 = nAddress2; nAddress3 < nAddressEnd; nAddress3++) {
@@ -1026,18 +1026,18 @@ static auto SearchMemoryFind(MemorySearchValues_t vMemorySearchValues,
       nFound++;
 
       // Save the search result
-      g_memory_search_results.push_back(address);
+      memory_search_results.push_back(address);
     }
   }
 
   return nFound;
 }
 
-auto SearchMemoryDisplay(int nArgs) -> Update_t {
+auto SearchMemoryDisplay(int nArgs) -> UpdateResult {
   (void)nArgs;
   const uint32_t nBuf = CONSOLE_WIDTH * 2;
 
-  int nFound = g_memory_search_results.size() - 1;
+  int nFound = memory_search_results.size() - 1;
 
   int nLen = 0;      // temp
   int nLineLen = 0;  // string length of matches for this line, for word-wrap
@@ -1049,7 +1049,7 @@ auto SearchMemoryDisplay(int nArgs) -> Update_t {
   if (nFound > 0) {
     int iFound = 1;
     while (iFound <= nFound) {
-      uint16_t address = g_memory_search_results.at(iFound);
+      uint16_t address = memory_search_results.at(iFound);
 
       //      sprintf( sText, "%2d:$%04X ", iFound, address );
       //      int nLen = strlen( sText );
@@ -1084,7 +1084,7 @@ auto SearchMemoryDisplay(int nArgs) -> Update_t {
       nLen += StringCat(sResult, sText, nBuf);
 
       // Fit on same line?
-      if ((nLineLen + nLen) > (g_console_display_width - 1))  // CONSOLE_WIDTH
+      if ((nLineLen + nLen) > (console_display_width - 1))  // CONSOLE_WIDTH
       {
         // ConsoleDisplayPush( sMatches );
         console_print(sMatches);
@@ -1129,24 +1129,24 @@ auto SearchMemoryDisplay(int nArgs) -> Update_t {
 
   console_print(sResult);
 
-  // g_memory_search_results is cleared in debug_end()
+  // memory_search_results is cleared in debug_end()
 
   //  return UPDATE_CONSOLE_DISPLAY;
   return ConsoleUpdate();
 }
 
 //===========================================================================
-auto CmdMemorySearch(int nArgs, bool bTextIsAscii = true) -> Update_t {
+auto CmdMemorySearch(int nArgs, bool bTextIsAscii = true) -> UpdateResult {
   (void)bTextIsAscii;
   uint16_t nAddressStart = 0;
   uint16_t nAddress2 = 0;
   uint16_t nAddressEnd = 0;
   int nAddressLen = 0;
 
-  RangeType_t eRange = Range_Get(nAddressStart, nAddress2);
+  RangeType eRange = Range_Get(nAddressStart, nAddress2);
 
   //  if (eRange == RANGE_MISSING_ARG_2)
-  RangeEndLen_t tEndLen = {nAddressEnd, nAddressLen};
+  RangeEndLen tEndLen = {nAddressEnd, nAddressLen};
   if (!Range_CalcEndLen(eRange, nAddressStart, nAddress2, tEndLen)) {
     nAddressEnd = tEndLen.nAddressEnd;
     nAddressLen = tEndLen.nAddressLen;
@@ -1157,15 +1157,15 @@ auto CmdMemorySearch(int nArgs, bool bTextIsAscii = true) -> Update_t {
   int iArgFirstByte = 4;
   int iArg = 0;
 
-  MemorySearchValues_t vMemorySearchValues;
-  MemorySearch_e tLastType = MEM_SEARCH_BYTE_N_WILD;
+  MemorySearchValues vMemorySearchValues;
+  MemorySearchId tLastType = MEM_SEARCH_BYTE_N_WILD;
 
   // Get search "string"
-  Arg_t* pArg = &g_args[iArgFirstByte];
+  Arg* pArg = &args[iArgFirstByte];
 
   uint16_t nTarget = 0;
   for (iArg = iArgFirstByte; iArg <= nArgs; iArg++, pArg++) {
-    MemorySearch_t ms{};
+    MemorySearch ms{};
 
     nTarget = pArg->nValue;
     ms.value = nTarget & 0xFF;
@@ -1228,20 +1228,20 @@ auto CmdMemorySearch(int nArgs, bool bTextIsAscii = true) -> Update_t {
         }
 
         if (pArg->nArgLen == 1) {
-          if (pByte[0] == g_parameters[PARAM_MEM_SEARCH_WILD]
+          if (pByte[0] == parameters[PARAM_MEM_SEARCH_WILD]
                               .name[0])  // Hack: hard-coded one char token
           {
             ms.type = MEM_SEARCH_BYTE_1_WILD;
           }
         } else {
-          if (pByte[0] == g_parameters[PARAM_MEM_SEARCH_WILD]
+          if (pByte[0] == parameters[PARAM_MEM_SEARCH_WILD]
                               .name[0])  // Hack: hard-coded one char token
           {
             ms.type = MEM_SEARCH_NIB_LOW_EXACT;
             ms.value = pArg->nValue & 0x0F;
           }
 
-          if (pByte[1] == g_parameters[PARAM_MEM_SEARCH_WILD]
+          if (pByte[1] == parameters[PARAM_MEM_SEARCH_WILD]
                               .name[0])  // Hack: hard-coded one char token
           {
             if (ms.type == MEM_SEARCH_NIB_LOW_EXACT) {
@@ -1276,7 +1276,7 @@ auto CmdMemorySearch(int nArgs, bool bTextIsAscii = true) -> Update_t {
 }
 
 //===========================================================================
-auto CmdMemorySearch(int nArgs) -> Update_t {
+auto CmdMemorySearch(int nArgs) -> UpdateResult {
   // S address,length # [,#]
   if (nArgs < 4) {
     return HelpLastCommand();
@@ -1289,7 +1289,7 @@ auto CmdMemorySearch(int nArgs) -> Update_t {
 
 // Search for ASCII text (no Hi-Bit set)
 //===========================================================================
-auto CmdMemorySearchAscii(int nArgs) -> Update_t {
+auto CmdMemorySearchAscii(int nArgs) -> UpdateResult {
   if (nArgs < 4) {
     return HelpLastCommand();
   }
@@ -1299,7 +1299,7 @@ auto CmdMemorySearchAscii(int nArgs) -> Update_t {
 
 // Search for Apple text (Hi-Bit set)
 //===========================================================================
-auto CmdMemorySearchApple(int nArgs) -> Update_t {
+auto CmdMemorySearchApple(int nArgs) -> UpdateResult {
   if (nArgs < 4) {
     return HelpLastCommand();
   }
@@ -1308,7 +1308,7 @@ auto CmdMemorySearchApple(int nArgs) -> Update_t {
 }
 
 //===========================================================================
-auto CmdMemorySearchHex(int nArgs) -> Update_t {
+auto CmdMemorySearchHex(int nArgs) -> UpdateResult {
   if (nArgs < 4) {
     return HelpLastCommand();
   }

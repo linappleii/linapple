@@ -23,12 +23,12 @@ enum { KEYBOARD_STATE_VERSION = 1, KEYBOARD_MAP_SIZE = 128 };
  * are retired, never reused. */
 typedef enum {
   keyboard_cmd_key = PERIPHERAL_SUBSYSTEM_KEYBOARD |
-      0x0009, /**< data: KeyboardKeyEvent_t */
+      0x0009, /**< data: KeyboardKeyEvent */
   /* The host's hands are off every key, as on focus loss. data: none */
   keyboard_cmd_release_all = PERIPHERAL_SUBSYSTEM_KEYBOARD | 0x000A,
   /* The REPT key of a II or II Plus keyboard. data: uint8_t (0=up, 1=down) */
   keyboard_cmd_rept = PERIPHERAL_SUBSYSTEM_KEYBOARD | 0x000B,
-} KeyboardCmd_t;
+} KeyboardCmd;
 
 /* host_key is the host's identity for the key, so a release pairs with its
  * press whatever the modifiers did in between; the card never interprets it.
@@ -38,7 +38,7 @@ typedef struct {
   uint8_t apple_code;
   uint8_t is_down;
   uint8_t reserved[6];
-} KeyboardKeyEvent_t;
+} KeyboardKeyEvent;
 
 /* The 552-byte frame every .aws written so far carries. Only current_latch
  * and strobe are restored; the held keys, the repeat and the map, layout,
@@ -67,7 +67,7 @@ typedef struct {
   uint8_t custom_ctrl_map[KEYBOARD_MAP_SIZE];
   uint8_t custom_flags[KEYBOARD_MAP_SIZE];
   uint8_t reserved[4];
-} KeyboardSaveState_t;
+} KeyboardSaveState;
 
 #ifdef __cplusplus
 }

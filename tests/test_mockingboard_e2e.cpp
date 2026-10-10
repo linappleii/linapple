@@ -21,8 +21,8 @@ auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
 
 namespace {
 
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
-using TestFixtures::ScopedCore_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
+using TestFixtures::ScopedCore;
 
 constexpr int CARD_SLOT = 4;
 constexpr uint32_t NTSC_FRAME_CYCLES = 17030;
@@ -150,18 +150,18 @@ constexpr std::array<uint8_t, 27> write_ay_routine = {
     },
 };
 
-PeripheralAudioInfo_t g_announced;
-int g_announce_calls = 0;
-size_t g_tap_calls = 0;
+PeripheralAudioInfo announced;
+int announce_calls = 0;
+size_t tap_calls = 0;
 
 auto record_announce(int slot, const char* peripheral_id,
-                     const PeripheralAudioInfo_t* info) -> void {
+                     const PeripheralAudioInfo* info) -> void {
   audio_mixer_register_source(slot, peripheral_id, info);
   if (slot != CARD_SLOT || info == nullptr) {
     return;
   }
-  g_announce_calls++;
-  g_announced = *info;
+  announce_calls++;
+  announced = *info;
 }
 
 auto record_tap(const char* peripheral_id, int slot,
@@ -172,11 +172,11 @@ auto record_tap(const char* peripheral_id, int slot,
   (void)channels;
   (void)num_channels;
   (void)num_samples;
-  g_tap_calls++;
+  tap_calls++;
 }
 
-auto mockingboard_in_slot_4() -> TestConfig_t::Description_t {
-  TestConfig_t::Description_t description;
+auto mockingboard_in_slot_4() -> TestConfig::Description {
+  TestConfig::Description description;
   description.slots[3] = "Mockingboard";
   return description;
 }
@@ -189,12 +189,12 @@ auto mockingboard_in_slot_4() -> TestConfig_t::Description_t {
  * opened. The mixer therefore learns of the card only through the replay that
  * installing the register callback triggers.
  */
-class MockingboardChain_t {
+class MockingboardChain {
  public:
-  explicit MockingboardChain_t(const TestConfig_t& config) : core_(config) {
-    g_announce_calls = 0;
-    g_tap_calls = 0;
-    std::memset(&g_announced, 0, sizeof(g_announced));
+  explicit MockingboardChain(const TestConfig& config) : core_(config) {
+    announce_calls = 0;
+    tap_calls = 0;
+    std::memset(&announced, 0, sizeof(announced));
 
     // The configuration puts the card in its slot as the core comes up; the
     // manifest is what says the slot really holds a Mockingboard.
@@ -217,15 +217,15 @@ class MockingboardChain_t {
     linapple_set_audio_source_register_callback(record_announce);
   }
 
-  ~MockingboardChain_t() {
+  ~MockingboardChain() {
     audio_mixer_set_channel_tap_callback(nullptr);
     audio_mixer_destroy();
   }
 
-  MockingboardChain_t(const MockingboardChain_t&) = delete;
-  auto operator=(const MockingboardChain_t&) -> MockingboardChain_t& = delete;
-  MockingboardChain_t(MockingboardChain_t&&) = delete;
-  auto operator=(MockingboardChain_t&&) -> MockingboardChain_t& = delete;
+  MockingboardChain(const MockingboardChain&) = delete;
+  auto operator=(const MockingboardChain&) -> MockingboardChain& = delete;
+  MockingboardChain(MockingboardChain&&) = delete;
+  auto operator=(MockingboardChain&&) -> MockingboardChain& = delete;
 
   auto registered() const -> bool { return registered_; }
 
@@ -290,7 +290,7 @@ class MockingboardChain_t {
   }
 
  private:
-  ScopedCore_t core_;
+  ScopedCore core_;
   bool registered_ = false;
   std::vector<int16_t> output_;
 };
@@ -299,8 +299,8 @@ auto count_zero_crossings(const std::vector<int16_t>& stereo, size_t frames)
     -> size_t {
   size_t crossings = 0;
   for (size_t i = 0; i + 1 < frames; ++i) {
-    const bool was_negative = MockingboardChain_t::left(stereo, i) < 0;
-    const bool is_negative = MockingboardChain_t::left(stereo, i + 1) < 0;
+    const bool was_negative = MockingboardChain::left(stereo, i) < 0;
+    const bool is_negative = MockingboardChain::left(stereo, i + 1) < 0;
     crossings += static_cast<size_t>(was_negative != is_negative);
   }
   return crossings;
@@ -313,8 +313,8 @@ auto frames_until_silence(const std::vector<int16_t>& stereo) -> size_t {
   size_t last_signal = 0;
   const size_t frames = stereo.size() / 2;
   for (size_t i = 0; i < frames; ++i) {
-    const bool carries = (MockingboardChain_t::left(stereo, i) != 0) ||
-                         (MockingboardChain_t::right(stereo, i) != 0);
+    const bool carries = (MockingboardChain::left(stereo, i) != 0) ||
+                         (MockingboardChain::right(stereo, i) != 0);
     last_signal = carries ? (i + 1) : last_signal;
   }
   return last_signal;
@@ -323,26 +323,26 @@ auto frames_until_silence(const std::vector<int16_t>& stereo) -> size_t {
 }  // namespace
 
 TEST_CASE("Mockingboard End To End: A Tone Through The Whole Chain") {
-  TestConfig_t config(mockingboard_in_slot_4());
-  MockingboardChain_t chain(config);
+  TestConfig config(mockingboard_in_slot_4());
+  MockingboardChain chain(config);
   REQUIRE(chain.registered());
 
   // The card was in its slot before the register callback existed. What the
   // mixer knows about it can only have come from the replay.
-  REQUIRE(g_announce_calls == 1);
-  CHECK(g_announced.time_base == peripheral_audio_cpu_clocked);
-  CHECK(g_announced.cycle_divisor == CARD_CYCLE_DIVISOR);
-  CHECK(g_announced.num_channels == CARD_VOICES);
-  CHECK(g_announced.sample_rate == 0);
-  CHECK(g_announced.peak_magnitude == doctest::Approx(1.0F).epsilon(1e-6));
+  REQUIRE(announce_calls == 1);
+  CHECK(announced.time_base == peripheral_audio_cpu_clocked);
+  CHECK(announced.cycle_divisor == CARD_CYCLE_DIVISOR);
+  CHECK(announced.num_channels == CARD_VOICES);
+  CHECK(announced.sample_rate == 0);
+  CHECK(announced.peak_magnitude == doctest::Approx(1.0F).epsilon(1e-6));
 
-  MockingboardChain_t::write_via(REG_DDRB, 0xFF);
-  MockingboardChain_t::write_via(REG_DDRA, 0xFF);
-  MockingboardChain_t::write_via(REG_ORB, ORB_INACTIVE);
-  MockingboardChain_t::write_ay(AY_TONE_A_FINE, AY_TONE_PERIOD_FINE);
-  MockingboardChain_t::write_ay(AY_TONE_A_COARSE, AY_TONE_PERIOD_COARSE);
-  MockingboardChain_t::write_ay(AY_ENABLE, AY_ENABLE_TONE_A);
-  MockingboardChain_t::write_ay(AY_VOLUME_A, AY_FULL_VOLUME);
+  MockingboardChain::write_via(REG_DDRB, 0xFF);
+  MockingboardChain::write_via(REG_DDRA, 0xFF);
+  MockingboardChain::write_via(REG_ORB, ORB_INACTIVE);
+  MockingboardChain::write_ay(AY_TONE_A_FINE, AY_TONE_PERIOD_FINE);
+  MockingboardChain::write_ay(AY_TONE_A_COARSE, AY_TONE_PERIOD_COARSE);
+  MockingboardChain::write_ay(AY_ENABLE, AY_ENABLE_TONE_A);
+  MockingboardChain::write_ay(AY_VOLUME_A, AY_FULL_VOLUME);
 
   for (uint32_t frame = 0; frame < TONE_FRAMES; ++frame) {
     chain.run_frame(FRAMES_PER_EMULATED_FRAME);
@@ -368,7 +368,7 @@ TEST_CASE("Mockingboard End To End: A Tone Through The Whole Chain") {
   // The onset, where the coupling passes the whole step.
   int onset = 0;
   for (size_t i = 0; i < produced; ++i) {
-    onset = std::max<int>(onset, MockingboardChain_t::left(tone, i));
+    onset = std::max<int>(onset, MockingboardChain::left(tone, i));
   }
   CHECK(onset >= ONSET_PCM_MIN);
   CHECK(onset <= ONSET_PCM_MAX);
@@ -377,7 +377,7 @@ TEST_CASE("Mockingboard End To End: A Tone Through The Whole Chain") {
   // coupling has long since converged on 1 / (1 + a^254).
   int plateau = 0;
   for (size_t i = produced - PLATEAU_WINDOW_FRAMES; i < produced; ++i) {
-    plateau = std::max<int>(plateau, MockingboardChain_t::left(tone, i));
+    plateau = std::max<int>(plateau, MockingboardChain::left(tone, i));
   }
   CHECK(plateau >= PLATEAU_PCM_MIN);
   CHECK(plateau <= PLATEAU_PCM_MAX);
@@ -388,7 +388,7 @@ TEST_CASE("Mockingboard End To End: A Tone Through The Whole Chain") {
   for (size_t i = 0; i < tone.size() / 2; ++i) {
     loudest_right = std::max<int16_t>(
         loudest_right,
-        static_cast<int16_t>(std::abs(MockingboardChain_t::right(tone, i))));
+        static_cast<int16_t>(std::abs(MockingboardChain::right(tone, i))));
   }
   CHECK(loudest_right == 0);
 
@@ -396,7 +396,7 @@ TEST_CASE("Mockingboard End To End: A Tone Through The Whole Chain") {
   // as a DC level, which the coupling would decay to nothing anyway and the
   // case would pass for the wrong reason. The volume register is the mute.
   chain.clear_output();
-  MockingboardChain_t::write_ay(AY_VOLUME_A, 0x00);
+  MockingboardChain::write_ay(AY_VOLUME_A, 0x00);
   for (uint32_t frame = 0; frame < MUTE_FRAMES; ++frame) {
     chain.run_frame(FRAMES_PER_EMULATED_FRAME);
   }
@@ -408,14 +408,14 @@ TEST_CASE("Mockingboard End To End: A Tone Through The Whole Chain") {
 }
 
 TEST_CASE("Mockingboard End To End: A Real 6502 Programs The Card") {
-  TestConfig_t config(mockingboard_in_slot_4());
-  MockingboardChain_t chain(config);
+  TestConfig config(mockingboard_in_slot_4());
+  MockingboardChain chain(config);
   REQUIRE(chain.registered());
 
-  ScopedCore_t::poke(PROGRAM_ADDR, program);
-  ScopedCore_t::poke(WRITE_AY_ADDR, write_ay_routine);
+  ScopedCore::poke(PROGRAM_ADDR, program);
+  ScopedCore::poke(WRITE_AY_ADDR, write_ay_routine);
 
-  CpuRegisters_t* regs = cpu_get_registers();
+  CpuRegisters* regs = cpu_get_registers();
   regs->pc = PROGRAM_ADDR;
   regs->sp = 0x01FF;
   regs->ps = 0x24;
@@ -429,11 +429,11 @@ TEST_CASE("Mockingboard End To End: A Real 6502 Programs The Card") {
   // where the frame left it and the closing think adds nothing on top.
   const uint32_t executed = cpu_execute(NTSC_FRAME_CYCLES);
   const uint8_t tone_fine =
-      MockingboardChain_t::read_ay(AY_TONE_A_FINE, executed);
+      MockingboardChain::read_ay(AY_TONE_A_FINE, executed);
   const uint8_t tone_coarse =
-      MockingboardChain_t::read_ay(AY_TONE_A_COARSE, executed);
-  const uint8_t enable = MockingboardChain_t::read_ay(AY_ENABLE, executed);
-  const uint8_t volume = MockingboardChain_t::read_ay(AY_VOLUME_A, executed);
+      MockingboardChain::read_ay(AY_TONE_A_COARSE, executed);
+  const uint8_t enable = MockingboardChain::read_ay(AY_ENABLE, executed);
+  const uint8_t volume = MockingboardChain::read_ay(AY_VOLUME_A, executed);
   peripheral_manager_think(executed);
   chain.append(chain.drain(FRAMES_PER_EMULATED_FRAME));
 
@@ -442,6 +442,6 @@ TEST_CASE("Mockingboard End To End: A Real 6502 Programs The Card") {
   CHECK(enable == AY_ENABLE_TONE_A);
   CHECK(volume == AY_FULL_VOLUME);
 
-  CHECK(g_tap_calls > 0);
+  CHECK(tap_calls > 0);
   CHECK(frames_until_silence(chain.output()) > 0);
 }

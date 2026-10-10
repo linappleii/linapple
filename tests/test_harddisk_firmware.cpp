@@ -34,7 +34,7 @@
 
 namespace {
 
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 
 constexpr const char* harddisk_id = "linapple.harddisk";
 constexpr size_t block_size = 512;
@@ -88,19 +88,19 @@ auto unit_for(int slot, int drive) -> uint8_t {
   return static_cast<uint8_t>((slot << 4) | (drive != 0 ? unit_drive_2 : 0));
 }
 
-auto machine_with_card(int slot) -> TestConfig_t::Description_t {
-  TestConfig_t::Description_t description;
+auto machine_with_card(int slot) -> TestConfig::Description {
+  TestConfig::Description description;
   description.slots.at(static_cast<size_t>(slot - 1)) = "Harddisk";
   return description;
 }
 
 // The bridge alone, as a saved session resumes: the manager built, the cards
 // registered from the slot table and the machine at power-on.
-struct Machine_t {
-  TestConfig_t config;
-  TestFixtures::ScopedCore_t core;
+struct Machine {
+  TestConfig config;
+  TestFixtures::ScopedCore core;
 
-  explicit Machine_t(const TestConfig_t::Description_t& description)
+  explicit Machine(const TestConfig::Description& description)
       : config(description), core(config) {
     peripheral_manager_init();
     linapple_register_peripherals();
@@ -120,7 +120,7 @@ auto settle() -> void { peripheral_manager_think(0); }
 
 auto insert(int slot, int drive, const std::string& path,
             bool write_protected = false) -> void {
-  HarddiskInsertCmd_t cmd{};
+  HarddiskInsertCmd cmd{};
   cmd.drive = static_cast<uint8_t>(drive);
   cmd.write_protected = write_protected ? 1 : 0;
   std::strncpy(cmd.path, path.c_str(), sizeof(cmd.path) - 1);
@@ -130,7 +130,7 @@ auto insert(int slot, int drive, const std::string& path,
 }
 
 auto eject(int slot, int drive) -> void {
-  HarddiskEjectCmd_t cmd{};
+  HarddiskEjectCmd cmd{};
   cmd.drive = static_cast<uint8_t>(drive);
   REQUIRE(peripheral_command(slot, harddisk_cmd_eject, &cmd, sizeof(cmd)) ==
           peripheral_ok);
@@ -138,7 +138,7 @@ auto eject(int slot, int drive) -> void {
 }
 
 auto set_protect(int slot, int drive, bool protect) -> void {
-  HarddiskSetProtectCmd_t cmd{};
+  HarddiskSetProtectCmd cmd{};
   cmd.drive = static_cast<uint8_t>(drive);
   cmd.write_protected = protect ? 1 : 0;
   REQUIRE(peripheral_command(slot, harddisk_cmd_set_protect, &cmd,
@@ -146,8 +146,8 @@ auto set_protect(int slot, int drive, bool protect) -> void {
   settle();
 }
 
-auto status(int slot) -> HarddiskStatus_t {
-  HarddiskStatus_t out{};
+auto status(int slot) -> HarddiskStatus {
+  HarddiskStatus out{};
   size_t size = sizeof(out);
   REQUIRE(peripheral_query(slot, harddisk_query_status, &out, &size) ==
           peripheral_ok);
@@ -164,7 +164,7 @@ auto poke_io(uint16_t addr, uint8_t value) -> void {
 
 auto fill(uint16_t addr, size_t count, uint8_t value) -> void {
   std::vector<uint8_t> bytes(count, value);
-  TestFixtures::ScopedCore_t::poke(addr, bytes.data(), bytes.size());
+  TestFixtures::ScopedCore::poke(addr, bytes.data(), bytes.size());
 }
 
 auto read_block_from_file(const std::string& path, uint32_t block)
@@ -192,7 +192,7 @@ auto read_whole_file(const std::string& path) -> std::vector<uint8_t> {
 // addresses a boot passed through says as much as where it ended.
 auto run_recording(uint16_t sentinel, uint32_t cap) -> std::vector<uint16_t> {
   std::vector<uint16_t> visited;
-  const CpuRegisters_t* regs = cpu_get_registers();
+  const CpuRegisters* regs = cpu_get_registers();
   uint32_t cycles = 0;
   while (regs->pc != sentinel && cycles < cap) {
     visited.push_back(regs->pc);
@@ -246,7 +246,7 @@ auto read_slot_page(int slot) -> std::array<uint8_t, page_size> {
   std::copy(program.begin(), program.end(), with_spin.begin());
   with_spin.at(13) = static_cast<uint8_t>(program_start >> 8);
   const uint16_t sentinel = program_start + 11;
-  TestFixtures::ScopedCore_t::poke(program_start, with_spin);
+  TestFixtures::ScopedCore::poke(program_start, with_spin);
   TestFixtures::enter_at({program_start, 0, 0, 0});
   TestFixtures::step_until_pc(sentinel, copy_cycle_cap);
   REQUIRE(cpu_get_registers()->pc == sentinel);
@@ -258,14 +258,14 @@ auto read_slot_page(int slot) -> std::array<uint8_t, page_size> {
   return copy;
 }
 
-struct Call_t {
+struct Call {
   uint8_t command;
   uint8_t unit;
   uint16_t buffer;
   uint16_t block;
 };
 
-struct CallResult_t {
+struct CallResult {
   uint8_t a;
   uint8_t x;
   uint8_t y;
@@ -276,7 +276,7 @@ struct CallResult_t {
 
 // The exerciser: the parameter block as the MLI sets it, a JSR to the entry,
 // and A, X, Y and P stored where the test can read them.
-auto call_driver(uint16_t entry, const Call_t& call) -> CallResult_t {
+auto call_driver(uint16_t entry, const Call& call) -> CallResult {
   const std::array<uint8_t, 44> program = {
       0xA9,
       call.command,
@@ -324,11 +324,11 @@ auto call_driver(uint16_t entry, const Call_t& call) -> CallResult_t {
       static_cast<uint8_t>((program_start + 41) >> 8),
   };
   const uint16_t sentinel = program_start + 41;
-  TestFixtures::ScopedCore_t::poke(program_start, program);
+  TestFixtures::ScopedCore::poke(program_start, program);
   TestFixtures::enter_at({program_start, 0, 0, 0});
   TestFixtures::step_until_pc(sentinel, call_cycle_cap);
   REQUIRE(cpu_get_registers()->pc == sentinel);
-  return CallResult_t{
+  return CallResult{
       mem[results_at],
       mem[results_at + 1],
       mem[results_at + 2],
@@ -336,7 +336,7 @@ auto call_driver(uint16_t entry, const Call_t& call) -> CallResult_t {
   };
 }
 
-auto call_card(int slot, const Call_t& call) -> CallResult_t {
+auto call_card(int slot, const Call& call) -> CallResult {
   return call_driver(static_cast<uint16_t>(slot_page(slot) + driver_offset),
                      call);
 }
@@ -364,17 +364,17 @@ auto buffer_of(uint8_t value) -> std::array<uint8_t, block_size> {
   return bytes;
 }
 
-class ScopedFileMode_t {
+class ScopedFileMode {
  public:
-  ScopedFileMode_t(std::string path, mode_t new_mode, mode_t restore_mode)
+  ScopedFileMode(std::string path, mode_t new_mode, mode_t restore_mode)
       : path_(std::move(path)), restore_mode_(restore_mode) {
     chmod(path_.c_str(), new_mode);
   }
-  ~ScopedFileMode_t() { chmod(path_.c_str(), restore_mode_); }
-  ScopedFileMode_t(const ScopedFileMode_t&) = delete;
-  auto operator=(const ScopedFileMode_t&) -> ScopedFileMode_t& = delete;
-  ScopedFileMode_t(ScopedFileMode_t&&) = delete;
-  auto operator=(ScopedFileMode_t&&) -> ScopedFileMode_t& = delete;
+  ~ScopedFileMode() { chmod(path_.c_str(), restore_mode_); }
+  ScopedFileMode(const ScopedFileMode&) = delete;
+  auto operator=(const ScopedFileMode&) -> ScopedFileMode& = delete;
+  ScopedFileMode(ScopedFileMode&&) = delete;
+  auto operator=(ScopedFileMode&&) -> ScopedFileMode& = delete;
 
  private:
   std::string path_;
@@ -384,12 +384,12 @@ class ScopedFileMode_t {
 // Whatever protects the drive, the driver answers the two writing commands
 // with the one ProDOS code, reads as before, and the status agrees.
 auto check_protected(int slot, int drive) -> void {
-  const HarddiskStatus_t current = status(slot);
+  const HarddiskStatus current = status(slot);
   CHECK((drive == 0 ? current.drive0_loaded : current.drive1_loaded) == 1);
   CHECK((drive == 0 ? current.drive0_write_protected
                     : current.drive1_write_protected) == 1);
 
-  CallResult_t result =
+  CallResult result =
       call_card(slot, {prodos_write, unit_for(slot, drive), write_buffer, 3});
   CHECK(result.carry());
   CHECK(result.a == prodos_write_protected);
@@ -471,14 +471,14 @@ enum Mode : uint8_t {
   mode_relative,
 };
 
-struct Opcode_t {
+struct Opcode {
   Mnemonic mnemonic;
   Mode mode;
   uint8_t opcode;
 };
 
 // The 28 (mnemonic, mode) pairs the listing uses, from the 6502 opcode map.
-constexpr std::array<Opcode_t, 28> opcodes = {
+constexpr std::array<Opcode, 28> opcodes = {
     {
         {op_lda, mode_immediate, 0xA9},   {op_lda, mode_zero_page, 0xA5},
         {op_lda, mode_absolute, 0xAD},    {op_lda, mode_absolute_x, 0xBD},
@@ -558,7 +558,7 @@ auto instruction_length(Mode mode) -> uint8_t {
   }
 }
 
-struct Row_t {
+struct Row {
   uint8_t offset;
   Mnemonic mnemonic;
   Mode mode;
@@ -569,7 +569,7 @@ struct Row_t {
 
 // Labels: RET1 $1E, RET2 $38, FAILJ $3F, DRIVER $46, W1 $62, W2 $6C, EXEC
 // $78, R1 $8A, R2 $94, DONE $9E, STATUS $A2, ERROR $AD, FAIL $AF, MONITOR $C7.
-const Row_t listing[] = {
+const Row listing[] = {
     {0x00, op_lda, mode_immediate, 0x20},
     {0x02, op_lda, mode_immediate, 0x00},
     {0x04, op_lda, mode_immediate, 0x03},
@@ -684,7 +684,7 @@ constexpr uint8_t tail_entry = 0xFF;
 constexpr uint8_t status_byte = 0xDF;
 
 auto opcode_for(Mnemonic mnemonic, Mode mode) -> uint8_t {
-  for (const Opcode_t& entry : opcodes) {
+  for (const Opcode& entry : opcodes) {
     if (entry.mnemonic == mnemonic && entry.mode == mode) {
       return entry.opcode;
     }
@@ -699,7 +699,7 @@ auto opcode_for(Mnemonic mnemonic, Mode mode) -> uint8_t {
 auto assemble_listing() -> std::array<uint8_t, page_size> {
   std::array<uint8_t, page_size> page{};
   uint16_t expected_offset = 0;
-  for (const Row_t& row : listing) {
+  for (const Row& row : listing) {
     if (row.offset == driver_offset) {
       CHECK(expected_offset == unused_after_trampoline);
     } else {
@@ -735,7 +735,7 @@ TEST_CASE(
     "Harddisk firmware: the listing assembled by its own opcode table is the "
     "page the card shows, byte for byte, with the slot patched into $09") {
   const int slot = 7;
-  Machine_t machine(machine_with_card(slot));
+  Machine machine(machine_with_card(slot));
   require_card_in(slot);
 
   std::array<uint8_t, page_size> expected = assemble_listing();
@@ -758,9 +758,9 @@ TEST_CASE(
 #if ENABLE_DEBUGGER
   // A second opinion on every opcode byte: the debugger's own 6502 table
   // must read each row back as the mnemonic and mode the listing names.
-  for (const Row_t& row : listing) {
+  for (const Row& row : listing) {
     CAPTURE(row.offset);
-    const Opcodes_t& opcode = g_opcodes6502[page.at(row.offset)];
+    const Opcodes& opcode = opcodes6502[page.at(row.offset)];
     CHECK(std::string(opcode.sMnemonic) == mnemonic_name(row.mnemonic));
     int debugger_mode = AM_IMPLIED;
     switch (row.mode) {
@@ -797,7 +797,7 @@ TEST_CASE(
     "through the bus in slots 7, 5 and 1") {
   for (const int slot : {7, 5, 1}) {
     CAPTURE(slot);
-    Machine_t machine(machine_with_card(slot));
+    Machine machine(machine_with_card(slot));
     require_card_in(slot);
     const std::array<uint8_t, page_size> page = read_slot_page(slot);
 
@@ -820,7 +820,7 @@ TEST_CASE(
     "through two driver calls and enters $0801 with X the slot times 16") {
   for (const int slot : {7, 5}) {
     CAPTURE(slot);
-    Machine_t machine(machine_with_card(slot));
+    Machine machine(machine_with_card(slot));
     require_card_in(slot);
     const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
     insert(slot, 0, image.path());
@@ -861,7 +861,7 @@ TEST_CASE(
     "and re-enters SLOOP, and the scan ends in BASIC when nothing is below") {
   for (const int slot : {7, 5}) {
     CAPTURE(slot);
-    Machine_t machine(machine_with_card(slot));
+    Machine machine(machine_with_card(slot));
     require_card_in(slot);
     const uint16_t page = slot_page(slot);
 
@@ -900,12 +900,12 @@ TEST_CASE(
     "Harddisk firmware: with no image and a Disk II below, the fallback scan "
     "reaches $C600 and that disk boots to the prompt") {
   const int slot = 7;
-  TestConfig_t::Description_t description = machine_with_card(slot);
+  TestConfig::Description description = machine_with_card(slot);
   description.slots[5] = "Disk II";
   description.extras.push_back({"Configuration", "Disk Turbo", "1"});
   description.extras.push_back(
       {"Slots", "Disk Image 1", Path::find_data_file("Master.dsk")});
-  Machine_t machine(description);
+  Machine machine(description);
   require_card_in(slot);
   REQUIRE(peripheral_present(6, "linapple.disk_II"));
 
@@ -928,12 +928,12 @@ TEST_CASE(
     "Harddisk firmware: a card below a booting Disk II is entered by PR#n "
     "from the prompt and boots its block 0") {
   const int slot = 5;
-  TestConfig_t::Description_t description = machine_with_card(slot);
+  TestConfig::Description description = machine_with_card(slot);
   description.slots[5] = "Disk II";
   description.extras.push_back({"Configuration", "Disk Turbo", "1"});
   description.extras.push_back(
       {"Slots", "Disk Image 1", Path::find_data_file("Master.dsk")});
-  Machine_t machine(description);
+  Machine machine(description);
   require_card_in(slot);
   REQUIRE(peripheral_present(0, "linapple.keyboard"));
   const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
@@ -975,13 +975,13 @@ TEST_CASE(
     "Harddisk firmware: on an Apple II, whose Monitor has no slot scan, the "
     "fallback goes to the Monitor's reset entry") {
   const int slot = 7;
-  TestConfig_t::Description_t description = machine_with_card(slot);
-  description.machine_type = TestConfig_t::machine_apple2;
+  TestConfig::Description description = machine_with_card(slot);
+  description.machine_type = TestConfig::machine_apple2;
   // The bridge takes the model from the controller, not from the file.
   const Apple2Type previous = linapple_get_apple2_type();
   linapple_set_apple2_type(A2TYPE_APPLE2);
   {
-    Machine_t machine(description);
+    Machine machine(description);
     require_card_in(slot);
     // Apple IIe Technical Reference Manual, p. 136: $38 names the II.
     REQUIRE(mem[0xFBB3] == 0x38);
@@ -1001,7 +1001,7 @@ TEST_CASE(
     "and the carry clear, never checks the block, and answers NO DEVICE "
     "CONNECTED for an empty drive") {
   const int slot = 7;
-  Machine_t machine(machine_with_card(slot));
+  Machine machine(machine_with_card(slot));
   require_card_in(slot);
   const uint16_t count_low = io_base(slot) + 5;
   const uint16_t count_high = io_base(slot) + 6;
@@ -1012,7 +1012,7 @@ TEST_CASE(
   const auto hdv = TestFixtures::create_ephemeral("minimal-block.hdv");
   insert(slot, 0, hdv.path());
 
-  CallResult_t result =
+  CallResult result =
       call_card(slot, {prodos_status, unit_for(slot, 0), 0, 0});
   CHECK_FALSE(result.carry());
   CHECK(result.a == prodos_ok);
@@ -1046,7 +1046,7 @@ TEST_CASE(
     "the parameter block as it found it, wraps the data port after 512 "
     "bytes, and refuses a block past the end or an empty drive") {
   const int slot = 7;
-  Machine_t machine(machine_with_card(slot));
+  Machine machine(machine_with_card(slot));
   require_card_in(slot);
   const auto hdv = TestFixtures::create_ephemeral("minimal-block.hdv");
   insert(slot, 0, hdv.path());
@@ -1055,7 +1055,7 @@ TEST_CASE(
   for (uint16_t block = 1; block < hdv_blocks; ++block) {
     CAPTURE(block);
     fill(read_buffer, block_size, 0xEE);
-    const CallResult_t result =
+    const CallResult result =
         call_card(slot, {prodos_read, unit_for(slot, 0), read_buffer, block});
     CHECK_FALSE(result.carry());
     CHECK(result.a == prodos_ok);
@@ -1070,7 +1070,7 @@ TEST_CASE(
   // Block 0 is the one block whose bytes differ, so the wrap shows.
   const std::array<uint8_t, block_size> block0 =
       read_block_from_file(hdv.path(), 0);
-  CallResult_t result =
+  CallResult result =
       call_card(slot, {prodos_read, unit_for(slot, 0), read_buffer, 0});
   REQUIRE_FALSE(result.carry());
   for (size_t i = 0; i < block_size; ++i) {
@@ -1103,12 +1103,12 @@ TEST_CASE(
     pattern.at(i) = static_cast<uint8_t>((i & 0xFF) ^ (i >> 8));
   }
   {
-    Machine_t machine(machine_with_card(slot));
+    Machine machine(machine_with_card(slot));
     require_card_in(slot);
     insert(slot, 0, hdv.path());
-    TestFixtures::ScopedCore_t::poke(write_buffer, pattern);
+    TestFixtures::ScopedCore::poke(write_buffer, pattern);
 
-    CallResult_t result =
+    CallResult result =
         call_card(slot, {prodos_write, unit_for(slot, 0), write_buffer, 5});
     CHECK_FALSE(result.carry());
     CHECK(result.a == prodos_ok);
@@ -1146,11 +1146,11 @@ TEST_CASE(
   }
 
   // Another machine mounting the file finds the block there.
-  Machine_t second(machine_with_card(slot));
+  Machine second(machine_with_card(slot));
   require_card_in(slot);
   insert(slot, 0, hdv.path());
   fill(read_buffer, block_size, 0xEE);
-  const CallResult_t again =
+  const CallResult again =
       call_card(slot, {prodos_read, unit_for(slot, 0), read_buffer, 5});
   REQUIRE_FALSE(again.carry());
   for (size_t i = 0; i < block_size; ++i) {
@@ -1164,7 +1164,7 @@ TEST_CASE(
     "a locked 2MG or by an archive answers WRITE and FORMAT with WRITE "
     "PROTECTED, still reads, and says so in the status") {
   const int slot = 7;
-  Machine_t machine(machine_with_card(slot));
+  Machine machine(machine_with_card(slot));
   require_card_in(slot);
 
   const auto user = TestFixtures::create_ephemeral("minimal-block.hdv");
@@ -1175,7 +1175,7 @@ TEST_CASE(
   // Superuser bypasses the file mode, as test_disk_prot does.
   if (getuid() != 0) {
     const auto readonly = TestFixtures::create_ephemeral("minimal-block.hdv");
-    const ScopedFileMode_t mode(readonly.path(), 0444, 0644);
+    const ScopedFileMode mode(readonly.path(), 0444, 0644);
     insert(slot, 0, readonly.path());
     check_protected(slot, 0);
     eject(slot, 0);
@@ -1195,13 +1195,13 @@ TEST_CASE(
     "Harddisk firmware: FORMAT succeeds on a writable image and changes "
     "nothing in it; an empty drive answers NO DEVICE CONNECTED") {
   const int slot = 7;
-  Machine_t machine(machine_with_card(slot));
+  Machine machine(machine_with_card(slot));
   require_card_in(slot);
   const auto hdv = TestFixtures::create_ephemeral("minimal-block.hdv");
   const std::vector<uint8_t> before = read_whole_file(hdv.path());
   insert(slot, 0, hdv.path());
 
-  CallResult_t result =
+  CallResult result =
       call_card(slot, {prodos_format, unit_for(slot, 0), 0, 0});
   CHECK_FALSE(result.carry());
   CHECK(result.a == prodos_ok);
@@ -1217,14 +1217,14 @@ TEST_CASE(
     "Harddisk firmware: bit 7 of the unit selects the drive at execute time "
     "through one register set, and the boot takes drive 1 only") {
   const int slot = 7;
-  Machine_t machine(machine_with_card(slot));
+  Machine machine(machine_with_card(slot));
   require_card_in(slot);
   const auto hdv = TestFixtures::create_ephemeral("minimal-block.hdv");
   const auto po = TestFixtures::create_ephemeral("minimal.po");
   insert(slot, 0, hdv.path());
   insert(slot, 1, po.path());
 
-  CallResult_t result =
+  CallResult result =
       call_card(slot, {prodos_read, unit_for(slot, 0), read_buffer, 1});
   REQUIRE_FALSE(result.carry());
   CHECK(buffer_all(read_buffer, 0x01));
@@ -1257,13 +1257,13 @@ TEST_CASE(
     "Harddisk firmware: the driver entry a resident ProDOS remembers, $C746, "
     "still answers READ and STATUS for a card in slot 7") {
   const int slot = 7;
-  Machine_t machine(machine_with_card(slot));
+  Machine machine(machine_with_card(slot));
   require_card_in(slot);
   const auto hdv = TestFixtures::create_ephemeral("minimal-block.hdv");
   insert(slot, 0, hdv.path());
 
   fill(read_buffer, block_size, 0xEE);
-  CallResult_t result =
+  CallResult result =
       call_driver(0xC746, {prodos_read, unit_for(slot, 0), read_buffer, 1});
   CHECK_FALSE(result.carry());
   CHECK(result.a == prodos_ok);
@@ -1318,7 +1318,7 @@ auto boundless_get_total_blocks(void* /*unused*/) -> uint32_t {
 
 const char* const boundless_exts[] = {"boundless", nullptr};
 
-const HarddiskFormatDriver_t g_boundless_driver = {
+const HarddiskFormatDriver boundless_driver = {
     .abi_version = harddisk_format_abi_version,
     .capabilities = harddisk_driver_cap_write,
     .name = "Boundless",
@@ -1334,15 +1334,15 @@ const HarddiskFormatDriver_t g_boundless_driver = {
 
 // Forgets the driver above whatever happens, so the registry the next case
 // sees is the built-in one.
-struct ScopedBoundlessDriver_t {
-  ScopedBoundlessDriver_t() { harddisk_loader_register(&g_boundless_driver); }
-  ~ScopedBoundlessDriver_t() { harddisk_loader_reset(); }
-  ScopedBoundlessDriver_t(const ScopedBoundlessDriver_t&) = delete;
-  auto operator=(const ScopedBoundlessDriver_t&)
-      -> ScopedBoundlessDriver_t& = delete;
-  ScopedBoundlessDriver_t(ScopedBoundlessDriver_t&&) = delete;
-  auto operator=(ScopedBoundlessDriver_t&&)
-      -> ScopedBoundlessDriver_t& = delete;
+struct ScopedBoundlessDriver {
+  ScopedBoundlessDriver() { harddisk_loader_register(&boundless_driver); }
+  ~ScopedBoundlessDriver() { harddisk_loader_reset(); }
+  ScopedBoundlessDriver(const ScopedBoundlessDriver&) = delete;
+  auto operator=(const ScopedBoundlessDriver&)
+      -> ScopedBoundlessDriver& = delete;
+  ScopedBoundlessDriver(ScopedBoundlessDriver&&) = delete;
+  auto operator=(ScopedBoundlessDriver&&)
+      -> ScopedBoundlessDriver& = delete;
 };
 
 }  // namespace
@@ -1352,10 +1352,10 @@ TEST_CASE(
     "volume's last with an I/O error, READ and WRITE alike, even when the "
     "medium would serve it") {
   const int slot = 7;
-  Machine_t machine(machine_with_card(slot));
+  Machine machine(machine_with_card(slot));
   require_card_in(slot);
-  const ScopedBoundlessDriver_t driver;
-  TestFixtures::ScopedTempDir_t dir("linapple_hdd_bound_");
+  const ScopedBoundlessDriver driver;
+  TestFixtures::ScopedTempDir dir("linapple_hdd_bound_");
   const std::string path = dir.path() + "/volume.boundless";
   {
     FilePtr file{fopen(path.c_str(), "wb"), fclose};
@@ -1364,7 +1364,7 @@ TEST_CASE(
   insert(slot, 0, path);
   REQUIRE(status(slot).drive0_loaded == 1);
 
-  CallResult_t result =
+  CallResult result =
       call_card(slot, {prodos_status, unit_for(slot, 0), 0, 0});
   REQUIRE_FALSE(result.carry());
   REQUIRE(result.x == boundless_blocks);

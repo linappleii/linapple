@@ -237,7 +237,7 @@ auto handle_mouse_button_down(const SDL_MouseButtonEvent& button,
                               SDLMod key_mod) -> void {
   const bool release_modifier = (key_mod & (KMOD_SHIFT | KMOD_CTRL)) != 0;
   const bool debugger_click = mouse_input_button_down(
-      host_button(button.button), release_modifier, g_buttondown != -1);
+      host_button(button.button), release_modifier, buttondown != -1);
 #if ENABLE_DEBUGGER
   if (debugger_click) {
     debugger_mouse_click(button.x, button.y);
@@ -297,9 +297,9 @@ auto handle_key_down(SDLKey key_sym, SDLMod key_mod, uint8_t scancode) -> void {
   }
 
   if (keyboard_get_hotkeys_enabled() && (key_sym >= SDLK_F1) &&
-      (key_sym <= SDLK_F12) && (g_buttondown == -1)) {
+      (key_sym <= SDLK_F12) && (buttondown == -1)) {
     mouse_input_release();
-    g_buttondown = key_sym - SDLK_F1;
+    buttondown = key_sym - SDLK_F1;
     return;
   }
 
@@ -339,7 +339,7 @@ auto handle_key_down(SDLKey key_sym, SDLMod key_mod, uint8_t scancode) -> void {
       (system_state.mode == app_mode_logo) ||
       (system_state.mode == app_mode_stepping)) {
 #if ENABLE_DEBUGGER
-    g_debugger_eat_key = false;
+    debugger_eat_key = false;
 #endif
     const bool extended = (key_sym >= SDLK_UP && key_sym <= SDLK_INSERT) ||
                           (key_sym == SDLK_DELETE);
@@ -363,8 +363,8 @@ auto handle_key_down(SDLKey key_sym, SDLMod key_mod, uint8_t scancode) -> void {
 
 auto handle_key_up(SDLKey key_sym, SDLMod key_mod, uint8_t scancode) -> void {
   if ((key_sym >= SDLK_F1) && (key_sym <= SDLK_F12) &&
-      (g_buttondown == key_sym - SDLK_F1)) {
-    g_buttondown = -1;
+      (buttondown == key_sym - SDLK_F1)) {
+    buttondown = -1;
     process_button_click(key_sym - SDLK_F1, key_mod);
     return;
   }
@@ -394,7 +394,7 @@ auto handle_active_event(const SDL_ActiveEvent& active) -> void {
     return;
   }
   frame_on_focus(false);
-  g_buttondown = -1;
+  buttondown = -1;
   mouse_input_release();
 }
 

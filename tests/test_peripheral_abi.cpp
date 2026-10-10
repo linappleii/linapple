@@ -20,7 +20,7 @@ TEST_CASE("Peripheral ABI: Registration and I/O") {
   peripheral_manager_init();
 
   // Register the C peripheral in Slot 1
-  int result = peripheral_register(&g_test_c_peripheral, 1);
+  int result = peripheral_register(&test_c_peripheral, 1);
   CHECK(result == 0);
 
   // Verify I/O dispatch
@@ -44,15 +44,15 @@ TEST_CASE("Peripheral ABI: Registration and I/O") {
 
 namespace {
 
-HostInterface_t* g_captured_host = nullptr;
+HostInterface* captured_host = nullptr;
 
-auto log_probe_init(int slot, HostInterface_t* host) -> void* {
+auto log_probe_init(int slot, HostInterface* host) -> void* {
   (void)slot;
-  g_captured_host = host;
-  return &g_captured_host;
+  captured_host = host;
+  return &captured_host;
 }
 
-Peripheral_t g_log_probe_peripheral = {
+Peripheral log_probe_peripheral = {
     LINAPPLE_ABI_VERSION,
     "test.log_probe",
     "LogProbe",
@@ -72,30 +72,30 @@ Peripheral_t g_log_probe_peripheral = {
     nullptr,
 };
 
-std::string g_last_logged_message;
+std::string last_logged_message;
 
 auto capture_log_message(LogLevel level, const char* message) -> void {
   (void)level;
-  g_last_logged_message = (message != nullptr) ? message : "";
+  last_logged_message = (message != nullptr) ? message : "";
 }
 
 }  // namespace
 
 TEST_CASE(
     "Peripheral ABI: A peripheral's log line reaches the sink formatted") {
-  g_captured_host = nullptr;
-  g_last_logged_message.clear();
+  captured_host = nullptr;
+  last_logged_message.clear();
 
   peripheral_manager_init();
-  REQUIRE(peripheral_register(&g_log_probe_peripheral, 2) == 0);
-  REQUIRE(g_captured_host != nullptr);
-  REQUIRE(g_captured_host->Log != nullptr);
+  REQUIRE(peripheral_register(&log_probe_peripheral, 2) == 0);
+  REQUIRE(captured_host != nullptr);
+  REQUIRE(captured_host->Log != nullptr);
 
   Logger::set_callback(capture_log_message);
-  g_captured_host->Log(&g_captured_host, log_error, "%d %s", 42, "cells");
+  captured_host->Log(&captured_host, log_error, "%d %s", 42, "cells");
   Logger::set_callback(nullptr);
 
-  CHECK(g_last_logged_message == "42 cells");
+  CHECK(last_logged_message == "42 cells");
 
   peripheral_manager_shutdown();
 }
@@ -107,33 +107,33 @@ TEST_CASE(
 
 namespace {
 
-static_assert(sizeof(HostLocalTime_t) == 24,
-              "HostLocalTime_t is part of the plugin ABI");
+static_assert(sizeof(HostLocalTime) == 24,
+              "HostLocalTime is part of the plugin ABI");
 
 // 2026-03-12 14:30:00 in Eastern Daylight Time (UTC-4), a Thursday:
 //   date -u -d @1773340200                 -> 2026-03-12 18:30:00
 //   TZ=America/New_York date -d @1773340200 -> 2026-03-12 14:30:00 -0400 Thu
 // The UTC instant beside local fields is what tells a pass-through from a
 // card that re-applied the zone.
-constexpr HostLocalTime_t frozen_thursday = {
+constexpr HostLocalTime frozen_thursday = {
     1773340200, -14400, 2026, 3, 12, 4, 14, 30, 0,
 };
 
 }  // namespace
 
 TEST_CASE("Peripheral ABI: A frozen host clock reaches a card the core built") {
-  TestFixtures::ScopedTestConfig_t config(
-      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
-  TestFixtures::ScopedCore_t core(config);
-  TestFixtures::ScopedLocalTimeProvider_t clock(frozen_thursday);
+  TestFixtures::ScopedTestConfig config(
+      TestFixtures::ScopedTestConfig::enhanced_2e_only());
+  TestFixtures::ScopedCore core(config);
+  TestFixtures::ScopedLocalTimeProvider clock(frozen_thursday);
 
-  g_captured_host = nullptr;
-  REQUIRE(peripheral_register(&g_log_probe_peripheral, 2) == 0);
-  REQUIRE(g_captured_host != nullptr);
-  REQUIRE(g_captured_host->GetLocalTime != nullptr);
+  captured_host = nullptr;
+  REQUIRE(peripheral_register(&log_probe_peripheral, 2) == 0);
+  REQUIRE(captured_host != nullptr);
+  REQUIRE(captured_host->GetLocalTime != nullptr);
 
-  HostLocalTime_t seen{};
-  REQUIRE(g_captured_host->GetLocalTime(&seen));
+  HostLocalTime seen{};
+  REQUIRE(captured_host->GetLocalTime(&seen));
   CHECK(seen.unix_seconds == 1773340200);
   CHECK(seen.utc_offset_seconds == -14400);
   CHECK(seen.year == 2026);
@@ -145,12 +145,12 @@ TEST_CASE("Peripheral ABI: A frozen host clock reaches a card the core built") {
   CHECK(seen.second == 0);
   CHECK(clock.calls() == 1);
 
-  int64_t c_seconds = 0;
-  uint8_t c_weekday = 0;
-  CHECK(test_c_peripheral_read_clock(g_captured_host, &c_seconds, &c_weekday) ==
+  int64_t clock_seconds = 0;
+  uint8_t clock_weekday = 0;
+  CHECK(test_c_peripheral_read_clock(captured_host, &clock_seconds, &clock_weekday) ==
         1);
-  CHECK(c_seconds == 1773340200);
-  CHECK(c_weekday == 4);
+  CHECK(clock_seconds == 1773340200);
+  CHECK(clock_weekday == 4);
   CHECK(clock.calls() == 2);
 
   peripheral_unregister(2);
@@ -158,19 +158,19 @@ TEST_CASE("Peripheral ABI: A frozen host clock reaches a card the core built") {
 
 TEST_CASE("Peripheral ABI: The frozen clock ends with its scope") {
   peripheral_manager_init();
-  g_captured_host = nullptr;
-  REQUIRE(peripheral_register(&g_log_probe_peripheral, 2) == 0);
-  REQUIRE(g_captured_host != nullptr);
+  captured_host = nullptr;
+  REQUIRE(peripheral_register(&log_probe_peripheral, 2) == 0);
+  REQUIRE(captured_host != nullptr);
 
   {
-    TestFixtures::ScopedLocalTimeProvider_t clock(frozen_thursday);
-    HostLocalTime_t seen{};
-    REQUIRE(g_captured_host->GetLocalTime(&seen));
+    TestFixtures::ScopedLocalTimeProvider clock(frozen_thursday);
+    HostLocalTime seen{};
+    REQUIRE(captured_host->GetLocalTime(&seen));
     CHECK(seen.unix_seconds == 1773340200);
   }
 
-  HostLocalTime_t after{};
-  REQUIRE(g_captured_host->GetLocalTime(&after));
+  HostLocalTime after{};
+  REQUIRE(captured_host->GetLocalTime(&after));
   CHECK(after.unix_seconds != 1773340200);
   CHECK(after.year >= 2026);
 
@@ -180,13 +180,13 @@ TEST_CASE("Peripheral ABI: The frozen clock ends with its scope") {
 TEST_CASE(
     "Peripheral ABI: Without a provider the host clock is the wall clock") {
   peripheral_manager_init();
-  g_captured_host = nullptr;
-  REQUIRE(peripheral_register(&g_log_probe_peripheral, 2) == 0);
-  REQUIRE(g_captured_host != nullptr);
+  captured_host = nullptr;
+  REQUIRE(peripheral_register(&log_probe_peripheral, 2) == 0);
+  REQUIRE(captured_host != nullptr);
 
   const time_t before = time(nullptr);
-  HostLocalTime_t seen{};
-  REQUIRE(g_captured_host->GetLocalTime(&seen));
+  HostLocalTime seen{};
+  REQUIRE(captured_host->GetLocalTime(&seen));
   const time_t after = time(nullptr);
   CHECK(seen.unix_seconds >= static_cast<int64_t>(before));
   CHECK(seen.unix_seconds <= static_cast<int64_t>(after));
@@ -204,22 +204,22 @@ TEST_CASE(
   CHECK(seen.minute == local.tm_min);
   CHECK(seen.second == std::min(local.tm_sec, 59));
 
-  CHECK(g_captured_host->GetLocalTime(nullptr) == false);
+  CHECK(captured_host->GetLocalTime(nullptr) == false);
 
   peripheral_manager_shutdown();
 }
 
 TEST_CASE("Peripheral ABI: A host without a clock says so and writes nothing") {
   peripheral_manager_init();
-  g_captured_host = nullptr;
-  REQUIRE(peripheral_register(&g_log_probe_peripheral, 2) == 0);
-  REQUIRE(g_captured_host != nullptr);
+  captured_host = nullptr;
+  REQUIRE(peripheral_register(&log_probe_peripheral, 2) == 0);
+  REQUIRE(captured_host != nullptr);
 
   linapple_set_local_time_provider(
-      [](void*, HostLocalTime_t*) -> bool { return false; }, nullptr);
-  HostLocalTime_t untouched{};
+      [](void*, HostLocalTime*) -> bool { return false; }, nullptr);
+  HostLocalTime untouched{};
   untouched.year = 1234;
-  CHECK(g_captured_host->GetLocalTime(&untouched) == false);
+  CHECK(captured_host->GetLocalTime(&untouched) == false);
   CHECK(untouched.year == 1234);
   linapple_set_local_time_provider(nullptr, nullptr);
 
@@ -236,56 +236,56 @@ namespace {
 // member counts: the same header must lay out the same on a 32-bit host.
 constexpr size_t host_member_size = sizeof(void (*)(void));
 
-static_assert(offsetof(HostInterface_t, PrinterPutChar) ==
+static_assert(offsetof(HostInterface, PrinterPutChar) ==
                   16 * host_member_size,
               "PrinterPutChar moved");
-static_assert(offsetof(HostInterface_t, PrinterGetStatus) ==
+static_assert(offsetof(HostInterface, PrinterGetStatus) ==
                   17 * host_member_size,
               "PrinterGetStatus moved");
-static_assert(offsetof(HostInterface_t, GetLocalTime) == 21 * host_member_size,
+static_assert(offsetof(HostInterface, GetLocalTime) == 21 * host_member_size,
               "GetLocalTime moved");
-static_assert(offsetof(HostInterface_t, SinkOpen) == 22 * host_member_size,
+static_assert(offsetof(HostInterface, SinkOpen) == 22 * host_member_size,
               "SinkOpen is not the first member after GetLocalTime");
-static_assert(offsetof(HostInterface_t, SinkWrite) == 23 * host_member_size,
+static_assert(offsetof(HostInterface, SinkWrite) == 23 * host_member_size,
               "SinkWrite moved");
-static_assert(offsetof(HostInterface_t, SinkReady) == 24 * host_member_size,
+static_assert(offsetof(HostInterface, SinkReady) == 24 * host_member_size,
               "SinkReady moved");
-static_assert(offsetof(HostInterface_t, SinkClose) == 25 * host_member_size,
+static_assert(offsetof(HostInterface, SinkClose) == 25 * host_member_size,
               "SinkClose moved");
-static_assert(offsetof(HostInterface_t, SinkRead) == 26 * host_member_size,
+static_assert(offsetof(HostInterface, SinkRead) == 26 * host_member_size,
               "SinkRead is not the first member after SinkClose");
-static_assert(offsetof(HostInterface_t, SinkSetLine) == 27 * host_member_size,
+static_assert(offsetof(HostInterface, SinkSetLine) == 27 * host_member_size,
               "SinkSetLine moved");
-static_assert(offsetof(HostInterface_t, SinkGetLines) == 28 * host_member_size,
+static_assert(offsetof(HostInterface, SinkGetLines) == 28 * host_member_size,
               "SinkGetLines moved");
-static_assert(offsetof(HostInterface_t, ScheduleEvent) == 29 * host_member_size,
+static_assert(offsetof(HostInterface, ScheduleEvent) == 29 * host_member_size,
               "ScheduleEvent is not the first member after SinkGetLines");
-static_assert(offsetof(HostInterface_t, GetMachine) == 30 * host_member_size,
+static_assert(offsetof(HostInterface, GetMachine) == 30 * host_member_size,
               "GetMachine is not the first member after ScheduleEvent");
-static_assert(offsetof(HostInterface_t, GetFrameCycles) ==
+static_assert(offsetof(HostInterface, GetFrameCycles) ==
                   31 * host_member_size,
               "GetFrameCycles moved");
-static_assert(sizeof(HostInterface_t) == 32 * host_member_size,
-              "HostInterface_t grew past GetFrameCycles");
+static_assert(sizeof(HostInterface) == 32 * host_member_size,
+              "HostInterface grew past GetFrameCycles");
 static_assert(peripheral_machine_apple2 == 0 &&
                   peripheral_machine_apple2_plus == 1 &&
                   peripheral_machine_apple2e == 2,
-              "PeripheralMachine_t values are part of the plugin ABI");
+              "PeripheralMachine values are part of the plugin ABI");
 static_assert(peripheral_sink_printer == 1 && peripheral_sink_serial == 2,
-              "PeripheralSinkKind_t values are part of the plugin ABI");
-static_assert(sizeof(PeripheralSerialLine_t) == 12,
-              "PeripheralSerialLine_t crosses the plugin ABI");
+              "PeripheralSinkKind values are part of the plugin ABI");
+static_assert(sizeof(PeripheralSerialLine) == 12,
+              "PeripheralSerialLine crosses the plugin ABI");
 static_assert(peripheral_serial_parity_none == 0 &&
                   peripheral_serial_parity_odd == 1 &&
                   peripheral_serial_parity_even == 2 &&
                   peripheral_serial_parity_mark == 3 &&
                   peripheral_serial_parity_space == 4,
-              "PeripheralSerialParity_t values are part of the plugin ABI");
+              "PeripheralSerialParity values are part of the plugin ABI");
 
 // A card that opens its sink at init and, when asked, records what the
 // manager had done for the sink by the time its own hooks ran.
-struct SinkProbe_t {
-  HostInterface_t* host = nullptr;
+struct SinkProbe {
+  HostInterface* host = nullptr;
   void* token = nullptr;
   int slot = 0;
   unsigned ticks_seen_at_think = 0;
@@ -293,45 +293,45 @@ struct SinkProbe_t {
   bool command_seen = false;
 };
 
-SinkProbe_t g_sink_probe;
-const TestFixtures::ScopedByteSink_t* g_sink_watched_by_probe = nullptr;
+SinkProbe sink_probe;
+const TestFixtures::ScopedByteSink* sink_watched_by_probe = nullptr;
 
-auto sink_probe_init(int slot, HostInterface_t* host) -> void* {
-  g_sink_probe = SinkProbe_t();
-  g_sink_probe.host = host;
-  g_sink_probe.slot = slot;
-  g_sink_probe.token =
-      host->SinkOpen(&g_sink_probe, slot, peripheral_sink_printer);
-  return &g_sink_probe;
+auto sink_probe_init(int slot, HostInterface* host) -> void* {
+  sink_probe = SinkProbe();
+  sink_probe.host = host;
+  sink_probe.slot = slot;
+  sink_probe.token =
+      host->SinkOpen(&sink_probe, slot, peripheral_sink_printer);
+  return &sink_probe;
 }
 
 auto sink_probe_shutdown(void* instance) -> void {
-  auto* probe = static_cast<SinkProbe_t*>(instance);
+  auto* probe = static_cast<SinkProbe*>(instance);
   probe->host->SinkClose(probe->token);
 }
 
 auto sink_probe_think(void* instance, uint32_t cycles) -> void {
   (void)cycles;
-  auto* probe = static_cast<SinkProbe_t*>(instance);
-  if (g_sink_watched_by_probe != nullptr) {
-    probe->ticks_seen_at_think = g_sink_watched_by_probe->ticks();
+  auto* probe = static_cast<SinkProbe*>(instance);
+  if (sink_watched_by_probe != nullptr) {
+    probe->ticks_seen_at_think = sink_watched_by_probe->ticks();
   }
 }
 
 auto sink_probe_command(void* instance, uint32_t cmd_id, const void* data,
-                        size_t size) -> PeripheralStatus_t {
+                        size_t size) -> PeripheralStatus {
   (void)cmd_id;
   (void)data;
   (void)size;
-  auto* probe = static_cast<SinkProbe_t*>(instance);
+  auto* probe = static_cast<SinkProbe*>(instance);
   probe->command_seen = true;
-  if (g_sink_watched_by_probe != nullptr) {
-    probe->ticks_seen_at_command = g_sink_watched_by_probe->ticks();
+  if (sink_watched_by_probe != nullptr) {
+    probe->ticks_seen_at_command = sink_watched_by_probe->ticks();
   }
   return peripheral_ok;
 }
 
-Peripheral_t g_sink_probe_peripheral = {
+Peripheral sink_probe_peripheral = {
     LINAPPLE_ABI_VERSION,
     "test.sink_probe",
     "SinkProbe",
@@ -356,52 +356,52 @@ constexpr int probe_slot = 2;
 // Puts the bridge in the state a fresh process has: nothing installed. The
 // previous binding is restored so that a session-wide sink, if one is ever
 // installed by the harness, survives the case.
-class ScopedNoByteSink_t {
+class ScopedNoByteSink {
  public:
-  ScopedNoByteSink_t() : previous_(linapple_set_byte_sink(nullptr, nullptr)) {}
-  ~ScopedNoByteSink_t() {
+  ScopedNoByteSink() : previous_(linapple_set_byte_sink(nullptr, nullptr)) {}
+  ~ScopedNoByteSink() {
     linapple_set_byte_sink(previous_.vtable, previous_.ctx);
   }
-  ScopedNoByteSink_t(const ScopedNoByteSink_t&) = delete;
-  auto operator=(const ScopedNoByteSink_t&) -> ScopedNoByteSink_t& = delete;
-  ScopedNoByteSink_t(ScopedNoByteSink_t&&) = delete;
-  auto operator=(ScopedNoByteSink_t&&) -> ScopedNoByteSink_t& = delete;
+  ScopedNoByteSink(const ScopedNoByteSink&) = delete;
+  auto operator=(const ScopedNoByteSink&) -> ScopedNoByteSink& = delete;
+  ScopedNoByteSink(ScopedNoByteSink&&) = delete;
+  auto operator=(ScopedNoByteSink&&) -> ScopedNoByteSink& = delete;
 
  private:
-  ByteSinkBinding_t previous_;
+  ByteSinkBinding previous_;
 };
 
 }  // namespace
 
 TEST_CASE(
     "Peripheral ABI: The sink members follow GetLocalTime at pinned offsets") {
-  CHECK(offsetof(HostInterface_t, SinkOpen) ==
-        offsetof(HostInterface_t, GetLocalTime) + host_member_size);
-  CHECK(offsetof(HostInterface_t, SinkRead) ==
-        offsetof(HostInterface_t, SinkClose) + host_member_size);
-  CHECK(offsetof(HostInterface_t, GetFrameCycles) + host_member_size ==
-        sizeof(HostInterface_t));
+  CHECK(offsetof(HostInterface, SinkOpen) ==
+        offsetof(HostInterface, GetLocalTime) + host_member_size);
+  CHECK(offsetof(HostInterface, SinkRead) ==
+        offsetof(HostInterface, SinkClose) + host_member_size);
+  CHECK(offsetof(HostInterface, GetFrameCycles) + host_member_size ==
+        sizeof(HostInterface));
 
   peripheral_manager_init();
-  g_captured_host = nullptr;
-  REQUIRE(peripheral_register(&g_log_probe_peripheral, probe_slot) == 0);
-  REQUIRE(g_captured_host != nullptr);
-  CHECK(g_captured_host->SinkOpen != nullptr);
-  CHECK(g_captured_host->SinkWrite != nullptr);
-  CHECK(g_captured_host->SinkReady != nullptr);
-  CHECK(g_captured_host->SinkClose != nullptr);
-  CHECK(g_captured_host->SinkRead != nullptr);
-  CHECK(g_captured_host->SinkSetLine != nullptr);
-  CHECK(g_captured_host->SinkGetLines != nullptr);
-  CHECK(g_captured_host->ScheduleEvent != nullptr);
-  CHECK(g_captured_host->GetMachine != nullptr);
-  CHECK(g_captured_host->GetFrameCycles != nullptr);
+  captured_host = nullptr;
+  REQUIRE(peripheral_register(&log_probe_peripheral, probe_slot) == 0);
+  REQUIRE(captured_host != nullptr);
+  CHECK(captured_host->SinkOpen != nullptr);
+  CHECK(captured_host->SinkWrite != nullptr);
+  CHECK(captured_host->SinkReady != nullptr);
+  CHECK(captured_host->SinkClose != nullptr);
+  CHECK(captured_host->SinkRead != nullptr);
+  CHECK(captured_host->SinkSetLine != nullptr);
+  CHECK(captured_host->SinkGetLines != nullptr);
+  CHECK(captured_host->ScheduleEvent != nullptr);
+  CHECK(captured_host->GetMachine != nullptr);
+  CHECK(captured_host->GetFrameCycles != nullptr);
   // The printer and serial members keep their place in the layout with
   // nothing behind them.
-  CHECK(g_captured_host->PrinterPutChar == nullptr);
-  CHECK(g_captured_host->PrinterGetStatus == nullptr);
-  CHECK(g_captured_host->SerialTransmitByte == nullptr);
-  CHECK(g_captured_host->SerialUpdateState == nullptr);
+  CHECK(captured_host->PrinterPutChar == nullptr);
+  CHECK(captured_host->PrinterGetStatus == nullptr);
+  CHECK(captured_host->SerialTransmitByte == nullptr);
+  CHECK(captured_host->SerialUpdateState == nullptr);
   peripheral_manager_shutdown();
 }
 
@@ -413,12 +413,12 @@ TEST_CASE(
   const uint32_t saved_speed = system_state.speed;
 
   peripheral_manager_init();
-  g_captured_host = nullptr;
-  REQUIRE(peripheral_register(&g_log_probe_peripheral, probe_slot) == 0);
-  REQUIRE(g_captured_host != nullptr);
+  captured_host = nullptr;
+  REQUIRE(peripheral_register(&log_probe_peripheral, probe_slot) == 0);
+  REQUIRE(captured_host != nullptr);
 
   current_apple2_type = A2TYPE_APPLE2;
-  CHECK(g_captured_host->GetMachine() == peripheral_machine_apple2);
+  CHECK(captured_host->GetMachine() == peripheral_machine_apple2);
   for (Apple2Type plus : {
            A2TYPE_APPLE2PLUS,
            A2TYPE_APPLE2JPLUS,
@@ -428,7 +428,7 @@ TEST_CASE(
        }) {
     CAPTURE(static_cast<int>(plus));
     current_apple2_type = plus;
-    CHECK(g_captured_host->GetMachine() == peripheral_machine_apple2_plus);
+    CHECK(captured_host->GetMachine() == peripheral_machine_apple2_plus);
   }
   for (Apple2Type iie : {
            A2TYPE_APPLE2E,
@@ -438,20 +438,20 @@ TEST_CASE(
        }) {
     CAPTURE(static_cast<int>(iie));
     current_apple2_type = iie;
-    CHECK(g_captured_host->GetMachine() == peripheral_machine_apple2e);
+    CHECK(captured_host->GetMachine() == peripheral_machine_apple2e);
   }
 
   system_state.clks_per_frame = 17030;
-  CHECK(g_captured_host->GetFrameCycles() == 17030);
+  CHECK(captured_host->GetFrameCycles() == 17030);
   system_state.clks_per_frame = 20280;
-  CHECK(g_captured_host->GetFrameCycles() == 20280);
+  CHECK(captured_host->GetFrameCycles() == 20280);
   // The run quantum follows the speed setting; the television frame does not.
   linapple_set_speed(emulation_speed_max);
   CHECK(linapple_get_frame_cycles() == 20280 * 4);
-  CHECK(g_captured_host->GetFrameCycles() == 20280);
+  CHECK(captured_host->GetFrameCycles() == 20280);
   linapple_speed_reset();
   system_state.clks_per_frame = 0;
-  CHECK(g_captured_host->GetFrameCycles() == 17030);
+  CHECK(captured_host->GetFrameCycles() == 17030);
 
   peripheral_manager_shutdown();
   current_apple2_type = saved_type;
@@ -462,15 +462,15 @@ TEST_CASE(
 TEST_CASE(
     "Peripheral ABI: Without a host sink the token exists, is not ready and "
     "swallows bytes") {
-  ScopedNoByteSink_t nothing_installed;
+  ScopedNoByteSink nothing_installed;
   peripheral_manager_init();
-  REQUIRE(peripheral_register(&g_sink_probe_peripheral, probe_slot) == 0);
-  REQUIRE(g_sink_probe.token != nullptr);
+  REQUIRE(peripheral_register(&sink_probe_peripheral, probe_slot) == 0);
+  REQUIRE(sink_probe.token != nullptr);
 
-  HostInterface_t* host = g_sink_probe.host;
-  CHECK(host->SinkReady(g_sink_probe.token) == false);
-  host->SinkWrite(g_sink_probe.token, 0xC8);
-  CHECK(host->SinkReady(g_sink_probe.token) == false);
+  HostInterface* host = sink_probe.host;
+  CHECK(host->SinkReady(sink_probe.token) == false);
+  host->SinkWrite(sink_probe.token, 0xC8);
+  CHECK(host->SinkReady(sink_probe.token) == false);
 
   // A NULL token and a token the bridge never minted are refused the same
   // way, never dereferenced.
@@ -488,20 +488,20 @@ TEST_CASE(
 
 TEST_CASE(
     "Peripheral ABI: A card's bytes reach the installed sink with its slot") {
-  TestFixtures::ScopedByteSink_t sink;
+  TestFixtures::ScopedByteSink sink;
   peripheral_manager_init();
-  REQUIRE(peripheral_register(&g_sink_probe_peripheral, probe_slot) == 0);
-  REQUIRE(g_sink_probe.token != nullptr);
+  REQUIRE(peripheral_register(&sink_probe_peripheral, probe_slot) == 0);
+  REQUIRE(sink_probe.token != nullptr);
   CHECK(sink.opens() == 0);
 
-  HostInterface_t* host = g_sink_probe.host;
-  CHECK(host->SinkReady(g_sink_probe.token));
+  HostInterface* host = sink_probe.host;
+  CHECK(host->SinkReady(sink_probe.token));
   CHECK(sink.opens() == 1);
   CHECK(sink.last_open_kind() == peripheral_sink_printer);
   CHECK(sink.ready_polls() == 1);
 
-  host->SinkWrite(g_sink_probe.token, 0xC8);
-  host->SinkWrite(g_sink_probe.token, 0xC5);
+  host->SinkWrite(sink_probe.token, 0xC8);
+  host->SinkWrite(sink_probe.token, 0xC5);
   CHECK(test_c_peripheral_sink_write(host, probe_slot, 0x8D) == 1);
   CHECK(sink.opens() == 1);
 
@@ -521,16 +521,16 @@ TEST_CASE(
 TEST_CASE(
     "Peripheral ABI: A sink installed after the card opened its token "
     "receives the bytes") {
-  ScopedNoByteSink_t nothing_installed;
+  ScopedNoByteSink nothing_installed;
   peripheral_manager_init();
-  REQUIRE(peripheral_register(&g_sink_probe_peripheral, probe_slot) == 0);
-  HostInterface_t* host = g_sink_probe.host;
-  host->SinkWrite(g_sink_probe.token, 0x01);
+  REQUIRE(peripheral_register(&sink_probe_peripheral, probe_slot) == 0);
+  HostInterface* host = sink_probe.host;
+  host->SinkWrite(sink_probe.token, 0x01);
 
   {
-    TestFixtures::ScopedByteSink_t late;
+    TestFixtures::ScopedByteSink late;
     CHECK(late.opens() == 0);
-    host->SinkWrite(g_sink_probe.token, 0xC8);
+    host->SinkWrite(sink_probe.token, 0xC8);
     CHECK(late.opens() == 1);
     CHECK(late.last_open_kind() == peripheral_sink_printer);
     REQUIRE(late.bytes().size() == 1);
@@ -540,48 +540,48 @@ TEST_CASE(
   }
   // The guard's departure closed what it had opened; with nothing behind the
   // host again the token is still valid and merely not ready.
-  CHECK(host->SinkReady(g_sink_probe.token) == false);
-  host->SinkWrite(g_sink_probe.token, 0xC5);
+  CHECK(host->SinkReady(sink_probe.token) == false);
+  host->SinkWrite(sink_probe.token, 0xC5);
 
   peripheral_manager_shutdown();
 }
 
 TEST_CASE("Peripheral ABI: Nested sinks take over and restore in order") {
-  ScopedNoByteSink_t nothing_installed;
-  TestFixtures::ScopedByteSink_t outer;
+  ScopedNoByteSink nothing_installed;
+  TestFixtures::ScopedByteSink outer;
   peripheral_manager_init();
-  REQUIRE(peripheral_register(&g_sink_probe_peripheral, probe_slot) == 0);
-  HostInterface_t* host = g_sink_probe.host;
+  REQUIRE(peripheral_register(&sink_probe_peripheral, probe_slot) == 0);
+  HostInterface* host = sink_probe.host;
 
-  host->SinkWrite(g_sink_probe.token, 0x01);
+  host->SinkWrite(sink_probe.token, 0x01);
   CHECK(outer.opens() == 1);
   REQUIRE(outer.bytes().size() == 1);
 
   {
-    TestFixtures::ScopedByteSink_t inner;
+    TestFixtures::ScopedByteSink inner;
     // Installing the inner sink closed the slot under the outer one.
     CHECK(outer.closes() == 1);
-    host->SinkWrite(g_sink_probe.token, 0x02);
+    host->SinkWrite(sink_probe.token, 0x02);
     CHECK(inner.opens() == 1);
     REQUIRE(inner.bytes().size() == 1);
     CHECK(inner.bytes()[0].byte == 0x02);
     CHECK(outer.bytes().size() == 1);
     {
-      TestFixtures::ScopedByteSink_t innermost;
+      TestFixtures::ScopedByteSink innermost;
       CHECK(inner.closes() == 1);
-      host->SinkWrite(g_sink_probe.token, 0x03);
+      host->SinkWrite(sink_probe.token, 0x03);
       REQUIRE(innermost.bytes().size() == 1);
       CHECK(innermost.bytes()[0].byte == 0x03);
       CHECK(inner.bytes().size() == 1);
     }
-    host->SinkWrite(g_sink_probe.token, 0x04);
+    host->SinkWrite(sink_probe.token, 0x04);
     CHECK(inner.opens() == 2);
     REQUIRE(inner.bytes().size() == 2);
     CHECK(inner.bytes()[1].byte == 0x04);
     CHECK(outer.bytes().size() == 1);
   }
 
-  host->SinkWrite(g_sink_probe.token, 0x05);
+  host->SinkWrite(sink_probe.token, 0x05);
   CHECK(outer.opens() == 2);
   REQUIRE(outer.bytes().size() == 2);
   CHECK(outer.bytes()[1].slot == probe_slot);
@@ -594,37 +594,37 @@ TEST_CASE("Peripheral ABI: Nested sinks take over and restore in order") {
 TEST_CASE(
     "Peripheral ABI: SinkOpen refuses a slot outside 1..7, an unknown kind and "
     "a second kind on an open slot") {
-  TestFixtures::ScopedByteSink_t sink;
+  TestFixtures::ScopedByteSink sink;
   peripheral_manager_init();
-  REQUIRE(peripheral_register(&g_sink_probe_peripheral, probe_slot) == 0);
-  HostInterface_t* host = g_sink_probe.host;
-  void* instance = &g_sink_probe;
+  REQUIRE(peripheral_register(&sink_probe_peripheral, probe_slot) == 0);
+  HostInterface* host = sink_probe.host;
+  void* instance = &sink_probe;
 
   CHECK(host->SinkOpen(instance, 0, peripheral_sink_printer) == nullptr);
   CHECK(host->SinkOpen(instance, 8, peripheral_sink_printer) == nullptr);
   CHECK(host->SinkOpen(instance, -1, peripheral_sink_printer) == nullptr);
-  CHECK(host->SinkOpen(instance, 1, static_cast<PeripheralSinkKind_t>(0)) ==
+  CHECK(host->SinkOpen(instance, 1, static_cast<PeripheralSinkKind>(0)) ==
         nullptr);
-  CHECK(host->SinkOpen(instance, 1, static_cast<PeripheralSinkKind_t>(3)) ==
+  CHECK(host->SinkOpen(instance, 1, static_cast<PeripheralSinkKind>(3)) ==
         nullptr);
   CHECK(host->SinkOpen(instance, 1, peripheral_sink_printer) != nullptr);
   CHECK(host->SinkOpen(instance, 7, peripheral_sink_serial) != nullptr);
 
   // Until the first use nothing is open, so the slot may still change kind.
   CHECK(host->SinkOpen(instance, probe_slot, peripheral_sink_serial) ==
-        g_sink_probe.token);
+        sink_probe.token);
   CHECK(host->SinkOpen(instance, probe_slot, peripheral_sink_printer) ==
-        g_sink_probe.token);
+        sink_probe.token);
 
-  host->SinkWrite(g_sink_probe.token, 0xC8);
+  host->SinkWrite(sink_probe.token, 0xC8);
   CHECK(sink.opens() == 1);
   CHECK(host->SinkOpen(instance, probe_slot, peripheral_sink_serial) ==
         nullptr);
   CHECK(host->SinkOpen(instance, probe_slot, peripheral_sink_printer) ==
-        g_sink_probe.token);
+        sink_probe.token);
   CHECK(sink.opens() == 1);
 
-  host->SinkClose(g_sink_probe.token);
+  host->SinkClose(sink_probe.token);
   CHECK(sink.closes() == 1);
   void* serial = host->SinkOpen(instance, probe_slot, peripheral_sink_serial);
   REQUIRE(serial != nullptr);
@@ -639,22 +639,22 @@ TEST_CASE(
 
 TEST_CASE(
     "Peripheral ABI: A sink that is not ready drops the byte and says so") {
-  TestFixtures::ScopedByteSink_t sink;
+  TestFixtures::ScopedByteSink sink;
   peripheral_manager_init();
-  REQUIRE(peripheral_register(&g_sink_probe_peripheral, probe_slot) == 0);
-  HostInterface_t* host = g_sink_probe.host;
+  REQUIRE(peripheral_register(&sink_probe_peripheral, probe_slot) == 0);
+  HostInterface* host = sink_probe.host;
 
   sink.set_ready(false);
-  CHECK(host->SinkReady(g_sink_probe.token) == false);
-  host->SinkWrite(g_sink_probe.token, 0xC8);
+  CHECK(host->SinkReady(sink_probe.token) == false);
+  host->SinkWrite(sink_probe.token, 0xC8);
   CHECK(sink.dropped() == 1);
   CHECK(sink.bytes().empty());
   CHECK(test_c_peripheral_sink_write(host, probe_slot, 0xC5) == 0);
   CHECK(sink.dropped() == 2);
 
   sink.set_ready(true);
-  CHECK(host->SinkReady(g_sink_probe.token));
-  host->SinkWrite(g_sink_probe.token, 0xCC);
+  CHECK(host->SinkReady(sink_probe.token));
+  host->SinkWrite(sink_probe.token, 0xCC);
   REQUIRE(sink.bytes().size() == 1);
   CHECK(sink.bytes()[0].byte == 0xCC);
   CHECK(sink.dropped() == 2);
@@ -667,28 +667,28 @@ TEST_CASE(
 TEST_CASE(
     "Peripheral ABI: SinkClose closes an open slot once and the next use "
     "reopens it") {
-  TestFixtures::ScopedByteSink_t sink;
+  TestFixtures::ScopedByteSink sink;
   peripheral_manager_init();
-  REQUIRE(peripheral_register(&g_sink_probe_peripheral, probe_slot) == 0);
-  HostInterface_t* host = g_sink_probe.host;
+  REQUIRE(peripheral_register(&sink_probe_peripheral, probe_slot) == 0);
+  HostInterface* host = sink_probe.host;
 
   // Closing what was never opened opens nothing and closes nothing.
-  host->SinkClose(g_sink_probe.token);
+  host->SinkClose(sink_probe.token);
   CHECK(sink.opens() == 0);
   CHECK(sink.closes() == 0);
 
-  host->SinkWrite(g_sink_probe.token, 0xC8);
+  host->SinkWrite(sink_probe.token, 0xC8);
   CHECK(sink.opens() == 1);
-  host->SinkClose(g_sink_probe.token);
+  host->SinkClose(sink_probe.token);
   CHECK(sink.closes() == 1);
-  host->SinkClose(g_sink_probe.token);
+  host->SinkClose(sink_probe.token);
   CHECK(sink.closes() == 1);
 
   // A re-init under an unchanged sink mints the same token and reopens on
   // first use.
   void* again =
-      host->SinkOpen(&g_sink_probe, probe_slot, peripheral_sink_printer);
-  CHECK(again == g_sink_probe.token);
+      host->SinkOpen(&sink_probe, probe_slot, peripheral_sink_printer);
+  CHECK(again == sink_probe.token);
   CHECK(host->SinkReady(again));
   CHECK(sink.opens() == 2);
 
@@ -699,49 +699,49 @@ TEST_CASE(
 TEST_CASE(
     "Peripheral ABI: The manager ticks the sink after the command drain and "
     "before any card thinks") {
-  TestFixtures::ScopedByteSink_t sink;
+  TestFixtures::ScopedByteSink sink;
   peripheral_manager_init();
-  REQUIRE(peripheral_register(&g_sink_probe_peripheral, probe_slot) == 0);
-  g_sink_watched_by_probe = &sink;
+  REQUIRE(peripheral_register(&sink_probe_peripheral, probe_slot) == 0);
+  sink_watched_by_probe = &sink;
 
   REQUIRE(peripheral_command(probe_slot, 0x00010001, nullptr, 0) ==
           peripheral_ok);
   peripheral_manager_think(0);
   CHECK(sink.ticks() == 1);
-  CHECK(g_sink_probe.command_seen);
-  CHECK(g_sink_probe.ticks_seen_at_command == 0);
-  CHECK(g_sink_probe.ticks_seen_at_think == 1);
+  CHECK(sink_probe.command_seen);
+  CHECK(sink_probe.ticks_seen_at_command == 0);
+  CHECK(sink_probe.ticks_seen_at_think == 1);
 
   peripheral_manager_think(1000);
   CHECK(sink.ticks() == 2);
-  CHECK(g_sink_probe.ticks_seen_at_think == 2);
+  CHECK(sink_probe.ticks_seen_at_think == 2);
 
-  g_sink_watched_by_probe = nullptr;
+  sink_watched_by_probe = nullptr;
   peripheral_manager_shutdown();
 }
 
 TEST_CASE("Peripheral ABI: A sink without a tick is left alone") {
   peripheral_manager_init();
-  REQUIRE(peripheral_register(&g_sink_probe_peripheral, probe_slot) == 0);
+  REQUIRE(peripheral_register(&sink_probe_peripheral, probe_slot) == 0);
 
   static unsigned writes_seen = 0;
   writes_seen = 0;
-  static const ByteSink_t tickless = {
+  static const ByteSink tickless = {
       nullptr, [](void*, int, uint8_t) -> void { ++writes_seen; },
       nullptr, nullptr,
       nullptr, nullptr,
       nullptr, nullptr,
   };
-  const ByteSinkBinding_t previous = linapple_set_byte_sink(&tickless, nullptr);
+  const ByteSinkBinding previous = linapple_set_byte_sink(&tickless, nullptr);
 
   peripheral_manager_think(0);
-  HostInterface_t* host = g_sink_probe.host;
-  host->SinkWrite(g_sink_probe.token, 0xC8);
+  HostInterface* host = sink_probe.host;
+  host->SinkWrite(sink_probe.token, 0xC8);
   CHECK(writes_seen == 1);
   // No ready member means the sink has nothing to say, which reads as not
   // ready; no open or close member is skipped, not dereferenced.
-  CHECK(host->SinkReady(g_sink_probe.token) == false);
-  host->SinkClose(g_sink_probe.token);
+  CHECK(host->SinkReady(sink_probe.token) == false);
+  host->SinkClose(sink_probe.token);
 
   linapple_set_byte_sink(previous.vtable, previous.ctx);
   peripheral_manager_shutdown();
@@ -749,16 +749,16 @@ TEST_CASE("Peripheral ABI: A sink without a tick is left alone") {
 
 namespace {
 
-auto serial_probe_init(int slot, HostInterface_t* host) -> void* {
-  g_sink_probe = SinkProbe_t();
-  g_sink_probe.host = host;
-  g_sink_probe.slot = slot;
-  g_sink_probe.token =
-      host->SinkOpen(&g_sink_probe, slot, peripheral_sink_serial);
-  return &g_sink_probe;
+auto serial_probe_init(int slot, HostInterface* host) -> void* {
+  sink_probe = SinkProbe();
+  sink_probe.host = host;
+  sink_probe.slot = slot;
+  sink_probe.token =
+      host->SinkOpen(&sink_probe, slot, peripheral_sink_serial);
+  return &sink_probe;
 }
 
-Peripheral_t g_serial_probe_peripheral = {
+Peripheral serial_probe_peripheral = {
     LINAPPLE_ABI_VERSION,
     "test.serial_probe",
     "SerialProbe",
@@ -778,14 +778,14 @@ Peripheral_t g_serial_probe_peripheral = {
     nullptr,
 };
 
-constexpr PeripheralSerialLine_t line_9600_8n1 = {
+constexpr PeripheralSerialLine line_9600_8n1 = {
     9600, 8, peripheral_serial_parity_none, 2, 1, 1, 0, {0, 0},
 };
-constexpr PeripheralSerialLine_t line_300_7e2 = {
+constexpr PeripheralSerialLine line_300_7e2 = {
     300, 7, peripheral_serial_parity_even, 4, 1, 0, 0, {0, 0},
 };
 
-auto same_line(const PeripheralSerialLine_t& a, const PeripheralSerialLine_t& b)
+auto same_line(const PeripheralSerialLine& a, const PeripheralSerialLine& b)
     -> bool {
   return a.baud == b.baud && a.data_bits == b.data_bits &&
          a.parity == b.parity && a.stop_half_bits == b.stop_half_bits &&
@@ -797,13 +797,13 @@ auto same_line(const PeripheralSerialLine_t& a, const PeripheralSerialLine_t& b)
 TEST_CASE(
     "Peripheral ABI: SinkRead pulls a queued byte once, by slot, and leaves "
     "the byte alone when nothing waits") {
-  TestFixtures::ScopedByteSink_t sink;
+  TestFixtures::ScopedByteSink sink;
   peripheral_manager_init();
-  REQUIRE(peripheral_register(&g_serial_probe_peripheral, probe_slot) == 0);
-  HostInterface_t* host = g_sink_probe.host;
-  void* token = g_sink_probe.token;
+  REQUIRE(peripheral_register(&serial_probe_peripheral, probe_slot) == 0);
+  HostInterface* host = sink_probe.host;
+  void* token = sink_probe.token;
   REQUIRE(token != nullptr);
-  void* other = host->SinkOpen(&g_sink_probe, 1, peripheral_sink_serial);
+  void* other = host->SinkOpen(&sink_probe, 1, peripheral_sink_serial);
   REQUIRE(other != nullptr);
 
   uint8_t byte = 0x55;
@@ -833,17 +833,17 @@ TEST_CASE(
 TEST_CASE(
     "Peripheral ABI: SinkRead on a slot never written opens it as a serial "
     "line") {
-  TestFixtures::ScopedByteSink_t sink;
+  TestFixtures::ScopedByteSink sink;
   peripheral_manager_init();
-  REQUIRE(peripheral_register(&g_serial_probe_peripheral, probe_slot) == 0);
-  HostInterface_t* host = g_sink_probe.host;
+  REQUIRE(peripheral_register(&serial_probe_peripheral, probe_slot) == 0);
+  HostInterface* host = sink_probe.host;
   CHECK(sink.opens() == 0);
 
   uint8_t byte = 0;
-  CHECK(host->SinkRead(g_sink_probe.token, &byte) == false);
+  CHECK(host->SinkRead(sink_probe.token, &byte) == false);
   CHECK(sink.opens() == 1);
   CHECK(sink.last_open_kind() == peripheral_sink_serial);
-  CHECK(host->SinkRead(g_sink_probe.token, &byte) == false);
+  CHECK(host->SinkRead(sink_probe.token, &byte) == false);
   CHECK(sink.opens() == 1);
 
   peripheral_manager_shutdown();
@@ -853,11 +853,11 @@ TEST_CASE(
 TEST_CASE(
     "Peripheral ABI: SinkGetLines says false and writes nothing with no sink "
     "or no get_lines, and hands over the fixture's mask otherwise") {
-  ScopedNoByteSink_t nothing_installed;
+  ScopedNoByteSink nothing_installed;
   peripheral_manager_init();
-  REQUIRE(peripheral_register(&g_serial_probe_peripheral, probe_slot) == 0);
-  HostInterface_t* host = g_sink_probe.host;
-  void* token = g_sink_probe.token;
+  REQUIRE(peripheral_register(&serial_probe_peripheral, probe_slot) == 0);
+  HostInterface* host = sink_probe.host;
+  void* token = sink_probe.token;
 
   uint8_t lines = 0xA5;
   CHECK(host->SinkGetLines(token, &lines) == false);
@@ -866,10 +866,10 @@ TEST_CASE(
   CHECK(host->SinkGetLines(token, nullptr) == false);
 
   {
-    static const ByteSink_t lineless = {
+    static const ByteSink lineless = {
         nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
     };
-    const ByteSinkBinding_t previous =
+    const ByteSinkBinding previous =
         linapple_set_byte_sink(&lineless, nullptr);
     CHECK(host->SinkGetLines(token, &lines) == false);
     CHECK(lines == 0xA5);
@@ -877,7 +877,7 @@ TEST_CASE(
   }
 
   {
-    TestFixtures::ScopedByteSink_t sink;
+    TestFixtures::ScopedByteSink sink;
     // Every line asserted: what a card with no cable reads.
     CHECK(host->SinkGetLines(token, &lines));
     CHECK(lines == 0x07);
@@ -896,18 +896,18 @@ TEST_CASE(
 TEST_CASE(
     "Peripheral ABI: SinkSetLine ignores a NULL token and a format sent before "
     "a sink exists reaches set_line at the slot's first open") {
-  ScopedNoByteSink_t nothing_installed;
+  ScopedNoByteSink nothing_installed;
   peripheral_manager_init();
-  REQUIRE(peripheral_register(&g_serial_probe_peripheral, probe_slot) == 0);
-  HostInterface_t* host = g_sink_probe.host;
-  void* token = g_sink_probe.token;
+  REQUIRE(peripheral_register(&serial_probe_peripheral, probe_slot) == 0);
+  HostInterface* host = sink_probe.host;
+  void* token = sink_probe.token;
 
   host->SinkSetLine(nullptr, &line_9600_8n1);
   host->SinkSetLine(token, nullptr);
   host->SinkSetLine(token, &line_9600_8n1);
 
   {
-    TestFixtures::ScopedByteSink_t late;
+    TestFixtures::ScopedByteSink late;
     CHECK(late.opens() == 0);
     CHECK(late.line_sets() == 0);
     host->SinkWrite(token, 0xC8);
@@ -923,7 +923,7 @@ TEST_CASE(
 
   // A read opens the slot too, and the replay follows any member's open.
   {
-    TestFixtures::ScopedByteSink_t again;
+    TestFixtures::ScopedByteSink again;
     uint8_t byte = 0;
     CHECK(host->SinkRead(token, &byte) == false);
     CHECK(again.opens() == 1);
@@ -934,7 +934,7 @@ TEST_CASE(
   // Closing the token forgets the format.
   host->SinkClose(token);
   {
-    TestFixtures::ScopedByteSink_t after_close;
+    TestFixtures::ScopedByteSink after_close;
     host->SinkWrite(token, 0xC8);
     CHECK(after_close.opens() == 1);
     CHECK(after_close.line_sets() == 0);
@@ -970,30 +970,30 @@ auto cx_image(uint8_t displacement, uint8_t tail) noexcept
   return image;
 }
 
-const std::array<uint8_t, 256> g_cx_image_a =
+const std::array<uint8_t, 256> cx_image_a =
     cx_image(image_a_displacement, image_a_tail);
-const std::array<uint8_t, 256> g_cx_image_b =
+const std::array<uint8_t, 256> cx_image_b =
     cx_image(image_b_displacement, image_b_tail);
 
-struct CxProbe_t {
-  HostInterface_t* host = nullptr;
+struct CxProbe {
+  HostInterface* host = nullptr;
   int slot = 0;
 };
 
-CxProbe_t g_cx_probe;
+CxProbe cx_probe;
 
-auto cx_probe_init(int slot, HostInterface_t* host) -> void* {
-  g_cx_probe = CxProbe_t();
-  g_cx_probe.host = host;
-  g_cx_probe.slot = slot;
+auto cx_probe_init(int slot, HostInterface* host) -> void* {
+  cx_probe = CxProbe();
+  cx_probe.host = host;
+  cx_probe.slot = slot;
   // Registering I/O with no handlers of its own puts the slot's page on the
   // stock read path, which serves data reads from the live page like ROM.
   host->RegisterIO(slot, nullptr, nullptr, nullptr, nullptr);
-  host->RegisterCxROM(slot, g_cx_image_a.data());
-  return &g_cx_probe;
+  host->RegisterCxROM(slot, cx_image_a.data());
+  return &cx_probe;
 }
 
-Peripheral_t g_cx_probe_peripheral = {
+Peripheral cx_probe_peripheral = {
     LINAPPLE_ABI_VERSION,
     "test.cx_probe",
     "CxProbe",
@@ -1020,7 +1020,7 @@ auto cx_page_base(int slot) -> uint16_t {
 // Two single steps from the top of the slot's page: SEC, then the BCS whose
 // displacement is the byte under test. Returns where the 6502 landed.
 auto branch_from_page(int slot) -> uint16_t {
-  CpuRegisters_t* regs = cpu_get_registers();
+  CpuRegisters* regs = cpu_get_registers();
   regs->pc = cx_page_base(slot);
   regs->ps = 0;
   cpu_execute(0);
@@ -1038,8 +1038,8 @@ auto read_page_tail(int slot) -> uint8_t {
       0xFF,
       static_cast<uint8_t>(0xC0 + slot),
   };
-  TestFixtures::ScopedCore_t::poke(scratch_program, lda);
-  CpuRegisters_t* regs = cpu_get_registers();
+  TestFixtures::ScopedCore::poke(scratch_program, lda);
+  CpuRegisters* regs = cpu_get_registers();
   regs->pc = scratch_program;
   regs->a = 0;
   cpu_execute(0);
@@ -1054,22 +1054,22 @@ constexpr uint16_t sw_slotc3rom_on = 0xC00B;
 
 TEST_CASE(
     "Peripheral ABI: A card's Cx ROM page can change while the machine runs") {
-  TestFixtures::ScopedTestConfig_t config(
-      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedTestConfig config(
+      TestFixtures::ScopedTestConfig::enhanced_2e_only());
+  TestFixtures::ScopedCore core(config);
   constexpr int slot = 1;
-  REQUIRE(peripheral_register(&g_cx_probe_peripheral, slot) == 0);
-  REQUIRE(g_cx_probe.host != nullptr);
+  REQUIRE(peripheral_register(&cx_probe_peripheral, slot) == 0);
+  REQUIRE(cx_probe.host != nullptr);
   linapple_reset_hard();
 
   CHECK(branch_from_page(slot) == 0xC113);
   CHECK(read_page_tail(slot) == image_a_tail);
 
-  g_cx_probe.host->RegisterCxROM(slot, g_cx_image_b.data());
+  cx_probe.host->RegisterCxROM(slot, cx_image_b.data());
   CHECK(branch_from_page(slot) == 0xC123);
   CHECK(read_page_tail(slot) == image_b_tail);
 
-  g_cx_probe.host->RegisterCxROM(slot, g_cx_image_a.data());
+  cx_probe.host->RegisterCxROM(slot, cx_image_a.data());
   CHECK(branch_from_page(slot) == 0xC113);
   CHECK(read_page_tail(slot) == image_a_tail);
 
@@ -1080,7 +1080,7 @@ TEST_CASE(
     const uint8_t internal_tail = mem[cx_page_base(slot) + 0xFF];
     CHECK(internal_first != opcode_sec);
 
-    g_cx_probe.host->RegisterCxROM(slot, g_cx_image_b.data());
+    cx_probe.host->RegisterCxROM(slot, cx_image_b.data());
     CHECK(mem[cx_page_base(slot)] == internal_first);
     CHECK(mem[cx_page_base(slot) + 0xFF] == internal_tail);
     CHECK(read_page_tail(slot) == internal_tail);
@@ -1096,25 +1096,25 @@ TEST_CASE(
 TEST_CASE(
     "Peripheral ABI: Slot 3's Cx ROM page changes at run time once SLOTC3ROM "
     "shows it") {
-  TestFixtures::ScopedTestConfig_t config(
-      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedTestConfig config(
+      TestFixtures::ScopedTestConfig::enhanced_2e_only());
+  TestFixtures::ScopedCore core(config);
   constexpr int slot = 3;
-  REQUIRE(peripheral_register(&g_cx_probe_peripheral, slot) == 0);
+  REQUIRE(peripheral_register(&cx_probe_peripheral, slot) == 0);
   linapple_reset_hard();
 
   // Reset leaves the internal 80-column firmware at $C300, so the card's
   // image is registered but not in view.
   const uint8_t internal_tail = mem[cx_page_base(slot) + 0xFF];
   CHECK(mem[cx_page_base(slot)] != opcode_sec);
-  g_cx_probe.host->RegisterCxROM(slot, g_cx_image_b.data());
+  cx_probe.host->RegisterCxROM(slot, cx_image_b.data());
   CHECK(mem[cx_page_base(slot) + 0xFF] == internal_tail);
 
   io_map_dispatch(0, sw_slotc3rom_on, 1, 0, 0);
   CHECK(branch_from_page(slot) == 0xC323);
   CHECK(read_page_tail(slot) == image_b_tail);
 
-  g_cx_probe.host->RegisterCxROM(slot, g_cx_image_a.data());
+  cx_probe.host->RegisterCxROM(slot, cx_image_a.data());
   CHECK(branch_from_page(slot) == 0xC313);
   CHECK(read_page_tail(slot) == image_a_tail);
 
@@ -1124,11 +1124,11 @@ TEST_CASE(
 TEST_CASE(
     "Peripheral ABI: Registering a Cx ROM page with no core is harmless") {
   peripheral_manager_init();
-  REQUIRE(peripheral_register(&g_cx_probe_peripheral, 1) == 0);
-  g_cx_probe.host->RegisterCxROM(1, g_cx_image_b.data());
-  g_cx_probe.host->RegisterCxROM(0, g_cx_image_b.data());
-  g_cx_probe.host->RegisterCxROM(8, g_cx_image_b.data());
-  g_cx_probe.host->RegisterCxROM(1, nullptr);
+  REQUIRE(peripheral_register(&cx_probe_peripheral, 1) == 0);
+  cx_probe.host->RegisterCxROM(1, cx_image_b.data());
+  cx_probe.host->RegisterCxROM(0, cx_image_b.data());
+  cx_probe.host->RegisterCxROM(8, cx_image_b.data());
+  cx_probe.host->RegisterCxROM(1, nullptr);
   mem_refresh_cx_page(1);
   mem_refresh_cx_page(0);
   mem_refresh_cx_page(8);

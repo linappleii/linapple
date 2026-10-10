@@ -71,8 +71,8 @@ static int caps_mode = caps_mode_host;
 static KeyboardMappingMode mapping_mode = kbd_mode_symbolic;
 static uint8_t keyboard_layout = keyboard_layout_us;
 
-static auto layout_table(uint8_t layout) -> const Apple2KeyboardMap_t* {
-  static const std::array<const Apple2KeyboardMap_t*, 12> tables = {
+static auto layout_table(uint8_t layout) -> const Apple2KeyboardMap* {
+  static const std::array<const Apple2KeyboardMap*, 12> tables = {
       &map_us, &map_uk, &map_fr, &map_de, &map_es,       &map_it,
       &map_se, &map_dk, &map_ch, &map_ca, &map_jp_roman, &map_jp_kana,
   };
@@ -113,7 +113,7 @@ static auto resolve(uint32_t base, uint32_t shift_val, uint32_t ctrl_val,
 static auto translate_positional(const KeyboardHostKey* key,
                                  uint8_t* apple_code) -> bool {
   const uint32_t idx = key->scancode;
-  const Apple2KeyboardMap_t* layout =
+  const Apple2KeyboardMap* layout =
       linapple_get_rocker_switch() ? layout_table(keyboard_layout) : nullptr;
   if (layout != nullptr && layout->map[idx] != 0) {
     return resolve(layout->map[idx], layout->shift_map[idx],

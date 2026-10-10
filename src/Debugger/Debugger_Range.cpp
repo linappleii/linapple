@@ -11,8 +11,8 @@
 
 // Util - Range _______________________________________________________________
 
-auto Range_CalcEndLen(const RangeType_t eRange, const uint16_t& nAddress1,
-                      const uint16_t& nAddress2, RangeEndLen_t& tEndLen_)
+auto Range_CalcEndLen(const RangeType eRange, const uint16_t& nAddress1,
+                      const uint16_t& nAddress2, RangeEndLen& tEndLen_)
     -> bool {
   bool bValid = false;
 
@@ -42,28 +42,28 @@ auto Range_CalcEndLen(const RangeType_t eRange, const uint16_t& nAddress1,
 }
 
 auto Range_Get(uint16_t& nAddress1_, uint16_t& nAddress2_, const int iArg)
-    -> RangeType_t {
-  nAddress1_ = static_cast<unsigned>(g_args[iArg].nValue);
+    -> RangeType {
+  nAddress1_ = static_cast<unsigned>(args[iArg].nValue);
   nAddress1_ = std::min<uint32_t>(nAddress1_, apple2_6502_mem_end);
 
   nAddress2_ = 0;
   int nTemp = 0;
 
-  RangeType_t eRange = RANGE_MISSING_ARG_2;
+  RangeType eRange = RANGE_MISSING_ARG_2;
 
-  if (g_args[iArg + 1].eToken == TOKEN_COMMA) {
+  if (args[iArg + 1].eToken == TOKEN_COMMA) {
     // 0,FFFF [,) // Note the mathematical range
     // End =  FFFE = Len-1
     // Len =  FFFF
     eRange = RANGE_HAS_LEN;
-    nTemp = g_args[iArg + 2].nValue;
+    nTemp = args[iArg + 2].nValue;
     nAddress2_ = nTemp;
-  } else if (g_args[iArg + 1].eToken == TOKEN_COLON) {
+  } else if (args[iArg + 1].eToken == TOKEN_COLON) {
     // 0:FFFF [,] // Note the mathematical range
     // End =  FFFF
     // Len = 10000 = End+1
     eRange = RANGE_HAS_END;
-    nTemp = g_args[iArg + 2].nValue;
+    nTemp = args[iArg + 2].nValue;
 
     // i.e.
     // FFFF:D000

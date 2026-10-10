@@ -49,8 +49,8 @@ inline auto sdl_compat_get_mod_state() -> SdlKeymod {
 inline auto sdl_compat_quit() -> void { SDL_Quit(); }
 
 inline auto sdl_compat_set_window_title(const char* title) -> void {
-  if (g_window != nullptr) {
-    SDL_SetWindowTitle(g_window.get(), title);
+  if (window != nullptr) {
+    SDL_SetWindowTitle(window.get(), title);
   }
 }
 

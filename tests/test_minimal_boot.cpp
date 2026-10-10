@@ -20,7 +20,7 @@
 
 namespace {
 
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 
 constexpr uint32_t prompt_frame_cap = 300;
 constexpr uint32_t prompt_again_frame_cap = 120;
@@ -58,7 +58,7 @@ auto is_prompt_row(const std::string& text) -> bool {
   return text == "]" || text == std::string("]") + flashing_space;
 }
 
-auto has_prompt_row(const HeadlessHarness_t& harness) -> bool {
+auto has_prompt_row(const HeadlessHarness& harness) -> bool {
   for (int row = 0; row < text_rows; ++row) {
     if (is_prompt_row(harness.get_text_row(row))) {
       return true;
@@ -67,7 +67,7 @@ auto has_prompt_row(const HeadlessHarness_t& harness) -> bool {
   return false;
 }
 
-auto prompt_row_within(HeadlessHarness_t& harness, uint32_t cap) -> bool {
+auto prompt_row_within(HeadlessHarness& harness, uint32_t cap) -> bool {
   for (uint32_t frame = 0; frame < cap; ++frame) {
     if (has_prompt_row(harness)) {
       return true;
@@ -77,7 +77,7 @@ auto prompt_row_within(HeadlessHarness_t& harness, uint32_t cap) -> bool {
   return has_prompt_row(harness);
 }
 
-auto screen(const HeadlessHarness_t& harness) -> std::vector<std::string> {
+auto screen(const HeadlessHarness& harness) -> std::vector<std::string> {
   std::vector<std::string> rows;
   rows.reserve(text_rows);
   for (int row = 0; row < text_rows; ++row) {
@@ -87,19 +87,19 @@ auto screen(const HeadlessHarness_t& harness) -> std::vector<std::string> {
 }
 
 auto drive_spinning() -> bool {
-  DiskStatus_t status{};
+  DiskStatus status{};
   size_t size = sizeof(status);
   REQUIRE(peripheral_query(disk_slot, disk_query_status, &status, &size) ==
           peripheral_ok);
   return status.drive0_spinning != 0;
 }
 
-struct Boot_t {
-  TestConfig_t config;
-  HeadlessHarness_t harness;
-  TestFixtures::EphemeralDiskFixture_t disk;
+struct Boot {
+  TestConfig config;
+  HeadlessHarness harness;
+  TestFixtures::EphemeralDiskFixture disk;
 
-  explicit Boot_t(const TestConfig_t::Description_t& description)
+  explicit Boot(const TestConfig::Description& description)
       : config(description),
         harness(config),
         disk(TestFixtures::create_ephemeral("Master.dsk")) {
@@ -107,9 +107,9 @@ struct Boot_t {
   }
 };
 
-auto describe(TestConfig_t::MachineType_t model,
-              const char* joystick0 = nullptr) -> TestConfig_t::Description_t {
-  TestConfig_t::Description_t description = TestConfig_t::disk_ii_only();
+auto describe(TestConfig::MachineType model,
+              const char* joystick0 = nullptr) -> TestConfig::Description {
+  TestConfig::Description description = TestConfig::disk_ii_only();
   description.machine_type = model;
   if (joystick0 != nullptr) {
     description.extras.push_back({"Configuration", "Joystick 0", joystick0});
@@ -120,10 +120,10 @@ auto describe(TestConfig_t::MachineType_t model,
 // A card's bus bridge takes the cycle count the frame left, so each position
 // is read as that count plus the position: every scanner position once, never
 // a count below the bridge's last.
-struct Sweep_t {
+struct Sweep {
   uint32_t base;
 
-  explicit Sweep_t(uint32_t frame_cycles) : base(frame_cycles) {}
+  explicit Sweep(uint32_t frame_cycles) : base(frame_cycles) {}
 
   auto read(uint16_t addr, uint32_t position) const -> uint8_t {
     return io_map_dispatch(0, addr, 0, 0, base + position);
@@ -140,7 +140,7 @@ struct Sweep_t {
   }
 };
 
-size_t g_video_frames = 0;
+size_t video_frames = 0;
 
 auto count_video_frame(const uint32_t* pixels, int width, int height, int pitch)
     -> void {
@@ -148,12 +148,12 @@ auto count_video_frame(const uint32_t* pixels, int width, int height, int pitch)
   (void)width;
   (void)height;
   (void)pitch;
-  ++g_video_frames;
+  ++video_frames;
 }
 
-const std::initializer_list<TestConfig_t::MachineType_t> both_models = {
-    TestConfig_t::machine_apple2e_enhanced,
-    TestConfig_t::machine_apple2_plus,
+const std::initializer_list<TestConfig::MachineType> both_models = {
+    TestConfig::machine_apple2e_enhanced,
+    TestConfig::machine_apple2_plus,
 };
 
 }  // namespace
@@ -163,11 +163,11 @@ TEST_CASE(
     "on both models, idles there with the screen, the cursor and the drive "
     "still, no phantom key at any scanner position, no sound and one picture "
     "a frame, and comes back to the prompt after a soft reset") {
-  for (TestConfig_t::MachineType_t model : both_models) {
+  for (TestConfig::MachineType model : both_models) {
     CAPTURE(model);
-    const bool apple2e = model == TestConfig_t::machine_apple2e_enhanced;
-    Boot_t boot(describe(model));
-    HeadlessHarness_t& harness = boot.harness;
+    const bool apple2e = model == TestConfig::machine_apple2e_enhanced;
+    Boot boot(describe(model));
+    HeadlessHarness& harness = boot.harness;
     harness.boot();
     REQUIRE(prompt_row_within(harness, prompt_frame_cap));
     while (drive_spinning()) {
@@ -181,7 +181,7 @@ TEST_CASE(
     const uint8_t cv = *mem_get_main_ptr(addr_cv);
     const size_t audio_before = harness.get_audio_sample_count();
     video_set_rendering_enabled(true);
-    g_video_frames = 0;
+    video_frames = 0;
     linapple_set_video_callback(count_video_frame);
     harness.run_frames(idle_frames - 1);
     const uint32_t last_frame_cycles = linapple_run_frame(scanner_positions);
@@ -192,14 +192,14 @@ TEST_CASE(
     CHECK(*mem_get_main_ptr(addr_cv) == cv);
     CHECK_FALSE(drive_spinning());
     CHECK(harness.get_audio_sample_count() == audio_before);
-    CHECK(g_video_frames == idle_frames);
+    CHECK(video_frames == idle_frames);
 
     // No phantom key: the //e's any-key-down is down, the II Plus's $C010 is
     // the undriven bus the cassette input also shows, PB0 and PB1 rest low and
     // PB2 high through the shipped two-button plug, and with no game port card
     // every paddle reads high.
     REQUIRE(last_frame_cycles >= scanner_positions);
-    const Sweep_t sweep(last_frame_cycles);
+    const Sweep sweep(last_frame_cycles);
     CHECK(sweep.samples_with_bit7(addr_keyboard_data, false) ==
           scanner_positions);
     if (apple2e) {
@@ -259,7 +259,7 @@ constexpr uint32_t phase_step_cycles = 1931;
 constexpr int phase_count = 16;
 
 // The program counter after the Apple-key branch says which way it went.
-auto reset_to_apple_key_branch(HeadlessHarness_t& harness) -> uint16_t {
+auto reset_to_apple_key_branch(HeadlessHarness& harness) -> uint16_t {
   harness.reset_soft();
   TestFixtures::step_until_pc(rom_read_solid_apple, reset_routine_cycle_cap);
   REQUIRE(cpu_get_registers()->pc == rom_read_solid_apple);
@@ -268,7 +268,7 @@ auto reset_to_apple_key_branch(HeadlessHarness_t& harness) -> uint16_t {
   return cpu_get_registers()->pc;
 }
 
-auto run_phase(HeadlessHarness_t& harness, int trial) -> void {
+auto run_phase(HeadlessHarness& harness, int trial) -> void {
   harness.boot();
   uint32_t spent = 0;
   while (spent < static_cast<uint32_t>(trial) * phase_step_cycles) {
@@ -282,8 +282,8 @@ TEST_CASE(
     "Minimal boot: a //e with no keyboard card and no controller configured "
     "reads PB1 high at reset, enters the self-test, and its burn-in loop test "
     "re-enters it, on every one of sixteen reset phases") {
-  Boot_t boot(describe(TestConfig_t::machine_apple2e_enhanced, "0"));
-  HeadlessHarness_t& harness = boot.harness;
+  Boot boot(describe(TestConfig::machine_apple2e_enhanced, "0"));
+  HeadlessHarness& harness = boot.harness;
 
   harness.boot();
   REQUIRE(reset_to_apple_key_branch(harness) == rom_self_test_jump);
@@ -311,8 +311,8 @@ TEST_CASE(
     "Minimal boot: a //e with no keyboard card and the shipped two-button "
     "controller reads PB1 low at reset, passes the Apple-key checks and boots "
     "DOS 3.3 to the prompt, on every one of sixteen reset phases") {
-  Boot_t boot(describe(TestConfig_t::machine_apple2e_enhanced, "2"));
-  HeadlessHarness_t& harness = boot.harness;
+  Boot boot(describe(TestConfig::machine_apple2e_enhanced, "2"));
+  HeadlessHarness& harness = boot.harness;
 
   harness.boot();
   REQUIRE(reset_to_apple_key_branch(harness) == rom_read_open_apple);

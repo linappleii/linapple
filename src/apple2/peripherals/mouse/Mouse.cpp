@@ -131,81 +131,81 @@ constexpr uint16_t min_y_high = 0x48;
 constexpr uint16_t min_x_high = 0x47;
 }  // namespace peek_address
 
-static_assert(sizeof(MouseSaveState_t) == 92,
+static_assert(sizeof(MouseSaveState) == 92,
               "the mouse card's state frame is part of the plugin ABI");
-static_assert(offsetof(MouseSaveState_t, version) == 0,
+static_assert(offsetof(MouseSaveState, version) == 0,
               "the frame header is version then size");
-static_assert(offsetof(MouseSaveState_t, struct_size) == 4,
+static_assert(offsetof(MouseSaveState, struct_size) == 4,
               "the frame header is version then size");
-static_assert(offsetof(MouseSaveState_t, position_x) == 8,
+static_assert(offsetof(MouseSaveState, position_x) == 8,
               "the position sits where every frame written has it");
-static_assert(offsetof(MouseSaveState_t, position_y) == 12,
+static_assert(offsetof(MouseSaveState, position_y) == 12,
               "the position sits where every frame written has it");
-static_assert(offsetof(MouseSaveState_t, min_x) == 16,
+static_assert(offsetof(MouseSaveState, min_x) == 16,
               "the clamps sit where every frame written has them");
-static_assert(offsetof(MouseSaveState_t, max_x) == 20,
+static_assert(offsetof(MouseSaveState, max_x) == 20,
               "the clamps sit where every frame written has them");
-static_assert(offsetof(MouseSaveState_t, min_y) == 24,
+static_assert(offsetof(MouseSaveState, min_y) == 24,
               "the clamps sit where every frame written has them");
-static_assert(offsetof(MouseSaveState_t, max_y) == 28,
+static_assert(offsetof(MouseSaveState, max_y) == 28,
               "the clamps sit where every frame written has them");
-static_assert(offsetof(MouseSaveState_t, tick_phase) == 32,
+static_assert(offsetof(MouseSaveState, tick_phase) == 32,
               "the phase takes the word older frames held the host width in");
-static_assert(offsetof(MouseSaveState_t, reserved0) == 36,
+static_assert(offsetof(MouseSaveState, reserved0) == 36,
               "the host height's word is reserved");
-static_assert(offsetof(MouseSaveState_t, read_x) == 40,
+static_assert(offsetof(MouseSaveState, read_x) == 40,
               "the last reading sits where every frame written has it");
-static_assert(offsetof(MouseSaveState_t, read_y) == 44,
+static_assert(offsetof(MouseSaveState, read_y) == 44,
               "the last reading sits where every frame written has it");
-static_assert(offsetof(MouseSaveState_t, parser_pos) == 48,
+static_assert(offsetof(MouseSaveState, parser_pos) == 48,
               "the parser sits where every frame written has it");
-static_assert(offsetof(MouseSaveState_t, parser_out_len) == 52,
+static_assert(offsetof(MouseSaveState, parser_out_len) == 52,
               "the parser sits where every frame written has it");
-static_assert(offsetof(MouseSaveState_t, pia_ora) == 56,
+static_assert(offsetof(MouseSaveState, pia_ora) == 56,
               "the PIA's six registers sit where every frame written has them");
-static_assert(offsetof(MouseSaveState_t, pia_port_a_in) == 62,
+static_assert(offsetof(MouseSaveState, pia_port_a_in) == 62,
               "the PIA's inputs sit where every frame written has them");
-static_assert(offsetof(MouseSaveState_t, pia_port_b_in) == 63,
+static_assert(offsetof(MouseSaveState, pia_port_b_in) == 63,
               "the PIA's inputs sit where every frame written has them");
-static_assert(offsetof(MouseSaveState_t, rate_50hz) == 64,
+static_assert(offsetof(MouseSaveState, rate_50hz) == 64,
               "the rate takes a byte older frames held as zero");
-static_assert(offsetof(MouseSaveState_t, pending) == 65,
+static_assert(offsetof(MouseSaveState, pending) == 65,
               "the pending sources take a byte older frames held as zero");
-static_assert(offsetof(MouseSaveState_t, irq_asserted) == 66,
+static_assert(offsetof(MouseSaveState, irq_asserted) == 66,
               "the IRQ level takes a byte older frames held as zero");
-static_assert(offsetof(MouseSaveState_t, reserved1) == 67,
+static_assert(offsetof(MouseSaveState, reserved1) == 67,
               "one of the PIA's unconnected pins stays reserved");
-static_assert(offsetof(MouseSaveState_t, parser_in_len) == 68,
+static_assert(offsetof(MouseSaveState, parser_in_len) == 68,
               "the reply length takes a byte older frames held as zero");
-static_assert(offsetof(MouseSaveState_t, parser_reply_pos) == 69,
+static_assert(offsetof(MouseSaveState, parser_reply_pos) == 69,
               "the reply cursor takes a byte older frames held as zero");
-static_assert(offsetof(MouseSaveState_t, reserved2) == 70,
+static_assert(offsetof(MouseSaveState, reserved2) == 70,
               "the PIA's two IRQ outputs stay reserved");
-static_assert(offsetof(MouseSaveState_t, pia_port_a_shadow) == 72,
+static_assert(offsetof(MouseSaveState, pia_port_a_shadow) == 72,
               "the shadows sit where every frame written has them");
-static_assert(offsetof(MouseSaveState_t, pia_port_b_shadow) == 73,
+static_assert(offsetof(MouseSaveState, pia_port_b_shadow) == 73,
               "the shadows sit where every frame written has them");
-static_assert(offsetof(MouseSaveState_t, mode) == 74,
+static_assert(offsetof(MouseSaveState, mode) == 74,
               "the mode sits where every frame written has it");
-static_assert(offsetof(MouseSaveState_t, reserved3) == 75,
+static_assert(offsetof(MouseSaveState, reserved3) == 75,
               "the retired VBL edge byte is reserved");
-static_assert(offsetof(MouseSaveState_t, status) == 76,
+static_assert(offsetof(MouseSaveState, status) == 76,
               "the status byte sits where every frame written has it");
-static_assert(offsetof(MouseSaveState_t, button_at_last_read) == 77,
+static_assert(offsetof(MouseSaveState, button_at_last_read) == 77,
               "the button memory sits where every frame written has it");
-static_assert(offsetof(MouseSaveState_t, reserved4) == 78,
+static_assert(offsetof(MouseSaveState, reserved4) == 78,
               "the second button's memory is reserved");
-static_assert(offsetof(MouseSaveState_t, button) == 79,
+static_assert(offsetof(MouseSaveState, button) == 79,
               "the button sits where every frame written has it");
-static_assert(offsetof(MouseSaveState_t, reserved5) == 80,
+static_assert(offsetof(MouseSaveState, reserved5) == 80,
               "the second button's level is reserved");
-static_assert(offsetof(MouseSaveState_t, buffer) == 81,
+static_assert(offsetof(MouseSaveState, buffer) == 81,
               "the command buffer sits where every frame written has it");
-static_assert(offsetof(MouseSaveState_t, padding) == 89,
+static_assert(offsetof(MouseSaveState, padding) == 89,
               "three bytes of padding close the frame");
 
-struct MouseCard_t {
-  HostInterface_t* host = nullptr;
+struct MouseCard {
+  HostInterface* host = nullptr;
   int slot = 0;
 
   Pia6821 pia{};
@@ -258,7 +258,7 @@ auto clamp_axis(int32_t value, int16_t low, int16_t high) -> int16_t {
       std::max<int32_t>(low, std::min<int32_t>(high, value)));
 }
 
-auto register_bank(MouseCard_t* card) -> void {
+auto register_bank(MouseCard* card) -> void {
   const uint32_t bank =
       (static_cast<uint32_t>(card->port_b_shadow) & port_b::bank_mask) >>
       port_b::bank_shift;
@@ -268,7 +268,7 @@ auto register_bank(MouseCard_t* card) -> void {
 
 // IRQ' is the 6805's PB6 through a 10 k pull-up; the PIA's interrupt pins are
 // not connected (schematic zones D2, C3), so the line is the card's own latch.
-auto set_irq(MouseCard_t* card, bool level) -> void {
+auto set_irq(MouseCard* card, bool level) -> void {
   if (card->irq_asserted == level) {
     return;
   }
@@ -280,7 +280,7 @@ auto set_irq(MouseCard_t* card, bool level) -> void {
 // cycle" (manual p. 46), the tick. Bit 0 gates movement and button, not the
 // refresh: "$08 (mouse off but VBL interrupt on) will generate VBL interrupts"
 // (Tech Note Mouse #3).
-auto fire(MouseCard_t* card) -> void {
+auto fire(MouseCard* card) -> void {
   uint8_t reportable = 0;
   if ((card->mode & mode::tracking) != 0) {
     reportable = card->pending & card->mode &
@@ -300,7 +300,7 @@ auto fire(MouseCard_t* card) -> void {
 // Missed ticks collapse into one with the phase kept: the status bits are
 // OR'd, so N firings and one are the same observable. A counter that went
 // backwards (a restored snapshot) re-anchors.
-auto advance(MouseCard_t* card, uint64_t now) -> void {
+auto advance(MouseCard* card, uint64_t now) -> void {
   card->next_tick = std::min(now + card->tick_period, card->next_tick);
   if (card->next_tick <= now) {
     fire(card);
@@ -312,7 +312,7 @@ auto advance(MouseCard_t* card, uint64_t now) -> void {
 
 // The 6805's latency from the INITMOUSE strobe to its timer restart is
 // unknown and modelled as zero.
-auto restart_tick(MouseCard_t* card) -> void {
+auto restart_tick(MouseCard* card) -> void {
   card->tick_period = card->rate_50hz ? tick_period_50hz : tick_period_60hz;
   card->next_tick = card->host->GetCycles() + card->tick_period;
   card->host->ScheduleEvent(card, card->next_tick);
@@ -369,7 +369,7 @@ auto command_in_len(uint8_t cmd) -> uint32_t {
   }
 }
 
-auto peek_byte(const MouseCard_t* card, uint16_t address) -> uint8_t {
+auto peek_byte(const MouseCard* card, uint16_t address) -> uint8_t {
   switch (address) {
     case peek_address::max_y_low:
       return low_byte(card->max_y);
@@ -396,7 +396,7 @@ auto peek_byte(const MouseCard_t* card, uint16_t address) -> uint8_t {
 // with them, so a SERVEMOUSE after a READMOUSE finds nothing (inferred; the
 // nearest support is IIc Technical Reference Table 9-3, p. 180). The line
 // stays up until SERVEMOUSE (Tech Note Mouse #4).
-auto execute_read_mouse(MouseCard_t* card) -> void {
+auto execute_read_mouse(MouseCard* card) -> void {
   uint8_t reply = card->status & status::moved;
   if (card->button) {
     reply |= status::button_down;
@@ -420,7 +420,7 @@ auto execute_read_mouse(MouseCard_t* card) -> void {
 // clamps 0..1023, the rate TIMEDATA last chose. On a IIe the firmware strobes
 // $50 twice, the second after the vertical blanking edge (bank 2 $C426-$C445);
 // each restarts the tick, which "synchronizes it with the vertical blanking".
-auto execute_init_mouse(MouseCard_t* card) -> void {
+auto execute_init_mouse(MouseCard* card) -> void {
   card->mode = 0;
   card->position_x = 0;
   card->position_y = 0;
@@ -440,7 +440,7 @@ auto execute_init_mouse(MouseCard_t* card) -> void {
 // minimum, low maximum, high minimum, high maximum (manual p. 48). The clamp
 // moves nothing (IIc Technical Reference Table 9-3; weakly sourced for the
 // card).
-auto execute_clamp_mouse(MouseCard_t* card) -> void {
+auto execute_clamp_mouse(MouseCard* card) -> void {
   const int16_t low = word_of(card->buffer.at(1), card->buffer.at(3));
   const int16_t high = word_of(card->buffer.at(2), card->buffer.at(4));
   if ((card->buffer.at(0) & command::axis_bit) != 0) {
@@ -455,7 +455,7 @@ auto execute_clamp_mouse(MouseCard_t* card) -> void {
 // A loaded position is taken as given and only motion clamps (inferred from the
 // IIc's CLEARMOUSE zero "not necessarily within clamping boundaries", Table
 // 9-3). No load marks movement.
-auto execute(MouseCard_t* card) -> void {
+auto execute(MouseCard* card) -> void {
   const uint8_t cmd = card->buffer.at(0);
   switch (cmd & command::group_mask) {
     case command::set_mouse:
@@ -531,7 +531,7 @@ auto execute(MouseCard_t* card) -> void {
   }
 }
 
-auto present_reply(MouseCard_t* card) -> void {
+auto present_reply(MouseCard* card) -> void {
   if (card->reply_pos >= card->in_len) {
     return;
   }
@@ -541,7 +541,7 @@ auto present_reply(MouseCard_t* card) -> void {
 
 // The buffer is cleared at a new command so a frame is a function of the last
 // command alone; the reply's first byte is on port A before the firmware reads.
-auto take_byte(MouseCard_t* card, uint8_t byte) -> void {
+auto take_byte(MouseCard* card, uint8_t byte) -> void {
   if (card->pos == 0) {
     card->buffer.fill(0);
     card->buffer.at(0) = byte;
@@ -564,13 +564,13 @@ auto pia_listener_a(void* obj, uint8_t data) -> void {
   if (obj == nullptr) {
     return;
   }
-  auto* card = static_cast<MouseCard_t*>(obj);
+  auto* card = static_cast<MouseCard*>(obj);
   card->port_a_shadow = data;
 }
 
 // PB5 rising: the 6805 raises "busy" on PB7; PB5 falling: it takes the byte
 // from port A and drops PB7 (the firmware's write loop, bank 3 $C40E-$C43F).
-auto on_write_strobe(MouseCard_t* card, uint8_t data) -> void {
+auto on_write_strobe(MouseCard* card, uint8_t data) -> void {
   if ((data & port_b::write_strobe) != 0) {
     card->port_b_shadow |= port_b::busy;
     return;
@@ -582,7 +582,7 @@ auto on_write_strobe(MouseCard_t* card, uint8_t data) -> void {
 // PB4 rising: the 6805 drops "byte ready" on PB6; PB4 falling: it presents the
 // next reply byte, if any, and raises PB6 (the firmware's read loop, bank 6
 // $C486-$C4C4). An unread reply (INITMOUSE's second) stays on port A.
-auto on_read_strobe(MouseCard_t* card, uint8_t data) -> void {
+auto on_read_strobe(MouseCard* card, uint8_t data) -> void {
   if ((data & port_b::read_strobe) != 0) {
     card->port_b_shadow &= static_cast<uint8_t>(~port_b::byte_ready);
     return;
@@ -611,7 +611,7 @@ auto pia_listener_b(void* obj, uint8_t data) -> void {
   if (obj == nullptr) {
     return;
   }
-  auto* card = static_cast<MouseCard_t*>(obj);
+  auto* card = static_cast<MouseCard*>(obj);
 
   const uint8_t diff = (card->port_b_shadow ^ data) & port_b::card_driven;
   if (diff == 0) {
@@ -641,7 +641,7 @@ auto mouse_io(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
   if (instance == nullptr) {
     return 0;
   }
-  auto* card = static_cast<MouseCard_t*>(instance);
+  auto* card = static_cast<MouseCard*>(instance);
   advance(card, card->host->GetCycles());
   // Only A0, A1 and DEVICE SELECT' reach the PIA (schematic zone C3), so its
   // four registers repeat through $C0n4-$C0nF.
@@ -659,7 +659,7 @@ auto mouse_io(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
 // data sheet 8.1), releasing IRQ'. PB6 is taken high because the 6502 firmware
 // never reads before it has written. The defaults are the manual's (pp. 44,
 // 48) and Tech Note Mouse #2's 60 Hz.
-auto reset_card(MouseCard_t* card, uint64_t now) -> void {
+auto reset_card(MouseCard* card, uint64_t now) -> void {
   pia_6821_reset(&card->pia);
   pia_6821_set_listener_a(&card->pia, card, pia_listener_a);
   pia_6821_set_listener_b(&card->pia, card, pia_listener_b);
@@ -695,7 +695,7 @@ auto reset_card(MouseCard_t* card, uint64_t now) -> void {
 
 // Better no card than a phantom one; the log names the member. Log itself is
 // the one refusal nothing can report.
-auto missing_host_member(const HostInterface_t* host) -> const char* {
+auto missing_host_member(const HostInterface* host) -> const char* {
   if (host->AssertIrq == nullptr) {
     return "AssertIrq";
   }
@@ -714,7 +714,7 @@ auto missing_host_member(const HostInterface_t* host) -> const char* {
   return nullptr;
 }
 
-auto mouse_abi_init(int slot, HostInterface_t* host) -> void* {
+auto mouse_abi_init(int slot, HostInterface* host) -> void* {
   if (host == nullptr || host->Log == nullptr) {
     return nullptr;
   }
@@ -733,7 +733,7 @@ auto mouse_abi_init(int slot, HostInterface_t* host) -> void* {
     return nullptr;
   }
 
-  auto card = std::unique_ptr<MouseCard_t>(new (std::nothrow) MouseCard_t());
+  auto card = std::unique_ptr<MouseCard>(new (std::nothrow) MouseCard());
   if (!card) {
     return nullptr;
   }
@@ -750,7 +750,7 @@ auto mouse_abi_reset(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
-  auto* card = static_cast<MouseCard_t*>(instance);
+  auto* card = static_cast<MouseCard*>(instance);
   reset_card(card, card->host->GetCycles());
   card->host->ScheduleEvent(card, card->next_tick);
 }
@@ -759,7 +759,7 @@ auto mouse_abi_shutdown(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
-  const std::unique_ptr<MouseCard_t> card(static_cast<MouseCard_t*>(instance));
+  const std::unique_ptr<MouseCard> card(static_cast<MouseCard*>(instance));
   if (card->irq_asserted) {
     card->host->AssertIrq(card->slot, false);
   }
@@ -770,16 +770,16 @@ auto mouse_abi_think(void* instance, uint32_t elapsed_cycles) -> void {
   if (instance == nullptr) {
     return;
   }
-  auto* card = static_cast<MouseCard_t*>(instance);
+  auto* card = static_cast<MouseCard*>(instance);
   advance(card, card->host->GetCycles());
 }
 
 auto mouse_abi_save_state(void* instance, void* buffer, size_t* size)
-    -> PeripheralStatus_t {
+    -> PeripheralStatus {
   if (size == nullptr) {
     return peripheral_error;
   }
-  constexpr size_t required = sizeof(MouseSaveState_t);
+  constexpr size_t required = sizeof(MouseSaveState);
   if (buffer == nullptr) {
     *size = required;
     return peripheral_ok;
@@ -792,9 +792,9 @@ auto mouse_abi_save_state(void* instance, void* buffer, size_t* size)
     return peripheral_error;
   }
 
-  const auto* card = static_cast<const MouseCard_t*>(instance);
+  const auto* card = static_cast<const MouseCard*>(instance);
   const uint64_t now = card->host->GetCycles();
-  MouseSaveState_t state{};
+  MouseSaveState state{};
   state.version = MOUSE_STATE_VERSION;
   state.struct_size = static_cast<uint32_t>(required);
   state.position_x = static_cast<uint16_t>(card->position_x);
@@ -836,9 +836,9 @@ auto mouse_abi_save_state(void* instance, void* buffer, size_t* size)
 }
 
 // Every refusal is of a frame no build of this card writes.
-auto frame_refusal(const MouseSaveState_t& state) -> const char* {
+auto frame_refusal(const MouseSaveState& state) -> const char* {
   if (state.version != MOUSE_STATE_VERSION ||
-      state.struct_size != sizeof(MouseSaveState_t)) {
+      state.struct_size != sizeof(MouseSaveState)) {
     return "the header";
   }
   const std::array<uint32_t, 8> words = {
@@ -886,14 +886,14 @@ auto frame_refusal(const MouseSaveState_t& state) -> const char* {
 // both, READMOUSE clears the bits, SERVEMOUSE both), so bits 1-3 go with the
 // line. Bits 7 and 6 are never read: READMOUSE rebuilds them.
 auto mouse_abi_load_state(void* instance, const void* buffer, size_t size)
-    -> PeripheralStatus_t {
+    -> PeripheralStatus {
   if (instance == nullptr || buffer == nullptr ||
-      size < sizeof(MouseSaveState_t)) {
+      size < sizeof(MouseSaveState)) {
     return peripheral_error;
   }
-  MouseSaveState_t state{};
+  MouseSaveState state{};
   std::memcpy(&state, buffer, sizeof(state));
-  auto* card = static_cast<MouseCard_t*>(instance);
+  auto* card = static_cast<MouseCard*>(instance);
   const char* refusal = frame_refusal(state);
   if (refusal != nullptr) {
     card->host->Log(card, log_warn,
@@ -974,7 +974,7 @@ auto mouse_abi_load_state(void* instance, const void* buffer, size_t size)
 }
 
 auto mouse_abi_command(void* instance, uint32_t cmd_id, const void* data,
-                       size_t size) -> PeripheralStatus_t {
+                       size_t size) -> PeripheralStatus {
   if (instance == nullptr) {
     return peripheral_error;
   }
@@ -985,20 +985,20 @@ auto mouse_abi_command(void* instance, uint32_t cmd_id, const void* data,
     return peripheral_error;
   }
 
-  auto* card = static_cast<MouseCard_t*>(instance);
-  switch (static_cast<MouseCmd_t>(cmd_id)) {
+  auto* card = static_cast<MouseCard*>(instance);
+  switch (static_cast<MouseCmd>(cmd_id)) {
     // Counts are added while the mouse is on and clamped; off, "any mouse
     // motion is ignored" (Tech Note Mouse #3). A count the clamp absorbs marks
     // nothing ("X or Y changed since last reading", manual p. 45). The
     // interrupt waits for the tick.
     case mouse_cmd_move: {
-      if (size != sizeof(MouseMovePayload_t)) {
+      if (size != sizeof(MouseMovePayload)) {
         return peripheral_error;
       }
       if ((card->mode & mode::tracking) == 0) {
         return peripheral_ok;
       }
-      MouseMovePayload_t payload{};
+      MouseMovePayload payload{};
       std::memcpy(&payload, data, sizeof(payload));
       const int16_t x = clamp_axis(
           static_cast<int32_t>(card->position_x) +
@@ -1024,10 +1024,10 @@ auto mouse_abi_command(void* instance, uint32_t cmd_id, const void* data,
     // press" (p. 45); either edge is taken here. A second button is accepted
     // and ignored.
     case mouse_cmd_set_button: {
-      if (size != sizeof(MouseButtonPayload_t)) {
+      if (size != sizeof(MouseButtonPayload)) {
         return peripheral_error;
       }
-      MouseButtonPayload_t payload{};
+      MouseButtonPayload payload{};
       std::memcpy(&payload, data, sizeof(payload));
       if (payload.button != 0) {
         return peripheral_ok;
@@ -1048,7 +1048,7 @@ auto mouse_abi_command(void* instance, uint32_t cmd_id, const void* data,
 }
 
 auto mouse_abi_query(void* instance, uint32_t query_id, void* out,
-                     size_t* out_size) -> PeripheralStatus_t {
+                     size_t* out_size) -> PeripheralStatus {
   if (instance == nullptr || out_size == nullptr) {
     return peripheral_error;
   }
@@ -1059,7 +1059,7 @@ auto mouse_abi_query(void* instance, uint32_t query_id, void* out,
   if (query_id == mouse_query_is_active) {
     required = sizeof(uint8_t);
   } else if (query_id == mouse_query_position) {
-    required = sizeof(MousePositionReport_t);
+    required = sizeof(MousePositionReport);
   } else {
     return peripheral_incompatible;
   }
@@ -1078,8 +1078,8 @@ auto mouse_abi_query(void* instance, uint32_t query_id, void* out,
     return peripheral_ok;
   }
 
-  const auto* card = static_cast<const MouseCard_t*>(instance);
-  MousePositionReport_t report{};
+  const auto* card = static_cast<const MouseCard*>(instance);
+  MousePositionReport report{};
   report.x = static_cast<int32_t>(card->position_x);
   report.y = static_cast<int32_t>(card->position_y);
   report.min_x = static_cast<int32_t>(card->min_x);
@@ -1093,7 +1093,7 @@ auto mouse_abi_query(void* instance, uint32_t query_id, void* out,
 
 }  // namespace
 
-static Peripheral_t mouse_peripheral = {
+static Peripheral mouse_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.mouse",
     .name = "Mouse Interface",
@@ -1116,6 +1116,6 @@ static Peripheral_t mouse_peripheral = {
 };
 
 // Peripheral registry requires non-const pointer.
-auto mouse_get_descriptor() -> Peripheral_t* { return &mouse_peripheral; }
+auto mouse_get_descriptor() -> Peripheral* { return &mouse_peripheral; }
 
 PERIPHERAL_REGISTER(mouse_peripheral)

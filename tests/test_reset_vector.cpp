@@ -14,7 +14,7 @@
 
 namespace {
 
-using Config_t = TestFixtures::ScopedTestConfig_t;
+using Config = TestFixtures::ScopedTestConfig;
 
 constexpr uint16_t reset_vector_low = 0xFFFC;
 constexpr uint16_t reset_vector_high = 0xFFFD;
@@ -44,46 +44,46 @@ constexpr std::array<uint8_t, 22> program = {
 constexpr uint16_t program_end =
     static_cast<uint16_t>(program_base + program.size());
 
-struct Model_t {
+struct Model {
   Apple2Type type;
   int config_machine;
 };
 
-constexpr Model_t enhanced_2e = {
+constexpr Model enhanced_2e = {
     A2TYPE_APPLE2EENHANCED,
-    Config_t::machine_apple2e_enhanced,
+    Config::machine_apple2e_enhanced,
 };
-constexpr Model_t ii_plus = {A2TYPE_APPLE2PLUS, Config_t::machine_apple2_plus};
-constexpr std::array<Model_t, 2> both_models = {{enhanced_2e, ii_plus}};
+constexpr Model ii_plus = {A2TYPE_APPLE2PLUS, Config::machine_apple2_plus};
+constexpr std::array<Model, 2> both_models = {{enhanced_2e, ii_plus}};
 
 // The core takes its model from the process global a frontend sets before
 // linapple_init, not from the config file, so the guard sets it the same way
 // and puts the previous model back for the next case.
-struct ScopedModel_t {
+struct ScopedModel {
   Apple2Type previous{linapple_get_apple2_type()};
 
-  explicit ScopedModel_t(Apple2Type type) { linapple_set_apple2_type(type); }
-  ~ScopedModel_t() { linapple_set_apple2_type(previous); }
+  explicit ScopedModel(Apple2Type type) { linapple_set_apple2_type(type); }
+  ~ScopedModel() { linapple_set_apple2_type(previous); }
 
-  ScopedModel_t(const ScopedModel_t&) = delete;
-  auto operator=(const ScopedModel_t&) -> ScopedModel_t& = delete;
-  ScopedModel_t(ScopedModel_t&&) = delete;
-  auto operator=(ScopedModel_t&&) -> ScopedModel_t& = delete;
+  ScopedModel(const ScopedModel&) = delete;
+  auto operator=(const ScopedModel&) -> ScopedModel& = delete;
+  ScopedModel(ScopedModel&&) = delete;
+  auto operator=(ScopedModel&&) -> ScopedModel& = delete;
 };
 
-auto describe(int config_machine) -> Config_t::Description_t {
-  Config_t::Description_t description = Config_t::enhanced_2e_only();
+auto describe(int config_machine) -> Config::Description {
+  Config::Description description = Config::enhanced_2e_only();
   description.machine_type = config_machine;
   return description;
 }
 
 // The machine as a frontend brings it up, then powered on.
-struct Machine_t {
-  ScopedModel_t model;
-  Config_t config;
-  TestFixtures::ScopedCore_t core;
+struct Machine {
+  ScopedModel model;
+  Config config;
+  TestFixtures::ScopedCore core;
 
-  explicit Machine_t(const Model_t& selected)
+  explicit Machine(const Model& selected)
       : model(selected.type),
         config(describe(selected.config_machine)),
         core(config) {
@@ -102,7 +102,7 @@ auto read_rdlcram() -> uint8_t {
 }
 
 auto bank_ram_in_and_overwrite_vector() -> void {
-  TestFixtures::ScopedCore_t::poke(program_base, program);
+  TestFixtures::ScopedCore::poke(program_base, program);
   TestFixtures::enter_at({program_base, 0, 0, 0});
   TestFixtures::step_until_pc(program_end, program_cycle_cap);
   REQUIRE(cpu_get_registers()->pc == program_end);
@@ -116,7 +116,7 @@ auto bank_ram_in_and_overwrite_vector() -> void {
 // fetch begins, so the vector comes out of ROM however high RAM was banked
 // (Sather, Understanding the Apple IIe, 4-14 to 4-15, 5-23 and 5-29).
 TEST_CASE("Soft reset: the Enhanced //e fetches the vector from ROM") {
-  Machine_t machine(enhanced_2e);
+  Machine machine(enhanced_2e);
   REQUIRE(linapple_get_apple2_type() == enhanced_2e.type);
   REQUIRE(vector_in_image() == monitor_reset);
 
@@ -135,7 +135,7 @@ TEST_CASE("Soft reset: the Enhanced //e fetches the vector from ROM") {
 // II Plus fetches the vector from whatever is read-enabled (Sather,
 // Understanding the Apple II, 5-28 and 5-30).
 TEST_CASE("Soft reset: the II Plus fetches the vector from the RAM card") {
-  Machine_t machine(ii_plus);
+  Machine machine(ii_plus);
   REQUIRE(linapple_get_apple2_type() == ii_plus.type);
   REQUIRE(vector_in_image() == monitor_reset);
 
@@ -150,9 +150,9 @@ TEST_CASE("Soft reset: the II Plus fetches the vector from the RAM card") {
 // Power-up read-disables high RAM on both: the MMU reset on the //e, the R5/C1
 // circuit on the RAM card (Sather, Understanding the Apple II, 5-28).
 TEST_CASE("Hard reset: both machines fetch the vector from ROM") {
-  for (const Model_t& selected : both_models) {
+  for (const Model& selected : both_models) {
     CAPTURE(selected.type);
-    Machine_t machine(selected);
+    Machine machine(selected);
     bank_ram_in_and_overwrite_vector();
 
     linapple_reset_hard();

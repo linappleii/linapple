@@ -3,15 +3,15 @@
 
 #include "Debugger_Types.h"
 
-auto CmdGo(int nArgs, bool bFullSpeed) -> Update_t;
-auto CmdGoNormalSpeed(int nArgs) -> Update_t;
-auto CmdGoFullSpeed(int nArgs) -> Update_t;
-auto CmdStepOver(int nArgs) -> Update_t;
-auto CmdStepOut(int nArgs) -> Update_t;
-auto CmdIn(int nArgs) -> Update_t;
-auto CmdOut(int nArgs) -> Update_t;
-auto CmdRegisterSet(int nArgs) -> Update_t;
-auto CmdJsr(int nArgs) -> Update_t;
+auto CmdGo(int nArgs, bool bFullSpeed) -> UpdateResult;
+auto CmdGoNormalSpeed(int nArgs) -> UpdateResult;
+auto CmdGoFullSpeed(int nArgs) -> UpdateResult;
+auto CmdStepOver(int nArgs) -> UpdateResult;
+auto CmdStepOut(int nArgs) -> UpdateResult;
+auto CmdIn(int nArgs) -> UpdateResult;
+auto CmdOut(int nArgs) -> UpdateResult;
+auto CmdRegisterSet(int nArgs) -> UpdateResult;
+auto CmdJsr(int nArgs) -> UpdateResult;
 
 auto OutputTraceLine() -> void;
 auto DebugContinueStepping(bool bCallerWillUpdateDisplay) -> void;

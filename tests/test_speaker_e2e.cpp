@@ -18,8 +18,8 @@
 
 namespace {
 
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
-using TestFixtures::ScopedCore_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
+using TestFixtures::ScopedCore;
 
 constexpr uint16_t ADDR_SPEAKER = 0xC030;
 constexpr uint32_t NTSC_FRAME_CYCLES = 17030;
@@ -44,8 +44,8 @@ constexpr int PLATEAU_PCM = 16558;
 // a^(1020484/48000): the cone's per-cycle decay resolved to one output frame.
 constexpr double DECAY_PER_FRAME = 0.999076;
 
-std::vector<float> g_tapped;
-size_t g_tap_calls = 0;
+std::vector<float> tapped;
+size_t tap_calls = 0;
 
 auto record_tap(const char* peripheral_id, int slot,
                 const float* const* channels, size_t num_channels,
@@ -53,8 +53,8 @@ auto record_tap(const char* peripheral_id, int slot,
   (void)peripheral_id;
   (void)slot;
   (void)num_channels;
-  g_tap_calls++;
-  g_tapped.insert(g_tapped.end(), channels[0], channels[0] + num_samples);
+  tap_calls++;
+  tapped.insert(tapped.end(), channels[0], channels[0] + num_samples);
 }
 
 /**
@@ -63,18 +63,18 @@ auto record_tap(const char* peripheral_id, int slot,
  * Peripheral, host, core, announce, mixer, resampler, gain and clip, wired
  * exactly as sdl2/Main.cpp wires them. No mocks, no device, no files.
  */
-class SpeakerChain_t {
+class SpeakerChain {
  public:
-  explicit SpeakerChain_t(const TestConfig_t& config) : core_(config) {
-    g_tapped.clear();
-    g_tap_calls = 0;
+  explicit SpeakerChain(const TestConfig& config) : core_(config) {
+    tapped.clear();
+    tap_calls = 0;
 
     audio_mixer_initialize(DEVICE_RATE_HZ);
     audio_mixer_set_channel_tap_callback(record_tap);
 
     linapple_set_audio_source_register_callback(
         [](int slot, const char* peripheral_id,
-           const PeripheralAudioInfo_t* info) -> void {
+           const PeripheralAudioInfo* info) -> void {
           audio_mixer_register_source(slot, peripheral_id, info);
         });
     linapple_set_audio_source_unregister_callback(
@@ -90,23 +90,23 @@ class SpeakerChain_t {
     // The core puts the speaker in slot 0 as motherboard hardware. The
     // manifest names only the first of the slot's several occupants, so what
     // says the speaker is there is slot 0 answering for audio at all.
-    PeripheralAudioInfo_t info{};
+    PeripheralAudioInfo info{};
     size_t info_size = sizeof(info);
     registered_ = (peripheral_query(0, PERIPHERAL_QUERY_AUDIO_INFO, &info,
                                     &info_size) == peripheral_ok);
   }
 
-  ~SpeakerChain_t() {
+  ~SpeakerChain() {
     audio_mixer_set_channel_tap_callback(nullptr);
     audio_mixer_destroy();
-    g_tapped.clear();
-    g_tap_calls = 0;
+    tapped.clear();
+    tap_calls = 0;
   }
 
-  SpeakerChain_t(const SpeakerChain_t&) = delete;
-  auto operator=(const SpeakerChain_t&) -> SpeakerChain_t& = delete;
-  SpeakerChain_t(SpeakerChain_t&&) = delete;
-  auto operator=(SpeakerChain_t&&) -> SpeakerChain_t& = delete;
+  SpeakerChain(const SpeakerChain&) = delete;
+  auto operator=(const SpeakerChain&) -> SpeakerChain& = delete;
+  SpeakerChain(SpeakerChain&&) = delete;
+  auto operator=(SpeakerChain&&) -> SpeakerChain& = delete;
 
   auto registered() const -> bool { return registered_; }
 
@@ -144,7 +144,7 @@ class SpeakerChain_t {
   }
 
  private:
-  ScopedCore_t core_;
+  ScopedCore core_;
   bool registered_ = false;
   uint64_t cycle_ = 0;
   uint64_t next_toggle_ = HALF_PERIOD_CYCLES;
@@ -155,8 +155,8 @@ auto count_zero_crossings(const std::vector<int16_t>& stereo, size_t first,
                           size_t count) -> size_t {
   size_t crossings = 0;
   for (size_t i = first; i + 1 < first + count; ++i) {
-    const bool was_negative = SpeakerChain_t::left(stereo, i) < 0;
-    const bool is_negative = SpeakerChain_t::left(stereo, i + 1) < 0;
+    const bool was_negative = SpeakerChain::left(stereo, i) < 0;
+    const bool is_negative = SpeakerChain::left(stereo, i + 1) < 0;
     crossings += static_cast<size_t>(was_negative != is_negative);
   }
   return crossings;
@@ -181,8 +181,8 @@ auto write_wav_if_requested(const std::vector<int16_t>& stereo) -> void {
 }  // namespace
 
 TEST_CASE("Speaker End To End: A 1 kHz Tone Through The Whole Chain") {
-  TestConfig_t config(TestConfig_t::enhanced_2e_only());
-  SpeakerChain_t chain(config);
+  TestConfig config(TestConfig::enhanced_2e_only());
+  SpeakerChain chain(config);
   REQUIRE(chain.registered());
 
   for (uint32_t frame = 0; frame < TONE_FRAMES; ++frame) {
@@ -193,12 +193,12 @@ TEST_CASE("Speaker End To End: A 1 kHz Tone Through The Whole Chain") {
   for (uint32_t frame = 0; frame < SILENT_FRAMES / 2; ++frame) {
     chain.run_frame(0);
   }
-  const size_t calls_after_decay = g_tap_calls;
+  const size_t calls_after_decay = tap_calls;
   for (uint32_t frame = 0; frame < SILENT_FRAMES / 2; ++frame) {
     chain.run_frame(0);
   }
   // A cone at rest synthesizes nothing, so the tap stops being called at all.
-  CHECK(g_tap_calls == calls_after_decay);
+  CHECK(tap_calls == calls_after_decay);
 
   const std::vector<int16_t>& out = chain.output();
   REQUIRE(tone_frames == TONE_FRAMES * FRAMES_PER_EMULATED_FRAME);
@@ -215,7 +215,7 @@ TEST_CASE("Speaker End To End: A 1 kHz Tone Through The Whole Chain") {
   // edge across 21.26 cycles. The best-aligned onset is what survives.
   int16_t peak = 0;
   for (size_t i = 0; i < tone_frames; ++i) {
-    peak = std::max<int16_t>(peak, SpeakerChain_t::left(out, i));
+    peak = std::max<int16_t>(peak, SpeakerChain::left(out, i));
   }
   CHECK(peak >= PEAK_PCM - 1);
   CHECK(peak <= PEAK_PCM + 1);
@@ -226,7 +226,7 @@ TEST_CASE("Speaker End To End: A 1 kHz Tone Through The Whole Chain") {
   const size_t plateau_window = 50 * DEVICE_RATE_HZ / 1000;
   int16_t plateau = 0;
   for (size_t i = tone_frames - plateau_window; i < tone_frames; ++i) {
-    plateau = std::max<int16_t>(plateau, SpeakerChain_t::left(out, i));
+    plateau = std::max<int16_t>(plateau, SpeakerChain::left(out, i));
   }
   CHECK(plateau >= PLATEAU_PCM - 1);
   CHECK(plateau <= PLATEAU_PCM + 1);
@@ -239,14 +239,14 @@ TEST_CASE("Speaker End To End: A 1 kHz Tone Through The Whole Chain") {
   const size_t total_frames = out.size() / 2;
   size_t fit_end = fit_start;
   while (fit_end + 1 < total_frames &&
-         std::abs(SpeakerChain_t::left(out, fit_end)) > 1000) {
+         std::abs(SpeakerChain::left(out, fit_end)) > 1000) {
     ++fit_end;
   }
   REQUIRE(fit_end > fit_start + 1000);
 
   for (size_t i = fit_start; i + 1 < fit_end; ++i) {
-    CHECK(static_cast<double>(SpeakerChain_t::left(out, i + 1)) ==
-          doctest::Approx(static_cast<double>(SpeakerChain_t::left(out, i)) *
+    CHECK(static_cast<double>(SpeakerChain::left(out, i + 1)) ==
+          doctest::Approx(static_cast<double>(SpeakerChain::left(out, i)) *
                           DECAY_PER_FRAME)
               .epsilon(1e-3));
   }
@@ -255,21 +255,21 @@ TEST_CASE("Speaker End To End: A 1 kHz Tone Through The Whole Chain") {
   // drains what is left, and nothing follows.
   const size_t tail_start = total_frames - (10 * FRAMES_PER_EMULATED_FRAME);
   for (size_t i = tail_start; i < total_frames; ++i) {
-    CHECK(SpeakerChain_t::left(out, i) == 0);
+    CHECK(SpeakerChain::left(out, i) == 0);
     CHECK(out[(i * 2) + 1] == 0);
   }
 
   // Single clip. The tap sits ahead of gain and the conversion, so what it
   // saw is what the peripheral emitted: an unclipped 2.0 onset, which is
   // above full scale and which only the mixer brings down.
-  REQUIRE(g_tap_calls > 0);
-  const auto onset = std::find_if(g_tapped.begin(), g_tapped.end(),
+  REQUIRE(tap_calls > 0);
+  const auto onset = std::find_if(tapped.begin(), tapped.end(),
                                   [](float v) -> bool { return v != 0.0F; });
-  REQUIRE(onset != g_tapped.end());
+  REQUIRE(onset != tapped.end());
   CHECK(*onset == doctest::Approx(2.0F));
 
   float loudest = 0.0F;
-  for (float sample : g_tapped) {
+  for (float sample : tapped) {
     loudest = std::max(loudest, std::fabs(sample));
   }
   CHECK(loudest == doctest::Approx(2.0F));

@@ -30,16 +30,16 @@ FrontendAudioChannelCallback frontend_audio_channel_cb = nullptr;
 FrontendAudioSourceRegisterCallback frontend_audio_register_cb = nullptr;
 FrontendAudioSourceUnregisterCallback frontend_audio_unregister_cb = nullptr;
 
-auto peripheral_get_builtin_registry() -> std::vector<Peripheral_t*>& {
-  static std::vector<Peripheral_t*> registry;
+auto peripheral_get_builtin_registry() -> std::vector<Peripheral*>& {
+  static std::vector<Peripheral*> registry;
   return registry;
 }
 
-static auto builtin_id(const Peripheral_t* p) -> const char* {
+static auto builtin_id(const Peripheral* p) -> const char* {
   return (p != nullptr && p->id != nullptr) ? p->id : "";
 }
 
-auto peripheral_register_builtin(Peripheral_t* api) -> void {
+auto peripheral_register_builtin(Peripheral* api) -> void {
   if (api == nullptr) {
     return;
   }
@@ -55,7 +55,7 @@ auto peripheral_register_builtin(Peripheral_t* api) -> void {
   auto& registry = peripheral_get_builtin_registry();
   const auto position = std::lower_bound(
       registry.begin(), registry.end(), api,
-      [](const Peripheral_t* a, const Peripheral_t* b) -> bool {
+      [](const Peripheral* a, const Peripheral* b) -> bool {
         return strcmp(builtin_id(a), builtin_id(b)) > 0;
       });
   registry.insert(position, api);
@@ -68,7 +68,7 @@ static constexpr uint64_t no_event = UINT64_MAX;
 
 namespace {
 struct ActivePeripheral {
-  Peripheral_t* api = nullptr;
+  Peripheral* api = nullptr;
   void* instance = nullptr;
   int slot = 0;
   PeripheralIOHandler read_c0 = nullptr;
@@ -85,26 +85,26 @@ struct DirectIoHandler {
   PeripheralIOHandler write;
   // Strobe entries share this table so that shutdown paths which walk it by
   // instance cannot leave a dead peripheral reachable through a strobe.
-  PeripheralStrobeHandler_t on_strobe;
+  PeripheralStrobeHandler on_strobe;
   void* instance;
 };
 }  // namespace
 
 static std::array<std::vector<ActivePeripheral>, num_slots>
-    g_active_peripherals;
-static std::array<bool, num_slots> g_peripheral_activity_state;
+    active_peripherals;
+static std::array<bool, num_slots> peripheral_activity_state;
 // Set when a card reports activity and cleared by the frontend's poll, so a
 // burst that starts and ends between two polls still shows on the next one.
-static std::array<bool, num_slots> g_peripheral_activity_seen;
+static std::array<bool, num_slots> peripheral_activity_seen;
 // Cached so the frame loop compares one number per slice.
-static uint64_t g_next_event_cycle = no_event;
+static uint64_t next_event_cycle = no_event;
 
 // Room for every address the motherboard devices and the shipped cards claim,
 // with headroom: a registration past the end is dropped with one log line and
 // the address reads as the floating bus from then on.
 static constexpr size_t io_direct_count = 128;
-static std::array<DirectIoHandler, io_direct_count> g_direct_io_handlers;
-static size_t g_num_direct_handlers = 0;
+static std::array<DirectIoHandler, io_direct_count> direct_io_handlers;
+static size_t num_direct_handlers = 0;
 
 static constexpr uint16_t addr_slot_io_base = 0x70;
 static constexpr uint16_t addr_slot_shift = 4;
@@ -118,7 +118,7 @@ static auto slot_read_c0_bridge(uint16_t pc, uint16_t addr, uint8_t write,
     -> uint8_t {
   cpu_calc_cycles(executed_cycles);
   int slot = (addr & addr_slot_io_base) >> addr_slot_shift;
-  for (auto& ap : g_active_peripherals.at(static_cast<size_t>(slot))) {
+  for (auto& ap : active_peripherals.at(static_cast<size_t>(slot))) {
     if (ap.read_c0 != nullptr) {
       try {
         return ap.read_c0(ap.instance, pc, addr, write, d, executed_cycles);
@@ -137,7 +137,7 @@ static auto slot_write_c0_bridge(uint16_t pc, uint16_t addr, uint8_t write,
     -> uint8_t {
   cpu_calc_cycles(executed_cycles);
   int slot = (addr & addr_slot_io_base) >> addr_slot_shift;
-  for (auto& ap : g_active_peripherals.at(static_cast<size_t>(slot))) {
+  for (auto& ap : active_peripherals.at(static_cast<size_t>(slot))) {
     if (ap.write_c0 != nullptr) {
       try {
         return ap.write_c0(ap.instance, pc, addr, write, d, executed_cycles);
@@ -156,7 +156,7 @@ static auto slot_read_cx_bridge(uint16_t pc, uint16_t addr, uint8_t write,
     -> uint8_t {
   cpu_calc_cycles(executed_cycles);
   int slot = (addr >> addr_slot_rom_shift) & addr_slot_rom_mask;
-  for (auto& ap : g_active_peripherals.at(static_cast<size_t>(slot))) {
+  for (auto& ap : active_peripherals.at(static_cast<size_t>(slot))) {
     if (ap.read_cx != nullptr) {
       try {
         return ap.read_cx(ap.instance, pc, addr, write, d, executed_cycles);
@@ -175,7 +175,7 @@ static auto slot_write_cx_bridge(uint16_t pc, uint16_t addr, uint8_t write,
     -> uint8_t {
   cpu_calc_cycles(executed_cycles);
   int slot = (addr >> addr_slot_rom_shift) & addr_slot_rom_mask;
-  for (auto& ap : g_active_peripherals.at(static_cast<size_t>(slot))) {
+  for (auto& ap : active_peripherals.at(static_cast<size_t>(slot))) {
     if (ap.write_cx != nullptr) {
       try {
         return ap.write_cx(ap.instance, pc, addr, write, d, executed_cycles);
@@ -190,12 +190,12 @@ static auto slot_write_cx_bridge(uint16_t pc, uint16_t addr, uint8_t write,
 }
 
 static auto dispatch_direct_io_strobe(uint16_t addr) -> bool {
-  for (size_t i = 0; i < g_num_direct_handlers; ++i) {
-    if (g_direct_io_handlers.at(i).addr == addr &&
-        g_direct_io_handlers.at(i).on_strobe != nullptr) {
+  for (size_t i = 0; i < num_direct_handlers; ++i) {
+    if (direct_io_handlers.at(i).addr == addr &&
+        direct_io_handlers.at(i).on_strobe != nullptr) {
       try {
-        g_direct_io_handlers.at(i).on_strobe(
-            g_direct_io_handlers.at(i).instance);
+        direct_io_handlers.at(i).on_strobe(
+            direct_io_handlers.at(i).instance);
       } catch (const std::exception& e) {
         Logger::error("Exception in direct IO strobe at $%04X: %s\n", addr,
                       e.what());
@@ -215,12 +215,12 @@ static auto direct_io_read_bridge(uint16_t pc, uint16_t addr, uint8_t write,
   if (dispatch_direct_io_strobe(addr)) {
     return io_null(pc, addr, write, d, executed_cycles);
   }
-  for (size_t i = 0; i < g_num_direct_handlers; ++i) {
-    if (g_direct_io_handlers.at(i).addr == addr &&
-        g_direct_io_handlers.at(i).read != nullptr) {
+  for (size_t i = 0; i < num_direct_handlers; ++i) {
+    if (direct_io_handlers.at(i).addr == addr &&
+        direct_io_handlers.at(i).read != nullptr) {
       try {
-        return g_direct_io_handlers.at(i).read(
-            g_direct_io_handlers.at(i).instance, pc, addr, write, d,
+        return direct_io_handlers.at(i).read(
+            direct_io_handlers.at(i).instance, pc, addr, write, d,
             executed_cycles);
       } catch (const std::exception& e) {
         Logger::error("Exception in direct IO read at $%04X: %s\n", addr,
@@ -240,12 +240,12 @@ static auto direct_io_write_bridge(uint16_t pc, uint16_t addr, uint8_t write,
   if (dispatch_direct_io_strobe(addr)) {
     return io_null(pc, addr, write, d, executed_cycles);
   }
-  for (size_t i = 0; i < g_num_direct_handlers; ++i) {
-    if (g_direct_io_handlers.at(i).addr == addr &&
-        g_direct_io_handlers.at(i).write != nullptr) {
+  for (size_t i = 0; i < num_direct_handlers; ++i) {
+    if (direct_io_handlers.at(i).addr == addr &&
+        direct_io_handlers.at(i).write != nullptr) {
       try {
-        return g_direct_io_handlers.at(i).write(
-            g_direct_io_handlers.at(i).instance, pc, addr, write, d,
+        return direct_io_handlers.at(i).write(
+            direct_io_handlers.at(i).instance, pc, addr, write, d,
             executed_cycles);
       } catch (const std::exception& e) {
         Logger::error("Exception in direct IO write at $%04X: %s\n", addr,
@@ -260,7 +260,7 @@ static auto direct_io_write_bridge(uint16_t pc, uint16_t addr, uint8_t write,
 
 // --- Host Interface Implementation ---
 
-static auto host_log(void* instance, PeripheralLogLevel_t level,
+static auto host_log(void* instance, PeripheralLogLevel level,
                      const char* fmt, ...) -> void {
   (void)instance;
   if (fmt == nullptr) {
@@ -292,7 +292,7 @@ static auto host_assert_irq(int slot, bool assert) -> void {
   if (slot < 1 || slot > 7) {
     return;
   }
-  auto src = static_cast<IrqSrc_t>(is_slot1 + slot - 1);
+  auto src = static_cast<IrqSrc>(is_slot1 + slot - 1);
   if (assert) {
     cpu_irq_assert(src);
   } else {
@@ -307,7 +307,7 @@ static auto host_register_io(int slot, PeripheralIOHandler read_c0,
   if (slot < 0 || slot >= static_cast<int>(num_slots)) {
     return;
   }
-  auto& slot_peripherals = g_active_peripherals.at(static_cast<size_t>(slot));
+  auto& slot_peripherals = active_peripherals.at(static_cast<size_t>(slot));
   if (slot_peripherals.empty()) {
     return;
   }
@@ -349,7 +349,7 @@ static auto host_register_expansion_rom(int slot, const uint8_t* rom_ptr)
   if (slot < 0 || slot >= static_cast<int>(num_slots)) {
     return;
   }
-  auto& slot_peripherals = g_active_peripherals.at(static_cast<size_t>(slot));
+  auto& slot_peripherals = active_peripherals.at(static_cast<size_t>(slot));
   if (slot_peripherals.empty()) {
     return;
   }
@@ -367,15 +367,15 @@ static auto host_register_expansion_rom(int slot, const uint8_t* rom_ptr)
 static auto host_register_direct_io(void* instance, uint16_t addr,
                                     PeripheralIOHandler read,
                                     PeripheralIOHandler write) -> void {
-  if (g_num_direct_handlers >= io_direct_count) {
+  if (num_direct_handlers >= io_direct_count) {
     Logger::error("Too many direct IO handlers registered!\n");
     return;
   }
 
-  g_direct_io_handlers.at(g_num_direct_handlers) = {
+  direct_io_handlers.at(num_direct_handlers) = {
       addr, read, write, nullptr, instance,
   };
-  g_num_direct_handlers++;
+  num_direct_handlers++;
 
   register_direct_io_handler(addr, read ? direct_io_read_bridge : nullptr,
                              write ? direct_io_write_bridge : nullptr,
@@ -383,17 +383,17 @@ static auto host_register_direct_io(void* instance, uint16_t addr,
 }
 
 static auto host_register_direct_io_strobe(void* instance, uint16_t addr,
-                                           PeripheralStrobeHandler_t on_strobe)
+                                           PeripheralStrobeHandler on_strobe)
     -> void {
-  if (g_num_direct_handlers >= io_direct_count) {
+  if (num_direct_handlers >= io_direct_count) {
     Logger::error("Too many direct IO handlers registered!\n");
     return;
   }
 
-  g_direct_io_handlers.at(g_num_direct_handlers) = {
+  direct_io_handlers.at(num_direct_handlers) = {
       addr, nullptr, nullptr, on_strobe, instance,
   };
-  g_num_direct_handlers++;
+  num_direct_handlers++;
 
   // Any access toggles the flip-flop on real hardware, so read and write get
   // the same bridge.
@@ -411,7 +411,7 @@ static auto host_get_cycles() -> uint64_t {
 
 static auto host_get_clock_hz() -> double { return current_clk_6502; }
 
-static auto host_get_machine() -> PeripheralMachine_t {
+static auto host_get_machine() -> PeripheralMachine {
   if ((current_apple2_type & apple2e_mask) != 0) {
     return peripheral_machine_apple2e;
   }
@@ -444,13 +444,13 @@ static auto host_set_config(const char* section, const char* key,
   config_save_string(section, key, value);
 }
 
-static auto announce_audio_source(int slot, Peripheral_t* api, void* instance)
+static auto announce_audio_source(int slot, Peripheral* api, void* instance)
     -> void {
   if (api == nullptr || api->query == nullptr ||
       frontend_audio_register_cb == nullptr) {
     return;
   }
-  PeripheralAudioInfo_t info{};
+  PeripheralAudioInfo info{};
   size_t out_size = sizeof(info);
   if (api->query(instance, PERIPHERAL_QUERY_AUDIO_INFO, &info, &out_size) ==
       peripheral_ok) {
@@ -462,7 +462,7 @@ static auto announce_audio_source(int slot) -> void {
   if (slot < 0 || slot >= static_cast<int>(num_slots)) {
     return;
   }
-  for (auto& ap : g_active_peripherals.at(static_cast<size_t>(slot))) {
+  for (auto& ap : active_peripherals.at(static_cast<size_t>(slot))) {
     announce_audio_source(slot, ap.api, ap.instance);
   }
 }
@@ -486,9 +486,9 @@ static auto host_notify_status_changed(int slot) -> void {
 
 static auto host_notify_activity_changed(int slot, bool active) -> void {
   if (slot >= 0 && slot < static_cast<int>(num_slots)) {
-    g_peripheral_activity_state.at(static_cast<size_t>(slot)) = active;
+    peripheral_activity_state.at(static_cast<size_t>(slot)) = active;
     if (active) {
-      g_peripheral_activity_seen.at(static_cast<size_t>(slot)) = true;
+      peripheral_activity_seen.at(static_cast<size_t>(slot)) = true;
     }
   }
 }
@@ -511,7 +511,7 @@ static auto host_audio_push_channels(void* instance,
   const char* peripheral_id = nullptr;
   if (instance != nullptr) {
     for (size_t i = 0; i < num_slots; ++i) {
-      for (const auto& ap : g_active_peripherals.at(i)) {
+      for (const auto& ap : active_peripherals.at(i)) {
         if (ap.instance == instance) {
           slot = static_cast<int>(i);
           if (ap.api != nullptr) {
@@ -544,28 +544,28 @@ static auto host_reset_system(void* instance) -> void {
 
 static auto recompute_next_event_cycle() -> void {
   uint64_t next = no_event;
-  for (const auto& slot_peripherals : g_active_peripherals) {
+  for (const auto& slot_peripherals : active_peripherals) {
     for (const auto& ap : slot_peripherals) {
       next = std::min(next, ap.event_cycle);
     }
   }
-  g_next_event_cycle = next;
+  next_event_cycle = next;
 }
 
 static auto clear_all_events() -> void {
-  for (auto& slot_peripherals : g_active_peripherals) {
+  for (auto& slot_peripherals : active_peripherals) {
     for (auto& ap : slot_peripherals) {
       ap.event_cycle = no_event;
     }
   }
-  g_next_event_cycle = no_event;
+  next_event_cycle = no_event;
 }
 
 static auto host_schedule_event(void* instance, uint64_t at_cycle) -> void {
   if (instance == nullptr) {
     return;
   }
-  for (auto& slot_peripherals : g_active_peripherals) {
+  for (auto& slot_peripherals : active_peripherals) {
     for (auto& ap : slot_peripherals) {
       if (ap.instance != instance) {
         continue;
@@ -574,16 +574,16 @@ static auto host_schedule_event(void* instance, uint64_t at_cycle) -> void {
       recompute_next_event_cycle();
       // A no-op outside a slice: only a schedule from a register access ends
       // the running slice early.
-      cpu_limit_cycles(g_next_event_cycle);
+      cpu_limit_cycles(next_event_cycle);
       return;
     }
   }
 }
 
-auto peripheral_next_event_cycle() -> uint64_t { return g_next_event_cycle; }
+auto peripheral_next_event_cycle() -> uint64_t { return next_event_cycle; }
 
 auto peripheral_service_events(uint64_t now) -> void {
-  if (g_next_event_cycle > now) {
+  if (next_event_cycle > now) {
     return;
   }
   // Collected and cleared before any card runs, so a think that re-schedules
@@ -591,7 +591,7 @@ auto peripheral_service_events(uint64_t now) -> void {
   // wake per instruction at worst.
   static std::vector<ActivePeripheral*> due;
   due.clear();
-  for (auto& slot_peripherals : g_active_peripherals) {
+  for (auto& slot_peripherals : active_peripherals) {
     for (auto& ap : slot_peripherals) {
       if (ap.event_cycle <= now) {
         ap.event_cycle = no_event;
@@ -613,24 +613,24 @@ static auto host_read_floating_bus(uint32_t executed_cycles) -> uint8_t {
   return mem_read_floating_bus(executed_cycles);
 }
 
-static LocalTimeProvider_t g_local_time_provider = nullptr;
-static void* g_local_time_provider_ctx = nullptr;
+static LocalTimeProvider local_time_provider = nullptr;
+static void* local_time_provider_ctx = nullptr;
 
-auto linapple_set_local_time_provider(LocalTimeProvider_t provider, void* ctx)
+auto linapple_set_local_time_provider(LocalTimeProvider provider, void* ctx)
     -> void {
-  g_local_time_provider = provider;
-  g_local_time_provider_ctx = ctx;
+  local_time_provider = provider;
+  local_time_provider_ctx = ctx;
 }
 
 static constexpr int tm_year_base = 1900;
 static constexpr int last_second_of_minute = 59;
 
-static auto host_get_local_time(HostLocalTime_t* out) -> bool {
+static auto host_get_local_time(HostLocalTime* out) -> bool {
   if (out == nullptr) {
     return false;
   }
-  if (g_local_time_provider != nullptr) {
-    return g_local_time_provider(g_local_time_provider_ctx, out);
+  if (local_time_provider != nullptr) {
+    return local_time_provider(local_time_provider_ctx, out);
   }
 
   const time_t now = time(nullptr);
@@ -672,19 +672,19 @@ static auto host_get_local_time(HostLocalTime_t* out) -> bool {
 namespace {
 struct SinkRecord {
   int slot;
-  PeripheralSinkKind_t kind;
+  PeripheralSinkKind kind;
   bool opened;
   // Cards are initialised before the frontend installs its sink, so a format
   // sent before then is kept to replay at the next open.
   bool line_sent;
-  PeripheralSerialLine_t line;
+  PeripheralSerialLine line;
 };
 }  // namespace
 
 static constexpr size_t sink_slot_count = 7;
-static std::array<SinkRecord, sink_slot_count> g_sink_records{};
-static const ByteSink_t* g_byte_sink = nullptr;
-static void* g_byte_sink_ctx = nullptr;
+static std::array<SinkRecord, sink_slot_count> sink_records{};
+static const ByteSink* byte_sink = nullptr;
+static void* byte_sink_ctx = nullptr;
 
 // A token is only ever the address of one of the records, so anything else a
 // card hands back, NULL included, is refused rather than dereferenced.
@@ -692,7 +692,7 @@ static auto sink_record(void* token) -> SinkRecord* {
   if (token == nullptr) {
     return nullptr;
   }
-  for (auto& record : g_sink_records) {
+  for (auto& record : sink_records) {
     if (&record == token) {
       return &record;
     }
@@ -704,8 +704,8 @@ static auto sink_close_record(SinkRecord& record) -> void {
   if (!record.opened) {
     return;
   }
-  if (g_byte_sink != nullptr && g_byte_sink->close != nullptr) {
-    g_byte_sink->close(g_byte_sink_ctx, record.slot);
+  if (byte_sink != nullptr && byte_sink->close != nullptr) {
+    byte_sink->close(byte_sink_ctx, record.slot);
   }
   record.opened = false;
 }
@@ -713,33 +713,33 @@ static auto sink_close_record(SinkRecord& record) -> void {
 // Cards mint their tokens at init, before any frontend has installed a sink,
 // so a slot is opened on its first use under whatever is installed by then.
 static auto sink_attach(SinkRecord& record) -> bool {
-  if (g_byte_sink == nullptr) {
+  if (byte_sink == nullptr) {
     return false;
   }
   if (!record.opened) {
-    if (g_byte_sink->open != nullptr) {
-      g_byte_sink->open(g_byte_sink_ctx, record.slot, record.kind);
+    if (byte_sink->open != nullptr) {
+      byte_sink->open(byte_sink_ctx, record.slot, record.kind);
     }
     record.opened = true;
-    if (record.line_sent && g_byte_sink->set_line != nullptr) {
-      g_byte_sink->set_line(g_byte_sink_ctx, record.slot, &record.line);
+    if (record.line_sent && byte_sink->set_line != nullptr) {
+      byte_sink->set_line(byte_sink_ctx, record.slot, &record.line);
     }
   }
   return true;
 }
 
-static auto sink_kind_is_known(PeripheralSinkKind_t kind) -> bool {
+static auto sink_kind_is_known(PeripheralSinkKind kind) -> bool {
   return kind == peripheral_sink_printer || kind == peripheral_sink_serial;
 }
 
-static auto host_sink_open(void* instance, int slot, PeripheralSinkKind_t kind)
+static auto host_sink_open(void* instance, int slot, PeripheralSinkKind kind)
     -> void* {
   (void)instance;
   if (slot < min_slot_with_rom || slot > max_slot_with_rom ||
       !sink_kind_is_known(kind)) {
     return nullptr;
   }
-  SinkRecord& record = g_sink_records.at(static_cast<size_t>(slot - 1));
+  SinkRecord& record = sink_records.at(static_cast<size_t>(slot - 1));
   // The frontend names a destination by slot, so a slot streams one kind at a
   // time: a second kind would write into the first one's file.
   if (record.opened && record.kind != kind) {
@@ -753,19 +753,19 @@ static auto host_sink_open(void* instance, int slot, PeripheralSinkKind_t kind)
 static auto host_sink_write(void* token, uint8_t byte) -> void {
   SinkRecord* record = sink_record(token);
   if (record == nullptr || !sink_attach(*record) ||
-      g_byte_sink->write == nullptr) {
+      byte_sink->write == nullptr) {
     return;
   }
-  g_byte_sink->write(g_byte_sink_ctx, record->slot, byte);
+  byte_sink->write(byte_sink_ctx, record->slot, byte);
 }
 
 static auto host_sink_ready(void* token) -> bool {
   SinkRecord* record = sink_record(token);
   if (record == nullptr || !sink_attach(*record) ||
-      g_byte_sink->ready == nullptr) {
+      byte_sink->ready == nullptr) {
     return false;
   }
-  return g_byte_sink->ready(g_byte_sink_ctx, record->slot);
+  return byte_sink->ready(byte_sink_ctx, record->slot);
 }
 
 static auto host_sink_close(void* token) -> void {
@@ -780,13 +780,13 @@ static auto host_sink_close(void* token) -> void {
 static auto host_sink_read(void* token, uint8_t* byte) -> bool {
   SinkRecord* record = sink_record(token);
   if (record == nullptr || byte == nullptr || !sink_attach(*record) ||
-      g_byte_sink->read == nullptr) {
+      byte_sink->read == nullptr) {
     return false;
   }
-  return g_byte_sink->read(g_byte_sink_ctx, record->slot, byte);
+  return byte_sink->read(byte_sink_ctx, record->slot, byte);
 }
 
-static auto host_sink_set_line(void* token, const PeripheralSerialLine_t* line)
+static auto host_sink_set_line(void* token, const PeripheralSerialLine* line)
     -> void {
   SinkRecord* record = sink_record(token);
   if (record == nullptr || line == nullptr) {
@@ -796,42 +796,42 @@ static auto host_sink_set_line(void* token, const PeripheralSerialLine_t* line)
   record->line_sent = true;
   // Opening the slot replays the record, so the format is sent once.
   const bool was_open = record->opened;
-  if (!sink_attach(*record) || !was_open || g_byte_sink->set_line == nullptr) {
+  if (!sink_attach(*record) || !was_open || byte_sink->set_line == nullptr) {
     return;
   }
-  g_byte_sink->set_line(g_byte_sink_ctx, record->slot, &record->line);
+  byte_sink->set_line(byte_sink_ctx, record->slot, &record->line);
 }
 
 static auto host_sink_get_lines(void* token, uint8_t* lines) -> bool {
   SinkRecord* record = sink_record(token);
   if (record == nullptr || lines == nullptr || !sink_attach(*record) ||
-      g_byte_sink->get_lines == nullptr) {
+      byte_sink->get_lines == nullptr) {
     return false;
   }
-  return g_byte_sink->get_lines(g_byte_sink_ctx, record->slot, lines);
+  return byte_sink->get_lines(byte_sink_ctx, record->slot, lines);
 }
 
 // Whatever the outgoing sink opened is its own to close; the records then
 // reopen lazily under the incoming one, so a token minted before the swap
 // keeps working and a guard restoring the previous sink hands it back clean.
-auto linapple_set_byte_sink(const ByteSink_t* vtable, void* ctx)
-    -> ByteSinkBinding_t {
-  const ByteSinkBinding_t previous = {g_byte_sink, g_byte_sink_ctx};
-  for (auto& record : g_sink_records) {
+auto linapple_set_byte_sink(const ByteSink* vtable, void* ctx)
+    -> ByteSinkBinding {
+  const ByteSinkBinding previous = {byte_sink, byte_sink_ctx};
+  for (auto& record : sink_records) {
     sink_close_record(record);
   }
-  g_byte_sink = vtable;
-  g_byte_sink_ctx = ctx;
+  byte_sink = vtable;
+  byte_sink_ctx = ctx;
   return previous;
 }
 
 static auto sink_tick() -> void {
-  if (g_byte_sink != nullptr && g_byte_sink->tick != nullptr) {
-    g_byte_sink->tick(g_byte_sink_ctx);
+  if (byte_sink != nullptr && byte_sink->tick != nullptr) {
+    byte_sink->tick(byte_sink_ctx);
   }
 }
 
-static HostInterface_t g_host_interface = {
+static HostInterface host_interface = {
     .Log = host_log,
     .AssertIrq = host_assert_irq,
     .RegisterIO = host_register_io,
@@ -886,19 +886,19 @@ static_assert(sizeof(static_cast<QueuedCommand*>(nullptr)->data) ==
               "QueuedCommand::data size must match PERIPHERAL_CMD_MAX_DATA");
 
 // NOLINTNEXTLINE(bugprone-throwing-static-initialization) - std::queue default constructor does not throw under standard library
-static std::queue<QueuedCommand> g_command_queue;
-static std::mutex g_command_queue_mutex;
+static std::queue<QueuedCommand> command_queue;
+static std::mutex command_queue_mutex;
 
 static auto peripheral_drain_command_queue() -> void {
   std::queue<QueuedCommand> local;
   {
-    std::lock_guard<std::mutex> lock(g_command_queue_mutex);
-    std::swap(local, g_command_queue);
+    std::lock_guard<std::mutex> lock(command_queue_mutex);
+    std::swap(local, command_queue);
   }
   while (!local.empty()) {
     const QueuedCommand& cmd = local.front();
     if (cmd.slot >= 0 && cmd.slot < static_cast<int>(num_slots)) {
-      for (auto& ap : g_active_peripherals.at(static_cast<size_t>(cmd.slot))) {
+      for (auto& ap : active_peripherals.at(static_cast<size_t>(cmd.slot))) {
         if (ap.api == nullptr || ap.api->command == nullptr) {
           continue;
         }
@@ -914,30 +914,30 @@ static auto peripheral_drain_command_queue() -> void {
 }
 
 static auto clear_all_peripherals() -> void {
-  for (size_t i = 0; i < g_num_direct_handlers; ++i) {
-    register_direct_io_handler(g_direct_io_handlers.at(i).addr, nullptr,
+  for (size_t i = 0; i < num_direct_handlers; ++i) {
+    register_direct_io_handler(direct_io_handlers.at(i).addr, nullptr,
                                nullptr, nullptr);
   }
-  g_num_direct_handlers = 0;
-  g_direct_io_handlers.fill({});
+  num_direct_handlers = 0;
+  direct_io_handlers.fill({});
 
   for (size_t i = 0; i < num_slots; ++i) {
     if (frontend_audio_unregister_cb != nullptr) {
       frontend_audio_unregister_cb(static_cast<int>(i));
     }
-    g_peripheral_activity_state.at(i) = false;
-    g_peripheral_activity_seen.at(i) = false;
-    for (auto& ap : g_active_peripherals.at(i)) {
+    peripheral_activity_state.at(i) = false;
+    peripheral_activity_seen.at(i) = false;
+    for (auto& ap : active_peripherals.at(i)) {
       if (ap.api != nullptr && ap.api->shutdown != nullptr) {
         ap.api->shutdown(ap.instance);
       }
     }
-    g_active_peripherals.at(i).clear();
+    active_peripherals.at(i).clear();
   }
-  g_next_event_cycle = no_event;
+  next_event_cycle = no_event;
   // A card that left its token open would otherwise hold the frontend's
   // destination past its own life.
-  for (auto& record : g_sink_records) {
+  for (auto& record : sink_records) {
     sink_close_record(record);
     record.line_sent = false;
   }
@@ -947,8 +947,8 @@ static auto clear_all_peripherals() -> void {
 
 auto peripheral_manager_init() -> void {
   {
-    std::lock_guard<std::mutex> lock(g_command_queue_mutex);
-    g_command_queue = {};
+    std::lock_guard<std::mutex> lock(command_queue_mutex);
+    command_queue = {};
   }
   clear_all_peripherals();
 }
@@ -957,9 +957,9 @@ auto peripheral_manager_reset() -> void {
   // Before the cards' reset entries, so a reset that schedules keeps its
   // event.
   clear_all_events();
-  g_peripheral_activity_seen.fill(false);
+  peripheral_activity_seen.fill(false);
   for (size_t i = 0; i < num_slots; ++i) {
-    for (auto& ap : g_active_peripherals.at(i)) {
+    for (auto& ap : active_peripherals.at(i)) {
       if (ap.api != nullptr && ap.api->reset != nullptr) {
         ap.api->reset(ap.instance);
       }
@@ -969,17 +969,17 @@ auto peripheral_manager_reset() -> void {
 
 auto peripheral_manager_shutdown() -> void {
   clear_all_peripherals();
-  memset(g_peripheral_activity_state.data(), 0,
-         sizeof(g_peripheral_activity_state));
-  g_peripheral_activity_seen.fill(false);
+  memset(peripheral_activity_state.data(), 0,
+         sizeof(peripheral_activity_state));
+  peripheral_activity_seen.fill(false);
 
   {
-    const std::lock_guard<std::mutex> lock(g_command_queue_mutex);
-    while (!g_command_queue.empty()) {
-      g_command_queue.pop();
+    const std::lock_guard<std::mutex> lock(command_queue_mutex);
+    while (!command_queue.empty()) {
+      command_queue.pop();
     }
   }
-  g_num_direct_handlers = 0;
+  num_direct_handlers = 0;
 }
 
 auto peripheral_manager_think(uint32_t cycles) -> void {
@@ -988,7 +988,7 @@ auto peripheral_manager_think(uint32_t cycles) -> void {
   // card waiting on it is released in the same batch the sink recovers.
   sink_tick();
   for (size_t i = 0; i < num_slots; ++i) {
-    for (const auto& ap : g_active_peripherals.at(i)) {
+    for (const auto& ap : active_peripherals.at(i)) {
       if (ap.api != nullptr && ap.api->think != nullptr) {
         ap.api->think(ap.instance, cycles);
       }
@@ -998,7 +998,7 @@ auto peripheral_manager_think(uint32_t cycles) -> void {
 
 auto peripheral_manager_on_vblank(bool vblank) -> void {
   for (size_t i = 0; i < num_slots; ++i) {
-    for (const auto& ap : g_active_peripherals.at(i)) {
+    for (const auto& ap : active_peripherals.at(i)) {
       if (ap.api != nullptr && ap.api->on_vblank != nullptr) {
         ap.api->on_vblank(ap.instance, vblank);
       }
@@ -1008,14 +1008,14 @@ auto peripheral_manager_on_vblank(bool vblank) -> void {
 
 auto peripheral_is_any_active() -> bool {
   for (size_t i = 0; i < num_slots; ++i) {
-    if (g_peripheral_activity_state.at(i)) {
+    if (peripheral_activity_state.at(i)) {
       return true;
     }
   }
   return false;
 }
 
-auto peripheral_register(Peripheral_t* api, int slot) -> int {
+auto peripheral_register(Peripheral* api, int slot) -> int {
   if (api == nullptr || slot < 0 || slot >= static_cast<int>(num_slots)) {
     return -1;
   }
@@ -1028,7 +1028,7 @@ auto peripheral_register(Peripheral_t* api, int slot) -> int {
   }
 
   if (slot != 0 &&
-      !g_active_peripherals.at(static_cast<size_t>(slot)).empty()) {
+      !active_peripherals.at(static_cast<size_t>(slot)).empty()) {
     Logger::warning(
         "Slot %d already has a peripheral registered. Overwriting is not "
         "permitted.\n",
@@ -1039,15 +1039,15 @@ auto peripheral_register(Peripheral_t* api, int slot) -> int {
   ActivePeripheral ap{};
   ap.api = api;
   ap.slot = slot;
-  g_active_peripherals.at(static_cast<size_t>(slot)).push_back(ap);
+  active_peripherals.at(static_cast<size_t>(slot)).push_back(ap);
 
-  void* instance = api->init(slot, &g_host_interface);
+  void* instance = api->init(slot, &host_interface);
   if (instance == nullptr) {
-    g_active_peripherals.at(static_cast<size_t>(slot)).pop_back();
+    active_peripherals.at(static_cast<size_t>(slot)).pop_back();
     return -1;
   }
 
-  g_active_peripherals.at(static_cast<size_t>(slot)).back().instance = instance;
+  active_peripherals.at(static_cast<size_t>(slot)).back().instance = instance;
 
   announce_audio_source(slot, api, instance);
 
@@ -1061,22 +1061,22 @@ static auto remove_direct_io_handlers_for_instance(const void* instance)
   }
 
   size_t j = 0;
-  for (size_t i = 0; i < g_num_direct_handlers; ++i) {
-    if (g_direct_io_handlers.at(i).instance == instance) {
-      register_direct_io_handler(g_direct_io_handlers.at(i).addr, nullptr,
+  for (size_t i = 0; i < num_direct_handlers; ++i) {
+    if (direct_io_handlers.at(i).instance == instance) {
+      register_direct_io_handler(direct_io_handlers.at(i).addr, nullptr,
                                  nullptr, nullptr);
     } else {
       if (i != j) {
-        g_direct_io_handlers.at(j) = g_direct_io_handlers.at(i);
+        direct_io_handlers.at(j) = direct_io_handlers.at(i);
       }
       j++;
     }
   }
 
-  for (size_t i = j; i < g_num_direct_handlers; ++i) {
-    g_direct_io_handlers.at(i) = {};
+  for (size_t i = j; i < num_direct_handlers; ++i) {
+    direct_io_handlers.at(i) = {};
   }
-  g_num_direct_handlers = j;
+  num_direct_handlers = j;
 }
 
 auto peripheral_unregister(int slot) -> int {
@@ -1086,7 +1086,7 @@ auto peripheral_unregister(int slot) -> int {
   if (frontend_audio_unregister_cb != nullptr) {
     frontend_audio_unregister_cb(slot);
   }
-  auto& slot_peripherals = g_active_peripherals.at(static_cast<size_t>(slot));
+  auto& slot_peripherals = active_peripherals.at(static_cast<size_t>(slot));
   for (const auto& ap : slot_peripherals) {
     remove_direct_io_handlers_for_instance(ap.instance);
     if (ap.api != nullptr && ap.api->shutdown != nullptr) {
@@ -1110,7 +1110,7 @@ auto peripheral_unregister(int slot) -> int {
 }
 
 auto peripheral_command(int slot, uint32_t cmd_id, const void* data,
-                        size_t size) -> PeripheralStatus_t {
+                        size_t size) -> PeripheralStatus {
   if (slot < 0 || slot >= static_cast<int>(num_slots) ||
       size > PERIPHERAL_CMD_MAX_DATA || (size > 0 && data == nullptr)) {
     return peripheral_error;
@@ -1122,8 +1122,8 @@ auto peripheral_command(int slot, uint32_t cmd_id, const void* data,
   if (size > 0) {
     memcpy(cmd.data, data, size);
   }
-  const std::lock_guard<std::mutex> lock(g_command_queue_mutex);
-  g_command_queue.push(cmd);
+  const std::lock_guard<std::mutex> lock(command_queue_mutex);
+  command_queue.push(cmd);
   return peripheral_ok;
 }
 
@@ -1134,7 +1134,7 @@ static auto peripheral_by_id(int slot, const char* peripheral_id)
       peripheral_id == nullptr) {
     return nullptr;
   }
-  for (auto& ap : g_active_peripherals.at(static_cast<size_t>(slot))) {
+  for (auto& ap : active_peripherals.at(static_cast<size_t>(slot))) {
     if (ap.api != nullptr && ap.api->id != nullptr &&
         strcmp(ap.api->id, peripheral_id) == 0) {
       return &ap;
@@ -1163,7 +1163,7 @@ auto peripheral_activity_poll(int slot) -> bool {
   if (slot < 0 || slot >= static_cast<int>(num_slots)) {
     return false;
   }
-  bool& seen = g_peripheral_activity_seen.at(static_cast<size_t>(slot));
+  bool& seen = peripheral_activity_seen.at(static_cast<size_t>(slot));
   const bool was_seen = seen;
   seen = false;
   return was_seen;
@@ -1171,7 +1171,7 @@ auto peripheral_activity_poll(int slot) -> bool {
 
 auto peripheral_command_by_id(int slot, const char* peripheral_id,
                               uint32_t cmd_id, const void* data, size_t size)
-    -> PeripheralStatus_t {
+    -> PeripheralStatus {
   if (slot < 0 || slot >= static_cast<int>(num_slots) ||
       size > PERIPHERAL_CMD_MAX_DATA || peripheral_id == nullptr ||
       (size > 0 && data == nullptr)) {
@@ -1192,14 +1192,14 @@ auto peripheral_command_by_id(int slot, const char* peripheral_id,
   if (size > 0) {
     memcpy(cmd.data, data, size);
   }
-  const std::lock_guard<std::mutex> lock(g_command_queue_mutex);
-  g_command_queue.push(cmd);
+  const std::lock_guard<std::mutex> lock(command_queue_mutex);
+  command_queue.push(cmd);
   return peripheral_ok;
 }
 
 auto peripheral_query_by_id(int slot, const char* peripheral_id,
                             uint32_t cmd_id, void* out, size_t* out_size)
-    -> PeripheralStatus_t {
+    -> PeripheralStatus {
   if (out == nullptr || out_size == nullptr) {
     return peripheral_error;
   }
@@ -1211,20 +1211,20 @@ auto peripheral_query_by_id(int slot, const char* peripheral_id,
 }
 
 auto peripheral_query(int slot, uint32_t cmd_id, void* out, size_t* out_size)
-    -> PeripheralStatus_t {
+    -> PeripheralStatus {
   if (slot < 0 || slot >= static_cast<int>(num_slots) || out == nullptr ||
       out_size == nullptr) {
     return peripheral_error;
   }
   const auto& slot_peripherals =
-      g_active_peripherals.at(static_cast<size_t>(slot));
+      active_peripherals.at(static_cast<size_t>(slot));
   if (slot_peripherals.empty()) {
     return peripheral_error;
   }
 
   for (const auto& ap : slot_peripherals) {
     if (ap.api != nullptr && ap.api->query != nullptr) {
-      const PeripheralStatus_t status =
+      const PeripheralStatus status =
           ap.api->query(ap.instance, cmd_id, out, out_size);
       if (status != peripheral_incompatible) {
         return status;
@@ -1242,7 +1242,7 @@ auto peripheral_get_manifest(void* manifest_ptr) -> void {
   memset(manifest, 0, sizeof(SS_PERIPHERAL_MANIFEST));
   manifest->unit_hdr.length = sizeof(SS_PERIPHERAL_MANIFEST);
   for (size_t i = 0; i < num_slots; ++i) {
-    const auto& slot_peripherals = g_active_peripherals.at(i);
+    const auto& slot_peripherals = active_peripherals.at(i);
     if (!slot_peripherals.empty() && slot_peripherals.front().api != nullptr) {
       util_safe_strcpy(manifest->peripherals[i].name,
                        slot_peripherals.front().api->name, max_peripheral_name);
@@ -1259,7 +1259,7 @@ auto peripheral_verify_manifest(const void* manifest_ptr) -> bool {
   const auto* manifest =
       static_cast<const SS_PERIPHERAL_MANIFEST*>(manifest_ptr);
   for (size_t i = 0; i < num_slots; ++i) {
-    const auto& slot_peripherals = g_active_peripherals.at(i);
+    const auto& slot_peripherals = active_peripherals.at(i);
     const SS_PERIPHERAL_INFO& pi = manifest->peripherals[i];
     if (pi.name[0] == '\0') {
       if (!slot_peripherals.empty()) {
@@ -1287,7 +1287,7 @@ auto peripheral_save_state(int slot, void* buffer, size_t* size) -> void {
     return;
   }
   const auto& slot_peripherals =
-      g_active_peripherals.at(static_cast<size_t>(slot));
+      active_peripherals.at(static_cast<size_t>(slot));
   if (slot_peripherals.empty()) {
     if (size != nullptr) {
       *size = 0;
@@ -1303,12 +1303,12 @@ auto peripheral_save_state(int slot, void* buffer, size_t* size) -> void {
 }
 
 auto peripheral_load_state(int slot, const void* buffer, size_t size)
-    -> PeripheralStatus_t {
+    -> PeripheralStatus {
   if (slot < 0 || slot >= static_cast<int>(num_slots) || buffer == nullptr) {
     return peripheral_error;
   }
   const auto& slot_peripherals =
-      g_active_peripherals.at(static_cast<size_t>(slot));
+      active_peripherals.at(static_cast<size_t>(slot));
   if (slot_peripherals.empty()) {
     return peripheral_incompatible;
   }
@@ -1326,7 +1326,7 @@ auto peripheral_save_state_by_name(int slot, const char* name, void* buffer,
     return;
   }
   const auto& slot_peripherals =
-      g_active_peripherals.at(static_cast<size_t>(slot));
+      active_peripherals.at(static_cast<size_t>(slot));
   for (const auto& ap : slot_peripherals) {
     if (ap.api != nullptr && strcmp(ap.api->name, name) == 0) {
       if (ap.api->save_state != nullptr) {
@@ -1347,7 +1347,7 @@ auto peripheral_load_state_by_name(int slot, const char* name,
     return;
   }
   const auto& slot_peripherals =
-      g_active_peripherals.at(static_cast<size_t>(slot));
+      active_peripherals.at(static_cast<size_t>(slot));
   for (const auto& ap : slot_peripherals) {
     if (ap.api != nullptr && strcmp(ap.api->name, name) == 0) {
       if (ap.api->load_state != nullptr) {

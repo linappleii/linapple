@@ -12,15 +12,15 @@
 
 namespace {
 
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 
-struct MiniAsmHarness_t {
+struct MiniAsmHarness {
   bool is_initialized = false;
 
   // The machine type comes from the declared config rather than from
   // AppConfig: app_controller_initialize lets the config file win unless
   // apple2_type_explicit is set, and a ][+ has no mini-assembler at all.
-  explicit MiniAsmHarness_t(const TestConfig_t& test_config) {
+  explicit MiniAsmHarness(const TestConfig& test_config) {
     AppConfig config = {};
     app_config_default(&config);
     util_safe_strcpy(config.config_path.data(), test_config.c_str(),
@@ -33,17 +33,17 @@ struct MiniAsmHarness_t {
     }
   }
 
-  ~MiniAsmHarness_t() {
+  ~MiniAsmHarness() {
     if (is_initialized) {
       app_controller_shutdown();
       is_initialized = false;
     }
   }
 
-  MiniAsmHarness_t(const MiniAsmHarness_t&) = delete;
-  auto operator=(const MiniAsmHarness_t&) -> MiniAsmHarness_t& = delete;
-  MiniAsmHarness_t(MiniAsmHarness_t&&) = delete;
-  auto operator=(MiniAsmHarness_t&&) -> MiniAsmHarness_t& = delete;
+  MiniAsmHarness(const MiniAsmHarness&) = delete;
+  auto operator=(const MiniAsmHarness&) -> MiniAsmHarness& = delete;
+  MiniAsmHarness(MiniAsmHarness&&) = delete;
+  auto operator=(MiniAsmHarness&&) -> MiniAsmHarness& = delete;
 
   static auto write_byte(uint16_t addr, uint8_t val) -> void {
     if (memdirty != nullptr) {
@@ -90,7 +90,7 @@ struct MiniAsmHarness_t {
     write_byte(0x1004, 0x9C);
     write_byte(0x1005, 0xCF);
 
-    CpuRegisters_t* regs = cpu_get_registers();
+    CpuRegisters* regs = cpu_get_registers();
     regs->pc = 0x1000;
     regs->sp = 0x01FF;
     regs->ps = 0x20;
@@ -117,8 +117,8 @@ struct MiniAsmHarness_t {
 }  // namespace
 
 TEST_CASE("Enhanced Apple //e Mini-Assembler") {
-  TestConfig_t config(TestConfig_t::enhanced_2e_only());
-  MiniAsmHarness_t harness(config);
+  TestConfig config(TestConfig::enhanced_2e_only());
+  MiniAsmHarness harness(config);
   REQUIRE(harness.is_initialized);
 
   SUBCASE("Assembles 300:LDA #$01") {

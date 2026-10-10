@@ -30,8 +30,8 @@ auto font_print_centered(int x, int y, const char* text,
                          VideoSurfaceView surface, double kx, double ky)
     -> void;
 
-auto surface_fader(VideoSurface* surface, float r_factor, float g_factor,
-                   float b_factor, float a_factor, const VideoRect* r) -> void;
+auto surface_fader(VideoSurface* surface, float red_factor, float green_factor,
+                   float blue_factor, float alpha_factor, const VideoRect* r) -> void;
 auto putpixel(VideoSurfaceView surface, int x, int y, uint32_t pixel) -> void;
 auto rectangle(VideoSurfaceView surface, int x, int y, int w, int h,
                uint32_t pixel) -> void;

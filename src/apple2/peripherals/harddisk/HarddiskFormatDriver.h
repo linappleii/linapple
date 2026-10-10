@@ -31,7 +31,7 @@ typedef enum {
 
 /* The unit of exchange is the 512-byte block ProDOS addresses: how the file
    serializes it is the driver's business and nobody else's. */
-typedef struct HarddiskFormatDriver_t {
+typedef struct HarddiskFormatDriver {
   int abi_version;
   uint32_t capabilities;
   const char* name;
@@ -72,7 +72,7 @@ typedef struct HarddiskFormatDriver_t {
                                  const uint8_t* buffer);
 
   uint32_t (*get_total_blocks)(void* instance);
-} HarddiskFormatDriver_t;
+} HarddiskFormatDriver;
 
 #ifdef __cplusplus
 }

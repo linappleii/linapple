@@ -29,7 +29,7 @@ struct DiskChooseState {
   size_t* index_file_out = nullptr;
 };
 
-extern DiskChooseState g_disk_choose_state;
+extern DiskChooseState disk_choose_state;
 
 auto disk_choose_tick(SDL_Event* event) -> void;
 auto disk_choose_draw() -> void;

@@ -22,7 +22,7 @@ struct SuperSerialFrontendSettings {
 auto super_serial_frontend_configure(
     const SuperSerialFrontendSettings& settings) -> void;
 
-auto super_serial_frontend_sink() -> const ByteSink_t&;
+auto super_serial_frontend_sink() -> const ByteSink&;
 
 // 0 when no card took the switches.
 auto super_serial_frontend_primary_slot() -> int;

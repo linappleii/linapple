@@ -23,19 +23,19 @@
 
 namespace {
 
-using TestFixtures::ScopedEnvVar_t;
-using TestFixtures::ScopedLogCapture_t;
-using TestFixtures::ScopedTempDir_t;
-using TestFixtures::ScopedTempFile_t;
-using TestFixtures::ScopedTestConfig_t;
+using TestFixtures::ScopedEnvVar;
+using TestFixtures::ScopedLogCapture;
+using TestFixtures::ScopedTempDir;
+using TestFixtures::ScopedTempFile;
+using TestFixtures::ScopedTestConfig;
 
 // A machine with the printer in slot 1 and its output sent to the given
 // file, so nothing a case prints can land in the working directory.
 auto printer_in_slot_1(
     const std::string& filename,
-    const std::vector<ScopedTestConfig_t::Entry_t>& extras = {})
-    -> ScopedTestConfig_t::Description_t {
-  ScopedTestConfig_t::Description_t description;
+    const std::vector<ScopedTestConfig::Entry>& extras = {})
+    -> ScopedTestConfig::Description {
+  ScopedTestConfig::Description description;
   description.slots[0] = "Parallel Printer";
   description.extras.push_back(
       {"Configuration", "Parallel Printer Filename", filename});
@@ -77,10 +77,10 @@ auto file_exists(const std::string& path) -> bool {
 TEST_CASE(
     "Printer Frontend: the default sink strips bit 7, so C8 C9 8D 8A prints "
     "as 48 49 0D 0A") {
-  ScopedTempFile_t file(".txt");
-  ScopedTestConfig_t config(printer_in_slot_1(file.path()));
+  ScopedTempFile file(".txt");
+  ScopedTestConfig config(printer_in_slot_1(file.path()));
   {
-    HeadlessHarness_t harness(config);
+    HeadlessHarness harness(config);
     for (uint8_t byte : {0xC8, 0xC9, 0x8D, 0x8A}) {
       strobe(1, byte);
     }
@@ -90,11 +90,11 @@ TEST_CASE(
 
 TEST_CASE(
     "Printer Frontend: the 8-bit key passes every byte through unchanged") {
-  ScopedTempFile_t file(".txt");
-  ScopedTestConfig_t config(printer_in_slot_1(
+  ScopedTempFile file(".txt");
+  ScopedTestConfig config(printer_in_slot_1(
       file.path(), {{"Configuration", "Printer 8-bit output", "1"}}));
   {
-    HeadlessHarness_t harness(config);
+    HeadlessHarness harness(config);
     for (uint8_t byte : {0xC8, 0xC9, 0x8D, 0x8A}) {
       strobe(1, byte);
     }
@@ -103,16 +103,16 @@ TEST_CASE(
 }
 
 TEST_CASE("Printer Frontend: a second run appends to the file by default") {
-  ScopedTempFile_t file(".txt");
-  ScopedTestConfig_t config(printer_in_slot_1(file.path()));
+  ScopedTempFile file(".txt");
+  ScopedTestConfig config(printer_in_slot_1(file.path()));
   {
-    HeadlessHarness_t first_run(config);
+    HeadlessHarness first_run(config);
     strobe(1, 0xC1);
     strobe(1, 0x8D);
   }
   CHECK(file_bytes_hex(file.path()) == "41 0D");
   {
-    HeadlessHarness_t second_run(config);
+    HeadlessHarness second_run(config);
     strobe(1, 0xC2);
     strobe(1, 0x8D);
   }
@@ -122,17 +122,17 @@ TEST_CASE("Printer Frontend: a second run appends to the file by default") {
 TEST_CASE(
     "Printer Frontend: with append off a run starts the file over once, at "
     "its first byte") {
-  ScopedTempFile_t file(".txt");
-  ScopedTestConfig_t config(printer_in_slot_1(
+  ScopedTempFile file(".txt");
+  ScopedTestConfig config(printer_in_slot_1(
       file.path(), {{"Configuration", "Append to printer file", "0"}}));
   {
-    HeadlessHarness_t first_run(config);
+    HeadlessHarness first_run(config);
     strobe(1, 0xC1);
     strobe(1, 0x8D);
   }
   CHECK(file_bytes_hex(file.path()) == "41 0D");
   {
-    HeadlessHarness_t second_run(config);
+    HeadlessHarness second_run(config);
     for (uint8_t byte : {0xC2, 0x8D, 0xC3, 0x8D}) {
       strobe(1, byte);
     }
@@ -143,9 +143,9 @@ TEST_CASE(
 TEST_CASE(
     "Printer Frontend: a carriage return flushes the line before the sink "
     "closes") {
-  ScopedTempFile_t file(".txt");
-  ScopedTestConfig_t config(printer_in_slot_1(file.path()));
-  HeadlessHarness_t harness(config);
+  ScopedTempFile file(".txt");
+  ScopedTestConfig config(printer_in_slot_1(file.path()));
+  HeadlessHarness harness(config);
   for (uint8_t byte : {0xC8, 0xC9, 0x8D}) {
     strobe(1, byte);
   }
@@ -155,18 +155,18 @@ TEST_CASE(
 TEST_CASE(
     "Printer Frontend: a file that cannot be opened switches the printer off "
     "with one log line, and a frame switches it back on") {
-  ScopedTempDir_t dir("linapple_printer_test_");
+  ScopedTempDir dir("linapple_printer_test_");
   const std::string spool = dir.path() + "/spool";
   const std::string path = spool + "/Printer.txt";
-  ScopedTestConfig_t config(printer_in_slot_1(path));
+  ScopedTestConfig config(printer_in_slot_1(path));
   // The card's own wait line names the slot only, so counting the lines that
   // name the file leaves it out.
-  ScopedLogCapture_t log;
+  ScopedLogCapture log;
   const auto naming_the_file = [&log, &path]() -> std::vector<std::string> {
     return log.lines_containing(path);
   };
   {
-    HeadlessHarness_t harness(config);
+    HeadlessHarness harness(config);
     harness.boot();
 
     strobe(1, 0xC8);
@@ -200,13 +200,13 @@ TEST_CASE(
 TEST_CASE(
     "Printer Frontend: a second printer card writes its own file, named with "
     "its slot") {
-  ScopedTempDir_t dir("linapple_printer_test_");
+  ScopedTempDir dir("linapple_printer_test_");
   const std::string path = dir.path() + "/Printer.txt";
-  ScopedTestConfig_t::Description_t description = printer_in_slot_1(path);
+  ScopedTestConfig::Description description = printer_in_slot_1(path);
   description.slots[1] = "Parallel Printer";
-  ScopedTestConfig_t config(description);
+  ScopedTestConfig config(description);
   {
-    HeadlessHarness_t harness(config);
+    HeadlessHarness harness(config);
     CHECK(printer_frontend_output_path(1) == path);
     CHECK(printer_frontend_output_path(2) == dir.path() + "/Printer-slot2.txt");
     strobe(2, 0xC2);
@@ -221,10 +221,10 @@ TEST_CASE(
 TEST_CASE(
     "Printer Frontend: a relative filename lives in the save-state "
     "directory") {
-  ScopedTestConfig_t config(printer_in_slot_1("Printer.txt"));
+  ScopedTestConfig config(printer_in_slot_1("Printer.txt"));
   std::string path;
   {
-    HeadlessHarness_t harness(config);
+    HeadlessHarness harness(config);
     path = std::string(system_state.save_state_dir.data()) + "/Printer.txt";
     CHECK(printer_frontend_output_path(1) == path);
     strobe(1, 0xC8);
@@ -235,12 +235,12 @@ TEST_CASE(
 
 TEST_CASE(
     "Printer Frontend: a leading ~/ in the filename is the home directory") {
-  ScopedTempDir_t home("linapple_printer_test_");
-  ScopedEnvVar_t home_var("HOME", home.path());
-  ScopedTestConfig_t config(printer_in_slot_1("~/Printer.txt"));
+  ScopedTempDir home("linapple_printer_test_");
+  ScopedEnvVar home_var("HOME", home.path());
+  ScopedTestConfig config(printer_in_slot_1("~/Printer.txt"));
   const std::string path = home.path() + "/Printer.txt";
   {
-    HeadlessHarness_t harness(config);
+    HeadlessHarness harness(config);
     CHECK(printer_frontend_output_path(1) == path);
     strobe(1, 0xC8);
     strobe(1, 0x8D);

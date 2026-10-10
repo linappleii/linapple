@@ -24,16 +24,16 @@
 
 namespace {
 
-constexpr size_t frame_size = sizeof(PrinterSaveState_t);
-constexpr size_t frame_latch_offset = offsetof(PrinterSaveState_t, data_latch);
-using Frame_t = std::array<uint8_t, frame_size>;
+constexpr size_t frame_size = sizeof(PrinterSaveState);
+constexpr size_t frame_latch_offset = offsetof(PrinterSaveState, data_latch);
+using Frame = std::array<uint8_t, frame_size>;
 
 // Version 1, struct_size 24, total_chars_printed and busy_cycles zero, the
 // latch holding the last byte strobed, status_latch, is_online and is_busy
 // zero. An older card reads the zero is_online as "offline", which nothing
 // running on the machine can observe: the firmware never polls the card.
 constexpr uint8_t saved_byte = 0x5A;
-constexpr Frame_t frame_with_saved_byte = {
+constexpr Frame frame_with_saved_byte = {
     {
         0x01, 0x00, 0x00, 0x00, 0x18,       0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00,       0x00, 0x00, 0x00,
@@ -49,7 +49,7 @@ constexpr size_t trailer_file_size = 134200;
 constexpr size_t slot_capacity = 256;
 static_assert(snapshot_size_fixed_body == legacy_file_size,
               "a fixed-body .aws is 132,344 bytes");
-static_assert(sizeof(ApplewinSnapshot_t) == trailer_file_size,
+static_assert(sizeof(Snapshot) == trailer_file_size,
               "an .aws with the slot trailer is 134,200 bytes");
 static_assert(snapshot_slot_state_capacity == slot_capacity,
               "the trailer gives each slot 256 bytes");
@@ -67,8 +67,8 @@ auto strobe(int slot, uint8_t byte) -> void {
   io_map_dispatch(0, card_address(slot), 1, byte, 0);
 }
 
-auto saved_frame(int slot) -> Frame_t {
-  Frame_t frame{};
+auto saved_frame(int slot) -> Frame {
+  Frame frame{};
   size_t size = frame.size();
   peripheral_save_state(slot, frame.data(), &size);
   REQUIRE(size == frame_size);
@@ -90,14 +90,14 @@ constexpr std::array<uint8_t, 2> prom_wait_bytes = {{0xB0, 0x00}};
 
 // Only the bytes on disk say what the frontend wrote; the in-memory snapshot
 // the writer serialized is gone by the time the file exists.
-auto read_file(const std::string& path) -> std::unique_ptr<ApplewinSnapshot_t> {
+auto read_file(const std::string& path) -> std::unique_ptr<Snapshot> {
   struct stat on_disk{};
   REQUIRE(stat(path.c_str(), &on_disk) == 0);
   REQUIRE(static_cast<size_t>(on_disk.st_size) == trailer_file_size);
 
-  auto snapshot = std::unique_ptr<ApplewinSnapshot_t>(new ApplewinSnapshot_t());
+  auto snapshot = std::unique_ptr<Snapshot>(new Snapshot());
   std::ifstream in(path, std::ios::binary);
-  in.read(reinterpret_cast<char*>(snapshot.get()), sizeof(ApplewinSnapshot_t));
+  in.read(reinterpret_cast<char*>(snapshot.get()), sizeof(Snapshot));
   REQUIRE(in.good());
   return snapshot;
 }
@@ -107,11 +107,11 @@ auto read_file(const std::string& path) -> std::unique_ptr<ApplewinSnapshot_t> {
 // frontend's own writer and reader. The sink is installed first so the
 // strobes are delivered rather than parking the card.
 auto latch_survives_the_file(int slot) -> void {
-  TestFixtures::ScopedByteSink_t sink;
-  TestFixtures::ScopedTestConfig_t::Description_t description;
+  TestFixtures::ScopedByteSink sink;
+  TestFixtures::ScopedTestConfig::Description description;
   description.slots.at(static_cast<size_t>(slot - 1)) = "Parallel Printer";
-  TestFixtures::ScopedTestConfig_t config(description);
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedTestConfig config(description);
+  TestFixtures::ScopedCore core(config);
   peripheral_manager_init();
   linapple_register_peripherals();
   linapple_reset_hard();
@@ -122,21 +122,21 @@ auto latch_survives_the_file(int slot) -> void {
   CHECK(sink.bytes().front().slot == slot);
   CHECK(sink.bytes().front().byte == saved_byte);
 
-  TestFixtures::ScopedTempFile_t file(".aws");
+  TestFixtures::ScopedTempFile file(".aws");
   save_state_set_filename(file.c_str());
   save_state_save();
 
   {
-    const std::unique_ptr<ApplewinSnapshot_t> written = read_file(file.path());
+    const std::unique_ptr<Snapshot> written = read_file(file.path());
     CHECK(written->hdr.tag == aw_ss_tag);
     CHECK(written->hdr.version == snapshot_version);
     CHECK(std::string(written->manifest.peripherals[slot].name) ==
           "Parallel Printer");
 
-    const SsSlotState_t& entry =
+    const SsSlotState& entry =
         written->slot_trailer.slots[static_cast<size_t>(slot - 1)];
     REQUIRE(entry.length == frame_size);
-    Frame_t in_file{};
+    Frame in_file{};
     memcpy(in_file.data(), entry.data, frame_size);
     CHECK(in_file == frame_with_saved_byte);
   }
@@ -173,13 +173,13 @@ TEST_CASE("Printer Snapshot: An .aws gives back the data latch in any slot") {
 TEST_CASE(
     "Printer Snapshot: A fixed-body .aws from before the trailer carries "
     "nothing for the card and leaves it as it was") {
-  TestFixtures::ScopedByteSink_t sink;
-  TestFixtures::ScopedTestConfig_t::Description_t description;
+  TestFixtures::ScopedByteSink sink;
+  TestFixtures::ScopedTestConfig::Description description;
   description.slots.at(0) = "Parallel Printer";
   description.slots.at(1) = "Super Serial Card";
   description.slots.at(3) = "Mockingboard";
-  TestFixtures::ScopedTestConfig_t config(description);
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedTestConfig config(description);
+  TestFixtures::ScopedCore core(config);
   peripheral_manager_init();
   linapple_register_peripherals();
   linapple_reset_hard();

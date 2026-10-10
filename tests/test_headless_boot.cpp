@@ -17,19 +17,19 @@
 #include "test_fixtures.h"
 
 namespace {
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 }  // namespace
 
 TEST_CASE("Headless: [HL-01] Boot from --d1") {
-  TestConfig_t config(TestConfig_t::disk_ii_only());
-  HeadlessHarness_t harness(config);
+  TestConfig config(TestConfig::disk_ii_only());
+  HeadlessHarness harness(config);
 
   auto disk1 = TestFixtures::create_ephemeral("Master.dsk");
   harness.mount_disk(6, 0, disk1);
 
-  DiskStatus_t status{};
+  DiskStatus status{};
   size_t size = sizeof(status);
-  PeripheralStatus_t ps =
+  PeripheralStatus ps =
       peripheral_query(6, disk_query_status, &status, &size);
 
   REQUIRE(ps == peripheral_ok);
@@ -53,17 +53,17 @@ TEST_CASE("Headless: [HL-01] Boot from --d1") {
 }
 
 TEST_CASE("Headless: [HL-02] Both drives loaded") {
-  TestConfig_t config(TestConfig_t::disk_ii_only());
-  HeadlessHarness_t harness(config);
+  TestConfig config(TestConfig::disk_ii_only());
+  HeadlessHarness harness(config);
 
   auto disk1 = TestFixtures::create_ephemeral("minimal.woz");
   auto disk2 = TestFixtures::create_ephemeral("minimal.dsk");
   harness.mount_disk(6, 0, disk1);
   harness.mount_disk(6, 1, disk2);
 
-  DiskStatus_t status{};
+  DiskStatus status{};
   size_t size = sizeof(status);
-  PeripheralStatus_t ps =
+  PeripheralStatus ps =
       peripheral_query(6, disk_query_status, &status, &size);
 
   REQUIRE(ps == peripheral_ok);
@@ -74,16 +74,16 @@ TEST_CASE("Headless: [HL-02] Both drives loaded") {
 }
 
 TEST_CASE("Headless: [HL-03] Unsupported file") {
-  TestConfig_t config(TestConfig_t::disk_ii_only());
-  HeadlessHarness_t harness(config);
+  TestConfig config(TestConfig::disk_ii_only());
+  HeadlessHarness harness(config);
 
   // .txt is unsupported by disk drivers
   auto disk = TestFixtures::create_ephemeral("minimal.txt");
   harness.mount_disk(6, 0, disk);
 
-  DiskStatus_t status{};
+  DiskStatus status{};
   size_t size = sizeof(status);
-  PeripheralStatus_t ps =
+  PeripheralStatus ps =
       peripheral_query(6, disk_query_status, &status, &size);
 
   REQUIRE(ps == peripheral_ok);
@@ -92,42 +92,42 @@ TEST_CASE("Headless: [HL-03] Unsupported file") {
 }
 
 TEST_CASE("Headless: [HL-04] Program loading") {
-  TestConfig_t config(TestConfig_t::disk_ii_only());
-  HeadlessHarness_t harness(config);
+  TestConfig config(TestConfig::disk_ii_only());
+  HeadlessHarness harness(config);
 
   auto prog = TestFixtures::create_ephemeral("minimal.woz");
   int err = linapple_load_program(prog.c_str());
   CHECK(err != 0);
 
-  DiskStatus_t status{};
+  DiskStatus status{};
   size_t size = sizeof(status);
-  PeripheralStatus_t ps =
+  PeripheralStatus ps =
       peripheral_query(6, disk_query_status, &status, &size);
   REQUIRE(ps == peripheral_ok);
   CHECK(status.drive0_loaded == false);
 }
 
 TEST_CASE("Headless: [HL-05] Video worker thread wakeup and frame readiness") {
-  TestConfig_t config(TestConfig_t::disk_ii_only());
-  HeadlessHarness_t harness(config);
+  TestConfig config(TestConfig::disk_ii_only());
+  HeadlessHarness harness(config);
 
   REQUIRE(video_init_worker() == true);
 
-  g_frame_ready = false;
+  frame_ready = false;
   video_refresh_screen(0, true);
 
   // Give worker thread a moment to wake up and process the refresh
-  for (int i = 0; i < 50 && !g_frame_ready; ++i) {
+  for (int i = 0; i < 50 && !frame_ready; ++i) {
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
   }
 
-  CHECK(g_frame_ready == true);
+  CHECK(frame_ready == true);
 }
 
 TEST_CASE(
     "Headless: [HL-06] Text screen rendering produces golden visual output") {
-  TestConfig_t config(TestConfig_t::disk_ii_only());
-  HeadlessHarness_t harness(config);
+  TestConfig config(TestConfig::disk_ii_only());
+  HeadlessHarness harness(config);
 
   uint8_t* text_page = get_mem_ptr(0x0400);
   REQUIRE(text_page != nullptr);

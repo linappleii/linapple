@@ -29,7 +29,7 @@ namespace {
 
 // The card is reached the way the emulator reaches it, through the registry,
 // so one test binary covers the built-in card and the loaded plugin alike.
-auto clock_descriptor() -> Peripheral_t* {
+auto clock_descriptor() -> Peripheral* {
   return peripheral_find_internal("linapple.clock");
 }
 
@@ -70,31 +70,31 @@ constexpr size_t frame_header_size = 8;
 // The Mockingboard's frame, the largest a slot buffer is sized for today.
 constexpr size_t mockingboard_frame_size = 232;
 
-using Latches_t = std::array<uint8_t, latch_count>;
-using Frame_t = std::array<uint8_t, frame_size>;
+using Latches = std::array<uint8_t, latch_count>;
+using Frame = std::array<uint8_t, frame_size>;
 
 // The frozen time every literal below encodes:
 //   date -u -d @1773325800 -> Thu Mar 12 14:30:00 UTC 2026
 // so the latches read month 03, weekday 04 (Thursday, Sunday = 0), day 12,
 // hour 14, minute 30, one BCD digit per register.
-constexpr Latches_t frozen_latches = {0, 3, 0, 4, 1, 2, 1, 4, 3, 0};
+constexpr Latches frozen_latches = {0, 3, 0, 4, 1, 2, 1, 4, 3, 0};
 
 // Host provides pre-offset local time; card ignores unix_seconds.
-constexpr HostLocalTime_t frozen_thursday = {
+constexpr HostLocalTime frozen_thursday = {
     1773325800, 0, 2026, 3, 12, 4, 14, 30, 0,
 };
 
 // date -u -d @1795910340 -> Sat Nov 28 23:59:00 UTC 2026
-constexpr HostLocalTime_t frozen_saturday = {
+constexpr HostLocalTime frozen_saturday = {
     1795910340, 0, 2026, 11, 28, 6, 23, 59, 0,
 };
-constexpr Latches_t saturday_latches = {1, 1, 0, 6, 2, 8, 2, 3, 5, 9};
+constexpr Latches saturday_latches = {1, 1, 0, 6, 2, 8, 2, 3, 5, 9};
 
 // date -u -d @1709164800 -> Thu Feb 29 00:00:00 UTC 2024, a leap day
-constexpr HostLocalTime_t frozen_leap_day = {
+constexpr HostLocalTime frozen_leap_day = {
     1709164800, 0, 2024, 2, 29, 4, 0, 0, 0,
 };
-constexpr Latches_t leap_day_latches = {0, 2, 0, 4, 2, 9, 0, 0, 0, 0};
+constexpr Latches leap_day_latches = {0, 2, 0, 4, 2, 9, 0, 0, 0, 0};
 
 // Sentinel bus value distinct from any valid latch register byte.
 auto floating_bus_marker(uint32_t executed_cycles) -> uint8_t {
@@ -112,7 +112,7 @@ constexpr uint8_t oracle_strobe_marker = 0x5A;
 constexpr uint8_t oracle_hole_marker = 0x3C;
 
 // Version 1 snapshot frame layout.
-constexpr Frame_t frozen_frame = {
+constexpr Frame frozen_frame = {
     0x01, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x04, 0x01, 0x02,
     0x01, 0x04, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -167,7 +167,7 @@ constexpr uint8_t prodos_write_format = 0xA3;
 // Sentinel byte in GETLN buffer to detect unwritten cells.
 constexpr uint16_t input_buffer = 0x0200;
 constexpr uint8_t untouched_marker = 0xEE;
-using InputPage_t = std::array<uint8_t, 256>;
+using InputPage = std::array<uint8_t, 256>;
 
 // High-ASCII date format ("03,04,12,14,30") terminated by $80.
 constexpr std::array<uint8_t, 15> frozen_input_line = {
@@ -188,19 +188,19 @@ constexpr uint32_t retired_cmd_clear_epoch = 0x0002;
 constexpr uint32_t retired_query_epoch = 0x0100;
 constexpr uint32_t retired_query_time = 0x0101;
 
-struct MockHandler_t {
+struct MockHandler {
   void* instance = nullptr;
   PeripheralIOHandler read = nullptr;
   PeripheralIOHandler write = nullptr;
 
-  MockHandler_t() = default;
-  MockHandler_t(void* inst, PeripheralIOHandler r, PeripheralIOHandler w)
+  MockHandler() = default;
+  MockHandler(void* inst, PeripheralIOHandler r, PeripheralIOHandler w)
       : instance(inst), read(r), write(w) {}
 };
 
-class ClockHarness_t {
+class ClockHarness {
  public:
-  ClockHarness_t() {
+  ClockHarness() {
     active_harness = this;
     REQUIRE(clock_descriptor() != nullptr);
     host_.Log = mock_log;
@@ -214,7 +214,7 @@ class ClockHarness_t {
     time_ = frozen_thursday;
   }
 
-  ~ClockHarness_t() {
+  ~ClockHarness() {
     for (auto& slot_inst : instances_) {
       if (slot_inst.second != nullptr) {
         clock_descriptor()->shutdown(slot_inst.second);
@@ -224,14 +224,14 @@ class ClockHarness_t {
     active_harness = nullptr;
   }
 
-  ClockHarness_t(const ClockHarness_t&) = delete;
-  auto operator=(const ClockHarness_t&) -> ClockHarness_t& = delete;
-  ClockHarness_t(ClockHarness_t&&) = delete;
-  auto operator=(ClockHarness_t&&) -> ClockHarness_t& = delete;
+  ClockHarness(const ClockHarness&) = delete;
+  auto operator=(const ClockHarness&) -> ClockHarness& = delete;
+  ClockHarness(ClockHarness&&) = delete;
+  auto operator=(ClockHarness&&) -> ClockHarness& = delete;
 
-  auto host() -> HostInterface_t* { return &host_; }
+  auto host() -> HostInterface* { return &host_; }
 
-  auto freeze_clock(const HostLocalTime_t& frozen) -> void {
+  auto freeze_clock(const HostLocalTime& frozen) -> void {
     time_ = frozen;
     has_time_ = true;
   }
@@ -262,12 +262,12 @@ class ClockHarness_t {
   }
 
   auto load_frame(int slot, const void* frame, size_t size) const
-      -> PeripheralStatus_t {
+      -> PeripheralStatus {
     return clock_descriptor()->load_state(get_instance(slot), frame, size);
   }
 
-  auto save_frame(int slot) const -> Frame_t {
-    Frame_t frame{};
+  auto save_frame(int slot) const -> Frame {
+    Frame frame{};
     size_t size = frame.size();
     REQUIRE(clock_descriptor()->save_state(get_instance(slot), frame.data(),
                                            &size) == peripheral_ok);
@@ -294,8 +294,8 @@ class ClockHarness_t {
     return read_io(addr, executed_cycles);
   }
 
-  auto latches(int slot) -> Latches_t {
-    Latches_t out{};
+  auto latches(int slot) -> Latches {
+    Latches out{};
     for (size_t i = 0; i < latch_count; ++i) {
       out.at(i) = read_reg(slot, static_cast<uint8_t>(i));
     }
@@ -306,7 +306,7 @@ class ClockHarness_t {
     return handlers_.find(addr) != handlers_.end();
   }
 
-  auto get_handler(uint16_t addr) const -> const MockHandler_t& {
+  auto get_handler(uint16_t addr) const -> const MockHandler& {
     return handlers_.at(addr);
   }
 
@@ -324,21 +324,21 @@ class ClockHarness_t {
   }
 
  private:
-  HostInterface_t host_{};
-  HostLocalTime_t time_{};
+  HostInterface host_{};
+  HostLocalTime time_{};
   bool has_time_ = true;
   unsigned time_calls_ = 0;
   std::vector<std::string> log_messages_;
-  std::map<uint16_t, MockHandler_t> handlers_;
+  std::map<uint16_t, MockHandler> handlers_;
   std::map<int, std::vector<uint8_t>> roms_;
   std::map<int, const uint8_t*> rom_pointers_;
   std::map<int, void*> instances_;
 
-  static ClockHarness_t* active_harness;
+  static ClockHarness* active_harness;
 
   // NOLINTBEGIN(cert-dcl50-cpp, cppcoreguidelines-pro-type-vararg)
-  // Justification: Log is variadic in the HostInterface_t ABI.
-  static auto mock_log(void* instance, PeripheralLogLevel_t level,
+  // Justification: Log is variadic in the HostInterface ABI.
+  static auto mock_log(void* instance, PeripheralLogLevel level,
                        const char* fmt, ...) -> void {
     (void)instance;
     (void)level;
@@ -358,7 +358,7 @@ class ClockHarness_t {
     return floating_bus_marker(executed_cycles);
   }
 
-  static auto mock_host_clock(HostLocalTime_t* out) -> bool {
+  static auto mock_host_clock(HostLocalTime* out) -> bool {
     if (active_harness == nullptr || out == nullptr) {
       return false;
     }
@@ -376,7 +376,7 @@ class ClockHarness_t {
   }
 
   // NOLINTBEGIN(bugprone-easily-swappable-parameters)
-  // Justification: Signature is required by HostInterface_t ABI.
+  // Justification: Signature is required by HostInterface ABI.
   static auto mock_register_io(int slot, PeripheralIOHandler read_c0,
                                PeripheralIOHandler write_c0,
                                PeripheralIOHandler read_cx,
@@ -417,12 +417,12 @@ class ClockHarness_t {
   }
 };
 
-ClockHarness_t* ClockHarness_t::active_harness = nullptr;
+ClockHarness* ClockHarness::active_harness = nullptr;
 
-struct CalendarRow_t {
+struct CalendarRow {
   const char* name;
-  HostLocalTime_t local;
-  Latches_t latches;
+  HostLocalTime local;
+  Latches latches;
 };
 
 // Fields exactly as `date -u -d @N` reports them, so the rows prove the
@@ -437,7 +437,7 @@ struct CalendarRow_t {
 //   date -u -d @2147483647 -> Tue Jan 19 03:14:07 UTC 2038
 //   date -u -d @2147483700 -> Tue Jan 19 03:15:00 UTC 2038
 //   date -u -d @1773576000 -> Sun Mar 15 12:00:00 UTC 2026
-constexpr std::array<CalendarRow_t, 7> calendar_edges = {
+constexpr std::array<CalendarRow, 7> calendar_edges = {
     {
         {
             "the epoch",
@@ -480,45 +480,45 @@ constexpr std::array<CalendarRow_t, 7> calendar_edges = {
 // Verify time mapping under UTC+9 (JST) and UTC-4 (EDT).
 constexpr int32_t jst_offset = 32400;
 constexpr int32_t edt_offset = -14400;
-constexpr HostLocalTime_t tokyo_sunday = {
+constexpr HostLocalTime tokyo_sunday = {
     1795910340, jst_offset, 2026, 11, 29, 0, 8, 59, 0,
 };
-constexpr Latches_t tokyo_sunday_latches = {1, 1, 0, 0, 2, 9, 0, 8, 5, 9};
-constexpr HostLocalTime_t new_york_thursday = {
+constexpr Latches tokyo_sunday_latches = {1, 1, 0, 0, 2, 9, 0, 8, 5, 9};
+constexpr HostLocalTime new_york_thursday = {
     1773325800, edt_offset, 2026, 3, 12, 4, 10, 30, 0,
 };
-constexpr Latches_t new_york_thursday_latches = {0, 3, 0, 4, 1, 2, 1, 0, 3, 0};
+constexpr Latches new_york_thursday_latches = {0, 3, 0, 4, 1, 2, 1, 0, 3, 0};
 
 // Hard reset copies slot ROM into address space ($C4xx).
-struct ClockInSlot4_t {
-  static auto describe() -> TestFixtures::ScopedTestConfig_t::Description_t {
-    TestFixtures::ScopedTestConfig_t::Description_t description;
+struct ClockInSlot4 {
+  static auto describe() -> TestFixtures::ScopedTestConfig::Description {
+    TestFixtures::ScopedTestConfig::Description description;
     description.slots.at(oracle_slot - 1) = "Clock Card";
     return description;
   }
 
-  TestFixtures::ScopedTestConfig_t config;
-  TestFixtures::ScopedCore_t core;
+  TestFixtures::ScopedTestConfig config;
+  TestFixtures::ScopedCore core;
 
-  ClockInSlot4_t() : config(describe()), core(config) {
+  ClockInSlot4() : config(describe()), core(config) {
     peripheral_manager_init();
     linapple_register_peripherals();
     linapple_reset_hard();
   }
 };
 
-struct ClockInSlots4And5_t {
-  static auto describe() -> TestFixtures::ScopedTestConfig_t::Description_t {
-    TestFixtures::ScopedTestConfig_t::Description_t description;
+struct ClockInSlots4And5 {
+  static auto describe() -> TestFixtures::ScopedTestConfig::Description {
+    TestFixtures::ScopedTestConfig::Description description;
     description.slots.at(oracle_slot - 1) = "Clock Card";
     description.slots.at(oracle_slot) = "Clock Card";
     return description;
   }
 
-  TestFixtures::ScopedTestConfig_t config;
-  TestFixtures::ScopedCore_t core;
+  TestFixtures::ScopedTestConfig config;
+  TestFixtures::ScopedCore core;
 
-  ClockInSlots4And5_t() : config(describe()), core(config) {
+  ClockInSlots4And5() : config(describe()), core(config) {
     peripheral_manager_init();
     linapple_register_peripherals();
     linapple_reset_hard();
@@ -533,18 +533,18 @@ auto read_enable_language_card(uint8_t byte_at_iorts) -> void {
   io_map_dispatch(0, lc_bank2_read_write, 0, 0, 0);
   io_map_dispatch(0, lc_bank2_read_write, 0, 0, 0);
   REQUIRE((mem_get_mode() & MF_HIGHRAM) != 0);
-  TestFixtures::ScopedCore_t::poke(monitor_iorts, &byte_at_iorts, 1);
+  TestFixtures::ScopedCore::poke(monitor_iorts, &byte_at_iorts, 1);
   REQUIRE(mem[monitor_iorts] == byte_at_iorts);
 }
 
 auto fill_input_page(uint8_t marker) -> void {
-  InputPage_t page{};
+  InputPage page{};
   page.fill(marker);
-  TestFixtures::ScopedCore_t::poke(input_buffer, page);
+  TestFixtures::ScopedCore::poke(input_buffer, page);
 }
 
-auto read_input_page() -> InputPage_t {
-  InputPage_t page{};
+auto read_input_page() -> InputPage {
+  InputPage page{};
   for (size_t i = 0; i < page.size(); ++i) {
     page.at(i) = mem[input_buffer + i];
   }
@@ -558,9 +558,9 @@ auto call_subroutine(uint16_t entry, uint8_t accumulator) -> uint32_t {
       static_cast<uint8_t>(pushed & 0xFF),
       static_cast<uint8_t>(pushed >> 8),
   };
-  TestFixtures::ScopedCore_t::poke(stack_top - 1, return_address);
+  TestFixtures::ScopedCore::poke(stack_top - 1, return_address);
 
-  CpuRegisters_t* regs = cpu_get_registers();
+  CpuRegisters* regs = cpu_get_registers();
   regs->pc = entry;
   regs->sp = stack_top - 2;
   regs->a = accumulator;
@@ -575,8 +575,8 @@ auto call_subroutine(uint16_t entry, uint8_t accumulator) -> uint32_t {
   return cycles;
 }
 
-auto dispatch_latches(uint16_t first_latch = oracle_first_latch) -> Latches_t {
-  Latches_t latched{};
+auto dispatch_latches(uint16_t first_latch = oracle_first_latch) -> Latches {
+  Latches latched{};
   for (size_t i = 0; i < latch_count; ++i) {
     latched.at(i) =
         io_map_dispatch(0, static_cast<uint16_t>(first_latch + i), 0, 0, 0);
@@ -591,7 +591,7 @@ auto check_read_entry_returned(uint32_t cycles) -> void {
   CHECK(cpu_get_registers()->sp == stack_top);
   CHECK(cycles < subroutine_cycle_cap);
 
-  const InputPage_t page = read_input_page();
+  const InputPage page = read_input_page();
   CHECK(std::equal(frozen_input_line.begin(), frozen_input_line.end(),
                    page.begin()));
   CHECK(std::all_of(
@@ -603,8 +603,8 @@ auto check_read_entry_returned(uint32_t cycles) -> void {
   CHECK(cpu_get_registers()->x == frozen_input_line.size());
 }
 
-auto read_fixture_frame(const char* name) -> Frame_t {
-  Frame_t frame{};
+auto read_fixture_frame(const char* name) -> Frame {
+  Frame frame{};
   std::ifstream in(TestFixtures::get_fixture_path(name), std::ios::binary);
   REQUIRE(in.is_open());
   in.read(reinterpret_cast<char*>(frame.data()),
@@ -648,7 +648,7 @@ TEST_CASE("Clock Peripheral: A [Slots] line still names the card as before") {
 }
 
 TEST_CASE("Clock Peripheral: Slot ROM Contract") {
-  ClockHarness_t harness;
+  ClockHarness harness;
   const int slot = test_slot_1;
   void* instance = harness.create_clock(slot);
   REQUIRE(instance != nullptr);
@@ -669,7 +669,7 @@ TEST_CASE("Clock Peripheral: Slot ROM Contract") {
 }
 
 TEST_CASE("Clock Peripheral: Bus Fidelity and Floating Bus Pass-Through") {
-  ClockHarness_t harness;
+  ClockHarness harness;
   const int slot = test_slot_1;
   void* instance = harness.create_clock(slot);
   REQUIRE(instance != nullptr);
@@ -692,16 +692,16 @@ TEST_CASE("Clock Peripheral: Bus Fidelity and Floating Bus Pass-Through") {
 }
 
 TEST_CASE("Clock Peripheral: The state frame is 32 bytes with latches at 16") {
-  static_assert(sizeof(ClockCardSaveState_t) == frame_size);
-  static_assert(offsetof(ClockCardSaveState_t, version) == 0);
-  static_assert(offsetof(ClockCardSaveState_t, struct_size) == 4);
-  static_assert(offsetof(ClockCardSaveState_t, fixed_epoch) ==
+  static_assert(sizeof(ClockCardSaveState) == frame_size);
+  static_assert(offsetof(ClockCardSaveState, version) == 0);
+  static_assert(offsetof(ClockCardSaveState, struct_size) == 4);
+  static_assert(offsetof(ClockCardSaveState, fixed_epoch) ==
                 frame_header_size);
-  static_assert(offsetof(ClockCardSaveState_t, latches) ==
+  static_assert(offsetof(ClockCardSaveState, latches) ==
                 frame_latches_offset);
-  static_assert(offsetof(ClockCardSaveState_t, use_fixed_epoch) ==
+  static_assert(offsetof(ClockCardSaveState, use_fixed_epoch) ==
                 frame_latches_offset + latch_count);
-  static_assert(offsetof(ClockCardSaveState_t, reserved) ==
+  static_assert(offsetof(ClockCardSaveState, reserved) ==
                 frame_latches_offset + latch_count + 1);
   CHECK(CLOCKCARD_STATE_VERSION == 1);
   CHECK(frozen_frame.at(0) == CLOCKCARD_STATE_VERSION);
@@ -711,7 +711,7 @@ TEST_CASE("Clock Peripheral: The state frame is 32 bytes with latches at 16") {
 }
 
 TEST_CASE("Clock Peripheral: Saving the frozen latches gives the literal") {
-  ClockHarness_t harness;
+  ClockHarness harness;
   const int slot = test_slot_1;
   REQUIRE(harness.create_clock(slot) != nullptr);
   REQUIRE(harness.load_frame(slot, frozen_frame.data(), frozen_frame.size()) ==
@@ -746,11 +746,11 @@ TEST_CASE("Clock Peripheral: Saving the frozen latches gives the literal") {
 TEST_CASE(
     "Clock Peripheral: A frame with its pin engaged loads its latches, not its "
     "pin") {
-  const Frame_t pinned = read_fixture_frame("clock-frame-v1.bin");
+  const Frame pinned = read_fixture_frame("clock-frame-v1.bin");
   REQUIRE(std::equal(frame_v1_prefix.begin(), frame_v1_prefix.end(),
                      pinned.begin()));
 
-  ClockHarness_t harness;
+  ClockHarness harness;
   const int slot = test_slot_1;
   REQUIRE(harness.create_clock(slot) != nullptr);
   REQUIRE(harness.load_frame(slot, pinned.data(), pinned.size()) ==
@@ -761,7 +761,7 @@ TEST_CASE(
 }
 
 TEST_CASE("Clock Peripheral: A slot buffer larger than the frame loads") {
-  ClockHarness_t harness;
+  ClockHarness harness;
   const int slot = test_slot_1;
   REQUIRE(harness.create_clock(slot) != nullptr);
 
@@ -778,19 +778,19 @@ TEST_CASE("Clock Peripheral: A slot buffer larger than the frame loads") {
 }
 
 TEST_CASE("Clock Peripheral: A rejected load leaves the latches as they were") {
-  ClockHarness_t harness;
+  ClockHarness harness;
   const int slot = test_slot_1;
   void* instance = harness.create_clock(slot);
   REQUIRE(instance != nullptr);
   REQUIRE(harness.load_frame(slot, frozen_frame.data(), frozen_frame.size()) ==
           peripheral_ok);
 
-  auto rejects = [&](const Frame_t& frame, size_t size) -> void {
+  auto rejects = [&](const Frame& frame, size_t size) -> void {
     CHECK(harness.load_frame(slot, frame.data(), size) == peripheral_error);
     CHECK(harness.latches(slot) == frozen_latches);
   };
-  auto corrupted = [](size_t index, uint8_t value) -> Frame_t {
-    Frame_t frame = frozen_frame;
+  auto corrupted = [](size_t index, uint8_t value) -> Frame {
+    Frame frame = frozen_frame;
     frame.at(index) = value;
     return frame;
   };
@@ -826,20 +826,20 @@ TEST_CASE("Clock Peripheral: A rejected load leaves the latches as they were") {
     rejects(corrupted(frame_latches_offset + latch_weekday, 1), frame_size);
   }
   SUBCASE("month 15, weekday 7, day 35, hour 25, minute 60") {
-    Frame_t month = frozen_frame;
+    Frame month = frozen_frame;
     month.at(frame_latches_offset + latch_month) = 1;
     month.at(frame_latches_offset + latch_month + 1) = 5;
     rejects(month, frame_size);
     rejects(corrupted(frame_latches_offset + latch_weekday + 1, 7), frame_size);
-    Frame_t day = frozen_frame;
+    Frame day = frozen_frame;
     day.at(frame_latches_offset + latch_day) = 3;
     day.at(frame_latches_offset + latch_day + 1) = 5;
     rejects(day, frame_size);
-    Frame_t hour = frozen_frame;
+    Frame hour = frozen_frame;
     hour.at(frame_latches_offset + latch_hour) = 2;
     hour.at(frame_latches_offset + latch_hour + 1) = 5;
     rejects(hour, frame_size);
-    Frame_t minute = frozen_frame;
+    Frame minute = frozen_frame;
     minute.at(frame_latches_offset + latch_minute) = 6;
     minute.at(frame_latches_offset + latch_minute + 1) = 0;
     rejects(minute, frame_size);
@@ -847,7 +847,7 @@ TEST_CASE("Clock Peripheral: A rejected load leaves the latches as they were") {
 }
 
 TEST_CASE("Clock Peripheral: The retired epoch commands answer incompatible") {
-  ClockHarness_t harness;
+  ClockHarness harness;
   const int slot = test_slot_1;
   void* instance = harness.create_clock(slot);
   REQUIRE(instance != nullptr);
@@ -875,12 +875,12 @@ TEST_CASE("Clock Peripheral: The retired epoch commands answer incompatible") {
   CHECK(descriptor->query(instance, retired_query_time, out.data(), nullptr) ==
         peripheral_error);
 
-  CHECK(harness.latches(slot) == Latches_t{});
+  CHECK(harness.latches(slot) == Latches{});
 }
 
 // Hardware retains latched time through RESET.
 TEST_CASE("Clock Peripheral: Reset keeps the latched time") {
-  ClockHarness_t harness;
+  ClockHarness harness;
   const int slot = test_slot_1;
   void* instance = harness.create_clock(slot);
   REQUIRE(instance != nullptr);
@@ -893,10 +893,10 @@ TEST_CASE("Clock Peripheral: Reset keeps the latched time") {
 }
 
 TEST_CASE("Clock Peripheral: The frozen host time drives the strobe") {
-  ClockHarness_t harness;
+  ClockHarness harness;
   const int slot = test_slot_1;
   REQUIRE(harness.create_clock(slot) != nullptr);
-  CHECK(harness.latches(slot) == Latches_t{});
+  CHECK(harness.latches(slot) == Latches{});
   CHECK(harness.time_calls() == 0);
 
   harness.strobe(slot);
@@ -915,7 +915,7 @@ TEST_CASE("Clock Peripheral: The frozen host time drives the strobe") {
 }
 
 TEST_CASE("Clock Peripheral: A host without a time leaves the latches alone") {
-  ClockHarness_t harness;
+  ClockHarness harness;
   const int slot = test_slot_1;
   REQUIRE(harness.create_clock(slot) != nullptr);
   harness.strobe(slot);
@@ -942,29 +942,29 @@ TEST_CASE("Clock Peripheral: A host without a time leaves the latches alone") {
 
 TEST_CASE(
     "Clock Peripheral: A host missing a member gets no card, and hears why") {
-  ClockHarness_t harness;
-  struct Missing_t {
+  ClockHarness harness;
+  struct Missing {
     const char* name;
-    void (*strip)(HostInterface_t*);
+    void (*strip)(HostInterface*);
   };
-  const std::array<Missing_t, 4> members = {
+  const std::array<Missing, 4> members = {
       {
           {"RegisterIO",
-           [](HostInterface_t* h) -> void { h->RegisterIO = nullptr; }},
+           [](HostInterface* h) -> void { h->RegisterIO = nullptr; }},
           {"RegisterCxROM",
-           [](HostInterface_t* h) -> void { h->RegisterCxROM = nullptr; }},
+           [](HostInterface* h) -> void { h->RegisterCxROM = nullptr; }},
           {"GetLocalTime",
-           [](HostInterface_t* h) -> void { h->GetLocalTime = nullptr; }},
+           [](HostInterface* h) -> void { h->GetLocalTime = nullptr; }},
           {
               "ReadFloatingBus",
-              [](HostInterface_t* h) -> void { h->ReadFloatingBus = nullptr; },
+              [](HostInterface* h) -> void { h->ReadFloatingBus = nullptr; },
           },
       },
   };
 
-  for (const Missing_t& member : members) {
+  for (const Missing& member : members) {
     CAPTURE(member.name);
-    HostInterface_t partial = *harness.host();
+    HostInterface partial = *harness.host();
     member.strip(&partial);
     const size_t logged_before = harness.log_messages().size();
     CHECK(clock_descriptor()->init(test_slot_1, &partial) == nullptr);
@@ -973,7 +973,7 @@ TEST_CASE(
     CHECK(harness.log_messages().back().find("slot 4") != std::string::npos);
   }
 
-  HostInterface_t mute = *harness.host();
+  HostInterface mute = *harness.host();
   mute.Log = nullptr;
   mute.GetLocalTime = nullptr;
   CHECK(clock_descriptor()->init(test_slot_1, &mute) == nullptr);
@@ -983,21 +983,21 @@ TEST_CASE(
 
 // Integration test: execute clock card in slot 4 through core bus dispatch.
 TEST_CASE("Clock Peripheral: The real bus and the frozen clock reach slot 4") {
-  TestFixtures::ScopedTestConfig_t::Description_t description;
+  TestFixtures::ScopedTestConfig::Description description;
   description.slots.at(oracle_slot - 1) = "Clock Card";
-  TestFixtures::ScopedTestConfig_t config(description);
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedTestConfig config(description);
+  TestFixtures::ScopedCore core(config);
   peripheral_manager_init();
   linapple_register_peripherals();
-  TestFixtures::ScopedLocalTimeProvider_t clock(frozen_thursday);
+  TestFixtures::ScopedLocalTimeProvider clock(frozen_thursday);
 
   const uint16_t strobe_fetch =
       video_get_scanner_address(nullptr, oracle_strobe_cycle);
   const uint16_t hole_fetch =
       video_get_scanner_address(nullptr, oracle_hole_cycle);
   REQUIRE(strobe_fetch != hole_fetch);
-  TestFixtures::ScopedCore_t::poke(strobe_fetch, &oracle_strobe_marker, 1);
-  TestFixtures::ScopedCore_t::poke(hole_fetch, &oracle_hole_marker, 1);
+  TestFixtures::ScopedCore::poke(strobe_fetch, &oracle_strobe_marker, 1);
+  TestFixtures::ScopedCore::poke(hole_fetch, &oracle_hole_marker, 1);
 
   CHECK(io_map_dispatch(0, oracle_strobe, 0, 0, oracle_strobe_cycle) ==
         oracle_strobe_marker);
@@ -1005,7 +1005,7 @@ TEST_CASE("Clock Peripheral: The real bus and the frozen clock reach slot 4") {
         oracle_hole_marker);
   CHECK(clock.calls() == 1);
 
-  Latches_t latched{};
+  Latches latched{};
   for (size_t i = 0; i < latch_count; ++i) {
     latched.at(i) = io_map_dispatch(
         0, static_cast<uint16_t>(oracle_first_latch + i), 0, 0, 0);
@@ -1015,7 +1015,7 @@ TEST_CASE("Clock Peripheral: The real bus and the frozen clock reach slot 4") {
 }
 
 TEST_CASE("Clock Peripheral: The slot ROM is the firmware, byte for byte") {
-  ClockHarness_t harness;
+  ClockHarness harness;
   const int slot = test_slot_1;
   REQUIRE(harness.create_clock(slot) != nullptr);
 
@@ -1055,7 +1055,7 @@ TEST_CASE("Clock Peripheral: The slot ROM is the firmware, byte for byte") {
 }
 
 TEST_CASE("Clock Peripheral: The slot is found without a JSR to $FF58") {
-  ClockHarness_t harness;
+  ClockHarness harness;
   REQUIRE(harness.create_clock(test_slot_1) != nullptr);
   const uint8_t* rom = harness.rom_pointer(test_slot_1);
   REQUIRE(rom != nullptr);
@@ -1074,8 +1074,8 @@ TEST_CASE("Clock Peripheral: The slot is found without a JSR to $FF58") {
 
 // Verify ProDOS 8 ThunderClock READ entry ($C408) populates $0200 buffer.
 TEST_CASE("Clock Peripheral: The READ entry writes the frozen time to $0200") {
-  ClockInSlot4_t machine;
-  TestFixtures::ScopedLocalTimeProvider_t clock(frozen_thursday);
+  ClockInSlot4 machine;
+  TestFixtures::ScopedLocalTimeProvider clock(frozen_thursday);
 
   SUBCASE("with the Monitor ROM in, as BASIC calls it") {
     REQUIRE(mem[monitor_iorts] == opcode_rts);
@@ -1095,8 +1095,8 @@ TEST_CASE("Clock Peripheral: The READ entry writes the frozen time to $0200") {
 }
 
 TEST_CASE("Clock Peripheral: The WRITE entry is a bare RTS that keeps A") {
-  ClockInSlot4_t machine;
-  TestFixtures::ScopedLocalTimeProvider_t clock(frozen_thursday);
+  ClockInSlot4 machine;
+  TestFixtures::ScopedLocalTimeProvider clock(frozen_thursday);
 
   SUBCASE("with the Monitor ROM in") {
     REQUIRE(mem[monitor_iorts] == opcode_rts);
@@ -1114,7 +1114,7 @@ TEST_CASE("Clock Peripheral: The WRITE entry is a bare RTS that keeps A") {
   CHECK(cpu_get_registers()->a == prodos_write_format);
   CHECK(clock.calls() == 0);
 
-  const InputPage_t page = read_input_page();
+  const InputPage page = read_input_page();
   CHECK(std::all_of(page.begin(), page.end(), [](uint8_t byte) -> bool {
     return byte == untouched_marker;
   }));
@@ -1123,13 +1123,13 @@ TEST_CASE("Clock Peripheral: The WRITE entry is a bare RTS that keeps A") {
 // Two cards, each entered from the language card: the one called strobes its
 // own slot's registers and the other's latches stay untouched.
 TEST_CASE("Clock Peripheral: Two cards each read their own slot's registers") {
-  ClockInSlots4And5_t machine;
-  TestFixtures::ScopedLocalTimeProvider_t clock(frozen_thursday);
+  ClockInSlots4And5 machine;
+  TestFixtures::ScopedLocalTimeProvider clock(frozen_thursday);
 
   CHECK(mem[0xC400 + rom_slot_operand] == oracle_slot << io_slot_shift);
   CHECK(mem[0xC500 + rom_slot_operand] == (oracle_slot + 1) << io_slot_shift);
-  REQUIRE(dispatch_latches(oracle_first_latch) == Latches_t{});
-  REQUIRE(dispatch_latches(slot5_first_latch) == Latches_t{});
+  REQUIRE(dispatch_latches(oracle_first_latch) == Latches{});
+  REQUIRE(dispatch_latches(slot5_first_latch) == Latches{});
 
   read_enable_language_card(prodos_111_byte_at_iorts);
 
@@ -1137,7 +1137,7 @@ TEST_CASE("Clock Peripheral: Two cards each read their own slot's registers") {
   check_read_entry_returned(call_subroutine(slot5_read_entry, 0));
   CHECK(clock.calls() == 1);
   CHECK(dispatch_latches(slot5_first_latch) == frozen_latches);
-  CHECK(dispatch_latches(oracle_first_latch) == Latches_t{});
+  CHECK(dispatch_latches(oracle_first_latch) == Latches{});
 
   fill_input_page(untouched_marker);
   check_read_entry_returned(call_subroutine(slot4_read_entry, 0));
@@ -1146,11 +1146,11 @@ TEST_CASE("Clock Peripheral: Two cards each read their own slot's registers") {
 }
 
 TEST_CASE("Clock Peripheral: The calendar's edges reach the latches") {
-  ClockHarness_t harness;
+  ClockHarness harness;
   const int slot = test_slot_1;
   REQUIRE(harness.create_clock(slot) != nullptr);
 
-  for (const CalendarRow_t& row : calendar_edges) {
+  for (const CalendarRow& row : calendar_edges) {
     CAPTURE(row.name);
     harness.freeze_clock(row.local);
     harness.strobe(slot);
@@ -1160,7 +1160,7 @@ TEST_CASE("Clock Peripheral: The calendar's edges reach the latches") {
 }
 
 TEST_CASE("Clock Peripheral: A zone arrives as local fields, not an offset") {
-  ClockHarness_t harness;
+  ClockHarness harness;
   const int slot = test_slot_1;
   REQUIRE(harness.create_clock(slot) != nullptr);
 
@@ -1190,10 +1190,10 @@ TEST_CASE("Clock Peripheral: A zone arrives as local fields, not an offset") {
 
 // Fall back to host system clock when no frozen provider is registered.
 TEST_CASE("Clock Peripheral: The host's wall clock latches a calendar") {
-  ClockInSlot4_t machine;
+  ClockInSlot4 machine;
 
   io_map_dispatch(0, oracle_strobe, 0, 0, 0);
-  const Latches_t latched = dispatch_latches();
+  const Latches latched = dispatch_latches();
 
   for (size_t i = 0; i < latch_count; ++i) {
     CAPTURE(i);
@@ -1214,7 +1214,7 @@ TEST_CASE("Clock Peripheral: The host's wall clock latches a calendar") {
 
 TEST_CASE("Clock Peripheral: There is no write path") {
   SUBCASE("the card registers no write handler") {
-    ClockHarness_t harness;
+    ClockHarness harness;
     const int slot = test_slot_1;
     REQUIRE(harness.create_clock(slot) != nullptr);
     const uint16_t base = io_base_address + (slot << io_slot_shift);
@@ -1227,8 +1227,8 @@ TEST_CASE("Clock Peripheral: There is no write path") {
   // The provider moves on between the strobe and the write, so a write that
   // strobed would show Saturday's digits and a second provider call.
   SUBCASE("a write to the strobe or a latch changes nothing") {
-    ClockInSlot4_t machine;
-    TestFixtures::ScopedLocalTimeProvider_t clock(frozen_thursday);
+    ClockInSlot4 machine;
+    TestFixtures::ScopedLocalTimeProvider clock(frozen_thursday);
 
     io_map_dispatch(0, oracle_strobe, 0, 0, 0);
     REQUIRE(dispatch_latches() == frozen_latches);
@@ -1242,7 +1242,7 @@ TEST_CASE("Clock Peripheral: There is no write path") {
 }
 
 TEST_CASE("Clock Peripheral: Multi-Card Concurrency and Lifecycle Robustness") {
-  ClockHarness_t harness;
+  ClockHarness harness;
 
   CHECK(clock_descriptor()->init(test_slot_1, nullptr) == nullptr);
 
@@ -1256,10 +1256,10 @@ TEST_CASE("Clock Peripheral: Multi-Card Concurrency and Lifecycle Robustness") {
   REQUIRE(harness.load_frame(slot1, frozen_frame.data(), frozen_frame.size()) ==
           peripheral_ok);
   CHECK(harness.latches(slot1) == frozen_latches);
-  CHECK(harness.latches(slot2) == Latches_t{});
+  CHECK(harness.latches(slot2) == Latches{});
 
   size_t dummy_size = frame_size;
-  Frame_t dummy_buf{};
+  Frame dummy_buf{};
   CHECK(clock_descriptor()->save_state(nullptr, dummy_buf.data(),
                                        &dummy_size) == peripheral_error);
   CHECK(clock_descriptor()->load_state(nullptr, dummy_buf.data(), dummy_size) ==
@@ -1273,7 +1273,7 @@ TEST_CASE("Clock Peripheral: Multi-Card Concurrency and Lifecycle Robustness") {
 #include "test_clock_abi_c.h"
 
 TEST_CASE("Clock Peripheral: The C99 view of the state frame matches C++") {
-  CHECK(clockcard_abi_c_state_size() == sizeof(ClockCardSaveState_t));
+  CHECK(clockcard_abi_c_state_size() == sizeof(ClockCardSaveState));
   CHECK(clockcard_abi_c_state_size() == frame_size);
   CHECK(clockcard_abi_c_fixed_epoch_offset() == frame_header_size);
   CHECK(clockcard_abi_c_latches_offset() == frame_latches_offset);

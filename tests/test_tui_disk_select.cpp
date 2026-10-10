@@ -24,30 +24,30 @@
 
 namespace {
 
-struct ScopedMemoryContext_t {
+struct ScopedMemoryContext {
   Apple2Type orig_type{current_apple2_type};
 
-  ScopedMemoryContext_t() {
+  ScopedMemoryContext() {
     current_apple2_type = A2TYPE_APPLE2EENHANCED;
     (void)mem_initialize();
   }
 
-  ~ScopedMemoryContext_t() {
+  ~ScopedMemoryContext() {
     mem_destroy();
     current_apple2_type = orig_type;
   }
 
-  ScopedMemoryContext_t(const ScopedMemoryContext_t&) = delete;
-  auto operator=(const ScopedMemoryContext_t&)
-      -> ScopedMemoryContext_t& = delete;
-  ScopedMemoryContext_t(ScopedMemoryContext_t&&) = delete;
-  auto operator=(ScopedMemoryContext_t&&) -> ScopedMemoryContext_t& = delete;
+  ScopedMemoryContext(const ScopedMemoryContext&) = delete;
+  auto operator=(const ScopedMemoryContext&)
+      -> ScopedMemoryContext& = delete;
+  ScopedMemoryContext(ScopedMemoryContext&&) = delete;
+  auto operator=(ScopedMemoryContext&&) -> ScopedMemoryContext& = delete;
 };
 
-struct ScopedCwd_t {
+struct ScopedCwd {
   std::string original_cwd;
 
-  explicit ScopedCwd_t(const std::string& new_dir) {
+  explicit ScopedCwd(const std::string& new_dir) {
     std::array<char, 1024> buf{};
     if (getcwd(buf.data(), buf.size()) != nullptr) {
       original_cwd = buf.data();
@@ -56,29 +56,29 @@ struct ScopedCwd_t {
     REQUIRE(rc == 0);
   }
 
-  ~ScopedCwd_t() {
+  ~ScopedCwd() {
     if (!original_cwd.empty()) {
       const int rc = chdir(original_cwd.c_str());
       CHECK(rc == 0);
     }
   }
 
-  ScopedCwd_t(const ScopedCwd_t&) = delete;
-  auto operator=(const ScopedCwd_t&) -> ScopedCwd_t& = delete;
-  ScopedCwd_t(ScopedCwd_t&&) = delete;
-  auto operator=(ScopedCwd_t&&) -> ScopedCwd_t& = delete;
+  ScopedCwd(const ScopedCwd&) = delete;
+  auto operator=(const ScopedCwd&) -> ScopedCwd& = delete;
+  ScopedCwd(ScopedCwd&&) = delete;
+  auto operator=(ScopedCwd&&) -> ScopedCwd& = delete;
 };
 
-struct ScopedConfigPath_t {
+struct ScopedConfigPath {
   std::string original_path{Configuration::instance().get_path()};
 
-  ~ScopedConfigPath_t() { Configuration::instance().set_path(original_path); }
+  ~ScopedConfigPath() { Configuration::instance().set_path(original_path); }
 
-  ScopedConfigPath_t() = default;
-  ScopedConfigPath_t(const ScopedConfigPath_t&) = delete;
-  auto operator=(const ScopedConfigPath_t&) -> ScopedConfigPath_t& = delete;
-  ScopedConfigPath_t(ScopedConfigPath_t&&) = delete;
-  auto operator=(ScopedConfigPath_t&&) -> ScopedConfigPath_t& = delete;
+  ScopedConfigPath() = default;
+  ScopedConfigPath(const ScopedConfigPath&) = delete;
+  auto operator=(const ScopedConfigPath&) -> ScopedConfigPath& = delete;
+  ScopedConfigPath(ScopedConfigPath&&) = delete;
+  auto operator=(ScopedConfigPath&&) -> ScopedConfigPath& = delete;
 };
 
 auto create_dummy_disk(const std::string& path) -> void {
@@ -90,8 +90,8 @@ auto create_dummy_disk(const std::string& path) -> void {
 }  // namespace
 
 TEST_CASE("TuiDiskSelect: Open and Close Lifecycle") {
-  TestFixtures::ScopedTempDir_t temp_dir;
-  ScopedCwd_t cwd_guard(temp_dir.path());
+  TestFixtures::ScopedTempDir temp_dir;
+  ScopedCwd cwd_guard(temp_dir.path());
 
   CHECK_FALSE(tui_disk_select_is_active());
 
@@ -114,14 +114,14 @@ TEST_CASE("TuiDiskSelect: Open and Close Lifecycle") {
 }
 
 TEST_CASE("TuiDiskSelect: Navigation and Paging") {
-  TestFixtures::ScopedTempDir_t temp_dir;
+  TestFixtures::ScopedTempDir temp_dir;
   create_dummy_disk(temp_dir.path() + "/disk1.dsk");
   create_dummy_disk(temp_dir.path() + "/disk2.dsk");
   create_dummy_disk(temp_dir.path() + "/disk3.dsk");
   create_dummy_disk(temp_dir.path() + "/disk4.dsk");
   create_dummy_disk(temp_dir.path() + "/disk5.dsk");
 
-  ScopedCwd_t cwd_guard(temp_dir.path());
+  ScopedCwd cwd_guard(temp_dir.path());
 
   tui_disk_select_open(6, 0);
   REQUIRE(tui_disk_select_is_active());
@@ -150,9 +150,9 @@ TEST_CASE("TuiDiskSelect: Navigation and Paging") {
 }
 
 TEST_CASE("TuiVideo: Screenshot Generation") {
-  ScopedMemoryContext_t mem_guard;
-  TestFixtures::ScopedTempDir_t temp_dir;
-  ScopedCwd_t cwd_guard(temp_dir.path());
+  ScopedMemoryContext mem_guard;
+  TestFixtures::ScopedTempDir temp_dir;
+  ScopedCwd cwd_guard(temp_dir.path());
 
   tui_video_initialize();
   tui_video_on_resize();
@@ -186,8 +186,8 @@ TEST_CASE("TuiVideo: Screenshot Generation") {
 }
 
 TEST_CASE("Configuration: Save and Load Runtime Settings") {
-  TestFixtures::ScopedTempDir_t temp_dir;
-  ScopedConfigPath_t config_path_guard;
+  TestFixtures::ScopedTempDir temp_dir;
+  ScopedConfigPath config_path_guard;
 
   std::string test_conf = temp_dir.path() + "/test_runtime_save.conf";
   Configuration::instance().set_path(test_conf);

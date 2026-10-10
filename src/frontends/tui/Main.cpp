@@ -25,7 +25,7 @@ auto video_callback(const uint32_t* pixels, int width, int height, int pitch)
 }
 
 auto audio_source_register_callback(int slot, const char* peripheral_id,
-                                    const PeripheralAudioInfo_t* info) -> void {
+                                    const PeripheralAudioInfo* info) -> void {
   audio_mixer_register_source(slot, peripheral_id, info);
 }
 

@@ -29,25 +29,25 @@ const int MAX_DISPLAY_STACK_LINES = 8;
 // --- Functions moved from Debugger_Display.cpp ---
 
 auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
-  if ((g_window_this != WINDOW_CODE) && !(g_window_this == WINDOW_DATA)) {
+  if ((window_this != WINDOW_CODE) && !(window_this == WINDOW_DATA)) {
     return 0;
   }
 
   int iOpmode = 0;
   int nOpbyte = 0;
-  DisasmLine_t line{};
+  DisasmLine line{};
   const char* pSymbol = FindSymbolFromAddress(nBaseAddress);
   const char* pMnemonic = nullptr;
 
   int bDisasmFormatFlags = GetDisassemblyLine(nBaseAddress, line);
-  const DisasmData_t* data = line.pDisasmData;
+  const DisasmData* data = line.pDisasmData;
 
   iOpmode = line.iOpmode;
   nOpbyte = line.nOpbyte;
 
   const int nDefaultFontWidth = 7;
 
-  enum TabStop_e : uint8_t {
+  enum TabStop : uint8_t {
     TS_OPCODE,
     TS_LABEL,
     TS_INSTRUCTION,
@@ -62,11 +62,11 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
   int iTab = 0;
   int nSpacer = 11;
   for (iTab = 0; iTab < NUM_TAB_STOPS; iTab++) {
-    if ((!g_config_disasm_address_view) && (iTab < TS_IMMEDIATE)) {
+    if ((!config_disasm_address_view) && (iTab < TS_IMMEDIATE)) {
       aTabs[iTab] -= 4;
     }
 
-    if ((!g_config_disasm_opcodes_view) && (iTab < TS_IMMEDIATE)) {
+    if ((!config_disasm_opcodes_view) && (iTab < TS_IMMEDIATE)) {
       aTabs[iTab] -= nSpacer;
       if (nSpacer > 0) {
         nSpacer -= 2;
@@ -76,9 +76,9 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
     aTabs[iTab] *= nDefaultFontWidth;
   }
 
-  int nFontHeight = g_font_config[FONT_DISASM_DEFAULT].line_height;
+  int nFontHeight = font_config[FONT_DISASM_DEFAULT].line_height;
 
-  Rect_t linerect;
+  Rect linerect;
   linerect.left = 0;
   linerect.top = iLine * nFontHeight;
   linerect.right = DISPLAY_DISASM_RIGHT;
@@ -90,12 +90,12 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
   bool bAddressAtPC = (nBaseAddress == cpu_get_registers()->pc);
   bool bAddressIsBookmark = Bookmark_Find(nBaseAddress);
 
-  DebugColors_e iBackground = BG_DISASM_1;
-  DebugColors_e iForeground = FG_DISASM_MNEMONIC;
+  DebugColors iBackground = BG_DISASM_1;
+  DebugColors iForeground = FG_DISASM_MNEMONIC;
   bool bCursorLine = false;
 
-  if (((!g_disasm_cur_bad) && (iLine == g_disasm_cur_line)) ||
-      (g_disasm_cur_bad && (iLine == 0))) {
+  if (((!disasm_cur_bad) && (iLine == disasm_cur_line)) ||
+      (disasm_cur_bad && (iLine == 0))) {
     bCursorLine = true;
 
     if (bBreakpointActive) {
@@ -112,7 +112,7 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
     } else {
       iBackground = BG_DISASM_C;
       iForeground = FG_DISASM_C;
-      g_disasm_cur_address = nBaseAddress;
+      disasm_cur_address = nBaseAddress;
     }
   } else {
     if ((iLine & 1) != 0) {
@@ -147,7 +147,7 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
     DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_ADDRESS));
   }
 
-  if (g_config_disasm_address_view) {
+  if (config_disasm_address_view) {
     PrintTextCursorX((const char*)line.sAddress, linerect);
   }
 
@@ -160,7 +160,7 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
     DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPERATOR));
   }
 
-  if (g_config_disasm_address_colon) {
+  if (config_disasm_address_colon) {
     PrintTextCursorX(":", linerect);
   } else {
     PrintTextCursorX(" ", linerect);
@@ -170,7 +170,7 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
   if (!bCursorLine) {
     DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPCODE));
   }
-  if (g_config_disasm_opcodes_view) {
+  if (config_disasm_opcodes_view) {
     PrintTextCursorX((const char*)line.sOpCodes, linerect);
   }
 
@@ -233,10 +233,10 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
   }
 
   int nMaxLen = MAX_TARGET_LEN;
-  if (!g_config_disasm_address_view) {
+  if (!config_disasm_address_view) {
     nMaxLen += 4;
   }
-  if (!g_config_disasm_opcodes_view) {
+  if (!config_disasm_opcodes_view) {
     nMaxLen += (MAX_OPCODES * 3);
   }
 
@@ -339,7 +339,7 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
       if (!bCursorLine) {
         DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPERATOR));
       }
-      if ((g_config_disasm_targets & DISASM_TARGET_BOTH) != 0) {
+      if ((config_disasm_targets & DISASM_TARGET_BOTH) != 0) {
         PrintTextCursorX(":", linerect);
       }
       if (!bCursorLine) {
@@ -378,19 +378,19 @@ auto DrawDisassemblyLine(int iLine, const uint16_t nBaseAddress) -> uint16_t {
 }
 
 auto DrawFlags(int line, uint16_t nRegFlags, char* pFlagNames_) -> void {
-  if ((g_window_this != WINDOW_CODE) && !(g_window_this == WINDOW_DATA)) {
+  if ((window_this != WINDOW_CODE) && !(window_this == WINDOW_DATA)) {
     return;
   }
 
   char sFlagNames[DBG_6502_NUM_FLAGS + 1] = "";
   char sText[8] = "?";
-  Rect_t rect;
+  Rect rect;
 
-  int nFontWidth = g_font_config[FONT_INFO].font_width_avg;
+  int nFontWidth = font_config[FONT_INFO].font_width_avg;
   int nSpacerWidth = nFontWidth;
 
-  rect.top = line * g_font_height;
-  rect.bottom = rect.top + g_font_height;
+  rect.top = line * font_height;
+  rect.bottom = rect.top + font_height;
   rect.left = DISPLAY_FLAG_COLUMN;
   rect.right = rect.left + (10 * nFontWidth);
 
@@ -398,8 +398,8 @@ auto DrawFlags(int line, uint16_t nRegFlags, char* pFlagNames_) -> void {
   DebuggerSetColorFG(DebuggerGetColor(FG_INFO_REG));
   PrintText("P ", rect);
 
-  rect.top += g_font_height;
-  rect.bottom += g_font_height;
+  rect.top += font_height;
+  rect.bottom += font_height;
 
   snprintf(sText, sizeof(sText), "%02X", nRegFlags);
 
@@ -407,8 +407,8 @@ auto DrawFlags(int line, uint16_t nRegFlags, char* pFlagNames_) -> void {
   DebuggerSetColorFG(DebuggerGetColor(FG_INFO_OPCODE));
   PrintText(sText, rect);
 
-  rect.top -= g_font_height;
-  rect.bottom -= g_font_height;
+  rect.top -= font_height;
+  rect.bottom -= font_height;
   sText[1] = 0;
 
   rect.left += ((2 + DBG_6502_NUM_FLAGS) * nSpacerWidth);
@@ -419,7 +419,7 @@ auto DrawFlags(int line, uint16_t nRegFlags, char* pFlagNames_) -> void {
   while ((nFlag--) != 0) {
     iFlag = (DBG_6502_NUM_FLAGS - nFlag - 1);
     bool bSet = (nRegFlags & 1) != 0;
-    sText[0] = *g_breakpoint_source[BP_SRC_FLAG_C + iFlag];
+    sText[0] = *breakpoint_source[BP_SRC_FLAG_C + iFlag];
 
     if (bSet) {
       DebuggerSetColorBG(DebuggerGetColor(BG_INFO_INVERSE));
@@ -433,21 +433,21 @@ auto DrawFlags(int line, uint16_t nRegFlags, char* pFlagNames_) -> void {
     rect.right -= nSpacerWidth;
     PrintText(sText, rect);
 
-    rect.top += g_font_height;
-    rect.bottom += g_font_height;
+    rect.top += font_height;
+    rect.bottom += font_height;
     DebuggerSetColorBG(DebuggerGetColor(BG_INFO));
     DebuggerSetColorFG(DebuggerGetColor(FG_INFO_TITLE));
 
     sText[0] = '0' + static_cast<int>(bSet);
     PrintText(sText, rect);
-    rect.top -= g_font_height;
-    rect.bottom -= g_font_height;
+    rect.top -= font_height;
+    rect.bottom -= font_height;
 
     if (pFlagNames_) {
       if (!bSet) {
         sFlagNames[nFlag] = '.';
       } else {
-        sFlagNames[nFlag] = *g_breakpoint_source[BP_SRC_FLAG_C + iFlag];
+        sFlagNames[nFlag] = *breakpoint_source[BP_SRC_FLAG_C + iFlag];
       }
     }
     nRegFlags >>= 1;
@@ -459,22 +459,22 @@ auto DrawFlags(int line, uint16_t nRegFlags, char* pFlagNames_) -> void {
 }
 
 auto DrawStack(int line) -> void {
-  if ((g_window_this != WINDOW_CODE) && !(g_window_this == WINDOW_DATA)) {
+  if ((window_this != WINDOW_CODE) && !(window_this == WINDOW_DATA)) {
     return;
   }
 
   unsigned address = cpu_get_registers()->sp;
-  int nFontWidth = g_font_config[FONT_INFO].font_width_avg;
+  int nFontWidth = font_config[FONT_INFO].font_width_avg;
   DebuggerSetColorBG(DebuggerGetColor(BG_DATA_1));
 
   int iStack = 0;
   while (iStack < MAX_DISPLAY_STACK_LINES) {
     address++;
-    Rect_t rect;
+    Rect rect;
     rect.left = DISPLAY_STACK_COLUMN;
-    rect.top = (iStack + line) * g_font_height;
+    rect.top = (iStack + line) * font_height;
     rect.right = rect.left + (10 * nFontWidth) + 1;
-    rect.bottom = rect.top + g_font_height;
+    rect.bottom = rect.top + font_height;
 
     DebuggerSetColorFG(DebuggerGetColor(FG_INFO_TITLE));
     char sText[8] = "";
@@ -494,41 +494,41 @@ auto DrawStack(int line) -> void {
   }
 }
 
-auto DrawSourceLine(int iSourceLine, Rect_t& rect) -> void {
+auto DrawSourceLine(int iSourceLine, Rect& rect) -> void {
   char sLine[CONSOLE_WIDTH];
   memset(sLine, 0, CONSOLE_WIDTH);
 
   if ((iSourceLine >= 0) &&
-      (iSourceLine < g_assembler_source_buffer.GetNumLines())) {
-    char* pSource = g_assembler_source_buffer.GetLine(iSourceLine);
+      (iSourceLine < assembler_source_buffer.GetNumLines())) {
+    char* pSource = assembler_source_buffer.GetLine(iSourceLine);
     TextConvertTabsToSpaces(sLine, pSource, CONSOLE_WIDTH - 1);
   } else {
     util_safe_strcpy(sLine, " ", sizeof(sLine));
   }
 
   PrintText(sLine, rect);
-  rect.top += g_font_height;
+  rect.top += font_height;
 }
 
 auto DrawSubWindow_Code(int iWindow) -> void {
   (void)iWindow;
-  int nLines = g_disasm_win_height;
+  int nLines = disasm_win_height;
 
-  uint16_t address = g_disasm_top_address;
+  uint16_t address = disasm_top_address;
   for (int iLine = 0; iLine < nLines; iLine++) {
     address += DrawDisassemblyLine(iLine, address);
   }
 }
 
-auto DrawSubWindow_Source(Update_t bUpdate) -> void {
+auto DrawSubWindow_Source(UpdateResult bUpdate) -> void {
   (void)bUpdate;
-  int nLines = g_disasm_win_height;
+  int nLines = disasm_win_height;
 
-  Rect_t rect;
+  Rect rect;
   rect.left = 0;
   rect.top = 0;
   rect.right = DISPLAY_DISASM_RIGHT;
-  rect.bottom = rect.top + g_font_height;
+  rect.bottom = rect.top + font_height;
 
   int iSourceDisplayStart = 0;  // TODO: Extern
   int iSourceLine = iSourceDisplayStart;
@@ -539,14 +539,14 @@ auto DrawSubWindow_Source(Update_t bUpdate) -> void {
   }
 }
 
-auto DrawWindow_Code(Update_t bUpdate) -> void {
-  DrawSubWindow_Code(g_window_this);
-  DrawWindowBottom(bUpdate, g_window_this);
-  DrawSubWindow_Info(bUpdate, g_window_this);
+auto DrawWindow_Code(UpdateResult bUpdate) -> void {
+  DrawSubWindow_Code(window_this);
+  DrawWindowBottom(bUpdate, window_this);
+  DrawSubWindow_Info(bUpdate, window_this);
 }
 
-auto DrawWindow_Source(Update_t bUpdate) -> void {
-  DrawSubWindow_Source(g_window_this);
-  DrawWindowBottom(bUpdate, g_window_this);
-  DrawSubWindow_Info(bUpdate, g_window_this);
+auto DrawWindow_Source(UpdateResult bUpdate) -> void {
+  DrawSubWindow_Source(window_this);
+  DrawWindowBottom(bUpdate, window_this);
+  DrawSubWindow_Info(bUpdate, window_this);
 }

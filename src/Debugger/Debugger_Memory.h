@@ -4,29 +4,29 @@
 #include "Debugger_Types.h"
 
 // Globals
-extern MemoryDump_t g_mem_dump[NUM_MEM_DUMPS];
-extern MemorySearchResults_t g_memory_search_results;
+extern MemoryDump mem_dump[NUM_MEM_DUMPS];
+extern MemorySearchResults memory_search_results;
 
 // Memory Functions
 auto MemoryDumpCheck(int nArgs, uint16_t* pAddress_) -> bool;
-auto CmdMemoryCompare(int nArgs) -> Update_t;
+auto CmdMemoryCompare(int nArgs) -> UpdateResult;
 auto MemoryCheckMiniDump(int iWhich) -> bool;
-auto CmdMemoryMiniDumpHex(int nArgs) -> Update_t;
-auto CmdMemoryMiniDumpAscii(int nArgs) -> Update_t;
-auto CmdMemoryMiniDumpBin(int nArgs) -> Update_t;
-auto CmdMemoryDump(int nArgs) -> Update_t;
-auto CmdMemoryDumpHex(int nArgs) -> Update_t;
-auto CmdMemoryDumpAscii(int nArgs) -> Update_t;
-auto CmdMemoryDumpBin(int nArgs) -> Update_t;
-auto CmdMemoryDumpApple(int nArgs) -> Update_t;
-auto CmdMemoryDumpByte(int nArgs) -> Update_t;
-auto CmdMemoryDumpWord(int nArgs) -> Update_t;
-auto CmdMemoryFill(int nArgs) -> Update_t;
-auto CmdMemoryMove(int nArgs) -> Update_t;
-auto CmdMemorySearch(int nArgs) -> Update_t;
-auto CmdMemorySearchAscii(int nArgs) -> Update_t;
-auto CmdMemorySearchApple(int nArgs) -> Update_t;
-auto CmdMemorySearchHex(int nArgs) -> Update_t;
-auto CmdMemorySearchNext(int nArgs) -> Update_t;
-auto CmdMemorySet(int nArgs) -> Update_t;
-auto CmdMemoryVerify(int nArgs) -> Update_t;
+auto CmdMemoryMiniDumpHex(int nArgs) -> UpdateResult;
+auto CmdMemoryMiniDumpAscii(int nArgs) -> UpdateResult;
+auto CmdMemoryMiniDumpBin(int nArgs) -> UpdateResult;
+auto CmdMemoryDump(int nArgs) -> UpdateResult;
+auto CmdMemoryDumpHex(int nArgs) -> UpdateResult;
+auto CmdMemoryDumpAscii(int nArgs) -> UpdateResult;
+auto CmdMemoryDumpBin(int nArgs) -> UpdateResult;
+auto CmdMemoryDumpApple(int nArgs) -> UpdateResult;
+auto CmdMemoryDumpByte(int nArgs) -> UpdateResult;
+auto CmdMemoryDumpWord(int nArgs) -> UpdateResult;
+auto CmdMemoryFill(int nArgs) -> UpdateResult;
+auto CmdMemoryMove(int nArgs) -> UpdateResult;
+auto CmdMemorySearch(int nArgs) -> UpdateResult;
+auto CmdMemorySearchAscii(int nArgs) -> UpdateResult;
+auto CmdMemorySearchApple(int nArgs) -> UpdateResult;
+auto CmdMemorySearchHex(int nArgs) -> UpdateResult;
+auto CmdMemorySearchNext(int nArgs) -> UpdateResult;
+auto CmdMemorySet(int nArgs) -> UpdateResult;
+auto CmdMemoryVerify(int nArgs) -> UpdateResult;

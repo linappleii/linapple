@@ -55,7 +55,7 @@ constexpr std::array<char, 4> md5_s2 = {{5, 9, 14, 20}};
 constexpr std::array<char, 4> md5_s3 = {{4, 11, 16, 23}};
 constexpr std::array<char, 4> md5_s4 = {{6, 10, 15, 21}};
 
-constexpr std::array<uint32_t, md5_block_size> md5_t = {
+constexpr std::array<uint32_t, md5_block_size> md5 = {
     {
         0xd76aa478U, 0xe8c7b756U, 0x242070dbU, 0xc1bdceeeU, 0xf57c0fafU,
         0x4787c62aU, 0xa8304613U, 0xfd469501U, 0x698098d8U, 0x8b44f7afU,
@@ -84,7 +84,7 @@ auto md5_transform(Md5Context* ctx, const uint8_t block[md5_block_size])
   const auto* x = reinterpret_cast<const uint32_t*>(block);
 
   for (int i = 0; i < 16; i++) {
-    tmp = a + F(b, c, d) + x[i] + md5_t.at(static_cast<size_t>(i));
+    tmp = a + F(b, c, d) + x[i] + md5.at(static_cast<size_t>(i));
     tmp = rotate_left(tmp, md5_s1.at(static_cast<size_t>(i & 3)));
     tmp += b;
     a = d;
@@ -94,7 +94,7 @@ auto md5_transform(Md5Context* ctx, const uint8_t block[md5_block_size])
   }
 
   for (int i = 0, j = 1; i < 16; i++, j += 5) {
-    tmp = a + G(b, c, d) + x[j & 15] + md5_t.at(static_cast<size_t>(i) + 16);
+    tmp = a + G(b, c, d) + x[j & 15] + md5.at(static_cast<size_t>(i) + 16);
     tmp = rotate_left(tmp, md5_s2.at(static_cast<size_t>(i & 3)));
     tmp += b;
     a = d;
@@ -104,7 +104,7 @@ auto md5_transform(Md5Context* ctx, const uint8_t block[md5_block_size])
   }
 
   for (int i = 0, j = 5; i < 16; i++, j += 3) {
-    tmp = a + H(b, c, d) + x[j & 15] + md5_t.at(static_cast<size_t>(i) + 32);
+    tmp = a + H(b, c, d) + x[j & 15] + md5.at(static_cast<size_t>(i) + 32);
     tmp = rotate_left(tmp, md5_s3.at(static_cast<size_t>(i & 3)));
     tmp += b;
     a = d;
@@ -114,7 +114,7 @@ auto md5_transform(Md5Context* ctx, const uint8_t block[md5_block_size])
   }
 
   for (int i = 0, j = 0; i < 16; i++, j += 7) {
-    tmp = a + I(b, c, d) + x[j & 15] + md5_t.at(static_cast<size_t>(i) + 48);
+    tmp = a + I(b, c, d) + x[j & 15] + md5.at(static_cast<size_t>(i) + 48);
     tmp = rotate_left(tmp, md5_s4.at(static_cast<size_t>(i & 3)));
     tmp += b;
     a = d;

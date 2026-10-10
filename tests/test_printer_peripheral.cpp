@@ -28,7 +28,7 @@ namespace {
 
 // The card is reached the way the emulator reaches it, through the registry,
 // so one test binary covers the built-in card and the loaded plugin alike.
-auto printer_descriptor() -> Peripheral_t* {
+auto printer_descriptor() -> Peripheral* {
   return peripheral_find_internal("linapple.printer");
 }
 
@@ -47,14 +47,14 @@ constexpr size_t wait_image_length = 0x40;
 constexpr uint8_t rom_first_byte = 0x18;
 constexpr uint8_t rom_last_byte = 0x84;
 
-constexpr size_t frame_size = sizeof(PrinterSaveState_t);
-constexpr size_t frame_latch_offset = offsetof(PrinterSaveState_t, data_latch);
-using Frame_t = std::array<uint8_t, frame_size>;
+constexpr size_t frame_size = sizeof(PrinterSaveState);
+constexpr size_t frame_latch_offset = offsetof(PrinterSaveState, data_latch);
+using Frame = std::array<uint8_t, frame_size>;
 
 // Version 1, struct_size 24, the twelve bytes of total_chars_printed and
 // busy_cycles zero, data_latch $33 after "123", then status_latch, is_online
 // and is_busy zero.
-constexpr Frame_t frame_after_123 = {
+constexpr Frame frame_after_123 = {
     {
         0x01, 0x00, 0x00, 0x00, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x33, 0x00, 0x00, 0x00,
@@ -64,7 +64,7 @@ constexpr Frame_t frame_after_123 = {
 // A frame with every dead field populated: three characters counted, 5000
 // busy cycles pending, data_latch $33, a status read of $7F recorded, offline,
 // busy.
-constexpr Frame_t frame_from_old_card = {
+constexpr Frame frame_from_old_card = {
     {
         0x01, 0x00, 0x00, 0x00, 0x18, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x88, 0x13, 0x00, 0x00, 0x33, 0x7F, 0x00, 0x01,
@@ -203,7 +203,7 @@ constexpr std::array<uint8_t, 4> ello = {{high_e, high_l, high_l, high_o}};
 constexpr std::array<uint8_t, 7> hello_cr_stream = {
     {high_h, high_e, high_l, high_l, high_o, high_cr, high_lf},
 };
-constexpr std::array<uint8_t, 3> a_cr_stream = {{high_a, high_cr, high_lf}};
+constexpr std::array<uint8_t, 3> ascii_cr_stream = {{high_a, high_cr, high_lf}};
 constexpr std::array<uint8_t, 6> tab_fill_stream = {
     {high_space, high_space, high_space, high_space, high_space, high_a},
 };
@@ -252,33 +252,33 @@ auto hex(const std::array<uint8_t, N>& bytes) -> std::string {
   return hex(std::vector<uint8_t>(bytes.begin(), bytes.end()));
 }
 
-struct MockHandler_t {
+struct MockHandler {
   void* instance = nullptr;
   PeripheralIOHandler read = nullptr;
   PeripheralIOHandler write = nullptr;
 
-  MockHandler_t() = default;
-  MockHandler_t(void* inst, PeripheralIOHandler r, PeripheralIOHandler w)
+  MockHandler() = default;
+  MockHandler(void* inst, PeripheralIOHandler r, PeripheralIOHandler w)
       : instance(inst), read(r), write(w) {}
 };
 
 // One sink per slot, as the bridge keeps them; the token the card holds is
 // the record's address. A byte written while the sink is not ready is dropped
 // and counted, which is what the frontend does when its file cannot be written.
-struct MockSink_t {
+struct MockSink {
   std::vector<uint8_t> bytes;
   size_t dropped = 0;
   size_t ready_polls = 0;
   size_t closes = 0;
   bool ready = true;
-  PeripheralSinkKind_t kind = peripheral_sink_printer;
+  PeripheralSinkKind kind = peripheral_sink_printer;
 };
 
 // A host built by hand, for what the real one cannot show: a member missing,
 // the log line, the page the card registers and the frame it writes.
-class MockHost_t {
+class MockHost {
  public:
-  MockHost_t() {
+  MockHost() {
     active_host = this;
     REQUIRE(printer_descriptor() != nullptr);
     host_.Log = mock_log;
@@ -295,7 +295,7 @@ class MockHost_t {
     host_.SinkClose = mock_sink_close;
   }
 
-  ~MockHost_t() {
+  ~MockHost() {
     for (const auto& entry : instances_) {
       if (entry.second != nullptr) {
         printer_descriptor()->shutdown(entry.second);
@@ -305,12 +305,12 @@ class MockHost_t {
     active_host = nullptr;
   }
 
-  MockHost_t(const MockHost_t&) = delete;
-  auto operator=(const MockHost_t&) -> MockHost_t& = delete;
-  MockHost_t(MockHost_t&&) = delete;
-  auto operator=(MockHost_t&&) -> MockHost_t& = delete;
+  MockHost(const MockHost&) = delete;
+  auto operator=(const MockHost&) -> MockHost& = delete;
+  MockHost(MockHost&&) = delete;
+  auto operator=(MockHost&&) -> MockHost& = delete;
 
-  auto host() -> HostInterface_t* { return &host_; }
+  auto host() -> HostInterface* { return &host_; }
 
   auto create_printer(int slot) -> void* {
     void* instance = printer_descriptor()->init(slot, &host_);
@@ -349,7 +349,7 @@ class MockHost_t {
     sinks_.at(static_cast<size_t>(slot)).ready = ready;
   }
 
-  auto sink(int slot) const -> const MockSink_t& {
+  auto sink(int slot) const -> const MockSink& {
     return sinks_.at(static_cast<size_t>(slot));
   }
 
@@ -388,7 +388,7 @@ class MockHost_t {
     return handlers_.find(addr) != handlers_.end();
   }
 
-  auto get_handler(uint16_t addr) const -> const MockHandler_t& {
+  auto get_handler(uint16_t addr) const -> const MockHandler& {
     return handlers_.at(addr);
   }
 
@@ -416,22 +416,22 @@ class MockHost_t {
   }
 
  private:
-  HostInterface_t host_{};
-  std::map<uint16_t, MockHandler_t> handlers_;
+  HostInterface host_{};
+  std::map<uint16_t, MockHandler> handlers_;
   std::map<int, std::vector<uint8_t>> roms_;
   std::map<int, std::vector<const uint8_t*>> rom_history_;
   std::vector<std::string> log_messages_;
   std::map<int, void*> instances_;
   std::map<int, size_t> activity_counts_;
-  std::array<MockSink_t, 8> sinks_{};
+  std::array<MockSink, 8> sinks_{};
 
-  static MockHost_t* active_host;
+  static MockHost* active_host;
 
-  static auto sink_from_token(void* token) -> MockSink_t* {
+  static auto sink_from_token(void* token) -> MockSink* {
     if (active_host == nullptr || token == nullptr) {
       return nullptr;
     }
-    for (MockSink_t& record : active_host->sinks_) {
+    for (MockSink& record : active_host->sinks_) {
       if (&record == token) {
         return &record;
       }
@@ -447,8 +447,8 @@ class MockHost_t {
   }
 
   // NOLINTBEGIN(cert-dcl50-cpp, cppcoreguidelines-pro-type-vararg)
-  // Justification: Log is variadic in the HostInterface_t ABI.
-  static auto mock_log(void* instance, PeripheralLogLevel_t level,
+  // Justification: Log is variadic in the HostInterface ABI.
+  static auto mock_log(void* instance, PeripheralLogLevel level,
                        const char* fmt, ...) -> void {
     (void)instance;
     (void)level;
@@ -469,18 +469,18 @@ class MockHost_t {
   }
 
   static auto mock_sink_open(void* instance, int slot,
-                             PeripheralSinkKind_t kind) -> void* {
+                             PeripheralSinkKind kind) -> void* {
     (void)instance;
     if (active_host == nullptr || slot < 1 || slot > 7) {
       return nullptr;
     }
-    MockSink_t& record = active_host->sinks_.at(static_cast<size_t>(slot));
+    MockSink& record = active_host->sinks_.at(static_cast<size_t>(slot));
     record.kind = kind;
     return &record;
   }
 
   static auto mock_sink_write(void* token, uint8_t byte) -> void {
-    MockSink_t* record = sink_from_token(token);
+    MockSink* record = sink_from_token(token);
     if (record == nullptr) {
       return;
     }
@@ -492,7 +492,7 @@ class MockHost_t {
   }
 
   static auto mock_sink_ready(void* token) -> bool {
-    MockSink_t* record = sink_from_token(token);
+    MockSink* record = sink_from_token(token);
     if (record == nullptr) {
       return false;
     }
@@ -501,7 +501,7 @@ class MockHost_t {
   }
 
   static auto mock_sink_close(void* token) -> void {
-    MockSink_t* record = sink_from_token(token);
+    MockSink* record = sink_from_token(token);
     if (record != nullptr) {
       record->closes++;
     }
@@ -513,7 +513,7 @@ class MockHost_t {
   }
 
   // NOLINTBEGIN(bugprone-easily-swappable-parameters)
-  // Justification: Signature is required by HostInterface_t ABI.
+  // Justification: Signature is required by HostInterface ABI.
   static auto mock_register_io(int slot, PeripheralIOHandler read_c0,
                                PeripheralIOHandler write_c0,
                                PeripheralIOHandler read_cx,
@@ -554,10 +554,10 @@ class MockHost_t {
   }
 };
 
-MockHost_t* MockHost_t::active_host = nullptr;
+MockHost* MockHost::active_host = nullptr;
 
-auto save_frame(void* instance) -> Frame_t {
-  Frame_t frame{};
+auto save_frame(void* instance) -> Frame {
+  Frame frame{};
   size_t size = frame.size();
   REQUIRE(printer_descriptor()->save_state(instance, frame.data(), &size) ==
           peripheral_ok);
@@ -570,20 +570,20 @@ auto save_frame(void* instance) -> Frame_t {
 // firmware the way COUT enters it. The sink is the first member so that it
 // is installed before the core builds the card and still there when the
 // card's shutdown closes it.
-struct PrinterHarness_t {
+struct PrinterHarness {
   static auto describe(int slot)
-      -> TestFixtures::ScopedTestConfig_t::Description_t {
-    TestFixtures::ScopedTestConfig_t::Description_t description;
+      -> TestFixtures::ScopedTestConfig::Description {
+    TestFixtures::ScopedTestConfig::Description description;
     description.slots.at(static_cast<size_t>(slot - 1)) = "Parallel Printer";
     return description;
   }
 
-  TestFixtures::ScopedByteSink_t sink;
-  TestFixtures::ScopedTestConfig_t config;
-  TestFixtures::ScopedCore_t core;
+  TestFixtures::ScopedByteSink sink;
+  TestFixtures::ScopedTestConfig config;
+  TestFixtures::ScopedCore core;
   int slot;
 
-  explicit PrinterHarness_t(int in_slot = test_slot_1)
+  explicit PrinterHarness(int in_slot = test_slot_1)
       : config(describe(in_slot)), core(config), slot(in_slot) {
     peripheral_manager_init();
     linapple_register_peripherals();
@@ -592,7 +592,7 @@ struct PrinterHarness_t {
   }
 
   static auto poke(uint16_t addr, uint8_t byte) -> void {
-    TestFixtures::ScopedCore_t::poke(addr, &byte, 1);
+    TestFixtures::ScopedCore::poke(addr, &byte, 1);
   }
 
   // What the Monitor leaves for COUT1 on a booted machine, since the firmware
@@ -631,8 +631,8 @@ struct PrinterHarness_t {
   // Runs the 6502 until it reaches the sentinel or spends the cap, giving
   // the cards their think once per frame as a running machine would, so a
   // card that releases a wait from think gets to.
-  template <typename Stop_t>
-  auto run_while_not(Stop_t stopped, uint32_t cap) -> uint32_t {
+  template <typename Stop>
+  auto run_while_not(Stop stopped, uint32_t cap) -> uint32_t {
     uint32_t cycles = 0;
     uint32_t since_think = 0;
     while (!stopped() && cycles < cap) {
@@ -648,7 +648,7 @@ struct PrinterHarness_t {
   }
 
   auto run_until(uint16_t sentinel, uint32_t cap) -> uint32_t {
-    const CpuRegisters_t* regs = cpu_get_registers();
+    const CpuRegisters* regs = cpu_get_registers();
     return run_while_not(
         [regs, sentinel] -> bool { return regs->pc == sentinel; }, cap);
   }
@@ -669,7 +669,7 @@ struct PrinterHarness_t {
     poke(stack_top - 1, static_cast<uint8_t>(pushed & 0xFF));
     poke(stack_top, static_cast<uint8_t>(pushed >> 8));
 
-    CpuRegisters_t* regs = cpu_get_registers();
+    CpuRegisters* regs = cpu_get_registers();
     regs->pc = entry;
     regs->sp = stack_top - 2;
     regs->a = accumulator;
@@ -702,7 +702,7 @@ struct PrinterHarness_t {
   // The sink's bytes, every one of them checked to have come from this slot.
   auto stream() const -> std::vector<uint8_t> {
     std::vector<uint8_t> bytes;
-    for (const TestFixtures::ScopedByteSink_t::Byte_t& entry : sink.bytes()) {
+    for (const TestFixtures::ScopedByteSink::Byte& entry : sink.bytes()) {
       CHECK(entry.slot == slot);
       bytes.push_back(entry.byte);
     }
@@ -710,7 +710,7 @@ struct PrinterHarness_t {
   }
 
   auto latch() const -> uint8_t {
-    Frame_t frame{};
+    Frame frame{};
     size_t size = frame.size();
     peripheral_save_state(slot, frame.data(), &size);
     REQUIRE(size == frame_size);
@@ -769,7 +769,7 @@ TEST_CASE(
 }
 
 TEST_CASE("Printer Peripheral: The registry resolves the card by its id") {
-  Peripheral_t* by_id = peripheral_find_internal("linapple.printer");
+  Peripheral* by_id = peripheral_find_internal("linapple.printer");
   REQUIRE(by_id != nullptr);
   CHECK(by_id == printer_descriptor());
   CHECK(std::string(by_id->id) == "linapple.printer");
@@ -778,7 +778,7 @@ TEST_CASE("Printer Peripheral: The registry resolves the card by its id") {
 
 TEST_CASE(
     "Printer Peripheral: init claims sixteen addresses and one ROM page") {
-  MockHost_t host;
+  MockHost host;
   void* instance = host.create_printer(test_slot_1);
   REQUIRE(instance != nullptr);
 
@@ -799,7 +799,7 @@ TEST_CASE(
 }
 
 TEST_CASE("Printer Peripheral: The slot ROM is the PROM, byte for byte") {
-  MockHost_t host;
+  MockHost host;
   REQUIRE(host.create_printer(test_slot_1) != nullptr);
   const uint8_t* registered = host.rom_pointer(test_slot_1);
   REQUIRE(registered != nullptr);
@@ -827,7 +827,7 @@ TEST_CASE("Printer Peripheral: The slot ROM is the PROM, byte for byte") {
 }
 
 TEST_CASE("Printer Peripheral: The wait image is the PROM with A6 forced") {
-  MockHost_t host;
+  MockHost host;
   void* instance = host.create_printer(test_slot_1);
   REQUIRE(instance != nullptr);
   const uint8_t* normal = host.rom_pointer(test_slot_1);
@@ -857,7 +857,7 @@ TEST_CASE("Printer Peripheral: The wait image is the PROM with A6 forced") {
 }
 
 TEST_CASE("Printer Peripheral: A read answers with the host's floating bus") {
-  MockHost_t host;
+  MockHost host;
   REQUIRE(host.create_printer(test_slot_1) != nullptr);
   REQUIRE(floating_bus_marker(7) != floating_bus_marker(42));
 
@@ -878,7 +878,7 @@ TEST_CASE(
   auto* descriptor = printer_descriptor();
   REQUIRE(descriptor != nullptr);
 
-  MockHost_t host;
+  MockHost host;
   void* instance = host.create_printer(test_slot_1);
   REQUIRE(instance != nullptr);
   const uint8_t* normal = host.rom_pointer(test_slot_1);
@@ -932,7 +932,7 @@ TEST_CASE(
   auto* descriptor = printer_descriptor();
   REQUIRE(descriptor != nullptr);
 
-  MockHost_t host;
+  MockHost host;
   void* instance = host.create_printer(test_slot_1);
   REQUIRE(instance != nullptr);
   const uint8_t* normal = host.rom_pointer(test_slot_1);
@@ -969,7 +969,7 @@ TEST_CASE(
   descriptor->think(nullptr, 1024);
   descriptor->shutdown(nullptr);
 
-  MockHost_t host;
+  MockHost host;
   for (int slot : {0, 8, -1, 255}) {
     CAPTURE(slot);
     const size_t logged_before = host.log_messages().size();
@@ -995,35 +995,35 @@ TEST_CASE(
 TEST_CASE(
     "Printer Peripheral: A host missing a member gets no card, and hears "
     "why") {
-  MockHost_t host;
-  struct Missing_t {
+  MockHost host;
+  struct Missing {
     const char* name;
-    void (*strip)(HostInterface_t*);
+    void (*strip)(HostInterface*);
   };
-  const std::array<Missing_t, 7> members = {
+  const std::array<Missing, 7> members = {
       {
           {"RegisterIO",
-           [](HostInterface_t* h) -> void { h->RegisterIO = nullptr; }},
+           [](HostInterface* h) -> void { h->RegisterIO = nullptr; }},
           {"RegisterCxROM",
-           [](HostInterface_t* h) -> void { h->RegisterCxROM = nullptr; }},
+           [](HostInterface* h) -> void { h->RegisterCxROM = nullptr; }},
           {
               "ReadFloatingBus",
-              [](HostInterface_t* h) -> void { h->ReadFloatingBus = nullptr; },
+              [](HostInterface* h) -> void { h->ReadFloatingBus = nullptr; },
           },
           {"SinkOpen",
-           [](HostInterface_t* h) -> void { h->SinkOpen = nullptr; }},
+           [](HostInterface* h) -> void { h->SinkOpen = nullptr; }},
           {"SinkWrite",
-           [](HostInterface_t* h) -> void { h->SinkWrite = nullptr; }},
+           [](HostInterface* h) -> void { h->SinkWrite = nullptr; }},
           {"SinkReady",
-           [](HostInterface_t* h) -> void { h->SinkReady = nullptr; }},
+           [](HostInterface* h) -> void { h->SinkReady = nullptr; }},
           {"SinkClose",
-           [](HostInterface_t* h) -> void { h->SinkClose = nullptr; }},
+           [](HostInterface* h) -> void { h->SinkClose = nullptr; }},
       },
   };
 
-  for (const Missing_t& member : members) {
+  for (const Missing& member : members) {
     CAPTURE(member.name);
-    HostInterface_t partial = *host.host();
+    HostInterface partial = *host.host();
     member.strip(&partial);
     const size_t logged_before = host.log_messages().size();
     CHECK(printer_descriptor()->init(test_slot_2, &partial) == nullptr);
@@ -1033,7 +1033,7 @@ TEST_CASE(
   }
 
   // A host that cannot log is refused all the same, silently.
-  HostInterface_t mute = *host.host();
+  HostInterface mute = *host.host();
   mute.Log = nullptr;
   mute.SinkReady = nullptr;
   const size_t logged_before = host.log_messages().size();
@@ -1049,7 +1049,7 @@ TEST_CASE(
   auto* descriptor = printer_descriptor();
   REQUIRE(descriptor != nullptr);
 
-  MockHost_t host;
+  MockHost host;
   void* instance = host.create_printer(test_slot_1);
   REQUIRE(instance != nullptr);
   host.set_log_enabled(false);
@@ -1073,7 +1073,7 @@ TEST_CASE(
   auto* descriptor = printer_descriptor();
   REQUIRE(descriptor != nullptr);
 
-  MockHost_t host;
+  MockHost host;
   void* instance = host.create_printer(test_slot_1);
   REQUIRE(instance != nullptr);
 
@@ -1115,7 +1115,7 @@ TEST_CASE(
   auto* descriptor = printer_descriptor();
   REQUIRE(descriptor != nullptr);
 
-  MockHost_t host;
+  MockHost host;
   void* instance = host.create_printer(test_slot_1);
   REQUIRE(instance != nullptr);
 
@@ -1130,7 +1130,7 @@ TEST_CASE(
   CHECK(descriptor->save_state(instance, undersized.data(), &too_small) ==
         peripheral_error);
 
-  Frame_t frame = frame_after_123;
+  Frame frame = frame_after_123;
   size_t size = frame.size();
   CHECK(descriptor->save_state(nullptr, frame.data(), &size) ==
         peripheral_error);
@@ -1150,7 +1150,7 @@ TEST_CASE(
   auto* descriptor = printer_descriptor();
   REQUIRE(descriptor != nullptr);
 
-  MockHost_t host;
+  MockHost host;
   void* instance = host.create_printer(test_slot_1);
   REQUIRE(instance != nullptr);
 
@@ -1177,12 +1177,12 @@ TEST_CASE(
 
   // Every rejected frame leaves the latch as it was: each carries $55 where
   // the card holds $33, and the re-saved frame is still the literal.
-  struct Rejected_t {
+  struct Rejected {
     const char* name;
     size_t offset;
     uint8_t value;
   };
-  const std::array<Rejected_t, 7> rejected = {
+  const std::array<Rejected, 7> rejected = {
       {
           {"version 0", 0, 0x00},
           {"version 2", 0, 0x02},
@@ -1193,9 +1193,9 @@ TEST_CASE(
           {"struct_size 30 in the high byte", 7, 0x30},
       },
   };
-  for (const Rejected_t& reject : rejected) {
+  for (const Rejected& reject : rejected) {
     CAPTURE(reject.name);
-    Frame_t frame = frame_after_123;
+    Frame frame = frame_after_123;
     frame.at(frame_latch_offset) = 0x55;
     frame.at(reject.offset) = reject.value;
     CHECK(descriptor->load_state(instance, frame.data(), frame.size()) ==
@@ -1204,7 +1204,7 @@ TEST_CASE(
   }
   for (size_t short_size : {23U, 7U, 0U}) {
     CAPTURE(short_size);
-    Frame_t frame = frame_after_123;
+    Frame frame = frame_after_123;
     frame.at(frame_latch_offset) = 0x55;
     CHECK(descriptor->load_state(instance, frame.data(), short_size) ==
           peripheral_error);
@@ -1221,7 +1221,7 @@ TEST_CASE("Printer Peripheral: A load puts the PROM back, whatever was shown") {
   auto* descriptor = printer_descriptor();
   REQUIRE(descriptor != nullptr);
 
-  MockHost_t host;
+  MockHost host;
   void* instance = host.create_printer(test_slot_1);
   REQUIRE(instance != nullptr);
   const uint8_t* normal = host.rom_pointer(test_slot_1);
@@ -1249,7 +1249,7 @@ TEST_CASE("Printer Peripheral: A load puts the PROM back, whatever was shown") {
 TEST_CASE(
     "Printer Firmware: HELLO and a Return through PR#1 reach the sink "
     "as C8 C5 CC CC CF 8D 8A") {
-  PrinterHarness_t machine;
+  PrinterHarness machine;
   // The firmware learns its slot from the return address JSR $FF58 leaves on
   // the stack, which only works because that Monitor byte is an RTS.
   REQUIRE(mem[monitor_iorts] == opcode_rts);
@@ -1283,7 +1283,7 @@ TEST_CASE(
   CHECK(mem[zp_ch] == 0);
   CHECK(mem[zp_cv] == 1);
 
-  const auto row = PrinterHarness_t::text_row_0_bytes();
+  const auto row = PrinterHarness::text_row_0_bytes();
   CHECK(hex(std::vector<uint8_t>(row.begin(), row.begin() + 5)) ==
         hex(std::vector<uint8_t>{high_h, high_e, high_l, high_l, high_o}));
 
@@ -1296,7 +1296,7 @@ TEST_CASE(
 }
 
 TEST_CASE("Printer Firmware: Printing is not disk activity") {
-  PrinterHarness_t machine;
+  PrinterHarness machine;
   REQUIRE_FALSE(peripheral_is_any_active());
 
   machine.call_init_entry(high_h);
@@ -1309,7 +1309,7 @@ TEST_CASE("Printer Firmware: Printing is not disk activity") {
 TEST_CASE(
     "Printer Firmware: Ctrl-I 80N sets an 80-column width with video "
     "off and emits nothing") {
-  PrinterHarness_t machine;
+  PrinterHarness machine;
 
   // Ctrl-I as the first character through $C100: DEFAULT runs, then the
   // character matches the escape character it just set and opens a command.
@@ -1338,19 +1338,19 @@ TEST_CASE(
 
   // With video off nothing reaches the screen, and COL 1 - 80 - 1 is far
   // from the width, so CH is set to 0.
-  const auto row_before = PrinterHarness_t::text_row_0_bytes();
+  const auto row_before = PrinterHarness::text_row_0_bytes();
   machine.call_print_entry(high_a);
   machine.call_print_entry(high_cr);
-  CHECK(hex(machine.stream()) == hex(a_cr_stream));
+  CHECK(hex(machine.stream()) == hex(ascii_cr_stream));
   CHECK(mem[zp_ch] == 0);
   CHECK(machine.peek_hole(hole_operand_col) == 0);
-  CHECK(PrinterHarness_t::text_row_0_bytes() == row_before);
+  CHECK(PrinterHarness::text_row_0_bytes() == row_before);
 }
 
 TEST_CASE(
     "Printer Firmware: Ctrl-I K turns the line feed off and Ctrl-I I "
     "turns it back on") {
-  PrinterHarness_t machine;
+  PrinterHarness machine;
 
   // K: ROR of $7B gives $3D with carry set, AND FLAGS $89 gives $09, and the
   // carry takes the EOR #$81: video stays on, CRLF goes off.
@@ -1377,7 +1377,7 @@ TEST_CASE(
 TEST_CASE(
     "Printer Firmware: A printer that is not ready takes one byte and "
     "parks the 6502 at $C1C2 until it is") {
-  PrinterHarness_t machine;
+  PrinterHarness machine;
   machine.sink.set_ready(false);
 
   // The firmware's only busy test is the branch at $C1C2, fetched before the
@@ -1431,7 +1431,7 @@ TEST_CASE(
 TEST_CASE(
     "Printer Firmware: Ctrl-Reset while parked leaves the wait and the "
     "latch in place") {
-  PrinterHarness_t machine;
+  PrinterHarness machine;
   machine.sink.set_ready(false);
   machine.call_init_entry(high_h, park_cycle_cap);
   machine.call_print_entry(high_e, park_cycle_cap);
@@ -1474,15 +1474,15 @@ TEST_CASE(
 TEST_CASE(
     "Printer Firmware: Ctrl-Reset inside an escape sequence abandons it "
     "without eating a character") {
-  PrinterHarness_t machine;
+  PrinterHarness machine;
 
   // As Ctrl-I 80 then Ctrl-Reset then PR#1 leave the holes: a command open
   // with 80 accumulated, three characters on the line, and the next
   // character entering $C100 because the Monitor restored CSW.
-  PrinterHarness_t::poke(hole(hole_operand_mode, test_slot_1),
+  PrinterHarness::poke(hole(hole_operand_mode, test_slot_1),
                          mode_after_escape);
-  PrinterHarness_t::poke(hole(hole_operand_mstrt, test_slot_1), 0x50);
-  PrinterHarness_t::poke(hole(hole_operand_col, test_slot_1), 3);
+  PrinterHarness::poke(hole(hole_operand_mstrt, test_slot_1), 0x50);
+  PrinterHarness::poke(hole(hole_operand_col, test_slot_1), 3);
   peripheral_manager_reset();
 
   // The $C100 path skips the MODE test, DEFAULT rewrites its three holes, and
@@ -1502,7 +1502,7 @@ TEST_CASE(
 TEST_CASE(
     "Printer Firmware: A read of the card strobes the floating bus and "
     "returns it") {
-  PrinterHarness_t machine;
+  PrinterHarness machine;
 
   // The bus byte is whatever the video scanner is fetching on that cycle, so
   // a marker placed at the scanner's address for the cycle is what a read on
@@ -1515,8 +1515,8 @@ TEST_CASE(
   const uint16_t second_fetch =
       video_get_scanner_address(nullptr, second_cycle);
   REQUIRE(first_fetch != second_fetch);
-  PrinterHarness_t::poke(first_fetch, first_marker);
-  PrinterHarness_t::poke(second_fetch, second_marker);
+  PrinterHarness::poke(first_fetch, first_marker);
+  PrinterHarness::poke(second_fetch, second_marker);
 
   CHECK(io_map_dispatch(0, card_address(test_slot_1, 5), 0, 0, first_cycle) ==
         first_marker);
@@ -1535,7 +1535,7 @@ TEST_CASE(
 TEST_CASE(
     "Printer Firmware: Every one of the sixteen addresses strobes, "
     "written or read") {
-  PrinterHarness_t machine;
+  PrinterHarness machine;
   std::vector<uint8_t> expected;
   for (uint8_t offset = 0; offset < registers_per_slot; ++offset) {
     CAPTURE(offset);
@@ -1550,7 +1550,7 @@ TEST_CASE(
     CAPTURE(offset);
     const uint32_t cycle = 100 + (offset * 3U);
     const uint8_t marker = static_cast<uint8_t>(0x60 + offset);
-    PrinterHarness_t::poke(video_get_scanner_address(nullptr, cycle), marker);
+    PrinterHarness::poke(video_get_scanner_address(nullptr, cycle), marker);
     CHECK(io_map_dispatch(0, card_address(test_slot_1, offset), 0, 0, cycle) ==
           marker);
     expected.push_back(marker);
@@ -1562,7 +1562,7 @@ TEST_CASE(
 TEST_CASE(
     "Printer Firmware: Every byte value goes out as written, bit 7 "
     "included") {
-  PrinterHarness_t machine;
+  PrinterHarness machine;
   std::vector<uint8_t> all_bytes(256);
   for (size_t i = 0; i < all_bytes.size(); ++i) {
     CAPTURE(i);
@@ -1579,7 +1579,7 @@ TEST_CASE(
 // the stack: X = $Cn indexes the holes, and Y = $n0 lands STA $C080,Y on the
 // slot's own sixteen addresses.
 auto hello_in_slot(int slot) -> void {
-  PrinterHarness_t machine(slot);
+  PrinterHarness machine(slot);
   REQUIRE(mem[rom_address(slot, 0)] == rom_first_byte);
 
   machine.call_init_entry(high_h);
@@ -1623,12 +1623,12 @@ TEST_CASE(
 TEST_CASE(
     "Printer Firmware: Two cards keep their bytes apart and one can "
     "leave") {
-  TestFixtures::ScopedByteSink_t sink;
-  TestFixtures::ScopedTestConfig_t::Description_t description;
+  TestFixtures::ScopedByteSink sink;
+  TestFixtures::ScopedTestConfig::Description description;
   description.slots.at(0) = "Parallel Printer";
   description.slots.at(1) = "Parallel Printer";
-  TestFixtures::ScopedTestConfig_t config(description);
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedTestConfig config(description);
+  TestFixtures::ScopedCore core(config);
   peripheral_manager_init();
   linapple_register_peripherals();
   linapple_reset_hard();
@@ -1656,9 +1656,9 @@ TEST_CASE(
 TEST_CASE(
     "Printer Firmware: The tab fill sends blanks up to CH and waits at "
     "$C1C0 before each one") {
-  PrinterHarness_t machine;
+  PrinterHarness machine;
   machine.preset_video_off();
-  PrinterHarness_t::poke(zp_ch, 5);
+  PrinterHarness::poke(zp_ch, 5);
 
   SUBCASE("with the printer ready, five blanks then the character") {
     machine.call_print_entry(high_a);
@@ -1695,7 +1695,7 @@ TEST_CASE(
 TEST_CASE(
     "Printer Firmware: Ctrl-I followed by a letter outside H to O makes "
     "it the escape character") {
-  PrinterHarness_t machine;
+  PrinterHarness machine;
   machine.call_init_entry(high_ctrl_i);
   CHECK(machine.peek_hole(hole_operand_mode) == mode_after_escape);
 
@@ -1720,7 +1720,7 @@ TEST_CASE(
 TEST_CASE(
     "Printer Firmware: With video on, a character past column 39 is "
     "not echoed and CH is cleared") {
-  PrinterHarness_t machine;
+  PrinterHarness machine;
   machine.call_init_entry(high_h);
   REQUIRE(hex(machine.stream()) == hex(std::vector<uint8_t>{high_h}));
 
@@ -1728,19 +1728,19 @@ TEST_CASE(
   // fill would send blanks up to CH first. LDA #$27 / CMP CH with CH at 40
   // clears the carry: the firmware sets CH to 0 and returns without JMP
   // COUT1.
-  PrinterHarness_t::poke(zp_ch, text_columns);
-  PrinterHarness_t::poke(hole(hole_operand_col, test_slot_1), text_columns);
-  const auto row_before = PrinterHarness_t::text_row_0_bytes();
+  PrinterHarness::poke(zp_ch, text_columns);
+  PrinterHarness::poke(hole(hole_operand_col, test_slot_1), text_columns);
+  const auto row_before = PrinterHarness::text_row_0_bytes();
   machine.call_print_entry(high_a);
   CHECK(hex(machine.stream()) == hex(std::vector<uint8_t>{high_h, high_a}));
   CHECK(mem[zp_ch] == 0);
   CHECK(machine.peek_hole(hole_operand_col) == text_columns + 1);
-  CHECK(PrinterHarness_t::text_row_0_bytes() == row_before);
+  CHECK(PrinterHarness::text_row_0_bytes() == row_before);
 
   // At 39 the echo goes out to the last column, and COUT1's own advance
   // wraps the cursor.
-  PrinterHarness_t::poke(zp_ch, text_columns - 1);
-  PrinterHarness_t::poke(hole(hole_operand_col, test_slot_1), text_columns - 1);
+  PrinterHarness::poke(zp_ch, text_columns - 1);
+  PrinterHarness::poke(hole(hole_operand_col, test_slot_1), text_columns - 1);
   machine.call_print_entry(high_b);
   CHECK(hex(machine.stream()) ==
         hex(std::vector<uint8_t>{high_h, high_a, high_b}));
@@ -1752,7 +1752,7 @@ TEST_CASE(
 TEST_CASE(
     "Printer Firmware: After Ctrl-I 80N the firmware lies about CH "
     "within eight columns of the width") {
-  PrinterHarness_t machine;
+  PrinterHarness machine;
   machine.call_init_entry(high_ctrl_i);
   machine.print_each(std::array<uint8_t, 3>{{high_8, high_0, high_n}});
   REQUIRE(machine.peek_hole(hole_operand_pwdth) == wide_width);
@@ -1785,11 +1785,11 @@ TEST_CASE(
 TEST_CASE(
     "Printer Firmware: PR#1, PRINT \"HELLO\" and PR#0 at the Applesoft "
     "prompt stream 34 bytes") {
-  TestFixtures::ScopedTestConfig_t::Description_t description;
+  TestFixtures::ScopedTestConfig::Description description;
   description.slots.at(0) = "Parallel Printer";
-  TestFixtures::ScopedTestConfig_t config(description);
-  HeadlessHarness_t harness(config);
-  TestFixtures::ScopedByteSink_t sink;
+  TestFixtures::ScopedTestConfig config(description);
+  HeadlessHarness harness(config);
+  TestFixtures::ScopedByteSink sink;
 
   // No disk controller, so the Autostart scan falls through to Applesoft.
   harness.boot();
@@ -1817,7 +1817,7 @@ TEST_CASE(
   harness.run_frames(4);
 
   std::vector<uint8_t> stream;
-  for (const TestFixtures::ScopedByteSink_t::Byte_t& entry : sink.bytes()) {
+  for (const TestFixtures::ScopedByteSink::Byte& entry : sink.bytes()) {
     CHECK(entry.slot == test_slot_1);
     stream.push_back(entry.byte);
   }
@@ -1833,7 +1833,7 @@ TEST_CASE(
 
 TEST_CASE("Printer Peripheral: The C99 view of the state frame matches C++") {
   CHECK(printer_abi_c_state_size() == 24);
-  CHECK(printer_abi_c_state_size() == sizeof(PrinterSaveState_t));
+  CHECK(printer_abi_c_state_size() == sizeof(PrinterSaveState));
   CHECK(printer_abi_c_version_offset() == 0);
   CHECK(printer_abi_c_struct_size_offset() == 4);
   CHECK(printer_abi_c_total_chars_printed_offset() == 8);

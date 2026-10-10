@@ -19,7 +19,7 @@ namespace {
 
 // The card is reached the way the emulator reaches it, through the registry,
 // so one test binary covers the built-in card and the loaded plugin alike.
-auto mockingboard_descriptor() -> Peripheral_t* {
+auto mockingboard_descriptor() -> Peripheral* {
   return peripheral_find_internal("linapple.mockingboard");
 }
 
@@ -87,8 +87,8 @@ class MockingboardHarness {
   MockingboardHarness(MockingboardHarness&&) = delete;
   auto operator=(MockingboardHarness&&) -> MockingboardHarness& = delete;
 
-  auto host() -> HostInterface_t* { return &host_; }
-  static auto descriptor() -> Peripheral_t* {
+  auto host() -> HostInterface* { return &host_; }
+  static auto descriptor() -> Peripheral* {
     return mockingboard_descriptor();
   }
 
@@ -122,21 +122,21 @@ class MockingboardHarness {
   }
 
   auto save_state(void* buffer, size_t* size, void* inst = nullptr)
-      -> PeripheralStatus_t {
+      -> PeripheralStatus {
     void* target = target_of(inst);
     return (target == nullptr) ? peripheral_error
                                : descriptor()->save_state(target, buffer, size);
   }
 
   auto load_state(const void* buffer, size_t size, void* inst = nullptr)
-      -> PeripheralStatus_t {
+      -> PeripheralStatus {
     void* target = target_of(inst);
     return (target == nullptr) ? peripheral_error
                                : descriptor()->load_state(target, buffer, size);
   }
 
   auto query(uint32_t query_id, void* out, size_t* out_size,
-             void* inst = nullptr) -> PeripheralStatus_t {
+             void* inst = nullptr) -> PeripheralStatus {
     void* target = target_of(inst);
     return (target == nullptr)
                ? peripheral_error
@@ -249,7 +249,7 @@ class MockingboardHarness {
 
   static MockingboardHarness* active_harness;
 
-  HostInterface_t host_{};
+  HostInterface host_{};
   bool irq_asserted_{false};
   int irq_slot_{-1};
   std::vector<bool> irq_log_;
@@ -333,7 +333,7 @@ auto arm_timer1(MockingboardHarness& harness, uint16_t via, uint16_t latch,
 }  // namespace
 
 TEST_CASE("Mockingboard Peripheral: MB-01 Descriptor Identity & Registration") {
-  const Peripheral_t* desc = mockingboard_descriptor();
+  const Peripheral* desc = mockingboard_descriptor();
   REQUIRE(desc != nullptr);
   CHECK(desc->abi_version == LINAPPLE_ABI_VERSION);
   CHECK(std::string(desc->id) == "linapple.mockingboard");
@@ -355,12 +355,12 @@ TEST_CASE("Mockingboard Peripheral: MB-01 Descriptor Identity & Registration") {
 }
 
 TEST_CASE("Mockingboard Peripheral: MB-02 Lifecycle & Defensive Null Guards") {
-  const Peripheral_t* desc = mockingboard_descriptor();
+  const Peripheral* desc = mockingboard_descriptor();
   REQUIRE(desc != nullptr);
 
   CHECK(desc->init(DEFAULT_MOCKINGBOARD_SLOT, nullptr) == nullptr);
 
-  HostInterface_t bad_host{};
+  HostInterface bad_host{};
   CHECK(desc->init(DEFAULT_MOCKINGBOARD_SLOT, &bad_host) == nullptr);
 
   desc->reset(nullptr);
@@ -457,7 +457,7 @@ TEST_CASE("Mockingboard Peripheral: MB-08 AY-3-8910 Bus Interface Protocol") {
   REQUIRE(harness.save_state(buffer.data(), &state_size) == peripheral_ok);
 
   const auto* ss =
-      reinterpret_cast<const MockingboardSaveState_t*>(buffer.data());
+      reinterpret_cast<const MockingboardSaveState*>(buffer.data());
   CHECK(ss->chips[0].ay_regs[7] == 0x3F);
   CHECK(ss->chips[1].ay_regs[7] == 0x00);
 }
@@ -489,17 +489,17 @@ TEST_CASE("Mockingboard Peripheral: MB-15 Query ABI Protocol & Sizing Probes") {
   size_t query_size = 0;
   CHECK(harness.query(PERIPHERAL_QUERY_AUDIO_INFO, nullptr, &query_size) ==
         peripheral_ok);
-  CHECK(query_size == sizeof(PeripheralAudioInfo_t));
+  CHECK(query_size == sizeof(PeripheralAudioInfo));
 
-  PeripheralAudioInfo_t info{};
-  query_size = sizeof(PeripheralAudioInfo_t) - 1;
+  PeripheralAudioInfo info{};
+  query_size = sizeof(PeripheralAudioInfo) - 1;
   CHECK(harness.query(PERIPHERAL_QUERY_AUDIO_INFO, &info, &query_size) ==
         peripheral_error);
-  CHECK(query_size == sizeof(PeripheralAudioInfo_t));
+  CHECK(query_size == sizeof(PeripheralAudioInfo));
 
   CHECK(harness.query(PERIPHERAL_QUERY_AUDIO_INFO, &info, &query_size) ==
         peripheral_ok);
-  CHECK(query_size == sizeof(PeripheralAudioInfo_t));
+  CHECK(query_size == sizeof(PeripheralAudioInfo));
 
   CHECK(harness.query(0x9999, &info, &query_size) == peripheral_incompatible);
 }
@@ -520,7 +520,7 @@ TEST_CASE("Mockingboard Peripheral: MB-16 Save State Round Trip") {
 
   size_t state_size = 0;
   CHECK(harness.save_state(nullptr, &state_size, card4) == peripheral_ok);
-  REQUIRE(state_size == sizeof(MockingboardSaveState_t));
+  REQUIRE(state_size == sizeof(MockingboardSaveState));
   CHECK(state_size == 232);
 
   std::vector<uint8_t> buffer(state_size);
@@ -528,9 +528,9 @@ TEST_CASE("Mockingboard Peripheral: MB-16 Save State Round Trip") {
           peripheral_ok);
 
   const auto* ss =
-      reinterpret_cast<const MockingboardSaveState_t*>(buffer.data());
+      reinterpret_cast<const MockingboardSaveState*>(buffer.data());
   CHECK(ss->version == MOCKINGBOARD_STATE_VERSION);
-  CHECK(ss->struct_size == sizeof(MockingboardSaveState_t));
+  CHECK(ss->struct_size == sizeof(MockingboardSaveState));
   CHECK(ss->chips[0].ddrb == 0x55);
   CHECK(ss->chips[1].ddra == 0xAA);
   CHECK(ss->chips[0].ay_regs[0] == 0x7F);
@@ -560,7 +560,7 @@ TEST_CASE("Mockingboard Peripheral: MB-16b A Pristine Card Round Trips Too") {
   // Nothing is driven: the round trip has to hold for the state a card holds
   // the instant it comes out of reset, which is the state every save taken
   // before a program touches the card is made of.
-  const size_t state_size = sizeof(MockingboardSaveState_t);
+  const size_t state_size = sizeof(MockingboardSaveState);
   std::vector<uint8_t> saved(state_size);
   std::vector<uint8_t> resaved(state_size);
   size_t saved_size = state_size;
@@ -593,7 +593,7 @@ TEST_CASE("Mockingboard Peripheral: MB-17 Corrupt Save State Rejection") {
   CHECK(harness.load_state(oversized.data(), oversized.size()) ==
         peripheral_error);
 
-  auto* ss = reinterpret_cast<MockingboardSaveState_t*>(buffer.data());
+  auto* ss = reinterpret_cast<MockingboardSaveState*>(buffer.data());
   const uint32_t original_version = ss->version;
   ss->version = 999;
   CHECK(harness.load_state(buffer.data(), state_size) == peripheral_error);
@@ -625,7 +625,7 @@ TEST_CASE("Mockingboard Peripheral: MB-17 Corrupt Save State Rejection") {
   // advances every one of these generators past whatever load left it at.
   std::vector<uint8_t> sanitized(state_size);
   const auto load_and_render =
-      [&](const std::vector<uint8_t>& blob) -> const MockingboardSaveState_t* {
+      [&](const std::vector<uint8_t>& blob) -> const MockingboardSaveState* {
     harness.clear_audio();
     REQUIRE(harness.load_state(blob.data(), state_size, victim) ==
             peripheral_ok);
@@ -647,12 +647,12 @@ TEST_CASE("Mockingboard Peripheral: MB-17 Corrupt Save State Rejection") {
     // Without this the range assertion above would pass on an empty push log.
     CHECK(harness.push_count() > 0);
     CHECK(within_peak);
-    return reinterpret_cast<const MockingboardSaveState_t*>(sanitized.data());
+    return reinterpret_cast<const MockingboardSaveState*>(sanitized.data());
   };
 
   SUBCASE("An envelope step past the last one is masked to its width") {
     std::vector<uint8_t> blob = base;
-    reinterpret_cast<MockingboardSaveState_t*>(blob.data())
+    reinterpret_cast<MockingboardSaveState*>(blob.data())
         ->chips[0]
         .envelope_step = 200;
     CHECK(load_and_render(blob)->chips[0].envelope_step == (200 & 0x0F));
@@ -660,20 +660,20 @@ TEST_CASE("Mockingboard Peripheral: MB-17 Corrupt Save State Rejection") {
 
   SUBCASE("A zero noise shift register is restarted") {
     std::vector<uint8_t> blob = base;
-    reinterpret_cast<MockingboardSaveState_t*>(blob.data())->chips[0].rng = 0;
+    reinterpret_cast<MockingboardSaveState*>(blob.data())->chips[0].rng = 0;
     CHECK(load_and_render(blob)->chips[0].rng == 1);
   }
 
   SUBCASE("A carry larger than one AY tick is reduced") {
     std::vector<uint8_t> blob = base;
-    reinterpret_cast<MockingboardSaveState_t*>(blob.data())->psg_remainder =
+    reinterpret_cast<MockingboardSaveState*>(blob.data())->psg_remainder =
         0xFFFFFFFF;
     CHECK(load_and_render(blob)->psg_remainder < CYCLES_PER_TICK);
   }
 
   SUBCASE("An over-wide AY register is masked to its data-sheet width") {
     std::vector<uint8_t> blob = base;
-    reinterpret_cast<MockingboardSaveState_t*>(blob.data())
+    reinterpret_cast<MockingboardSaveState*>(blob.data())
         ->chips[0]
         .ay_regs[1] = 0xFF;
     CHECK(load_and_render(blob)->chips[0].ay_regs[1] == 0x0F);
@@ -687,13 +687,13 @@ TEST_CASE("Mockingboard Peripheral: MB-18 Audio Info Query Two-Pass Contract") {
   size_t size = 0;
   CHECK(harness.query(PERIPHERAL_QUERY_AUDIO_INFO, nullptr, &size) ==
         peripheral_ok);
-  CHECK(size == sizeof(PeripheralAudioInfo_t));
+  CHECK(size == sizeof(PeripheralAudioInfo));
 
-  PeripheralAudioInfo_t info{};
-  size = sizeof(PeripheralAudioInfo_t);
+  PeripheralAudioInfo info{};
+  size = sizeof(PeripheralAudioInfo);
   CHECK(harness.query(PERIPHERAL_QUERY_AUDIO_INFO, &info, &size) ==
         peripheral_ok);
-  CHECK(size == sizeof(PeripheralAudioInfo_t));
+  CHECK(size == sizeof(PeripheralAudioInfo));
 }
 
 TEST_CASE("Mockingboard Peripheral: MB-20 Think Renders One Sample Per Eight") {
@@ -808,7 +808,7 @@ TEST_CASE("Mockingboard Peripheral: MB-24 AY Bus Protocol Round Trip") {
   std::vector<uint8_t> buffer(state_size);
   REQUIRE(harness.save_state(buffer.data(), &state_size) == peripheral_ok);
   const auto* ss =
-      reinterpret_cast<const MockingboardSaveState_t*>(buffer.data());
+      reinterpret_cast<const MockingboardSaveState*>(buffer.data());
   for (const uint8_t ay_reg : ss->chips[0].ay_regs) {
     CHECK(ay_reg == 0x00);
   }
@@ -870,13 +870,13 @@ TEST_CASE("Mockingboard Peripheral: MB-27 Audio Info Query Zeroes Its Out") {
 
   // The mixer compares announcements byte for byte to decide whether a
   // re-registration changed anything, so the padding has to be written too.
-  std::vector<uint8_t> filled(sizeof(PeripheralAudioInfo_t), 0xFF);
-  std::vector<uint8_t> clean(sizeof(PeripheralAudioInfo_t), 0x00);
+  std::vector<uint8_t> filled(sizeof(PeripheralAudioInfo), 0xFF);
+  std::vector<uint8_t> clean(sizeof(PeripheralAudioInfo), 0x00);
 
-  size_t size = sizeof(PeripheralAudioInfo_t);
+  size_t size = sizeof(PeripheralAudioInfo);
   REQUIRE(harness.query(PERIPHERAL_QUERY_AUDIO_INFO, filled.data(), &size) ==
           peripheral_ok);
-  size = sizeof(PeripheralAudioInfo_t);
+  size = sizeof(PeripheralAudioInfo);
   REQUIRE(harness.query(PERIPHERAL_QUERY_AUDIO_INFO, clean.data(), &size) ==
           peripheral_ok);
 
@@ -977,10 +977,10 @@ TEST_CASE("Mockingboard Peripheral: MB-28 A Pre-Rewrite State Still Loads") {
 
   // The old layout's cycle counter sat where the AY tick carry now does, so a
   // pre-rewrite blob is the case that proves the carry is reduced on load.
-  size_t state_size = sizeof(MockingboardSaveState_t);
+  size_t state_size = sizeof(MockingboardSaveState);
   std::vector<uint8_t> resaved(state_size);
   REQUIRE(harness.save_state(resaved.data(), &state_size) == peripheral_ok);
-  CHECK(reinterpret_cast<const MockingboardSaveState_t*>(resaved.data())
+  CHECK(reinterpret_cast<const MockingboardSaveState*>(resaved.data())
             ->psg_remainder == 0);
 }
 
@@ -988,7 +988,7 @@ TEST_CASE("Mockingboard Peripheral: MB-29 Audio Info Contents") {
   MockingboardHarness harness;
   REQUIRE(harness.create_card(4) != nullptr);
 
-  PeripheralAudioInfo_t info{};
+  PeripheralAudioInfo info{};
   size_t size = sizeof(info);
   REQUIRE(harness.query(PERIPHERAL_QUERY_AUDIO_INFO, &info, &size) ==
           peripheral_ok);
@@ -1057,14 +1057,14 @@ TEST_CASE("Mockingboard Peripheral: MB-31 The Cx Page Aliases Onto Two VIAs") {
 }
 
 TEST_CASE("Mockingboard Peripheral: MB-32 Missing Host Calls Do Not Fault") {
-  const Peripheral_t* desc = mockingboard_descriptor();
+  const Peripheral* desc = mockingboard_descriptor();
 
   SUBCASE("A null host is refused") {
     CHECK(desc->init(DEFAULT_MOCKINGBOARD_SLOT, nullptr) == nullptr);
   }
 
   SUBCASE("A host without RegisterIO is refused") {
-    HostInterface_t host{};
+    HostInterface host{};
     CHECK(desc->init(DEFAULT_MOCKINGBOARD_SLOT, &host) == nullptr);
   }
 
@@ -1296,7 +1296,7 @@ TEST_CASE("Mockingboard Peripheral: MB-41 A State Of Nothing But Ones") {
   REQUIRE(harness.save_state(nullptr, &state_size) == peripheral_ok);
 
   std::vector<uint8_t> blob(state_size, 0xFF);
-  auto* ss = reinterpret_cast<MockingboardSaveState_t*>(blob.data());
+  auto* ss = reinterpret_cast<MockingboardSaveState*>(blob.data());
   ss->version = MOCKINGBOARD_STATE_VERSION;
   ss->struct_size = static_cast<uint32_t>(state_size);
 
@@ -1346,7 +1346,7 @@ TEST_CASE(
   std::vector<uint8_t> buffer(state_size);
   REQUIRE(harness.save_state(buffer.data(), &state_size) == peripheral_ok);
   const auto* ss =
-      reinterpret_cast<const MockingboardSaveState_t*>(buffer.data());
+      reinterpret_cast<const MockingboardSaveState*>(buffer.data());
   CHECK(ss->chips[0].ay_regs[2] == 0x55);
 }
 

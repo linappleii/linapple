@@ -32,7 +32,7 @@
 namespace {
 
 // Through the registry, so one binary covers the built-in card and a plugin.
-auto mouse_descriptor() -> Peripheral_t* {
+auto mouse_descriptor() -> Peripheral* {
   return peripheral_find_internal("linapple.mouse");
 }
 
@@ -43,14 +43,14 @@ constexpr uint32_t unknown_mouse_id = PERIPHERAL_SUBSYSTEM_MOUSE | 0x7FFF;
 constexpr uint64_t ntsc_frame = 17030;
 constexpr uint64_t pal_frame = 20280;
 
-struct IrqCall_t {
+struct IrqCall {
   int slot;
   bool level;
 };
 
-class BenchHost_t {
+class BenchHost {
  public:
-  BenchHost_t() {
+  BenchHost() {
     host_.Log = bench_log;
     host_.AssertIrq = bench_assert_irq;
     host_.RegisterIO = bench_register_io;
@@ -62,19 +62,19 @@ class BenchHost_t {
     host_.ScheduleEvent = bench_schedule_event;
     active = this;
   }
-  ~BenchHost_t() {
+  ~BenchHost() {
     if (active == this) {
       active = nullptr;
     }
   }
-  BenchHost_t(const BenchHost_t&) = delete;
-  auto operator=(const BenchHost_t&) -> BenchHost_t& = delete;
-  BenchHost_t(BenchHost_t&&) = delete;
-  auto operator=(BenchHost_t&&) -> BenchHost_t& = delete;
+  BenchHost(const BenchHost&) = delete;
+  auto operator=(const BenchHost&) -> BenchHost& = delete;
+  BenchHost(BenchHost&&) = delete;
+  auto operator=(BenchHost&&) -> BenchHost& = delete;
 
-  auto host() -> HostInterface_t* { return &host_; }
+  auto host() -> HostInterface* { return &host_; }
   auto last_log() const -> const std::string& { return last_log_; }
-  auto irq_calls() const -> const std::vector<IrqCall_t>& { return irq_calls_; }
+  auto irq_calls() const -> const std::vector<IrqCall>& { return irq_calls_; }
   auto rom_registrations() const -> unsigned { return rom_registrations_; }
   auto last_rom() const -> const uint8_t* { return last_rom_; }
   auto set_cycles(uint64_t cycles) -> void { cycles_ = cycles; }
@@ -93,7 +93,7 @@ class BenchHost_t {
     return static_cast<uint16_t>(0xC080 + (io_slot_ << 4) + offset);
   }
 
-  static auto bench_log(void* instance, PeripheralLogLevel_t level,
+  static auto bench_log(void* instance, PeripheralLogLevel level,
                         const char* fmt, ...) -> void {
     (void)instance;
     (void)level;
@@ -149,10 +149,10 @@ class BenchHost_t {
     (void)at_cycle;
   }
 
-  static BenchHost_t* active;
-  HostInterface_t host_{};
+  static BenchHost* active;
+  HostInterface host_{};
   std::string last_log_;
-  std::vector<IrqCall_t> irq_calls_;
+  std::vector<IrqCall> irq_calls_;
   unsigned rom_registrations_ = 0;
   const uint8_t* last_rom_ = nullptr;
   uint64_t cycles_ = 0;
@@ -161,33 +161,33 @@ class BenchHost_t {
   PeripheralIOHandler write_c0_ = nullptr;
 };
 
-BenchHost_t* BenchHost_t::active = nullptr;
+BenchHost* BenchHost::active = nullptr;
 
-class BenchCard_t {
+class BenchCard {
  public:
-  explicit BenchCard_t(int slot = test_slot)
+  explicit BenchCard(int slot = test_slot)
       : instance_(mouse_descriptor()->init(slot, host_.host())) {}
-  ~BenchCard_t() {
+  ~BenchCard() {
     if (instance_ != nullptr) {
       mouse_descriptor()->shutdown(instance_);
     }
   }
-  BenchCard_t(const BenchCard_t&) = delete;
-  auto operator=(const BenchCard_t&) -> BenchCard_t& = delete;
-  BenchCard_t(BenchCard_t&&) = delete;
-  auto operator=(BenchCard_t&&) -> BenchCard_t& = delete;
+  BenchCard(const BenchCard&) = delete;
+  auto operator=(const BenchCard&) -> BenchCard& = delete;
+  BenchCard(BenchCard&&) = delete;
+  auto operator=(BenchCard&&) -> BenchCard& = delete;
 
   auto instance() const -> void* { return instance_; }
-  auto bench() -> BenchHost_t& { return host_; }
+  auto bench() -> BenchHost& { return host_; }
 
  private:
-  BenchHost_t host_;
+  BenchHost host_;
   void* instance_;
 };
 
 // The firmware's bank switch (bank 0 $05B-$078): CRB to DDRB, DDRB $3E, CRB to
 // ORB, the bank into ORB bits 1-3 with the input bits copied from the pins.
-auto bench_select_bank(BenchHost_t& bench, void* card, uint8_t bank) -> void {
+auto bench_select_bank(BenchHost& bench, void* card, uint8_t bank) -> void {
   bench.write(card, 3, bench.read(card, 3) & 0xFB);
   bench.write(card, 2, 0x3E);
   bench.write(card, 3, bench.read(card, 3) | 0x04);
@@ -197,7 +197,7 @@ auto bench_select_bank(BenchHost_t& bench, void* card, uint8_t bank) -> void {
 
 // The firmware's write handshake (bank 3 $30E-$33F): wait for PB7 low, DDRA
 // out, the byte on port A, PB5 up, wait for PB7 high, PB5 down.
-auto bench_send(BenchHost_t& bench, void* card, uint8_t byte) -> void {
+auto bench_send(BenchHost& bench, void* card, uint8_t byte) -> void {
   bench_select_bank(bench, card, 0);
   REQUIRE((bench.read(card, 2) & 0x80) == 0);
   bench.write(card, 1, bench.read(card, 1) & 0xFB);
@@ -209,10 +209,10 @@ auto bench_send(BenchHost_t& bench, void* card, uint8_t byte) -> void {
   bench.write(card, 2, bench.read(card, 2) & 0xDF);
 }
 
-using Description_t = TestFixtures::ScopedTestConfig_t::Description_t;
+using Description = TestFixtures::ScopedTestConfig::Description;
 
-auto mouse_key(const char* key, const char* value) -> Description_t {
-  Description_t description;
+auto mouse_key(const char* key, const char* value) -> Description {
+  Description description;
   description.slots[3] = "Mockingboard";
   description.extras.push_back({"Configuration", key, value});
   return description;
@@ -231,7 +231,7 @@ auto card_named_in(int slot) -> std::string {
   return manifest.peripherals[slot].name;
 }
 
-// ScopedTestConfig_t writes every slot; a conf with no entry for one is made by
+// ScopedTestConfig writes every slot; a conf with no entry for one is made by
 // taking the line out again.
 auto remove_slot_line(const std::string& path, int slot) -> void {
   const std::string prefix = "Slot " + std::to_string(slot) + " ";
@@ -253,15 +253,15 @@ auto remove_slot_line(const std::string& path, int slot) -> void {
   }
 }
 
-struct Override_t {
+struct Override {
   bool overrode = false;
   int slot = 0;
   std::string key_card;
   std::string displaced;
 };
 
-auto legacy_override() -> Override_t {
-  Override_t result;
+auto legacy_override() -> Override {
+  Override result;
   const char* key_card = nullptr;
   const char* displaced = nullptr;
   result.overrode =
@@ -276,7 +276,7 @@ auto legacy_override() -> Override_t {
 }  // namespace
 
 TEST_CASE("Mouse card: the registry resolves the card by id and by name") {
-  Peripheral_t* by_id = peripheral_find_internal("linapple.mouse");
+  Peripheral* by_id = peripheral_find_internal("linapple.mouse");
   REQUIRE(by_id != nullptr);
   CHECK(peripheral_find_internal("Mouse Interface") == by_id);
 }
@@ -284,7 +284,7 @@ TEST_CASE("Mouse card: the registry resolves the card by id and by name") {
 TEST_CASE(
     "Mouse card: the descriptor identifies the card and carries every entry "
     "point") {
-  const Peripheral_t* desc = mouse_descriptor();
+  const Peripheral* desc = mouse_descriptor();
   REQUIRE(desc != nullptr);
   CHECK(desc->abi_version == LINAPPLE_ABI_VERSION);
   CHECK(std::string(desc->id) == "linapple.mouse");
@@ -303,11 +303,11 @@ TEST_CASE(
 }
 
 TEST_CASE("Mouse card: a null instance or an empty host is refused") {
-  const Peripheral_t* desc = mouse_descriptor();
+  const Peripheral* desc = mouse_descriptor();
   REQUIRE(desc != nullptr);
 
   CHECK(desc->init(test_slot, nullptr) == nullptr);
-  HostInterface_t empty_host{};
+  HostInterface empty_host{};
   CHECK(desc->init(test_slot, &empty_host) == nullptr);
 
   desc->reset(nullptr);
@@ -327,9 +327,9 @@ TEST_CASE("Mouse card: a null instance or an empty host is refused") {
 TEST_CASE(
     "Mouse card: init refuses a host lacking a member it needs, naming the "
     "member and the slot, and refuses a slot outside 1 to 7") {
-  const Peripheral_t* desc = mouse_descriptor();
+  const Peripheral* desc = mouse_descriptor();
   REQUIRE(desc != nullptr);
-  BenchHost_t bench;
+  BenchHost bench;
 
   auto refused_naming = [&](const std::string& member, int slot) -> void {
     CHECK(desc->init(slot, bench.host()) == nullptr);
@@ -371,11 +371,11 @@ TEST_CASE(
     "Mouse card: a command or query outside the card's subsystem, or unknown "
     "inside it, is incompatible, and a payload of the wrong size or no "
     "payload is an error") {
-  BenchCard_t card;
+  BenchCard card;
   REQUIRE(card.instance() != nullptr);
-  const Peripheral_t* desc = mouse_descriptor();
+  const Peripheral* desc = mouse_descriptor();
 
-  MouseButtonPayload_t payload{0, 1, {0, 0}};
+  MouseButtonPayload payload{0, 1, {0, 0}};
   size_t size = sizeof(payload);
   CHECK(desc->command(card.instance(), foreign_command, &payload,
                       sizeof(payload)) == peripheral_incompatible);
@@ -386,7 +386,7 @@ TEST_CASE(
   CHECK(desc->query(card.instance(), unknown_mouse_id, &payload, &size) ==
         peripheral_incompatible);
 
-  MouseMovePayload_t move{1, 1};
+  MouseMovePayload move{1, 1};
   CHECK(desc->command(card.instance(), mouse_cmd_move, &move,
                       sizeof(move) - 1) == peripheral_error);
   CHECK(desc->command(card.instance(), mouse_cmd_move, &move,
@@ -402,14 +402,14 @@ TEST_CASE(
 }
 
 TEST_CASE("Mouse card: save_state's sizing probe answers the frame's size") {
-  BenchCard_t card;
+  BenchCard card;
   REQUIRE(card.instance() != nullptr);
-  const Peripheral_t* desc = mouse_descriptor();
+  const Peripheral* desc = mouse_descriptor();
 
   size_t size = 0;
   CHECK(desc->save_state(card.instance(), nullptr, &size) == peripheral_ok);
   CHECK(size == frame_size);
-  CHECK(size == sizeof(MouseSaveState_t));
+  CHECK(size == sizeof(MouseSaveState));
   CHECK(mouse_abi_c_frame_size() == frame_size);
   CHECK(mouse_abi_c_state_version() == MOUSE_STATE_VERSION);
 
@@ -430,17 +430,17 @@ TEST_CASE("Mouse card: save_state's sizing probe answers the frame's size") {
 TEST_CASE(
     "Mouse card: the is-active query's sizing probe and the payloads agree "
     "with the C99 view") {
-  BenchCard_t card;
+  BenchCard card;
   REQUIRE(card.instance() != nullptr);
-  const Peripheral_t* desc = mouse_descriptor();
+  const Peripheral* desc = mouse_descriptor();
 
   CHECK(mouse_abi_c_is_active_query_id() == mouse_query_is_active);
   CHECK(mouse_abi_c_set_button_id() == mouse_cmd_set_button);
-  CHECK(mouse_abi_c_button_payload_size() == sizeof(MouseButtonPayload_t));
+  CHECK(mouse_abi_c_button_payload_size() == sizeof(MouseButtonPayload));
   CHECK(mouse_abi_c_move_id() == mouse_cmd_move);
-  CHECK(mouse_abi_c_move_payload_size() == sizeof(MouseMovePayload_t));
+  CHECK(mouse_abi_c_move_payload_size() == sizeof(MouseMovePayload));
   CHECK(mouse_abi_c_position_query_id() == mouse_query_position);
-  CHECK(mouse_abi_c_position_report_size() == sizeof(MousePositionReport_t));
+  CHECK(mouse_abi_c_position_report_size() == sizeof(MousePositionReport));
 
   size_t size = 0;
   CHECK(desc->query(card.instance(), mouse_query_is_active, nullptr, &size) ==
@@ -461,18 +461,18 @@ TEST_CASE(
   size = 0;
   CHECK(desc->query(card.instance(), mouse_query_position, nullptr, &size) ==
         peripheral_ok);
-  CHECK(size == sizeof(MousePositionReport_t));
+  CHECK(size == sizeof(MousePositionReport));
 
-  MousePositionReport_t report{};
+  MousePositionReport report{};
   size = sizeof(report) - 1;
   CHECK(desc->query(card.instance(), mouse_query_position, &report, &size) ==
         peripheral_error);
-  CHECK(size == sizeof(MousePositionReport_t));
+  CHECK(size == sizeof(MousePositionReport));
 
   size = sizeof(report);
   CHECK(desc->query(card.instance(), mouse_query_position, &report, &size) ==
         peripheral_ok);
-  CHECK(size == sizeof(MousePositionReport_t));
+  CHECK(size == sizeof(MousePositionReport));
   CHECK(report.tracking == 0);
 }
 
@@ -480,13 +480,13 @@ TEST_CASE(
     "Mouse card: Mouse in slot 4 installs the card in slot 4 over the [Slots] "
     "entry, and only then") {
   SUBCASE("Slot 4 = Mockingboard with the key at 1 holds the mouse alone") {
-    TestFixtures::ScopedTestConfig_t config(mouse_key("Mouse in slot 4", "1"));
-    TestFixtures::ScopedCore_t core(config);
+    TestFixtures::ScopedTestConfig config(mouse_key("Mouse in slot 4", "1"));
+    TestFixtures::ScopedCore core(config);
     CHECK(mouse_in(test_slot));
     CHECK(card_named_in(test_slot) == "Mouse Interface");
     mouse_frontend_initialize();
     CHECK(mouse_frontend_card_slot() == test_slot);
-    const Override_t record = legacy_override();
+    const Override record = legacy_override();
     CHECK(record.overrode);
     CHECK(record.slot == test_slot);
     CHECK(record.key_card == "Mouse Interface");
@@ -494,17 +494,17 @@ TEST_CASE(
   }
 
   SUBCASE("Slot 4 = Mouse Interface with the key at 0 holds the mouse") {
-    Description_t description = mouse_key("Mouse in slot 4", "0");
+    Description description = mouse_key("Mouse in slot 4", "0");
     description.slots[3] = "Mouse Interface";
-    TestFixtures::ScopedTestConfig_t config(description);
-    TestFixtures::ScopedCore_t core(config);
+    TestFixtures::ScopedTestConfig config(description);
+    TestFixtures::ScopedCore core(config);
     CHECK(mouse_in(test_slot));
     CHECK_FALSE(legacy_override().overrode);
   }
 
   SUBCASE("Slot 4 = Mockingboard with the key at 0 holds no mouse") {
-    TestFixtures::ScopedTestConfig_t config(mouse_key("Mouse in slot 4", "0"));
-    TestFixtures::ScopedCore_t core(config);
+    TestFixtures::ScopedTestConfig config(mouse_key("Mouse in slot 4", "0"));
+    TestFixtures::ScopedCore core(config);
     CHECK_FALSE(mouse_in(test_slot));
     CHECK(card_named_in(test_slot) == "Mockingboard");
     mouse_frontend_initialize();
@@ -515,10 +515,10 @@ TEST_CASE(
   SUBCASE(
       "the key at 1 with Slot 5 = Mouse Interface puts a card in 4 and in 5, "
       "and the probe takes the lower") {
-    Description_t description = mouse_key("Mouse in slot 4", "1");
+    Description description = mouse_key("Mouse in slot 4", "1");
     description.slots[4] = "Mouse Interface";
-    TestFixtures::ScopedTestConfig_t config(description);
-    TestFixtures::ScopedCore_t core(config);
+    TestFixtures::ScopedTestConfig config(description);
+    TestFixtures::ScopedCore core(config);
     CHECK(mouse_in(test_slot));
     CHECK(mouse_in(test_slot + 1));
     mouse_frontend_initialize();
@@ -526,29 +526,29 @@ TEST_CASE(
   }
 
   SUBCASE("the key at 1 with no Slot 4 entry displaces the fallback") {
-    TestFixtures::ScopedTestConfig_t config(mouse_key("Mouse in slot 4", "1"));
+    TestFixtures::ScopedTestConfig config(mouse_key("Mouse in slot 4", "1"));
     remove_slot_line(config.path(), test_slot);
-    TestFixtures::ScopedCore_t core(config);
+    TestFixtures::ScopedCore core(config);
     CHECK(mouse_in(test_slot));
-    const Override_t record = legacy_override();
+    const Override record = legacy_override();
     CHECK(record.overrode);
     CHECK(record.displaced == "Mockingboard");
   }
 
   SUBCASE("the key at 1 over Slot 4 = None displaces nothing") {
-    Description_t description = mouse_key("Mouse in slot 4", "1");
+    Description description = mouse_key("Mouse in slot 4", "1");
     description.slots[3].clear();
-    TestFixtures::ScopedTestConfig_t config(description);
-    TestFixtures::ScopedCore_t core(config);
+    TestFixtures::ScopedTestConfig config(description);
+    TestFixtures::ScopedCore core(config);
     CHECK(mouse_in(test_slot));
-    const Override_t record = legacy_override();
+    const Override record = legacy_override();
     CHECK(record.overrode);
     CHECK(record.displaced.empty());
   }
 
   SUBCASE("the key at 1 under its legacy spelling resolves the same") {
-    TestFixtures::ScopedTestConfig_t config(mouse_key("Mouse in slot4", "1"));
-    TestFixtures::ScopedCore_t core(config);
+    TestFixtures::ScopedTestConfig config(mouse_key("Mouse in slot4", "1"));
+    TestFixtures::ScopedCore core(config);
     CHECK(mouse_in(test_slot));
     CHECK(card_named_in(test_slot) == "Mouse Interface");
   }
@@ -560,10 +560,10 @@ constexpr uint16_t program_start = 0x0300;
 constexpr uint16_t page_copy = 0x2000;
 constexpr uint32_t cycle_cap = 60000;
 
-using Rom_t = std::array<uint8_t, mouse_rom_size>;
+using Rom = std::array<uint8_t, mouse_rom_size>;
 
-auto read_rom_file() -> Rom_t {
-  Rom_t rom{};
+auto read_rom_file() -> Rom {
+  Rom rom{};
   std::ifstream in(TestFixtures::get_fixture_path("roms/MouseInterface.rom"),
                    std::ios::binary);
   REQUIRE(in.is_open());
@@ -574,18 +574,18 @@ auto read_rom_file() -> Rom_t {
   return rom;
 }
 
-auto describe_mouse_in(int slot) -> Description_t {
-  Description_t description;
+auto describe_mouse_in(int slot) -> Description {
+  Description description;
   description.slots.at(static_cast<size_t>(slot - 1)) = "Mouse Interface";
   return description;
 }
 
-struct MouseMachine_t {
-  TestFixtures::ScopedTestConfig_t config;
-  TestFixtures::ScopedCore_t core;
+struct MouseMachine {
+  TestFixtures::ScopedTestConfig config;
+  TestFixtures::ScopedCore core;
   int slot;
 
-  explicit MouseMachine_t(int in_slot = test_slot)
+  explicit MouseMachine(int in_slot = test_slot)
       : config(describe_mouse_in(in_slot)), core(config), slot(in_slot) {
     peripheral_manager_init();
     linapple_register_peripherals();
@@ -611,7 +611,7 @@ auto poke_page_copier(int slot) -> uint16_t {
       0xD0, 0xF7,             // BNE $0302
       0x4C, 0x0B, 0x03,       // JMP $030B
   };
-  TestFixtures::ScopedCore_t::poke(program_start, program);
+  TestFixtures::ScopedCore::poke(program_start, program);
   return 0x030B;
 }
 
@@ -654,7 +654,7 @@ auto poke_bank_switch_and_copier(int slot, uint8_t bank) -> uint16_t {
       static_cast<uint8_t>(copy_loop - (program_start + program.size() + 1)));
   const auto spin = static_cast<uint16_t>(program_start + program.size());
   emit(0x4C, spin);
-  TestFixtures::ScopedCore_t::poke(program_start, program.data(),
+  TestFixtures::ScopedCore::poke(program_start, program.data(),
                                    program.size());
   return spin;
 }
@@ -664,7 +664,7 @@ auto poke_bank_switch_and_copier(int slot, uint8_t bank) -> uint16_t {
 TEST_CASE(
     "Mouse card: the firmware array is res/roms/MouseInterface.rom byte for "
     "byte") {
-  const Rom_t rom = read_rom_file();
+  const Rom rom = read_rom_file();
   size_t mismatches = 0;
   for (size_t i = 0; i < rom.size(); ++i) {
     if (rom.at(i) != mouse_rom.at(i)) {
@@ -679,7 +679,7 @@ TEST_CASE(
 TEST_CASE(
     "Mouse card: after reset $C400-$C4FF is the ROM's bank 0 and $C4FB reads "
     "$D6") {
-  MouseMachine_t machine;
+  MouseMachine machine;
   const uint16_t sentinel = poke_page_copier(machine.slot);
   machine.run_until(program_start, sentinel);
 
@@ -706,7 +706,7 @@ TEST_CASE(
 TEST_CASE(
     "Mouse card: $C412-$C41F is the table of the entries' low bytes, read "
     "from bank 0") {
-  MouseMachine_t machine;
+  MouseMachine machine;
   const uint16_t sentinel = poke_page_copier(machine.slot);
   machine.run_until(program_start, sentinel);
 
@@ -726,7 +726,7 @@ TEST_CASE(
     "Mouse card: the firmware's own bank switch brings each of the eight "
     "banks into $C400, and a page is registered once per bank change and "
     "never per strobe") {
-  MouseMachine_t machine;
+  MouseMachine machine;
   for (uint8_t bank = 0; bank < 8; ++bank) {
     CAPTURE(bank);
     const uint16_t spin = poke_bank_switch_and_copier(machine.slot, bank);
@@ -738,9 +738,9 @@ TEST_CASE(
     }
   }
 
-  BenchCard_t card;
+  BenchCard card;
   REQUIRE(card.instance() != nullptr);
-  BenchHost_t& bench = card.bench();
+  BenchHost& bench = card.bench();
   const unsigned at_init = bench.rom_registrations();
   CHECK(at_init == 1);
   REQUIRE(bench.last_rom() != nullptr);
@@ -786,7 +786,7 @@ constexpr uint8_t storm_high = 0x0C;
 constexpr uint32_t firmware_cycle_cap = 200000;
 constexpr uint32_t lead_in_cycles = 8000;
 
-enum FirmwareEntry_t : uint8_t {
+enum FirmwareEntry : uint8_t {
   entry_set_mouse = 0,
   entry_serve_mouse = 1,
   entry_read_mouse = 2,
@@ -800,7 +800,7 @@ enum FirmwareEntry_t : uint8_t {
   entry_data_byte = 11,
 };
 
-struct Call_t {
+struct Call {
   int entry;
   uint8_t a;
 };
@@ -809,11 +809,11 @@ struct Call_t {
 // JSR $03F0, with JMP ($0007) at $03F0. X and Y are $Cn and $n0 unless a case
 // proves the firmware derives them itself.
 auto emit_firmware_call(std::vector<uint8_t>& program, int slot, int entry,
-                        uint8_t a, bool x_y_zero = false) -> void {
+                        uint8_t a, bool xy_zero = false) -> void {
   const auto page = static_cast<uint8_t>(0xC0 + slot);
   const auto table = static_cast<uint16_t>((page << 8) + 0x12 + entry);
-  const uint8_t x = x_y_zero ? 0 : page;
-  const uint8_t y = x_y_zero ? 0 : static_cast<uint8_t>(slot << 4);
+  const uint8_t x = xy_zero ? 0 : page;
+  const uint8_t y = xy_zero ? 0 : static_cast<uint8_t>(slot << 4);
   const std::vector<uint8_t> call = {
       0xAD,
       static_cast<uint8_t>(table & 0xFF),
@@ -839,12 +839,12 @@ auto emit_firmware_call(std::vector<uint8_t>& program, int slot, int entry,
 
 auto poke_indirect_jump() -> void {
   const std::array<uint8_t, 3> jump = {0x6C, 0x07, 0x00};
-  TestFixtures::ScopedCore_t::poke(indirect_jump, jump);
+  TestFixtures::ScopedCore::poke(indirect_jump, jump);
 }
 
-auto poke_calls(int slot, const std::vector<Call_t>& calls) -> uint16_t {
+auto poke_calls(int slot, const std::vector<Call>& calls) -> uint16_t {
   std::vector<uint8_t> program;
-  for (const Call_t& call : calls) {
+  for (const Call& call : calls) {
     emit_firmware_call(program, slot, call.entry, call.a);
   }
   const auto spin = static_cast<uint16_t>(program_start + program.size());
@@ -852,19 +852,19 @@ auto poke_calls(int slot, const std::vector<Call_t>& calls) -> uint16_t {
   program.push_back(static_cast<uint8_t>(spin & 0xFF));
   program.push_back(static_cast<uint8_t>(spin >> 8));
   REQUIRE(spin + 3 <= handler_start);
-  TestFixtures::ScopedCore_t::poke(program_start, program.data(),
+  TestFixtures::ScopedCore::poke(program_start, program.data(),
                                    program.size());
   poke_indirect_jump();
   return spin;
 }
 
-struct StepResult_t {
+struct StepResult {
   bool completed;
   bool carry;
   uint32_t cycles;
 };
 
-auto step_firmware(int slot, int entry, uint8_t a) -> StepResult_t {
+auto step_firmware(int slot, int entry, uint8_t a) -> StepResult {
   const uint16_t spin = poke_calls(slot, {{entry, a}});
   TestFixtures::enter_at({program_start, 0, 0, 0});
   const uint32_t cycles = TestFixtures::step_until_pc(spin, firmware_cycle_cap);
@@ -876,7 +876,7 @@ auto step_firmware(int slot, int entry, uint8_t a) -> StepResult_t {
 }
 
 auto call_firmware(int slot, int entry, uint8_t a) -> bool {
-  const StepResult_t result = step_firmware(slot, entry, a);
+  const StepResult result = step_firmware(slot, entry, a);
   REQUIRE(result.completed);
   return result.carry;
 }
@@ -887,7 +887,7 @@ auto call_firmware(int slot, int entry, uint8_t a) -> bool {
 // sees a high byte one short, which the return address lets the reader
 // correct. SERVEMOUSE keeps $06 in Y across its own use of it as an RTS (bank 0
 // $0C4-$0CC), so the counter survives the call.
-auto poke_meter(int slot, bool serve = true, bool x_y_zero = false) -> void {
+auto poke_meter(int slot, bool serve = true, bool xy_zero = false) -> void {
   const std::vector<uint8_t> loop = {
       0x58,                    // CLI
       0xE6, meter_low,         // INC $06
@@ -895,7 +895,7 @@ auto poke_meter(int slot, bool serve = true, bool x_y_zero = false) -> void {
       0xE6, meter_high,        // INC $09
       0x4C, 0xE1,       0x03,  // JMP $03E1
   };
-  TestFixtures::ScopedCore_t::poke(meter_loop, loop.data(), loop.size());
+  TestFixtures::ScopedCore::poke(meter_loop, loop.data(), loop.size());
 
   std::vector<uint8_t> handler;
   if (serve) {
@@ -930,7 +930,7 @@ auto poke_meter(int slot, bool serve = true, bool x_y_zero = false) -> void {
         0xE6,
         meter_index,  // INC $0A
     };
-    emit_firmware_call(handler, slot, entry_serve_mouse, 0, x_y_zero);
+    emit_firmware_call(handler, slot, entry_serve_mouse, 0, xy_zero);
     const std::vector<uint8_t> tail = {
         0x08,  // PHP
         0x68,  // PLA
@@ -952,7 +952,7 @@ auto poke_meter(int slot, bool serve = true, bool x_y_zero = false) -> void {
     };
   }
   REQUIRE(handler_start + handler.size() <= meter_loop);
-  TestFixtures::ScopedCore_t::poke(handler_start, handler.data(),
+  TestFixtures::ScopedCore::poke(handler_start, handler.data(),
                                    handler.size());
   poke_indirect_jump();
 
@@ -960,15 +960,15 @@ auto poke_meter(int slot, bool serve = true, bool x_y_zero = false) -> void {
       static_cast<uint8_t>(handler_start & 0xFF),
       static_cast<uint8_t>(handler_start >> 8),
   };
-  TestFixtures::ScopedCore_t::poke(IRQ_VECTOR_ADDR, vector);
+  TestFixtures::ScopedCore::poke(IRQ_VECTOR_ADDR, vector);
 
   const std::array<uint8_t, 1> zero = {0};
   for (uint8_t at :
        {meter_low, meter_high, meter_index, storm_low, storm_high}) {
-    TestFixtures::ScopedCore_t::poke(at, zero);
+    TestFixtures::ScopedCore::poke(at, zero);
   }
   std::vector<uint8_t> blank(1280, 0);
-  TestFixtures::ScopedCore_t::poke(meter_low_table, blank.data(), blank.size());
+  TestFixtures::ScopedCore::poke(meter_low_table, blank.data(), blank.size());
 }
 
 // 8 cycles a turn, 7 more at every wrap of the low byte; the count wraps after
@@ -1040,21 +1040,21 @@ auto video_frame_phase() -> uint32_t {
 }
 
 // Frames run at the machine's own length, so a PAL machine gets 20,280 cycles.
-struct MouseSession_t {
-  TestFixtures::ScopedTestConfig_t config;
-  HeadlessHarness_t harness;
+struct MouseSession {
+  TestFixtures::ScopedTestConfig config;
+  HeadlessHarness harness;
   int slot;
 
-  explicit MouseSession_t(int in_slot = test_slot, bool pal = false)
-      : MouseSession_t(describe(in_slot, pal), in_slot) {}
+  explicit MouseSession(int in_slot = test_slot, bool pal = false)
+      : MouseSession(describe(in_slot, pal), in_slot) {}
 
-  MouseSession_t(const Description_t& description, int in_slot)
+  MouseSession(const Description& description, int in_slot)
       : config(description), harness(config), slot(in_slot) {
     harness.boot();
   }
 
-  static auto describe(int in_slot, bool pal) -> Description_t {
-    Description_t description = describe_mouse_in(in_slot);
+  static auto describe(int in_slot, bool pal) -> Description {
+    Description description = describe_mouse_in(in_slot);
     if (pal) {
       description.extras.push_back({"Configuration", "Video Emulation", "2"});
     }
@@ -1095,7 +1095,7 @@ struct MouseSession_t {
 
   static auto align_to_video_frame() -> void {
     const std::array<uint8_t, 3> spin = {0x4C, 0x00, 0x03};
-    TestFixtures::ScopedCore_t::poke(program_start, spin);
+    TestFixtures::ScopedCore::poke(program_start, spin);
     TestFixtures::enter_at({program_start, 0, 0, 0});
     const uint32_t phase = video_frame_phase();
     if (phase != 0) {
@@ -1104,7 +1104,7 @@ struct MouseSession_t {
   }
 
   // For entries that need the scanner: INITMOUSE waits on $C019.
-  auto run_calls_in_frames(const std::vector<Call_t>& calls, uint32_t frames)
+  auto run_calls_in_frames(const std::vector<Call>& calls, uint32_t frames)
       -> bool {
     const uint16_t spin = poke_calls(slot, calls);
     TestFixtures::enter_at({program_start, 0, 0, 0});
@@ -1116,7 +1116,7 @@ struct MouseSession_t {
 
 // The batch total less the loop time, which wrapped at most once a run, over
 // the entries.
-auto measured_handler_cycles(const MouseSession_t& session, size_t entries)
+auto measured_handler_cycles(const MouseSession& session, size_t entries)
     -> uint64_t {
   REQUIRE(entries > 0);
   const uint64_t wraps = (session.last_total_cycles - session.last_loop_cycles +
@@ -1128,7 +1128,7 @@ auto measured_handler_cycles(const MouseSession_t& session, size_t entries)
 }
 
 auto press_button(int slot, bool down, uint8_t button = 0) -> void {
-  MouseButtonPayload_t payload{
+  MouseButtonPayload payload{
       button,
       static_cast<uint8_t>(down ? 1 : 0),
       {0, 0},
@@ -1139,13 +1139,13 @@ auto press_button(int slot, bool down, uint8_t button = 0) -> void {
 }
 
 auto move_mouse(int slot, int32_t dx, int32_t dy) -> void {
-  MouseMovePayload_t payload{dx, dy};
+  MouseMovePayload payload{dx, dy};
   REQUIRE(peripheral_command(slot, mouse_cmd_move, &payload, sizeof(payload)) ==
           peripheral_ok);
   peripheral_manager_think(0);
 }
 
-struct Reading_t {
+struct Reading {
   int16_t x;
   int16_t y;
   uint8_t status;
@@ -1157,10 +1157,10 @@ auto word_at(uint16_t low, uint16_t high) -> int16_t {
 }
 
 // READMOUSE through the table, then the slot's holes (manual p. 44).
-auto read_mouse(int slot) -> Reading_t {
+auto read_mouse(int slot) -> Reading {
   REQUIRE_FALSE(call_firmware(slot, entry_read_mouse, 0));
   const auto n = static_cast<uint16_t>(slot);
-  Reading_t reading{};
+  Reading reading{};
   reading.x = word_at(0x478 + n, 0x578 + n);
   reading.y = word_at(0x4F8 + n, 0x5F8 + n);
   reading.status = mem[0x778 + n];
@@ -1169,7 +1169,7 @@ auto read_mouse(int slot) -> Reading_t {
 
 auto poke_byte(uint16_t at, uint8_t value) -> void {
   const std::array<uint8_t, 1> byte = {value};
-  TestFixtures::ScopedCore_t::poke(at, byte);
+  TestFixtures::ScopedCore::poke(at, byte);
 }
 
 // CLAMPMOUSE and the peek take their bytes from the slot-0 holes (manual
@@ -1192,7 +1192,7 @@ auto poke_slot_holes(int slot, int16_t x, int16_t y) -> void {
 
 // The firmware's own write handshake (bank 3 $30E-$33F), so a byte reaches the
 // 6805 with no firmware entry in between.
-auto send_raw_byte(MouseMachine_t& machine, uint8_t byte) -> void {
+auto send_raw_byte(MouseMachine& machine, uint8_t byte) -> void {
   const auto base = static_cast<uint16_t>(0xC080 + (machine.slot << 4));
   std::vector<uint8_t> program;
   auto emit = [&program](uint8_t opcode, uint16_t operand) -> void {
@@ -1238,13 +1238,13 @@ auto send_raw_byte(MouseMachine_t& machine, uint8_t byte) -> void {
   emit(0x8D, port_b);
   const auto spin = static_cast<uint16_t>(program_start + program.size());
   emit(0x4C, spin);
-  TestFixtures::ScopedCore_t::poke(program_start, program.data(),
+  TestFixtures::ScopedCore::poke(program_start, program.data(),
                                    program.size());
   machine.run_until(program_start, spin);
 }
 
 // LDA abs / STA zp for each address, into $10 upwards.
-auto read_addresses(MouseMachine_t& machine,
+auto read_addresses(MouseMachine& machine,
                     const std::vector<uint16_t>& addresses)
     -> std::vector<uint8_t> {
   std::vector<uint8_t> program;
@@ -1260,7 +1260,7 @@ auto read_addresses(MouseMachine_t& machine,
   program.push_back(0x4C);
   program.push_back(static_cast<uint8_t>(spin & 0xFF));
   program.push_back(static_cast<uint8_t>(spin >> 8));
-  TestFixtures::ScopedCore_t::poke(program_start, program.data(),
+  TestFixtures::ScopedCore::poke(program_start, program.data(),
                                    program.size());
   machine.run_until(program_start, spin);
   std::vector<uint8_t> values;
@@ -1301,7 +1301,7 @@ auto select_bank_stepped(int slot, uint8_t bank) -> void {
   emit(0x8D, port_b);
   const auto spin = static_cast<uint16_t>(program_start + program.size());
   emit(0x4C, spin);
-  TestFixtures::ScopedCore_t::poke(program_start, program.data(),
+  TestFixtures::ScopedCore::poke(program_start, program.data(),
                                    program.size());
   TestFixtures::enter_at({program_start, 0, 0, 0});
   TestFixtures::step_until_pc(spin, cycle_cap);
@@ -1314,7 +1314,7 @@ auto select_bank_stepped(int slot, uint8_t bank) -> void {
 TEST_CASE(
     "Mouse card: SETMOUSE refuses a mode of $10 or more with the carry set "
     "and takes one below it into $7FC") {
-  MouseMachine_t machine;
+  MouseMachine machine;
   poke_byte(0x7FC, 0x55);
   CHECK(call_firmware(machine.slot, entry_set_mouse, 0x10));
   CHECK(mem[0x7FC] == 0x55);
@@ -1336,7 +1336,7 @@ TEST_CASE(
   SUBCASE("mouse on") { mode = 0x09; }
   SUBCASE("mouse off") { mode = 0x08; }
 
-  MouseSession_t session;
+  MouseSession session;
   CHECK_FALSE(call_firmware(session.slot, entry_set_mouse, mode));
   poke_meter(session.slot);
   const std::vector<uint64_t> entries = session.run_metered_frames(60);
@@ -1353,7 +1353,7 @@ TEST_CASE(
     "Mouse card: a button change interrupts at the tick, not on arrival, and "
     "only while the mouse is on") {
   SUBCASE("mode $05: one entry at the tick, reporting the button") {
-    MouseSession_t session;
+    MouseSession session;
     CHECK_FALSE(call_firmware(session.slot, entry_set_mouse, 0x05));
     poke_meter(session.slot);
     press_button(session.slot, true);
@@ -1366,7 +1366,7 @@ TEST_CASE(
   }
 
   SUBCASE("mode $04: the button raises nothing while the mouse is off") {
-    MouseSession_t session;
+    MouseSession session;
     CHECK_FALSE(call_firmware(session.slot, entry_set_mouse, 0x04));
     poke_meter(session.slot);
     press_button(session.slot, true);
@@ -1384,7 +1384,7 @@ TEST_CASE(
     "Mouse card: INITMOUSE on an Enhanced //e returns with the carry clear, "
     "reads one reply byte into $6FC, and leaves the 6805 off at (0, 0) with "
     "the clamps 0..1023") {
-  MouseSession_t session;
+  MouseSession session;
   REQUIRE_FALSE(call_firmware(session.slot, entry_set_mouse, 0x01));
   poke_slot0_holes(0x64, 0xC8, 0x00, 0x00);
   REQUIRE_FALSE(call_firmware(session.slot, entry_clamp_mouse, 0));
@@ -1392,7 +1392,7 @@ TEST_CASE(
   REQUIRE_FALSE(call_firmware(session.slot, entry_clamp_mouse, 1));
   poke_slot_holes(session.slot, 150, 350);
   REQUIRE_FALSE(call_firmware(session.slot, entry_pos_mouse, 0));
-  Reading_t reading = read_mouse(session.slot);
+  Reading reading = read_mouse(session.slot);
   REQUIRE(reading.x == 150);
   REQUIRE(reading.y == 350);
   REQUIRE_FALSE(call_firmware(session.slot, entry_set_mouse, 0x09));
@@ -1422,12 +1422,12 @@ TEST_CASE(
     "Mouse card: CLAMPMOUSE takes its bytes in the firmware's order, as signed "
     "values, moves nothing, pins at a minimum above the maximum, and "
     "HOMEMOUSE goes to the lower boundaries") {
-  MouseMachine_t machine;
+  MouseMachine machine;
   REQUIRE_FALSE(call_firmware(machine.slot, entry_set_mouse, 0x01));
 
   poke_slot0_holes(0x64, 0xC8, 0x00, 0x00);
   REQUIRE_FALSE(call_firmware(machine.slot, entry_clamp_mouse, 0));
-  Reading_t reading = read_mouse(machine.slot);
+  Reading reading = read_mouse(machine.slot);
   CHECK(reading.x == 0);
   CHECK(reading.y == 0);
   move_mouse(machine.slot, 2000, 0);
@@ -1477,11 +1477,11 @@ TEST_CASE(
 TEST_CASE(
     "Mouse card: POSMOUSE loads the position from the slot's holes unclamped, "
     "and the next motion clamps it") {
-  MouseMachine_t machine;
+  MouseMachine machine;
   REQUIRE_FALSE(call_firmware(machine.slot, entry_set_mouse, 0x01));
   poke_slot_holes(machine.slot, 560, 192);
   REQUIRE_FALSE(call_firmware(machine.slot, entry_pos_mouse, 0));
-  Reading_t reading = read_mouse(machine.slot);
+  Reading reading = read_mouse(machine.slot);
   CHECK(reading.x == 560);
   CHECK(reading.y == 192);
 
@@ -1502,7 +1502,7 @@ TEST_CASE(
 TEST_CASE(
     "Mouse card: CLEARMOUSE zeroes the position and the holes and leaves the "
     "mode, the clamps and a pending movement alone") {
-  MouseSession_t session;
+  MouseSession session;
   REQUIRE_FALSE(call_firmware(session.slot, entry_set_mouse, 0x03));
   poke_slot0_holes(0x64, 0xC8, 0x00, 0x00);
   REQUIRE_FALSE(call_firmware(session.slot, entry_clamp_mouse, 0));
@@ -1514,7 +1514,7 @@ TEST_CASE(
   CHECK(mem[0x4FC] == 0);
   CHECK(mem[0x5FC] == 0);
 
-  Reading_t reading = read_mouse(session.slot);
+  Reading reading = read_mouse(session.slot);
   CHECK(reading.x == 0);
   CHECK(reading.y == 0);
   CHECK(mem[0x7FC] == 0x03);
@@ -1535,7 +1535,7 @@ TEST_CASE(
     "Mouse card: READMOUSE writes the status byte whole, a second button "
     "changes nothing, and the interrupt bits read 0 while the line stays up") {
   SUBCASE("movement and the button, one reading at a time") {
-    MouseMachine_t machine;
+    MouseMachine machine;
     REQUIRE_FALSE(call_firmware(machine.slot, entry_set_mouse, 0x01));
     move_mouse(machine.slot, 5, 5);
     CHECK(read_mouse(machine.slot).status == 0x20);
@@ -1554,13 +1554,13 @@ TEST_CASE(
   }
 
   SUBCASE("after a tick, READMOUSE clears the sources and leaves the line") {
-    MouseSession_t session;
+    MouseSession session;
     REQUIRE_FALSE(call_firmware(session.slot, entry_set_mouse, 0x0B));
     move_mouse(session.slot, 3, 0);
     const uint16_t spin = poke_calls(session.slot, {});
     TestFixtures::enter_at({spin, 0, 0, 0});
     session.run_frames(2);
-    const Reading_t reading = read_mouse(session.slot);
+    const Reading reading = read_mouse(session.slot);
     CHECK((reading.status & 0x0E) == 0x00);
     CHECK((reading.status & 0x20) == 0x20);
 
@@ -1584,7 +1584,7 @@ TEST_CASE(
     "sources once over READMOUSE's bits, releases the line, and the second "
     "call answers not the mouse") {
   SUBCASE("served") {
-    MouseSession_t session;
+    MouseSession session;
     REQUIRE_FALSE(call_firmware(session.slot, entry_set_mouse, 0x0B));
     press_button(session.slot, true);
     CHECK(read_mouse(session.slot).status == 0x80);
@@ -1603,7 +1603,7 @@ TEST_CASE(
   }
 
   SUBCASE("a handler that never serves is re-entered every instruction") {
-    MouseSession_t session;
+    MouseSession session;
     REQUIRE_FALSE(call_firmware(session.slot, entry_set_mouse, 0x08));
     poke_meter(session.slot, false);
     session.run_metered_frames(1);
@@ -1619,7 +1619,7 @@ TEST_CASE(
 TEST_CASE(
     "Mouse card: movement and button interrupts land at the tick inside "
     "blanking, once per tick, and only while the mouse is on") {
-  MouseSession_t session;
+  MouseSession session;
   session.align_to_video_frame();
 
   SUBCASE("mode $03: one move, one entry at the anchor") {
@@ -1689,7 +1689,7 @@ TEST_CASE(
     uint8_t mode = 0x09;
     SUBCASE("mode $09") { mode = 0x09; }
     SUBCASE("mode $08") { mode = 0x08; }
-    MouseSession_t session;
+    MouseSession session;
     session.align_to_video_frame();
     CHECK_FALSE(session.run_calls_in_frames(
         {{entry_init_mouse, 0}, {entry_set_mouse, mode}}, 2));
@@ -1709,7 +1709,7 @@ TEST_CASE(
   }
 
   SUBCASE("PAL frames of 20,280 cycles") {
-    MouseSession_t session(test_slot, true);
+    MouseSession session(test_slot, true);
     REQUIRE(session.frame_length() == pal_frame);
     session.align_to_video_frame();
     CHECK_FALSE(session.run_calls_in_frames(
@@ -1741,7 +1741,7 @@ TEST_CASE(
     SUBCASE("slot 5") { slot = 5; }
     SUBCASE("slot 1") { slot = 1; }
     SUBCASE("slot 7") { slot = 7; }
-    MouseMachine_t machine(slot);
+    MouseMachine machine(slot);
     const auto page = static_cast<uint16_t>(0xC000 + (slot << 8));
     const auto base = static_cast<uint16_t>(0xC080 + (slot << 4));
     const std::vector<uint8_t> values =
@@ -1765,7 +1765,7 @@ TEST_CASE(
     REQUIRE_FALSE(call_firmware(slot, entry_set_mouse, 0x01));
     CHECK(mem[0x7F8 + slot] == 0x01);
     move_mouse(slot, 7, 9);
-    const Reading_t reading = read_mouse(slot);
+    const Reading reading = read_mouse(slot);
     CHECK(reading.x == 7);
     CHECK(reading.y == 9);
     CHECK(reading.status == 0x20);
@@ -1774,9 +1774,9 @@ TEST_CASE(
   }
 
   SUBCASE("two cards in slots 4 and 5") {
-    Description_t description = describe_mouse_in(4);
+    Description description = describe_mouse_in(4);
     description.slots[4] = "Mouse Interface";
-    MouseSession_t session(description, 4);
+    MouseSession session(description, 4);
     REQUIRE_FALSE(call_firmware(4, entry_set_mouse, 0x08));
     REQUIRE_FALSE(call_firmware(5, entry_set_mouse, 0x08));
 
@@ -1798,12 +1798,12 @@ TEST_CASE(
       handler.push_back(static_cast<uint8_t>(handler_start & 0xFF));
       handler.push_back(static_cast<uint8_t>(handler_start >> 8));
       const auto front = static_cast<uint16_t>(handler_start - handler.size());
-      TestFixtures::ScopedCore_t::poke(front, handler.data(), handler.size());
+      TestFixtures::ScopedCore::poke(front, handler.data(), handler.size());
       const std::array<uint8_t, 2> vector = {
           static_cast<uint8_t>(front & 0xFF),
           static_cast<uint8_t>(front >> 8),
       };
-      TestFixtures::ScopedCore_t::poke(IRQ_VECTOR_ADDR, vector);
+      TestFixtures::ScopedCore::poke(IRQ_VECTOR_ADDR, vector);
       const std::vector<uint64_t> entries = session.run_metered_frames(3);
       CHECK(entries.size() >= 3);
       CHECK(entries.size() <= 4);
@@ -1820,12 +1820,12 @@ TEST_CASE(
 TEST_CASE(
     "Mouse card: the write and read handshakes terminate, and SETMOUSE and "
     "READMOUSE cost the cycles they cost") {
-  MouseMachine_t machine;
-  const StepResult_t set = step_firmware(machine.slot, entry_set_mouse, 0x01);
+  MouseMachine machine;
+  const StepResult set = step_firmware(machine.slot, entry_set_mouse, 0x01);
   REQUIRE(set.completed);
   CHECK_FALSE(set.carry);
   CHECK(set.cycles == 250);
-  const StepResult_t read = step_firmware(machine.slot, entry_read_mouse, 0);
+  const StepResult read = step_firmware(machine.slot, entry_read_mouse, 0);
   REQUIRE(read.completed);
   CHECK_FALSE(read.carry);
   CHECK(read.cycles == 630);
@@ -1836,7 +1836,7 @@ TEST_CASE(
 TEST_CASE(
     "Mouse card: the $F0 peeks answer GetClamp's eight bytes, and the $Cn1D "
     "entry's data byte and the $F1 poke's bytes keep the stream in step") {
-  MouseMachine_t machine;
+  MouseMachine machine;
   poke_slot0_holes(0x64, 0xC8, 0x00, 0x00);
   REQUIRE_FALSE(call_firmware(machine.slot, entry_clamp_mouse, 0));
   poke_slot0_holes(0x2C, 0x90, 0x01, 0x01);
@@ -1855,7 +1855,7 @@ TEST_CASE(
   REQUIRE_FALSE(call_firmware(machine.slot, entry_data_byte, 0x40));
   REQUIRE_FALSE(call_firmware(machine.slot, entry_set_mouse, 0x01));
   move_mouse(machine.slot, 3, 4);
-  Reading_t reading = read_mouse(machine.slot);
+  Reading reading = read_mouse(machine.slot);
   CHECK(reading.x == 103);
   CHECK(reading.y == 304);
 
@@ -1873,11 +1873,11 @@ TEST_CASE(
 TEST_CASE(
     "Mouse card: $80 turns tracking on at (0, 0) and $00 turns it off, "
     "leaving the position") {
-  MouseMachine_t machine;
+  MouseMachine machine;
   REQUIRE_FALSE(call_firmware(machine.slot, entry_set_mouse, 0x01));
   poke_slot_holes(machine.slot, 300, 100);
   REQUIRE_FALSE(call_firmware(machine.slot, entry_pos_mouse, 0));
-  Reading_t reading = read_mouse(machine.slot);
+  Reading reading = read_mouse(machine.slot);
   CHECK(reading.x == 300);
   CHECK(reading.y == 100);
 
@@ -1901,7 +1901,7 @@ TEST_CASE(
 TEST_CASE(
     "Mouse card: motion while the mouse is off leaves the position and bit 5 "
     "untouched") {
-  MouseMachine_t machine;
+  MouseMachine machine;
   REQUIRE_FALSE(call_firmware(machine.slot, entry_set_mouse, 0x01));
   poke_slot_holes(machine.slot, 20, 30);
   REQUIRE_FALSE(call_firmware(machine.slot, entry_pos_mouse, 0));
@@ -1909,7 +1909,7 @@ TEST_CASE(
   REQUIRE_FALSE(call_firmware(machine.slot, entry_set_mouse, 0x00));
   move_mouse(machine.slot, 50, 50);
   REQUIRE_FALSE(call_firmware(machine.slot, entry_set_mouse, 0x01));
-  const Reading_t reading = read_mouse(machine.slot);
+  const Reading reading = read_mouse(machine.slot);
   CHECK(reading.x == 20);
   CHECK(reading.y == 30);
   CHECK(reading.status == 0x00);
@@ -1923,7 +1923,7 @@ TEST_CASE(
     "Mouse card: reset returns the PIA to zero and the slot page to bank 0, "
     "drops a pending interrupt, and restarts the tick at 60 Hz") {
   SUBCASE("the registers and the page, stepped") {
-    MouseMachine_t machine;
+    MouseMachine machine;
     const auto base = static_cast<uint16_t>(0xC080 + (machine.slot << 4));
     const auto page = static_cast<uint16_t>(0xC000 + (machine.slot << 8));
     select_bank_stepped(machine.slot, 3);
@@ -1948,7 +1948,7 @@ TEST_CASE(
   }
 
   SUBCASE("the line, the position and the rate, under the frame loop") {
-    MouseSession_t session;
+    MouseSession session;
     session.align_to_video_frame();
     CHECK_FALSE(session.run_calls_in_frames({{entry_time_data, 0x91},
                                              {entry_init_mouse, 0},
@@ -1967,7 +1967,7 @@ TEST_CASE(
     poke_meter(session.slot);
     CHECK(session.run_metered_frames(1, 0).empty());
     REQUIRE_FALSE(call_firmware(session.slot, entry_set_mouse, 0x01));
-    const Reading_t reading = read_mouse(session.slot);
+    const Reading reading = read_mouse(session.slot);
     CHECK(reading.x == 0);
     CHECK(reading.y == 0);
     REQUIRE_FALSE(call_firmware(session.slot, entry_set_mouse, 0x08));
@@ -1976,8 +1976,8 @@ TEST_CASE(
   }
 
   SUBCASE("shutdown with the line asserted releases it") {
-    BenchHost_t bench;
-    const Peripheral_t* desc = mouse_descriptor();
+    BenchHost bench;
+    const Peripheral* desc = mouse_descriptor();
     void* card = desc->init(test_slot, bench.host());
     REQUIRE(card != nullptr);
     bench_send(bench, card, 0x08);
@@ -1995,7 +1995,7 @@ TEST_CASE(
 
 namespace {
 
-using Frame_t = std::array<uint8_t, frame_size>;
+using Frame = std::array<uint8_t, frame_size>;
 
 constexpr size_t frame_tick_phase = 32;
 constexpr size_t frame_rate = 64;
@@ -2008,54 +2008,54 @@ constexpr size_t frame_status = 76;
 constexpr size_t frame_button_at_last_read = 77;
 constexpr size_t frame_button = 79;
 
-static_assert(offsetof(MouseSaveState_t, tick_phase) == frame_tick_phase,
+static_assert(offsetof(MouseSaveState, tick_phase) == frame_tick_phase,
               "the tick phase travels at byte 32");
-static_assert(offsetof(MouseSaveState_t, rate_50hz) == frame_rate,
+static_assert(offsetof(MouseSaveState, rate_50hz) == frame_rate,
               "the rate travels at byte 64");
-static_assert(offsetof(MouseSaveState_t, pending) == frame_pending,
+static_assert(offsetof(MouseSaveState, pending) == frame_pending,
               "the pending sources travel at byte 65");
-static_assert(offsetof(MouseSaveState_t, irq_asserted) == frame_irq,
+static_assert(offsetof(MouseSaveState, irq_asserted) == frame_irq,
               "the line travels at byte 66");
-static_assert(offsetof(MouseSaveState_t, parser_in_len) == frame_in_len,
+static_assert(offsetof(MouseSaveState, parser_in_len) == frame_in_len,
               "the reply length travels at byte 68");
-static_assert(offsetof(MouseSaveState_t, parser_reply_pos) == frame_reply_pos,
+static_assert(offsetof(MouseSaveState, parser_reply_pos) == frame_reply_pos,
               "the reply cursor travels at byte 69");
-static_assert(offsetof(MouseSaveState_t, mode) == frame_mode,
+static_assert(offsetof(MouseSaveState, mode) == frame_mode,
               "the mode travels at byte 74");
-static_assert(offsetof(MouseSaveState_t, status) == frame_status,
+static_assert(offsetof(MouseSaveState, status) == frame_status,
               "the status byte travels at byte 76");
-static_assert(offsetof(MouseSaveState_t, button_at_last_read) ==
+static_assert(offsetof(MouseSaveState, button_at_last_read) ==
                   frame_button_at_last_read,
               "the last-read button travels at byte 77");
-static_assert(offsetof(MouseSaveState_t, button) == frame_button,
+static_assert(offsetof(MouseSaveState, button) == frame_button,
               "the button travels at byte 79");
-static_assert(offsetof(MouseSaveState_t, buffer) == 81,
+static_assert(offsetof(MouseSaveState, buffer) == 81,
               "the command buffer travels at byte 81");
-static_assert(sizeof(MouseSaveState_t) == frame_size, "the frame is 92 bytes");
+static_assert(sizeof(MouseSaveState) == frame_size, "the frame is 92 bytes");
 
-auto save_frame(int slot) -> Frame_t {
-  Frame_t frame{};
+auto save_frame(int slot) -> Frame {
+  Frame frame{};
   size_t size = frame.size();
   peripheral_save_state(slot, frame.data(), &size);
   REQUIRE(size == frame.size());
   return frame;
 }
 
-auto frame_word(const Frame_t& frame, size_t at) -> uint32_t {
+auto frame_word(const Frame& frame, size_t at) -> uint32_t {
   return static_cast<uint32_t>(frame.at(at)) |
          (static_cast<uint32_t>(frame.at(at + 1)) << 8) |
          (static_cast<uint32_t>(frame.at(at + 2)) << 16) |
          (static_cast<uint32_t>(frame.at(at + 3)) << 24);
 }
 
-auto set_frame_word(Frame_t& frame, size_t at, uint32_t value) -> void {
+auto set_frame_word(Frame& frame, size_t at, uint32_t value) -> void {
   frame.at(at) = static_cast<uint8_t>(value & 0xFF);
   frame.at(at + 1) = static_cast<uint8_t>((value >> 8) & 0xFF);
   frame.at(at + 2) = static_cast<uint8_t>((value >> 16) & 0xFF);
   frame.at(at + 3) = static_cast<uint8_t>((value >> 24) & 0xFF);
 }
 
-auto frame_coordinate(const Frame_t& frame, size_t at) -> int16_t {
+auto frame_coordinate(const Frame& frame, size_t at) -> int16_t {
   return static_cast<int16_t>(static_cast<uint16_t>(frame_word(frame, at)));
 }
 
@@ -2067,7 +2067,7 @@ auto frame_coordinate(const Frame_t& frame, size_t at) -> int16_t {
 // which copies PB6 high and PB7 low from the pins after the 6805 dropped busy.
 // Port A holds INITMOUSE's reply, the last byte presented. Status $2E is
 // movement since the last reading plus the three sources the tick reported.
-constexpr Frame_t frame_after_tick = {
+constexpr Frame frame_after_tick = {
     0x01, 0x00, 0x00, 0x00, 0x5C, 0x00, 0x00, 0x00, 0x15, 0x03, 0x00, 0x00,
     0x41, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x03, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0xFF, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -2083,7 +2083,7 @@ constexpr Frame_t frame_after_tick = {
 // button pressed and one READMOUSE: bytes 32-39 are the host window's 1023 x
 // 1023 range, byte 76 the whole status byte, bytes 64-71 the PIA's unconnected
 // pins.
-constexpr Frame_t legacy_frame = {
+constexpr Frame legacy_frame = {
     0x01, 0x00, 0x00, 0x00, 0x5C, 0x00, 0x00, 0x00, 0x7B, 0x00, 0x00, 0x00,
     0xC8, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x03, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0xFF, 0x03, 0x00, 0x00, 0xFF, 0x03, 0x00, 0x00,
@@ -2100,7 +2100,7 @@ TEST_CASE(
     "Mouse card: the frame after INITMOUSE, SETMOUSE $0F, a move, the button "
     "and one tick is the derived 92 bytes, with the cycles to the next tick "
     "at byte 32") {
-  MouseSession_t session;
+  MouseSession session;
   session.align_to_video_frame();
   CHECK_FALSE(session.run_calls_in_frames(
       {{entry_init_mouse, 0}, {entry_set_mouse, 0x0F}}, 2));
@@ -2110,11 +2110,11 @@ TEST_CASE(
   TestFixtures::enter_at({spin, 0, 0, 0});
   session.run_frames(1);
 
-  const Frame_t saved = save_frame(session.slot);
+  const Frame saved = save_frame(session.slot);
   const uint32_t phase = frame_word(saved, frame_tick_phase);
   CHECK(phase >= 1);
   CHECK(phase <= ntsc_frame);
-  Frame_t expected = frame_after_tick;
+  Frame expected = frame_after_tick;
   set_frame_word(expected, frame_tick_phase, phase);
   for (size_t i = 0; i < frame_size; ++i) {
     CAPTURE(i);
@@ -2135,7 +2135,7 @@ TEST_CASE(
 TEST_CASE(
     "Mouse card: the frame carries the 6805's state, the tick's phase and the "
     "line, and a reset card takes it all back") {
-  MouseSession_t session;
+  MouseSession session;
   REQUIRE_FALSE(call_firmware(session.slot, entry_set_mouse, 0x0F));
   poke_slot0_holes(0x64, 0xC8, 0x00, 0x00);
   REQUIRE_FALSE(call_firmware(session.slot, entry_clamp_mouse, 0));
@@ -2143,7 +2143,7 @@ TEST_CASE(
   press_button(session.slot, true);
   session.run_frames(1);
 
-  const Frame_t saved = save_frame(session.slot);
+  const Frame saved = save_frame(session.slot);
   CHECK(frame_word(saved, 8) == 150);
   CHECK(frame_word(saved, 12) == 20);
   CHECK(frame_word(saved, 16) == 100);
@@ -2165,7 +2165,7 @@ TEST_CASE(
   linapple_reset_hard();
   REQUIRE(peripheral_load_state(session.slot, saved.data(), saved.size()) ==
           peripheral_ok);
-  const Frame_t reloaded = save_frame(session.slot);
+  const Frame reloaded = save_frame(session.slot);
   CHECK(reloaded == saved);
 
   CHECK_FALSE(call_firmware(session.slot, entry_serve_mouse, 0));
@@ -2180,7 +2180,7 @@ TEST_CASE(
   CHECK(entries.at(0) < 200);
 
   REQUIRE_FALSE(call_firmware(session.slot, entry_set_mouse, 0x0F));
-  Reading_t reading = read_mouse(session.slot);
+  Reading reading = read_mouse(session.slot);
   CHECK(reading.x == 150);
   CHECK(reading.y == 20);
   CHECK(reading.status == 0xA0);
@@ -2192,10 +2192,10 @@ TEST_CASE(
     "Mouse card: a frame written before the tick existed loads with the host "
     "width as the phase, its status bits dropped with the line, and the "
     "button from its own fields") {
-  MouseSession_t session;
+  MouseSession session;
   REQUIRE(peripheral_load_state(session.slot, legacy_frame.data(),
                                 legacy_frame.size()) == peripheral_ok);
-  const Frame_t rewritten = save_frame(session.slot);
+  const Frame rewritten = save_frame(session.slot);
   CHECK(rewritten.at(frame_status) == 0x00);
   CHECK(rewritten.at(frame_irq) == 0);
   CHECK(rewritten.at(frame_pending) == 0);
@@ -2208,7 +2208,7 @@ TEST_CASE(
   CHECK(call_firmware(session.slot, entry_serve_mouse, 0));
 
   REQUIRE_FALSE(call_firmware(session.slot, entry_set_mouse, 0x0B));
-  const Reading_t reading = read_mouse(session.slot);
+  const Reading reading = read_mouse(session.slot);
   CHECK(reading.x == 123);
   CHECK(reading.y == 456);
   CHECK(mem[0x47C] == 0x7B);
@@ -2228,7 +2228,7 @@ TEST_CASE(
   CHECK((mem[0x77C] & 0x0E) == 0x08);
 
   SUBCASE("status $2E with the line released loads as bit 5 alone") {
-    Frame_t frame = legacy_frame;
+    Frame frame = legacy_frame;
     frame.at(frame_status) = 0x2E;
     REQUIRE(peripheral_load_state(session.slot, frame.data(), frame.size()) ==
             peripheral_ok);
@@ -2239,7 +2239,7 @@ TEST_CASE(
   }
 
   SUBCASE("a phase beyond one period is bounded by it") {
-    Frame_t frame = legacy_frame;
+    Frame frame = legacy_frame;
     set_frame_word(frame, frame_tick_phase, 100000);
     REQUIRE(peripheral_load_state(session.slot, frame.data(), frame.size()) ==
             peripheral_ok);
@@ -2253,7 +2253,7 @@ TEST_CASE(
   // The hole's bits 7 and 6 come from the two button fields; a frame whose
   // status byte carries them with both fields zero reads a released button.
   SUBCASE("bits 7 and 6 of the status byte are never read from the frame") {
-    Frame_t frame = legacy_frame;
+    Frame frame = legacy_frame;
     frame.at(frame_status) = 0xC0;
     frame.at(frame_button_at_last_read) = 0;
     frame.at(frame_button) = 0;
@@ -2275,18 +2275,18 @@ TEST_CASE(
 TEST_CASE(
     "Mouse card: a refused frame leaves every byte of the card's state as it "
     "was") {
-  MouseSession_t session;
+  MouseSession session;
   REQUIRE_FALSE(call_firmware(session.slot, entry_set_mouse, 0x03));
   move_mouse(session.slot, 40, 50);
-  const Frame_t before = save_frame(session.slot);
+  const Frame before = save_frame(session.slot);
 
-  auto refused = [&](Frame_t frame, size_t size) -> void {
+  auto refused = [&](Frame frame, size_t size) -> void {
     CHECK(peripheral_load_state(session.slot, frame.data(), size) ==
           peripheral_error);
     CHECK(save_frame(session.slot) == before);
   };
 
-  Frame_t frame = before;
+  Frame frame = before;
   refused(frame, frame_size - 1);
   frame = before;
   frame.at(0) = 2;
@@ -2338,8 +2338,8 @@ constexpr int stale_command_flush = 4;
 TEST_CASE(
     "Mouse card: each of the 92 frame bytes corrupted five ways is taken or "
     "refused, never anything else, and a taken frame leaves a working card") {
-  MouseSession_t session;
-  Frame_t base = frame_after_tick;
+  MouseSession session;
+  Frame base = frame_after_tick;
   set_frame_word(base, frame_tick_phase, 1000);
   REQUIRE(peripheral_load_state(session.slot, base.data(), base.size()) ==
           peripheral_ok);
@@ -2351,9 +2351,9 @@ TEST_CASE(
     for (uint8_t value : values) {
       CAPTURE(offset);
       CAPTURE(value);
-      Frame_t frame = base;
+      Frame frame = base;
       frame.at(offset) = value;
-      const PeripheralStatus_t status =
+      const PeripheralStatus status =
           peripheral_load_state(session.slot, frame.data(), frame.size());
       const bool answered =
           status == peripheral_ok || status == peripheral_error;
@@ -2376,7 +2376,7 @@ TEST_CASE(
       }
       if (alive) {
         move_mouse(session.slot, 1, 1);
-        const StepResult_t read =
+        const StepResult read =
             step_firmware(session.slot, entry_read_mouse, 0);
         alive = read.completed;
         if (alive) {
@@ -2390,7 +2390,7 @@ TEST_CASE(
           CHECK(x <= std::max(min_x, max_x));
           CHECK(y >= std::min(min_y, max_y));
           CHECK(y <= std::max(min_y, max_y));
-          const StepResult_t next =
+          const StepResult next =
               step_firmware(session.slot, entry_set_mouse, 0x02);
           alive = next.completed && !next.carry;
         }
@@ -2414,10 +2414,10 @@ namespace {
 constexpr uint32_t prompt_frame_cap = 300;
 
 // With no disk controller the Autostart scan falls through to Applesoft.
-struct BasicSession_t {
-  MouseSession_t session;
+struct BasicSession {
+  MouseSession session;
 
-  BasicSession_t() {
+  BasicSession() {
     uint32_t frames = 0;
     while (!screen_has_row("]") && frames < prompt_frame_cap) {
       session.run_frames(1);
@@ -2448,7 +2448,7 @@ struct BasicSession_t {
         0x8D, 0x06, 0xC0,  // STA $C006
         0x4C, 0x03, 0x03,
     };  // JMP $0303
-    TestFixtures::ScopedCore_t::poke(program_start, program);
+    TestFixtures::ScopedCore::poke(program_start, program);
     TestFixtures::enter_at({program_start, 0, 0, 0});
     TestFixtures::step_until_pc(program_start + 3, cycle_cap);
     REQUIRE(cpu_get_registers()->pc == program_start + 3);
@@ -2466,7 +2466,7 @@ struct BasicSession_t {
 TEST_CASE(
     "Mouse card: PR#4 with CHR$(1) and IN#4 read the mouse from Applesoft, "
     "and CHR$(0) turns tracking off at the card") {
-  BasicSession_t basic;
+  BasicSession basic;
   basic.type_line("PR#4 : PRINT CHR$(1) : PR#0");
   move_mouse(test_slot, 37, 11);
   basic.type_line(R"(10 IN#4 : INPUT X,Y,S : IN#0 : PRINT X;",";Y;",";S)");
@@ -2480,7 +2480,7 @@ TEST_CASE(
 
   basic.select_slot_roms();
   REQUIRE_FALSE(call_firmware(test_slot, entry_set_mouse, 0x01));
-  const Reading_t reading = read_mouse(test_slot);
+  const Reading reading = read_mouse(test_slot);
   CHECK(reading.x == 37);
   CHECK(reading.y == 11);
 }
@@ -2488,7 +2488,7 @@ TEST_CASE(
 
 namespace {
 
-using TestFixtures::ScopedLogCapture_t;
+using TestFixtures::ScopedLogCapture;
 
 constexpr size_t frame_pia_orb = 57;
 constexpr size_t frame_pia_ddrb = 59;
@@ -2513,16 +2513,16 @@ TEST_CASE(
     "Mouse card: a frame whose port B replies do not answer its strobes is "
     "refused, one whose shadow disagrees with the PIA's pins takes the pins, "
     "and READMOUSE returns after either") {
-  MouseSession_t session;
+  MouseSession session;
   REQUIRE_FALSE(call_firmware(session.slot, entry_set_mouse, 0x01));
   move_mouse(session.slot, 10, 20);
-  const Frame_t before = save_frame(session.slot);
+  const Frame before = save_frame(session.slot);
   REQUIRE(before.at(frame_pia_orb) == 0x40);
   REQUIRE(before.at(frame_pia_ddrb) == 0x3E);
   REQUIRE(before.at(frame_pia_port_b_in) == 0x40);
   REQUIRE(before.at(frame_port_b_shadow) == 0x40);
 
-  ScopedLogCapture_t log;
+  ScopedLogCapture log;
 
   SUBCASE("replies that do not answer their strobes are refused") {
     const std::array<uint8_t, 7> shadows = {
@@ -2530,7 +2530,7 @@ TEST_CASE(
     };
     size_t refusals = 0;
     for (uint8_t shadow : shadows) {
-      Frame_t frame = before;
+      Frame frame = before;
       frame.at(frame_port_b_shadow) = shadow;
       CHECK(peripheral_load_state(session.slot, frame.data(), frame.size()) ==
             peripheral_error);
@@ -2544,7 +2544,7 @@ TEST_CASE(
   SUBCASE("the levels a save mid-handshake holds load as they are") {
     const std::array<uint8_t, 2> shadows = {0x10, 0xE0};
     for (uint8_t shadow : shadows) {
-      Frame_t frame = before;
+      Frame frame = before;
       frame.at(frame_port_b_shadow) = shadow;
       frame.at(frame_pia_orb) = static_cast<uint8_t>(shadow & 0x3E);
       REQUIRE(peripheral_load_state(session.slot, frame.data(), frame.size()) ==
@@ -2555,7 +2555,7 @@ TEST_CASE(
   }
 
   SUBCASE("a shadow selecting bank 7 over pins at bank 0 shows bank 0") {
-    Frame_t frame = before;
+    Frame frame = before;
     frame.at(frame_port_b_shadow) = 0x4E;
     REQUIRE(peripheral_load_state(session.slot, frame.data(), frame.size()) ==
             peripheral_ok);
@@ -2567,7 +2567,7 @@ TEST_CASE(
   }
 
   SUBCASE("pins at bank 7 under a shadow at bank 0 show bank 7") {
-    Frame_t frame = before;
+    Frame frame = before;
     frame.at(frame_pia_orb) = 0x4E;
     REQUIRE(peripheral_load_state(session.slot, frame.data(), frame.size()) ==
             peripheral_ok);
@@ -2577,7 +2577,7 @@ TEST_CASE(
   }
 
   SUBCASE("a DDRB of inputs releases the bank the shadow held") {
-    Frame_t frame = before;
+    Frame frame = before;
     frame.at(frame_pia_orb) = 0x4E;
     frame.at(frame_pia_ddrb) = 0x00;
     frame.at(frame_port_b_shadow) = 0x4E;
@@ -2589,7 +2589,7 @@ TEST_CASE(
   }
 
   SUBCASE("a strobe the pins dropped drops, and its reply follows") {
-    Frame_t frame = before;
+    Frame frame = before;
     frame.at(frame_port_b_shadow) = 0x10;
     REQUIRE(peripheral_load_state(session.slot, frame.data(), frame.size()) ==
             peripheral_ok);
@@ -2599,7 +2599,7 @@ TEST_CASE(
   }
 
   SUBCASE("byte 63 is not read: the chip's port B is the shadow") {
-    Frame_t frame = before;
+    Frame frame = before;
     frame.at(frame_pia_port_b_in) = 0x00;
     REQUIRE(peripheral_load_state(session.slot, frame.data(), frame.size()) ==
             peripheral_ok);

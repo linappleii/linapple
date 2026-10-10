@@ -13,10 +13,10 @@
 #include "apple2/Video.h"
 #include "frontends/common/VideoSurface.h"
 
-extern std::recursive_mutex g_video_draw_mutex;
+extern std::recursive_mutex video_draw_mutex;
 
 auto stretch_blt_mem_to_frame_dc() -> void {
-  const std::lock_guard<std::recursive_mutex> lock(g_video_draw_mutex);
+  const std::lock_guard<std::recursive_mutex> lock(video_draw_mutex);
   video_set_frame_ready(true);
 }
 

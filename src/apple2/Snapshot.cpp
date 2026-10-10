@@ -31,25 +31,25 @@ struct SlotRegionDesc {
 constexpr std::array<SlotRegionDesc, num_slots> slot_region_descriptors{
     {
         {
-            offsetof(Snapshot_t, apple2_unit.speaker),
-            sizeof(Snapshot_t::apple2_unit.speaker),
+            offsetof(Snapshot, apple2_unit.speaker),
+            sizeof(Snapshot::apple2_unit.speaker),
             "Speaker",
         },
-        {offsetof(Snapshot_t, empty1), sizeof(SsCardEmpty_t), nullptr},
-        {offsetof(Snapshot_t, apple2_unit.comms), sizeof(SsIoComms_t), nullptr},
-        {offsetof(Snapshot_t, empty3), sizeof(SsCardEmpty_t), nullptr},
+        {offsetof(Snapshot, empty1), sizeof(SsCardEmpty), nullptr},
+        {offsetof(Snapshot, apple2_unit.comms), sizeof(SsIoComms), nullptr},
+        {offsetof(Snapshot, empty3), sizeof(SsCardEmpty), nullptr},
         {
-            offsetof(Snapshot_t, mockingboard1),
-            sizeof(SsCardMockingboard_t),
+            offsetof(Snapshot, mockingboard1),
+            sizeof(SsCardMockingboard),
             nullptr,
         },
         {
-            offsetof(Snapshot_t, mockingboard2),
-            sizeof(SsCardMockingboard_t),
+            offsetof(Snapshot, mockingboard2),
+            sizeof(SsCardMockingboard),
             nullptr,
         },
         {0, 0, nullptr},
-        {offsetof(Snapshot_t, empty7), sizeof(SsCardEmpty_t), nullptr},
+        {offsetof(Snapshot, empty7), sizeof(SsCardEmpty), nullptr},
     },
 };
 
@@ -67,7 +67,7 @@ auto fixed_slot_desc(int slot) noexcept -> const SlotRegionDesc* {
 // Disk II persists state to mounted image; omitted from snapshot trailer.
 constexpr int skipped_slot = 6;
 
-auto trailer_entry(Snapshot_t* snapshot, int slot) noexcept -> SsSlotState_t* {
+auto trailer_entry(Snapshot* snapshot, int slot) noexcept -> SsSlotState* {
   if (snapshot == nullptr || slot < 1 ||
       slot > static_cast<int>(snapshot_trailer_slots) ||
       slot == skipped_slot) {
@@ -76,8 +76,8 @@ auto trailer_entry(Snapshot_t* snapshot, int slot) noexcept -> SsSlotState_t* {
   return &snapshot->slot_trailer.slots[slot - 1];
 }
 
-auto trailer_entry(const Snapshot_t* snapshot, int slot) noexcept
-    -> const SsSlotState_t* {
+auto trailer_entry(const Snapshot* snapshot, int slot) noexcept
+    -> const SsSlotState* {
   if (snapshot == nullptr || slot < 1 ||
       slot > static_cast<int>(snapshot_trailer_slots) ||
       slot == skipped_slot) {
@@ -87,7 +87,7 @@ auto trailer_entry(const Snapshot_t* snapshot, int slot) noexcept
 }
 
 // Query required buffer size before allocating frame.
-auto save_slot_to_trailer(int slot, SsSlotState_t* entry) noexcept -> void {
+auto save_slot_to_trailer(int slot, SsSlotState* entry) noexcept -> void {
   if (entry == nullptr) {
     return;
   }
@@ -109,12 +109,12 @@ auto save_slot_to_trailer(int slot, SsSlotState_t* entry) noexcept -> void {
   entry->length = static_cast<uint32_t>(needed);
 }
 
-auto trailer_is_sane(const Snapshot_t* snapshot) noexcept -> bool {
+auto trailer_is_sane(const Snapshot* snapshot) noexcept -> bool {
   if (snapshot == nullptr) {
     return false;
   }
   for (int slot = 1; slot <= static_cast<int>(snapshot_trailer_slots); ++slot) {
-    const SsSlotState_t* entry = trailer_entry(snapshot, slot);
+    const SsSlotState* entry = trailer_entry(snapshot, slot);
     if (entry != nullptr && entry->length > snapshot_slot_state_capacity) {
       Logger::error(
           "Snapshot slot %d claims %u bytes, more than a slot holds\n", slot,
@@ -128,10 +128,10 @@ auto trailer_is_sane(const Snapshot_t* snapshot) noexcept -> bool {
 // The one change of card a file may ask: the slot the Mouse in slot 4 key took
 // over may hold the displaced card instead, or the key's card again after such
 // a load. card is null when the slot is to be left empty.
-struct LegacySwap_t {
+struct LegacySwap {
   bool wanted = false;
   int slot = 0;
-  Peripheral_t* card = nullptr;
+  Peripheral* card = nullptr;
   const char* held = "";
   const char* wanted_name = "";
 };
@@ -142,9 +142,9 @@ auto name_or_none(const char* name) noexcept -> const char* {
 
 // Slot 0 holds several internal devices and a manifest names one of them;
 // peripheral_verify_manifest's rule for which are accepted decides here too.
-auto slot0_matches(const SsPeripheralManifest_t* file,
-                   const SsPeripheralManifest_t* live) -> bool {
-  SsPeripheralManifest_t probe = *live;
+auto slot0_matches(const SsPeripheralManifest* file,
+                   const SsPeripheralManifest* live) -> bool {
+  SsPeripheralManifest probe = *live;
   memcpy(probe.peripherals[0].name, file->peripherals[0].name,
          max_peripheral_name);
   return peripheral_verify_manifest(&probe);
@@ -153,9 +153,9 @@ auto slot0_matches(const SsPeripheralManifest_t* file,
 // The overridden slot alone may name the other of the two cards the key knows.
 // Nothing is changed here; the swap that would make the file match is only
 // described.
-auto manifest_admits(const SsPeripheralManifest_t* file, LegacySwap_t* swap)
+auto manifest_admits(const SsPeripheralManifest* file, LegacySwap* swap)
     -> bool {
-  SsPeripheralManifest_t live{};
+  SsPeripheralManifest live{};
   peripheral_get_manifest(&live);
   int override_slot = 0;
   const char* key_card = "";
@@ -185,7 +185,7 @@ auto manifest_admits(const SsPeripheralManifest_t* file, LegacySwap_t* swap)
         holding = displaced;
       }
       if (other != nullptr) {
-        Peripheral_t* card =
+        Peripheral* card =
             other[0] != '\0' ? peripheral_find_internal(other) : nullptr;
         if (other[0] != '\0' && card == nullptr) {
           Logger::info(
@@ -210,7 +210,7 @@ auto manifest_admits(const SsPeripheralManifest_t* file, LegacySwap_t* swap)
   return true;
 }
 
-auto apply_legacy_swap(const LegacySwap_t& swap) -> bool {
+auto apply_legacy_swap(const LegacySwap& swap) -> bool {
   if (!swap.wanted) {
     return true;
   }
@@ -230,12 +230,12 @@ auto apply_legacy_swap(const LegacySwap_t& swap) -> bool {
 
 }  // namespace
 
-auto snapshot_serialize(Snapshot_t* snapshot) noexcept -> void {
+auto snapshot_serialize(Snapshot* snapshot) noexcept -> void {
   if (snapshot == nullptr) {
     return;
   }
 
-  *snapshot = Snapshot_t{};
+  *snapshot = Snapshot{};
 
   snapshot->hdr.tag = snapshot_file_tag;
   snapshot->hdr.version = snapshot_version;
@@ -243,7 +243,7 @@ auto snapshot_serialize(Snapshot_t* snapshot) noexcept -> void {
   // file manager
   snapshot->hdr.checksum = 0;
 
-  snapshot->apple2_unit.unit_hdr.length = sizeof(SsApple2Unit_t);
+  snapshot->apple2_unit.unit_hdr.length = sizeof(SsApple2Unit);
   snapshot->apple2_unit.unit_hdr.version = make_version(1, 0, 0, 0);
 
   peripheral_get_manifest(&snapshot->manifest);
@@ -270,23 +270,23 @@ auto snapshot_serialize(Snapshot_t* snapshot) noexcept -> void {
     }
   }
 
-  snapshot->slot_trailer.unit_hdr.length = sizeof(SsSlotTrailer_t);
+  snapshot->slot_trailer.unit_hdr.length = sizeof(SsSlotTrailer);
   snapshot->slot_trailer.unit_hdr.version = make_version(1, 0, 0, 0);
   for (int i = 0; i < num_slots; ++i) {
-    SsSlotState_t* entry = trailer_entry(snapshot, i);
+    SsSlotState* entry = trailer_entry(snapshot, i);
     if (entry != nullptr) {
       save_slot_to_trailer(i, entry);
     }
   }
 }
 
-auto snapshot_deserialize(const Snapshot_t* snapshot) -> bool {
+auto snapshot_deserialize(const Snapshot* snapshot) -> bool {
   if (snapshot == nullptr) {
     return false;
   }
 
   // Every check that can refuse the file runs before the machine is touched.
-  LegacySwap_t swap;
+  LegacySwap swap;
   if (!manifest_admits(&snapshot->manifest, &swap)) {
     return false;
   }
@@ -327,7 +327,7 @@ auto snapshot_deserialize(const Snapshot_t* snapshot) -> bool {
 
   for (int i = 0; i < num_slots; ++i) {
     // Fall back to fixed body if slot trailer is empty.
-    const SsSlotState_t* entry = trailer_entry(snapshot, i);
+    const SsSlotState* entry = trailer_entry(snapshot, i);
     if (entry != nullptr && entry->length > 0) {
       peripheral_load_state(i, entry->data, entry->length);
       continue;

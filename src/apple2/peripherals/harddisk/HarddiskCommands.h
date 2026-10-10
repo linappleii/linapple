@@ -22,7 +22,7 @@ typedef enum {
   harddisk_drive_0 = 0,
   harddisk_drive_1 = 1,
   harddisk_drive_count = 2,
-} HarddiskDrive_t;
+} HarddiskDrive;
 
 /* 0x0005-0x0007 are retired ids, never reassigned, so a sender built against
    them is answered incompatible. */
@@ -30,12 +30,12 @@ typedef enum {
   harddisk_cmd_insert = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0001,
   harddisk_cmd_eject = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0002,
   harddisk_cmd_set_protect = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0004,
-} HarddiskCmd_t;
+} HarddiskCmd;
 
 typedef enum {
   harddisk_query_status = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0001,
   harddisk_query_supported_extensions = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0002,
-} HarddiskQuery_t;
+} HarddiskQuery;
 
 enum { harddisk_insert_path_max = 504, harddisk_default_slot = 7 };
 
@@ -45,16 +45,16 @@ typedef struct {
   uint8_t write_protected;
   uint8_t reserved;
   uint8_t padding[5];
-} HarddiskInsertCmd_t;
+} HarddiskInsertCmd;
 
 typedef struct {
   uint8_t drive;
-} HarddiskEjectCmd_t;
+} HarddiskEjectCmd;
 
 typedef struct {
   uint8_t drive;
   uint8_t write_protected;
-} HarddiskSetProtectCmd_t;
+} HarddiskSetProtectCmd;
 
 enum { harddisk_status_name_max = 32, harddisk_status_path_max = 512 };
 
@@ -63,7 +63,7 @@ typedef enum {
   harddisk_status_read = 0x01,
   harddisk_status_write = 0x02,
   harddisk_status_prot = 0x04,
-} HarddiskStatus;
+} HarddiskStatusFlags;
 
 // Widest members first and natural alignment, so the layout is the same in
 // every consumer without a packing directive.
@@ -80,7 +80,7 @@ typedef struct {
   char drive0_full_path[harddisk_status_path_max];
   char drive1_name[harddisk_status_name_max];
   char drive1_full_path[harddisk_status_path_max];
-} HarddiskStatus_t;
+} HarddiskStatus;
 
 /* The controller's registers, and nothing else: the image in each drive is
    the host's to mount and the configuration's to name, and the 512-byte
@@ -98,7 +98,7 @@ typedef struct {
   uint16_t data_index;
   uint16_t block_count;
   uint8_t reserved[2];
-} HarddiskSaveState_t;
+} HarddiskSaveState;
 
 enum { harddisk_save_state_size = 20 };
 

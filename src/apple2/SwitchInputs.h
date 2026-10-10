@@ -13,7 +13,7 @@ enum SwitchInputSource : uint8_t {
   switch_source_keyboard = 0,
   switch_source_connector = 1,
 };
-using SwitchInputSource_t = SwitchInputSource;
+using SwitchInputSource = SwitchInputSource;
 
 constexpr uint8_t switch_input_count = 3;
 

@@ -21,9 +21,9 @@ constexpr int last_slot = 7;
 
 TEST_CASE(
     "Mouse frontend: a machine with no mouse card answers no slot's query") {
-  TestFixtures::ScopedTestConfig_t config(
-      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedTestConfig config(
+      TestFixtures::ScopedTestConfig::enhanced_2e_only());
+  TestFixtures::ScopedCore core(config);
 
   for (int slot = first_slot; slot <= last_slot; ++slot) {
     uint8_t active = 0;
@@ -34,9 +34,9 @@ TEST_CASE(
 }
 
 TEST_CASE("Mouse frontend: with no card the probe caches no slot") {
-  TestFixtures::ScopedTestConfig_t config(
-      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedTestConfig config(
+      TestFixtures::ScopedTestConfig::enhanced_2e_only());
+  TestFixtures::ScopedCore core(config);
 
   mouse_frontend_initialize();
   CHECK(mouse_frontend_card_slot() == 0);
@@ -66,24 +66,24 @@ constexpr size_t frame_mode = 74;
 constexpr size_t frame_status = 76;
 constexpr size_t frame_button = 79;
 
-using Frame_t = std::array<uint8_t, frame_size>;
+using Frame = std::array<uint8_t, frame_size>;
 
-auto read_frame(int slot) -> Frame_t {
-  Frame_t frame{};
+auto read_frame(int slot) -> Frame {
+  Frame frame{};
   size_t size = frame.size();
   peripheral_save_state(slot, frame.data(), &size);
   REQUIRE(size == frame.size());
   return frame;
 }
 
-auto word_at(const Frame_t& frame, size_t offset) -> int16_t {
+auto word_at(const Frame& frame, size_t offset) -> int16_t {
   return static_cast<int16_t>(frame.at(offset) | (frame.at(offset + 1) << 8));
 }
 
 // The loader is the one public path that turns tracking on without running
 // the firmware.
 auto turn_tracking_on(int slot) -> void {
-  Frame_t frame{};
+  Frame frame{};
   frame.at(0) = MOUSE_STATE_VERSION;
   frame.at(4) = frame_size;
   frame.at(frame_max_x) = 0xFF;
@@ -100,13 +100,13 @@ auto turn_tracking_on(int slot) -> void {
           peripheral_ok);
 }
 
-auto put_word(Frame_t* frame, size_t offset, int16_t value) -> void {
+auto put_word(Frame* frame, size_t offset, int16_t value) -> void {
   const auto bits = static_cast<uint16_t>(value);
   frame->at(offset) = static_cast<uint8_t>(bits & 0xFF);
   frame->at(offset + 1) = static_cast<uint8_t>(bits >> 8);
 }
 
-struct CardState_t {
+struct CardState {
   uint8_t mode;
   int16_t x;
   int16_t y;
@@ -118,9 +118,9 @@ struct CardState_t {
 
 // The mode, the counters and the clamps set over the tracking frame; like
 // POSMOUSE, a position outside the window is taken as given.
-auto load_card(int slot, const CardState_t& state) -> void {
+auto load_card(int slot, const CardState& state) -> void {
   turn_tracking_on(slot);
-  Frame_t frame = read_frame(slot);
+  Frame frame = read_frame(slot);
   put_word(&frame, frame_position_x, state.x);
   put_word(&frame, frame_position_y, state.y);
   put_word(&frame, frame_min_x, state.min_x);
@@ -132,8 +132,8 @@ auto load_card(int slot, const CardState_t& state) -> void {
           peripheral_ok);
 }
 
-auto query_position(int slot) -> MousePositionReport_t {
-  MousePositionReport_t report{};
+auto query_position(int slot) -> MousePositionReport {
+  MousePositionReport report{};
   size_t size = sizeof(report);
   REQUIRE(peripheral_query_by_id(slot, "linapple.mouse", mouse_query_position,
                                  &report, &size) == peripheral_ok);
@@ -143,7 +143,7 @@ auto query_position(int slot) -> MousePositionReport_t {
 
 auto position(int slot) -> std::array<int16_t, 2> {
   peripheral_manager_think(0);
-  const Frame_t frame = read_frame(slot);
+  const Frame frame = read_frame(slot);
   return {word_at(frame, frame_position_x), word_at(frame, frame_position_y)};
 }
 
@@ -152,10 +152,10 @@ auto position(int slot) -> std::array<int16_t, 2> {
 TEST_CASE(
     "Mouse frontend: the probe finds the card in slot 5 and a button reaches "
     "it") {
-  TestFixtures::ScopedTestConfig_t::Description_t description;
+  TestFixtures::ScopedTestConfig::Description description;
   description.slots[4] = "Mouse Interface";
-  TestFixtures::ScopedTestConfig_t config(description);
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedTestConfig config(description);
+  TestFixtures::ScopedCore core(config);
 
   mouse_frontend_initialize();
   CHECK(mouse_frontend_card_slot() == 5);
@@ -169,10 +169,10 @@ TEST_CASE(
 TEST_CASE(
     "Mouse frontend: host motion reaches the card as one count per hires "
     "pixel of the picture, the remainder carried with its sign") {
-  TestFixtures::ScopedTestConfig_t::Description_t description;
+  TestFixtures::ScopedTestConfig::Description description;
   description.slots[3] = "Mouse Interface";
-  TestFixtures::ScopedTestConfig_t config(description);
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedTestConfig config(description);
+  TestFixtures::ScopedCore core(config);
   mouse_frontend_initialize();
   REQUIRE(mouse_frontend_card_slot() == 4);
   turn_tracking_on(4);
@@ -226,15 +226,15 @@ TEST_CASE(
 TEST_CASE(
     "Mouse frontend: the position query answers the counters, the clamp "
     "window and whether motion is on") {
-  TestFixtures::ScopedTestConfig_t::Description_t description;
+  TestFixtures::ScopedTestConfig::Description description;
   description.slots[3] = "Mouse Interface";
-  TestFixtures::ScopedTestConfig_t config(description);
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedTestConfig config(description);
+  TestFixtures::ScopedCore core(config);
   mouse_frontend_initialize();
   REQUIRE(mouse_frontend_card_slot() == 4);
 
   load_card(4, {1, 50, -60, 10, 270, -20, 180});
-  MousePositionReport_t report = query_position(4);
+  MousePositionReport report = query_position(4);
   CHECK(report.x == 50);
   CHECK(report.y == -60);
   CHECK(report.min_x == 10);
@@ -253,10 +253,10 @@ TEST_CASE(
 TEST_CASE(
     "Mouse frontend: the host pointer's place in the picture puts the card's "
     "pointer at the same place in its clamp window") {
-  TestFixtures::ScopedTestConfig_t::Description_t description;
+  TestFixtures::ScopedTestConfig::Description description;
   description.slots[3] = "Mouse Interface";
-  TestFixtures::ScopedTestConfig_t config(description);
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedTestConfig config(description);
+  TestFixtures::ScopedCore core(config);
   mouse_frontend_initialize();
   REQUIRE(mouse_frontend_card_slot() == 4);
   constexpr MousePictureRect text_box{0, 0, 80, 24};

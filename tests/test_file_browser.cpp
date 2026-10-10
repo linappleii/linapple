@@ -112,7 +112,7 @@ auto create_dummy_file(const std::string& path, size_t size) -> void {
 }  // namespace
 
 TEST_CASE("FileBrowser: LocalFileListGenerator") {
-  TestFixtures::ScopedTempDir_t temp_dir;
+  TestFixtures::ScopedTempDir temp_dir;
   const std::string& test_dir = temp_dir.path();
 
   mkdir((test_dir + "/subdir").c_str(), 0755);
@@ -231,7 +231,7 @@ TEST_CASE("DiskBrowser: Title Formatting") {
 }
 
 TEST_CASE("DiskBrowser: Navigation Operations") {
-  TestFixtures::ScopedTempDir_t temp_dir;
+  TestFixtures::ScopedTempDir temp_dir;
   DiskBrowser browser{};
   DiskBrowserGuard guard{&browser};
   CHECK(disk_browser_open(&browser, 6, 0, temp_dir.c_str()) == true);
@@ -252,7 +252,7 @@ TEST_CASE("DiskBrowser: Navigation Operations") {
 }
 
 TEST_CASE("DiskBrowser: Directory Navigation Logic Up Entry") {
-  TestFixtures::ScopedTempDir_t temp_dir;
+  TestFixtures::ScopedTempDir temp_dir;
   std::string sub_dir = temp_dir.path() + "/nested";
   mkdir(sub_dir.c_str(), 0755);
 

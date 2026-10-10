@@ -14,22 +14,22 @@
 #include <pulse/def.h>
 #include <pulse/sample.h>
 #include <pulse/simple.h>
-static pa_simple* g_pa_handle = nullptr;
+static pa_simple* pa_handle = nullptr;
 #endif
 
 #ifdef HAVE_ALSA
 #include <alsa/asoundlib.h>  // IWYU pragma: keep
 #include <alsa/pcm.h>
-static snd_pcm_t* g_alsa_handle = nullptr;
+static snd_pcm_t* alsa_handle = nullptr;
 #endif
 
 namespace {
 
-enum class AudioDriver_t : uint8_t { none, pulse, alsa, bell };
-static AudioDriver_t g_driver = AudioDriver_t::none;
+enum class AudioDriver : uint8_t { none, pulse, alsa, bell };
+static AudioDriver audio_driver = AudioDriver::none;
 
-static std::atomic<bool> g_audio_running(false);
-static std::thread g_audio_thread;
+static std::atomic<bool> audio_running(false);
+static std::thread audio_thread;
 
 static constexpr size_t chunk_frames = 512;
 static constexpr size_t channels = 2;
@@ -47,22 +47,22 @@ static constexpr unsigned int fallback_rate_hz = 44100;
 static auto audio_thread_func() -> void {
   std::array<int16_t, chunk_frames * channels> stereo_buffer{};
 
-  while (g_audio_running) {
+  while (audio_running) {
     audio_mixer_get_samples(stereo_buffer.data(), stereo_buffer.size());
 
-    if (g_driver == AudioDriver_t::pulse) {
+    if (audio_driver == AudioDriver::pulse) {
 #ifdef HAVE_PULSE_SIMPLE
       int error = 0;
-      if (pa_simple_write(g_pa_handle, stereo_buffer.data(),
+      if (pa_simple_write(pa_handle, stereo_buffer.data(),
                           stereo_buffer.size() * sizeof(int16_t), &error) < 0) {
       }
 #endif
-    } else if (g_driver == AudioDriver_t::alsa) {
+    } else if (audio_driver == AudioDriver::alsa) {
 #ifdef HAVE_ALSA
       snd_pcm_sframes_t frames =
-          snd_pcm_writei(g_alsa_handle, stereo_buffer.data(), chunk_frames);
+          snd_pcm_writei(alsa_handle, stereo_buffer.data(), chunk_frames);
       if (frames < 0) {
-        snd_pcm_recover(g_alsa_handle, static_cast<int>(frames), 1);
+        snd_pcm_recover(alsa_handle, static_cast<int>(frames), 1);
       }
 #endif
     } else {
@@ -74,7 +74,7 @@ static auto audio_thread_func() -> void {
 }  // namespace
 
 auto tui_audio_initialize() -> void {
-  if (g_audio_running) {
+  if (audio_running) {
     return;
   }
 
@@ -96,19 +96,19 @@ auto tui_audio_initialize() -> void {
   attr.fragsize = static_cast<uint32_t>(-1);
 
   int error = 0;
-  g_pa_handle =
+  pa_handle =
       pa_simple_new(nullptr, "LinApple-TUI", PA_STREAM_PLAYBACK, nullptr,
                     "emulation", &ss, nullptr, &attr, &error);
-  if (g_pa_handle) {
-    g_driver = AudioDriver_t::pulse;
+  if (pa_handle) {
+    audio_driver = AudioDriver::pulse;
   }
 #endif
 
 #ifdef HAVE_ALSA
-  if (g_driver == AudioDriver_t::none) {
-    if (snd_pcm_open(&g_alsa_handle, "default", SND_PCM_STREAM_PLAYBACK, 0) >=
+  if (audio_driver == AudioDriver::none) {
+    if (snd_pcm_open(&alsa_handle, "default", SND_PCM_STREAM_PLAYBACK, 0) >=
         0) {
-      snd_pcm_set_params(g_alsa_handle, SND_PCM_FORMAT_S16_LE,
+      snd_pcm_set_params(alsa_handle, SND_PCM_FORMAT_S16_LE,
                          SND_PCM_ACCESS_RW_INTERLEAVED, channels,
                          fallback_rate_hz, 1, buffer_ms * usec_per_msec);
 
@@ -116,7 +116,7 @@ auto tui_audio_initialize() -> void {
       if (snd_pcm_hw_params_malloc(&hw_params) >= 0) {
         unsigned int configured_rate = 0;
         int rate_dir = 0;
-        if (snd_pcm_hw_params_current(g_alsa_handle, hw_params) >= 0 &&
+        if (snd_pcm_hw_params_current(alsa_handle, hw_params) >= 0 &&
             snd_pcm_hw_params_get_rate(hw_params, &configured_rate,
                                        &rate_dir) >= 0 &&
             configured_rate > 0) {
@@ -125,44 +125,44 @@ auto tui_audio_initialize() -> void {
         snd_pcm_hw_params_free(hw_params);
       }
 
-      g_driver = AudioDriver_t::alsa;
+      audio_driver = AudioDriver::alsa;
     }
   }
 #endif
 
-  if (g_driver == AudioDriver_t::none) {
-    g_driver = AudioDriver_t::bell;
+  if (audio_driver == AudioDriver::none) {
+    audio_driver = AudioDriver::bell;
   }
 
   // The mixer has to know the rate before the draining thread starts asking
   // it for samples.
   audio_mixer_initialize(device_rate_hz);
 
-  g_audio_running = true;
-  g_audio_thread = std::thread(audio_thread_func);
+  audio_running = true;
+  audio_thread = std::thread(audio_thread_func);
 }
 
 auto tui_audio_shutdown() -> void {
-  g_audio_running = false;
-  if (g_audio_thread.joinable()) {
-    g_audio_thread.join();
+  audio_running = false;
+  if (audio_thread.joinable()) {
+    audio_thread.join();
   }
 
 #ifdef HAVE_PULSE_SIMPLE
-  if (g_pa_handle) {
-    pa_simple_free(g_pa_handle);
-    g_pa_handle = nullptr;
+  if (pa_handle) {
+    pa_simple_free(pa_handle);
+    pa_handle = nullptr;
   }
 #endif
 
 #ifdef HAVE_ALSA
-  if (g_alsa_handle) {
-    snd_pcm_close(g_alsa_handle);
-    g_alsa_handle = nullptr;
+  if (alsa_handle) {
+    snd_pcm_close(alsa_handle);
+    alsa_handle = nullptr;
   }
 #endif
 
   audio_mixer_destroy();
 
-  g_driver = AudioDriver_t::none;
+  audio_driver = AudioDriver::none;
 }

@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-class MemoryTextFile_t {
+class MemoryTextFile {
   std::vector<char> buffer_;
   std::vector<char*> lines_;
   bool dirty_{false};
@@ -12,7 +12,7 @@ class MemoryTextFile_t {
   auto GetLinePointers() -> void;
 
  public:
-  MemoryTextFile_t() noexcept = default;
+  MemoryTextFile() noexcept = default;
 
   auto Read(const std::string& filename) -> bool;
 

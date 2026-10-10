@@ -12,7 +12,7 @@
 
 TEST_CASE("FTPClient: Parameter Validation") {
   FtpClient client;
-  TestFixtures::ScopedTempDir_t temp_dir("linapple_ftp_val_");
+  TestFixtures::ScopedTempDir temp_dir("linapple_ftp_val_");
   REQUIRE_FALSE(temp_dir.path().empty());
 
   SUBCASE("Empty remote URL") {
@@ -42,7 +42,7 @@ TEST_CASE("FTPClient: Parameter Validation") {
 
 TEST_CASE("FTPClient: Path Traversal Defense") {
   FtpClient client;
-  TestFixtures::ScopedTempDir_t temp_dir("linapple_ftp_trav_");
+  TestFixtures::ScopedTempDir temp_dir("linapple_ftp_trav_");
   REQUIRE_FALSE(temp_dir.path().empty());
 
   SUBCASE("Parent directory traversal via ..") {
@@ -102,7 +102,7 @@ TEST_CASE("FTPClient: Path Traversal Defense") {
 
 TEST_CASE("FTPClient: Atomic Download Staging and Cleanup on Failure") {
   FtpClient client;
-  TestFixtures::ScopedTempDir_t temp_dir("linapple_ftp_stage_");
+  TestFixtures::ScopedTempDir temp_dir("linapple_ftp_stage_");
   REQUIRE_FALSE(temp_dir.path().empty());
 
   // Using an unsupported scheme (http) ensures libcurl rejects the transfer
@@ -131,7 +131,7 @@ TEST_CASE("FTPClient: Atomic Download Staging and Cleanup on Failure") {
 
 TEST_CASE("FTPClient: URL Encoding and Slash Collapsing") {
   FtpClient client;
-  TestFixtures::ScopedTempDir_t temp_dir("linapple_ftp_spaces_");
+  TestFixtures::ScopedTempDir temp_dir("linapple_ftp_spaces_");
   REQUIRE_FALSE(temp_dir.path().empty());
 
   // Verify that a URL containing unencoded spaces and consecutive slashes is

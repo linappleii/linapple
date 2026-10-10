@@ -7,13 +7,13 @@
 
 namespace {
 
-struct CallbackRecord_t {
+struct CallbackRecord {
   uint32_t call_count = 0;
   uint8_t last_val = 0;
 };
 
 auto test_callback(void* obj_to, uint8_t data) -> void {
-  auto* rec = static_cast<CallbackRecord_t*>(obj_to);
+  auto* rec = static_cast<CallbackRecord*>(obj_to);
   if (rec != nullptr) {
     ++rec->call_count;
     rec->last_val = data;
@@ -106,8 +106,8 @@ TEST_CASE("6821 PIA: Output Listeners Receive Masked Values") {
   Pia6821 pia;
   pia_6821_reset(&pia);
 
-  CallbackRecord_t rec_a{};
-  CallbackRecord_t rec_b{};
+  CallbackRecord rec_a{};
+  CallbackRecord rec_b{};
 
   pia_6821_set_listener_a(&pia, &rec_a, test_callback);
   pia_6821_set_listener_b(&pia, &rec_b, test_callback);

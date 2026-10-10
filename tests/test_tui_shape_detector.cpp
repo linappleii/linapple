@@ -117,7 +117,7 @@ TEST_CASE("TuiShapeDetector: Uniform Cells") {
 }
 
 TEST_CASE("TuiShapeDetector: All 11 Box Drawing Shapes") {
-  struct BoxTestCase_t {
+  struct BoxTestCase {
     const char* expected;
     bool top;
     bool bottom;
@@ -125,7 +125,7 @@ TEST_CASE("TuiShapeDetector: All 11 Box Drawing Shapes") {
     bool right;
   };
 
-  const std::array<BoxTestCase_t, 11> test_cases = {
+  const std::array<BoxTestCase, 11> test_cases = {
       {
           {"\xe2\x94\x80", false, false, true, true},  // ─
           {"\xe2\x94\x82", true, true, false, false},  // │
@@ -188,14 +188,14 @@ TEST_CASE(
   auto fb = make_framebuffer();
   TuiState cell{};
 
-  constexpr uint8_t r_col = 200;
-  constexpr uint8_t g_col = 100;
-  constexpr uint8_t b_col = 50;
+  constexpr uint8_t red_col = 200;
+  constexpr uint8_t col = 100;
+  constexpr uint8_t blue_col = 50;
 
   // Fill only Top-Left quadrant (x in [0, 7), y in [0, 8))
   for (int y = 0; y < cell_h / 2; ++y) {
     for (int x = 0; x < cell_w / 2; ++x) {
-      set_pixel_rgb(fb, x, y, r_col, g_col, b_col);
+      set_pixel_rgb(fb, x, y, red_col, col, blue_col);
     }
   }
 
@@ -207,7 +207,7 @@ TEST_CASE(
   fb = make_framebuffer();
   for (int y = 0; y < cell_h / 2; ++y) {
     for (int x = 0; x < cell_w; ++x) {
-      set_pixel_rgb(fb, x, y, g_col, r_col, g_col);
+      set_pixel_rgb(fb, x, y, col, red_col, col);
     }
   }
   tui_shape_detect_cell(fb.data(), pitch, 0, 0, cell_w, cell_h, &cell);

@@ -8,9 +8,9 @@
 extern "C" {
 #endif
 
-struct Peripheral_t;
+struct Peripheral;
 
-struct Peripheral_t* harddisk_get_descriptor(void);
+struct Peripheral* harddisk_get_descriptor(void);
 
 #ifdef __cplusplus
 }

@@ -102,7 +102,7 @@ auto two_img_open(const char* path, uint32_t file_offset, bool read_only,
   }
   file.reset();
 
-  TwoImgHeader_t parsed{};
+  TwoImgHeader parsed{};
   const HarddiskError parse_error = two_img_parse(
       header.data(), static_cast<uint64_t>(total_file_size) - file_offset,
       &parsed);
@@ -123,11 +123,11 @@ const char* const two_img_supported_exts[] = {"2mg", "2img", "2meg", nullptr};
 }  // namespace
 
 auto two_img_parse(const uint8_t* header, uint64_t file_size,
-                   TwoImgHeader_t* out) -> HarddiskError {
+                   TwoImgHeader* out) -> HarddiskError {
   if (header == nullptr || out == nullptr) {
     return harddisk_err_io;
   }
-  *out = TwoImgHeader_t{};
+  *out = TwoImgHeader{};
 
   if (memcmp(header + field::magic, "2IMG", magic_size) != 0) {
     return harddisk_err_invalid_format;
@@ -206,7 +206,7 @@ auto two_img_parse(const uint8_t* header, uint64_t file_size,
   return harddisk_err_none;
 }
 
-extern "C" const HarddiskFormatDriver_t g_two_img_driver = {
+extern "C" const HarddiskFormatDriver two_img_driver = {
     .abi_version = harddisk_format_abi_version,
     .capabilities = harddisk_driver_cap_write,
     .name = "2MG",
@@ -220,6 +220,6 @@ extern "C" const HarddiskFormatDriver_t g_two_img_driver = {
     .get_total_blocks = block_disk_image_get_total_blocks,
 };
 
-static const HarddiskFormatRegistration_t registration{&g_two_img_driver};
+static const HarddiskFormatRegistration registration{&two_img_driver};
 
 // NOLINTEND(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, google-runtime-int)

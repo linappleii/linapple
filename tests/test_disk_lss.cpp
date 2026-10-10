@@ -60,14 +60,14 @@ constexpr uint32_t arrival_first_33 = 72;
 constexpr uint32_t arrival_second_33 = 105;
 constexpr uint32_t arrival_third_33 = 138;
 
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 
-struct SyntheticMedium_t {
+struct SyntheticMedium {
   std::vector<uint8_t> cells;
   uint8_t bit_timing = disk_default_bit_timing;
 };
 
-SyntheticMedium_t g_medium;
+SyntheticMedium medium;
 
 auto set_cell(std::vector<uint8_t>* packed, uint32_t index, bool one) -> void {
   const auto mask = static_cast<uint8_t>(0x80U >> (index & 7U));
@@ -79,17 +79,17 @@ auto set_cell(std::vector<uint8_t>* packed, uint32_t index, bool one) -> void {
 }
 
 auto build_medium(uint8_t bit_timing) -> void {
-  g_medium.bit_timing = bit_timing;
-  g_medium.cells.assign(synthetic_cell_count / 8, 0);
+  medium.bit_timing = bit_timing;
+  medium.cells.assign(synthetic_cell_count / 8, 0);
 
   uint32_t index = 0;
   for (uint8_t bit = 0; bit < 8; ++bit) {
-    set_cell(&g_medium.cells, index++, true);
+    set_cell(&medium.cells, index++, true);
   }
   index = sync_cells;
   for (const uint8_t nibble : {first_nibble, second_nibble, third_nibble}) {
     for (int bit = 7; bit >= 0; --bit) {
-      set_cell(&g_medium.cells, index++,
+      set_cell(&medium.cells, index++,
                ((nibble >> static_cast<unsigned>(bit)) & 1U) != 0);
     }
   }
@@ -103,7 +103,7 @@ auto synthetic_probe(const uint8_t* /*unused*/, size_t /*unused*/,
 
 auto synthetic_open(const char* /*unused*/, uint32_t /*unused*/,
                     bool /*unused*/, void** out_instance) -> DiskError {
-  *out_instance = &g_medium;
+  *out_instance = &medium;
   return disk_err_none;
 }
 
@@ -117,11 +117,11 @@ auto synthetic_read(void* /*unused*/, uint32_t /*unused*/, uint8_t* bits,
   if (synthetic_cell_count > max_bits) {
     return disk_err_unsupported;
   }
-  for (size_t byte = 0; byte < g_medium.cells.size(); ++byte) {
-    bits[byte] = g_medium.cells[byte];
+  for (size_t byte = 0; byte < medium.cells.size(); ++byte) {
+    bits[byte] = medium.cells[byte];
   }
   *out_bit_count = synthetic_cell_count;
-  *out_bit_timing = g_medium.bit_timing;
+  *out_bit_timing = medium.bit_timing;
   return disk_err_none;
 }
 
@@ -130,14 +130,14 @@ auto synthetic_write(void* /*unused*/, uint32_t /*unused*/, const uint8_t* bits,
   if (bit_count != synthetic_cell_count) {
     return disk_err_unsupported;
   }
-  for (size_t byte = 0; byte < g_medium.cells.size(); ++byte) {
-    g_medium.cells[byte] = bits[byte];
+  for (size_t byte = 0; byte < medium.cells.size(); ++byte) {
+    medium.cells[byte] = bits[byte];
   }
   return disk_err_none;
 }
 
-auto synthetic_driver() -> const DiskFormatDriver_t* {
-  static const DiskFormatDriver_t driver = {
+auto synthetic_driver() -> const DiskFormatDriver* {
+  static const DiskFormatDriver driver = {
       disk_format_abi_version,
       disk_driver_cap_write,
       "AAA Synthetic Bit Stream",
@@ -153,10 +153,10 @@ auto synthetic_driver() -> const DiskFormatDriver_t* {
   return &driver;
 }
 
-struct ScopedMediumFile_t {
+struct ScopedMediumFile {
   char path[64] = "/tmp/linapple_lss_XXXXXX";
 
-  ScopedMediumFile_t() {
+  ScopedMediumFile() {
     const int fd = mkstemp(path);
     if (fd >= 0) {
       const std::vector<uint8_t> junk(333, 0x17);
@@ -165,17 +165,17 @@ struct ScopedMediumFile_t {
       close(fd);
     }
   }
-  ~ScopedMediumFile_t() { unlink(path); }
+  ~ScopedMediumFile() { unlink(path); }
 
-  ScopedMediumFile_t(const ScopedMediumFile_t&) = delete;
-  auto operator=(const ScopedMediumFile_t&) -> ScopedMediumFile_t& = delete;
-  ScopedMediumFile_t(ScopedMediumFile_t&&) = delete;
-  auto operator=(ScopedMediumFile_t&&) -> ScopedMediumFile_t& = delete;
+  ScopedMediumFile(const ScopedMediumFile&) = delete;
+  auto operator=(const ScopedMediumFile&) -> ScopedMediumFile& = delete;
+  ScopedMediumFile(ScopedMediumFile&&) = delete;
+  auto operator=(ScopedMediumFile&&) -> ScopedMediumFile& = delete;
 };
 
-class LssHarness_t {
+class LssHarness {
  public:
-  explicit LssHarness_t(uint8_t bit_timing) {
+  explicit LssHarness(uint8_t bit_timing) {
     build_medium(bit_timing);
     machine_.load();
     linapple_init();
@@ -183,13 +183,13 @@ class LssHarness_t {
     linapple_register_peripherals();
     disk_loader_register(synthetic_driver());
 
-    DiskInsertCmd_t cmd{};
+    DiskInsertCmd cmd{};
     cmd.drive = disk_drive_0;
     util_safe_strcpy(cmd.path, file_.path, disk_insert_path_max);
     peripheral_command(slot_6, disk_cmd_insert, &cmd, sizeof(cmd));
     peripheral_manager_think(0);
 
-    DiskStatus_t status{};
+    DiskStatus status{};
     size_t size = sizeof(status);
     peripheral_query(slot_6, disk_query_status, &status, &size);
     REQUIRE(status.drive0_loaded == 1);
@@ -201,15 +201,15 @@ class LssHarness_t {
     io_map_dispatch(0, io_q6_clear, 0, 0, 0);
   }
 
-  ~LssHarness_t() {
+  ~LssHarness() {
     linapple_shutdown();
     disk_loader_reset();
   }
 
-  LssHarness_t(const LssHarness_t&) = delete;
-  auto operator=(const LssHarness_t&) -> LssHarness_t& = delete;
-  LssHarness_t(LssHarness_t&&) = delete;
-  auto operator=(LssHarness_t&&) -> LssHarness_t& = delete;
+  LssHarness(const LssHarness&) = delete;
+  auto operator=(const LssHarness&) -> LssHarness& = delete;
+  LssHarness(LssHarness&&) = delete;
+  auto operator=(LssHarness&&) -> LssHarness& = delete;
 
   static auto read_at(uint16_t address, uint32_t cycle) -> uint8_t {
     return io_map_dispatch(0, address, 0, 0, cycle);
@@ -225,18 +225,18 @@ class LssHarness_t {
   }
 
  private:
-  TestConfig_t machine_{TestConfig_t::disk_ii_only()};
-  ScopedMediumFile_t file_;
+  TestConfig machine_{TestConfig::disk_ii_only()};
+  ScopedMediumFile file_;
 };
 
 // Reads the data register once a cycle and records every cycle on which a
 // finished byte first appears.
-struct Arrival_t {
+struct Arrival {
   uint32_t cycle;
   uint8_t value;
 };
 
-auto trace_register(LssHarness_t* harness, uint32_t last_cycle)
+auto trace_register(LssHarness* harness, uint32_t last_cycle)
     -> std::vector<uint8_t> {
   std::vector<uint8_t> trace(last_cycle + 1, 0);
   for (uint32_t cycle = 1; cycle <= last_cycle; ++cycle) {
@@ -245,8 +245,8 @@ auto trace_register(LssHarness_t* harness, uint32_t last_cycle)
   return trace;
 }
 
-auto arrivals_in(const std::vector<uint8_t>& trace) -> std::vector<Arrival_t> {
-  std::vector<Arrival_t> arrivals;
+auto arrivals_in(const std::vector<uint8_t>& trace) -> std::vector<Arrival> {
+  std::vector<Arrival> arrivals;
   bool register_is_clear = true;
   for (uint32_t cycle = 1; cycle < trace.size(); ++cycle) {
     if ((trace[cycle] & 0x80U) == 0) {
@@ -264,9 +264,9 @@ auto arrivals_in(const std::vector<uint8_t>& trace) -> std::vector<Arrival_t> {
 }  // namespace
 
 TEST_CASE("DiskLSS: [LSS-01] Bytes arrive on the cycles the P6 loop gives") {
-  LssHarness_t harness(disk_default_bit_timing);
+  LssHarness harness(disk_default_bit_timing);
   const std::vector<uint8_t> trace = trace_register(&harness, 200);
-  const std::vector<Arrival_t> arrivals = arrivals_in(trace);
+  const std::vector<Arrival> arrivals = arrivals_in(trace);
 
   REQUIRE(arrivals.size() >= 4);
   CHECK(arrivals[0].cycle == arrival_sync_32);
@@ -288,8 +288,8 @@ TEST_CASE("DiskLSS: [LSS-01] Bytes arrive on the cycles the P6 loop gives") {
 
 TEST_CASE("DiskLSS: [LSS-02] A shorter or longer cell shifts the arrivals") {
   {
-    LssHarness_t harness(31);
-    const std::vector<Arrival_t> arrivals =
+    LssHarness harness(31);
+    const std::vector<Arrival> arrivals =
         arrivals_in(trace_register(&harness, 200));
     REQUIRE(arrivals.size() >= 4);
     CHECK(arrivals[1].cycle == arrival_first_31);
@@ -298,8 +298,8 @@ TEST_CASE("DiskLSS: [LSS-02] A shorter or longer cell shifts the arrivals") {
     CHECK(arrivals[3].cycle == arrival_third_31);
   }
   {
-    LssHarness_t harness(33);
-    const std::vector<Arrival_t> arrivals =
+    LssHarness harness(33);
+    const std::vector<Arrival> arrivals =
         arrivals_in(trace_register(&harness, 200));
     REQUIRE(arrivals.size() >= 4);
     CHECK(arrivals[1].cycle == arrival_first_33);
@@ -310,12 +310,12 @@ TEST_CASE("DiskLSS: [LSS-02] A shorter or longer cell shifts the arrivals") {
 }
 
 TEST_CASE("DiskLSS: [LSS-03] Shift-write lays the register down cell by cell") {
-  LssHarness_t harness(disk_default_bit_timing);
+  LssHarness harness(disk_default_bit_timing);
 
   // Park the head at the index hole so the written bytes start at cell zero,
   // then write them the way RWTS does: load the register, drop back to
   // shift-write and give the medium the eight cells the byte needs.
-  DiskSavedState_t state{};
+  DiskSavedState state{};
   size_t size = sizeof(state);
   peripheral_save_state(slot_6, &state, &size);
   state.drives[0].current_byte_pos = 0;
@@ -338,7 +338,7 @@ TEST_CASE("DiskLSS: [LSS-03] Shift-write lays the register down cell by cell") {
 
   // The medium the driver is handed back carries what was written, so the
   // card saw it as cells rather than as a byte buffer it kept to itself.
-  DiskSavedState_t after{};
+  DiskSavedState after{};
   size = sizeof(after);
   peripheral_save_state(slot_6, &after, &size);
   CHECK(after.drives[0].is_dirty == 1);
@@ -369,7 +369,7 @@ constexpr int weak_sample_target = 1000;
 constexpr double weak_density_low = 0.20;
 constexpr double weak_density_high = 0.40;
 
-auto read_weak_bytes(LssHarness_t* harness, uint32_t first_cycle,
+auto read_weak_bytes(LssHarness* harness, uint32_t first_cycle,
                      uint32_t last_cycle) -> std::vector<uint8_t> {
   std::vector<uint8_t> bytes;
   bool register_is_clear = true;
@@ -406,11 +406,11 @@ TEST_CASE("DiskLSS: [LSS-04] A four-zero run reads as amplifier noise") {
   std::vector<uint8_t> first_pass;
   std::vector<uint8_t> repeat_pass;
   {
-    LssHarness_t harness(disk_default_bit_timing);
+    LssHarness harness(disk_default_bit_timing);
     first_pass = read_weak_bytes(&harness, 1, last_cycle);
   }
   {
-    LssHarness_t harness(disk_default_bit_timing);
+    LssHarness harness(disk_default_bit_timing);
     repeat_pass = read_weak_bytes(&harness, 1, last_cycle);
   }
 

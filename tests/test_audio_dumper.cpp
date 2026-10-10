@@ -15,7 +15,7 @@
 #include "test_fixtures.h"
 
 TEST_CASE("AudioDumper: [AUD-1] Explicit lifecycle generates valid WAV file") {
-  TestFixtures::ScopedTempFile_t temp_wav(".wav");
+  TestFixtures::ScopedTempFile temp_wav(".wav");
 
   {
     AudioDumper dumper;
@@ -61,7 +61,7 @@ TEST_CASE("AudioDumper: [AUD-1] Explicit lifecycle generates valid WAV file") {
 TEST_CASE(
     "AudioDumper: [AUD-2] RAII destruction automatically finalizes and patches "
     "WAV header") {
-  TestFixtures::ScopedTempFile_t temp_wav(".wav");
+  TestFixtures::ScopedTempFile temp_wav(".wav");
 
   {
     AudioDumper dumper;
@@ -102,7 +102,7 @@ TEST_CASE(
 
 TEST_CASE(
     "AudioDumper: [AUD-3] Thread safety during concurrent write and finalize") {
-  TestFixtures::ScopedTempFile_t temp_wav(".wav");
+  TestFixtures::ScopedTempFile temp_wav(".wav");
 
   AudioDumper dumper;
   REQUIRE(dumper.initialize(temp_wav.c_str(), 44100, 2) == true);
@@ -158,7 +158,7 @@ TEST_CASE(
   CHECK(dumper.put_samples(&dummy_sample, 0) == false);
 
   // Attempt to initialize with invalid parameters
-  TestFixtures::ScopedTempFile_t temp_wav(".wav");
+  TestFixtures::ScopedTempFile temp_wav(".wav");
   CHECK(dumper.initialize(nullptr, 44100, 2) == false);
   CHECK(dumper.initialize(temp_wav.c_str(), 0, 2) == false);
   CHECK(dumper.initialize(temp_wav.c_str(), 44100, 0) == false);
@@ -166,7 +166,7 @@ TEST_CASE(
 }
 
 TEST_CASE("AudioDumper: [AUD-5] C API wrappers lifecycle and error handling") {
-  TestFixtures::ScopedTempFile_t temp_wav(".wav");
+  TestFixtures::ScopedTempFile temp_wav(".wav");
   int16_t dummy_sample = 0x1111;
 
   // Null pointer checks
@@ -201,7 +201,7 @@ TEST_CASE("AudioDumper: [AUD-5] C API wrappers lifecycle and error handling") {
 }
 
 TEST_CASE("AudioDumper: [AUD-6] Move semantics transfer active state") {
-  TestFixtures::ScopedTempFile_t temp_wav(".wav");
+  TestFixtures::ScopedTempFile temp_wav(".wav");
 
   AudioDumper dumper1;
   REQUIRE(dumper1.initialize(temp_wav.c_str(), 44100, 2) == true);

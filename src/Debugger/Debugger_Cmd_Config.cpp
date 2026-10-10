@@ -22,40 +22,40 @@
 #include "core/Util_Path.h"
 
 // Globals originally from Debug.cpp
-bool g_config_disasm_address_view = true;
-int g_config_disasm_click =
+bool config_disasm_address_view = true;
+int config_disasm_click =
     4;  // GH#462 alt=1, ctrl=2, shift=4 bitmask (default to Shift-Click)
-bool g_config_disasm_address_colon = true;
-bool g_config_disasm_opcodes_view = true;
-bool g_config_disasm_opcode_spaces = true;
-int g_config_disasm_targets = DISASM_TARGET_BOTH;
-int g_config_disasm_branch_type = DISASM_BRANCH_FANCY;
-int g_config_disasm_immediate_char = DISASM_IMMED_BOTH;
-bool g_config_info_target_pointer = false;
+bool config_disasm_address_colon = true;
+bool config_disasm_opcodes_view = true;
+bool config_disasm_opcode_spaces = true;
+int config_disasm_targets = DISASM_TARGET_BOTH;
+int config_disasm_branch_type = DISASM_BRANCH_FANCY;
+int config_disasm_immediate_char = DISASM_IMMED_BOTH;
+bool config_info_target_pointer = false;
 
-MemoryTextFile_t g_config_state;
+MemoryTextFile config_state;
 
-bool g_report_missing_scripts = true;
+bool report_missing_scripts = true;
 
-const char* const g_file_name_config = "LinAppleDebugger.cfg";
+const char* const file_name_config = "LinAppleDebugger.cfg";
 
-static int g_disasm_display_lines = 0;
+static int disasm_display_lines = 0;
 
 // Local prototypes
 
 // Implementation
 
 //===========================================================================
-auto CmdConfigColorMono(int nArgs) -> Update_t {
+auto CmdConfigColorMono(int nArgs) -> UpdateResult {
   int iScheme = 0;
 
-  if (g_command == CMD_CONFIG_COLOR) {
+  if (command == CMD_CONFIG_COLOR) {
     iScheme = SCHEME_COLOR;
   }
-  if (g_command == CMD_CONFIG_MONOCHROME) {
+  if (command == CMD_CONFIG_MONOCHROME) {
     iScheme = SCHEME_MONO;
   }
-  if (g_command == CMD_CONFIG_BW) {
+  if (command == CMD_CONFIG_BW) {
     iScheme = SCHEME_BW;
   }
 
@@ -64,7 +64,7 @@ auto CmdConfigColorMono(int nArgs) -> Update_t {
   }
 
   if (nArgs == 0) {
-    g_color_scheme = iScheme;
+    color_scheme = iScheme;
     UpdateDisplay(UPDATE_BACKGROUND);
     return UPDATE_ALL;
   }
@@ -74,13 +74,13 @@ auto CmdConfigColorMono(int nArgs) -> Update_t {
     return HelpLastCommand();
   }
 
-  int iColor = g_args[1].nValue;
+  int iColor = args[1].nValue;
   if ((iColor < 0) || iColor >= NUM_DEBUG_COLORS) {
     return HelpLastCommand();
   }
 
   int iParam = 0;
-  int nFound = FindParam(g_args[1].sArg, MATCH_EXACT, iParam,
+  int nFound = FindParam(args[1].sArg, MATCH_EXACT, iParam,
                          PARAM_GENERAL_BEGIN, PARAM_GENERAL_END);
 
   if (nFound != 0) {
@@ -97,9 +97,9 @@ auto CmdConfigColorMono(int nArgs) -> Update_t {
       return ConsoleUpdate();
     }
     if (nArgs == 4) {  // Set Color
-      int R = g_args[2].nValue & 0xFF;
-      int G = g_args[3].nValue & 0xFF;
-      int B = g_args[4].nValue & 0xFF;
+      int R = args[2].nValue & 0xFF;
+      int G = args[3].nValue & 0xFF;
+      int B = args[4].nValue & 0xFF;
       uint32_t nColor = RGB(R, G, B);
 
       DebuggerSetColor(iScheme, iColor, nColor);
@@ -111,20 +111,20 @@ auto CmdConfigColorMono(int nArgs) -> Update_t {
   return UPDATE_ALL;
 }
 
-auto CmdConfigHColor(int nArgs) -> Update_t {
+auto CmdConfigHColor(int nArgs) -> UpdateResult {
   if ((nArgs != 1) && (nArgs != 4)) {
-    return Help_Arg_1(g_command);
+    return Help_Arg_1(command);
   }
 
-  int iColor = g_args[1].nValue;
+  int iColor = args[1].nValue;
   if ((iColor < 0) || iColor >= NUM_DEBUG_COLORS) {
-    return Help_Arg_1(g_command);
+    return Help_Arg_1(command);
   }
 
   if (nArgs == 1) {  // Dump Color
     // TODO/FIXME: must export AW_Video.cpp: static LPBITMAPINFO
     // framebufferinfo;
-    //    uint32_t nColor = g_colors[ iScheme ][ iColor ];
+    //    uint32_t nColor = colors[ iScheme ][ iColor ];
     //    ColorPrint( iColor, nColor );
     return ConsoleUpdate();
   }  // Set Color
@@ -132,7 +132,7 @@ auto CmdConfigHColor(int nArgs) -> Update_t {
 }
 
 //===========================================================================
-auto CmdConfigLoad(int nArgs) -> Update_t {
+auto CmdConfigLoad(int nArgs) -> UpdateResult {
   // TODO: CmdConfigRun( gaFileNameConfig )
 
   //  char sFileNameConfig[ path_max_len ];
@@ -145,7 +145,7 @@ auto CmdConfigLoad(int nArgs) -> Update_t {
 }
 
 //===========================================================================
-auto ConfigSave_BufferToDisk(const char* pFileName, ConfigSave_t eConfigSave)
+auto ConfigSave_BufferToDisk(const char* pFileName, ConfigSave eConfigSave)
     -> bool {
   bool bStatus = false;
 
@@ -159,16 +159,16 @@ auto ConfigSave_BufferToDisk(const char* pFileName, ConfigSave_t eConfigSave)
   }
 
   std::string sFileName = system_state.current_dir.data();
-  sFileName += pFileName;  // TODO: g_debug_dir
+  sFileName += pFileName;  // TODO: debug_dir
 
   FilePtr file{fopen(pFileName, pMode), fclose};
 
   if (file) {
     char* text = nullptr;
-    int num_lines = g_config_state.GetNumLines();
+    int num_lines = config_state.GetNumLines();
 
     for (int line_idx = 0; line_idx < num_lines; line_idx++) {
-      text = g_config_state.GetLine(line_idx);
+      text = config_state.GetLine(line_idx);
       if (text != nullptr) {
         fputs(text, file.get());
       }
@@ -180,23 +180,23 @@ auto ConfigSave_BufferToDisk(const char* pFileName, ConfigSave_t eConfigSave)
 }
 
 //===========================================================================
-auto ConfigSave_PrepareHeader(const Parameters_e eCategory,
-                              const Commands_e eCommandClear) -> void {
+auto ConfigSave_PrepareHeader(const Parameters eCategory,
+                              const Commands eCommandClear) -> void {
   char sText[CONSOLE_WIDTH];
 
   snprintf(sText, sizeof(sText), "%s %s = %s\n",
-           g_tokens[TOKEN_COMMENT_EOL].sToken,
-           g_parameters[PARAM_CATEGORY].name, g_parameters[eCategory].name);
-  g_config_state.PushLine(sText);
+           tokens[TOKEN_COMMENT_EOL].sToken,
+           parameters[PARAM_CATEGORY].name, parameters[eCategory].name);
+  config_state.PushLine(sText);
 
-  snprintf(sText, sizeof(sText), "%s %s\n", g_commands[eCommandClear].name,
-           g_parameters[PARAM_WILDSTAR].name);
-  g_config_state.PushLine(sText);
+  snprintf(sText, sizeof(sText), "%s %s\n", commands[eCommandClear].name,
+           parameters[PARAM_WILDSTAR].name);
+  config_state.PushLine(sText);
 }
 
 // Save Debugger Settings
 //===========================================================================
-auto CmdConfigSave(int nArgs) -> Update_t {
+auto CmdConfigSave(int nArgs) -> UpdateResult {
   (void)nArgs;
 
   // Bookmarks
@@ -226,13 +226,13 @@ auto CmdConfigSave(int nArgs) -> Update_t {
 // Config - Disasm
 // ________________________________________________________________________________
 
-auto CmdConfigDisasm(int nArgs) -> Update_t {
+auto CmdConfigDisasm(int nArgs) -> UpdateResult {
   int iParam = 0;
   char sText[CONSOLE_WIDTH];
 
   bool bDisplayCurrentSettings = false;
 
-  //  if (! strcmp( g_args[ 1 ].sArg, g_parameters[ PARAM_WILDSTAR ].m_sName ))
+  //  if (! strcmp( args[ 1 ].sArg, parameters[ PARAM_WILDSTAR ].name ))
   if (nArgs == 0) {
     bDisplayCurrentSettings = true;
     nArgs = PARAM_CONFIG_NUM;
@@ -245,7 +245,7 @@ auto CmdConfigDisasm(int nArgs) -> Update_t {
   for (int iArg = 1; iArg <= nArgs; iArg++) {
     if (bDisplayCurrentSettings) {
       iParam = PARAM_CONFIG_BEGIN + iArg - 1;
-    } else if (FindParam(g_args[iArg].sArg, MATCH_FUZZY, iParam) != 0) {
+    } else if (FindParam(args[iArg].sArg, MATCH_FUZZY, iParam) != 0) {
     }
 
     switch (iParam) {
@@ -253,17 +253,17 @@ auto CmdConfigDisasm(int nArgs) -> Update_t {
         if ((nArgs > 1) && (!bDisplayCurrentSettings))  // set
         {
           iArg++;
-          g_config_disasm_branch_type = g_args[iArg].nValue;
-          g_config_disasm_branch_type =
-              std::max(g_config_disasm_branch_type, 0);
-          if (g_config_disasm_branch_type >= NUM_DISASM_BRANCH_TYPES) {
-            g_config_disasm_branch_type = NUM_DISASM_BRANCH_TYPES - 1;
+          config_disasm_branch_type = args[iArg].nValue;
+          config_disasm_branch_type =
+              std::max(config_disasm_branch_type, 0);
+          if (config_disasm_branch_type >= NUM_DISASM_BRANCH_TYPES) {
+            config_disasm_branch_type = NUM_DISASM_BRANCH_TYPES - 1;
           }
 
         } else  // show current setting
         {
           ConsoleBufferPushFormat(sText, "Branch Type: %d",
-                                  g_config_disasm_branch_type);
+                                  config_disasm_branch_type);
           ConsoleBufferToDisplay();
         }
         break;
@@ -272,7 +272,7 @@ auto CmdConfigDisasm(int nArgs) -> Update_t {
         if ((nArgs > 1) && (!bDisplayCurrentSettings))  // set
         {
           iArg++;
-          g_config_disasm_click = g_args[iArg].nValue & 7;  // MAGIC NUMBER
+          config_disasm_click = args[iArg].nValue & 7;  // MAGIC NUMBER
         }
         //          else // Always show current setting -- TODO: Fix remaining
         //          disasm to show current setting when set
@@ -295,8 +295,8 @@ auto CmdConfigDisasm(int nArgs) -> Update_t {
               "Shift+Ctarl+Alt ",  // 7
           };
           ConsoleBufferPushFormat(sText, "Click: %d = %sLeft click",
-                                  g_config_disasm_click,
-                                  aClickKey[g_config_disasm_click & 7]);
+                                  config_disasm_click,
+                                  aClickKey[config_disasm_click & 7]);
           ConsoleBufferToDisplay();
         }
         break;
@@ -305,12 +305,12 @@ auto CmdConfigDisasm(int nArgs) -> Update_t {
         if ((nArgs > 1) && (!bDisplayCurrentSettings))  // set
         {
           iArg++;
-          g_config_disasm_address_colon = g_args[iArg].nValue != 0;
+          config_disasm_address_colon = args[iArg].nValue != 0;
         } else  // show current setting
         {
-          int iState = g_config_disasm_address_colon ? PARAM_ON : PARAM_OFF;
+          int iState = config_disasm_address_colon ? PARAM_ON : PARAM_OFF;
           ConsoleBufferPushFormat(sText, "Colon: %s",
-                                  g_parameters[iState].name);
+                                  parameters[iState].name);
           ConsoleBufferToDisplay();
         }
         break;
@@ -319,11 +319,11 @@ auto CmdConfigDisasm(int nArgs) -> Update_t {
         if ((nArgs > 1) && (!bDisplayCurrentSettings))  // set
         {
           iArg++;
-          g_config_disasm_opcodes_view = g_args[iArg].nValue != 0;
+          config_disasm_opcodes_view = args[iArg].nValue != 0;
         } else {
-          int iState = g_config_disasm_opcodes_view ? PARAM_ON : PARAM_OFF;
+          int iState = config_disasm_opcodes_view ? PARAM_ON : PARAM_OFF;
           ConsoleBufferPushFormat(sText, "Opcodes: %s",
-                                  g_parameters[iState].name);
+                                  parameters[iState].name);
           ConsoleBufferToDisplay();
         }
         break;
@@ -332,11 +332,11 @@ auto CmdConfigDisasm(int nArgs) -> Update_t {
         if ((nArgs > 1) && (!bDisplayCurrentSettings))  // set
         {
           iArg++;
-          g_config_info_target_pointer = g_args[iArg].nValue != 0;
+          config_info_target_pointer = args[iArg].nValue != 0;
         } else {
-          int iState = g_config_info_target_pointer ? PARAM_ON : PARAM_OFF;
+          int iState = config_info_target_pointer ? PARAM_ON : PARAM_OFF;
           ConsoleBufferPushFormat(sText, "info Target Pointer: %s",
-                                  g_parameters[iState].name);
+                                  parameters[iState].name);
           ConsoleBufferToDisplay();
         }
         break;
@@ -345,11 +345,11 @@ auto CmdConfigDisasm(int nArgs) -> Update_t {
         if ((nArgs > 1) && (!bDisplayCurrentSettings))  // set
         {
           iArg++;
-          g_config_disasm_opcode_spaces = g_args[iArg].nValue != 0;
+          config_disasm_opcode_spaces = args[iArg].nValue != 0;
         } else {
-          int iState = g_config_disasm_opcode_spaces ? PARAM_ON : PARAM_OFF;
+          int iState = config_disasm_opcode_spaces ? PARAM_ON : PARAM_OFF;
           ConsoleBufferPushFormat(sText, "Opcode spaces: %s",
-                                  g_parameters[iState].name);
+                                  parameters[iState].name);
           ConsoleBufferToDisplay();
         }
         break;
@@ -358,14 +358,14 @@ auto CmdConfigDisasm(int nArgs) -> Update_t {
         if ((nArgs > 1) && (!bDisplayCurrentSettings))  // set
         {
           iArg++;
-          g_config_disasm_targets = g_args[iArg].nValue;
-          g_config_disasm_targets = std::max(g_config_disasm_targets, 0);
-          if (g_config_disasm_targets >= NUM_DISASM_TARGET_TYPES) {
-            g_config_disasm_targets = NUM_DISASM_TARGET_TYPES - 1;
+          config_disasm_targets = args[iArg].nValue;
+          config_disasm_targets = std::max(config_disasm_targets, 0);
+          if (config_disasm_targets >= NUM_DISASM_TARGET_TYPES) {
+            config_disasm_targets = NUM_DISASM_TARGET_TYPES - 1;
           }
         } else  // show current setting
         {
-          ConsoleBufferPushFormat(sText, "Target: %d", g_config_disasm_targets);
+          ConsoleBufferPushFormat(sText, "Target: %d", config_disasm_targets);
           ConsoleBufferToDisplay();
         }
         break;
@@ -381,37 +381,37 @@ auto CmdConfigDisasm(int nArgs) -> Update_t {
 }
 
 //===========================================================================
-auto CmdConfigFontLoad(int nArgs) -> Update_t {
+auto CmdConfigFontLoad(int nArgs) -> UpdateResult {
   (void)nArgs;
   return UPDATE_CONSOLE_DISPLAY;
 }
 
 //===========================================================================
-auto CmdConfigFontSave(int nArgs) -> Update_t {
+auto CmdConfigFontSave(int nArgs) -> UpdateResult {
   (void)nArgs;
   return UPDATE_CONSOLE_DISPLAY;
 }
 
 //===========================================================================
-auto CmdConfigFontMode(int nArgs) -> Update_t {
+auto CmdConfigFontMode(int nArgs) -> UpdateResult {
   if (nArgs != 2) {
     return Help_Arg_1(CMD_CONFIG_FONT);
   }
 
-  int nMode = g_args[2].nValue;
+  int nMode = args[2].nValue;
 
   if ((nMode < 0) || (nMode >= NUM_FONT_SPACING)) {
     return Help_Arg_1(CMD_CONFIG_FONT);
   }
 
-  g_font_spacing = nMode;
-  UpdateWindowFontHeights(g_font_config[FONT_DISASM_DEFAULT].font_height);
+  font_spacing = nMode;
+  UpdateWindowFontHeights(font_config[FONT_DISASM_DEFAULT].font_height);
 
   return UPDATE_CONSOLE_DISPLAY | UPDATE_DISASM;
 }
 
 //===========================================================================
-auto CmdConfigFont(int nArgs) -> Update_t {
+auto CmdConfigFont(int nArgs) -> UpdateResult {
   int iArg = 0;
 
   if (nArgs == 0) {
@@ -422,14 +422,14 @@ auto CmdConfigFont(int nArgs) -> Update_t {
     iArg = 1;
 
     // FONT * is undocumented, like VERSION *
-    if ((strcmp(g_args[iArg].sArg, g_parameters[PARAM_WILDSTAR].name) == 0) ||
-        (strcmp(g_args[iArg].sArg, g_parameters[PARAM_MEM_SEARCH_WILD].name) ==
+    if ((strcmp(args[iArg].sArg, parameters[PARAM_WILDSTAR].name) == 0) ||
+        (strcmp(args[iArg].sArg, parameters[PARAM_MEM_SEARCH_WILD].name) ==
          0)) {
       char sText[CONSOLE_WIDTH];
       ConsoleBufferPushFormat(sText, "Lines: %d  Font Px: %d  Line Px: %d",
-                              g_disasm_display_lines,
-                              g_font_config[FONT_DISASM_DEFAULT].font_height,
-                              g_font_config[FONT_DISASM_DEFAULT].line_height);
+                              disasm_display_lines,
+                              font_config[FONT_DISASM_DEFAULT].font_height,
+                              font_config[FONT_DISASM_DEFAULT].line_height);
       ConsoleBufferToDisplay();
       return UPDATE_CONSOLE_DISPLAY;
     }
@@ -437,7 +437,7 @@ auto CmdConfigFont(int nArgs) -> Update_t {
     int iFound = 0;
     int nFound = 0;
 
-    nFound = FindParam(g_args[iArg].sArg, MATCH_EXACT, iFound,
+    nFound = FindParam(args[iArg].sArg, MATCH_EXACT, iFound,
                        PARAM_GENERAL_BEGIN, PARAM_GENERAL_END);
     if (nFound != 0) {
       switch (iFound) {
@@ -454,7 +454,7 @@ auto CmdConfigFont(int nArgs) -> Update_t {
       }
     }
 
-    nFound = FindParam(g_args[iArg].sArg, MATCH_EXACT, iFound, PARAM_FONT_BEGIN,
+    nFound = FindParam(args[iArg].sArg, MATCH_EXACT, iFound, PARAM_FONT_BEGIN,
                        PARAM_FONT_END);
     if ((nFound != 0) && (iFound == PARAM_FONT_MODE)) {
       return CmdConfigFontMode(nArgs);
@@ -467,19 +467,19 @@ auto CmdConfigFont(int nArgs) -> Update_t {
 }
 
 //===========================================================================
-auto CmdConfigSetFont(int nArgs) -> Update_t {
+auto CmdConfigSetFont(int nArgs) -> UpdateResult {
   (void)nArgs;
   return UPDATE_ALL;
 }
 
 //===========================================================================
-auto CmdConfigGetFont(int nArgs) -> Update_t {
+auto CmdConfigGetFont(int nArgs) -> UpdateResult {
   if (nArgs == 0) {
-    for (auto& iFont : g_font_config) {
+    for (auto& iFont : font_config) {
       char sText[CONSOLE_WIDTH] = "";
       ConsoleBufferPushFormat(
           sText, "  Font: %-20s  A:%2d  M:%2d",
-          //        g_font_name_custom, g_font_width_avg, g_font_width_max );
+          //        font_name_custom, font_width_avg, font_width_max );
           iFont.font_name, iFont.font_width_avg, iFont.font_width_max);
     }
     return ConsoleUpdate();
@@ -492,26 +492,26 @@ auto CmdConfigGetFont(int nArgs) -> Update_t {
 //===========================================================================
 auto UpdateWindowFontHeights(int nFontHeight) -> void {
   if (nFontHeight != 0) {
-    int nConsoleTopY = GetConsoleTopPixels(g_console_display_lines);
+    int nConsoleTopY = GetConsoleTopPixels(console_display_lines);
 
     int nHeight = 0;
 
-    if (g_font_spacing == FONT_SPACING_CLASSIC) {
+    if (font_spacing == FONT_SPACING_CLASSIC) {
       nHeight = nFontHeight + 1;
-      g_disasm_display_lines = nConsoleTopY / nHeight;
-    } else if (g_font_spacing == FONT_SPACING_CLEAN) {
+      disasm_display_lines = nConsoleTopY / nHeight;
+    } else if (font_spacing == FONT_SPACING_CLEAN) {
       nHeight = nFontHeight;
-      g_disasm_display_lines = nConsoleTopY / nHeight;
-    } else if (g_font_spacing == FONT_SPACING_COMPRESSED) {
+      disasm_display_lines = nConsoleTopY / nHeight;
+    } else if (font_spacing == FONT_SPACING_COMPRESSED) {
       nHeight = nFontHeight - 1;
-      g_disasm_display_lines = (nConsoleTopY + nHeight) / nHeight;  // Ceil()
+      disasm_display_lines = (nConsoleTopY + nHeight) / nHeight;  // Ceil()
     }
 
-    g_font_config[FONT_DISASM_DEFAULT].line_height = nHeight;
+    font_config[FONT_DISASM_DEFAULT].line_height = nHeight;
 
     //    int nHeightOptimal = (nHeight0 + nHeight1) / 2;
     //    int nLinesOptimal = nConsoleTopY / nHeightOptimal;
-    //    g_disasm_display_lines = nLinesOptimal;
+    //    disasm_display_lines = nLinesOptimal;
 
     WindowUpdateSizes();
   }

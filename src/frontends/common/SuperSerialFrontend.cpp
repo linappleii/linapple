@@ -119,7 +119,7 @@ struct Device {
   bool break_out = false;
   uint8_t inputs = all_modem_lines;
   bool line_known = false;
-  PeripheralSerialLine_t line{};
+  PeripheralSerialLine line{};
   uint32_t retry_ticks = 0;
   uint32_t logged = 0;
   bool announce_open = false;
@@ -270,7 +270,7 @@ auto parity_flags(uint8_t parity) -> tcflag_t {
 }
 
 auto apply_format(termios* settings) -> void {
-  const PeripheralSerialLine_t& line = serial_device.line;
+  const PeripheralSerialLine& line = serial_device.line;
   tcflag_t clear = PARENB | PARODD | CSTOPB;
 #ifdef CMSPAR
   clear |= CMSPAR;
@@ -704,7 +704,7 @@ auto switch_image(const std::string& row, const char* key, uint8_t fallback)
   return fallback;
 }
 
-auto sink_open(void* ctx, int slot, PeripheralSinkKind_t kind) -> void {
+auto sink_open(void* ctx, int slot, PeripheralSinkKind kind) -> void {
   (void)ctx;
   if (!slot_is_valid(slot)) {
     return;
@@ -783,7 +783,7 @@ auto sink_read(void* ctx, int slot, uint8_t* byte) -> bool {
   return serial_device.receive.pop(byte);
 }
 
-auto sink_set_line(void* ctx, int slot, const PeripheralSerialLine_t* line)
+auto sink_set_line(void* ctx, int slot, const PeripheralSerialLine* line)
     -> void {
   (void)ctx;
   if (!is_primary(slot) || line == nullptr) {
@@ -816,7 +816,7 @@ auto sink_get_lines(void* ctx, int slot, uint8_t* lines) -> bool {
   return true;
 }
 
-const ByteSink_t serial_sink = {
+const ByteSink serial_sink = {
     .open = sink_open,
     .write = sink_write,
     .ready = sink_ready,
@@ -834,7 +834,7 @@ auto super_serial_frontend_configure(
   release_device();
   primary_serial_slot = 0;
 
-  SuperSerialSwitches_t switches{};
+  SuperSerialSwitches switches{};
   switches.sw1 = switch_image(settings.switches_1, "Serial Switches 1",
                               default_switches_1);
   switches.sw2 = switch_image(settings.switches_2, "Serial Switches 2",
@@ -864,7 +864,7 @@ auto super_serial_frontend_configure(
   }
 }
 
-auto super_serial_frontend_sink() -> const ByteSink_t& { return serial_sink; }
+auto super_serial_frontend_sink() -> const ByteSink& { return serial_sink; }
 
 auto super_serial_frontend_primary_slot() -> int { return primary_serial_slot; }
 

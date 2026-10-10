@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-extern const DiskFormatDriver_t g_woz1_driver;
+extern const DiskFormatDriver woz1_driver;
 
 #ifdef __cplusplus
 }

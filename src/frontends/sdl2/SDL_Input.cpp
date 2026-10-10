@@ -48,7 +48,7 @@ auto handle_mouse_button_down(const SDL_MouseButtonEvent& button,
                               SDL_Keymod key_mod) -> void {
   const bool release_modifier = (key_mod & (KMOD_SHIFT | KMOD_CTRL)) != 0;
   const bool debugger_click = mouse_input_button_down(
-      host_button(button.button), release_modifier, g_buttondown != -1);
+      host_button(button.button), release_modifier, buttondown != -1);
 #if ENABLE_DEBUGGER
   if (debugger_click) {
     debugger_mouse_click(button.x, button.y);
@@ -94,7 +94,7 @@ auto sdl_handle_event(SDL_Event* event) -> void {
           break;
         case SDL_WINDOWEVENT_FOCUS_LOST:
           frame_on_focus(false);
-          g_buttondown = -1;
+          buttondown = -1;
           mouse_input_release();
           break;
         default:
@@ -124,9 +124,9 @@ auto sdl_handle_event(SDL_Event* event) -> void {
       }
 
       if (keyboard_get_hotkeys_enabled() && (key_sym >= SDLK_F1) &&
-          (key_sym <= SDLK_F12) && (g_buttondown == -1)) {
+          (key_sym <= SDLK_F12) && (buttondown == -1)) {
         mouse_input_release();
-        g_buttondown = key_sym - SDLK_F1;
+        buttondown = key_sym - SDLK_F1;
       } else if (key_sym == SDLK_KP_PLUS) {
         const uint32_t speed = linapple_speed_increase();
         std::printf("Now speed=%u\n", speed);
@@ -172,7 +172,7 @@ auto sdl_handle_event(SDL_Event* event) -> void {
                  system_state.mode == app_mode_logo ||
                  system_state.mode == app_mode_stepping) {
 #if ENABLE_DEBUGGER
-        g_debugger_eat_key = false;
+        debugger_eat_key = false;
 #endif
         const bool extended = is_extended_scancode(scancode);
         if ((key_mod & KMOD_RCTRL) != 0) {
@@ -199,8 +199,8 @@ auto sdl_handle_event(SDL_Event* event) -> void {
       const SDL_Scancode scancode = event->key.keysym.scancode;
 
       if ((key_sym >= SDLK_F1) && (key_sym <= SDLK_F12) &&
-          (g_buttondown == key_sym - SDLK_F1)) {
-        g_buttondown = -1;
+          (buttondown == key_sym - SDLK_F1)) {
+        buttondown = -1;
         process_button_click(key_sym - SDLK_F1, key_mod);
       } else if (frontend_handle_key_event(key_sym, false)) {
         break;

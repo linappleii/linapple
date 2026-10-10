@@ -17,54 +17,54 @@
 /* NOLINTEND(misc-include-cleaner) */
 
 unsigned harddisk_abi_c_frame_size(void) {
-  return (unsigned)sizeof(HarddiskSaveState_t);
+  return (unsigned)sizeof(HarddiskSaveState);
 }
 
 unsigned harddisk_abi_c_frame_offset(int field) {
   switch (field) {
     case 0:
-      return (unsigned)offsetof(HarddiskSaveState_t, version);
+      return (unsigned)offsetof(HarddiskSaveState, version);
     case 1:
-      return (unsigned)offsetof(HarddiskSaveState_t, struct_size);
+      return (unsigned)offsetof(HarddiskSaveState, struct_size);
     case 2:
-      return (unsigned)offsetof(HarddiskSaveState_t, unit);
+      return (unsigned)offsetof(HarddiskSaveState, unit);
     case 3:
-      return (unsigned)offsetof(HarddiskSaveState_t, command);
+      return (unsigned)offsetof(HarddiskSaveState, command);
     case 4:
-      return (unsigned)offsetof(HarddiskSaveState_t, result);
+      return (unsigned)offsetof(HarddiskSaveState, result);
     case 5:
-      return (unsigned)offsetof(HarddiskSaveState_t, data_phase);
+      return (unsigned)offsetof(HarddiskSaveState, data_phase);
     case 6:
-      return (unsigned)offsetof(HarddiskSaveState_t, block);
+      return (unsigned)offsetof(HarddiskSaveState, block);
     case 7:
-      return (unsigned)offsetof(HarddiskSaveState_t, data_index);
+      return (unsigned)offsetof(HarddiskSaveState, data_index);
     case 8:
-      return (unsigned)offsetof(HarddiskSaveState_t, block_count);
+      return (unsigned)offsetof(HarddiskSaveState, block_count);
     case 9:
-      return (unsigned)offsetof(HarddiskSaveState_t, reserved);
+      return (unsigned)offsetof(HarddiskSaveState, reserved);
     default:
       return 0xFFFFU;
   }
 }
 
 unsigned harddisk_abi_c_insert_size(void) {
-  return (unsigned)sizeof(HarddiskInsertCmd_t);
+  return (unsigned)sizeof(HarddiskInsertCmd);
 }
 
 unsigned harddisk_abi_c_insert_path_offset(void) {
-  return (unsigned)offsetof(HarddiskInsertCmd_t, path);
+  return (unsigned)offsetof(HarddiskInsertCmd, path);
 }
 
 unsigned harddisk_abi_c_insert_drive_offset(void) {
-  return (unsigned)offsetof(HarddiskInsertCmd_t, drive);
+  return (unsigned)offsetof(HarddiskInsertCmd, drive);
 }
 
 unsigned harddisk_abi_c_insert_reserved_offset(void) {
-  return (unsigned)offsetof(HarddiskInsertCmd_t, reserved);
+  return (unsigned)offsetof(HarddiskInsertCmd, reserved);
 }
 
 unsigned harddisk_abi_c_status_size(void) {
-  return (unsigned)sizeof(HarddiskStatus_t);
+  return (unsigned)sizeof(HarddiskStatus);
 }
 
 unsigned harddisk_abi_c_state_version(void) { return HARDDISK_STATE_VERSION; }

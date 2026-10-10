@@ -19,13 +19,13 @@ enum { SUPER_SERIAL_STATE_VERSION = 1 };
 typedef struct {
   uint8_t sw1;
   uint8_t sw2;
-} SuperSerialSwitches_t;
+} SuperSerialSwitches;
 
 // Command and query ids 0x0001 and 0x0002 belonged to a retired host path
 // and are never reused.
 typedef enum {
   SUPER_SERIAL_CMD_SET_SWITCHES = PERIPHERAL_SUBSYSTEM_SERIAL | 0x0003,
-} SuperSerialCmd_t;
+} SuperSerialCmd;
 
 // The frame has ridden the slot trailer of every default .aws, so the fields
 // before status_latches keep their offsets; rx_count, the three flag bytes,
@@ -51,7 +51,7 @@ typedef struct {
   uint8_t transmit_data;
   uint8_t shift_data;
   uint8_t reserved1;
-} SuperSerialSaveState_t;
+} SuperSerialSaveState;
 
 #ifdef __cplusplus
 }

@@ -15,11 +15,11 @@ namespace {
 // Declared rather than inherited: with no configuration the slot fallbacks in
 // peripheral_register_internal supply a printer, a Super Serial Card and a
 // Mockingboard beside the Disk II, none of which these cases touch.
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 }  // namespace
 
 TEST_CASE("DiskIntegration: [INT-01] Startup Config Loading") {
-  TestConfig_t machine(TestConfig_t::disk_ii_only());
+  TestConfig machine(TestConfig::disk_ii_only());
   machine.load();
   linapple_init();
   Configuration::instance().set_string(
@@ -30,9 +30,9 @@ TEST_CASE("DiskIntegration: [INT-01] Startup Config Loading") {
   peripheral_manager_init();
   linapple_register_peripherals();
 
-  DiskStatus_t status{};
+  DiskStatus status{};
   size_t size = sizeof(status);
-  PeripheralStatus_t ps =
+  PeripheralStatus ps =
       peripheral_query(6, disk_query_status, &status, &size);
 
   REQUIRE(ps == peripheral_ok);
@@ -42,7 +42,7 @@ TEST_CASE("DiskIntegration: [INT-01] Startup Config Loading") {
 }
 
 TEST_CASE("DiskIntegration: [INT-02] Missing Startup Image") {
-  TestConfig_t machine(TestConfig_t::disk_ii_only());
+  TestConfig machine(TestConfig::disk_ii_only());
   machine.load();
   linapple_init();
   Configuration::instance().set_string("Slots", cfg_disk_image1,
@@ -52,9 +52,9 @@ TEST_CASE("DiskIntegration: [INT-02] Missing Startup Image") {
   peripheral_manager_init();
   linapple_register_peripherals();
 
-  DiskStatus_t status{};
+  DiskStatus status{};
   size_t size = sizeof(status);
-  PeripheralStatus_t ps =
+  PeripheralStatus ps =
       peripheral_query(6, disk_query_status, &status, &size);
 
   REQUIRE(ps == peripheral_ok);

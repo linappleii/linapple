@@ -12,9 +12,9 @@
 
 // Color ______________________________________________________________________
 
-int g_color_scheme = SCHEME_COLOR;
+int color_scheme = SCHEME_COLOR;
 
-static int g_color_palette[NUM_PALETTE] = {
+static int color_palette[NUM_PALETTE] = {
     BLACK,
     // NOTE: See SetupColorRamp() if you want to programmatically set/change
     RED,
@@ -95,7 +95,7 @@ static int g_color_palette[NUM_PALETTE] = {
 };
 
 // Index into "Palette" of colors
-int g_color_index[NUM_DEBUG_COLORS] = {
+int color_index[NUM_DEBUG_COLORS] = {
     K0,
     W8,  // BG_CONSOLE_OUTPUT   FG_CONSOLE_OUTPUT (W8)
     B2,
@@ -174,19 +174,19 @@ int g_color_index[NUM_DEBUG_COLORS] = {
     G8,  // FG_VIDEOSCANNER_VISIBLE
 };
 
-auto DebuggerGetColor(int iColor) -> ColorRef_t {
-  ColorRef_t nColor = 1;  // 0xFFFF00; // Hot Pink! -- so we notice errors. Not
+auto DebuggerGetColor(int iColor) -> ColorRef {
+  ColorRef nColor = 1;  // 0xFFFF00; // Hot Pink! -- so we notice errors. Not
                           // that there is anything wrong with pink...
 
-  if ((g_color_scheme < NUM_COLOR_SCHEMES) && (iColor < NUM_DEBUG_COLORS)) {
-    nColor = g_color_palette[g_color_index[iColor]];
+  if ((color_scheme < NUM_COLOR_SCHEMES) && (iColor < NUM_DEBUG_COLORS)) {
+    nColor = color_palette[color_index[iColor]];
   }
 
   return nColor;
 }
 
 auto DebuggerSetColor(const int iScheme, const int iColor,
-                      const ColorRef_t nColor) -> bool {
+                      const ColorRef nColor) -> bool {
   (void)iScheme;
   (void)iColor;
   (void)nColor;
@@ -199,7 +199,7 @@ auto ConfigColorsReset() -> void {}
 
 constexpr uint8_t BYTE_MASK = 0xFF;
 
-static auto ColorPrint(int iColor, ColorRef_t nColor) -> void {
+static auto ColorPrint(int iColor, ColorRef nColor) -> void {
   int R = static_cast<int>(nColor & BYTE_MASK);
   int G = static_cast<int>((nColor >> GREEN_SHIFT) & BYTE_MASK);
   int B = static_cast<int>((nColor >> BLUE_SHIFT) & BYTE_MASK);
@@ -212,8 +212,8 @@ static auto ColorPrint(int iColor, ColorRef_t nColor) -> void {
 auto CmdColorGet(const int iScheme, const int iColor) -> void {
   (void)iScheme;
   if (iColor < NUM_DEBUG_COLORS) {
-    auto eColor = static_cast<DebugColors_e>(iColor);
-    ColorRef_t nColor = DebuggerGetColor(eColor);
+    auto eColor = static_cast<DebugColors>(iColor);
+    ColorRef nColor = DebuggerGetColor(eColor);
     ColorPrint(iColor, nColor);
   } else {
     fprintf(stderr, "Color: %d\nOut of range!", iColor);

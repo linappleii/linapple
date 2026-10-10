@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-Peripheral_t* joystick_abi_c_descriptor(void);
+Peripheral* joystick_abi_c_descriptor(void);
 size_t joystick_abi_c_state_size(void);
 size_t joystick_abi_c_trigger_cycle_offset(void);
 size_t joystick_abi_c_trigger_cycle_size(void);

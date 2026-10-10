@@ -21,7 +21,7 @@
 // ____________________________________________________________________________
 
 //===========================================================================
-static auto CmdDefineByteRange(int nArgs, int iArg, DisasmData_t& tData_)
+static auto CmdDefineByteRange(int nArgs, int iArg, DisasmData& tData_)
     -> uint16_t {
   uint16_t address = 0;
   uint16_t nAddress2 = 0;
@@ -34,11 +34,11 @@ static auto CmdDefineByteRange(int nArgs, int iArg, DisasmData_t& tData_)
   // bool bisAddress ...
 
   if (nArgs < 1) {
-    address = g_disasm_cur_address;
+    address = disasm_cur_address;
   } else {
-    RangeType_t eRange = Range_Get(address, nAddress2, iArg);
+    RangeType eRange = Range_Get(address, nAddress2, iArg);
     if ((eRange == RANGE_HAS_END) || (eRange == RANGE_HAS_LEN)) {
-      RangeEndLen_t tEndLen{};
+      RangeEndLen tEndLen{};
       Range_CalcEndLen(eRange, address, nAddress2, tEndLen);
       nLen = tEndLen.nAddressLen;
       nLen--;  // Disassembly_IsDataAddress() is *inclusive* // KEEP IN SYNC:
@@ -46,16 +46,16 @@ static auto CmdDefineByteRange(int nArgs, int iArg, DisasmData_t& tData_)
                // GetOpmodeOpbyte() FormatNopcodeBytes()
     } else {
       if (nArgs > 1) {
-        address = g_args[2].nValue;
+        address = args[2].nValue;
       } else {
-        address = g_args[1].nValue;
+        address = args[1].nValue;
       }
     }
   }
 
   // 2.7.0.35 DW address -- round the length up to even number for convenience.
   // Example: 'DW 6062' is equivalent to: 'DW 6062:6063'
-  if ((g_command == CMD_DEFINE_DATA_WORD1) && ((~nLen & 1) != 0)) {
+  if ((command == CMD_DEFINE_DATA_WORD1) && ((~nLen & 1) != 0)) {
     nLen++;
   }
 
@@ -69,12 +69,12 @@ static auto CmdDefineByteRange(int nArgs, int iArg, DisasmData_t& tData_)
   bool bAutoDefineName = false;  // 2.7.0.34
 
   if (nArgs > 1) {
-    if (g_args[2].eToken ==
+    if (args[2].eToken ==
         TOKEN_COLON)  // 2.7.0.31 Bug fix: DB range, i.e. DB 174E:174F
     {
       bAutoDefineName = true;
     } else {
-      pSymbolName = g_args[1].sArg;
+      pSymbolName = args[1].sArg;
       util_safe_strcpy(aSymbolName, pSymbolName, sizeof(aSymbolName));
       pSymbolName = aSymbolName;
     }
@@ -87,10 +87,10 @@ static auto CmdDefineByteRange(int nArgs, int iArg, DisasmData_t& tData_)
   // arg
   //   DB 801
   if (bAutoDefineName) {
-    if (g_command == CMD_DEFINE_DATA_STR) {
+    if (command == CMD_DEFINE_DATA_STR) {
       snprintf(aSymbolName, sizeof(aSymbolName), "T_%04X",
                tData_.nStartAddress);  // ASC range
-    } else if (g_command == CMD_DEFINE_DATA_WORD1) {
+    } else if (command == CMD_DEFINE_DATA_WORD1) {
       snprintf(aSymbolName, sizeof(aSymbolName), "W_%04X",
                tData_.nStartAddress);  // DW range
     } else {
@@ -115,13 +115,13 @@ static auto CmdDefineByteRange(int nArgs, int iArg, DisasmData_t& tData_)
 
 // Undefine Data
 //===========================================================================
-auto CmdDisasmDataDefCode(int nArgs) -> Update_t {
+auto CmdDisasmDataDefCode(int nArgs) -> UpdateResult {
   // treat memory (bytes) as code
   if ((nArgs > 2) && (nArgs != 4)) {
     return Help_Arg_1(CMD_DISASM_CODE);
   }
 
-  DisasmData_t tData{};
+  DisasmData tData{};
   int iArg = 2;
   uint16_t address = CmdDefineByteRange(nArgs, iArg, tData);
 
@@ -131,7 +131,7 @@ auto CmdDisasmDataDefCode(int nArgs) -> Update_t {
   // DB TEST3 320:340
   // X  TEST1
 
-  DisasmData_t* data = Disassembly_IsDataAddress(address);
+  DisasmData* data = Disassembly_IsDataAddress(address);
   if (data) {
     // TODO: Do we need to split the data !?
     // Disassembly_DelData( tData );
@@ -145,7 +145,7 @@ auto CmdDisasmDataDefCode(int nArgs) -> Update_t {
   return UPDATE_DISASM | ConsoleUpdate();
 }
 
-static const char* const g_nopcode_types[NUM_NOPCODE_TYPES] = {
+static const char* const nopcode_types[NUM_NOPCODE_TYPES] = {
     "-n/a-", "byte1", "byte2", "byte4", "byte8", "word1", "word2", "word4",
     "addr ", "hex  ", "char ", "ascii", "apple", "mixed", "FAC  ", "bmp  ",
 };
@@ -154,11 +154,11 @@ static const char* const g_nopcode_types[NUM_NOPCODE_TYPES] = {
 // no args
 // List the data blocks
 //===========================================================================
-auto CmdDisasmDataList(int nArgs) -> Update_t {
+auto CmdDisasmDataList(int nArgs) -> UpdateResult {
   (void)nArgs;
 
   // Need to iterate through all blocks
-  DisasmData_t* data = nullptr;
+  DisasmData* data = nullptr;
 
   while ((data = Disassembly_Enumerate(data))) {
     if (data->iDirective != NOP_REMOVED) {
@@ -169,7 +169,7 @@ auto CmdDisasmDataList(int nArgs) -> Update_t {
       // `TEST `300`:`320
       ConsolePrintFormat(
           sText, "%s%s %s%*s %s%04X%s:%s%04X", CHC_CATEGORY,
-          g_nopcode_types[data->eElementType],
+          nopcode_types[data->eElementType],
           (nLen > 0) ? CHC_SYMBOL : CHC_DEFAULT, MAX_SYMBOLS_LEN,
           (nLen > 0) ? data->sSymbol : "???", CHC_ADDRESS, data->nStartAddress,
           CHC_ARG_SEP, CHC_ADDRESS,
@@ -186,25 +186,25 @@ auto CmdDisasmDataList(int nArgs) -> Update_t {
 
 // Common code
 //===========================================================================
-auto CmdDisasmDataDefByteX(int nArgs) -> Update_t {
+auto CmdDisasmDataDefByteX(int nArgs) -> UpdateResult {
   // DB
   // DB symbol // use current instruction pointer
   // DB symbol address
   // DB symbol range:range
   // DB address
   // To "return to code" use ."X"
-  int iCmd = g_args[0].nValue - NOP_BYTE_1;
+  int iCmd = args[0].nValue - NOP_BYTE_1;
 
   if (nArgs > 4)  // 2.7.0.31 Bug fix: DB range, i.e. DB 174E:174F
   {
     return Help_Arg_1(CMD_DEFINE_DATA_BYTE1 + iCmd);
   }
 
-  DisasmData_t tData{};
+  DisasmData tData{};
   int iArg = 2;
 
   if ((nArgs == 3) &&
-      (g_args[2].eToken ==
+      (args[2].eToken ==
        TOKEN_COLON))  // 2.7.0.31 Bug fix: DB range, i.e. DB 174E:175F
 
   {
@@ -217,14 +217,14 @@ auto CmdDisasmDataDefByteX(int nArgs) -> Update_t {
   // directives!
   //	tData.iDirective = FIRST_M_DIRECTIVE + ASM_M_DEFINE_BYTE;
   tData.iDirective =
-      g_assembler_first_directive[g_assembler_syntax] + ASM_DEFINE_BYTE;
+      assembler_first_directive[assembler_syntax] + ASM_DEFINE_BYTE;
 
-  tData.eElementType = static_cast<Nopcode_e>(NOP_BYTE_1 + iCmd);
+  tData.eElementType = static_cast<Nopcode>(NOP_BYTE_1 + iCmd);
   tData.bSymbolLookup = 0;
   tData.nTargetAddress = 0;
 
   // Already exists, so update
-  DisasmData_t* data = Disassembly_IsDataAddress(address);
+  DisasmData* data = Disassembly_IsDataAddress(address);
   if (data) {
     *data = tData;
   } else {
@@ -246,19 +246,19 @@ auto CmdDisasmDataDefByteX(int nArgs) -> Update_t {
                 DW 3F2:3F3
 */
 //===========================================================================
-auto CmdDisasmDataDefWordX(int nArgs) -> Update_t {
-  int iCmd = g_args[0].nValue - NOP_WORD_1;
+auto CmdDisasmDataDefWordX(int nArgs) -> UpdateResult {
+  int iCmd = args[0].nValue - NOP_WORD_1;
 
   if (nArgs > 4)  // 2.7.0.31 Bug fix: DB range, i.e. DB 174E:174F
   {
     return Help_Arg_1(CMD_DEFINE_DATA_WORD1 + iCmd);
   }
 
-  DisasmData_t tData{};
+  DisasmData tData{};
   int iArg = 2;
 
   if ((nArgs == 3) &&
-      (g_args[2].eToken ==
+      (args[2].eToken ==
        TOKEN_COLON))  // 2.7.0.33 Bug fix: DW range, i.e. DW 3F2:3F3
 
   {
@@ -269,14 +269,14 @@ auto CmdDisasmDataDefWordX(int nArgs) -> Update_t {
 
   //	tData.iDirective = FIRST_M_DIRECTIVE + ASM_M_DEFINE_WORD;
   tData.iDirective =
-      g_assembler_first_directive[g_assembler_syntax] + ASM_DEFINE_WORD;
+      assembler_first_directive[assembler_syntax] + ASM_DEFINE_WORD;
 
-  tData.eElementType = static_cast<Nopcode_e>(NOP_WORD_1 + iCmd);
+  tData.eElementType = static_cast<Nopcode>(NOP_WORD_1 + iCmd);
   tData.bSymbolLookup = 0;
   tData.nTargetAddress = 0;
 
   // Already exists, so update
-  DisasmData_t* data = Disassembly_IsDataAddress(address);
+  DisasmData* data = Disassembly_IsDataAddress(address);
   if (data) {
     *data = tData;
   } else {
@@ -287,39 +287,39 @@ auto CmdDisasmDataDefWordX(int nArgs) -> Update_t {
 }
 
 //===========================================================================
-auto CmdDisasmDataDefAddress8H(int nArgs) -> Update_t {
+auto CmdDisasmDataDefAddress8H(int nArgs) -> UpdateResult {
   (void)nArgs;
   return UPDATE_DISASM;
 }
 
 //===========================================================================
-auto CmdDisasmDataDefAddress8L(int nArgs) -> Update_t {
+auto CmdDisasmDataDefAddress8L(int nArgs) -> UpdateResult {
   (void)nArgs;
   return UPDATE_DISASM;
 }
 
 //===========================================================================
-auto CmdDisasmDataDefAddress16(int nArgs) -> Update_t {
-  int iCmd = NOP_WORD_1 - g_args[0].nValue;
+auto CmdDisasmDataDefAddress16(int nArgs) -> UpdateResult {
+  int iCmd = NOP_WORD_1 - args[0].nValue;
 
   if ((nArgs > 2) && (nArgs != 4)) {
     return Help_Arg_1(CMD_DEFINE_DATA_WORD1 + iCmd);
   }
 
-  DisasmData_t tData{};
+  DisasmData tData{};
   int iArg = 2;
   uint16_t address = CmdDefineByteRange(nArgs, iArg, tData);
 
   //	tData.iDirective = FIRST_M_DIRECTIVE + ASM_M_DEFINE_WORD;
   tData.iDirective =
-      g_assembler_first_directive[g_assembler_syntax] + ASM_DEFINE_ADDRESS_16;
+      assembler_first_directive[assembler_syntax] + ASM_DEFINE_ADDRESS_16;
 
   tData.eElementType = NOP_ADDRESS;
   tData.bSymbolLookup = 1;
   tData.nTargetAddress = 0;  // dynamic -- will be filled in ...
 
   // Already exists, so update
-  DisasmData_t* data = Disassembly_IsDataAddress(address);
+  DisasmData* data = Disassembly_IsDataAddress(address);
   if (data) {
     *data = tData;
   } else {
@@ -330,47 +330,47 @@ auto CmdDisasmDataDefAddress16(int nArgs) -> Update_t {
 }
 
 // DB
-auto CmdDisasmDataDefByte1(int nArgs) -> Update_t {
-  g_args[0].nValue = NOP_BYTE_1;
+auto CmdDisasmDataDefByte1(int nArgs) -> UpdateResult {
+  args[0].nValue = NOP_BYTE_1;
   return CmdDisasmDataDefByteX(nArgs);
 }
 
 // DB2
-auto CmdDisasmDataDefByte2(int nArgs) -> Update_t {
-  g_args[0].nValue = NOP_BYTE_2;
+auto CmdDisasmDataDefByte2(int nArgs) -> UpdateResult {
+  args[0].nValue = NOP_BYTE_2;
   return CmdDisasmDataDefByteX(nArgs);
 }
 
-auto CmdDisasmDataDefByte4(int nArgs) -> Update_t {
-  g_args[0].nValue = NOP_BYTE_4;
+auto CmdDisasmDataDefByte4(int nArgs) -> UpdateResult {
+  args[0].nValue = NOP_BYTE_4;
   return CmdDisasmDataDefByteX(nArgs);
 }
 
-auto CmdDisasmDataDefByte8(int nArgs) -> Update_t {
-  g_args[0].nValue = NOP_BYTE_8;
+auto CmdDisasmDataDefByte8(int nArgs) -> UpdateResult {
+  args[0].nValue = NOP_BYTE_8;
   return CmdDisasmDataDefByteX(nArgs);
 }
 
 // DW
-auto CmdDisasmDataDefWord1(int nArgs) -> Update_t {
-  g_args[0].nValue = NOP_WORD_1;
+auto CmdDisasmDataDefWord1(int nArgs) -> UpdateResult {
+  args[0].nValue = NOP_WORD_1;
   return CmdDisasmDataDefWordX(nArgs);
 }
 
 // DW2
-auto CmdDisasmDataDefWord2(int nArgs) -> Update_t {
-  g_args[0].nValue = NOP_WORD_2;
+auto CmdDisasmDataDefWord2(int nArgs) -> UpdateResult {
+  args[0].nValue = NOP_WORD_2;
   return CmdDisasmDataDefWordX(nArgs);
 }
 
-auto CmdDisasmDataDefWord4(int nArgs) -> Update_t {
-  g_args[0].nValue = NOP_WORD_4;
+auto CmdDisasmDataDefWord4(int nArgs) -> UpdateResult {
+  args[0].nValue = NOP_WORD_4;
   return CmdDisasmDataDefWordX(nArgs);
 }
 
 // Command: DS
 //		ASC range    Auto-define T_#### where # is the address
-auto CmdDisasmDataDefString(int nArgs) -> Update_t {
+auto CmdDisasmDataDefString(int nArgs) -> UpdateResult {
   int iCmd = 0;  // Define Ascii, AppleText, MixedText (DOS3.3)
 
   if (nArgs > 4)  // 2.7.0.31 Bug fix: DB range, i.e. DB 174E:174F
@@ -378,11 +378,11 @@ auto CmdDisasmDataDefString(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_DEFINE_DATA_STR + iCmd);
   }
 
-  DisasmData_t tData{};
+  DisasmData tData{};
   int iArg = 2;
 
   if ((nArgs == 3) &&
-      (g_args[2].eToken ==
+      (args[2].eToken ==
        TOKEN_COLON))  // 2.7.0.32 Bug fix: ASC range, i.e. ASC 174E:175F
 
   {
@@ -391,16 +391,16 @@ auto CmdDisasmDataDefString(int nArgs) -> Update_t {
 
   uint16_t address = CmdDefineByteRange(nArgs, iArg, tData);
 
-  //	tData.iDirective = g_assembler_first_directive[ g_assembler_syntax ] +
+  //	tData.iDirective = assembler_first_directive[ assembler_syntax ] +
   // ASM_DEFINE_APPLE_TEXT;
   tData.iDirective = FIRST_MERLIN_DIRECTIVE + ASM_MERLIN_ASCII;
 
-  tData.eElementType = static_cast<Nopcode_e>(NOP_STRING_APPLE + iCmd);
+  tData.eElementType = static_cast<Nopcode>(NOP_STRING_APPLE + iCmd);
   tData.bSymbolLookup = 0;
   tData.nTargetAddress = 0;
 
   // Already exists, so update
-  DisasmData_t* data = Disassembly_IsDataAddress(address);
+  DisasmData* data = Disassembly_IsDataAddress(address);
   if (data) {
     *data = tData;
   } else {
@@ -415,13 +415,13 @@ auto CmdDisasmDataDefString(int nArgs) -> Update_t {
 
 /// @param pCurrent nullptr start a new search, or continue enumerating
 //===========================================================================
-auto Disassembly_Enumerate(DisasmData_t* pCurrent) -> DisasmData_t* {
-  DisasmData_t* data = nullptr;  // bIsNopcode = false
-  int nDataTargets = g_disassembler_data.size();
+auto Disassembly_Enumerate(DisasmData* pCurrent) -> DisasmData* {
+  DisasmData* data = nullptr;  // bIsNopcode = false
+  int nDataTargets = disassembler_data.size();
 
   if (nDataTargets != 0) {
-    DisasmData_t* pBegin = g_disassembler_data.data();
-    DisasmData_t* pEnd = &g_disassembler_data[nDataTargets - 1];
+    DisasmData* pBegin = disassembler_data.data();
+    DisasmData* pEnd = &disassembler_data[nDataTargets - 1];
 
     if (pCurrent) {
       pCurrent++;
@@ -437,14 +437,14 @@ auto Disassembly_Enumerate(DisasmData_t* pCurrent) -> DisasmData_t* {
 
 // returns nullptr if address has no data associated with it
 //===========================================================================
-auto Disassembly_IsDataAddress(uint16_t address) -> DisasmData_t* {
-  DisasmData_t* data = nullptr;  // bIsNopcode = false
-  int nDataTargets = g_disassembler_data.size();
+auto Disassembly_IsDataAddress(uint16_t address) -> DisasmData* {
+  DisasmData* data = nullptr;  // bIsNopcode = false
+  int nDataTargets = disassembler_data.size();
 
   if (nDataTargets != 0) {
     // TODO: Replace with binary search -- should store data in sorted order,
     // via start address
-    data = g_disassembler_data.data();
+    data = disassembler_data.data();
     for (int iTarget = 0; iTarget < nDataTargets; iTarget++) {
       if ((data->iDirective != NOP_REMOVED) &&
           ((address >= data->nStartAddress) &&
@@ -461,14 +461,14 @@ auto Disassembly_IsDataAddress(uint16_t address) -> DisasmData_t* {
 
 // Notes: tData.iDirective should not be NOP_REMOVED !
 //===========================================================================
-auto Disassembly_AddData(DisasmData_t tData) -> void {
-  g_disassembler_data.push_back(tData);
+auto Disassembly_AddData(DisasmData tData) -> void {
+  disassembler_data.push_back(tData);
 }
 
 // DEPRECATED ! Inlined in GetOpmodeOpbyte() !
 //===========================================================================
-auto Disassembly_GetData(uint16_t nBaseAddress, const DisasmData_t* data,
-                         DisasmLine_t& line_) -> void {
+auto Disassembly_GetData(uint16_t nBaseAddress, const DisasmData* data,
+                         DisasmLine& line_) -> void {
   (void)nBaseAddress;
   (void)line_;
   if (!data) {
@@ -477,17 +477,17 @@ auto Disassembly_GetData(uint16_t nBaseAddress, const DisasmData_t* data,
 }
 
 //===========================================================================
-auto Disassembly_DelData(DisasmData_t tData) -> void {
-  // g_disassembler_data.erase( );
+auto Disassembly_DelData(DisasmData tData) -> void {
+  // disassembler_data.erase( );
   uint16_t address = tData.nStartAddress;
 
-  DisasmData_t* data = nullptr;  // bIsNopcode = false
-  int nDataTargets = g_disassembler_data.size();
+  DisasmData* data = nullptr;  // bIsNopcode = false
+  int nDataTargets = disassembler_data.size();
 
   if (nDataTargets != 0) {
     // TODO: Replace with binary search -- should store data in sorted order,
     // via start address
-    data = g_disassembler_data.data();
+    data = disassembler_data.data();
     for (int iTarget = 0; iTarget < nDataTargets; iTarget++) {
       if ((data->iDirective != NOP_REMOVED) &&
           ((address >= data->nStartAddress) && (address < data->nEndAddress))) {

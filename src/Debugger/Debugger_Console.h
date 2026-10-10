@@ -27,11 +27,11 @@ enum : uint16_t {
 
 // Color ____________________________________________________________________
 
-// typedef uint8_t conchar_t;
-using conchar_t = int16_t;
+// typedef uint8_t ConChar;
+using ConChar = int16_t;
 
-// NOTE: Keep in sync ConsoleColors_e g_console_color !
-enum ConsoleColors_e : uint8_t {
+// NOTE: Keep in sync ConsoleColors console_color !
+enum ConsoleColors : uint8_t {
   CONSOLE_COLOR_K,      // 0
   CONSOLE_COLOR_x = 0,  // default console foreground
   CONSOLE_COLOR_R,      // 1 Red
@@ -46,7 +46,7 @@ enum ConsoleColors_e : uint8_t {
   CONSOLE_COLOR_b,      // : Light Blue
   NUM_CONSOLE_COLORS,
 };
-extern int g_console_color[NUM_CONSOLE_COLORS];
+extern int console_color[NUM_CONSOLE_COLORS];
 
 // Note: THe ` ~ key should always display ~ to prevent rendering errors
 constexpr char CONSOLE_COLOR_ESCAPE_CHAR = '`';
@@ -116,28 +116,28 @@ inline auto ConsoleColor_IsCharColor(uint8_t c) -> bool {
 //      ea Extended ASCII with High-Bit representing Mouse Text
 //      cc Encoded Color / Mouse Text
 //
-inline auto ConsoleColor_IsColorOrMouse(conchar_t g) -> bool {
+inline auto ConsoleColor_IsColorOrMouse(ConChar g) -> bool {
   return g > CONSOLE_COLOR_MASK;
 }
 
-inline auto ConsoleColor_IsColor(conchar_t g) -> bool {
+inline auto ConsoleColor_IsColor(ConChar g) -> bool {
   return ConsoleColor_IsCharColor(g >> CONSOLE_COLOR_SHIFT);
 }
 
-inline auto ConsoleColor_GetColor(conchar_t g) -> uint32_t {
+inline auto ConsoleColor_GetColor(ConChar g) -> uint32_t {
   const int iColor = (g >> CONSOLE_COLOR_SHIFT) - '0';
   if (iColor < NUM_CONSOLE_COLORS) {
-    return g_console_color[iColor];
+    return console_color[iColor];
   }
 
-  return g_console_color[0];
+  return console_color[0];
 }
 
-inline auto ConsoleColor_GetMeta(conchar_t g) -> char {
+inline auto ConsoleColor_GetMeta(ConChar g) -> char {
   return ((g >> CONSOLE_COLOR_SHIFT) & CONSOLE_COLOR_MASK);
 }
 
-inline auto ConsoleChar_GetChar(conchar_t g) -> char {
+inline auto ConsoleChar_GetChar(ConChar g) -> char {
   return (g & CONSOLE_COLOR_MASK);
 }
 
@@ -145,13 +145,13 @@ inline auto ConsoleColor_MakeMouse(uint8_t c) -> char {
   return ((c - '@') + (CONSOLE_COLOR_MASK + 1));
 }
 
-inline auto ConsoleColor_MakeMeta(uint8_t c) -> conchar_t {
-  conchar_t g = (ConsoleColor_MakeMouse(c) << CONSOLE_COLOR_SHIFT);
+inline auto ConsoleColor_MakeMeta(uint8_t c) -> ConChar {
+  ConChar g = (ConsoleColor_MakeMouse(c) << CONSOLE_COLOR_SHIFT);
   return g;
 }
 
-inline auto ConsoleColor_MakeColor(uint8_t color, uint8_t text) -> conchar_t {
-  conchar_t g = (color << CONSOLE_COLOR_SHIFT) | text;
+inline auto ConsoleColor_MakeColor(uint8_t color, uint8_t text) -> ConChar {
+  ConChar g = (color << CONSOLE_COLOR_SHIFT) | text;
   return g;
 }
 
@@ -176,46 +176,46 @@ inline auto ConsoleColor_StringLength(const char* text) -> int {
 // Globals __________________________________________________________________
 
 // Buffer
-extern bool g_console_buffer_paused;
-extern int g_console_buffer_size;
-extern conchar_t
-    g_console_buffer[CONSOLE_BUFFER_HEIGHT]
-                    [CONSOLE_WIDTH];  // TODO: std::vector< line_t >
+extern bool console_buffer_paused;
+extern int console_buffer_size;
+extern ConChar
+    console_buffer[CONSOLE_BUFFER_HEIGHT]
+                    [CONSOLE_WIDTH];  // TODO: std::vector< Line >
 
 // Cursor
-extern char g_console_cursor[];
+extern char console_cursor[];
 
 // Display
-extern char g_console_prompt[];  // = ">!"; // input, assembler // NUM_PROMPTS
+extern char console_prompt[];  // = ">!"; // input, assembler // NUM_PROMPTS
 extern char
-    g_console_prompt_str[];  // = ">"; // No, NOT Integer Basic!  The nostalgic
+    console_prompt_str[];  // = ">"; // No, NOT Integer Basic!  The nostalgic
                              // '*' "Monitor" doesn't look as good, IMHO. :-(
-extern int g_console_prompt_len;
+extern int console_prompt_len;
 
-extern bool g_console_full_width;  // = false;
+extern bool console_full_width;  // = false;
 
-extern int g_console_display_start;  // to allow scrolling
-extern int g_console_display_total;  // number of lines added to console
-extern int g_console_display_lines;
-extern int g_console_display_width;
-extern conchar_t g_console_display[CONSOLE_DISPLAY_HEIGHT][CONSOLE_WIDTH];
+extern int console_display_start;  // to allow scrolling
+extern int console_display_total;  // number of lines added to console
+extern int console_display_lines;
+extern int console_display_width;
+extern ConChar console_display[CONSOLE_DISPLAY_HEIGHT][CONSOLE_WIDTH];
 
 // Input History
-extern int g_history_lines_start;  // = 0;
-extern int g_history_lines_total;  // = 0; // number of commands entered
-extern char g_history_lines[HISTORY_HEIGHT][HISTORY_WIDTH];  // = {""};
+extern int history_lines_start;  // = 0;
+extern int history_lines_total;  // = 0; // number of commands entered
+extern char history_lines[HISTORY_HEIGHT][HISTORY_WIDTH];  // = {""};
 
 // Input Line
 // Raw input Line (has prompt)
-extern char g_console_input[CONSOLE_WIDTH + CONSOLE_INPUT_EXTRA];
+extern char console_input[CONSOLE_WIDTH + CONSOLE_INPUT_EXTRA];
 
 // Cooked input line (no prompt)
-extern int g_console_input_chars;
-extern char* g_console_input_ptr;        // points to past prompt
-extern const char* g_console_first_arg;  // points to first arg
-extern bool g_console_input_quoted;
+extern int console_input_chars;
+extern char* console_input_ptr;        // points to past prompt
+extern const char* console_first_arg;  // points to first arg
+extern bool console_input_quoted;
 
-extern int g_console_input_skip;
+extern int console_input_skip;
 
 // Prototypes _______________________________________________________________
 
@@ -249,7 +249,7 @@ inline auto ConsolePrintFormat(char (&buf)[BufSize], const char* pFormat, ...)
 }
 
 auto ConsoleBufferToDisplay() -> void;
-auto ConsoleBufferPeek() -> const conchar_t*;
+auto ConsoleBufferPeek() -> const ConChar*;
 auto ConsoleBufferPop() -> void;
 
 auto ConsoleBufferPush(const char* text) -> bool;
@@ -278,14 +278,14 @@ inline auto ConsoleBufferPushFormat(char (&buf)[BufSize], const char* pFormat,
   return r;
 }
 
-auto ConsoleConvertFromText(conchar_t* sText, const char* text) -> void;
+auto ConsoleConvertFromText(ConChar* sText, const char* text) -> void;
 
 // Display
-auto console_display_error(const char* text) -> Update_t;
+auto console_display_error(const char* text) -> UpdateResult;
 auto ConsoleDisplayPause() -> void;
 auto ConsoleDisplayPush(const char* text) -> void;
-auto ConsoleDisplayPush(const conchar_t* text) -> void;
-auto ConsoleUpdate() -> Update_t;
+auto ConsoleDisplayPush(const ConChar* text) -> void;
+auto ConsoleUpdate() -> UpdateResult;
 auto ConsoleFlush() -> void;
 
 // Input
@@ -299,12 +299,12 @@ auto ConsoleInputTabCompletion() -> int;
 
 auto ConsoleUpdateCursor(char ch) -> void;
 
-auto ConsoleBufferTryUnpause(int nLines) -> Update_t;
+auto ConsoleBufferTryUnpause(int nLines) -> UpdateResult;
 
 // Scrolling
-auto ConsoleScrollHome() -> Update_t;
-auto ConsoleScrollEnd() -> Update_t;
-auto ConsoleScrollUp(int nLines) -> Update_t;
-auto ConsoleScrollDn(int nLines) -> Update_t;
-auto ConsoleScrollPageUp() -> Update_t;
-auto ConsoleScrollPageDn() -> Update_t;
+auto ConsoleScrollHome() -> UpdateResult;
+auto ConsoleScrollEnd() -> UpdateResult;
+auto ConsoleScrollUp(int nLines) -> UpdateResult;
+auto ConsoleScrollDn(int nLines) -> UpdateResult;
+auto ConsoleScrollPageUp() -> UpdateResult;
+auto ConsoleScrollPageDn() -> UpdateResult;

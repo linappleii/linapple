@@ -13,9 +13,9 @@
 
 namespace {
 
-using UniqueSurface_t = std::unique_ptr<VideoSurface, void (*)(VideoSurface*)>;
+using UniqueSurface = std::unique_ptr<VideoSurface, void (*)(VideoSurface*)>;
 
-auto make_surface(int width, int height, int bpp) -> UniqueSurface_t {
+auto make_surface(int width, int height, int bpp) -> UniqueSurface {
   return {video_create_surface(width, height, bpp), video_destroy_surface};
 }
 
@@ -40,30 +40,30 @@ auto set_pixel32(VideoSurface* s, int x, int y, uint32_t val) -> void {
 // Declared rather than inherited: the core is here for the video subsystem,
 // and the slot fallbacks in peripheral_register_internal would build four
 // cards nothing here touches.
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 
-struct ScopedVideoFixture_t {
-  ScopedVideoFixture_t() {
+struct ScopedVideoFixture {
+  ScopedVideoFixture() {
     machine.load();
     linapple_init();
     video_initialize();
   }
 
-  ~ScopedVideoFixture_t() { linapple_shutdown(); }
+  ~ScopedVideoFixture() { linapple_shutdown(); }
 
-  ScopedVideoFixture_t(const ScopedVideoFixture_t&) = delete;
-  auto operator=(const ScopedVideoFixture_t&) -> ScopedVideoFixture_t& = delete;
-  ScopedVideoFixture_t(ScopedVideoFixture_t&&) = delete;
-  auto operator=(ScopedVideoFixture_t&&) -> ScopedVideoFixture_t& = delete;
+  ScopedVideoFixture(const ScopedVideoFixture&) = delete;
+  auto operator=(const ScopedVideoFixture&) -> ScopedVideoFixture& = delete;
+  ScopedVideoFixture(ScopedVideoFixture&&) = delete;
+  auto operator=(ScopedVideoFixture&&) -> ScopedVideoFixture& = delete;
 
-  TestConfig_t machine{TestConfig_t::enhanced_2e_only()};
+  TestConfig machine{TestConfig::enhanced_2e_only()};
 };
 
 }  // namespace
 
 TEST_CASE("VideoStretch - 1:1 RGB32 Soft Stretch") {
-  UniqueSurface_t src = make_surface(560, 384, 4);
-  UniqueSurface_t dst = make_surface(560, 384, 4);
+  UniqueSurface src = make_surface(560, 384, 4);
+  UniqueSurface dst = make_surface(560, 384, 4);
   REQUIRE(src != nullptr);
   REQUIRE(dst != nullptr);
 
@@ -84,9 +84,9 @@ TEST_CASE("VideoStretch - 1:1 RGB32 Soft Stretch") {
 }
 
 TEST_CASE("VideoStretch - 1:2 and 1:3 Scaling to Window Resolutions") {
-  UniqueSurface_t src = make_surface(560, 384, 4);
-  UniqueSurface_t dst_2x = make_surface(1120, 768, 4);
-  UniqueSurface_t dst_3x = make_surface(1680, 1152, 4);
+  UniqueSurface src = make_surface(560, 384, 4);
+  UniqueSurface dst_2x = make_surface(1120, 768, 4);
+  UniqueSurface dst_3x = make_surface(1680, 1152, 4);
   REQUIRE(src != nullptr);
   REQUIRE(dst_2x != nullptr);
   REQUIRE(dst_3x != nullptr);
@@ -132,8 +132,8 @@ TEST_CASE("VideoStretch - 1:2 and 1:3 Scaling to Window Resolutions") {
 }
 
 TEST_CASE("VideoStretch - Sub-Rectangle and Viewport Positioning") {
-  UniqueSurface_t src = make_surface(560, 384, 4);
-  UniqueSurface_t dst = make_surface(1120, 768, 4);
+  UniqueSurface src = make_surface(560, 384, 4);
+  UniqueSurface dst = make_surface(1120, 768, 4);
   REQUIRE(src != nullptr);
   REQUIRE(dst != nullptr);
 
@@ -156,8 +156,8 @@ TEST_CASE("VideoStretch - Sub-Rectangle and Viewport Positioning") {
 }
 
 TEST_CASE("VideoStretch - Boundary and Null Safety Checks") {
-  UniqueSurface_t src = make_surface(100, 100, 4);
-  UniqueSurface_t dst = make_surface(100, 100, 4);
+  UniqueSurface src = make_surface(100, 100, 4);
+  UniqueSurface dst = make_surface(100, 100, 4);
   REQUIRE(src != nullptr);
   REQUIRE(dst != nullptr);
 
@@ -180,7 +180,7 @@ TEST_CASE("VideoStretch - Boundary and Null Safety Checks") {
 }
 
 TEST_CASE("Video - Mode Switch Preserves Drawn Screen") {
-  ScopedVideoFixture_t fixture;
+  ScopedVideoFixture fixture;
 
   // Write character 'A' (0xC1 in Apple II text memory) at (0,0) -> 0x400
   *mem_get_main_ptr(0x0400) = 0xC1;
@@ -199,7 +199,7 @@ TEST_CASE("Video - Mode Switch Preserves Drawn Screen") {
   CHECK(crc_before == expected_crc);
 
   // Switch video mode (F9 behavior)
-  g_videotype = VT_COLOR_TEXT_OPTIMIZED;
+  videotype = VT_COLOR_TEXT_OPTIMIZED;
   video_reinitialize();
   video_refresh_screen();
 

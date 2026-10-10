@@ -47,7 +47,7 @@ constexpr uint8_t centre_position = 127;
 constexpr uint64_t pulse_cycles_per_count = 11;
 constexpr uint64_t pulse_lead_in_cycles = 10;
 
-struct GamePort_t {
+struct GamePort {
   std::array<uint64_t, paddle_count> trigger_cycle{};
   std::array<uint8_t, paddle_count> position{
       {centre_position, centre_position, centre_position, centre_position},
@@ -55,7 +55,7 @@ struct GamePort_t {
   // The pot as it stood at the accepted strobe, moved with the pot only while
   // the output is high.
   std::array<uint8_t, paddle_count> pulse_position{};
-  HostInterface_t* host = nullptr;
+  HostInterface* host = nullptr;
   int slot = 0;
 };
 
@@ -68,7 +68,7 @@ auto pulse_cycles(uint8_t position) -> uint64_t {
 // a trigger ahead of the counter was wound past and has long run out. The
 // pulse is measured against its latched position: once the output has fallen
 // the timer is idle whatever the pot does (NE558 datasheet; Sather 7-11).
-auto timer_expired(const GamePort_t* port, size_t paddle, uint64_t now)
+auto timer_expired(const GamePort* port, size_t paddle, uint64_t now)
     -> bool {
   const uint64_t trigger = port->trigger_cycle.at(paddle);
   if (trigger == 0 || trigger > now) {
@@ -87,7 +87,7 @@ auto joystick_io_read_paddle(void* instance, uint16_t program_counter,
   if (instance == nullptr) {
     return 0;
   }
-  auto* port = static_cast<GamePort_t*>(instance);
+  auto* port = static_cast<GamePort*>(instance);
 
   uint8_t result = port->host->ReadFloatingBus(executed_cycles) & bus_data_mask;
   const size_t paddle = (memory_address & mux_select_mask) - mux_paddle0;
@@ -107,7 +107,7 @@ auto joystick_strobe(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
-  auto* port = static_cast<GamePort_t*>(instance);
+  auto* port = static_cast<GamePort*>(instance);
   const uint64_t now = port->host->GetCycles();
   for (size_t paddle = 0; paddle < paddle_count; ++paddle) {
     if (timer_expired(port, paddle, now)) {
@@ -119,7 +119,7 @@ auto joystick_strobe(void* instance) -> void {
 
 // Better no card than a phantom one: without these members the port cannot be
 // reached, timed or read, and the log names the missing one.
-auto missing_host_member(const HostInterface_t* host) -> const char* {
+auto missing_host_member(const HostInterface* host) -> const char* {
   if (host->RegisterDirectIO == nullptr) {
     return "RegisterDirectIO";
   }
@@ -135,7 +135,7 @@ auto missing_host_member(const HostInterface_t* host) -> const char* {
   return nullptr;
 }
 
-auto joystick_abi_init(int slot, HostInterface_t* host) -> void* {
+auto joystick_abi_init(int slot, HostInterface* host) -> void* {
   if (host == nullptr) {
     return nullptr;
   }
@@ -148,7 +148,7 @@ auto joystick_abi_init(int slot, HostInterface_t* host) -> void* {
     return nullptr;
   }
 
-  auto port = std::unique_ptr<GamePort_t>(new (std::nothrow) GamePort_t());
+  auto port = std::unique_ptr<GamePort>(new (std::nothrow) GamePort());
   if (!port) {
     return nullptr;
   }
@@ -172,16 +172,16 @@ auto joystick_abi_shutdown(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
-  std::unique_ptr<GamePort_t> port(static_cast<GamePort_t*>(instance));
+  std::unique_ptr<GamePort> port(static_cast<GamePort*>(instance));
 }
 
 auto joystick_abi_command(void* instance, uint32_t command_id,
                           const void* payload, size_t payload_size)
-    -> PeripheralStatus_t {
+    -> PeripheralStatus {
   if (instance == nullptr) {
     return peripheral_error;
   }
-  auto* port = static_cast<GamePort_t*>(instance);
+  auto* port = static_cast<GamePort*>(instance);
   if (!peripheral_cmd_is_mine(command_id, PERIPHERAL_SUBSYSTEM_JOYSTICK)) {
     return peripheral_incompatible;
   }
@@ -190,10 +190,10 @@ auto joystick_abi_command(void* instance, uint32_t command_id,
     return peripheral_incompatible;
   }
 
-  if (payload == nullptr || payload_size != sizeof(JoystickAxisPayload_t)) {
+  if (payload == nullptr || payload_size != sizeof(JoystickAxisPayload)) {
     return peripheral_error;
   }
-  const auto* axis = static_cast<const JoystickAxisPayload_t*>(payload);
+  const auto* axis = static_cast<const JoystickAxisPayload*>(payload);
   if (axis->joystick >= joystick_count || axis->axis >= axis_count) {
     return peripheral_error;
   }
@@ -212,7 +212,7 @@ auto joystick_abi_command(void* instance, uint32_t command_id,
 // The port has no queries: its state is read through the switches and timers.
 // NOLINTBEGIN(readability-non-const-parameter) - signature defined by PeripheralQueryFn ABI
 auto joystick_abi_query(void* instance, uint32_t query_id, void* output,
-                        size_t* output_size) -> PeripheralStatus_t {
+                        size_t* output_size) -> PeripheralStatus {
   (void)instance;
   (void)query_id;
   (void)output;
@@ -223,39 +223,39 @@ auto joystick_abi_query(void* instance, uint32_t query_id, void* output,
 }
 // NOLINTEND(readability-non-const-parameter)
 
-static_assert(sizeof(JoystickSaveState_t) == 56,
+static_assert(sizeof(JoystickSaveState) == 56,
               "the game port's state frame is part of the plugin ABI");
-static_assert(offsetof(JoystickSaveState_t, version) == 0,
+static_assert(offsetof(JoystickSaveState, version) == 0,
               "the frame header is version then size");
-static_assert(offsetof(JoystickSaveState_t, struct_size) == 4,
+static_assert(offsetof(JoystickSaveState, struct_size) == 4,
               "the frame header is version then size");
-static_assert(offsetof(JoystickSaveState_t, trigger_cycle) == 8,
+static_assert(offsetof(JoystickSaveState, trigger_cycle) == 8,
               "the four triggers sit where every frame written has them");
-static_assert(sizeof(JoystickSaveState_t::trigger_cycle) == 32,
+static_assert(sizeof(JoystickSaveState::trigger_cycle) == 32,
               "one 64-bit trigger per timer");
-static_assert(offsetof(JoystickSaveState_t, x_pos) == 40,
+static_assert(offsetof(JoystickSaveState, x_pos) == 40,
               "the fields after the triggers keep their place");
-static_assert(offsetof(JoystickSaveState_t, y_pos) == 42,
+static_assert(offsetof(JoystickSaveState, y_pos) == 42,
               "the fields after the triggers keep their place");
-static_assert(offsetof(JoystickSaveState_t, buttons) == 44,
+static_assert(offsetof(JoystickSaveState, buttons) == 44,
               "the fields after the triggers keep their place");
-static_assert(offsetof(JoystickSaveState_t, reserved0) == 47,
+static_assert(offsetof(JoystickSaveState, reserved0) == 47,
               "the fields after the triggers keep their place");
-static_assert(offsetof(JoystickSaveState_t, trim_x) == 48,
+static_assert(offsetof(JoystickSaveState, trim_x) == 48,
               "the fields after the triggers keep their place");
-static_assert(offsetof(JoystickSaveState_t, trim_y) == 50,
+static_assert(offsetof(JoystickSaveState, trim_y) == 50,
               "the fields after the triggers keep their place");
-static_assert(offsetof(JoystickSaveState_t, reserved1) == 52,
+static_assert(offsetof(JoystickSaveState, reserved1) == 52,
               "the fields after the triggers keep their place");
 
 // Positions, trim and switch levels are the host's or the motherboard's and go
 // out as zeros.
 auto joystick_abi_save_state(void* instance, void* state_buffer,
-                             size_t* buffer_size) -> PeripheralStatus_t {
+                             size_t* buffer_size) -> PeripheralStatus {
   if (buffer_size == nullptr) {
     return peripheral_error;
   }
-  constexpr size_t required_size = sizeof(JoystickSaveState_t);
+  constexpr size_t required_size = sizeof(JoystickSaveState);
   if (state_buffer == nullptr) {
     *buffer_size = required_size;
     return peripheral_ok;
@@ -264,8 +264,8 @@ auto joystick_abi_save_state(void* instance, void* state_buffer,
     return peripheral_error;
   }
 
-  const auto* port = static_cast<const GamePort_t*>(instance);
-  JoystickSaveState_t state{};
+  const auto* port = static_cast<const GamePort*>(instance);
+  JoystickSaveState state{};
   state.version = JOYSTICK_STATE_VERSION;
   state.struct_size = static_cast<uint32_t>(required_size);
   for (size_t paddle = 0; paddle < paddle_count; ++paddle) {
@@ -281,19 +281,19 @@ auto joystick_abi_save_state(void* instance, void* state_buffer,
 // no positions, so a loaded pulse is measured against the pot as the host
 // holds it now (it re-sends within a slice; a pulse is under 3 ms).
 auto joystick_abi_load_state(void* instance, const void* state_buffer,
-                             size_t buffer_size) -> PeripheralStatus_t {
+                             size_t buffer_size) -> PeripheralStatus {
   if (instance == nullptr || state_buffer == nullptr ||
-      buffer_size != sizeof(JoystickSaveState_t)) {
+      buffer_size != sizeof(JoystickSaveState)) {
     return peripheral_error;
   }
-  JoystickSaveState_t state{};
+  JoystickSaveState state{};
   std::memcpy(&state, state_buffer, sizeof(state));
   if (state.version != JOYSTICK_STATE_VERSION ||
       state.struct_size != sizeof(state)) {
     return peripheral_error;
   }
 
-  auto* port = static_cast<GamePort_t*>(instance);
+  auto* port = static_cast<GamePort*>(instance);
   for (size_t paddle = 0; paddle < paddle_count; ++paddle) {
     port->trigger_cycle.at(paddle) = state.trigger_cycle[paddle];
     port->pulse_position.at(paddle) = port->position.at(paddle);
@@ -303,7 +303,7 @@ auto joystick_abi_load_state(void* instance, const void* state_buffer,
 
 }  // namespace
 
-static Peripheral_t joystick_peripheral = {
+static Peripheral joystick_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.joystick",
     .name = "Joystick",
@@ -325,6 +325,6 @@ static Peripheral_t joystick_peripheral = {
 };
 
 // Peripheral registry requires non-const pointer.
-auto joystick_get_descriptor() -> Peripheral_t* { return &joystick_peripheral; }
+auto joystick_get_descriptor() -> Peripheral* { return &joystick_peripheral; }
 
 PERIPHERAL_REGISTER(joystick_peripheral)

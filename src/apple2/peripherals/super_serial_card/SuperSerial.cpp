@@ -45,51 +45,51 @@ constexpr uint8_t switches_1_undriven = 0x0C;
 constexpr uint8_t switches_2_undriven = 0x50;
 constexpr uint8_t cts_deasserted = 0x01;
 
-static_assert(sizeof(SuperSerialSaveState_t) == 56,
+static_assert(sizeof(SuperSerialSaveState) == 56,
               "the serial card's state frame is part of the plugin ABI");
-static_assert(offsetof(SuperSerialSaveState_t, version) == 0,
+static_assert(offsetof(SuperSerialSaveState, version) == 0,
               "the frame header is version then size");
-static_assert(offsetof(SuperSerialSaveState_t, struct_size) == 4,
+static_assert(offsetof(SuperSerialSaveState, struct_size) == 4,
               "the frame header is version then size");
-static_assert(offsetof(SuperSerialSaveState_t, rx_count) == 8,
+static_assert(offsetof(SuperSerialSaveState, rx_count) == 8,
               "the dead fields keep their place so every frame written loads");
-static_assert(offsetof(SuperSerialSaveState_t, control_byte) == 12,
+static_assert(offsetof(SuperSerialSaveState, control_byte) == 12,
               "the control register sits where every frame written has it");
-static_assert(offsetof(SuperSerialSaveState_t, command_byte) == 13,
+static_assert(offsetof(SuperSerialSaveState, command_byte) == 13,
               "the command register sits where every frame written has it");
-static_assert(offsetof(SuperSerialSaveState_t, is_irq_pending) == 14,
+static_assert(offsetof(SuperSerialSaveState, is_irq_pending) == 14,
               "the IRQ latch sits where every frame written has it");
-static_assert(offsetof(SuperSerialSaveState_t, is_rx_irq_enabled) == 15,
+static_assert(offsetof(SuperSerialSaveState, is_rx_irq_enabled) == 15,
               "the dead fields keep their place so every frame written loads");
-static_assert(offsetof(SuperSerialSaveState_t, is_tx_irq_enabled) == 16,
+static_assert(offsetof(SuperSerialSaveState, is_tx_irq_enabled) == 16,
               "the dead fields keep their place so every frame written loads");
-static_assert(offsetof(SuperSerialSaveState_t, was_tx_written) == 17,
+static_assert(offsetof(SuperSerialSaveState, was_tx_written) == 17,
               "the dead fields keep their place so every frame written loads");
-static_assert(offsetof(SuperSerialSaveState_t, rx_buffer) == 18,
+static_assert(offsetof(SuperSerialSaveState, rx_buffer) == 18,
               "the dead fields keep their place so every frame written loads");
-static_assert(offsetof(SuperSerialSaveState_t, status_latches) == 27,
+static_assert(offsetof(SuperSerialSaveState, status_latches) == 27,
               "the latch byte is the one byte older frames held in reserve");
-static_assert(offsetof(SuperSerialSaveState_t, config) == 28,
+static_assert(offsetof(SuperSerialSaveState, config) == 28,
               "the dead fields keep their place so every frame written loads");
-static_assert(sizeof(SuperSerialSaveState_t::config) == 24,
+static_assert(sizeof(SuperSerialSaveState::config) == 24,
               "the dead fields keep their size so every frame written loads");
 static_assert(
-    offsetof(SuperSerialSaveState_t, receive_data) == 52,
+    offsetof(SuperSerialSaveState, receive_data) == 52,
     "the data bytes take the four bytes older frames held in reserve");
 static_assert(
-    offsetof(SuperSerialSaveState_t, transmit_data) == 53,
+    offsetof(SuperSerialSaveState, transmit_data) == 53,
     "the data bytes take the four bytes older frames held in reserve");
 static_assert(
-    offsetof(SuperSerialSaveState_t, shift_data) == 54,
+    offsetof(SuperSerialSaveState, shift_data) == 54,
     "the data bytes take the four bytes older frames held in reserve");
-static_assert(offsetof(SuperSerialSaveState_t, reserved1) == 55,
+static_assert(offsetof(SuperSerialSaveState, reserved1) == 55,
               "one reserved byte remains");
 
-struct SuperSerialCard_t {
-  HostInterface_t* host = nullptr;
+struct SuperSerialCard {
+  HostInterface* host = nullptr;
   void* sink = nullptr;
   int slot = 0;
-  SuperSerialSwitches_t switches{default_switches_1, default_switches_2};
+  SuperSerialSwitches switches{default_switches_1, default_switches_2};
   Acia6551 acia;
   AciaLine line_sent;
   bool slot_irq = false;
@@ -99,7 +99,7 @@ auto switch_reads_0(uint8_t image, int number) -> bool {
   return (image & static_cast<uint8_t>(1U << (number - 1))) != 0;
 }
 
-auto switches_1_byte(const SuperSerialCard_t* card) -> uint8_t {
+auto switches_1_byte(const SuperSerialCard* card) -> uint8_t {
   const uint8_t image = card->switches.sw1;
   uint8_t byte = switches_1_undriven;
   byte |= switch_reads_0(image, 1) ? 0 : 0x80;
@@ -111,7 +111,7 @@ auto switches_1_byte(const SuperSerialCard_t* card) -> uint8_t {
   return byte;
 }
 
-auto switches_2_byte(const SuperSerialCard_t* card) -> uint8_t {
+auto switches_2_byte(const SuperSerialCard* card) -> uint8_t {
   const uint8_t image = card->switches.sw2;
   uint8_t byte = switches_2_undriven;
   byte |= switch_reads_0(image, 1) ? 0 : 0x80;
@@ -125,7 +125,7 @@ auto switches_2_byte(const SuperSerialCard_t* card) -> uint8_t {
 
 // A host with nothing to say reads as no cable: the card's 15 kOhm pull-ups
 // assert all three inputs (1981 manual p. 48).
-auto host_lines(SuperSerialCard_t* card) -> uint8_t {
+auto host_lines(SuperSerialCard* card) -> uint8_t {
   uint8_t mask = 0;
   if (card->host->SinkGetLines(card->sink, &mask)) {
     return mask & acia_line::all_asserted;
@@ -133,7 +133,7 @@ auto host_lines(SuperSerialCard_t* card) -> uint8_t {
   return acia_line::all_asserted;
 }
 
-auto send_bytes(SuperSerialCard_t* card, uint64_t now) -> void {
+auto send_bytes(SuperSerialCard* card, uint64_t now) -> void {
   uint8_t byte = 0;
   while (acia_step(&card->acia, now, &byte)) {
     card->host->SinkWrite(card->sink, byte);
@@ -144,7 +144,7 @@ auto send_bytes(SuperSerialCard_t* card, uint64_t now) -> void {
 // receiver can hold it, so a slow reader sees bytes wait rather than an
 // overrun, and a disabled receiver's bytes wait instead of being lost as on
 // hardware.
-auto pull_byte(SuperSerialCard_t* card, uint64_t now) -> void {
+auto pull_byte(SuperSerialCard* card, uint64_t now) -> void {
   if (!acia_rx_ready(&card->acia)) {
     return;
   }
@@ -154,9 +154,9 @@ auto pull_byte(SuperSerialCard_t* card, uint64_t now) -> void {
   }
 }
 
-auto send_line(SuperSerialCard_t* card) -> void {
+auto send_line(SuperSerialCard* card) -> void {
   acia_line_view(&card->acia, &card->line_sent);
-  PeripheralSerialLine_t line{};
+  PeripheralSerialLine line{};
   line.baud = card->line_sent.baud;
   line.data_bits = card->line_sent.data_bits;
   line.parity = card->line_sent.parity;
@@ -167,7 +167,7 @@ auto send_line(SuperSerialCard_t* card) -> void {
   card->host->SinkSetLine(card->sink, &line);
 }
 
-auto follow_line(SuperSerialCard_t* card) -> void {
+auto follow_line(SuperSerialCard* card) -> void {
   AciaLine line;
   acia_line_view(&card->acia, &line);
   const AciaLine& sent = card->line_sent;
@@ -180,7 +180,7 @@ auto follow_line(SuperSerialCard_t* card) -> void {
   send_line(card);
 }
 
-auto follow_irq(SuperSerialCard_t* card) -> void {
+auto follow_irq(SuperSerialCard* card) -> void {
   const bool level =
       acia_irq(&card->acia) && (card->switches.sw2 & switch_2_6) != 0;
   if (level == card->slot_irq) {
@@ -190,7 +190,7 @@ auto follow_irq(SuperSerialCard_t* card) -> void {
   card->host->AssertIrq(card->slot, level);
 }
 
-auto sync(SuperSerialCard_t* card) -> uint64_t {
+auto sync(SuperSerialCard* card) -> uint64_t {
   const uint64_t now = card->host->GetCycles();
   acia_set_lines(&card->acia, host_lines(card), now);
   send_bytes(card, now);
@@ -199,7 +199,7 @@ auto sync(SuperSerialCard_t* card) -> uint64_t {
 
 // The wake lands TDRE, RDRF and the receiver's free point within one
 // instruction of their cycle; an idle chip's 0 cancels it.
-auto settle(SuperSerialCard_t* card, uint64_t now) -> void {
+auto settle(SuperSerialCard* card, uint64_t now) -> void {
   send_bytes(card, now);
   pull_byte(card, now);
   follow_line(card);
@@ -217,7 +217,7 @@ auto super_serial_io_read(void* instance, uint16_t program_counter,
   if (instance == nullptr) {
     return 0;
   }
-  auto* card = static_cast<SuperSerialCard_t*>(instance);
+  auto* card = static_cast<SuperSerialCard*>(instance);
   const uint64_t now = sync(card);
   const uint16_t offset = memory_address & io_register_mask;
   uint8_t value = 0;
@@ -247,7 +247,7 @@ auto super_serial_io_write(void* instance, uint16_t program_counter,
   if (instance == nullptr) {
     return 0;
   }
-  auto* card = static_cast<SuperSerialCard_t*>(instance);
+  auto* card = static_cast<SuperSerialCard*>(instance);
   const uint64_t now = sync(card);
   const uint16_t offset = memory_address & io_register_mask;
   if ((offset & acia_select_mask) == acia_selected) {
@@ -263,7 +263,7 @@ auto super_serial_io_write(void* instance, uint16_t program_counter,
 
 // Better no card than a phantom one; the log names the member. Log itself is
 // the one refusal nothing can report.
-auto missing_host_member(const HostInterface_t* host) -> const char* {
+auto missing_host_member(const HostInterface* host) -> const char* {
   if (host->AssertIrq == nullptr) {
     return "AssertIrq";
   }
@@ -309,7 +309,7 @@ auto missing_host_member(const HostInterface_t* host) -> const char* {
   return nullptr;
 }
 
-auto super_serial_abi_init(int slot, HostInterface_t* host) -> void* {
+auto super_serial_abi_init(int slot, HostInterface* host) -> void* {
   if (host == nullptr || host->Log == nullptr) {
     return nullptr;
   }
@@ -328,8 +328,8 @@ auto super_serial_abi_init(int slot, HostInterface_t* host) -> void* {
     return nullptr;
   }
 
-  auto card = std::unique_ptr<SuperSerialCard_t>(new (std::nothrow)
-                                                     SuperSerialCard_t());
+  auto card = std::unique_ptr<SuperSerialCard>(new (std::nothrow)
+                                                     SuperSerialCard());
   if (!card) {
     return nullptr;
   }
@@ -369,7 +369,7 @@ auto super_serial_abi_reset(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
-  auto* card = static_cast<SuperSerialCard_t*>(instance);
+  auto* card = static_cast<SuperSerialCard*>(instance);
   const uint64_t now = card->host->GetCycles();
   acia_reset(&card->acia, now);
   acia_set_lines(&card->acia, host_lines(card), now);
@@ -382,8 +382,8 @@ auto super_serial_abi_shutdown(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
-  std::unique_ptr<SuperSerialCard_t> card(
-      static_cast<SuperSerialCard_t*>(instance));
+  std::unique_ptr<SuperSerialCard> card(
+      static_cast<SuperSerialCard*>(instance));
   if (card->slot_irq) {
     card->host->AssertIrq(card->slot, false);
   }
@@ -395,14 +395,14 @@ auto super_serial_abi_think(void* instance, uint32_t elapsed_cycles) -> void {
   if (instance == nullptr) {
     return;
   }
-  auto* card = static_cast<SuperSerialCard_t*>(instance);
+  auto* card = static_cast<SuperSerialCard*>(instance);
   const uint64_t now = sync(card);
   settle(card, now);
 }
 
 auto super_serial_abi_command(void* instance, uint32_t command_id,
                               const void* payload, size_t payload_size)
-    -> PeripheralStatus_t {
+    -> PeripheralStatus {
   if (instance == nullptr) {
     return peripheral_error;
   }
@@ -412,16 +412,16 @@ auto super_serial_abi_command(void* instance, uint32_t command_id,
   if (command_id != SUPER_SERIAL_CMD_SET_SWITCHES) {
     return peripheral_incompatible;
   }
-  if (payload == nullptr || payload_size != sizeof(SuperSerialSwitches_t)) {
+  if (payload == nullptr || payload_size != sizeof(SuperSerialSwitches)) {
     return peripheral_error;
   }
-  SuperSerialSwitches_t switches{};
+  SuperSerialSwitches switches{};
   std::memcpy(&switches, payload, sizeof(switches));
   if ((switches.sw1 & switch_bit_7) != 0 ||
       (switches.sw2 & switch_bit_7) != 0) {
     return peripheral_error;
   }
-  auto* card = static_cast<SuperSerialCard_t*>(instance);
+  auto* card = static_cast<SuperSerialCard*>(instance);
   card->switches = switches;
   follow_irq(card);
   return peripheral_ok;
@@ -429,7 +429,7 @@ auto super_serial_abi_command(void* instance, uint32_t command_id,
 
 // NOLINTBEGIN(readability-non-const-parameter) - signature defined by PeripheralQueryFn ABI
 auto super_serial_abi_query(void* instance, uint32_t query_id, void* output,
-                            size_t* output_size) -> PeripheralStatus_t {
+                            size_t* output_size) -> PeripheralStatus {
   (void)instance;
   (void)query_id;
   (void)output;
@@ -441,11 +441,11 @@ auto super_serial_abi_query(void* instance, uint32_t query_id, void* output,
 // NOLINTEND(readability-non-const-parameter)
 
 auto super_serial_abi_save_state(void* instance, void* state_buffer,
-                                 size_t* buffer_size) -> PeripheralStatus_t {
+                                 size_t* buffer_size) -> PeripheralStatus {
   if (buffer_size == nullptr) {
     return peripheral_error;
   }
-  constexpr size_t required_size = sizeof(SuperSerialSaveState_t);
+  constexpr size_t required_size = sizeof(SuperSerialSaveState);
   if (state_buffer == nullptr) {
     *buffer_size = required_size;
     return peripheral_ok;
@@ -454,8 +454,8 @@ auto super_serial_abi_save_state(void* instance, void* state_buffer,
     return peripheral_error;
   }
 
-  const auto* card = static_cast<const SuperSerialCard_t*>(instance);
-  SuperSerialSaveState_t state{};
+  const auto* card = static_cast<const SuperSerialCard*>(instance);
+  SuperSerialSaveState state{};
   state.version = SUPER_SERIAL_STATE_VERSION;
   state.struct_size = static_cast<uint32_t>(required_size);
   state.control_byte = card->acia.control;
@@ -475,13 +475,13 @@ auto super_serial_abi_save_state(void* instance, void* state_buffer,
 // struct_size says how much to read. The switches are not in the frame and
 // keep what the frontend set.
 auto super_serial_abi_load_state(void* instance, const void* state_buffer,
-                                 size_t buffer_size) -> PeripheralStatus_t {
-  constexpr size_t header_size = offsetof(SuperSerialSaveState_t, rx_count);
+                                 size_t buffer_size) -> PeripheralStatus {
+  constexpr size_t header_size = offsetof(SuperSerialSaveState, rx_count);
   if (instance == nullptr || state_buffer == nullptr ||
       buffer_size < header_size) {
     return peripheral_error;
   }
-  SuperSerialSaveState_t state{};
+  SuperSerialSaveState state{};
   std::memcpy(&state, state_buffer, header_size);
   if (state.struct_size != sizeof(state) || buffer_size < state.struct_size) {
     return peripheral_error;
@@ -494,7 +494,7 @@ auto super_serial_abi_load_state(void* instance, const void* state_buffer,
     return peripheral_error;
   }
 
-  auto* card = static_cast<SuperSerialCard_t*>(instance);
+  auto* card = static_cast<SuperSerialCard*>(instance);
   const uint64_t now = card->host->GetCycles();
   acia_reset(&card->acia, now);
   card->acia.control = state.control_byte;
@@ -514,7 +514,7 @@ auto super_serial_abi_load_state(void* instance, const void* state_buffer,
 
 }  // namespace
 
-static Peripheral_t super_serial_peripheral = {
+static Peripheral super_serial_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.ssc",
     .name = "Super Serial Card",
@@ -536,7 +536,7 @@ static Peripheral_t super_serial_peripheral = {
 };
 
 // Peripheral registry requires non-const pointer.
-auto super_serial_get_descriptor() -> Peripheral_t* {
+auto super_serial_get_descriptor() -> Peripheral* {
   return &super_serial_peripheral;
 }
 

@@ -20,7 +20,7 @@ typedef struct {
   uint8_t latches[CLOCKCARD_LATCH_COUNT];
   uint8_t use_fixed_epoch;
   uint8_t reserved[5];
-} ClockCardSaveState_t;
+} ClockCardSaveState;
 
 #ifdef __cplusplus
 }

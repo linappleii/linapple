@@ -25,7 +25,7 @@ extern "C" {
 /* Registering the same descriptor twice is a silent no-op. A different driver
    whose name is already registered is refused and the refusal recorded: the
    name is how an ambiguous image is settled, so it must pick exactly one. */
-void harddisk_loader_register(const HarddiskFormatDriver_t* driver);
+void harddisk_loader_register(const HarddiskFormatDriver* driver);
 
 /* Restores the drivers that registered themselves and forgets everything else,
    refusals and notes included. Test-only: a suite that pushes a synthetic
@@ -35,7 +35,7 @@ void harddisk_loader_reset(void);
 
 /* Reports one driver the loader refused, or one note about an image it
    opened: the subject is the driver's name, the text says what happened. */
-typedef void (*HarddiskDriverRejectionFn_t)(void* context,
+typedef void (*HarddiskDriverRejectionFn)(void* context,
                                             const char* driver_name,
                                             const char* reason);
 
@@ -43,7 +43,7 @@ typedef void (*HarddiskDriverRejectionFn_t)(void* context,
    Registration runs during static initialisation, when no host exists to be
    told, so the loader holds refusals until a caller with somewhere to put
    them asks; a note left by an open is drained the same way. */
-void harddisk_loader_drain_rejections(HarddiskDriverRejectionFn_t sink,
+void harddisk_loader_drain_rejections(HarddiskDriverRejectionFn sink,
                                       void* context);
 
 /* Records a note for the next drain. A backend with no host of its own says
@@ -55,7 +55,7 @@ void harddisk_loader_note(const char* subject, const char* text);
    first. A file no driver claims is harddisk_err_invalid_format; a file that
    does not exist harddisk_err_not_found. */
 HarddiskError harddisk_loader_open(const char* image_path,
-                                     const HarddiskFormatDriver_t** out_driver,
+                                     const HarddiskFormatDriver** out_driver,
                                      void** out_instance);
 
 /* Lists the extensions the registered drivers accept and then the container
@@ -69,7 +69,7 @@ size_t harddisk_loader_get_supported_extensions(char* out_buffer,
 /* The order is by driver name and an index is only valid until the next
    registration. */
 uint32_t harddisk_loader_driver_count(void);
-const HarddiskFormatDriver_t* harddisk_loader_driver_at(uint32_t index);
+const HarddiskFormatDriver* harddisk_loader_driver_at(uint32_t index);
 
 // NOLINTEND(modernize-use-using, modernize-deprecated-headers, modernize-use-trailing-return-type, readability-identifier-naming)
 

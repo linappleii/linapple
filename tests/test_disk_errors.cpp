@@ -22,18 +22,18 @@ namespace {
 // Declared rather than inherited: with no configuration the slot fallbacks in
 // peripheral_register_internal supply a printer, a Super Serial Card and a
 // Mockingboard beside the Disk II, none of which these cases touch.
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 constexpr int SL6 = 6;
 }  // namespace
 
 TEST_CASE("DiskErrors: [ERR-01] Propagate File Not Found") {
-  TestConfig_t machine(TestConfig_t::disk_ii_only());
+  TestConfig machine(TestConfig::disk_ii_only());
   machine.load();
   linapple_init();
   peripheral_manager_init();
   peripheral_register_internal();
 
-  DiskInsertCmd_t cmd{};
+  DiskInsertCmd cmd{};
   cmd.drive = disk_drive_0;
   util_safe_strcpy(cmd.path, "nonexistent_file.dsk", disk_insert_path_max);
 
@@ -42,7 +42,7 @@ TEST_CASE("DiskErrors: [ERR-01] Propagate File Not Found") {
   peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
   peripheral_manager_think(0);
 
-  DiskStatus_t status{};
+  DiskStatus status{};
   size_t size = sizeof(status);
   peripheral_query(SL6, disk_query_status, &status, &size);
 
@@ -54,7 +54,7 @@ TEST_CASE("DiskErrors: [ERR-01] Propagate File Not Found") {
 }
 
 TEST_CASE("DiskErrors: [ERR-02] Propagate Unsupported Format") {
-  TestConfig_t machine(TestConfig_t::disk_ii_only());
+  TestConfig machine(TestConfig::disk_ii_only());
   machine.load();
   linapple_init();
   peripheral_manager_init();
@@ -68,13 +68,13 @@ TEST_CASE("DiskErrors: [ERR-02] Propagate Unsupported Format") {
     fclose(f);
   }
 
-  DiskInsertCmd_t cmd{};
+  DiskInsertCmd cmd{};
   cmd.drive = disk_drive_0;
   util_safe_strcpy(cmd.path, garbage, disk_insert_path_max);
   peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
   peripheral_manager_think(0);
 
-  DiskStatus_t status{};
+  DiskStatus status{};
   size_t size = sizeof(status);
   peripheral_query(SL6, disk_query_status, &status, &size);
 
@@ -87,13 +87,13 @@ TEST_CASE("DiskErrors: [ERR-02] Propagate Unsupported Format") {
 }
 
 TEST_CASE("DiskErrors: [ERR-03] Successful insertion clears error") {
-  TestConfig_t machine(TestConfig_t::disk_ii_only());
+  TestConfig machine(TestConfig::disk_ii_only());
   machine.load();
   linapple_init();
   peripheral_manager_init();
   peripheral_register_internal();
 
-  DiskInsertCmd_t cmd{};
+  DiskInsertCmd cmd{};
   cmd.drive = disk_drive_0;
 
   // First, cause an error
@@ -107,7 +107,7 @@ TEST_CASE("DiskErrors: [ERR-03] Successful insertion clears error") {
   peripheral_command(SL6, disk_cmd_insert, &cmd, sizeof(cmd));
   peripheral_manager_think(0);
 
-  DiskStatus_t status{};
+  DiskStatus status{};
   size_t size = sizeof(status);
   peripheral_query(SL6, disk_query_status, &status, &size);
 
@@ -118,8 +118,8 @@ TEST_CASE("DiskErrors: [ERR-03] Successful insertion clears error") {
 }
 
 TEST_CASE("DiskErrors: [ERR-04] The loader answers a bad argument as one") {
-  const DiskFormatDriver_t* driver =
-      reinterpret_cast<const DiskFormatDriver_t*>(1);
+  const DiskFormatDriver* driver =
+      reinterpret_cast<const DiskFormatDriver*>(1);
   void* instance = reinterpret_cast<void*>(1);
 
   CHECK(disk_loader_open(nullptr, &driver, &instance) ==

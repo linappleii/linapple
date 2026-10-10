@@ -29,7 +29,7 @@
 
 namespace {
 
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 
 constexpr const char* harddisk_id = "linapple.harddisk";
 constexpr int card_slot = 7;
@@ -47,30 +47,30 @@ constexpr const char* not_configured_line =
 // Every line at the level it was logged, so a case can tell an error from the
 // same words logged as information. The application controller sets the
 // verbosity from the arguments, which is why the cases pass --log.
-class ScopedLevelLog_t {
+class ScopedLevelLog {
  public:
-  struct Line_t {
+  struct Line {
     LogLevel level;
     std::string text;
   };
 
-  ScopedLevelLog_t() { Logger::set_callback_with_context(collect, &lines_); }
-  ~ScopedLevelLog_t() { Logger::set_callback_with_context(nullptr, nullptr); }
-  ScopedLevelLog_t(const ScopedLevelLog_t&) = delete;
-  auto operator=(const ScopedLevelLog_t&) -> ScopedLevelLog_t& = delete;
-  ScopedLevelLog_t(ScopedLevelLog_t&&) = delete;
-  auto operator=(ScopedLevelLog_t&&) -> ScopedLevelLog_t& = delete;
+  ScopedLevelLog() { Logger::set_callback_with_context(collect, &lines_); }
+  ~ScopedLevelLog() { Logger::set_callback_with_context(nullptr, nullptr); }
+  ScopedLevelLog(const ScopedLevelLog&) = delete;
+  auto operator=(const ScopedLevelLog&) -> ScopedLevelLog& = delete;
+  ScopedLevelLog(ScopedLevelLog&&) = delete;
+  auto operator=(ScopedLevelLog&&) -> ScopedLevelLog& = delete;
 
   auto count(const std::string& needle) const -> size_t {
     size_t n = 0;
-    for (const Line_t& line : lines_) {
+    for (const Line& line : lines_) {
       n += (line.text.find(needle) != std::string::npos) ? 1 : 0;
     }
     return n;
   }
   auto count_at(LogLevel level, const std::string& needle) const -> size_t {
     size_t n = 0;
-    for (const Line_t& line : lines_) {
+    for (const Line& line : lines_) {
       n += (line.level == level && line.text.find(needle) != std::string::npos)
                ? 1
                : 0;
@@ -81,21 +81,21 @@ class ScopedLevelLog_t {
  private:
   static auto collect(LogLevel level, const char* message, void* user_data)
       -> void {
-    auto* lines = static_cast<std::vector<Line_t>*>(user_data);
+    auto* lines = static_cast<std::vector<Line>*>(user_data);
     if (lines != nullptr && message != nullptr) {
       lines->push_back({level, message});
     }
   }
 
-  std::vector<Line_t> lines_;
+  std::vector<Line> lines_;
 };
 
 // The machine a user gets from the command line, started the way every
 // frontend starts it: the arguments parsed, the controller initialised, the
 // initial media loaded. The declared configuration names the machine.
-class CommandLineMachine_t {
+class CommandLineMachine {
  public:
-  CommandLineMachine_t(const TestConfig_t& machine,
+  CommandLineMachine(const TestConfig& machine,
                        std::vector<std::string> args)
       : args_(std::move(args)) {
     args_.insert(args_.begin(), {"linapple", "--log"});
@@ -115,24 +115,24 @@ class CommandLineMachine_t {
     REQUIRE(app_controller_initialize(&config) == 0);
     app_controller_load_initial_media(&config);
   }
-  ~CommandLineMachine_t() { app_controller_shutdown(); }
-  CommandLineMachine_t(const CommandLineMachine_t&) = delete;
-  auto operator=(const CommandLineMachine_t&) -> CommandLineMachine_t& = delete;
-  CommandLineMachine_t(CommandLineMachine_t&&) = delete;
-  auto operator=(CommandLineMachine_t&&) -> CommandLineMachine_t& = delete;
+  ~CommandLineMachine() { app_controller_shutdown(); }
+  CommandLineMachine(const CommandLineMachine&) = delete;
+  auto operator=(const CommandLineMachine&) -> CommandLineMachine& = delete;
+  CommandLineMachine(CommandLineMachine&&) = delete;
+  auto operator=(CommandLineMachine&&) -> CommandLineMachine& = delete;
 
  private:
   std::vector<std::string> args_;
 };
 
-auto harddisk_in_slot(int slot) -> TestConfig_t::Description_t {
-  TestConfig_t::Description_t description;
+auto harddisk_in_slot(int slot) -> TestConfig::Description {
+  TestConfig::Description description;
   description.slots[slot - 1] = "Harddisk";
   return description;
 }
 
-auto status_in(int slot) -> HarddiskStatus_t {
-  HarddiskStatus_t out{};
+auto status_in(int slot) -> HarddiskStatus {
+  HarddiskStatus out{};
   size_t size = sizeof(out);
   REQUIRE(peripheral_query(slot, harddisk_query_status, &out, &size) ==
           peripheral_ok);
@@ -149,7 +149,7 @@ auto cards_of(const char* id) -> int {
 
 // The fixture writes every slot; a file saved without a Slot 7 line leaves it
 // out, which is the only case Harddisk Enable decides.
-auto drop_slot_line(const TestConfig_t& config, int slot) -> void {
+auto drop_slot_line(const TestConfig& config, int slot) -> void {
   std::ifstream in(config.path());
   std::stringstream kept;
   const std::string prefix = "Slot " + std::to_string(slot) + " ";
@@ -172,7 +172,7 @@ auto in_section(const Configuration& config, const char* section,
   return entries != nullptr && entries->count(key) != 0;
 }
 
-auto saved_file(const TestConfig_t& config) -> Configuration {
+auto saved_file(const TestConfig& config) -> Configuration {
   Configuration saved{};
   REQUIRE(saved.load(config.path()));
   return saved;
@@ -213,10 +213,10 @@ auto boots_from_hard_disk() -> bool {
 TEST_CASE(
     "Harddisk configuration at start-up: a Slot 7 line gives the machine the "
     "card") {
-  TestConfig_t::Description_t description;
+  TestConfig::Description description;
   description.slots[card_slot - 1] = "Harddisk";
-  TestConfig_t config(description);
-  TestFixtures::ScopedCore_t core(config);
+  TestConfig config(description);
+  TestFixtures::ScopedCore core(config);
 
   CHECK(peripheral_present(card_slot, harddisk_id));
 }
@@ -224,10 +224,10 @@ TEST_CASE(
 TEST_CASE(
     "Harddisk configuration at start-up: --hd1 with the shipped Slot 7 mounts "
     "into the configured card once and boots it") {
-  TestConfig_t config(harddisk_in_slot(card_slot));
+  TestConfig config(harddisk_in_slot(card_slot));
   const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
-  ScopedLevelLog_t log;
-  CommandLineMachine_t machine(config, {"--hd1", image.path()});
+  ScopedLevelLog log;
+  CommandLineMachine machine(config, {"--hd1", image.path()});
 
   CHECK(cards_of(harddisk_id) == 1);
   CHECK(peripheral_present(card_slot, harddisk_id));
@@ -240,9 +240,9 @@ TEST_CASE(
 TEST_CASE(
     "Harddisk configuration at start-up: --hd1 naming a missing image says so "
     "at error level once and the machine runs on") {
-  TestConfig_t config(harddisk_in_slot(card_slot));
-  ScopedLevelLog_t log;
-  CommandLineMachine_t machine(config, {"--hd1", "missing.hdv"});
+  TestConfig config(harddisk_in_slot(card_slot));
+  ScopedLevelLog log;
+  CommandLineMachine machine(config, {"--hd1", "missing.hdv"});
 
   // The path the controller handed over lives in the configuration's own
   // buffer; a run request is never recorded, so the buffer still holds it.
@@ -270,9 +270,9 @@ TEST_CASE(
   const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
 
   SUBCASE("Slot 7 = None") {
-    TestConfig_t config(TestConfig_t::enhanced_2e_only());
-    ScopedLevelLog_t log;
-    CommandLineMachine_t machine(config, {"--hd1", image.path()});
+    TestConfig config(TestConfig::enhanced_2e_only());
+    ScopedLevelLog log;
+    CommandLineMachine machine(config, {"--hd1", image.path()});
 
     CHECK(peripheral_present(card_slot, harddisk_id));
     CHECK(status_in(card_slot).drive0_loaded == 1);
@@ -290,11 +290,11 @@ TEST_CASE(
   }
 
   SUBCASE("no Slot 7 line and Harddisk Enable = 0") {
-    TestConfig_t::Description_t description;
+    TestConfig::Description description;
     description.extras.push_back({"Configuration", "Harddisk Enable", "0"});
-    TestConfig_t config(description);
+    TestConfig config(description);
     drop_slot_line(config, card_slot);
-    CommandLineMachine_t machine(config, {"--hd1", image.path()});
+    CommandLineMachine machine(config, {"--hd1", image.path()});
 
     CHECK(peripheral_present(card_slot, harddisk_id));
     CHECK(status_in(card_slot).drive0_loaded == 1);
@@ -313,14 +313,14 @@ TEST_CASE(
     "keys as they were") {
   const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
   const std::string remembered = "/remembered/volume.hdv";
-  TestConfig_t::Description_t description = harddisk_in_slot(card_slot);
+  TestConfig::Description description = harddisk_in_slot(card_slot);
   description.extras.push_back({"Preferences", "Harddisk Image 1", remembered});
-  TestConfig_t config(description);
+  TestConfig config(description);
   const std::string text_before = file_text(config.path());
   const timespec time_before = modification_time(config.path());
 
-  CommandLineMachine_t machine(config, {"--hd1", image.path()});
-  const HarddiskStatus_t status = status_in(card_slot);
+  CommandLineMachine machine(config, {"--hd1", image.path()});
+  const HarddiskStatus status = status_in(card_slot);
   CHECK(status.drive0_loaded == 1);
   CHECK(std::string(status.drive0_full_path) == image.path());
   CHECK(file_text(config.path()) == text_before);
@@ -341,15 +341,15 @@ TEST_CASE(
     "Harddisk configuration at start-up: a saved Harddisk Image 1 mounts into "
     "the configured card without the file being rewritten") {
   const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
-  TestConfig_t::Description_t description = harddisk_in_slot(card_slot);
+  TestConfig::Description description = harddisk_in_slot(card_slot);
   description.extras.push_back(
       {"Preferences", "Harddisk Image 1", image.path()});
-  TestConfig_t config(description);
+  TestConfig config(description);
   const std::string text_before = file_text(config.path());
   const timespec time_before = modification_time(config.path());
 
-  CommandLineMachine_t machine(config, {});
-  const HarddiskStatus_t status = status_in(card_slot);
+  CommandLineMachine machine(config, {});
+  const HarddiskStatus status = status_in(card_slot);
   CHECK(status.drive0_loaded == 1);
   CHECK(std::string(status.drive0_full_path) == image.path());
   CHECK(Configuration::instance().get_string(
@@ -361,12 +361,12 @@ TEST_CASE(
 TEST_CASE(
     "Harddisk configuration at start-up: --hd2 alone installs the card and "
     "fills drive 2 only") {
-  TestConfig_t config(TestConfig_t::enhanced_2e_only());
+  TestConfig config(TestConfig::enhanced_2e_only());
   const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
-  CommandLineMachine_t machine(config, {"--hd2", image.path()});
+  CommandLineMachine machine(config, {"--hd2", image.path()});
 
   REQUIRE(peripheral_present(card_slot, harddisk_id));
-  const HarddiskStatus_t status = status_in(card_slot);
+  const HarddiskStatus status = status_in(card_slot);
   CHECK(status.drive0_loaded == 0);
   CHECK(status.drive1_loaded == 1);
   CHECK(std::string(status.drive1_full_path) == image.path());
@@ -375,10 +375,10 @@ TEST_CASE(
 TEST_CASE(
     "Harddisk configuration at start-up: --hd1 mounts into a hard disk the "
     "slot table put elsewhere and installs no second card") {
-  TestConfig_t config(harddisk_in_slot(5));
+  TestConfig config(harddisk_in_slot(5));
   const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
-  ScopedLevelLog_t log;
-  CommandLineMachine_t machine(config, {"--hd1", image.path()});
+  ScopedLevelLog log;
+  CommandLineMachine machine(config, {"--hd1", image.path()});
 
   CHECK(cards_of(harddisk_id) == 1);
   CHECK(peripheral_present(5, harddisk_id));
@@ -392,12 +392,12 @@ TEST_CASE(
     "Harddisk configuration at start-up: a saved image with no hard disk "
     "configured is not mounted and installs nothing") {
   const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
-  TestConfig_t::Description_t description;
+  TestConfig::Description description;
   description.extras.push_back(
       {"Preferences", "Harddisk Image 1", image.path()});
-  TestConfig_t config(description);
-  ScopedLevelLog_t log;
-  CommandLineMachine_t machine(config, {});
+  TestConfig config(description);
+  ScopedLevelLog log;
+  CommandLineMachine machine(config, {});
 
   CHECK(peripheral_slot_of(harddisk_id) == -1);
   CHECK(linapple_requested_slot() == -1);
@@ -409,12 +409,12 @@ TEST_CASE(
 TEST_CASE(
     "Harddisk configuration at start-up: --hd1 beside a clock card in slot 7 "
     "installs the card in slot 6, says so once and autoboots it") {
-  TestConfig_t::Description_t description;
+  TestConfig::Description description;
   description.slots[card_slot - 1] = "Clock Card";
-  TestConfig_t config(description);
+  TestConfig config(description);
   const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
-  ScopedLevelLog_t log;
-  CommandLineMachine_t machine(config, {"--hd1", image.path()});
+  ScopedLevelLog log;
+  CommandLineMachine machine(config, {"--hd1", image.path()});
 
   CHECK(peripheral_present(card_slot, "linapple.clock"));
   CHECK(peripheral_slot_of(harddisk_id) == 6);
@@ -439,17 +439,17 @@ TEST_CASE(
 TEST_CASE(
     "Harddisk configuration at start-up: --hd1 and --hd2 beside a clock card "
     "land on one card holding both") {
-  TestConfig_t::Description_t description;
+  TestConfig::Description description;
   description.slots[card_slot - 1] = "Clock Card";
-  TestConfig_t config(description);
+  TestConfig config(description);
   const auto first = TestFixtures::create_ephemeral("minimal-block.hdv");
   const auto second = TestFixtures::create_ephemeral("minimal.po");
-  CommandLineMachine_t machine(config,
+  CommandLineMachine machine(config,
                                {"--hd1", first.path(), "--hd2", second.path()});
 
   CHECK(cards_of(harddisk_id) == 1);
   REQUIRE(peripheral_slot_of(harddisk_id) == 6);
-  const HarddiskStatus_t status = status_in(6);
+  const HarddiskStatus status = status_in(6);
   CHECK(status.drive0_loaded == 1);
   CHECK(status.drive1_loaded == 1);
 }
@@ -458,27 +458,27 @@ TEST_CASE(
 TEST_CASE(
     "Harddisk configuration at start-up: --hd1 skips slot 3 on a //e and "
     "takes it on a II Plus") {
-  struct Model_t {
+  struct Model {
     int config_type;
     int expected_slot;
   };
-  const std::vector<Model_t> models = {
-      {TestConfig_t::machine_apple2e_enhanced, 2},
-      {TestConfig_t::machine_apple2e, 2},
-      {TestConfig_t::machine_apple2_plus, 3},
+  const std::vector<Model> models = {
+      {TestConfig::machine_apple2e_enhanced, 2},
+      {TestConfig::machine_apple2e, 2},
+      {TestConfig::machine_apple2_plus, 3},
   };
   const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
-  for (const Model_t& model : models) {
+  for (const Model& model : models) {
     CAPTURE(model.config_type);
-    TestConfig_t::Description_t description;
+    TestConfig::Description description;
     description.machine_type = model.config_type;
     description.slots[6] = "Clock Card";
     description.slots[5] = "Disk II";
     description.slots[4] = "Mockingboard";
     description.slots[3] = "Mockingboard";
-    TestConfig_t config(description);
-    ScopedLevelLog_t log;
-    CommandLineMachine_t machine(config, {"--hd1", image.path()});
+    TestConfig config(description);
+    ScopedLevelLog log;
+    CommandLineMachine machine(config, {"--hd1", image.path()});
 
     CHECK(peripheral_slot_of(harddisk_id) == model.expected_slot);
     CHECK(status_in(model.expected_slot).drive0_loaded == 1);
@@ -493,15 +493,15 @@ TEST_CASE(
 TEST_CASE(
     "Harddisk configuration at start-up: --hd1 with no free slot says so at "
     "error level once and leaves every card where it was") {
-  TestConfig_t::Description_t description;
+  TestConfig::Description description;
   description.slots[card_slot - 1] = "Clock Card";
   for (size_t i = 0; i < 6; ++i) {
     description.slots[i] = "Mockingboard";
   }
-  TestConfig_t config(description);
+  TestConfig config(description);
   const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
-  ScopedLevelLog_t log;
-  CommandLineMachine_t machine(config, {"--hd1", image.path()});
+  ScopedLevelLog log;
+  CommandLineMachine machine(config, {"--hd1", image.path()});
 
   CHECK(peripheral_slot_of(harddisk_id) == -1);
   CHECK(log.count_at(LogLevel::error, no_free_slot_line) == 1);

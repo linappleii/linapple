@@ -50,9 +50,9 @@ auto read_all_available(int fd) -> std::string {
 
 // stdout is flushed on the way in and out so doctest's own report stays on the
 // real descriptor.
-class ScopedStdoutPipe_t {
+class ScopedStdoutPipe {
  public:
-  ScopedStdoutPipe_t() {
+  ScopedStdoutPipe() {
     fflush(stdout);
     REQUIRE(pipe(fds_.data()) == 0);
     make_non_blocking(fds_[0]);
@@ -61,7 +61,7 @@ class ScopedStdoutPipe_t {
     REQUIRE(dup2(fds_[1], STDOUT_FILENO) >= 0);
   }
 
-  ~ScopedStdoutPipe_t() {
+  ~ScopedStdoutPipe() {
     fflush(stdout);
     dup2(saved_, STDOUT_FILENO);
     close(saved_);
@@ -69,10 +69,10 @@ class ScopedStdoutPipe_t {
     close(fds_[1]);
   }
 
-  ScopedStdoutPipe_t(const ScopedStdoutPipe_t&) = delete;
-  auto operator=(const ScopedStdoutPipe_t&) -> ScopedStdoutPipe_t& = delete;
-  ScopedStdoutPipe_t(ScopedStdoutPipe_t&&) = delete;
-  auto operator=(ScopedStdoutPipe_t&&) -> ScopedStdoutPipe_t& = delete;
+  ScopedStdoutPipe(const ScopedStdoutPipe&) = delete;
+  auto operator=(const ScopedStdoutPipe&) -> ScopedStdoutPipe& = delete;
+  ScopedStdoutPipe(ScopedStdoutPipe&&) = delete;
+  auto operator=(ScopedStdoutPipe&&) -> ScopedStdoutPipe& = delete;
 
   auto take() -> std::string {
     fflush(stdout);
@@ -85,9 +85,9 @@ class ScopedStdoutPipe_t {
 };
 
 // The read end is non-blocking, as a raw-mode terminal with VMIN 0 is.
-class ScopedStdinPipe_t {
+class ScopedStdinPipe {
  public:
-  ScopedStdinPipe_t() {
+  ScopedStdinPipe() {
     REQUIRE(pipe(fds_.data()) == 0);
     make_non_blocking(fds_[0]);
     saved_ = dup(STDIN_FILENO);
@@ -95,17 +95,17 @@ class ScopedStdinPipe_t {
     REQUIRE(dup2(fds_[0], STDIN_FILENO) >= 0);
   }
 
-  ~ScopedStdinPipe_t() {
+  ~ScopedStdinPipe() {
     dup2(saved_, STDIN_FILENO);
     close(saved_);
     close(fds_[0]);
     close(fds_[1]);
   }
 
-  ScopedStdinPipe_t(const ScopedStdinPipe_t&) = delete;
-  auto operator=(const ScopedStdinPipe_t&) -> ScopedStdinPipe_t& = delete;
-  ScopedStdinPipe_t(ScopedStdinPipe_t&&) = delete;
-  auto operator=(ScopedStdinPipe_t&&) -> ScopedStdinPipe_t& = delete;
+  ScopedStdinPipe(const ScopedStdinPipe&) = delete;
+  auto operator=(const ScopedStdinPipe&) -> ScopedStdinPipe& = delete;
+  ScopedStdinPipe(ScopedStdinPipe&&) = delete;
+  auto operator=(ScopedStdinPipe&&) -> ScopedStdinPipe& = delete;
 
   auto feed(const std::string& bytes) -> void {
     REQUIRE(write(fds_[1], bytes.data(), bytes.size()) ==
@@ -118,13 +118,13 @@ class ScopedStdinPipe_t {
   int saved_ = -1;
 };
 
-struct ModeSequence_t {
+struct ModeSequence {
   std::string mode;
   bool enable;
 };
 
 auto parse_mode_sequences(const std::string& text,
-                          std::vector<ModeSequence_t>* out) -> bool {
+                          std::vector<ModeSequence>* out) -> bool {
   size_t i = 0;
   while (i < text.size()) {
     if (text.compare(i, 3, "\x1b[?") != 0) {
@@ -152,12 +152,12 @@ constexpr const char* pixel_mode_reset_reply = "\x1b[?1016;2$y";
 constexpr const char* pixel_mode_set_reply = "\x1b[?1016;1$y";
 constexpr const char* cell_size_reply = "\x1b[6;16;8t";
 
-struct TuiMachine_t {
-  TestFixtures::ScopedTestConfig_t config;
-  TestFixtures::ScopedCore_t core;
+struct TuiMachine {
+  TestFixtures::ScopedTestConfig config;
+  TestFixtures::ScopedCore core;
 
-  explicit TuiMachine_t(
-      const TestFixtures::ScopedTestConfig_t::Description_t& description)
+  explicit TuiMachine(
+      const TestFixtures::ScopedTestConfig::Description& description)
       : config(description), core(config) {
     peripheral_manager_init();
     linapple_register_peripherals();
@@ -165,11 +165,11 @@ struct TuiMachine_t {
     mouse_frontend_initialize();
   }
 
-  ~TuiMachine_t() = default;
-  TuiMachine_t(const TuiMachine_t&) = delete;
-  auto operator=(const TuiMachine_t&) -> TuiMachine_t& = delete;
-  TuiMachine_t(TuiMachine_t&&) = delete;
-  auto operator=(TuiMachine_t&&) -> TuiMachine_t& = delete;
+  ~TuiMachine() = default;
+  TuiMachine(const TuiMachine&) = delete;
+  auto operator=(const TuiMachine&) -> TuiMachine& = delete;
+  TuiMachine(TuiMachine&&) = delete;
+  auto operator=(TuiMachine&&) -> TuiMachine& = delete;
 
   // On a pipe the terminal size falls back to 80 x 24 and nothing is written.
   static auto render_frame() -> void {
@@ -192,16 +192,16 @@ struct TuiMachine_t {
 
 // Declared after the pipes so it goes first: the disables then land in the
 // pipes and not in doctest's report.
-struct ScopedTuiSession_t {
-  ScopedTuiSession_t() = default;
-  ~ScopedTuiSession_t() {
+struct ScopedTuiSession {
+  ScopedTuiSession() = default;
+  ~ScopedTuiSession() {
     tui_input_shutdown();
     tui_video_shutdown();
   }
-  ScopedTuiSession_t(const ScopedTuiSession_t&) = delete;
-  auto operator=(const ScopedTuiSession_t&) -> ScopedTuiSession_t& = delete;
-  ScopedTuiSession_t(ScopedTuiSession_t&&) = delete;
-  auto operator=(ScopedTuiSession_t&&) -> ScopedTuiSession_t& = delete;
+  ScopedTuiSession(const ScopedTuiSession&) = delete;
+  auto operator=(const ScopedTuiSession&) -> ScopedTuiSession& = delete;
+  ScopedTuiSession(ScopedTuiSession&&) = delete;
+  auto operator=(ScopedTuiSession&&) -> ScopedTuiSession& = delete;
 };
 
 }  // namespace
@@ -209,10 +209,10 @@ struct ScopedTuiSession_t {
 TEST_CASE(
     "TUI input: with no mouse card nothing is asked of the terminal and "
     "shutdown writes nothing") {
-  TuiMachine_t machine(TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  TuiMachine machine(TestFixtures::ScopedTestConfig::enhanced_2e_only());
   REQUIRE_FALSE(mouse_frontend_card_present());
-  ScopedStdoutPipe_t out;
-  ScopedTuiSession_t tui;
+  ScopedStdoutPipe out;
+  ScopedTuiSession tui;
   tui_input_initialize();
   CHECK(out.take().empty());
   tui_input_shutdown();
@@ -222,17 +222,17 @@ TEST_CASE(
 TEST_CASE(
     "TUI input: initialize and shutdown write only terminal mode sequences, "
     "and every mode they set is reset") {
-  TuiMachine_t machine(TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  TuiMachine machine(TestFixtures::ScopedTestConfig::enhanced_2e_only());
   std::string written;
   {
-    ScopedStdoutPipe_t out;
-    ScopedTuiSession_t tui;
+    ScopedStdoutPipe out;
+    ScopedTuiSession tui;
     tui_input_initialize();
     tui_input_shutdown();
     written = out.take();
   }
 
-  std::vector<ModeSequence_t> sequences;
+  std::vector<ModeSequence> sequences;
   REQUIRE_MESSAGE(parse_mode_sequences(written, &sequences), written);
   for (size_t i = 0; i < sequences.size(); ++i) {
     if (!sequences[i].enable) {
@@ -346,27 +346,27 @@ auto call_firmware(int slot, int entry, uint8_t a) -> void {
   program.push_back(0x4C);
   program.push_back(static_cast<uint8_t>(spin & 0xFF));
   program.push_back(static_cast<uint8_t>(spin >> 8));
-  TestFixtures::ScopedCore_t::poke(program_start, program.data(),
+  TestFixtures::ScopedCore::poke(program_start, program.data(),
                                    program.size());
   const std::array<uint8_t, 3> jump = {0x6C, 0x07, 0x00};
-  TestFixtures::ScopedCore_t::poke(indirect_jump, jump);
+  TestFixtures::ScopedCore::poke(indirect_jump, jump);
   TestFixtures::enter_at({program_start, 0, 0, 0});
   TestFixtures::step_until_pc(spin, firmware_cycle_cap);
   REQUIRE(cpu_get_registers()->pc == spin);
 }
 
-struct Reading_t {
+struct Reading {
   int16_t x;
   int16_t y;
   uint8_t status;
 };
 
 // READMOUSE through the table, then the slot's holes (manual p. 44).
-auto read_mouse(int slot) -> Reading_t {
+auto read_mouse(int slot) -> Reading {
   peripheral_manager_think(0);
   call_firmware(slot, entry_read_mouse, 0);
   const auto n = static_cast<uint16_t>(slot);
-  Reading_t reading{};
+  Reading reading{};
   reading.x = static_cast<int16_t>(mem[0x478 + n] | (mem[0x578 + n] << 8));
   reading.y = static_cast<int16_t>(mem[0x4F8 + n] | (mem[0x5F8 + n] << 8));
   reading.status = mem[0x778 + n];
@@ -375,7 +375,7 @@ auto read_mouse(int slot) -> Reading_t {
 
 auto poke_byte(uint16_t at, uint8_t value) -> void {
   const std::array<uint8_t, 1> byte = {value};
-  TestFixtures::ScopedCore_t::poke(at, byte);
+  TestFixtures::ScopedCore::poke(at, byte);
 }
 
 // CLAMPMOUSE takes low minimum, low maximum, high minimum, high maximum from
@@ -401,8 +401,8 @@ auto pos_mouse(int slot, int16_t x, int16_t y) -> void {
   call_firmware(slot, entry_pos_mouse, 0);
 }
 
-auto mouse_in_slot_4() -> TestFixtures::ScopedTestConfig_t::Description_t {
-  TestFixtures::ScopedTestConfig_t::Description_t description;
+auto mouse_in_slot_4() -> TestFixtures::ScopedTestConfig::Description {
+  TestFixtures::ScopedTestConfig::Description description;
   description.slots[mouse_slot - 1] = "Mouse Interface";
   return description;
 }
@@ -418,10 +418,10 @@ TEST_CASE(
     "TUI input: with a mouse card the terminal is asked for any-event SGR "
     "tracking and queried for pixel reporting and the cell size, and "
     "shutdown turns all three modes off") {
-  TuiMachine_t machine(mouse_in_slot_4());
+  TuiMachine machine(mouse_in_slot_4());
   REQUIRE(mouse_frontend_card_slot() == mouse_slot);
-  ScopedStdoutPipe_t out;
-  ScopedTuiSession_t tui;
+  ScopedStdoutPipe out;
+  ScopedTuiSession tui;
   tui_input_initialize();
   CHECK(out.take() == tracking_request);
   tui_input_shutdown();
@@ -431,14 +431,14 @@ TEST_CASE(
 TEST_CASE(
     "TUI input: Mouse Capture = 0 asks nothing of the terminal even with a "
     "card present") {
-  TestFixtures::ScopedTestConfig_t::Description_t description =
+  TestFixtures::ScopedTestConfig::Description description =
       mouse_in_slot_4();
   description.extras.push_back({"Configuration", "Mouse Capture", "0"});
-  TuiMachine_t machine(description);
+  TuiMachine machine(description);
   REQUIRE(mouse_frontend_card_present());
   REQUIRE_FALSE(mouse_frontend_capture_enabled());
-  ScopedStdoutPipe_t out;
-  ScopedTuiSession_t tui;
+  ScopedStdoutPipe out;
+  ScopedTuiSession tui;
   tui_input_initialize();
   CHECK(out.take().empty());
   tui_input_shutdown();
@@ -448,10 +448,10 @@ TEST_CASE(
 TEST_CASE(
     "TUI input: pixel reporting is set only after the terminal reports the "
     "mode reset and a cell size is known") {
-  TuiMachine_t machine(mouse_in_slot_4());
-  ScopedStdoutPipe_t out;
-  ScopedStdinPipe_t in;
-  ScopedTuiSession_t tui;
+  TuiMachine machine(mouse_in_slot_4());
+  ScopedStdoutPipe out;
+  ScopedStdinPipe in;
+  ScopedTuiSession tui;
   tui_input_initialize();
   REQUIRE(out.take() == tracking_request);
 
@@ -512,20 +512,20 @@ static auto require_text_box_fills_terminal() -> void {
 TEST_CASE(
     "TUI input: a motion report puts the card's pointer where the host's is "
     "within the box the renderer drew, in cells") {
-  TuiMachine_t machine(mouse_in_slot_4());
-  ScopedStdoutPipe_t out;
-  ScopedStdinPipe_t in;
-  ScopedTuiSession_t tui;
+  TuiMachine machine(mouse_in_slot_4());
+  ScopedStdoutPipe out;
+  ScopedStdinPipe in;
+  ScopedTuiSession tui;
   tui_video_initialize();
   tui_input_initialize();
   call_firmware(mouse_slot, entry_set_mouse, 0x01);
-  TuiMachine_t::show_text_80();
+  TuiMachine::show_text_80();
   require_text_box_fills_terminal();
 
   // Under the power-on 0..1023 window the box's last cell is the far corner
   // and its first the near one.
   in.feed(sgr(35, 80, 24, 'M'));
-  Reading_t reading = read_mouse(mouse_slot);
+  Reading reading = read_mouse(mouse_slot);
   CHECK(reading.x == 1023);
   CHECK(reading.y == 1023);
   in.feed(sgr(35, 1, 1, 'M'));
@@ -557,15 +557,15 @@ TEST_CASE(
 TEST_CASE(
     "TUI input: pixel reports place the pointer within a cell, and a graphics "
     "frame changes the box") {
-  TuiMachine_t machine(mouse_in_slot_4());
-  ScopedStdoutPipe_t out;
-  ScopedStdinPipe_t in;
-  ScopedTuiSession_t tui;
+  TuiMachine machine(mouse_in_slot_4());
+  ScopedStdoutPipe out;
+  ScopedStdinPipe in;
+  ScopedTuiSession tui;
   tui_video_initialize();
   tui_input_initialize();
   call_firmware(mouse_slot, entry_set_mouse, 0x01);
   clamp_to_hires(mouse_slot);
-  TuiMachine_t::show_text_80();
+  TuiMachine::show_text_80();
   require_text_box_fills_terminal();
 
   in.feed(pixel_mode_reset_reply);
@@ -582,7 +582,7 @@ TEST_CASE(
   in.feed(sgr(35, 8, 1, 'M'));
   CHECK(read_mouse(mouse_slot).x == 3);
   in.feed(sgr(35, 640, 384, 'M'));
-  Reading_t reading = read_mouse(mouse_slot);
+  Reading reading = read_mouse(mouse_slot);
   CHECK(reading.x == 279);
   CHECK(reading.y == 191);
 
@@ -592,7 +592,7 @@ TEST_CASE(
 
   // The graphics box is 64 cells from cell 8, 512 pixels from pixel 64, so
   // the same host pixel is offset 35 of 511: 35 * 279 / 511 = 19.1, so 19.
-  TuiMachine_t::show_graphics();
+  TuiMachine::show_graphics();
   REQUIRE(tui_video_picture_box().x == 8);
   REQUIRE(tui_video_picture_box().w == 64);
   in.feed(sgr(35, 100, 1, 'M'));
@@ -602,19 +602,19 @@ TEST_CASE(
 TEST_CASE(
     "TUI input: a program's POSMOUSE holds until the next report puts the "
     "pointer back under the host's") {
-  TuiMachine_t machine(mouse_in_slot_4());
-  ScopedStdoutPipe_t out;
-  ScopedStdinPipe_t in;
-  ScopedTuiSession_t tui;
+  TuiMachine machine(mouse_in_slot_4());
+  ScopedStdoutPipe out;
+  ScopedStdinPipe in;
+  ScopedTuiSession tui;
   tui_video_initialize();
   tui_input_initialize();
   call_firmware(mouse_slot, entry_set_mouse, 0x01);
   clamp_to_hires(mouse_slot);
-  TuiMachine_t::show_text_80();
+  TuiMachine::show_text_80();
   require_text_box_fills_terminal();
 
   in.feed(sgr(35, 40, 12, 'M'));
-  Reading_t reading = read_mouse(mouse_slot);
+  Reading reading = read_mouse(mouse_slot);
   REQUIRE(reading.x == 138);
   REQUIRE(reading.y == 91);
 
@@ -631,17 +631,17 @@ TEST_CASE(
 }
 
 TEST_CASE("TUI input: with the mouse off a motion report moves nothing") {
-  TuiMachine_t machine(mouse_in_slot_4());
-  ScopedStdoutPipe_t out;
-  ScopedStdinPipe_t in;
-  ScopedTuiSession_t tui;
+  TuiMachine machine(mouse_in_slot_4());
+  ScopedStdoutPipe out;
+  ScopedStdinPipe in;
+  ScopedTuiSession tui;
   tui_video_initialize();
   tui_input_initialize();
-  TuiMachine_t::show_text_80();
+  TuiMachine::show_text_80();
   require_text_box_fills_terminal();
 
   in.feed(sgr(35, 80, 24, 'M'));
-  Reading_t reading = read_mouse(mouse_slot);
+  Reading reading = read_mouse(mouse_slot);
   CHECK(reading.x == 0);
   CHECK(reading.y == 0);
   CHECK(reading.status == 0x00);
@@ -657,22 +657,22 @@ TEST_CASE(
     "TUI input: a left press and release are the card's button, a drag is "
     "motion with the button held and no new edge, and the other buttons do "
     "nothing") {
-  TuiMachine_t machine(mouse_in_slot_4());
-  ScopedStdoutPipe_t out;
-  ScopedStdinPipe_t in;
-  ScopedTuiSession_t tui;
+  TuiMachine machine(mouse_in_slot_4());
+  ScopedStdoutPipe out;
+  ScopedStdinPipe in;
+  ScopedTuiSession tui;
   tui_video_initialize();
   (void)out.take();
   tui_input_initialize();
   REQUIRE(out.take() == tracking_request);
   call_firmware(mouse_slot, entry_set_mouse, 0x01);
-  TuiMachine_t::show_text_80();
+  TuiMachine::show_text_80();
   require_text_box_fills_terminal();
 
   // Column 10 is offset 9: 9 * 1023 / 79 = 116.5, so 117. The read clears the
   // movement bit so the press is read alone.
   in.feed(sgr(35, 10, 5, 'M'));
-  Reading_t reading = read_mouse(mouse_slot);
+  Reading reading = read_mouse(mouse_slot);
   REQUIRE(reading.x == 117);
   in.feed(sgr(0, 10, 5, 'M'));
   reading = read_mouse(mouse_slot);
@@ -712,27 +712,27 @@ constexpr uint8_t ascii_esc = 0x1B;
 constexpr uint8_t last_control_byte = 0x1F;
 
 // The model is process-wide and a harness-built machine leaves it behind.
-struct Model_t {
+struct Model {
   Apple2Type saved = current_apple2_type;
-  explicit Model_t(Apple2Type type) { current_apple2_type = type; }
-  ~Model_t() { current_apple2_type = saved; }
-  Model_t(const Model_t&) = delete;
-  auto operator=(const Model_t&) -> Model_t& = delete;
-  Model_t(Model_t&&) = delete;
-  auto operator=(Model_t&&) -> Model_t& = delete;
+  explicit Model(Apple2Type type) { current_apple2_type = type; }
+  ~Model() { current_apple2_type = saved; }
+  Model(const Model&) = delete;
+  auto operator=(const Model&) -> Model& = delete;
+  Model(Model&&) = delete;
+  auto operator=(Model&&) -> Model& = delete;
 };
 
 // A terminal reports no caps state, so its caps is the emulated kind, down to
 // start with; whatever the session writes to the terminal lands in a pipe.
-struct TuiKeyboard_t {
-  Model_t model;
-  TuiMachine_t machine;
-  ScopedStdoutPipe_t out;
-  ScopedStdinPipe_t in;
-  ScopedTuiSession_t tui;
+struct TuiKeyboard {
+  Model model;
+  TuiMachine machine;
+  ScopedStdoutPipe out;
+  ScopedStdinPipe in;
+  ScopedTuiSession tui;
 
-  explicit TuiKeyboard_t(
-      const TestFixtures::ScopedTestConfig_t::Description_t& description,
+  explicit TuiKeyboard(
+      const TestFixtures::ScopedTestConfig::Description& description,
       Apple2Type type = A2TYPE_APPLE2EENHANCED)
       : model(type), machine(description) {
     keyboard_set_caps(true);
@@ -745,17 +745,17 @@ struct TuiKeyboard_t {
     settle();
   }
 
-  ~TuiKeyboard_t() {
+  ~TuiKeyboard() {
     linapple_set_key_release_all();
     settle();
     keyboard_set_caps(true);
     keyboard_set_caps_mode(caps_mode_host);
   }
 
-  TuiKeyboard_t(const TuiKeyboard_t&) = delete;
-  auto operator=(const TuiKeyboard_t&) -> TuiKeyboard_t& = delete;
-  TuiKeyboard_t(TuiKeyboard_t&&) = delete;
-  auto operator=(TuiKeyboard_t&&) -> TuiKeyboard_t& = delete;
+  TuiKeyboard(const TuiKeyboard&) = delete;
+  auto operator=(const TuiKeyboard&) -> TuiKeyboard& = delete;
+  TuiKeyboard(TuiKeyboard&&) = delete;
+  auto operator=(TuiKeyboard&&) -> TuiKeyboard& = delete;
 
   // A think drains the command queue, as a running machine does once a frame.
   static auto settle() -> void { peripheral_manager_think(0); }
@@ -789,39 +789,39 @@ struct TuiKeyboard_t {
   }
 };
 
-volatile sig_atomic_t g_sigint_count = 0;
+volatile sig_atomic_t sigint_count = 0;
 
 auto count_sigint(int signal) -> void {
   (void)signal;
-  ++g_sigint_count;
+  ++sigint_count;
 }
 
 // doctest installs signal handlers of its own, so SIGINT is taken over for
 // the case and handed back.
-struct ScopedSigintCounter_t {
+struct ScopedSigintCounter {
   struct sigaction saved{};
 
-  ScopedSigintCounter_t() {
-    g_sigint_count = 0;
+  ScopedSigintCounter() {
+    sigint_count = 0;
     struct sigaction action{};
     action.sa_handler = count_sigint;
     sigemptyset(&action.sa_mask);
     REQUIRE(sigaction(SIGINT, &action, &saved) == 0);
   }
 
-  ~ScopedSigintCounter_t() { sigaction(SIGINT, &saved, nullptr); }
+  ~ScopedSigintCounter() { sigaction(SIGINT, &saved, nullptr); }
 
-  ScopedSigintCounter_t(const ScopedSigintCounter_t&) = delete;
-  auto operator=(const ScopedSigintCounter_t&)
-      -> ScopedSigintCounter_t& = delete;
-  ScopedSigintCounter_t(ScopedSigintCounter_t&&) = delete;
-  auto operator=(ScopedSigintCounter_t&&) -> ScopedSigintCounter_t& = delete;
+  ScopedSigintCounter(const ScopedSigintCounter&) = delete;
+  auto operator=(const ScopedSigintCounter&)
+      -> ScopedSigintCounter& = delete;
+  ScopedSigintCounter(ScopedSigintCounter&&) = delete;
+  auto operator=(ScopedSigintCounter&&) -> ScopedSigintCounter& = delete;
 };
 
-auto ii_plus() -> TestFixtures::ScopedTestConfig_t::Description_t {
-  TestFixtures::ScopedTestConfig_t::Description_t description;
+auto ii_plus() -> TestFixtures::ScopedTestConfig::Description {
+  TestFixtures::ScopedTestConfig::Description description;
   description.machine_type =
-      TestFixtures::ScopedTestConfig_t::machine_apple2_plus;
+      TestFixtures::ScopedTestConfig::machine_apple2_plus;
   return description;
 }
 
@@ -831,40 +831,40 @@ TEST_CASE(
     "TUI keys: a byte types its key in upper case with the emulated caps down "
     "and in lower case with it up, held through the poll that read it and let "
     "go at the next") {
-  TuiKeyboard_t terminal(TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  TuiKeyboard terminal(TestFixtures::ScopedTestConfig::enhanced_2e_only());
   REQUIRE(keyboard_get_caps());
-  REQUIRE_FALSE(TuiKeyboard_t::any_key_down());
+  REQUIRE_FALSE(TuiKeyboard::any_key_down());
 
   terminal.type("a");
-  CHECK(TuiKeyboard_t::latch() == 0xC1);
-  CHECK(TuiKeyboard_t::any_key_down());
-  TuiKeyboard_t::next_poll();
-  CHECK_FALSE(TuiKeyboard_t::any_key_down());
-  TuiKeyboard_t::clear_strobe();
-  CHECK(TuiKeyboard_t::latch() == 0x41);
+  CHECK(TuiKeyboard::latch() == 0xC1);
+  CHECK(TuiKeyboard::any_key_down());
+  TuiKeyboard::next_poll();
+  CHECK_FALSE(TuiKeyboard::any_key_down());
+  TuiKeyboard::clear_strobe();
+  CHECK(TuiKeyboard::latch() == 0x41);
 
   keyboard_set_caps(false);
   terminal.type("a");
-  CHECK(TuiKeyboard_t::latch() == 0xE1);
-  TuiKeyboard_t::next_poll();
-  TuiKeyboard_t::clear_strobe();
+  CHECK(TuiKeyboard::latch() == 0xE1);
+  TuiKeyboard::next_poll();
+  TuiKeyboard::clear_strobe();
   terminal.type("A");
-  CHECK(TuiKeyboard_t::latch() == 0xC1);
-  TuiKeyboard_t::next_poll();
+  CHECK(TuiKeyboard::latch() == 0xC1);
+  TuiKeyboard::next_poll();
 }
 
 TEST_CASE(
     "TUI keys: every control byte but ESC reaches the Apple as itself, Ctrl-C "
     "included and raising no SIGINT, Return is $0D, the Backspace key's 0x7F "
     "is the left arrow and the Delete key's CSI 3 ~ is $7F") {
-  TuiKeyboard_t terminal(TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
-  ScopedSigintCounter_t sigint;
+  TuiKeyboard terminal(TestFixtures::ScopedTestConfig::enhanced_2e_only());
+  ScopedSigintCounter sigint;
 
   terminal.type("\x03");
-  CHECK(TuiKeyboard_t::latch() == 0x83);
-  CHECK(g_sigint_count == 0);
-  TuiKeyboard_t::next_poll();
-  TuiKeyboard_t::clear_strobe();
+  CHECK(TuiKeyboard::latch() == 0x83);
+  CHECK(sigint_count == 0);
+  TuiKeyboard::next_poll();
+  TuiKeyboard::clear_strobe();
 
   for (int byte = 0x01; byte <= last_control_byte; ++byte) {
     if (byte == ascii_esc) {
@@ -872,105 +872,105 @@ TEST_CASE(
     }
     CAPTURE(byte);
     terminal.type(std::string(1, static_cast<char>(byte)));
-    CHECK(TuiKeyboard_t::latch() == (bit7 | byte));
-    CHECK(TuiKeyboard_t::any_key_down());
-    TuiKeyboard_t::next_poll();
-    CHECK_FALSE(TuiKeyboard_t::any_key_down());
-    TuiKeyboard_t::clear_strobe();
+    CHECK(TuiKeyboard::latch() == (bit7 | byte));
+    CHECK(TuiKeyboard::any_key_down());
+    TuiKeyboard::next_poll();
+    CHECK_FALSE(TuiKeyboard::any_key_down());
+    TuiKeyboard::clear_strobe();
   }
-  CHECK(g_sigint_count == 0);
+  CHECK(sigint_count == 0);
 
   terminal.type("\r");
-  CHECK(TuiKeyboard_t::latch() == 0x8D);
-  TuiKeyboard_t::next_poll();
-  TuiKeyboard_t::clear_strobe();
+  CHECK(TuiKeyboard::latch() == 0x8D);
+  TuiKeyboard::next_poll();
+  TuiKeyboard::clear_strobe();
   terminal.type("\x7f");
-  CHECK(TuiKeyboard_t::latch() == 0x88);
-  TuiKeyboard_t::next_poll();
-  TuiKeyboard_t::clear_strobe();
+  CHECK(TuiKeyboard::latch() == 0x88);
+  TuiKeyboard::next_poll();
+  TuiKeyboard::clear_strobe();
   terminal.type("\x1b[3~");
-  CHECK(TuiKeyboard_t::latch() == 0xFF);
-  TuiKeyboard_t::next_poll();
+  CHECK(TuiKeyboard::latch() == 0xFF);
+  TuiKeyboard::next_poll();
 }
 
 TEST_CASE(
     "TUI keys: a lone ESC types $1B, and ESC before a key or a key with its "
     "eighth bit set is Open Apple held around that key, both let go at the "
     "next poll") {
-  TuiKeyboard_t terminal(TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
-  REQUIRE(TuiKeyboard_t::pushbutton(0) == 0);
+  TuiKeyboard terminal(TestFixtures::ScopedTestConfig::enhanced_2e_only());
+  REQUIRE(TuiKeyboard::pushbutton(0) == 0);
 
   terminal.type("\x1b");
-  CHECK(TuiKeyboard_t::latch() == 0x9B);
-  CHECK(TuiKeyboard_t::pushbutton(0) == 0);
-  TuiKeyboard_t::next_poll();
-  TuiKeyboard_t::clear_strobe();
+  CHECK(TuiKeyboard::latch() == 0x9B);
+  CHECK(TuiKeyboard::pushbutton(0) == 0);
+  TuiKeyboard::next_poll();
+  TuiKeyboard::clear_strobe();
 
   terminal.type(
       "\x1b"
       "a");
-  CHECK(TuiKeyboard_t::latch() == 0xC1);
-  CHECK(TuiKeyboard_t::any_key_down());
-  CHECK(TuiKeyboard_t::pushbutton(0) == 1);
-  CHECK(TuiKeyboard_t::pushbutton(1) == 0);
-  TuiKeyboard_t::next_poll();
-  CHECK_FALSE(TuiKeyboard_t::any_key_down());
-  CHECK(TuiKeyboard_t::pushbutton(0) == 0);
-  TuiKeyboard_t::clear_strobe();
+  CHECK(TuiKeyboard::latch() == 0xC1);
+  CHECK(TuiKeyboard::any_key_down());
+  CHECK(TuiKeyboard::pushbutton(0) == 1);
+  CHECK(TuiKeyboard::pushbutton(1) == 0);
+  TuiKeyboard::next_poll();
+  CHECK_FALSE(TuiKeyboard::any_key_down());
+  CHECK(TuiKeyboard::pushbutton(0) == 0);
+  TuiKeyboard::clear_strobe();
 
   terminal.type("\xe1");
-  CHECK(TuiKeyboard_t::latch() == 0xC1);
-  CHECK(TuiKeyboard_t::pushbutton(0) == 1);
-  TuiKeyboard_t::next_poll();
-  CHECK(TuiKeyboard_t::pushbutton(0) == 0);
-  TuiKeyboard_t::clear_strobe();
+  CHECK(TuiKeyboard::latch() == 0xC1);
+  CHECK(TuiKeyboard::pushbutton(0) == 1);
+  TuiKeyboard::next_poll();
+  CHECK(TuiKeyboard::pushbutton(0) == 0);
+  TuiKeyboard::clear_strobe();
 
   // Alt+Backspace is Open Apple with the left arrow.
   terminal.type("\x1b\x7f");
-  CHECK(TuiKeyboard_t::latch() == 0x88);
-  CHECK(TuiKeyboard_t::pushbutton(0) == 1);
-  TuiKeyboard_t::next_poll();
-  CHECK(TuiKeyboard_t::pushbutton(0) == 0);
-  TuiKeyboard_t::clear_strobe();
+  CHECK(TuiKeyboard::latch() == 0x88);
+  CHECK(TuiKeyboard::pushbutton(0) == 1);
+  TuiKeyboard::next_poll();
+  CHECK(TuiKeyboard::pushbutton(0) == 0);
+  TuiKeyboard::clear_strobe();
 
   // A UTF-8 terminal sends Alt as the ESC prefix, so a valid UTF-8 sequence is
   // a character the Apple cannot type and reaches nothing.
   terminal.type("\xc3\xa9");
-  CHECK(TuiKeyboard_t::latch() == 0x08);
-  CHECK_FALSE(TuiKeyboard_t::any_key_down());
-  CHECK(TuiKeyboard_t::pushbutton(0) == 0);
-  TuiKeyboard_t::next_poll();
-  CHECK(TuiKeyboard_t::pushbutton(0) == 0);
+  CHECK(TuiKeyboard::latch() == 0x08);
+  CHECK_FALSE(TuiKeyboard::any_key_down());
+  CHECK(TuiKeyboard::pushbutton(0) == 0);
+  TuiKeyboard::next_poll();
+  CHECK(TuiKeyboard::pushbutton(0) == 0);
 
   // A high byte that begins no UTF-8 sequence is the eighth-bit Alt form:
   // $E1 before an ASCII byte is Open Apple with a, then that byte.
   terminal.type(
       "\xe1"
       "b");
-  CHECK(TuiKeyboard_t::latch() == 0xC2);
-  CHECK(TuiKeyboard_t::any_key_down());
-  CHECK(TuiKeyboard_t::pushbutton(0) == 1);
-  TuiKeyboard_t::next_poll();
-  CHECK_FALSE(TuiKeyboard_t::any_key_down());
-  CHECK(TuiKeyboard_t::pushbutton(0) == 0);
+  CHECK(TuiKeyboard::latch() == 0xC2);
+  CHECK(TuiKeyboard::any_key_down());
+  CHECK(TuiKeyboard::pushbutton(0) == 1);
+  TuiKeyboard::next_poll();
+  CHECK_FALSE(TuiKeyboard::any_key_down());
+  CHECK(TuiKeyboard::pushbutton(0) == 0);
 }
 
 TEST_CASE(
     "TUI keys: Shift+F6 toggles the rocker switch on a //e and leaves it "
     "alone on a II Plus") {
   SUBCASE("Enhanced //e") {
-    TuiKeyboard_t terminal(
-        TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+    TuiKeyboard terminal(
+        TestFixtures::ScopedTestConfig::enhanced_2e_only());
     REQUIRE_FALSE(linapple_get_rocker_switch());
     terminal.type("\x1b[17;2~");
     CHECK(linapple_get_rocker_switch());
     terminal.type("\x1b[17;2~");
     CHECK_FALSE(linapple_get_rocker_switch());
-    CHECK_FALSE(TuiKeyboard_t::any_key_down());
+    CHECK_FALSE(TuiKeyboard::any_key_down());
   }
 
   SUBCASE("II Plus") {
-    TuiKeyboard_t terminal(ii_plus(), A2TYPE_APPLE2PLUS);
+    TuiKeyboard terminal(ii_plus(), A2TYPE_APPLE2PLUS);
     REQUIRE_FALSE(linapple_get_rocker_switch());
     terminal.type("\x1b[17;2~");
     CHECK_FALSE(linapple_get_rocker_switch());

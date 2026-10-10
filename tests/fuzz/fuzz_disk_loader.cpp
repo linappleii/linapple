@@ -54,7 +54,7 @@ auto temp_dir() -> std::string {
 auto probe_every_driver(const uint8_t* data, size_t size) -> void {
   const uint32_t count = disk_loader_driver_count();
   for (uint32_t i = 0; i < count; ++i) {
-    const DiskFormatDriver_t* driver = disk_loader_driver_at(i);
+    const DiskFormatDriver* driver = disk_loader_driver_at(i);
     if (driver == nullptr || driver->probe == nullptr) {
       continue;
     }
@@ -66,7 +66,7 @@ auto probe_every_driver(const uint8_t* data, size_t size) -> void {
 // driver walk the file the fuzzer wrote. The first four quarter tracks cover
 // every phase of the head; from there one read per whole track reaches the
 // end of the image at a fraction of the cost of all 160.
-auto read_tracks(const DiskFormatDriver_t* driver, void* instance) -> void {
+auto read_tracks(const DiskFormatDriver* driver, void* instance) -> void {
   if (driver->read_track_bits == nullptr) {
     return;
   }
@@ -83,7 +83,7 @@ auto read_tracks(const DiskFormatDriver_t* driver, void* instance) -> void {
 auto open_every_driver(const char* path) -> void {
   const uint32_t count = disk_loader_driver_count();
   for (uint32_t i = 0; i < count; ++i) {
-    const DiskFormatDriver_t* driver = disk_loader_driver_at(i);
+    const DiskFormatDriver* driver = disk_loader_driver_at(i);
     if (driver == nullptr || driver->open == nullptr ||
         driver->close == nullptr) {
       continue;
@@ -138,7 +138,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     return 0;
   }
 
-  const DiskFormatDriver_t* out_driver = nullptr;
+  const DiskFormatDriver* out_driver = nullptr;
   void* out_instance = nullptr;
   if (disk_loader_open(path.data(), &out_driver, &out_instance) ==
           disk_err_none &&

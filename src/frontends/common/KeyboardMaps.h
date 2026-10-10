@@ -30,7 +30,7 @@ typedef enum {
   keyboard_layout_ca = 9,
   keyboard_layout_jp_roman = 10,
   keyboard_layout_jp_kana = 11,
-} KeyboardLayout_t;
+} KeyboardLayout;
 
 // USB HID keyboard usage ids, which are SDL's scancodes.
 typedef enum {
@@ -111,27 +111,27 @@ typedef enum {
   keyb_idx_left = 80,
   keyb_idx_down = 81,
   keyb_idx_up = 82,
-} KeyboardIdx_t;
+} KeyboardIdx;
 
 typedef struct {
   char name[keyb_name_size];
   uint8_t map[keyb_map_size];
   uint8_t shift_map[keyb_map_size];
   uint8_t ctrl_map[keyb_map_size];
-} Apple2KeyboardMap_t;
+} Apple2KeyboardMap;
 
-extern const Apple2KeyboardMap_t map_us;
-extern const Apple2KeyboardMap_t map_uk;
-extern const Apple2KeyboardMap_t map_fr;
-extern const Apple2KeyboardMap_t map_de;
-extern const Apple2KeyboardMap_t map_es;
-extern const Apple2KeyboardMap_t map_it;
-extern const Apple2KeyboardMap_t map_se;
-extern const Apple2KeyboardMap_t map_dk;
-extern const Apple2KeyboardMap_t map_ch;
-extern const Apple2KeyboardMap_t map_ca;
-extern const Apple2KeyboardMap_t map_jp_roman;
-extern const Apple2KeyboardMap_t map_jp_kana;
+extern const Apple2KeyboardMap map_us;
+extern const Apple2KeyboardMap map_uk;
+extern const Apple2KeyboardMap map_fr;
+extern const Apple2KeyboardMap map_de;
+extern const Apple2KeyboardMap map_es;
+extern const Apple2KeyboardMap map_it;
+extern const Apple2KeyboardMap map_se;
+extern const Apple2KeyboardMap map_dk;
+extern const Apple2KeyboardMap map_ch;
+extern const Apple2KeyboardMap map_ca;
+extern const Apple2KeyboardMap map_jp_roman;
+extern const Apple2KeyboardMap map_jp_kana;
 
 #ifdef __cplusplus
 }

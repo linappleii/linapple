@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <mutex>
 
-struct SsIoVideo_t;
+struct SsIoVideo;
 struct VideoSurface;
 struct VideoColor;
 
@@ -33,21 +33,21 @@ constexpr int VIEWPORTCY = 384;
 constexpr int STATUS_PANEL_W = 100;
 constexpr int STATUS_PANEL_H = 48;
 
-using ColorRef_t = uint32_t;
+using ColorRef = uint32_t;
 
-struct Point_t {
+struct Point {
   int32_t x{0};
   int32_t y{0};
 };
 
-struct Rect_t {
+struct Rect {
   int32_t left{0};
   int32_t top{0};
   int32_t right{0};
   int32_t bottom{0};
 };
 
-enum VideoType_t : uint8_t {
+enum VideoType : uint8_t {
   VT_MONO_CUSTOM,
   VT_COLOR_STANDARD,
   VT_COLOR_TEXT_OPTIMIZED,
@@ -58,9 +58,9 @@ enum VideoType_t : uint8_t {
   VT_MONO_WHITE,
   VT_NUM_MODES,
 };
-using VIDEOTYPE = VideoType_t;
+using VIDEOTYPE = VideoType;
 
-enum VideoFlag_t : uint8_t {
+enum VideoFlag : uint8_t {
   VF_80COL = 0x00000001,
   VF_DHIRES = 0x00000002,
   VF_HIRES = 0x00000004,
@@ -70,7 +70,7 @@ enum VideoFlag_t : uint8_t {
   VF_TEXT = 0x00000040,
 };
 
-enum AppleFont_t : uint16_t {
+enum AppleFont : uint16_t {
   APPLE_FONT_WIDTH = 14,
   APPLE_FONT_HEIGHT = 16,
   APPLE_FONT_CELL_WIDTH = 16,
@@ -102,7 +102,7 @@ constexpr auto RGB(uint8_t r, uint8_t g, uint8_t b) noexcept -> uint32_t {
          (static_cast<uint32_t>(b) << BLUE_SHIFT);
 }
 
-enum ColorPaletteIndex_t : uint8_t {
+enum ColorPaletteIndex : uint8_t {
   BLACK,
   DARK_RED,
   DARK_GREEN,
@@ -149,34 +149,34 @@ enum ColorPaletteIndex_t : uint8_t {
   LIGHTEST_GRAY,
   NUM_COLOR_PALETTE,
 };
-using Color_Palette_Index_e = ColorPaletteIndex_t;
+using Color_Palette_Index_e = ColorPaletteIndex;
 
-extern int g_status_cycle;
-extern bool g_show_leds;
+extern int status_cycle;
+extern bool show_leds;
 extern bool graphicsmode;
 extern uint32_t monochrome;
-extern uint32_t g_videotype;
-extern uint32_t g_video_mode;
-extern bool g_singlethreaded;
-extern std::recursive_mutex g_video_draw_mutex;
-extern std::atomic<bool> g_frame_ready;
+extern uint32_t videotype;
+extern uint32_t video_mode;
+extern bool singlethreaded;
+extern std::recursive_mutex video_draw_mutex;
+extern std::atomic<bool> frame_ready;
 
-extern VideoSurface* g_logo_bitmap;
-extern VideoSurface* g_status_surface;
-extern VideoSurface* g_source_bitmap;
-extern VideoSurface* g_device_bitmap;
-extern VideoSurface* g_origscreen;
+extern VideoSurface* logo_bitmap;
+extern VideoSurface* status_surface;
+extern VideoSurface* source_bitmap;
+extern VideoSurface* device_bitmap;
+extern VideoSurface* origscreen;
 
 auto video_get_output_buffer() -> uint32_t*;
 auto video_get_output_palette() -> VideoColor*;
 inline auto video_is_frame_ready() noexcept -> bool {
-  return g_frame_ready.load();
+  return frame_ready.load();
 }
 inline auto video_clear_frame_ready() noexcept -> void {
-  g_frame_ready.store(false);
+  frame_ready.store(false);
 }
 inline auto video_set_frame_ready(bool ready = true) noexcept -> void {
-  g_frame_ready.store(ready);
+  frame_ready.store(ready);
 }
 
 auto video_create_color_mix_map() -> void;
@@ -216,8 +216,8 @@ auto video_get_sw_page2() noexcept -> bool;
 auto video_get_sw_text() noexcept -> bool;
 auto video_get_sw_alt_charset() noexcept -> bool;
 
-auto video_get_snapshot(SsIoVideo_t* ss) noexcept -> uint32_t;
-auto video_set_snapshot(const SsIoVideo_t* ss) noexcept -> uint32_t;
+auto video_get_snapshot(SsIoVideo* ss) noexcept -> uint32_t;
+auto video_set_snapshot(const SsIoVideo* ss) noexcept -> uint32_t;
 
 auto video_check_mode(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
                       uint32_t executed_cycles) -> uint8_t;

@@ -39,42 +39,42 @@ auto debug_initialize() -> void {
 }
 
 auto is_debug_stepping_at_full_speed() -> bool {
-  return (system_state.mode == app_mode_stepping) && g_debug_full_speed;
+  return (system_state.mode == app_mode_stepping) && debug_full_speed;
 }
 
-bool g_debugger_eat_key = false;
+bool debugger_eat_key = false;
 
-uint16_t g_disasm_top_address = 0;
-uint16_t g_disasm_bot_address = 0;
-uint16_t g_disasm_cur_address = 0;
+uint16_t disasm_top_address = 0;
+uint16_t disasm_bot_address = 0;
+uint16_t disasm_cur_address = 0;
 
-bool g_disasm_cur_bad = false;
-int g_disasm_cur_line = 0;  // Aligned to Top or Center
-int g_disasm_cur_state = CURSOR_NORMAL;
+bool disasm_cur_bad = false;
+int disasm_cur_line = 0;  // Aligned to Top or Center
+int disasm_cur_state = CURSOR_NORMAL;
 
-int g_disasm_win_height = 0;
+int disasm_win_height = 0;
 
-int g_font_spacing = FONT_SPACING_CLEAN;
-int g_font_height = CONSOLE_FONT_HEIGHT;
+int font_spacing = FONT_SPACING_CLEAN;
+int font_height = CONSOLE_FONT_HEIGHT;
 
-int g_watches_count = 0;
-Watches_t g_watches[MAX_WATCHES] = {};
+int watches_count = 0;
+Watches watches[MAX_WATCHES] = {};
 
-int g_window_last = WINDOW_CODE;
-int g_window_this = WINDOW_CODE;
-WindowSplit_t g_window_config[NUM_WINDOWS] = {};
+int window_last = WINDOW_CODE;
+int window_this = WINDOW_CODE;
+WindowConfig window_config[NUM_WINDOWS] = {};
 
-int g_zero_page_pointers_count = 0;
-ZeroPagePointers_t g_zero_page_pointers[MAX_ZEROPAGE_POINTERS] = {};
+int zero_page_pointers_count = 0;
+ZeroPagePointers zero_page_pointers[MAX_ZEROPAGE_POINTERS] = {};
 
 auto GetBreakpointInfo(uint16_t nOffset, bool& bBreakpointActive_,
                        bool& bBreakpointEnable_) -> bool {
   bBreakpointActive_ = false;
   bBreakpointEnable_ = false;
-  for (int i = 0; i < g_breakpoints_count; i++) {
-    if (g_breakpoints[i].bSet && g_breakpoints[i].address == nOffset) {
+  for (int i = 0; i < breakpoints_count; i++) {
+    if (breakpoints[i].bSet && breakpoints[i].address == nOffset) {
       bBreakpointActive_ = true;
-      bBreakpointEnable_ = g_breakpoints[i].bEnabled;
+      bBreakpointEnable_ = breakpoints[i].bEnabled;
       return true;
     }
   }

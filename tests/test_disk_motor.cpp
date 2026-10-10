@@ -30,11 +30,11 @@ constexpr uint8_t jmp_abs_opcode = 0x4C;
 // Declared rather than inherited: with no configuration the slot fallbacks in
 // peripheral_register_internal supply a printer, a Super Serial Card and a
 // Mockingboard beside the Disk II, none of which these cases touch.
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 
-class DiskMotorHarness_t {
+class DiskMotorHarness {
  public:
-  DiskMotorHarness_t()
+  DiskMotorHarness()
       : disk_fixture_(TestFixtures::create_ephemeral("minimal.woz")),
         spin_program_(".apl") {
     machine_.load();
@@ -50,12 +50,12 @@ class DiskMotorHarness_t {
     peripheral_manager_think(0);
   }
 
-  ~DiskMotorHarness_t() { linapple_shutdown(); }
+  ~DiskMotorHarness() { linapple_shutdown(); }
 
-  DiskMotorHarness_t(const DiskMotorHarness_t&) = delete;
-  auto operator=(const DiskMotorHarness_t&) -> DiskMotorHarness_t& = delete;
-  DiskMotorHarness_t(DiskMotorHarness_t&&) = delete;
-  auto operator=(DiskMotorHarness_t&&) -> DiskMotorHarness_t& = delete;
+  DiskMotorHarness(const DiskMotorHarness&) = delete;
+  auto operator=(const DiskMotorHarness&) -> DiskMotorHarness& = delete;
+  DiskMotorHarness(DiskMotorHarness&&) = delete;
+  auto operator=(DiskMotorHarness&&) -> DiskMotorHarness& = delete;
 
   static auto run_cycles(uint64_t cycles) -> void {
     uint64_t count = 0;
@@ -111,22 +111,22 @@ class DiskMotorHarness_t {
   }
 
   auto mount_disk() -> void {
-    DiskInsertCmd_t cmd{};
+    DiskInsertCmd cmd{};
     cmd.drive = disk_drive_0;
     cmd.write_protected = 0;
     util_safe_strcpy(cmd.path, disk_fixture_.c_str(), disk_insert_path_max);
     peripheral_command(slot_6, disk_cmd_insert, &cmd, sizeof(cmd));
   }
 
-  TestConfig_t machine_{TestConfig_t::disk_ii_only()};
-  TestFixtures::EphemeralDiskFixture_t disk_fixture_;
-  TestFixtures::ScopedTempFile_t spin_program_;
+  TestConfig machine_{TestConfig::disk_ii_only()};
+  TestFixtures::EphemeralDiskFixture disk_fixture_;
+  TestFixtures::ScopedTempFile spin_program_;
 };
 
 }  // namespace
 
 TEST_CASE("DiskIntegration: [INT-03] Motor Activity Notification") {
-  DiskMotorHarness_t harness;
+  DiskMotorHarness harness;
 
   CHECK(harness.is_motor_active() == false);
 

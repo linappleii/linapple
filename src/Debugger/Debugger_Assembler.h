@@ -11,7 +11,7 @@
 
 // Directives
 
-enum Assemblers_e : uint8_t {
+enum Assemblers : uint8_t {
   ASM_ACME,
   ASM_BIG_MAC,
   ASM_DOS_TOOL_KIT,
@@ -26,27 +26,27 @@ enum Assemblers_e : uint8_t {
   NUM_ASSEMBLERS,
 };
 
-enum AsmAcmeDirective_e : uint8_t {
+enum AsmAcmeDirective : uint8_t {
   ASM_A_DEFINE_BYTE,
   NUM_ASM_ACME_DIRECTIVES,
 };
 
-enum AsmBigMacDirective_e : uint8_t {
+enum AsmBigMacDirective : uint8_t {
   ASM_B_DEFINE_BYTE,
   NUM_ASM_BIG_MAC_DIRECTIVES,
 };
 
-enum AsmDosToolKitDirective_e : uint8_t {
+enum AsmDosToolKitDirective : uint8_t {
   ASM_D_DEFINE_BYTE,
   NUM_ASM_DOS_TOOL_KIT_DIRECTIVES,
 };
 
-enum AsmLisaDirective_e : uint8_t {
+enum AsmLisaDirective : uint8_t {
   ASM_L_DEFINE_BYTE,
   NUM_ASM_LISA_DIRECTIVES,
 };
 
-enum AsmMerlinDirective_e : uint8_t {
+enum AsmMerlinDirective : uint8_t {
   ASM_MERLIN_ASCII,
   ASM_M_DEFINE_WORD,
   ASM_M_DEFINE_BYTE,
@@ -58,17 +58,17 @@ enum AsmMerlinDirective_e : uint8_t {
   ASM_M_DEFINE_WORD_ALIAS,
 };
 
-enum AsmMicroSparcDirective_e : uint8_t {
+enum AsmMicroSparcDirective : uint8_t {
   ASM_u_DEFINE_BYTE,
   NUM_ASM_MICROSPARC_DIRECTIVES,
 };
 
-enum AsmOrcamDirective_e : uint8_t {
+enum AsmOrcamDirective : uint8_t {
   ASM_O_DEFINE_BYTE,
   NUM_ASM_ORCA_DIRECTIVES,
 };
 
-enum AsmSCMacroDirective_e : uint8_t {
+enum AsmSCMacroDirective : uint8_t {
   ASM_S_ORIGIN,
   ASM_S_TARGET_ADDRESS,
   ASM_S_END_PROGRAM,
@@ -79,14 +79,14 @@ enum AsmSCMacroDirective_e : uint8_t {
   NUM_ASM_SC_DIRECTIVES,
 };
 
-enum AsmTedDirective_e : uint8_t { ASM_T_DEFINE_BYTE, NUM_ASM_TED_DIRECTIVES };
+enum AsmTedDirective : uint8_t { ASM_T_DEFINE_BYTE, NUM_ASM_TED_DIRECTIVES };
 
-enum AsmWellersDirective_e : uint8_t {
+enum AsmWellersDirective : uint8_t {
   ASM_W_DEFINE_BYTE,
   NUM_ASM_WELLERS_DIRECTIVES,
 };
 
-enum AsmCustomDirective_e : uint8_t {
+enum AsmCustomDirective : uint8_t {
   ASM_DEFINE_BYTE,
   ASM_DEFINE_WORD,
   ASM_DEFINE_ADDRESS_16,
@@ -98,8 +98,8 @@ enum AsmCustomDirective_e : uint8_t {
   NUM_ASM_CUSTOM_DIRECTIVES,
 };
 
-// NOTE: Keep in sync AsmDirectives_e and g_assembler_directives
-enum AsmDirectives_e : uint8_t {
+// NOTE: Keep in sync AsmDirectives and assembler_directives
+enum AsmDirectives : uint8_t {
   FIRST_ACME_DIRECTIVE = 1,
   FIRST_BIG_MAC_DIRECTIVE = FIRST_ACME_DIRECTIVE + NUM_ASM_ACME_DIRECTIVES,
   FIRST_DOS_TOOL_KIT_DIRECTIVE = FIRST_BIG_MAC_DIRECTIVE +
@@ -118,51 +118,51 @@ enum AsmDirectives_e : uint8_t {
   NUM_ASM_DIRECTIVES = FIRST_CUSTOM_DIRECTIVE + NUM_ASM_CUSTOM_DIRECTIVES,
 };
 
-extern int g_assembler_syntax;
-extern int g_assembler_first_directive[NUM_ASSEMBLERS];
+extern int assembler_syntax;
+extern int assembler_first_directive[NUM_ASSEMBLERS];
 
 // Addressing
 // _____________________________________________________________________________________
 
-extern AddressingMode_t g_opmodes[NUM_ADDRESSING_MODES];
+extern AddressingMode opmodes[NUM_ADDRESSING_MODES];
 
 // Assembler
 // ______________________________________________________________________________________
 
 // Hashing for Assembler
-using Hash_t = uint32_t;
+using Hash = uint32_t;
 
-struct HashOpcode_t {
+struct HashOpcode {
   int opcode;
-  Hash_t value;
+  Hash value;
 
-  auto operator()(const HashOpcode_t& lhs, const HashOpcode_t& rhs) const
+  auto operator()(const HashOpcode& lhs, const HashOpcode& rhs) const
       -> bool {
     return lhs.value < rhs.value;
   }
 };
 
-struct AssemblerDirective_t {
+struct AssemblerDirective {
   const char* mnemonic;
-  Hash_t hash;
+  Hash hash;
 };
 
-extern bool g_assembler_opcodes_hashed;
-extern Hash_t g_opcodes_hash[NUM_OPCODES];
-extern bool g_assembler_input;
-extern int g_assembler_address;
+extern bool assembler_opcodes_hashed;
+extern Hash opcodes_hash[NUM_OPCODES];
+extern bool assembler_input;
+extern int assembler_address;
 
-extern const Opcodes_t* g_opcodes;
+extern const Opcodes* opcodes;
 
-extern const Opcodes_t g_opcodes65_c02[NUM_OPCODES];
-extern const Opcodes_t g_opcodes6502[NUM_OPCODES];
+extern const Opcodes opcodes65_c02[NUM_OPCODES];
+extern const Opcodes opcodes6502[NUM_OPCODES];
 
-extern AssemblerDirective_t g_assembler_directives[NUM_ASM_DIRECTIVES];
+extern AssemblerDirective assembler_directives[NUM_ASM_DIRECTIVES];
 
 // Prototypes _______________________________________________________________
 
 auto GetOpmodeOpbyte(int nBaseAddress, int& iOpmode_, int& nOpbyte_,
-                     const DisasmData_t** pData_ = nullptr) -> int;
+                     const DisasmData** pData_ = nullptr) -> int;
 auto GetOpcodeOpmodeOpbyte(int& iOpcode_, int& iOpmode_, int& nOpbyte_) -> void;
 auto GetStackReturnAddress(uint16_t& nAddress_) -> bool;
 auto GetTargets(uint16_t address, int* pTargetPartial_, int* pTargetPartial2_,
@@ -184,17 +184,17 @@ auto AssemblerOn() -> void;
 auto AssemblerOff() -> void;
 
 auto debugger_get_file_size(FILE* file) -> size_t;
-auto CmdAssemble(uint16_t address, int iArg, int nArgs) -> Update_t;
+auto CmdAssemble(uint16_t address, int iArg, int nArgs) -> UpdateResult;
 
-extern bool g_source_level_debugging;
-extern bool g_source_add_symbols;
-extern bool g_source_add_memory;
-extern std::string g_source_file_name;
-extern MemoryTextFile_t g_assembler_source_buffer;
-extern int g_source_display_start;
-extern int g_source_assemble_bytes;
-extern int g_source_assembly_symbols;
-extern SourceAssembly_t g_source_debug;
+extern bool source_level_debugging;
+extern bool source_add_symbols;
+extern bool source_add_memory;
+extern std::string source_file_name;
+extern MemoryTextFile assembler_source_buffer;
+extern int source_display_start;
+extern int source_assemble_bytes;
+extern int source_assembly_symbols;
+extern SourceAssembly source_debug;
 
 auto BufferAssemblyListing(const std::string& filename) -> bool;
 auto ParseAssemblyListing(bool bBytesToMemory, bool bAddSymbols) -> bool;

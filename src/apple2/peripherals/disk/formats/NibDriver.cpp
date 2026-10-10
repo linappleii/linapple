@@ -36,7 +36,7 @@ auto nib_create(const char* path) -> DiskError {
 const char* const nib_supported_exts[] = {"nib", nullptr};
 }  // namespace
 
-extern "C" const DiskFormatDriver_t g_nib_driver = {
+extern "C" const DiskFormatDriver nib_driver = {
     .abi_version = disk_format_abi_version,
     .capabilities = disk_driver_cap_write | disk_driver_cap_create,
     .name = "NIB (6656-nibble)",
@@ -50,6 +50,6 @@ extern "C" const DiskFormatDriver_t g_nib_driver = {
     .create = nib_create,
 };
 
-static const DiskFormatRegistration_t registration{&g_nib_driver};
+static const DiskFormatRegistration registration{&nib_driver};
 
 // NOLINTEND(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)

@@ -62,7 +62,7 @@ const char* const do_block_supported_exts[] = {"do", "dsk", nullptr};
 
 }  // namespace
 
-extern "C" const HarddiskFormatDriver_t g_do_block_driver = {
+extern "C" const HarddiskFormatDriver do_block_driver = {
     .abi_version = harddisk_format_abi_version,
     .capabilities = harddisk_driver_cap_write,
     .name = "DOS Order",
@@ -76,6 +76,6 @@ extern "C" const HarddiskFormatDriver_t g_do_block_driver = {
     .get_total_blocks = block_disk_image_get_total_blocks,
 };
 
-static const HarddiskFormatRegistration_t registration{&g_do_block_driver};
+static const HarddiskFormatRegistration registration{&do_block_driver};
 
 // NOLINTEND(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)

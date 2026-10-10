@@ -12,42 +12,42 @@
 #include "Debugger_Types.h"
 #include "Util_MemoryTextFile.h"
 #include "core/Util_Text.h"
-extern const Opcodes_t* g_opcodes;
-extern const Opcodes_t g_opcodes65_c02[NUM_OPCODES];
+extern const Opcodes* opcodes;
+extern const Opcodes opcodes65_c02[NUM_OPCODES];
 
-int g_debug_break_on_invalid = 0;  // Bit Flags of Invalid Opcode to break on
-int g_debug_break_on_opcode = 0;
+int debug_break_on_invalid = 0;  // Bit Flags of Invalid Opcode to break on
+int debug_break_on_opcode = 0;
 
-int g_debug_breakpoint_hit = 0;  // See: BreakpointHit_t
+int debug_breakpoint_hit = 0;  // See: BreakpointHit
 
-int g_breakpoints_count = 0;
-Breakpoint_t g_breakpoints[MAX_BREAKPOINTS] = {};
+int breakpoints_count = 0;
+Breakpoint breakpoints[MAX_BREAKPOINTS] = {};
 
-// NOTE: BreakpointSource_t and g_breakpoint_source must match!
-const char* g_breakpoint_source[NUM_BREAKPOINT_SOURCES] = {
+// NOTE: BreakpointSource and breakpoint_source must match!
+const char* breakpoint_source[NUM_BREAKPOINT_SOURCES] = {
     "A", "X", "Y", "PC", "S", "P",  "C", "Z", "I",
     "D", "B", "R", "V",  "N", "OP", "M", "M", "M",
 };
 
-// Note: BreakpointOperator_t, PARAM_BREAKPOINT_, and g_breakpoint_symbols must
+// Note: BreakpointOperator, PARAM_BREAKPOINT_, and breakpoint_symbols must
 // stay in sync!
-const char* g_breakpoint_symbols[NUM_BREAKPOINT_OPERATORS] = {
+const char* breakpoint_symbols[NUM_BREAKPOINT_OPERATORS] = {
     "<=", "< ", "= ", "!=", "> ", ">=", "? ", "@ ", "* ",
 };
 
 auto IsDebugBreakOnInvalid(int iOpcodeType) -> bool {
-  g_debug_breakpoint_hit |=
-      (((g_debug_break_on_invalid >> iOpcodeType) & 1) != 0) ? BP_HIT_INVALID
+  debug_breakpoint_hit |=
+      (((debug_break_on_invalid >> iOpcodeType) & 1) != 0) ? BP_HIT_INVALID
                                                              : 0;
-  return g_debug_breakpoint_hit != 0;
+  return debug_breakpoint_hit != 0;
 }
 
 auto ClearTempBreakpoints() -> void {
   int iBP = 0;
   while (iBP < MAX_BREAKPOINTS) {
-    if (g_breakpoints[iBP].bSet && g_breakpoints[iBP].bTemp) {
-      bwz_Clear(g_breakpoints, iBP);
-      g_breakpoints_count--;
+    if (breakpoints[iBP].bSet && breakpoints[iBP].bTemp) {
+      bwz_Clear(breakpoints, iBP);
+      breakpoints_count--;
     }
     iBP++;
   }
@@ -56,19 +56,19 @@ auto ClearTempBreakpoints() -> void {
 // BWZ (Breakpoint, Watch, ZeroPage) shared helpers
 // _______________________________________________
 
-auto bwz_Clear(Breakpoint_t* aBreakWatchZero, int iSlot) -> void {
+auto bwz_Clear(Breakpoint* aBreakWatchZero, int iSlot) -> void {
   if (aBreakWatchZero) {
     aBreakWatchZero[iSlot].bSet = false;
     aBreakWatchZero[iSlot].bEnabled = false;
     aBreakWatchZero[iSlot].bTemp = false;
     aBreakWatchZero[iSlot].address = 0;
     aBreakWatchZero[iSlot].nLength = 0;
-    aBreakWatchZero[iSlot].eSource = static_cast<BreakpointSource_t>(0);
-    aBreakWatchZero[iSlot].eOperator = static_cast<BreakpointOperator_t>(0);
+    aBreakWatchZero[iSlot].eSource = static_cast<BreakpointSource>(0);
+    aBreakWatchZero[iSlot].eOperator = static_cast<BreakpointOperator>(0);
   }
 }
 
-auto bwz_RemoveOne(Breakpoint_t* aBreakWatchZero, const int iSlot, int& total)
+auto bwz_RemoveOne(Breakpoint* aBreakWatchZero, const int iSlot, int& total)
     -> void {
   if (aBreakWatchZero && aBreakWatchZero[iSlot].bSet) {
     bwz_Clear(aBreakWatchZero, iSlot);
@@ -76,7 +76,7 @@ auto bwz_RemoveOne(Breakpoint_t* aBreakWatchZero, const int iSlot, int& total)
   }
 }
 
-auto bwz_RemoveAll(Breakpoint_t* aBreakWatchZero, const int nMax, int& total)
+auto bwz_RemoveAll(Breakpoint* aBreakWatchZero, const int nMax, int& total)
     -> void {
   if (aBreakWatchZero) {
     int i = 0;
@@ -88,11 +88,11 @@ auto bwz_RemoveAll(Breakpoint_t* aBreakWatchZero, const int nMax, int& total)
   }
 }
 
-auto bwz_ClearViaArgs(int nArgs, Breakpoint_t* aBreakWatchZero, const int nMax,
+auto bwz_ClearViaArgs(int nArgs, Breakpoint* aBreakWatchZero, const int nMax,
                       int& total) -> void {
   if (aBreakWatchZero) {
     for (int iArg = 1; iArg <= nArgs; iArg++) {
-      int iSlot = g_args[iArg].nValue;
+      int iSlot = args[iArg].nValue;
       if (iSlot < nMax) {
         bwz_RemoveOne(aBreakWatchZero, iSlot, total);
       }
@@ -100,11 +100,11 @@ auto bwz_ClearViaArgs(int nArgs, Breakpoint_t* aBreakWatchZero, const int nMax,
   }
 }
 
-auto bwz_EnableDisableViaArgs(int nArgs, Breakpoint_t* aBreakWatchZero,
+auto bwz_EnableDisableViaArgs(int nArgs, Breakpoint* aBreakWatchZero,
                               const int nMax, const bool bEnabled) -> void {
   if (aBreakWatchZero) {
     for (int iArg = 1; iArg <= nArgs; iArg++) {
-      int iSlot = g_args[iArg].nValue;
+      int iSlot = args[iArg].nValue;
       if (iSlot < nMax) {
         aBreakWatchZero[iSlot].bEnabled = bEnabled;
       }
@@ -112,13 +112,13 @@ auto bwz_EnableDisableViaArgs(int nArgs, Breakpoint_t* aBreakWatchZero,
   }
 }
 
-auto bwz_List(const Breakpoint_t* aBreakWatchZero, const int iBWZ) -> void {
+auto bwz_List(const Breakpoint* aBreakWatchZero, const int iBWZ) -> void {
   if (aBreakWatchZero) {
     char sText[CONSOLE_WIDTH];
-    const Breakpoint_t* pBWZ = &aBreakWatchZero[iBWZ];
+    const Breakpoint* pBWZ = &aBreakWatchZero[iBWZ];
 
-    const char* src_ptr = g_breakpoint_source[pBWZ->eSource];
-    const char* pCmp = g_breakpoint_symbols[pBWZ->eOperator];
+    const char* src_ptr = breakpoint_source[pBWZ->eSource];
+    const char* pCmp = breakpoint_symbols[pBWZ->eOperator];
 
     snprintf(sText, sizeof(sText), "  %x: %s %s %04X", iBWZ, src_ptr, pCmp,
              pBWZ->address);
@@ -136,7 +136,7 @@ auto bwz_List(const Breakpoint_t* aBreakWatchZero, const int iBWZ) -> void {
   }
 }
 
-auto bwz_ListAll(const Breakpoint_t* aBreakWatchZero, const int nMax) -> void {
+auto bwz_ListAll(const Breakpoint* aBreakWatchZero, const int nMax) -> void {
   if (aBreakWatchZero) {
     int i = 0;
     while (i < nMax) {
@@ -151,11 +151,11 @@ auto bwz_ListAll(const Breakpoint_t* aBreakWatchZero, const int nMax) -> void {
 // Breakpoints
 // ____________________________________________________________________________________
 
-auto CmdBreakpoint(int nArgs) -> Update_t {
+auto CmdBreakpoint(int nArgs) -> UpdateResult {
   return CmdBreakpointAddSmart(nArgs);
 }
 
-auto CmdBreakpointAddSmart(int nArgs) -> Update_t {
+auto CmdBreakpointAddSmart(int nArgs) -> UpdateResult {
   if (nArgs == 0) {
     return CmdBreakpointList(0);
   }
@@ -170,7 +170,7 @@ auto CmdBreakpointAddSmart(int nArgs) -> Update_t {
 
   // Check if arg[1] is a register
   int iSrc = 0;
-  if (FindParam(g_args[1].sArg, MATCH_EXACT, iSrc, PARAM_BREAKPOINT_BEGIN,
+  if (FindParam(args[1].sArg, MATCH_EXACT, iSrc, PARAM_BREAKPOINT_BEGIN,
                 PARAM_BREAKPOINT_END) > 0) {
     return CmdBreakpointAddReg(nArgs);
   }
@@ -178,13 +178,13 @@ auto CmdBreakpointAddSmart(int nArgs) -> Update_t {
   return CmdBreakpointAddPC(nArgs);
 }
 
-auto CmdBreakpointAddPC(int nArgs) -> Update_t {
+auto CmdBreakpointAddPC(int nArgs) -> UpdateResult {
   if (nArgs == 0) {
     return Help_Arg_1(CMD_BREAKPOINT_ADD_PC);
   }
 
   for (int iArg = 1; iArg <= nArgs; iArg++) {
-    uint16_t address = g_args[iArg].nValue;
+    uint16_t address = args[iArg].nValue;
     CmdBreakpointAddCommonArg(iArg, nArgs, BP_SRC_REG_PC, BP_OP_EQUAL);
     (void)address;
   }
@@ -192,7 +192,7 @@ auto CmdBreakpointAddPC(int nArgs) -> Update_t {
   return UPDATE_BREAKPOINTS;
 }
 
-auto CmdBreakpointAddReg(int nArgs) -> Update_t {
+auto CmdBreakpointAddReg(int nArgs) -> UpdateResult {
   if (nArgs < 3) {
     return Help_Arg_1(CMD_BREAKPOINT_ADD_REG);
   }
@@ -202,12 +202,12 @@ auto CmdBreakpointAddReg(int nArgs) -> Update_t {
   return UPDATE_BREAKPOINTS;
 }
 
-auto CmdBreakpointAddCommonArg(int iArg, int nArg, BreakpointSource_t iSrc,
-                               BreakpointOperator_t iCmp,
+auto CmdBreakpointAddCommonArg(int iArg, int nArg, BreakpointSource iSrc,
+                               BreakpointOperator iCmp,
                                bool bIsTempBreakpoint) -> int {
   (void)nArg;
   int iBP = 0;
-  while ((iBP < MAX_BREAKPOINTS) && g_breakpoints[iBP].bSet) {
+  while ((iBP < MAX_BREAKPOINTS) && breakpoints[iBP].bSet) {
     iBP++;
   }
 
@@ -216,72 +216,72 @@ auto CmdBreakpointAddCommonArg(int iArg, int nArg, BreakpointSource_t iSrc,
     return 0;
   }
 
-  Breakpoint_t* pBP = &g_breakpoints[iBP];
+  Breakpoint* pBP = &breakpoints[iBP];
   pBP->bSet = true;
   pBP->bEnabled = true;
   pBP->bTemp = bIsTempBreakpoint;
   pBP->eSource = iSrc;
   pBP->eOperator = iCmp;
-  pBP->address = g_args[iArg].nValue;
+  pBP->address = args[iArg].nValue;
   pBP->nLength = 1;
 
-  g_breakpoints_count++;
+  breakpoints_count++;
 
   return 1;
 }
 
-auto CmdBreakpointAddIO(int nArgs) -> Update_t {
+auto CmdBreakpointAddIO(int nArgs) -> UpdateResult {
   if (nArgs < 1) {
     return Help_Arg_1(CMD_BREAKPOINT_ADD_IO);
   }
   return UPDATE_BREAKPOINTS;
 }
 
-auto CmdBreakpointAddMemA(int nArgs) -> Update_t {
+auto CmdBreakpointAddMemA(int nArgs) -> UpdateResult {
   if (nArgs < 1) {
     return Help_Arg_1(CMD_BREAKPOINT_ADD_MEM);
   }
   return UPDATE_BREAKPOINTS;
 }
 
-auto CmdBreakpointAddMemR(int nArgs) -> Update_t {
+auto CmdBreakpointAddMemR(int nArgs) -> UpdateResult {
   if (nArgs < 1) {
     return Help_Arg_1(CMD_BREAKPOINT_ADD_MEMR);
   }
   return UPDATE_BREAKPOINTS;
 }
 
-auto CmdBreakpointAddMemW(int nArgs) -> Update_t {
+auto CmdBreakpointAddMemW(int nArgs) -> UpdateResult {
   if (nArgs < 1) {
     return Help_Arg_1(CMD_BREAKPOINT_ADD_MEMW);
   }
   return UPDATE_BREAKPOINTS;
 }
 
-auto CmdBreakpointEdit(int nArgs) -> Update_t {
+auto CmdBreakpointEdit(int nArgs) -> UpdateResult {
   if (nArgs < 1) {
     return Help_Arg_1(CMD_BREAKPOINT_EDIT);
   }
   return UPDATE_BREAKPOINTS;
 }
 
-auto CmdBreakpointClear(int nArgs) -> Update_t {
-  if (g_breakpoints_count == 0) {
+auto CmdBreakpointClear(int nArgs) -> UpdateResult {
+  if (breakpoints_count == 0) {
     return console_display_error("There are no breakpoints defined.");
   }
 
   if (nArgs == 0) {
-    bwz_RemoveAll(g_breakpoints, MAX_BREAKPOINTS, g_breakpoints_count);
+    bwz_RemoveAll(breakpoints, MAX_BREAKPOINTS, breakpoints_count);
   } else {
-    bwz_ClearViaArgs(nArgs, g_breakpoints, MAX_BREAKPOINTS,
-                     g_breakpoints_count);
+    bwz_ClearViaArgs(nArgs, breakpoints, MAX_BREAKPOINTS,
+                     breakpoints_count);
   }
 
   return UPDATE_DISASM | UPDATE_BREAKPOINTS | UPDATE_CONSOLE_DISPLAY;
 }
 
-auto CmdBreakpointDisable(int nArgs) -> Update_t {
-  if (g_breakpoints_count == 0) {
+auto CmdBreakpointDisable(int nArgs) -> UpdateResult {
+  if (breakpoints_count == 0) {
     return console_display_error("There are no breakpoints defined.");
   }
 
@@ -289,13 +289,13 @@ auto CmdBreakpointDisable(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_BREAKPOINT_DISABLE);
   }
 
-  bwz_EnableDisableViaArgs(nArgs, g_breakpoints, MAX_BREAKPOINTS, false);
+  bwz_EnableDisableViaArgs(nArgs, breakpoints, MAX_BREAKPOINTS, false);
 
   return UPDATE_BREAKPOINTS;
 }
 
-auto CmdBreakpointEnable(int nArgs) -> Update_t {
-  if (g_breakpoints_count == 0) {
+auto CmdBreakpointEnable(int nArgs) -> UpdateResult {
+  if (breakpoints_count == 0) {
     return console_display_error("There are no breakpoints defined.");
   }
 
@@ -303,53 +303,53 @@ auto CmdBreakpointEnable(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_BREAKPOINT_ENABLE);
   }
 
-  bwz_EnableDisableViaArgs(nArgs, g_breakpoints, MAX_BREAKPOINTS, true);
+  bwz_EnableDisableViaArgs(nArgs, breakpoints, MAX_BREAKPOINTS, true);
 
   return UPDATE_BREAKPOINTS;
 }
 
-auto CmdBreakpointList(int nArgs) -> Update_t {
+auto CmdBreakpointList(int nArgs) -> UpdateResult {
   (void)nArgs;
-  if (g_breakpoints_count == 0) {
+  if (breakpoints_count == 0) {
     char sText[CONSOLE_WIDTH];
     snprintf(sText, sizeof(sText),
              "  There are no current breakpoints.  (Max: %d)", MAX_BREAKPOINTS);
     ConsoleBufferPush(sText);
   } else {
-    bwz_ListAll(g_breakpoints, MAX_BREAKPOINTS);
+    bwz_ListAll(breakpoints, MAX_BREAKPOINTS);
   }
   return ConsoleUpdate();
 }
 
-auto CmdBreakpointSave(int nArgs) -> Update_t {
+auto CmdBreakpointSave(int nArgs) -> UpdateResult {
   char sText[CONSOLE_WIDTH];
 
   // ConfigSave_PrepareHeader( PARAM_CAT_BREAKPOINTS, CMD_BREAKPOINT_CLEAR );
 
   int iBreakpoint = 0;
   while (iBreakpoint < MAX_BREAKPOINTS) {
-    if (g_breakpoints[iBreakpoint].bSet) {
+    if (breakpoints[iBreakpoint].bSet) {
       snprintf(sText, sizeof(sText), "%s %x %04X,%04X\n",
-               g_commands[CMD_BREAKPOINT_ADD_REG].name, iBreakpoint,
-               g_breakpoints[iBreakpoint].address,
-               g_breakpoints[iBreakpoint].nLength);
-      g_config_state.PushLine(sText);
+               commands[CMD_BREAKPOINT_ADD_REG].name, iBreakpoint,
+               breakpoints[iBreakpoint].address,
+               breakpoints[iBreakpoint].nLength);
+      config_state.PushLine(sText);
     }
-    if (!g_breakpoints[iBreakpoint].bEnabled) {
+    if (!breakpoints[iBreakpoint].bEnabled) {
       snprintf(sText, sizeof(sText), "%s %x\n",
-               g_commands[CMD_BREAKPOINT_DISABLE].name, iBreakpoint);
-      g_config_state.PushLine(sText);
+               commands[CMD_BREAKPOINT_DISABLE].name, iBreakpoint);
+      config_state.PushLine(sText);
     }
 
     iBreakpoint++;
   }
 
   if (nArgs != 0) {
-    if ((g_args[1].bType & TYPE_QUOTED_2) == 0) {
+    if ((args[1].bType & TYPE_QUOTED_2) == 0) {
       return Help_Arg_1(CMD_BREAKPOINT_SAVE);
     }
 
-    // if (ConfigSave_BufferToDisk( g_args[ 1 ].sArg, CONFIG_SAVE_FILE_CREATE ))
+    // if (ConfigSave_BufferToDisk( args[ 1 ].sArg, CONFIG_SAVE_FILE_CREATE ))
     {
       ConsoleBufferPush("Saved.");
       return ConsoleUpdate();
@@ -359,9 +359,9 @@ auto CmdBreakpointSave(int nArgs) -> Update_t {
   return UPDATE_CONSOLE_DISPLAY;
 }
 
-auto CmdWatch(int nArgs) -> Update_t { return CmdWatchAdd(nArgs); }
+auto CmdWatch(int nArgs) -> UpdateResult { return CmdWatchAdd(nArgs); }
 
-auto CmdWatchAdd(int nArgs) -> Update_t {
+auto CmdWatchAdd(int nArgs) -> UpdateResult {
   if (nArgs == 0) {
     return CmdWatchList(0);
   }
@@ -369,13 +369,13 @@ auto CmdWatchAdd(int nArgs) -> Update_t {
   int iArg = 1;
   int iWatch = NO_6502_TARGET;
   if (nArgs > 1) {
-    iWatch = static_cast<int>(g_args[1].nValue);
+    iWatch = static_cast<int>(args[1].nValue);
     iArg++;
   }
 
   bool bAdded = false;
   for (; iArg <= nArgs; iArg++) {
-    uint16_t address = g_args[iArg].nValue;
+    uint16_t address = args[iArg].nValue;
 
     if ((address >= DBG_6502_IO_BEGIN) && (address <= DBG_6502_IO_END)) {
       return console_display_error("You may not watch an I/O location.");
@@ -383,7 +383,7 @@ auto CmdWatchAdd(int nArgs) -> Update_t {
 
     if (iWatch == NO_6502_TARGET) {
       iWatch = 0;
-      while ((iWatch < MAX_WATCHES) && g_watches[iWatch].bSet) {
+      while ((iWatch < MAX_WATCHES) && watches[iWatch].bSet) {
         iWatch++;
       }
     }
@@ -396,12 +396,12 @@ auto CmdWatchAdd(int nArgs) -> Update_t {
       return ConsoleUpdate();
     }
 
-    if ((iWatch < MAX_WATCHES) && (g_watches_count < MAX_WATCHES)) {
-      g_watches[iWatch].bSet = true;
-      g_watches[iWatch].bEnabled = true;
-      g_watches[iWatch].address = address;
+    if ((iWatch < MAX_WATCHES) && (watches_count < MAX_WATCHES)) {
+      watches[iWatch].bSet = true;
+      watches[iWatch].bEnabled = true;
+      watches[iWatch].address = address;
       bAdded = true;
-      g_watches_count++;
+      watches_count++;
       iWatch++;
     }
   }
@@ -413,28 +413,28 @@ auto CmdWatchAdd(int nArgs) -> Update_t {
   return UPDATE_WATCH;
 }
 
-auto CmdWatchSave(int nArgs) -> Update_t {
+auto CmdWatchSave(int nArgs) -> UpdateResult {
   (void)nArgs;
   return UPDATE_CONSOLE_DISPLAY;
 }
 
-auto CmdWatchClear(int nArgs) -> Update_t {
-  if (g_watches_count == 0) {
+auto CmdWatchClear(int nArgs) -> UpdateResult {
+  if (watches_count == 0) {
     return console_display_error("There are no watches defined.");
   }
 
   if (nArgs == 0) {
-    bwz_RemoveAll((Breakpoint_t*)g_watches, MAX_WATCHES, g_watches_count);
+    bwz_RemoveAll((Breakpoint*)watches, MAX_WATCHES, watches_count);
   } else {
-    bwz_ClearViaArgs(nArgs, (Breakpoint_t*)g_watches, MAX_WATCHES,
-                     g_watches_count);
+    bwz_ClearViaArgs(nArgs, (Breakpoint*)watches, MAX_WATCHES,
+                     watches_count);
   }
 
   return UPDATE_WATCH | UPDATE_CONSOLE_DISPLAY;
 }
 
-auto CmdWatchDisable(int nArgs) -> Update_t {
-  if (g_watches_count == 0) {
+auto CmdWatchDisable(int nArgs) -> UpdateResult {
+  if (watches_count == 0) {
     return console_display_error("There are no watches defined.");
   }
 
@@ -442,13 +442,13 @@ auto CmdWatchDisable(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_WATCH_DISABLE);
   }
 
-  bwz_EnableDisableViaArgs(nArgs, (Breakpoint_t*)g_watches, MAX_WATCHES, false);
+  bwz_EnableDisableViaArgs(nArgs, (Breakpoint*)watches, MAX_WATCHES, false);
 
   return UPDATE_WATCH;
 }
 
-auto CmdWatchEnable(int nArgs) -> Update_t {
-  if (g_watches_count == 0) {
+auto CmdWatchEnable(int nArgs) -> UpdateResult {
+  if (watches_count == 0) {
     return console_display_error("There are no watches defined.");
   }
 
@@ -456,20 +456,20 @@ auto CmdWatchEnable(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_WATCH_ENABLE);
   }
 
-  bwz_EnableDisableViaArgs(nArgs, (Breakpoint_t*)g_watches, MAX_WATCHES, true);
+  bwz_EnableDisableViaArgs(nArgs, (Breakpoint*)watches, MAX_WATCHES, true);
 
   return UPDATE_WATCH;
 }
 
-auto CmdWatchList(int nArgs) -> Update_t {
+auto CmdWatchList(int nArgs) -> UpdateResult {
   (void)nArgs;
-  if (g_watches_count == 0) {
+  if (watches_count == 0) {
     char sText[CONSOLE_WIDTH];
     snprintf(sText, sizeof(sText), "  There are no current watches.  (Max: %d)",
              MAX_WATCHES);
     ConsoleBufferPush(sText);
   } else {
-    bwz_ListAll((Breakpoint_t*)g_watches, MAX_WATCHES);
+    bwz_ListAll((Breakpoint*)watches, MAX_WATCHES);
   }
   return ConsoleUpdate();
 }

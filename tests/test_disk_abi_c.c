@@ -16,17 +16,17 @@ void disk_abi_c_smoke(void) {
   (void)wrapper_len;
   (void)image_container_supported_extensions();
 
-  DiskInsertCmd_t cmd;
+  DiskInsertCmd cmd;
   cmd.drive = disk_drive_0;
   cmd.write_protected = 0;
   cmd.path[0] = '\0';
 
-  DiskFormatNameQuery_t name_query;
+  DiskFormatNameQuery name_query;
   name_query.index = 0;
   name_query.capabilities = disk_driver_cap_create;
   name_query.name[0] = '\0';
 
-  DiskFormatDriver_t driver;
+  DiskFormatDriver driver;
   driver.abi_version = disk_format_abi_version;
   driver.capabilities = disk_driver_cap_write | disk_driver_cap_create;
   driver.name = "smoke";
@@ -38,7 +38,7 @@ void disk_abi_c_smoke(void) {
   driver.read_track_bits = 0;
   driver.write_track_bits = 0;
   driver.create = 0;
-  DiskSavedState_t saved_state;
+  DiskSavedState saved_state;
   saved_state.header.version = disk_state_version;
   (void)cmd;
   (void)name_query;

@@ -28,30 +28,30 @@ constexpr uint8_t DEBUG_FORCE_DISPLAY = 0;
 
 // Globals __________________________________________________________________
 
-VideoSurface* g_debug_screen = nullptr;
-static VideoSurface* g_debug_charset = nullptr;
+VideoSurface* debug_screen = nullptr;
+static VideoSurface* debug_charset = nullptr;
 
-ColorRef_t g_console_brush_fg = WHITE;
-ColorRef_t g_console_brush_bg = BLACK;
+ColorRef console_brush_fg = WHITE;
+ColorRef console_brush_bg = BLACK;
 
-FontConfig_t g_font_config[NUM_FONTS];
-char g_debugger_virtual_text_screen[DEBUG_VIRTUAL_TEXT_HEIGHT]
+FontConfig font_config[NUM_FONTS];
+char debugger_virtual_text_screen[DEBUG_VIRTUAL_TEXT_HEIGHT]
                                    [DEBUG_VIRTUAL_TEXT_WIDTH];
-ColorRef_t g_debugger_virtual_text_screen_fg[DEBUG_VIRTUAL_TEXT_HEIGHT]
+ColorRef debugger_virtual_text_screen_fg[DEBUG_VIRTUAL_TEXT_HEIGHT]
                                             [DEBUG_VIRTUAL_TEXT_WIDTH];
-ColorRef_t g_debugger_virtual_text_screen_bg[DEBUG_VIRTUAL_TEXT_HEIGHT]
+ColorRef debugger_virtual_text_screen_bg[DEBUG_VIRTUAL_TEXT_HEIGHT]
                                             [DEBUG_VIRTUAL_TEXT_WIDTH];
 
-int g_display_memory_lines = 8;
-VideoScannerDisplayInfo_t g_video_scanner_display_info;
+int display_memory_lines = 8;
+VideoScannerDisplayInfo video_scanner_display_info;
 
 // Prototypes _______________________________________________________________
 
 extern auto DisasmInit() -> void;
-extern auto CmdSymbolsClear(SymbolTable_Index_e eSymbolTable) -> Update_t;
+extern auto CmdSymbolsClear(SymbolTable_Index_e eSymbolTable) -> UpdateResult;
 extern auto frame_refresh_status(int) -> void;
 
-auto DrawSubWindow_IO(Update_t /*unused*/) -> void {}
+auto DrawSubWindow_IO(UpdateResult /*unused*/) -> void {}
 
 // Implementation ___________________________________________________________
 
@@ -60,43 +60,43 @@ auto DrawSubWindow_IO(Update_t /*unused*/) -> void {}
 constexpr float MIN_VIEWPORT_SCALE = 0.01F;
 
 auto AllocateDebuggerMemDC() -> void {
-  if (!g_debug_screen) {
-    g_debug_screen = video_create_surface(DISPLAY_WIDTH, DISPLAY_HEIGHT, 1);
-    if (g_debug_screen) {
+  if (!debug_screen) {
+    debug_screen = video_create_surface(DISPLAY_WIDTH, DISPLAY_HEIGHT, 1);
+    if (debug_screen) {
       VideoColor* pal = video_get_output_palette();
       if (pal) {
-        memcpy(g_debug_screen->palette.data(), pal,
+        memcpy(debug_screen->palette.data(), pal,
                video_palette_size * sizeof(VideoColor));
       }
     }
-    g_debug_charset = video_load_xpm(charset40_xpm);
+    debug_charset = video_load_xpm(charset40_xpm);
   }
 }
 
 auto ReleaseDebuggerMemDC() -> void {}
 
 auto GetDebugViewPortScale(float* x, float* y) -> void {
-  if (!g_debug_screen) {
+  if (!debug_screen) {
     *x = 1.0F;
     *y = 1.0F;
     return;
   }
-  float f = (static_cast<float>(g_debug_screen->w)) / SCREEN_WIDTH;
+  float f = (static_cast<float>(debug_screen->w)) / SCREEN_WIDTH;
   *x = (f > MIN_VIEWPORT_SCALE) ? f : MIN_VIEWPORT_SCALE;
-  f = (static_cast<float>(g_debug_screen->h)) / SCREEN_HEIGHT;
+  f = (static_cast<float>(debug_screen->h)) / SCREEN_HEIGHT;
   *y = (f > MIN_VIEWPORT_SCALE) ? f : MIN_VIEWPORT_SCALE;
 }
 
 // Font: Apple Text
-auto DebuggerSetColorFG(ColorRef_t nRGB) -> void { g_console_brush_fg = nRGB; }
+auto DebuggerSetColorFG(ColorRef nRGB) -> void { console_brush_fg = nRGB; }
 
 // Font: GDI/Console
-auto DebuggerSetColorBG(ColorRef_t nRGB, bool bTransparent) -> void {
+auto DebuggerSetColorBG(ColorRef nRGB, bool bTransparent) -> void {
   (void)bTransparent;
-  g_console_brush_bg = nRGB;
+  console_brush_bg = nRGB;
 }
 
-auto FillRect(const Rect_t* r, int Brush) -> void {
+auto FillRect(const Rect* r, int Brush) -> void {
   if (!r) {
     return;
   }
@@ -105,14 +105,14 @@ auto FillRect(const Rect_t* r, int Brush) -> void {
   int row_start = 0;
   int row_end = 0;
 
-  if (r->top >= g_window_config[WINDOW_CONSOLE].top) {
+  if (r->top >= window_config[WINDOW_CONSOLE].top) {
     col_start = r->left / APPLE_FONT_WIDTH;
     col_end = (r->right + APPLE_FONT_WIDTH - 1) / APPLE_FONT_WIDTH;
     row_start =
-        (g_window_config[WINDOW_CONSOLE].top / CONSOLE_FONT_HEIGHT) +
-        ((r->top - g_window_config[WINDOW_CONSOLE].top) / APPLE_FONT_HEIGHT);
-    row_end = (g_window_config[WINDOW_CONSOLE].top / CONSOLE_FONT_HEIGHT) +
-              ((r->bottom - g_window_config[WINDOW_CONSOLE].top +
+        (window_config[WINDOW_CONSOLE].top / CONSOLE_FONT_HEIGHT) +
+        ((r->top - window_config[WINDOW_CONSOLE].top) / APPLE_FONT_HEIGHT);
+    row_end = (window_config[WINDOW_CONSOLE].top / CONSOLE_FONT_HEIGHT) +
+              ((r->bottom - window_config[WINDOW_CONSOLE].top +
                 APPLE_FONT_HEIGHT - 1) /
                APPLE_FONT_HEIGHT);
   } else {
@@ -126,14 +126,14 @@ auto FillRect(const Rect_t* r, int Brush) -> void {
     for (int x = col_start; x < col_end; ++x) {
       if (x >= 0 && x < DEBUG_VIRTUAL_TEXT_WIDTH && y >= 0 &&
           y < DEBUG_VIRTUAL_TEXT_HEIGHT) {
-        g_debugger_virtual_text_screen[y][x] = ' ';
-        g_debugger_virtual_text_screen_fg[y][x] = g_console_brush_fg;
-        g_debugger_virtual_text_screen_bg[y][x] = Brush;
+        debugger_virtual_text_screen[y][x] = ' ';
+        debugger_virtual_text_screen_fg[y][x] = console_brush_fg;
+        debugger_virtual_text_screen_bg[y][x] = Brush;
       }
     }
   }
-  if (g_debug_screen) {
-    rectangle(g_debug_screen, r->left, r->top, r->right - r->left,
+  if (debug_screen) {
+    rectangle(debug_screen, r->left, r->top, r->right - r->left,
               r->bottom - r->top, Brush);
   }
 }
@@ -161,26 +161,26 @@ auto PrintGlyph(int x, int y, int glyph) -> void {
     int col = x / CONSOLE_FONT_WIDTH;
     int row = y / CONSOLE_FONT_HEIGHT;
 
-    if (y >= g_window_config[WINDOW_CONSOLE].top) {
+    if (y >= window_config[WINDOW_CONSOLE].top) {
       col = x / APPLE_FONT_WIDTH;
-      row = (g_window_config[WINDOW_CONSOLE].top / CONSOLE_FONT_HEIGHT) +
-            ((y - g_window_config[WINDOW_CONSOLE].top) / APPLE_FONT_HEIGHT);
+      row = (window_config[WINDOW_CONSOLE].top / CONSOLE_FONT_HEIGHT) +
+            ((y - window_config[WINDOW_CONSOLE].top) / APPLE_FONT_HEIGHT);
     }
 
     if ((col >= 0) && (col < DEBUG_VIRTUAL_TEXT_WIDTH) && (row >= 0) &&
         (row < DEBUG_VIRTUAL_TEXT_HEIGHT)) {
-      g_debugger_virtual_text_screen[row][col] = glyph;
-      g_debugger_virtual_text_screen_fg[row][col] = g_console_brush_fg;
-      g_debugger_virtual_text_screen_bg[row][col] = g_console_brush_bg;
+      debugger_virtual_text_screen[row][col] = glyph;
+      debugger_virtual_text_screen_fg[row][col] = console_brush_fg;
+      debugger_virtual_text_screen_bg[row][col] = console_brush_bg;
     }
   }
 
-  uint32_t hBrush = g_console_brush_fg;
-  uint32_t hBgBrush = g_console_brush_bg;
-  if (g_debug_screen && g_debug_charset) {
+  uint32_t hBrush = console_brush_fg;
+  uint32_t hBgBrush = console_brush_bg;
+  if (debug_screen && debug_charset) {
     VideoRect srcrect = {xSrc, ySrc, CONSOLE_FONT_WIDTH, CONSOLE_FONT_HEIGHT};
     VideoRect dstrect = {x, y, CONSOLE_FONT_WIDTH, CONSOLE_FONT_HEIGHT};
-    video_soft_stretch_mono8(g_debug_charset, &srcrect, g_debug_screen,
+    video_soft_stretch_mono8(debug_charset, &srcrect, debug_screen,
                              &dstrect, hBrush, hBgBrush);
   }
 }
@@ -207,10 +207,10 @@ static auto DebuggerPrint(int x, int y, const char* text) -> void {
   }
 }
 
-static auto DebuggerPrintColor(int x, int y, const conchar_t* text) -> void {
+static auto DebuggerPrintColor(int x, int y, const ConChar* text) -> void {
   int nLeft = x;
-  conchar_t g = 0;
-  const conchar_t* src_ptr = text;
+  ConChar g = 0;
+  const ConChar* src_ptr = text;
 
   if (!text) {
     return;
@@ -242,48 +242,48 @@ auto can_draw_debugger() -> bool {
          (system_state.mode == app_mode_stepping);
 }
 
-auto PrintText(const char* text, Rect_t& rRect) -> int {
+auto PrintText(const char* text, Rect& rRect) -> int {
   if (!text) {
     return 0;
   }
   int nLen = static_cast<int>(strlen(text));
 
-  if (g_debug_screen) {
-    Rect_t textRect = rRect;
+  if (debug_screen) {
+    Rect textRect = rRect;
     textRect.right = textRect.left + (nLen * CONSOLE_FONT_WIDTH);
-    rectangle(g_debug_screen, textRect.left, textRect.top,
+    rectangle(debug_screen, textRect.left, textRect.top,
               textRect.right - textRect.left, textRect.bottom - textRect.top,
-              g_console_brush_bg);
+              console_brush_bg);
   }
 
   DebuggerPrint(rRect.left, rRect.top, text);
   return nLen;
 }
 
-auto PrintTextColor(const conchar_t* text, Rect_t& rRect) -> void {
+auto PrintTextColor(const ConChar* text, Rect& rRect) -> void {
   if (!text) {
     return;
   }
-  if (g_debug_screen) {
+  if (debug_screen) {
     int nLen = 0;
-    const conchar_t* p = text;
+    const ConChar* p = text;
     while ((*p) != 0) {
       if (!ConsoleColor_IsColorOrMouse(*p) && *p != '\n') {
         nLen++;
       }
       p++;
     }
-    Rect_t textRect = rRect;
+    Rect textRect = rRect;
     textRect.right = textRect.left + (nLen * CONSOLE_FONT_WIDTH);
-    rectangle(g_debug_screen, textRect.left, textRect.top,
+    rectangle(debug_screen, textRect.left, textRect.top,
               textRect.right - textRect.left, textRect.bottom - textRect.top,
-              g_console_brush_bg);
+              console_brush_bg);
   }
 
   DebuggerPrintColor(rRect.left, rRect.top, text);
 }
 
-auto PrintTextCursorX(const char* text, Rect_t& rRect) -> int {
+auto PrintTextCursorX(const char* text, Rect& rRect) -> int {
   int nChars = 0;
   if (text) {
     nChars = PrintText(text, rRect);
@@ -293,7 +293,7 @@ auto PrintTextCursorX(const char* text, Rect_t& rRect) -> int {
   return nChars;
 }
 
-auto PrintTextCursorY(const char* text, Rect_t& rRect) -> int {
+auto PrintTextCursorY(const char* text, Rect& rRect) -> int {
   int nChars = PrintText(text, rRect);
   rRect.top += CONSOLE_FONT_HEIGHT;
   rRect.bottom += CONSOLE_FONT_HEIGHT;
@@ -331,10 +331,10 @@ auto DrawConsoleCursor() -> void {
   DebuggerSetColorBG(BLACK, false);
 
   DebuggerDrawCursor(
-      g_window_config[WINDOW_CONSOLE].left +
-          ((g_console_input_chars + g_console_prompt_len) * APPLE_FONT_WIDTH),
-      g_window_config[WINDOW_CONSOLE].bottom - APPLE_FONT_HEIGHT,
-      g_console_cursor[0]);
+      window_config[WINDOW_CONSOLE].left +
+          ((console_input_chars + console_prompt_len) * APPLE_FONT_WIDTH),
+      window_config[WINDOW_CONSOLE].bottom - APPLE_FONT_HEIGHT,
+      console_cursor[0]);
 }
 
 //===========================================================================
@@ -343,67 +343,67 @@ auto DrawConsoleInput() -> void {
   DebuggerSetColorBG(BLACK, false);
 
   // Draw: Prompt + Input
-  DebuggerDrawText(g_window_config[WINDOW_CONSOLE].left,
-                   g_window_config[WINDOW_CONSOLE].bottom - APPLE_FONT_HEIGHT,
-                   g_console_input);
+  DebuggerDrawText(window_config[WINDOW_CONSOLE].left,
+                   window_config[WINDOW_CONSOLE].bottom - APPLE_FONT_HEIGHT,
+                   console_input);
 
   // Draw cursor right after input text
   DebuggerDrawCursor(
-      g_window_config[WINDOW_CONSOLE].left +
-          ((g_console_input_chars + g_console_prompt_len) * APPLE_FONT_WIDTH),
-      g_window_config[WINDOW_CONSOLE].bottom - APPLE_FONT_HEIGHT,
-      g_console_cursor[0]);
+      window_config[WINDOW_CONSOLE].left +
+          ((console_input_chars + console_prompt_len) * APPLE_FONT_WIDTH),
+      window_config[WINDOW_CONSOLE].bottom - APPLE_FONT_HEIGHT,
+      console_cursor[0]);
 
   // Clear rest of line
   DebuggerSetColorFG(WHITE);
   VideoRect r{};
-  r.x = g_window_config[WINDOW_CONSOLE].left +
-        ((g_console_input_chars + g_console_prompt_len + 1) * APPLE_FONT_WIDTH);
-  r.y = g_window_config[WINDOW_CONSOLE].bottom - APPLE_FONT_HEIGHT;
-  r.w = g_window_config[WINDOW_CONSOLE].right - r.x;
+  r.x = window_config[WINDOW_CONSOLE].left +
+        ((console_input_chars + console_prompt_len + 1) * APPLE_FONT_WIDTH);
+  r.y = window_config[WINDOW_CONSOLE].bottom - APPLE_FONT_HEIGHT;
+  r.w = window_config[WINDOW_CONSOLE].right - r.x;
   r.h = APPLE_FONT_HEIGHT;
 
   int col_start = r.x / APPLE_FONT_WIDTH;
-  int row = (g_window_config[WINDOW_CONSOLE].top / CONSOLE_FONT_HEIGHT) +
-            ((r.y - g_window_config[WINDOW_CONSOLE].top) / APPLE_FONT_HEIGHT);
+  int row = (window_config[WINDOW_CONSOLE].top / CONSOLE_FONT_HEIGHT) +
+            ((r.y - window_config[WINDOW_CONSOLE].top) / APPLE_FONT_HEIGHT);
   for (int col = col_start; col < DEBUG_VIRTUAL_TEXT_WIDTH; ++col) {
     if (col >= 0 && col < DEBUG_VIRTUAL_TEXT_WIDTH && row >= 0 &&
         row < DEBUG_VIRTUAL_TEXT_HEIGHT) {
-      g_debugger_virtual_text_screen[row][col] = ' ';
-      g_debugger_virtual_text_screen_fg[row][col] = WHITE;
-      g_debugger_virtual_text_screen_bg[row][col] = BLACK;
+      debugger_virtual_text_screen[row][col] = ' ';
+      debugger_virtual_text_screen_fg[row][col] = WHITE;
+      debugger_virtual_text_screen_bg[row][col] = BLACK;
     }
   }
 
-  if (g_debug_screen) {
-    rectangle(g_debug_screen, r.x, r.y, r.w, r.h, BLACK);
+  if (debug_screen) {
+    rectangle(debug_screen, r.x, r.y, r.w, r.h, BLACK);
   }
 }
 
 //===========================================================================
-auto DrawConsoleLine(const conchar_t* text, int y_coord) -> void {
-  int x = g_window_config[WINDOW_CONSOLE].left;
-  int y = g_window_config[WINDOW_CONSOLE].top + (y_coord * APPLE_FONT_HEIGHT);
+auto DrawConsoleLine(const ConChar* text, int y_pos) -> void {
+  int x = window_config[WINDOW_CONSOLE].left;
+  int y = window_config[WINDOW_CONSOLE].top + (y_pos * APPLE_FONT_HEIGHT);
 
-  const conchar_t* src_ptr = text;
-  conchar_t g = 0;
+  const ConChar* src_ptr = text;
+  ConChar g = 0;
 
   if (!text) {
     // Clear line
     int col_start = x / APPLE_FONT_WIDTH;
     int row =
-        (g_window_config[WINDOW_CONSOLE].top / CONSOLE_FONT_HEIGHT) + y_coord;
+        (window_config[WINDOW_CONSOLE].top / CONSOLE_FONT_HEIGHT) + y_pos;
     for (int col = col_start; col < DEBUG_VIRTUAL_TEXT_WIDTH; ++col) {
       if (col >= 0 && col < DEBUG_VIRTUAL_TEXT_WIDTH && row >= 0 &&
           row < DEBUG_VIRTUAL_TEXT_HEIGHT) {
-        g_debugger_virtual_text_screen[row][col] = ' ';
-        g_debugger_virtual_text_screen_fg[row][col] = g_console_brush_fg;
-        g_debugger_virtual_text_screen_bg[row][col] = BLACK;
+        debugger_virtual_text_screen[row][col] = ' ';
+        debugger_virtual_text_screen_fg[row][col] = console_brush_fg;
+        debugger_virtual_text_screen_bg[row][col] = BLACK;
       }
     }
 
-    if (g_debug_screen) {
-      rectangle(g_debug_screen, x, y, g_window_config[WINDOW_CONSOLE].right - x,
+    if (debug_screen) {
+      rectangle(debug_screen, x, y, window_config[WINDOW_CONSOLE].right - x,
                 APPLE_FONT_HEIGHT, BLACK);
     }
     return;
@@ -418,7 +418,7 @@ auto DrawConsoleLine(const conchar_t* text, int y_coord) -> void {
 }
 
 auto GetConsoleTopPixels(int y) -> int {
-  return g_window_config[WINDOW_CONSOLE].top + (y * CONSOLE_FONT_HEIGHT);
+  return window_config[WINDOW_CONSOLE].top + (y * CONSOLE_FONT_HEIGHT);
 }
 
 auto ColorizeFlags(bool bSet, int bg_default, int fg_default) -> void {
@@ -431,8 +431,8 @@ auto ColorizeFlags(bool bSet, int bg_default, int fg_default) -> void {
   }
 }
 
-auto DrawSubWindow_Info(Update_t bUpdate, int iWindow) -> void {
-  if (g_window_this == WINDOW_CONSOLE) {
+auto DrawSubWindow_Info(UpdateResult bUpdate, int iWindow) -> void {
+  if (window_this == WINDOW_CONSOLE) {
     return;
   }
 
@@ -445,7 +445,7 @@ auto DrawSubWindow_Info(Update_t bUpdate, int iWindow) -> void {
   DrawSoftSwitches(16);
 }
 
-auto ColorizeSpecialChar(char* sText, uint8_t nData, const MemoryView_e iView,
+auto ColorizeSpecialChar(char* sText, uint8_t nData, const MemoryView iView,
                          const int iAsciBackground, const int iTextForeground,
                          const int iHighBackground, const int iHighForeground,
                          const int iCtrlBackground, const int iCtrlForeground)
@@ -494,17 +494,17 @@ auto FormatChar4Font(uint8_t b, bool* pWasHi_, bool* pWasLo_) -> char {
   return FormatCharTxtCtrl(b1, pWasLo_);
 }
 
-static const char* g_config_branch_indicator_up[NUM_DISASM_BRANCH_TYPES] = {
+static const char* config_branch_indicator_up[NUM_DISASM_BRANCH_TYPES] = {
     " ",
     "^",
     "\x8B",
 };
-static const char* g_config_branch_indicator_equal[NUM_DISASM_BRANCH_TYPES] = {
+static const char* config_branch_indicator_equal[NUM_DISASM_BRANCH_TYPES] = {
     " ",
     "=",
     "\x88",
 };
-static const char* g_config_branch_indicator_down[NUM_DISASM_BRANCH_TYPES] = {
+static const char* config_branch_indicator_down[NUM_DISASM_BRANCH_TYPES] = {
     " ",
     "v",
     "\x8A",
@@ -519,7 +519,7 @@ static auto FormatCharCopyWrapped(char* pDst, uint16_t nStart, const int nLen)
   return pDst;
 }
 
-auto FormatOpcodeBytes(uint16_t nBaseAddress, DisasmLine_t& line_) -> void {
+auto FormatOpcodeBytes(uint16_t nBaseAddress, DisasmLine& line_) -> void {
   int nOpbyte = line_.nOpbyte;
 
   char* pDst = line_.sOpCodes;
@@ -531,7 +531,7 @@ auto FormatOpcodeBytes(uint16_t nBaseAddress, DisasmLine_t& line_) -> void {
     snprintf(pDst, 3, "%02X", nMem);
     pDst += 2;
 
-    if (g_config_disasm_opcode_spaces) {
+    if (config_disasm_opcode_spaces) {
       *pDst = ' ';
       *(pDst + 1) = '\0';
       pDst++;
@@ -539,7 +539,7 @@ auto FormatOpcodeBytes(uint16_t nBaseAddress, DisasmLine_t& line_) -> void {
   }
 }
 
-auto FormatNopcodeBytes(uint16_t nBaseAddress, DisasmLine_t& line_) -> void {
+auto FormatNopcodeBytes(uint16_t nBaseAddress, DisasmLine& line_) -> void {
   char* pDst = line_.sTarget;
   uint32_t nStartAddress = line_.pDisasmData->nStartAddress;
   uint32_t nEndAddress = line_.pDisasmData->nEndAddress;
@@ -627,7 +627,7 @@ auto GetTargets_IgnoreDirectJSRJMP(const uint8_t opcode, int& nTargetPointer)
   }
 }
 
-auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
+auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine& line_) -> int {
   line_.Clear();
 
   int opcode = 0;
@@ -635,7 +635,7 @@ auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
   int nOpbyte = 0;
 
   opcode = GetOpmodeOpbyte(nBaseAddress, iOpmode, nOpbyte, &line_.pDisasmData);
-  const DisasmData_t* data = line_.pDisasmData;
+  const DisasmData* data = line_.pDisasmData;
 
   line_.opcode = opcode;
   line_.iOpmode = iOpmode;
@@ -667,7 +667,7 @@ auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
   }
 
   unsigned int nMinBytesLen =
-      (MAX_OPCODES * (2 + static_cast<int>(g_config_disasm_opcode_spaces)));
+      (MAX_OPCODES * (2 + static_cast<int>(config_disasm_opcode_spaces)));
 
   int bDisasmFormatFlags = 0;
   uint16_t nTarget = 0;
@@ -695,13 +695,13 @@ auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
 
       if (nTarget < nBaseAddress) {
         snprintf(line_.sBranch, sizeof(line_.sBranch), "%s",
-                 g_config_branch_indicator_up[g_config_disasm_branch_type]);
+                 config_branch_indicator_up[config_disasm_branch_type]);
       } else if (nTarget > nBaseAddress) {
         snprintf(line_.sBranch, sizeof(line_.sBranch), "%s",
-                 g_config_branch_indicator_down[g_config_disasm_branch_type]);
+                 config_branch_indicator_down[config_disasm_branch_type]);
       } else {
         snprintf(line_.sBranch, sizeof(line_.sBranch), "%s",
-                 g_config_branch_indicator_equal[g_config_disasm_branch_type]);
+                 config_branch_indicator_equal[config_disasm_branch_type]);
       }
     }
 
@@ -767,14 +767,14 @@ auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
         nTargetValue = *(mem + nTargetPointer) |
                        (*(mem + ((nTargetPointer + 1) & 0xffff)) << 8);
 
-        if ((g_config_disasm_targets & DISASM_TARGET_ADDR) != 0) {
+        if ((config_disasm_targets & DISASM_TARGET_ADDR) != 0) {
           snprintf(line_.sTargetPointer, sizeof(line_.sTargetPointer), "%04X",
                    nTargetPointer & 0xFFFF);
         }
 
         if (opcode != OPCODE_JMP_NA && opcode != OPCODE_JMP_IAX) {
           bDisasmFormatFlags |= DISASM_FORMAT_TARGET_VALUE;
-          if ((g_config_disasm_targets & DISASM_TARGET_VAL) != 0) {
+          if ((config_disasm_targets & DISASM_TARGET_VAL) != 0) {
             snprintf(line_.sTargetValue, sizeof(line_.sTargetValue), "%02X",
                      nTargetValue & 0xFF);
           }
@@ -807,11 +807,11 @@ auto GetDisassemblyLine(uint16_t nBaseAddress, DisasmLine_t& line_) -> int {
     line_.iNoptype = data->eElementType;
     line_.iNopcode = data->iDirective;
     util_safe_strcpy(line_.sMnemonic,
-                     g_assembler_directives[line_.iNopcode].mnemonic,
+                     assembler_directives[line_.iNopcode].mnemonic,
                      sizeof(line_.sMnemonic));
     FormatNopcodeBytes(nBaseAddress, line_);
   } else {
-    util_safe_strcpy(line_.sMnemonic, g_opcodes[line_.opcode].sMnemonic,
+    util_safe_strcpy(line_.sMnemonic, opcodes[line_.opcode].sMnemonic,
                      sizeof(line_.sMnemonic));
   }
 
@@ -842,14 +842,14 @@ constexpr int CONSOLE_WINDOW_TOP = 256;
 constexpr int DEFAULT_DISPLAY_MEMORY_LINES = 8;
 
 auto InitDisasm() -> void {
-  for (auto& config : g_font_config) {
+  for (auto& config : font_config) {
     config.font_width_avg = CONSOLE_FONT_WIDTH;
     config.font_width_max = CONSOLE_FONT_WIDTH;
     config.font_height = CONSOLE_FONT_HEIGHT;
     config.line_height = CONSOLE_FONT_HEIGHT;
   }
 
-  for (auto& i : g_window_config) {
+  for (auto& i : window_config) {
     i.bSplit = false;
     i.left = 0;
     i.top = 0;
@@ -857,23 +857,23 @@ auto InitDisasm() -> void {
     i.bottom = DISPLAY_HEIGHT;
   }
   // Hardcoded layout for now, originally loaded from config
-  g_window_config[WINDOW_CONSOLE].top = CONSOLE_WINDOW_TOP;
-  g_console_display_lines =
+  window_config[WINDOW_CONSOLE].top = CONSOLE_WINDOW_TOP;
+  console_display_lines =
       (DISPLAY_HEIGHT - CONSOLE_WINDOW_TOP) / CONSOLE_FONT_HEIGHT;
-  g_disasm_win_height = CONSOLE_WINDOW_TOP / CONSOLE_FONT_HEIGHT;
-  g_display_memory_lines = DEFAULT_DISPLAY_MEMORY_LINES;
+  disasm_win_height = CONSOLE_WINDOW_TOP / CONSOLE_FONT_HEIGHT;
+  display_memory_lines = DEFAULT_DISPLAY_MEMORY_LINES;
 
   ConsoleInputReset();
   WindowUpdateConsoleDisplayedSize();
 }
 
-auto DrawWindowBottom(Update_t bUpdate, int iWindow) -> void {
+auto DrawWindowBottom(UpdateResult bUpdate, int iWindow) -> void {
   (void)bUpdate;
   (void)iWindow;
 }
 
 //===========================================================================
-auto UpdateDisplay(Update_t bUpdate) -> void {
+auto UpdateDisplay(UpdateResult bUpdate) -> void {
   static int spDrawMutex = 0;
 
   if (spDrawMutex != 0) {
@@ -885,22 +885,22 @@ auto UpdateDisplay(Update_t bUpdate) -> void {
   AllocateDebuggerMemDC();
 
   if ((bUpdate & UPDATE_ALL) != 0) {
-    memset(g_debugger_virtual_text_screen, ' ',
-           sizeof(g_debugger_virtual_text_screen));
+    memset(debugger_virtual_text_screen, ' ',
+           sizeof(debugger_virtual_text_screen));
     for (int y = 0; y < DEBUG_VIRTUAL_TEXT_HEIGHT; ++y) {
       for (int x = 0; x < DEBUG_VIRTUAL_TEXT_WIDTH; ++x) {
-        g_debugger_virtual_text_screen_fg[y][x] = WHITE;
-        g_debugger_virtual_text_screen_bg[y][x] = BLACK;
+        debugger_virtual_text_screen_fg[y][x] = WHITE;
+        debugger_virtual_text_screen_bg[y][x] = BLACK;
       }
     }
-    if (g_debug_screen) {
-      memset(g_debug_screen->pixels, 0,
-             static_cast<size_t>(g_debug_screen->pitch) *
-                 static_cast<size_t>(g_debug_screen->h));
+    if (debug_screen) {
+      memset(debug_screen->pixels, 0,
+             static_cast<size_t>(debug_screen->pitch) *
+                 static_cast<size_t>(debug_screen->h));
     }
   }
 
-  switch (g_window_this) {
+  switch (window_this) {
     case WINDOW_CODE:
       DrawWindow_Code(bUpdate);
       break;
@@ -938,7 +938,7 @@ auto UpdateDisplay(Update_t bUpdate) -> void {
     DrawSubWindow_Console(bUpdate);
   }
 
-  if (g_debug_screen) {
+  if (debug_screen) {
     stretch_blt_mem_to_frame_dc();
   }
 
@@ -970,15 +970,15 @@ auto debug_destroy() -> void {
 }
 
 auto debug_end() -> void {
-  if (g_profiling) {
+  if (profiling) {
     ProfileFormat(true, PROFILE_FORMAT_TAB);
     ProfileSave();
   }
 
-  g_trace_file.reset();
+  trace_file.reset();
 
-  g_memory_search_results.erase(g_memory_search_results.begin(),
-                                g_memory_search_results.end());
+  memory_search_results.erase(memory_search_results.begin(),
+                                memory_search_results.end());
 
   system_state.mode = app_mode_running;
 

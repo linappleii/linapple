@@ -64,21 +64,21 @@ auto write_file(const std::string& path, const std::vector<uint8_t>& data)
   REQUIRE(fclose(f.release()) == 0);
 }
 
-struct ScopedExtractedFile_t {
+struct ScopedExtractedFile {
   std::array<char, temp_path_len> path{};
   bool is_temporary = false;
 
-  ScopedExtractedFile_t() = default;
-  ~ScopedExtractedFile_t() {
+  ScopedExtractedFile() = default;
+  ~ScopedExtractedFile() {
     if (is_temporary && path[0] != '\0') {
       unlink(path.data());
     }
   }
-  ScopedExtractedFile_t(const ScopedExtractedFile_t&) = delete;
-  auto operator=(const ScopedExtractedFile_t&)
-      -> ScopedExtractedFile_t& = delete;
-  ScopedExtractedFile_t(ScopedExtractedFile_t&&) = delete;
-  auto operator=(ScopedExtractedFile_t&&) -> ScopedExtractedFile_t& = delete;
+  ScopedExtractedFile(const ScopedExtractedFile&) = delete;
+  auto operator=(const ScopedExtractedFile&)
+      -> ScopedExtractedFile& = delete;
+  ScopedExtractedFile(ScopedExtractedFile&&) = delete;
+  auto operator=(ScopedExtractedFile&&) -> ScopedExtractedFile& = delete;
 
   auto prepare(const std::string& archive,
                size_t threshold = generous_threshold) -> ImageContainerError {
@@ -121,11 +121,11 @@ auto write_gz(const std::string& path, const std::vector<uint8_t>& payload)
 // Caps the size a file may grow to for the enclosing scope. The kernel also
 // raises SIGXFSZ at the cap, which would kill the test, so it is ignored for
 // the same scope.
-struct ScopedFileSizeLimit_t {
+struct ScopedFileSizeLimit {
   struct rlimit saved{};
   void (*saved_handler)(int) = nullptr;
 
-  explicit ScopedFileSizeLimit_t(rlim_t limit) {
+  explicit ScopedFileSizeLimit(rlim_t limit) {
     REQUIRE(getrlimit(RLIMIT_FSIZE, &saved) == 0);
     saved_handler = signal(SIGXFSZ, SIG_IGN);
     REQUIRE(saved_handler != SIG_ERR);
@@ -133,15 +133,15 @@ struct ScopedFileSizeLimit_t {
     capped.rlim_cur = limit;
     REQUIRE(setrlimit(RLIMIT_FSIZE, &capped) == 0);
   }
-  ~ScopedFileSizeLimit_t() {
+  ~ScopedFileSizeLimit() {
     setrlimit(RLIMIT_FSIZE, &saved);
     signal(SIGXFSZ, saved_handler);
   }
-  ScopedFileSizeLimit_t(const ScopedFileSizeLimit_t&) = delete;
-  auto operator=(const ScopedFileSizeLimit_t&)
-      -> ScopedFileSizeLimit_t& = delete;
-  ScopedFileSizeLimit_t(ScopedFileSizeLimit_t&&) = delete;
-  auto operator=(ScopedFileSizeLimit_t&&) -> ScopedFileSizeLimit_t& = delete;
+  ScopedFileSizeLimit(const ScopedFileSizeLimit&) = delete;
+  auto operator=(const ScopedFileSizeLimit&)
+      -> ScopedFileSizeLimit& = delete;
+  ScopedFileSizeLimit(ScopedFileSizeLimit&&) = delete;
+  auto operator=(ScopedFileSizeLimit&&) -> ScopedFileSizeLimit& = delete;
 };
 
 }  // namespace
@@ -244,7 +244,7 @@ TEST_CASE(
   const std::string archive = TestFixtures::get_fixture_path(archive_name);
   CHECK(payload_name_of(archive) == "minimal.dsk");
 
-  ScopedExtractedFile_t out;
+  ScopedExtractedFile out;
   REQUIRE(out.prepare(archive) == image_container_ok);
   CHECK(out.is_temporary);
   CHECK(std::string(out.path.data()).find("/linapple_") != std::string::npos);
@@ -266,7 +266,7 @@ TEST_CASE(
   const std::string archive = TestFixtures::get_fixture_path(archive_name);
   CHECK(payload_name_of(archive) == "minimal.dsk");
 
-  ScopedExtractedFile_t out;
+  ScopedExtractedFile out;
   REQUIRE(out.prepare(archive) == image_container_ok);
   CHECK(out.is_temporary);
   const std::vector<uint8_t> extracted = read_file(out.path.data());
@@ -277,7 +277,7 @@ TEST_CASE(
 TEST_CASE(
     "ImageContainer: [CT-3] a zip with no file entry is corrupt, not "
     "extracted as nothing") {
-  TestFixtures::ScopedTempFile_t archive(".zip");
+  TestFixtures::ScopedTempFile archive(".zip");
   {
     int err = 0;
     zip* za = zip_open(archive.c_str(), ZIP_CREATE | ZIP_TRUNCATE, &err);
@@ -285,7 +285,7 @@ TEST_CASE(
     REQUIRE(zip_dir_add(za, "folder", 0) >= 0);
     REQUIRE(zip_close(za) == 0);
   }
-  ScopedExtractedFile_t out;
+  ScopedExtractedFile out;
   out.is_temporary = true;
   out.path[0] = 'x';
   CHECK(out.prepare(archive.path()) == image_container_corrupt);
@@ -368,22 +368,22 @@ TEST_CASE(
   for (size_t i = 0; i < payload.size(); ++i) {
     payload[i] = static_cast<uint8_t>(i * 7);
   }
-  TestFixtures::ScopedTempFile_t archive(".dsk.gz");
+  TestFixtures::ScopedTempFile archive(".dsk.gz");
   write_gz(archive.path(), payload);
 
-  const TestFixtures::ScopedTempDir_t temp_dir("linapple_container_case_");
-  const TestFixtures::ScopedEnvVar_t tmpdir("TMPDIR", temp_dir.path());
+  const TestFixtures::ScopedTempDir temp_dir("linapple_container_case_");
+  const TestFixtures::ScopedEnvVar tmpdir("TMPDIR", temp_dir.path());
   REQUIRE(count_container_temps(temp_dir.path()) == 0);
 
-  ScopedExtractedFile_t control;
+  ScopedExtractedFile control;
   REQUIRE(control.prepare(archive.path()) == image_container_ok);
   CHECK(read_file(control.path.data()) == payload);
   REQUIRE(count_container_temps(temp_dir.path()) == 1);
 
-  ScopedExtractedFile_t out;
+  ScopedExtractedFile out;
   out.is_temporary = true;
   {
-    const ScopedFileSizeLimit_t cap(payload_size - 100);
+    const ScopedFileSizeLimit cap(payload_size - 100);
     CHECK(out.prepare(archive.path()) == image_container_io);
   }
   CHECK_FALSE(out.is_temporary);
@@ -394,12 +394,12 @@ TEST_CASE(
 TEST_CASE(
     "ImageContainer: [IC-1] a TMPDIR that does not exist is an io failure "
     "and leaves nothing behind") {
-  const TestFixtures::ScopedTempDir_t parent("linapple_container_case_");
-  const TestFixtures::ScopedEnvVar_t tmpdir("TMPDIR",
+  const TestFixtures::ScopedTempDir parent("linapple_container_case_");
+  const TestFixtures::ScopedEnvVar tmpdir("TMPDIR",
                                             parent.path() + "/missing");
 
   const std::string archive = TestFixtures::get_fixture_path("minimal.dsk.gz");
-  ScopedExtractedFile_t out;
+  ScopedExtractedFile out;
   out.is_temporary = true;
   out.path[0] = 'x';
   CHECK(out.prepare(archive) == image_container_io);
@@ -410,11 +410,11 @@ TEST_CASE(
 
 TEST_CASE(
     "ImageContainer: [IC-2] an archive that does not exist is not_found") {
-  const TestFixtures::ScopedTempDir_t dir("linapple_container_case_");
+  const TestFixtures::ScopedTempDir dir("linapple_container_case_");
   const std::string missing_gz = dir.path() + "/absent.dsk.gz";
   const std::string missing_zip = dir.path() + "/absent.dsk.zip";
 
-  ScopedExtractedFile_t out;
+  ScopedExtractedFile out;
   CHECK(out.prepare(missing_gz) == image_container_not_found);
   CHECK(out.prepare(missing_zip) == image_container_not_found);
   CHECK_FALSE(out.is_temporary);
@@ -432,13 +432,13 @@ TEST_CASE(
 TEST_CASE(
     "ImageContainer: [IC-3] output past the threshold is refused by the "
     "ratio, not the threshold") {
-  const TestFixtures::ScopedTempDir_t temp_dir("linapple_container_case_");
-  const TestFixtures::ScopedEnvVar_t tmpdir("TMPDIR", temp_dir.path());
+  const TestFixtures::ScopedTempDir temp_dir("linapple_container_case_");
+  const TestFixtures::ScopedEnvVar tmpdir("TMPDIR", temp_dir.path());
 
   // The deflated gzip of a near-empty image is far past 100:1, so a zero
   // threshold refuses it; the stored zip of the same image is 1:1, so the
   // same zero threshold lets it through whole.
-  ScopedExtractedFile_t gz;
+  ScopedExtractedFile gz;
   gz.is_temporary = true;
   CHECK(gz.prepare(TestFixtures::get_fixture_path("minimal.dsk.gz"), 0) ==
         image_container_too_large);
@@ -446,7 +446,7 @@ TEST_CASE(
   CHECK(gz.path[0] == '\0');
   CHECK(count_container_temps(temp_dir.path()) == 0);
 
-  ScopedExtractedFile_t stored;
+  ScopedExtractedFile stored;
   CHECK(stored.prepare(TestFixtures::get_fixture_path("minimal.dsk.zip"), 0) ==
         image_container_ok);
   CHECK(stored.is_temporary);
@@ -460,18 +460,18 @@ TEST_CASE(
       read_file(TestFixtures::get_fixture_path("minimal.dsk.gz"));
   REQUIRE(gz_bytes.size() > 64);
   gz_bytes.resize(gz_bytes.size() / 2);
-  TestFixtures::ScopedTempFile_t truncated_gz(".dsk.gz");
+  TestFixtures::ScopedTempFile truncated_gz(".dsk.gz");
   write_file(truncated_gz.path(), gz_bytes);
 
-  TestFixtures::ScopedTempFile_t not_a_zip(".dsk.zip");
+  TestFixtures::ScopedTempFile not_a_zip(".dsk.zip");
   write_file(not_a_zip.path(), std::vector<uint8_t>(1024, 0xA5));
 
   // The archives above live in the default TMPDIR; only the library's
   // temporaries land in this directory, so a count of it is a count of them.
-  const TestFixtures::ScopedTempDir_t temp_dir("linapple_container_case_");
-  const TestFixtures::ScopedEnvVar_t tmpdir("TMPDIR", temp_dir.path());
+  const TestFixtures::ScopedTempDir temp_dir("linapple_container_case_");
+  const TestFixtures::ScopedEnvVar tmpdir("TMPDIR", temp_dir.path());
 
-  ScopedExtractedFile_t out;
+  ScopedExtractedFile out;
   out.is_temporary = true;
   CHECK(out.prepare(truncated_gz.path()) == image_container_corrupt);
   CHECK_FALSE(out.is_temporary);
@@ -492,10 +492,10 @@ TEST_CASE(
   for (size_t i = 0; i < plain.size(); ++i) {
     plain[i] = static_cast<uint8_t>((i * 13) + 1);
   }
-  TestFixtures::ScopedTempFile_t archive(".dsk.gz");
+  TestFixtures::ScopedTempFile archive(".dsk.gz");
   write_file(archive.path(), plain);
 
-  ScopedExtractedFile_t out;
+  ScopedExtractedFile out;
   REQUIRE(out.prepare(archive.path()) == image_container_ok);
   CHECK(out.is_temporary);
   CHECK(read_file(out.path.data()) == plain);

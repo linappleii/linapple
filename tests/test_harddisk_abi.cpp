@@ -25,7 +25,7 @@
 
 namespace {
 
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 
 constexpr const char* harddisk_id = "linapple.harddisk";
 constexpr int card_slot = 7;
@@ -33,22 +33,22 @@ constexpr uint32_t foreign_command = 0x9999;
 constexpr uint32_t unknown_harddisk_id = PERIPHERAL_SUBSYSTEM_HARDDISK | 0x7FFF;
 
 // Through the registry, so one binary covers the built-in card and a plugin.
-auto harddisk() -> Peripheral_t* {
-  Peripheral_t* descriptor = peripheral_find_internal(harddisk_id);
+auto harddisk() -> Peripheral* {
+  Peripheral* descriptor = peripheral_find_internal(harddisk_id);
   REQUIRE(descriptor != nullptr);
   return descriptor;
 }
 
-auto harddisk_in_slot_7() -> TestConfig_t::Description_t {
-  TestConfig_t::Description_t description;
+auto harddisk_in_slot_7() -> TestConfig::Description {
+  TestConfig::Description description;
   description.slots[card_slot - 1] = "Harddisk";
   return description;
 }
 
 auto settle() -> void { peripheral_manager_think(0); }
 
-auto status() -> HarddiskStatus_t {
-  HarddiskStatus_t out{};
+auto status() -> HarddiskStatus {
+  HarddiskStatus out{};
   size_t size = sizeof(out);
   REQUIRE(peripheral_query(card_slot, harddisk_query_status, &out, &size) ==
           peripheral_ok);
@@ -58,9 +58,9 @@ auto status() -> HarddiskStatus_t {
 
 // A host built by hand, for what the real one cannot show: a member missing,
 // the line it draws, the status a call returns and how often it is told.
-class BenchHost_t {
+class BenchHost {
  public:
-  BenchHost_t() {
+  BenchHost() {
     host_.Log = bench_log;
     host_.RegisterIO = bench_register_io;
     host_.RegisterCxROM = bench_register_cx_rom;
@@ -71,8 +71,8 @@ class BenchHost_t {
     host_.ReadFloatingBus = bench_read_floating_bus;
     active = this;
   }
-  ~BenchHost_t() noexcept {
-    Peripheral_t* descriptor = peripheral_find_internal(harddisk_id);
+  ~BenchHost() noexcept {
+    Peripheral* descriptor = peripheral_find_internal(harddisk_id);
     if (descriptor != nullptr) {
       for (void* instance : instances_) {
         descriptor->shutdown(instance);
@@ -82,12 +82,12 @@ class BenchHost_t {
       active = nullptr;
     }
   }
-  BenchHost_t(const BenchHost_t&) = delete;
-  auto operator=(const BenchHost_t&) -> BenchHost_t& = delete;
-  BenchHost_t(BenchHost_t&&) = delete;
-  auto operator=(BenchHost_t&&) -> BenchHost_t& = delete;
+  BenchHost(const BenchHost&) = delete;
+  auto operator=(const BenchHost&) -> BenchHost& = delete;
+  BenchHost(BenchHost&&) = delete;
+  auto operator=(BenchHost&&) -> BenchHost& = delete;
 
-  auto host() -> HostInterface_t* { return &host_; }
+  auto host() -> HostInterface* { return &host_; }
 
   auto create(int slot = card_slot) -> void* {
     void* instance = harddisk()->init(slot, &host_);
@@ -115,7 +115,7 @@ class BenchHost_t {
   }
 
  private:
-  HostInterface_t host_{};
+  HostInterface host_{};
   std::vector<void*> instances_;
   std::string last_log_;
   unsigned status_notifications_ = 0;
@@ -123,11 +123,11 @@ class BenchHost_t {
   PeripheralIOHandler read_c0_ = nullptr;
   PeripheralIOHandler write_c0_ = nullptr;
 
-  static BenchHost_t* active;
+  static BenchHost* active;
 
   // NOLINTBEGIN(cppcoreguidelines-pro-type-vararg)
-  // Justification: Log is variadic in the HostInterface_t ABI.
-  static auto bench_log(void* instance, PeripheralLogLevel_t level,
+  // Justification: Log is variadic in the HostInterface ABI.
+  static auto bench_log(void* instance, PeripheralLogLevel level,
                         const char* fmt, ...) -> void {
     (void)instance;
     (void)level;
@@ -176,53 +176,53 @@ class BenchHost_t {
   }
 };
 
-BenchHost_t* BenchHost_t::active = nullptr;
+BenchHost* BenchHost::active = nullptr;
 
 }  // namespace
 
 TEST_CASE("Harddisk ABI: the C99 view of the headers agrees with the C++ one") {
-  CHECK(harddisk_abi_c_frame_size() == sizeof(HarddiskSaveState_t));
+  CHECK(harddisk_abi_c_frame_size() == sizeof(HarddiskSaveState));
   CHECK(harddisk_abi_c_frame_size() == harddisk_save_state_size);
   CHECK(harddisk_abi_c_frame_size() == 20);
   CHECK(harddisk_abi_c_frame_offset(0) ==
-        offsetof(HarddiskSaveState_t, version));
+        offsetof(HarddiskSaveState, version));
   CHECK(harddisk_abi_c_frame_offset(0) == 0);
   CHECK(harddisk_abi_c_frame_offset(1) ==
-        offsetof(HarddiskSaveState_t, struct_size));
+        offsetof(HarddiskSaveState, struct_size));
   CHECK(harddisk_abi_c_frame_offset(1) == 4);
-  CHECK(harddisk_abi_c_frame_offset(2) == offsetof(HarddiskSaveState_t, unit));
+  CHECK(harddisk_abi_c_frame_offset(2) == offsetof(HarddiskSaveState, unit));
   CHECK(harddisk_abi_c_frame_offset(2) == 8);
   CHECK(harddisk_abi_c_frame_offset(3) ==
-        offsetof(HarddiskSaveState_t, command));
+        offsetof(HarddiskSaveState, command));
   CHECK(harddisk_abi_c_frame_offset(3) == 9);
   CHECK(harddisk_abi_c_frame_offset(4) ==
-        offsetof(HarddiskSaveState_t, result));
+        offsetof(HarddiskSaveState, result));
   CHECK(harddisk_abi_c_frame_offset(4) == 10);
   CHECK(harddisk_abi_c_frame_offset(5) ==
-        offsetof(HarddiskSaveState_t, data_phase));
+        offsetof(HarddiskSaveState, data_phase));
   CHECK(harddisk_abi_c_frame_offset(5) == 11);
-  CHECK(harddisk_abi_c_frame_offset(6) == offsetof(HarddiskSaveState_t, block));
+  CHECK(harddisk_abi_c_frame_offset(6) == offsetof(HarddiskSaveState, block));
   CHECK(harddisk_abi_c_frame_offset(6) == 12);
   CHECK(harddisk_abi_c_frame_offset(7) ==
-        offsetof(HarddiskSaveState_t, data_index));
+        offsetof(HarddiskSaveState, data_index));
   CHECK(harddisk_abi_c_frame_offset(7) == 14);
   CHECK(harddisk_abi_c_frame_offset(8) ==
-        offsetof(HarddiskSaveState_t, block_count));
+        offsetof(HarddiskSaveState, block_count));
   CHECK(harddisk_abi_c_frame_offset(8) == 16);
   CHECK(harddisk_abi_c_frame_offset(9) ==
-        offsetof(HarddiskSaveState_t, reserved));
+        offsetof(HarddiskSaveState, reserved));
   CHECK(harddisk_abi_c_frame_offset(9) == 18);
   CHECK(harddisk_abi_c_state_version() == HARDDISK_STATE_VERSION);
   CHECK(harddisk_abi_c_state_version() == 1);
 
-  CHECK(harddisk_abi_c_insert_size() == sizeof(HarddiskInsertCmd_t));
+  CHECK(harddisk_abi_c_insert_size() == sizeof(HarddiskInsertCmd));
   CHECK(harddisk_abi_c_insert_size() == PERIPHERAL_CMD_MAX_DATA);
   CHECK(harddisk_abi_c_insert_path_offset() == 0);
   CHECK(harddisk_abi_c_insert_drive_offset() == harddisk_insert_path_max);
   CHECK(harddisk_abi_c_insert_reserved_offset() ==
-        offsetof(HarddiskInsertCmd_t, reserved));
+        offsetof(HarddiskInsertCmd, reserved));
   CHECK(harddisk_abi_c_insert_reserved_offset() == 506);
-  CHECK(harddisk_abi_c_status_size() == sizeof(HarddiskStatus_t));
+  CHECK(harddisk_abi_c_status_size() == sizeof(HarddiskStatus));
   CHECK(harddisk_abi_c_status_size() == 1104);
 
   // High 16 bits the subsystem, low 16 the index.
@@ -242,7 +242,7 @@ TEST_CASE("Harddisk ABI: the C99 view of the headers agrees with the C++ one") {
 TEST_CASE(
     "Harddisk ABI: the registry finds the card by id, named Harddisk, "
     "preferring slot 7") {
-  Peripheral_t* descriptor = harddisk();
+  Peripheral* descriptor = harddisk();
   CHECK(descriptor->abi_version == LINAPPLE_ABI_VERSION);
   CHECK(std::string(descriptor->id) == harddisk_id);
   CHECK(std::string(descriptor->name) == "Harddisk");
@@ -258,22 +258,22 @@ TEST_CASE(
 }
 
 TEST_CASE("Harddisk ABI: a null host or a null instance is refused") {
-  Peripheral_t* descriptor = harddisk();
+  Peripheral* descriptor = harddisk();
   CHECK(descriptor->init(card_slot, nullptr) == nullptr);
 
   descriptor->reset(nullptr);
   descriptor->shutdown(nullptr);
 
-  HarddiskEjectCmd_t eject{};
+  HarddiskEjectCmd eject{};
   CHECK(descriptor->command(nullptr, harddisk_cmd_eject, &eject,
                             sizeof(eject)) == peripheral_error);
 
-  HarddiskStatus_t out{};
+  HarddiskStatus out{};
   size_t size = sizeof(out);
   CHECK(descriptor->query(nullptr, harddisk_query_status, &out, &size) ==
         peripheral_error);
 
-  std::vector<uint8_t> frame(sizeof(HarddiskSaveState_t));
+  std::vector<uint8_t> frame(sizeof(HarddiskSaveState));
   size = frame.size();
   CHECK(descriptor->save_state(nullptr, frame.data(), &size) ==
         peripheral_error);
@@ -285,10 +285,10 @@ TEST_CASE("Harddisk ABI: a null host or a null instance is refused") {
 TEST_CASE(
     "Harddisk ABI: a command or query from another subsystem, or an id of its "
     "own it does not know, is answered incompatible") {
-  BenchHost_t bench;
+  BenchHost bench;
   void* instance = bench.create();
   REQUIRE(instance != nullptr);
-  Peripheral_t* descriptor = harddisk();
+  Peripheral* descriptor = harddisk();
 
   CHECK(descriptor->command(instance, foreign_command, nullptr, 0) ==
         peripheral_incompatible);
@@ -322,26 +322,26 @@ TEST_CASE(
 TEST_CASE(
     "Harddisk ABI: insert, protect and eject by command set and clear the "
     "status flags") {
-  TestConfig_t config(harddisk_in_slot_7());
-  TestFixtures::ScopedCore_t core(config);
+  TestConfig config(harddisk_in_slot_7());
+  TestFixtures::ScopedCore core(config);
   REQUIRE(peripheral_present(card_slot, harddisk_id));
   const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
 
   CHECK(status().drive0_loaded == 0);
 
-  HarddiskInsertCmd_t insert{};
+  HarddiskInsertCmd insert{};
   insert.drive = harddisk_drive_0;
   std::strncpy(insert.path, image.c_str(), sizeof(insert.path) - 1);
   REQUIRE(peripheral_command(card_slot, harddisk_cmd_insert, &insert,
                              sizeof(insert)) == peripheral_ok);
   settle();
-  HarddiskStatus_t loaded = status();
+  HarddiskStatus loaded = status();
   CHECK(loaded.drive0_loaded == 1);
   CHECK(loaded.drive0_write_protected == 0);
   CHECK(loaded.drive1_loaded == 0);
   CHECK(std::string(loaded.drive0_full_path) == image.path());
 
-  HarddiskSetProtectCmd_t protect{};
+  HarddiskSetProtectCmd protect{};
   protect.drive = harddisk_drive_0;
   protect.write_protected = 1;
   REQUIRE(peripheral_command(card_slot, harddisk_cmd_set_protect, &protect,
@@ -349,7 +349,7 @@ TEST_CASE(
   settle();
   CHECK(status().drive0_write_protected == 1);
 
-  HarddiskEjectCmd_t eject{};
+  HarddiskEjectCmd eject{};
   eject.drive = harddisk_drive_0;
   REQUIRE(peripheral_command(card_slot, harddisk_cmd_eject, &eject,
                              sizeof(eject)) == peripheral_ok);
@@ -360,65 +360,65 @@ TEST_CASE(
 TEST_CASE(
     "Harddisk ABI: init refuses a host lacking a member it needs and names "
     "the member in the log; with no Log it refuses silently") {
-  struct Member_t {
+  struct Member {
     const char* name;
-    void (*clear)(HostInterface_t*);
+    void (*clear)(HostInterface*);
   };
-  const std::array<Member_t, 5> members = {
+  const std::array<Member, 5> members = {
       {
           {"RegisterIO",
-           [](HostInterface_t* h) -> void { h->RegisterIO = nullptr; }},
+           [](HostInterface* h) -> void { h->RegisterIO = nullptr; }},
           {"RegisterCxROM",
-           [](HostInterface_t* h) -> void { h->RegisterCxROM = nullptr; }},
+           [](HostInterface* h) -> void { h->RegisterCxROM = nullptr; }},
           {
               "ReadFloatingBus",
-              [](HostInterface_t* h) -> void { h->ReadFloatingBus = nullptr; },
+              [](HostInterface* h) -> void { h->ReadFloatingBus = nullptr; },
           },
           {
               "NotifyActivityChanged",
-              [](HostInterface_t* h) -> void {
+              [](HostInterface* h) -> void {
                 h->NotifyActivityChanged = nullptr;
               },
           },
           {
               "NotifyStatusChanged",
-              [](HostInterface_t* h) -> void {
+              [](HostInterface* h) -> void {
                 h->NotifyStatusChanged = nullptr;
               },
           },
       },
   };
-  for (const Member_t& member : members) {
+  for (const Member& member : members) {
     CAPTURE(member.name);
-    BenchHost_t bench;
+    BenchHost bench;
     member.clear(bench.host());
     CHECK(bench.create() == nullptr);
     CHECK(bench.last_log().find(member.name) != std::string::npos);
     CHECK(bench.last_log().find("slot 7") != std::string::npos);
   }
 
-  BenchHost_t silent;
+  BenchHost silent;
   silent.host()->Log = nullptr;
   CHECK(silent.create() == nullptr);
   CHECK(silent.last_log().empty());
 
-  BenchHost_t whole;
+  BenchHost whole;
   CHECK(whole.create() != nullptr);
 }
 
 TEST_CASE("Harddisk ABI: every command refuses a payload one byte too long") {
-  BenchHost_t bench;
+  BenchHost bench;
   void* instance = bench.create();
   REQUIRE(instance != nullptr);
-  Peripheral_t* descriptor = harddisk();
+  Peripheral* descriptor = harddisk();
 
-  std::array<uint8_t, sizeof(HarddiskInsertCmd_t) + 1> insert{};
+  std::array<uint8_t, sizeof(HarddiskInsertCmd) + 1> insert{};
   CHECK(descriptor->command(instance, harddisk_cmd_insert, insert.data(),
                             insert.size()) == peripheral_error);
-  std::array<uint8_t, sizeof(HarddiskEjectCmd_t) + 1> eject{};
+  std::array<uint8_t, sizeof(HarddiskEjectCmd) + 1> eject{};
   CHECK(descriptor->command(instance, harddisk_cmd_eject, eject.data(),
                             eject.size()) == peripheral_error);
-  std::array<uint8_t, sizeof(HarddiskSetProtectCmd_t) + 1> protect{};
+  std::array<uint8_t, sizeof(HarddiskSetProtectCmd) + 1> protect{};
   CHECK(descriptor->command(instance, harddisk_cmd_set_protect, protect.data(),
                             protect.size()) == peripheral_error);
 }
@@ -426,14 +426,14 @@ TEST_CASE("Harddisk ABI: every command refuses a payload one byte too long") {
 TEST_CASE(
     "Harddisk ABI: the registers above the block count leave the bus "
     "undriven, so a read there sees what the video scanner is fetching") {
-  TestConfig_t config(harddisk_in_slot_7());
-  TestFixtures::ScopedCore_t core(config);
+  TestConfig config(harddisk_in_slot_7());
+  TestFixtures::ScopedCore core(config);
   REQUIRE(peripheral_present(card_slot, harddisk_id));
 
   constexpr uint32_t probe_cycle = 100;
   constexpr uint8_t marker = 0xDA;
   const uint8_t* marker_ptr = &marker;
-  TestFixtures::ScopedCore_t::poke(
+  TestFixtures::ScopedCore::poke(
       video_get_scanner_address(nullptr, probe_cycle), marker_ptr, 1);
   for (uint16_t offset = 7; offset <= 0x0F; ++offset) {
     CAPTURE(offset);
@@ -445,13 +445,13 @@ TEST_CASE(
 TEST_CASE(
     "Harddisk ABI: the host is told of a status change once per insert, "
     "eject and protect change, and never for a register access") {
-  BenchHost_t bench;
+  BenchHost bench;
   void* instance = bench.create();
   REQUIRE(instance != nullptr);
-  Peripheral_t* descriptor = harddisk();
+  Peripheral* descriptor = harddisk();
   const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
 
-  HarddiskInsertCmd_t insert{};
+  HarddiskInsertCmd insert{};
   insert.drive = harddisk_drive_0;
   std::strncpy(insert.path, image.c_str(), sizeof(insert.path) - 1);
   REQUIRE(descriptor->command(instance, harddisk_cmd_insert, &insert,
@@ -469,14 +469,14 @@ TEST_CASE(
   }
   CHECK(bench.status_notifications() == 1);
 
-  HarddiskSetProtectCmd_t protect{};
+  HarddiskSetProtectCmd protect{};
   protect.drive = harddisk_drive_0;
   protect.write_protected = 1;
   REQUIRE(descriptor->command(instance, harddisk_cmd_set_protect, &protect,
                               sizeof(protect)) == peripheral_ok);
   CHECK(bench.status_notifications() == 2);
 
-  HarddiskEjectCmd_t eject{};
+  HarddiskEjectCmd eject{};
   eject.drive = harddisk_drive_0;
   REQUIRE(descriptor->command(instance, harddisk_cmd_eject, &eject,
                               sizeof(eject)) == peripheral_ok);

@@ -14,14 +14,14 @@
 extern "C" {
 #endif
 
-struct DiskFormatDriver_t;
+struct DiskFormatDriver;
 
 enum { disk_default_slot = 6 };
 
-// Bump when DiskSavedState_t changes.
+// Bump when DiskSavedState changes.
 enum { disk_state_version = 1 };
 
-typedef enum { disk_drive_0 = 0, disk_drive_1 = 1 } DiskDrive_t;
+typedef enum { disk_drive_0 = 0, disk_drive_1 = 1 } DiskDrive;
 
 enum { disk_drive_count = 2 };
 
@@ -55,7 +55,7 @@ typedef enum {
   disk_status_read = 0x01,
   disk_status_write = 0x02,
   disk_status_prot = 0x04,
-} DiskStatus;
+} DiskStatusFlags;
 
 typedef enum {
   disk_cmd_insert = PERIPHERAL_SUBSYSTEM_DISK | 0x0001,
@@ -63,7 +63,7 @@ typedef enum {
   disk_cmd_swap_drives = PERIPHERAL_SUBSYSTEM_DISK | 0x0003,
   disk_cmd_set_protect = PERIPHERAL_SUBSYSTEM_DISK | 0x0004,
   disk_cmd_create_image = PERIPHERAL_SUBSYSTEM_DISK | 0x0007,
-} DiskCmd_t;
+} DiskCmd;
 
 // Query IDs are dispatched through the query ABI callback, separate from
 // command IDs, so numeric values do not need to be unique across both spaces.
@@ -80,12 +80,12 @@ typedef struct {
   uint8_t write_protected;
   uint8_t reserved;
   uint8_t padding[5];
-} DiskInsertCmd_t;
+} DiskInsertCmd;
 
 typedef struct {
   char path[disk_create_path_max];
   char format_name[disk_format_name_max];
-} DiskCreateImageCmd_t;
+} DiskCreateImageCmd;
 
 // The query ABI has no input buffer, so the index the caller wants travels in
 // the same struct the name comes back in. capabilities carries the driver's
@@ -95,16 +95,16 @@ typedef struct {
   uint32_t index;
   uint32_t capabilities;
   char name[disk_format_name_max];
-} DiskFormatNameQuery_t;
+} DiskFormatNameQuery;
 
 typedef struct {
   uint8_t drive;
-} DiskEjectCmd_t;
+} DiskEjectCmd;
 
 typedef struct {
   uint8_t drive;
   uint8_t write_protected;
-} DiskSetProtectCmd_t;
+} DiskSetProtectCmd;
 
 // Uses natural alignment to ensure a deterministic binary layout without
 // reliance on non-standard packing directives.
@@ -124,7 +124,7 @@ typedef struct {
   char drive0_full_path[disk_status_path_max];
   char drive1_name[disk_status_name_max];
   char drive1_full_path[disk_status_path_max];
-} DiskStatus_t;
+} DiskStatus;
 
 // The v1 save-state layout, packed so a file is a fixed 13,897 bytes;
 // Disk.cpp converts the card's cell state to and from it.
@@ -132,7 +132,7 @@ typedef struct {
 typedef struct {
   uint32_t version;
   uint32_t size;
-} DiskStateHeader_t;
+} DiskStateHeader;
 
 typedef struct {
   char full_path[max_disk_full_path_len + 1];
@@ -147,11 +147,11 @@ typedef struct {
   uint32_t write_light_ticks;
   int32_t nibble_count;
   uint8_t track_buffer[nibbles_per_track];
-} DiskDriveState_t;
+} DiskDriveState;
 
 typedef struct {
-  DiskStateHeader_t header;
-  DiskDriveState_t drives[disk_drive_count];
+  DiskStateHeader header;
+  DiskDriveState drives[disk_drive_count];
   uint16_t stepper_phase_mask;
   uint16_t active_drive_index;
   uint8_t reserved_tick;
@@ -159,7 +159,7 @@ typedef struct {
   uint8_t io_latch;
   uint8_t is_motor_on;
   uint8_t is_write_mode;
-} DiskSavedState_t;
+} DiskSavedState;
 #pragma pack(pop)
 
 #ifdef __cplusplus

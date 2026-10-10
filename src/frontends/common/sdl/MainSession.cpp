@@ -19,13 +19,13 @@
 using Logger::error;
 
 #if ENABLE_FTP
-static std::unique_ptr<CurlGlobalGuard_t> g_curl_guard;
+static std::unique_ptr<CurlGlobalGuard> curl_guard;
 #endif
 
-static bool g_budget_video = false;
+static bool budget_video = false;
 
-auto set_budget_video(bool b) -> void { g_budget_video = b; }
-auto get_budget_video() noexcept -> bool { return g_budget_video; }
+auto set_budget_video(bool b) -> void { budget_video = b; }
+auto get_budget_video() noexcept -> bool { return budget_video; }
 
 auto single_step(bool is_reinit) -> void {
   (void)is_reinit;
@@ -38,9 +38,9 @@ auto sys_init() -> int {
   }
 
 #if ENABLE_FTP
-  g_curl_guard = std::unique_ptr<CurlGlobalGuard_t>(new (std::nothrow)
-                                                        CurlGlobalGuard_t());
-  if (!g_curl_guard) {
+  curl_guard = std::unique_ptr<CurlGlobalGuard>(new (std::nothrow)
+                                                        CurlGlobalGuard());
+  if (!curl_guard) {
     error("Could not initialize CURL global environment\n");
     return 1;
   }
@@ -54,7 +54,7 @@ auto sys_shutdown() -> void {
   frame_destroy_window();
   sdl_compat_quit();
 #if ENABLE_FTP
-  g_curl_guard.reset();
+  curl_guard.reset();
 #endif
 }
 

@@ -3,10 +3,10 @@
 
 #include "Debugger_Types.h"
 
-auto CmdOutputCalc(int nArgs) -> Update_t;
-auto CmdOutputEcho(int nArgs) -> Update_t;
-auto CmdOutputPrint(int nArgs) -> Update_t;
-auto CmdOutputPrintf(int nArgs) -> Update_t;
-auto CmdOutputRun(int nArgs) -> Update_t;
+auto CmdOutputCalc(int nArgs) -> UpdateResult;
+auto CmdOutputEcho(int nArgs) -> UpdateResult;
+auto CmdOutputPrint(int nArgs) -> UpdateResult;
+auto CmdOutputPrintf(int nArgs) -> UpdateResult;
+auto CmdOutputRun(int nArgs) -> UpdateResult;
 
 auto DebuggerRunScript(const char* pFileName) -> void;

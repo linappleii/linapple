@@ -25,25 +25,25 @@
 
 namespace {
 
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 
 // Every case here builds a real core, so every case states the machine it
 // wants. Left undeclared, the slots come from the fallbacks in
 // peripheral_register_internal -- a printer, a Super Serial Card, a
 // Mockingboard and a Disk II that no case here exercises.
-auto declare(const TestConfig_t& machine, AppConfig* config) -> void {
+auto declare(const TestConfig& machine, AppConfig* config) -> void {
   util_safe_strcpy(config->config_path.data(), machine.c_str(),
                    config->config_path.size());
 }
 
-struct ScopedAppController_t {
-  ScopedAppController_t() = default;
-  ~ScopedAppController_t() { app_controller_shutdown(); }
-  ScopedAppController_t(const ScopedAppController_t&) = delete;
-  auto operator=(const ScopedAppController_t&)
-      -> ScopedAppController_t& = delete;
-  ScopedAppController_t(ScopedAppController_t&&) = delete;
-  auto operator=(ScopedAppController_t&&) -> ScopedAppController_t& = delete;
+struct ScopedAppController {
+  ScopedAppController() = default;
+  ~ScopedAppController() { app_controller_shutdown(); }
+  ScopedAppController(const ScopedAppController&) = delete;
+  auto operator=(const ScopedAppController&)
+      -> ScopedAppController& = delete;
+  ScopedAppController(ScopedAppController&&) = delete;
+  auto operator=(ScopedAppController&&) -> ScopedAppController& = delete;
 };
 
 auto is_valid_directory(const char* path) -> bool {
@@ -60,8 +60,8 @@ auto is_valid_directory(const char* path) -> bool {
 }  // namespace
 
 TEST_CASE("AppController: Initialize and Shutdown") {
-  ScopedAppController_t controller_guard;
-  TestConfig_t machine(TestConfig_t::enhanced_2e_only());
+  ScopedAppController controller_guard;
+  TestConfig machine(TestConfig::enhanced_2e_only());
   AppConfig config = {};
   app_config_default(&config);
   declare(machine, &config);
@@ -90,8 +90,8 @@ TEST_CASE("AppController: Initialize and Shutdown") {
 }
 
 TEST_CASE("AppController: Video Mode Reset") {
-  ScopedAppController_t controller_guard;
-  TestConfig_t machine(TestConfig_t::enhanced_2e_only());
+  ScopedAppController controller_guard;
+  TestConfig machine(TestConfig::enhanced_2e_only());
   AppConfig config = {};
   app_config_default(&config);
   declare(machine, &config);
@@ -100,19 +100,19 @@ TEST_CASE("AppController: Video Mode Reset") {
   config.is_pal = true;
   int result_pal = app_controller_initialize(&config);
   CHECK(result_pal == 0);
-  CHECK(g_videotype == VT_COLOR_TVEMU);
+  CHECK(videotype == VT_COLOR_TVEMU);
 
   // 2. Re-init without PAL (should reset to standard)
   config.is_pal = false;
   int result_std = app_controller_initialize(&config);
   CHECK(result_std == 0);
-  CHECK(g_videotype == VT_COLOR_STANDARD);
+  CHECK(videotype == VT_COLOR_STANDARD);
 }
 
 #ifdef ENABLE_PERIPHERAL_DISK
 TEST_CASE("AppController: Media Loading") {
-  ScopedAppController_t controller_guard;
-  TestConfig_t machine(TestConfig_t::disk_ii_only());
+  ScopedAppController controller_guard;
+  TestConfig machine(TestConfig::disk_ii_only());
   AppConfig config = {};
   app_config_default(&config);
   declare(machine, &config);
@@ -131,9 +131,9 @@ TEST_CASE("AppController: Media Loading") {
   }
 
   // Check if disk was loaded
-  DiskStatus_t status = {};
+  DiskStatus status = {};
   size_t status_size = sizeof(status);
-  PeripheralStatus_t res = peripheral_query(
+  PeripheralStatus res = peripheral_query(
       disk_default_slot, disk_query_status, &status, &status_size);
 
   CHECK(res == peripheral_ok);
@@ -156,11 +156,11 @@ TEST_CASE("AppController: Diagnostic Commands") {
 
 TEST_CASE(
     "AppController: Computer Emulation and Screen Factor from Configuration") {
-  ScopedAppController_t controller_guard;
-  TestConfig_t::Description_t description;
-  description.machine_type = TestConfig_t::machine_apple2_plus;
+  ScopedAppController controller_guard;
+  TestConfig::Description description;
+  description.machine_type = TestConfig::machine_apple2_plus;
   description.extras.push_back({"Configuration", "Screen factor", "2.0"});
-  TestConfig_t machine(description);
+  TestConfig machine(description);
 
   AppConfig config = {};
   app_config_default(&config);
@@ -175,8 +175,8 @@ TEST_CASE(
 }
 
 TEST_CASE("AppController: Initialize Failure on Nonexistent ROM") {
-  ScopedAppController_t controller_guard;
-  TestConfig_t machine(TestConfig_t::enhanced_2e_only());
+  ScopedAppController controller_guard;
+  TestConfig machine(TestConfig::enhanced_2e_only());
   AppConfig config = {};
   app_config_default(&config);
   declare(machine, &config);
@@ -190,8 +190,8 @@ TEST_CASE("AppController: Initialize Failure on Nonexistent ROM") {
 
 #ifdef ENABLE_PERIPHERAL_DISK
 TEST_CASE("AppController: Slot 6 Autoload Fallback to Master.dsk") {
-  ScopedAppController_t controller_guard;
-  TestConfig_t machine(TestConfig_t::disk_ii_only());
+  ScopedAppController controller_guard;
+  TestConfig machine(TestConfig::disk_ii_only());
   AppConfig config = {};
   app_config_default(&config);
   declare(machine, &config);
@@ -205,9 +205,9 @@ TEST_CASE("AppController: Slot 6 Autoload Fallback to Master.dsk") {
   }
 
   // Check if Master.dsk was automatically inserted into drive 0
-  DiskStatus_t status = {};
+  DiskStatus status = {};
   size_t status_size = sizeof(status);
-  PeripheralStatus_t res = peripheral_query(
+  PeripheralStatus res = peripheral_query(
       disk_default_slot, disk_query_status, &status, &status_size);
 
   CHECK(res == peripheral_ok);
@@ -219,12 +219,12 @@ TEST_CASE("AppController: Slot 6 Autoload Fallback to Master.dsk") {
 }
 
 TEST_CASE("AppController: Slot 6 Autoload Enabled with Configured Image") {
-  ScopedAppController_t controller_guard;
+  ScopedAppController controller_guard;
   std::string master_path = Path::find_data_file("Master.dsk");
-  TestConfig_t::Description_t description(TestConfig_t::disk_ii_only());
+  TestConfig::Description description(TestConfig::disk_ii_only());
   description.extras.push_back({"Configuration", "Slot 6 Autoload", "1"});
   description.extras.push_back({"Configuration", "Disk Image 1", master_path});
-  TestConfig_t machine(description);
+  TestConfig machine(description);
 
   AppConfig config = {};
   app_config_default(&config);
@@ -238,9 +238,9 @@ TEST_CASE("AppController: Slot 6 Autoload Enabled with Configured Image") {
     peripheral_manager_think(100);
   }
 
-  DiskStatus_t status = {};
+  DiskStatus status = {};
   size_t status_size = sizeof(status);
-  PeripheralStatus_t res = peripheral_query(
+  PeripheralStatus res = peripheral_query(
       disk_default_slot, disk_query_status, &status, &status_size);
 
   CHECK(res == peripheral_ok);
@@ -249,14 +249,14 @@ TEST_CASE("AppController: Slot 6 Autoload Enabled with Configured Image") {
 #endif
 
 TEST_CASE("AppController: FTP Configuration Defaults and Preferences") {
-  ScopedAppController_t controller_guard;
-  TestConfig_t::Description_t description(TestConfig_t::disk_ii_only());
+  ScopedAppController controller_guard;
+  TestConfig::Description description(TestConfig::disk_ii_only());
   description.extras.push_back(
       {"Preferences", "FTP Server", "ftp://test.server/games/"});
   description.extras.push_back(
       {"Preferences", "FTP ServerHDD", "ftp://test.server/hdd/"});
   description.extras.push_back({"Preferences", "FTP UserPass", "user:pass"});
-  TestConfig_t machine(description);
+  TestConfig machine(description);
 
   AppConfig config = {};
   app_config_default(&config);
@@ -278,8 +278,8 @@ TEST_CASE("AppController: FTP Configuration Defaults and Preferences") {
 TEST_CASE(
     "AppController: --hd1 in a build without the hard disk says so once and "
     "the machine runs on") {
-  ScopedAppController_t controller_guard;
-  TestConfig_t machine(TestConfig_t::enhanced_2e_only());
+  ScopedAppController controller_guard;
+  TestConfig machine(TestConfig::enhanced_2e_only());
   AppConfig config = {};
   app_config_default(&config);
   declare(machine, &config);
@@ -288,7 +288,7 @@ TEST_CASE(
   config.harddisk_path_from_args.at(0) = true;
 
   REQUIRE(app_controller_initialize(&config) == 0);
-  TestFixtures::ScopedLogCapture_t log;
+  TestFixtures::ScopedLogCapture log;
   app_controller_load_initial_media(&config);
 
   CHECK(log.count_containing(

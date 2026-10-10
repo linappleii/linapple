@@ -14,7 +14,7 @@ namespace {
 
 constexpr int slot_count = 7;
 
-std::array<PeripheralSinkKind_t, slot_count> active_sink_kinds{};
+std::array<PeripheralSinkKind, slot_count> active_sink_kinds{};
 
 auto slot_index(int slot) -> size_t { return static_cast<size_t>(slot - 1); }
 
@@ -22,7 +22,7 @@ auto slot_is_valid(int slot) -> bool {
   return slot >= 1 && slot <= slot_count;
 }
 
-auto sink_for(int slot) -> const ByteSink_t* {
+auto sink_for(int slot) -> const ByteSink* {
   if (!slot_is_valid(slot)) {
     return nullptr;
   }
@@ -36,36 +36,36 @@ auto sink_for(int slot) -> const ByteSink_t* {
   }
 }
 
-auto dispatch_open(void* ctx, int slot, PeripheralSinkKind_t kind) -> void {
+auto dispatch_open(void* ctx, int slot, PeripheralSinkKind kind) -> void {
   if (!slot_is_valid(slot)) {
     return;
   }
   active_sink_kinds.at(slot_index(slot)) = kind;
-  const ByteSink_t* sink = sink_for(slot);
+  const ByteSink* sink = sink_for(slot);
   if (sink != nullptr && sink->open != nullptr) {
     sink->open(ctx, slot, kind);
   }
 }
 
 auto dispatch_write(void* ctx, int slot, uint8_t byte) -> void {
-  const ByteSink_t* sink = sink_for(slot);
+  const ByteSink* sink = sink_for(slot);
   if (sink != nullptr && sink->write != nullptr) {
     sink->write(ctx, slot, byte);
   }
 }
 
 auto dispatch_ready(void* ctx, int slot) -> bool {
-  const ByteSink_t* sink = sink_for(slot);
+  const ByteSink* sink = sink_for(slot);
   return sink != nullptr && sink->ready != nullptr && sink->ready(ctx, slot);
 }
 
 auto dispatch_close(void* ctx, int slot) -> void {
-  const ByteSink_t* sink = sink_for(slot);
+  const ByteSink* sink = sink_for(slot);
   if (sink != nullptr && sink->close != nullptr) {
     sink->close(ctx, slot);
   }
   if (slot_is_valid(slot)) {
-    active_sink_kinds.at(slot_index(slot)) = static_cast<PeripheralSinkKind_t>(0);
+    active_sink_kinds.at(slot_index(slot)) = static_cast<PeripheralSinkKind>(0);
   }
 }
 
@@ -80,26 +80,26 @@ auto dispatch_tick(void* ctx) -> void {
 }
 
 auto dispatch_read(void* ctx, int slot, uint8_t* byte) -> bool {
-  const ByteSink_t* sink = sink_for(slot);
+  const ByteSink* sink = sink_for(slot);
   return sink != nullptr && sink->read != nullptr &&
          sink->read(ctx, slot, byte);
 }
 
-auto dispatch_set_line(void* ctx, int slot, const PeripheralSerialLine_t* line)
+auto dispatch_set_line(void* ctx, int slot, const PeripheralSerialLine* line)
     -> void {
-  const ByteSink_t* sink = sink_for(slot);
+  const ByteSink* sink = sink_for(slot);
   if (sink != nullptr && sink->set_line != nullptr) {
     sink->set_line(ctx, slot, line);
   }
 }
 
 auto dispatch_get_lines(void* ctx, int slot, uint8_t* lines) -> bool {
-  const ByteSink_t* sink = sink_for(slot);
+  const ByteSink* sink = sink_for(slot);
   return sink != nullptr && sink->get_lines != nullptr &&
          sink->get_lines(ctx, slot, lines);
 }
 
-const ByteSink_t host_byte_sink = {
+const ByteSink host_byte_sink = {
     .open = dispatch_open,
     .write = dispatch_write,
     .ready = dispatch_ready,
@@ -117,5 +117,5 @@ auto host_sink_install() -> void {
   // re-initialisation the previous run's devices close before their settings
   // change.
   linapple_set_byte_sink(&host_byte_sink, nullptr);
-  active_sink_kinds.fill(static_cast<PeripheralSinkKind_t>(0));
+  active_sink_kinds.fill(static_cast<PeripheralSinkKind>(0));
 }

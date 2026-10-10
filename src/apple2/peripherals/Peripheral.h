@@ -24,7 +24,7 @@ typedef uint8_t (*PeripheralIOHandler)(void* instance, uint16_t pc,
                                        uint16_t addr, uint8_t write,
                                        uint8_t val, uint32_t executed_cycles);
 
-typedef PeripheralIOHandler PeripheralIoHandler_t;
+typedef PeripheralIOHandler PeripheralIoHandler;
 
 // A device that is strobed but never drives the data bus. It needs no address,
 // write flag, data byte, or cycle count: the bridge has already brought the
@@ -32,7 +32,7 @@ typedef PeripheralIOHandler PeripheralIoHandler_t;
 // the handler is exact. executed_cycles is what a handler that answers a read
 // with the floating bus cannot do without, because the byte the bus holds is
 // whatever the video scanner is fetching on that very cycle.
-typedef void (*PeripheralStrobeHandler_t)(void* instance);
+typedef void (*PeripheralStrobeHandler)(void* instance);
 
 // Host local time provided to peripheral cards; unix_seconds provides UTC
 // instant.
@@ -46,10 +46,10 @@ typedef struct {
   uint8_t hour;         /* 0..23 */
   uint8_t minute;       /* 0..59 */
   uint8_t second;       /* 0..59 */
-} HostLocalTime_t;
+} HostLocalTime;
 
 typedef struct {
-  void (*Log)(void* instance, PeripheralLogLevel_t level, const char* fmt, ...);
+  void (*Log)(void* instance, PeripheralLogLevel level, const char* fmt, ...);
   void (*AssertIrq)(int slot, bool assert);
   void (*RegisterIO)(int slot, PeripheralIOHandler readC0,
                      PeripheralIOHandler writeC0, PeripheralIOHandler readCx,
@@ -64,7 +64,7 @@ typedef struct {
   void (*RegisterDirectIO)(void* instance, uint16_t addr,
                            PeripheralIOHandler read, PeripheralIOHandler write);
   void (*RegisterDirectIOStrobe)(void* instance, uint16_t addr,
-                                 PeripheralStrobeHandler_t on_strobe);
+                                 PeripheralStrobeHandler on_strobe);
   uint8_t* (*get_mem_ptr)(uint16_t addr);
   uint64_t (*GetCycles)(void);
   double (*GetClockHz)(void);
@@ -91,7 +91,7 @@ typedef struct {
   // at the offset it expects.
   uint8_t (*ReadFloatingBus)(uint32_t executed_cycles);
   // Optional host clock provider for RTC peripherals.
-  bool (*GetLocalTime)(HostLocalTime_t* out);
+  bool (*GetLocalTime)(HostLocalTime* out);
   // A card that emits a byte stream has nowhere of its own to put it: files
   // and their paths belong to the frontend. The host hands out one token per
   // slot and kind and takes the bytes back through it. The token is minted at
@@ -106,7 +106,7 @@ typedef struct {
   // write is dropped and the sink is not ready, like a printer switched off; a
   // NULL token is answered the same way. Appended last for the same reason as
   // ReadFloatingBus.
-  void* (*SinkOpen)(void* instance, int slot, PeripheralSinkKind_t kind);
+  void* (*SinkOpen)(void* instance, int slot, PeripheralSinkKind kind);
   void (*SinkWrite)(void* sink, uint8_t byte);
   bool (*SinkReady)(void* sink);
   void (*SinkClose)(void* sink);
@@ -120,7 +120,7 @@ typedef struct {
   // no byte, ignored, false. On a serial token SinkReady means the device is
   // open.
   bool (*SinkRead)(void* sink, uint8_t* byte);
-  void (*SinkSetLine)(void* sink, const PeripheralSerialLine_t* line);
+  void (*SinkSetLine)(void* sink, const PeripheralSerialLine* line);
   bool (*SinkGetLines)(void* sink, uint8_t* lines);
   // think(instance, 0) is called within one instruction of at_cycle, as
   // GetCycles counts it (7 cycles, or 14 when an interrupt is taken at that
@@ -136,14 +136,14 @@ typedef struct {
   // A //e's auto-repeat is clocked by television scans (Sather, Understanding
   // the Apple IIe, 2-17, 3-18): 262 or 312 lines of 65 cycles by IOU variant,
   // never the host's speed. Both appended last, as ReadFloatingBus was.
-  PeripheralMachine_t (*GetMachine)(void);
+  PeripheralMachine (*GetMachine)(void);
   uint32_t (*GetFrameCycles)(void);
-} HostInterface_t;
+} HostInterface;
 
 // Forward declaration
-struct Peripheral_t;
+struct Peripheral;
 
-typedef struct Peripheral_t {
+typedef struct Peripheral {
   int abi_version;
   const char* id;           // Namespaced ID (e.g. "linapple.disk_ii")
   const char* name;         // Human readable name
@@ -152,19 +152,19 @@ typedef struct Peripheral_t {
   const char* version;      // Implementation version
   uint8_t compatible_slots;
   int8_t default_slot;  // Preferred slot (1-7), 0 for internal, or -1 for any
-  void* (*init)(int slot, HostInterface_t* host);
+  void* (*init)(int slot, HostInterface* host);
   void (*reset)(void* instance);
   void (*shutdown)(void* instance);
   void (*think)(void* instance, uint32_t cycles);
   void (*on_vblank)(void* instance, bool vblank);
-  PeripheralStatus_t (*save_state)(void* instance, void* buffer, size_t* size);
-  PeripheralStatus_t (*load_state)(void* instance, const void* buffer,
+  PeripheralStatus (*save_state)(void* instance, void* buffer, size_t* size);
+  PeripheralStatus (*load_state)(void* instance, const void* buffer,
                                    size_t size);
-  PeripheralStatus_t (*command)(void* instance, uint32_t cmd_id,
+  PeripheralStatus (*command)(void* instance, uint32_t cmd_id,
                                 const void* data, size_t size);
-  PeripheralStatus_t (*query)(void* instance, uint32_t cmd_id, void* out,
+  PeripheralStatus (*query)(void* instance, uint32_t cmd_id, void* out,
                               size_t* out_size);
-} Peripheral_t;
+} Peripheral;
 
 // Export probe symbol for dynamic plugins.
 #define PERIPHERAL_EXPORT __attribute__((visibility("default")))
@@ -173,12 +173,12 @@ typedef struct Peripheral_t {
 #ifdef __cplusplus
 #define PERIPHERAL_REGISTER(peripheral_struct)                    \
   extern "C" {                                                    \
-  PERIPHERAL_EXPORT Peripheral_t linapple_peripheral_descriptor = \
+  PERIPHERAL_EXPORT Peripheral linapple_peripheral_descriptor = \
       peripheral_struct;                                          \
   }
 #else
 #define PERIPHERAL_REGISTER(peripheral_struct)                    \
-  PERIPHERAL_EXPORT Peripheral_t linapple_peripheral_descriptor = \
+  PERIPHERAL_EXPORT Peripheral linapple_peripheral_descriptor = \
       peripheral_struct;
 #endif
 #else
@@ -202,19 +202,19 @@ typedef struct Peripheral_t {
 #define EXPORT_PERIPHERAL(peripheral_struct) \
   PERIPHERAL_REGISTER(peripheral_struct)
 
-int peripheral_register(Peripheral_t* api, int slot);
-void peripheral_register_builtin(Peripheral_t* api);
+int peripheral_register(Peripheral* api, int slot);
+void peripheral_register_builtin(Peripheral* api);
 int peripheral_unregister(int slot);
-PeripheralStatus_t peripheral_command(int slot, uint32_t cmd_id,
+PeripheralStatus peripheral_command(int slot, uint32_t cmd_id,
                                       const void* data, size_t size);
-PeripheralStatus_t peripheral_query(int slot, uint32_t cmd_id, void* out,
+PeripheralStatus peripheral_query(int slot, uint32_t cmd_id, void* out,
                                     size_t* out_size);
 // Send command to specific peripheral by descriptor ID (must call on emu
 // thread).
-PeripheralStatus_t peripheral_command_by_id(int slot, const char* peripheral_id,
+PeripheralStatus peripheral_command_by_id(int slot, const char* peripheral_id,
                                             uint32_t cmd_id, const void* data,
                                             size_t size);
-PeripheralStatus_t peripheral_query_by_id(int slot, const char* peripheral_id,
+PeripheralStatus peripheral_query_by_id(int slot, const char* peripheral_id,
                                           uint32_t cmd_id, void* out,
                                           size_t* out_size);
 bool peripheral_present(int slot, const char* peripheral_id);
@@ -229,7 +229,7 @@ bool peripheral_activity_poll(int slot);
 void peripheral_save_state(int slot, void* buffer, size_t* size);
 // peripheral_incompatible for an empty slot or a card that keeps no state,
 // so a refused frame is told apart from one nobody was there to take.
-PeripheralStatus_t peripheral_load_state(int slot, const void* buffer,
+PeripheralStatus peripheral_load_state(int slot, const void* buffer,
                                          size_t size);
 void peripheral_save_state_by_name(int slot, const char* name, void* buffer,
                                    size_t* size);

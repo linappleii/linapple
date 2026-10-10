@@ -15,11 +15,11 @@ namespace {
 // Declared rather than inherited: with no configuration the slot fallbacks in
 // peripheral_register_internal supply a printer, a Super Serial Card and a
 // Mockingboard beside the Disk II, none of which these cases touch.
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 }  // namespace
 
 TEST_CASE("DiskIntegration: [INT-05] Runtime Eject Leaves Config Alone") {
-  TestConfig_t machine(TestConfig_t::disk_ii_only());
+  TestConfig machine(TestConfig::disk_ii_only());
   machine.load();
   linapple_init();
   const std::string fixture = TestFixtures::get_fixture_path("minimal.woz");
@@ -28,7 +28,7 @@ TEST_CASE("DiskIntegration: [INT-05] Runtime Eject Leaves Config Alone") {
   peripheral_manager_init();
   linapple_register_peripherals();
 
-  DiskEjectCmd_t cmd{};
+  DiskEjectCmd cmd{};
   cmd.drive = disk_drive_0;
 
   peripheral_command(6, disk_cmd_eject, &cmd, sizeof(cmd));

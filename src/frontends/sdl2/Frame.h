@@ -28,15 +28,15 @@ constexpr int btn_quit = 11;
 constexpr int screen_bpp = 8;
 constexpr int show_cycles = 15;
 
-extern SdlSurfacePtr g_screen;
-extern SdlWindowPtr g_window;
-extern SdlRendererPtr g_renderer;
-extern SdlTexturePtr g_texture;
+extern SdlSurfacePtr screen;
+extern SdlWindowPtr window;
+extern SdlRendererPtr renderer;
+extern SdlTexturePtr texture;
 
-extern bool g_window_resized;
-extern SDL_Rect g_orig_rect;
-extern SDL_Rect g_new_rect;
-extern int g_buttondown;
+extern bool window_resized;
+extern SDL_Rect orig_rect;
+extern SDL_Rect new_rect;
+extern int buttondown;
 
 auto init_sdl() -> int;
 

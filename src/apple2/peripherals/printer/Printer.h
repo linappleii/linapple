@@ -4,13 +4,13 @@
 // NOLINTBEGIN(modernize-use-trailing-return-type, readability-identifier-naming)
 // Justification: C99-compatible public descriptor export.
 
-struct Peripheral_t;
+struct Peripheral;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-struct Peripheral_t* printer_get_descriptor(void);
+struct Peripheral* printer_get_descriptor(void);
 
 #ifdef __cplusplus
 }

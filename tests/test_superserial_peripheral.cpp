@@ -29,7 +29,7 @@ namespace {
 
 // Through the registry, so one binary covers the built-in card and a loaded
 // plugin alike.
-auto serial_descriptor() -> Peripheral_t* {
+auto serial_descriptor() -> Peripheral* {
   return peripheral_find_internal("linapple.ssc");
 }
 
@@ -81,9 +81,9 @@ auto hex(const std::array<uint8_t, N>& bytes) -> std::string {
   return hex(std::vector<uint8_t>(bytes.begin(), bytes.end()));
 }
 
-class BenchHost_t {
+class BenchHost {
  public:
-  BenchHost_t() {
+  BenchHost() {
     host_.Log = bench_log;
     host_.AssertIrq = bench_assert_irq;
     host_.RegisterIO = bench_register_io;
@@ -104,7 +104,7 @@ class BenchHost_t {
     read_c0_handler = nullptr;
   }
 
-  auto host() -> HostInterface_t* { return &host_; }
+  auto host() -> HostInterface* { return &host_; }
   static auto last_log() -> const std::string& { return last_log_message; }
   static auto read_c0(void* instance, uint8_t offset) -> uint8_t {
     REQUIRE(read_c0_handler != nullptr);
@@ -113,7 +113,7 @@ class BenchHost_t {
   }
 
  private:
-  static auto bench_log(void* instance, PeripheralLogLevel_t level,
+  static auto bench_log(void* instance, PeripheralLogLevel level,
                         const char* fmt, ...) -> void {
     (void)instance;
     (void)level;
@@ -154,7 +154,7 @@ class BenchHost_t {
     return 0;
   }
   static auto bench_sink_open(void* instance, int slot,
-                              PeripheralSinkKind_t kind) -> void* {
+                              PeripheralSinkKind kind) -> void* {
     (void)instance;
     (void)slot;
     (void)kind;
@@ -173,7 +173,7 @@ class BenchHost_t {
     return false;
   }
   static auto bench_sink_set_line(void* sink,
-                                  const PeripheralSerialLine_t* line) -> void {
+                                  const PeripheralSerialLine* line) -> void {
     (void)sink;
     (void)line;
   }
@@ -188,41 +188,41 @@ class BenchHost_t {
   static int token;
   static std::string last_log_message;
   static PeripheralIOHandler read_c0_handler;
-  HostInterface_t host_{};
+  HostInterface host_{};
 };
 
-int BenchHost_t::token = 0;
-std::string BenchHost_t::last_log_message;
-PeripheralIOHandler BenchHost_t::read_c0_handler = nullptr;
+int BenchHost::token = 0;
+std::string BenchHost::last_log_message;
+PeripheralIOHandler BenchHost::read_c0_handler = nullptr;
 
-class BenchCard_t {
+class BenchCard {
  public:
-  explicit BenchCard_t(int slot = test_slot)
+  explicit BenchCard(int slot = test_slot)
       : instance_(serial_descriptor()->init(slot, host_.host())) {}
-  ~BenchCard_t() {
+  ~BenchCard() {
     if (instance_ != nullptr) {
       serial_descriptor()->shutdown(instance_);
     }
   }
-  BenchCard_t(const BenchCard_t&) = delete;
-  auto operator=(const BenchCard_t&) -> BenchCard_t& = delete;
-  BenchCard_t(BenchCard_t&&) = delete;
-  auto operator=(BenchCard_t&&) -> BenchCard_t& = delete;
+  BenchCard(const BenchCard&) = delete;
+  auto operator=(const BenchCard&) -> BenchCard& = delete;
+  BenchCard(BenchCard&&) = delete;
+  auto operator=(BenchCard&&) -> BenchCard& = delete;
 
   auto instance() const -> void* { return instance_; }
 
  private:
-  BenchHost_t host_;
+  BenchHost host_;
   void* instance_;
 };
 
 // Assembled rather than written as byte arrays because the programs address
 // a card by its slot.
-struct Program_t {
+struct Program {
   uint16_t origin;
   std::vector<uint8_t> bytes;
 
-  explicit Program_t(uint16_t at = program_start) : origin(at) {}
+  explicit Program(uint16_t at = program_start) : origin(at) {}
 
   auto here() const -> uint16_t {
     return static_cast<uint16_t>(origin + bytes.size());
@@ -305,7 +305,7 @@ struct Program_t {
   }
 
   auto poke() const -> void {
-    TestFixtures::ScopedCore_t::poke(origin, bytes.data(), bytes.size());
+    TestFixtures::ScopedCore::poke(origin, bytes.data(), bytes.size());
   }
 };
 
@@ -314,13 +314,13 @@ auto poke_irq_vector(uint16_t handler) -> void {
       static_cast<uint8_t>(handler & 0xFF),
       static_cast<uint8_t>(handler >> 8),
   };
-  TestFixtures::ScopedCore_t::poke(IRQ_VECTOR_ADDR, vector);
+  TestFixtures::ScopedCore::poke(IRQ_VECTOR_ADDR, vector);
 }
 
 // $06 counts the entries; the register read is what acknowledges, or fails
 // to acknowledge, the card.
 auto poke_counting_handler(int slot, uint8_t acknowledging_register) -> void {
-  Program_t handler(handler_start);
+  Program handler(handler_start);
   handler.inc_zp(0x06);
   handler.lda_card(slot, acknowledging_register);
   handler.rti();
@@ -331,13 +331,13 @@ auto poke_counting_handler(int slot, uint8_t acknowledging_register) -> void {
 auto zero_page_clear(uint8_t from, uint8_t to) -> void {
   for (uint8_t a = from; a <= to; ++a) {
     const std::array<uint8_t, 1> zero = {0};
-    TestFixtures::ScopedCore_t::poke(a, zero);
+    TestFixtures::ScopedCore::poke(a, zero);
   }
 }
 
 auto describe_slots(const std::vector<int>& slots)
-    -> TestFixtures::ScopedTestConfig_t::Description_t {
-  TestFixtures::ScopedTestConfig_t::Description_t description;
+    -> TestFixtures::ScopedTestConfig::Description {
+  TestFixtures::ScopedTestConfig::Description description;
   for (int slot : slots) {
     description.slots.at(static_cast<size_t>(slot - 1)) = "Super Serial Card";
   }
@@ -346,15 +346,15 @@ auto describe_slots(const std::vector<int>& slots)
 
 // The sink is the first member so it is installed before the core builds the
 // card and still there when the card's shutdown closes it.
-struct SerialMachine_t {
-  TestFixtures::ScopedByteSink_t sink;
-  TestFixtures::ScopedTestConfig_t config;
-  TestFixtures::ScopedCore_t core;
+struct SerialMachine {
+  TestFixtures::ScopedByteSink sink;
+  TestFixtures::ScopedTestConfig config;
+  TestFixtures::ScopedCore core;
   int slot;
 
-  explicit SerialMachine_t(int in_slot = test_slot)
-      : SerialMachine_t(std::vector<int>{in_slot}) {}
-  explicit SerialMachine_t(const std::vector<int>& slots)
+  explicit SerialMachine(int in_slot = test_slot)
+      : SerialMachine(std::vector<int>{in_slot}) {}
+  explicit SerialMachine(const std::vector<int>& slots)
       : config(describe_slots(slots)), core(config), slot(slots.front()) {
     peripheral_manager_init();
     linapple_register_peripherals();
@@ -379,7 +379,7 @@ struct SerialMachine_t {
 
   auto stream() const -> std::vector<uint8_t> {
     std::vector<uint8_t> out;
-    for (const TestFixtures::ScopedByteSink_t::Byte_t& entry : sink.bytes()) {
+    for (const TestFixtures::ScopedByteSink::Byte& entry : sink.bytes()) {
       if (entry.slot == slot) {
         out.push_back(entry.byte);
       }
@@ -389,8 +389,8 @@ struct SerialMachine_t {
 };
 
 // Into $10-$13.
-auto read_registers(SerialMachine_t& machine) -> void {
-  Program_t program;
+auto read_registers(SerialMachine& machine) -> void {
+  Program program;
   program.read_card_into(machine.slot, register_status, 0x10);
   program.read_card_into(machine.slot, register_control, 0x11);
   program.read_card_into(machine.slot, register_command, 0x12);
@@ -402,8 +402,8 @@ auto read_registers(SerialMachine_t& machine) -> void {
 
 // $C0n1 advances the chip without touching the ACIA: a status read would
 // clear the interrupt, a data read RDRF.
-auto touch_card(SerialMachine_t& machine, bool after_delay) -> void {
-  Program_t program;
+auto touch_card(SerialMachine& machine, bool after_delay) -> void {
+  Program program;
   if (after_delay) {
     program.delay();
   }
@@ -413,7 +413,7 @@ auto touch_card(SerialMachine_t& machine, bool after_delay) -> void {
   machine.run_until(program_start, spin);
 }
 
-using Frame_t = std::array<uint8_t, frame_size>;
+using Frame = std::array<uint8_t, frame_size>;
 constexpr size_t frame_rx_count = 8;
 constexpr size_t frame_control = 12;
 constexpr size_t frame_command = 13;
@@ -428,22 +428,22 @@ constexpr uint8_t latch_tdr_full = 0x10;
 constexpr uint8_t latch_tx_busy = 0x20;
 constexpr uint8_t latch_rx_busy = 0x40;
 
-auto save_frame(int slot) -> Frame_t {
-  Frame_t frame{};
+auto save_frame(int slot) -> Frame {
+  Frame frame{};
   size_t size = frame.size();
   peripheral_save_state(slot, frame.data(), &size);
   REQUIRE(size == frame.size());
   return frame;
 }
 
-auto frame_header() -> Frame_t {
-  Frame_t frame{};
+auto frame_header() -> Frame {
+  Frame frame{};
   frame.at(0) = 0x01;
   frame.at(4) = 0x38;
   return frame;
 }
 
-auto load_frame(int slot, const Frame_t& frame) -> void {
+auto load_frame(int slot, const Frame& frame) -> void {
   REQUIRE(peripheral_load_state(slot, frame.data(), frame.size()) ==
           peripheral_ok);
 }
@@ -451,13 +451,13 @@ auto load_frame(int slot, const Frame_t& frame) -> void {
 // The sink guard follows the harness so it takes over whatever sink the
 // controller installed. The controller's frame loop is the one path on which
 // the card's wake-ups cut the frame.
-struct SerialSession_t {
-  TestFixtures::ScopedTestConfig_t config;
-  HeadlessHarness_t harness;
-  TestFixtures::ScopedByteSink_t sink;
+struct SerialSession {
+  TestFixtures::ScopedTestConfig config;
+  HeadlessHarness harness;
+  TestFixtures::ScopedByteSink sink;
   int slot;
 
-  explicit SerialSession_t(int in_slot = test_slot)
+  explicit SerialSession(int in_slot = test_slot)
       : config(describe_slots({in_slot})), harness(config), slot(in_slot) {}
 
   // No disk controller, so the Autostart scan falls through to Applesoft.
@@ -481,7 +481,7 @@ struct SerialSession_t {
 
   auto stream() const -> std::vector<uint8_t> {
     std::vector<uint8_t> out;
-    for (const TestFixtures::ScopedByteSink_t::Byte_t& entry : sink.bytes()) {
+    for (const TestFixtures::ScopedByteSink::Byte& entry : sink.bytes()) {
       CHECK(entry.slot == slot);
       out.push_back(entry.byte);
     }
@@ -501,11 +501,11 @@ struct SerialSession_t {
 }  // namespace
 
 TEST_CASE("Super Serial Card: the registry resolves the card by id and name") {
-  TestFixtures::ScopedTestConfig_t config(
-      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedTestConfig config(
+      TestFixtures::ScopedTestConfig::enhanced_2e_only());
+  TestFixtures::ScopedCore core(config);
 
-  Peripheral_t* card = serial_descriptor();
+  Peripheral* card = serial_descriptor();
   REQUIRE(card != nullptr);
   CHECK(peripheral_find_internal("Super Serial Card") == card);
   CHECK(card->abi_version == LINAPPLE_ABI_VERSION);
@@ -526,10 +526,10 @@ TEST_CASE("Super Serial Card: the registry resolves the card by id and name") {
 TEST_CASE(
     "Super Serial Card: init refuses a NULL host and the other entries take a "
     "NULL instance in their stride") {
-  TestFixtures::ScopedTestConfig_t config(
-      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
-  TestFixtures::ScopedCore_t core(config);
-  Peripheral_t* card = serial_descriptor();
+  TestFixtures::ScopedTestConfig config(
+      TestFixtures::ScopedTestConfig::enhanced_2e_only());
+  TestFixtures::ScopedCore core(config);
+  Peripheral* card = serial_descriptor();
   REQUIRE(card != nullptr);
 
   CHECK(card->init(test_slot, nullptr) == nullptr);
@@ -540,19 +540,19 @@ TEST_CASE(
   CHECK(card->save_state(nullptr, nullptr, &size) == peripheral_ok);
   CHECK(card->load_state(nullptr, &size, sizeof(size)) == peripheral_error);
 
-  BenchCard_t bench;
+  BenchCard bench;
   CHECK(bench.instance() != nullptr);
 }
 
 TEST_CASE(
     "Super Serial Card: a command or query from another subsystem is "
     "incompatible") {
-  TestFixtures::ScopedTestConfig_t config(
-      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
-  TestFixtures::ScopedCore_t core(config);
-  Peripheral_t* card = serial_descriptor();
+  TestFixtures::ScopedTestConfig config(
+      TestFixtures::ScopedTestConfig::enhanced_2e_only());
+  TestFixtures::ScopedCore core(config);
+  Peripheral* card = serial_descriptor();
   REQUIRE(card != nullptr);
-  BenchCard_t bench;
+  BenchCard bench;
   REQUIRE(bench.instance() != nullptr);
 
   uint8_t byte = 0x55;
@@ -570,12 +570,12 @@ TEST_CASE(
 TEST_CASE(
     "Super Serial Card: save_state answers the sizing probe with the 56-byte "
     "frame C sees") {
-  TestFixtures::ScopedTestConfig_t config(
-      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
-  TestFixtures::ScopedCore_t core(config);
-  Peripheral_t* card = serial_descriptor();
+  TestFixtures::ScopedTestConfig config(
+      TestFixtures::ScopedTestConfig::enhanced_2e_only());
+  TestFixtures::ScopedCore core(config);
+  Peripheral* card = serial_descriptor();
   REQUIRE(card != nullptr);
-  BenchCard_t bench;
+  BenchCard bench;
   REQUIRE(bench.instance() != nullptr);
 
   size_t size = 0;
@@ -592,45 +592,45 @@ TEST_CASE(
 
 namespace {
 
-struct RequiredMember_t {
+struct RequiredMember {
   const char* name;
-  void (*clear)(HostInterface_t*);
+  void (*clear)(HostInterface*);
 };
 
-const std::array<RequiredMember_t, 14> required_members = {
+const std::array<RequiredMember, 14> required_members = {
     {
         {"AssertIrq",
-         [](HostInterface_t* h) -> void { h->AssertIrq = nullptr; }},
+         [](HostInterface* h) -> void { h->AssertIrq = nullptr; }},
         {"RegisterIO",
-         [](HostInterface_t* h) -> void { h->RegisterIO = nullptr; }},
+         [](HostInterface* h) -> void { h->RegisterIO = nullptr; }},
         {"RegisterCxROM",
-         [](HostInterface_t* h) -> void { h->RegisterCxROM = nullptr; }},
+         [](HostInterface* h) -> void { h->RegisterCxROM = nullptr; }},
         {
             "RegisterExpansionROM",
-            [](HostInterface_t* h) -> void {
+            [](HostInterface* h) -> void {
               h->RegisterExpansionROM = nullptr;
             },
         },
         {"GetCycles",
-         [](HostInterface_t* h) -> void { h->GetCycles = nullptr; }},
+         [](HostInterface* h) -> void { h->GetCycles = nullptr; }},
         {"GetClockHz",
-         [](HostInterface_t* h) -> void { h->GetClockHz = nullptr; }},
+         [](HostInterface* h) -> void { h->GetClockHz = nullptr; }},
         {
             "ReadFloatingBus",
-            [](HostInterface_t* h) -> void { h->ReadFloatingBus = nullptr; },
+            [](HostInterface* h) -> void { h->ReadFloatingBus = nullptr; },
         },
-        {"SinkOpen", [](HostInterface_t* h) -> void { h->SinkOpen = nullptr; }},
+        {"SinkOpen", [](HostInterface* h) -> void { h->SinkOpen = nullptr; }},
         {"SinkWrite",
-         [](HostInterface_t* h) -> void { h->SinkWrite = nullptr; }},
+         [](HostInterface* h) -> void { h->SinkWrite = nullptr; }},
         {"SinkClose",
-         [](HostInterface_t* h) -> void { h->SinkClose = nullptr; }},
-        {"SinkRead", [](HostInterface_t* h) -> void { h->SinkRead = nullptr; }},
+         [](HostInterface* h) -> void { h->SinkClose = nullptr; }},
+        {"SinkRead", [](HostInterface* h) -> void { h->SinkRead = nullptr; }},
         {"SinkSetLine",
-         [](HostInterface_t* h) -> void { h->SinkSetLine = nullptr; }},
+         [](HostInterface* h) -> void { h->SinkSetLine = nullptr; }},
         {"SinkGetLines",
-         [](HostInterface_t* h) -> void { h->SinkGetLines = nullptr; }},
+         [](HostInterface* h) -> void { h->SinkGetLines = nullptr; }},
         {"ScheduleEvent",
-         [](HostInterface_t* h) -> void { h->ScheduleEvent = nullptr; }},
+         [](HostInterface* h) -> void { h->ScheduleEvent = nullptr; }},
     },
 };
 
@@ -639,30 +639,30 @@ const std::array<RequiredMember_t, 14> required_members = {
 TEST_CASE(
     "Super Serial Card: init refuses a host lacking any member it needs by "
     "name, a mute host, and a slot outside 1 to 7") {
-  TestFixtures::ScopedTestConfig_t config(
-      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
-  TestFixtures::ScopedCore_t core(config);
-  Peripheral_t* card = serial_descriptor();
+  TestFixtures::ScopedTestConfig config(
+      TestFixtures::ScopedTestConfig::enhanced_2e_only());
+  TestFixtures::ScopedCore core(config);
+  Peripheral* card = serial_descriptor();
   REQUIRE(card != nullptr);
-  BenchHost_t bench;
+  BenchHost bench;
 
-  for (const RequiredMember_t& member : required_members) {
+  for (const RequiredMember& member : required_members) {
     CAPTURE(member.name);
-    HostInterface_t partial = *bench.host();
+    HostInterface partial = *bench.host();
     member.clear(&partial);
     CHECK(card->init(test_slot, &partial) == nullptr);
-    CHECK(BenchHost_t::last_log().find(member.name) != std::string::npos);
-    CHECK(BenchHost_t::last_log().find("slot 2") != std::string::npos);
+    CHECK(BenchHost::last_log().find(member.name) != std::string::npos);
+    CHECK(BenchHost::last_log().find("slot 2") != std::string::npos);
   }
 
-  HostInterface_t mute = *bench.host();
+  HostInterface mute = *bench.host();
   mute.Log = nullptr;
   CHECK(card->init(test_slot, &mute) == nullptr);
 
   CHECK(card->init(0, bench.host()) == nullptr);
-  CHECK(BenchHost_t::last_log().find("slot 0") != std::string::npos);
+  CHECK(BenchHost::last_log().find("slot 0") != std::string::npos);
   CHECK(card->init(8, bench.host()) == nullptr);
-  CHECK(BenchHost_t::last_log().find("slot 8") != std::string::npos);
+  CHECK(BenchHost::last_log().find("slot 8") != std::string::npos);
   void* instance = card->init(7, bench.host());
   REQUIRE(instance != nullptr);
   card->shutdown(instance);
@@ -671,19 +671,19 @@ TEST_CASE(
 TEST_CASE(
     "Super Serial Card: the switch command takes exactly two bytes with bit 7 "
     "clear and leaves the image alone otherwise, and no query is answered") {
-  TestFixtures::ScopedTestConfig_t config(
-      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
-  TestFixtures::ScopedCore_t core(config);
-  Peripheral_t* card = serial_descriptor();
+  TestFixtures::ScopedTestConfig config(
+      TestFixtures::ScopedTestConfig::enhanced_2e_only());
+  TestFixtures::ScopedCore core(config);
+  Peripheral* card = serial_descriptor();
   REQUIRE(card != nullptr);
-  BenchCard_t bench;
+  BenchCard bench;
   REQUIRE(bench.instance() != nullptr);
 
-  CHECK(superserial_abi_c_switches_size() == sizeof(SuperSerialSwitches_t));
+  CHECK(superserial_abi_c_switches_size() == sizeof(SuperSerialSwitches));
   CHECK(superserial_abi_c_set_switches_id() == SUPER_SERIAL_CMD_SET_SWITCHES);
-  CHECK(BenchHost_t::read_c0(bench.instance(), register_switches_1) == 0xEC);
+  CHECK(BenchHost::read_c0(bench.instance(), register_switches_1) == 0xEC);
 
-  SuperSerialSwitches_t switches{0x78, 0x2F};
+  SuperSerialSwitches switches{0x78, 0x2F};
   CHECK(card->command(bench.instance(), SUPER_SERIAL_CMD_SET_SWITCHES,
                       &switches, 1) == peripheral_error);
   CHECK(card->command(bench.instance(), SUPER_SERIAL_CMD_SET_SWITCHES,
@@ -696,12 +696,12 @@ TEST_CASE(
   switches = {0x68, 0x8B};
   CHECK(card->command(bench.instance(), SUPER_SERIAL_CMD_SET_SWITCHES,
                       &switches, sizeof(switches)) == peripheral_error);
-  CHECK(BenchHost_t::read_c0(bench.instance(), register_switches_1) == 0xEC);
+  CHECK(BenchHost::read_c0(bench.instance(), register_switches_1) == 0xEC);
 
   switches = {0x68, 0x0B};
   CHECK(card->command(bench.instance(), SUPER_SERIAL_CMD_SET_SWITCHES,
                       &switches, sizeof(switches)) == peripheral_ok);
-  CHECK(BenchHost_t::read_c0(bench.instance(), register_switches_1) == 0xEE);
+  CHECK(BenchHost::read_c0(bench.instance(), register_switches_1) == 0xEE);
 
   CHECK(card->command(bench.instance(), PERIPHERAL_SUBSYSTEM_SERIAL | 0x0001,
                       &switches, 1) == peripheral_incompatible);
@@ -730,10 +730,10 @@ constexpr uint16_t expansion_copy = 0x2100;
 constexpr size_t expansion_pages = 7;
 constexpr uint32_t copy_cycle_cap = 60000;
 
-using Rom_t = std::array<uint8_t, rom_size>;
+using Rom = std::array<uint8_t, rom_size>;
 
-auto read_rom_file() -> Rom_t {
-  Rom_t rom{};
+auto read_rom_file() -> Rom {
+  Rom rom{};
   std::ifstream in(TestFixtures::get_fixture_path("roms/SSC.rom"),
                    std::ios::binary);
   REQUIRE(in.is_open());
@@ -770,7 +770,7 @@ auto poke_rom_copier(int slot) -> uint16_t {
       0xD0, 0xEF,                   // BNE $031D
       0x4C, 0x2E, 0x03,             // JMP $032E
   };
-  TestFixtures::ScopedCore_t::poke(program_start, program);
+  TestFixtures::ScopedCore::poke(program_start, program);
   return 0x032E;
 }
 
@@ -779,8 +779,8 @@ auto poke_rom_copier(int slot) -> uint16_t {
 TEST_CASE(
     "Super Serial Card: the slot page is the ROM's last page, the expansion "
     "ROM is the whole image, and both match res/roms/SSC.rom byte for byte") {
-  const Rom_t rom = read_rom_file();
-  SerialMachine_t machine;
+  const Rom rom = read_rom_file();
+  SerialMachine machine;
   const uint16_t sentinel = poke_rom_copier(machine.slot);
   const uint32_t cycles =
       machine.run_until(program_start, sentinel, copy_cycle_cap);
@@ -830,9 +830,9 @@ TEST_CASE(
     "Super Serial Card: on an Enhanced //e the $C800 space alternates between "
     "the internal ROM after a $C3xx fetch and the card's ROM after a $C2xx "
     "fetch") {
-  SerialMachine_t machine;
+  SerialMachine machine;
   const auto slot_page = static_cast<uint16_t>(0xC000 + (machine.slot << 8));
-  Program_t program;
+  Program program;
   uint8_t store = 0x10;
   for (uint16_t entry : {uint16_t{0xC300}, slot_page, uint16_t{0xC300}}) {
     program.lda_abs(0xCFFF);
@@ -863,12 +863,12 @@ TEST_CASE(
 TEST_CASE(
     "Super Serial Card: a fresh card reads $10, $00, $00 at $C0n9-$C0nB, the "
     "switches at $C0n1-$C0n2, and the floating bus at every other offset") {
-  SerialMachine_t machine;
+  SerialMachine machine;
   const uint16_t scanner = video_get_scanner_address(nullptr, 0);
   const std::vector<uint8_t> undecoded = {
       0x0, 0x3, 0x4, 0x5, 0x6, 0x7, 0xC, 0xD, 0xE, 0xF,
   };
-  Program_t program;
+  Program program;
   program.read_card_into(machine.slot, register_status, 0x10);
   program.read_card_into(machine.slot, register_control, 0x11);
   program.read_card_into(machine.slot, register_command, 0x12);
@@ -884,7 +884,7 @@ TEST_CASE(
   for (uint8_t marker : {uint8_t{0x5A}, uint8_t{0xDA}}) {
     CAPTURE(marker);
     const std::array<uint8_t, 1> byte = {marker};
-    TestFixtures::ScopedCore_t::poke(scanner, byte);
+    TestFixtures::ScopedCore::poke(scanner, byte);
     machine.run_until(program_start, spin);
     CHECK(mem[0x10] == 0x10);
     CHECK(mem[0x11] == 0x00);
@@ -902,9 +902,9 @@ TEST_CASE(
 TEST_CASE(
     "Super Serial Card: on the 6502 a received byte reads $98, $18, $18, the "
     "byte, then $10, the status read releasing the slot's interrupt line") {
-  SerialMachine_t machine;
+  SerialMachine machine;
   machine.sink.push_rx(machine.slot, 0xC1);
-  Program_t program;
+  Program program;
   program.program_acia(machine.slot, control_9600_8n1, command_dtr_rx_irq);
   program.delay();
   program.read_card_into(machine.slot, register_status, 0x10);
@@ -928,11 +928,11 @@ TEST_CASE(
 TEST_CASE(
     "Super Serial Card: with the data read first the status reads $90 and "
     "then $10, and with the receive interrupt disabled $18 and no interrupt") {
-  SerialMachine_t machine;
+  SerialMachine machine;
   poke_counting_handler(machine.slot, register_status);
 
   machine.sink.push_rx(machine.slot, 0xC1);
-  Program_t first;
+  Program first;
   first.program_acia(machine.slot, control_9600_8n1, command_dtr_rx_irq);
   first.delay();
   first.read_card_into(machine.slot, register_data, 0x10);
@@ -948,7 +948,7 @@ TEST_CASE(
   // Interrupts stay enabled through the delay, so a handler entry would count.
   zero_page_clear(0x06, 0x06);
   machine.sink.push_rx(machine.slot, 0xC2);
-  Program_t second;
+  Program second;
   second.program_acia(machine.slot, control_9600_8n1, command_firmware);
   second.cli();
   second.delay();
@@ -965,8 +965,8 @@ TEST_CASE(
 TEST_CASE(
     "Super Serial Card: on the 6502 TDRE is set at once after a write to an "
     "idle transmitter and 1,063 cycles after it for a byte written behind") {
-  SerialMachine_t machine;
-  Program_t program;
+  SerialMachine machine;
+  Program program;
   program.program_acia(machine.slot, control_9600_8n1, command_firmware);
   program.lda_imm(0xC1);
   const uint16_t first_write = program.here();
@@ -983,7 +983,7 @@ TEST_CASE(
   program.poke();
 
   TestFixtures::enter_at({program_start, 0, 0, 0});
-  CpuRegisters_t* regs = cpu_get_registers();
+  CpuRegisters* regs = cpu_get_registers();
   uint64_t first_write_at = 0;
   std::vector<uint64_t> polls;
   uint32_t cycles = 0;
@@ -1020,8 +1020,8 @@ TEST_CASE(
 TEST_CASE(
     "Super Serial Card: three writes four cycles apart deliver the first and "
     "third bytes, the second having been overwritten in the TDR") {
-  SerialMachine_t machine;
-  Program_t program;
+  SerialMachine machine;
+  Program program;
   program.program_acia(machine.slot, control_9600_8n1, command_firmware);
   program.lda_imm(0xC1);
   program.ldx_imm(0xC2);
@@ -1043,8 +1043,8 @@ TEST_CASE(
 TEST_CASE(
     "Super Serial Card: a byte written with the transmitter off, or with CTS "
     "deasserted, waits in the TDR and goes out when the transmitter runs") {
-  SerialMachine_t machine;
-  Program_t off;
+  SerialMachine machine;
+  Program off;
   off.program_acia(machine.slot, control_9600_8n1, command_dtr_only);
   off.write_card(machine.slot, register_data, 0xC1);
   off.delay();
@@ -1058,9 +1058,9 @@ TEST_CASE(
   CHECK((mem[0x11] & 0x10) == 0x10);
   CHECK(hex(machine.stream()) == hex(std::vector<uint8_t>{0xC1}));
 
-  machine.sink.set_lines(TestFixtures::ScopedByteSink_t::all_lines_asserted &
+  machine.sink.set_lines(TestFixtures::ScopedByteSink::all_lines_asserted &
                          ~uint8_t{0x01});
-  Program_t parked;
+  Program parked;
   parked.delay();
   parked.write_card(machine.slot, register_data, 0xC2);
   parked.delay();
@@ -1071,8 +1071,8 @@ TEST_CASE(
   CHECK((mem[0x12] & 0x10) == 0x00);
   CHECK(hex(machine.stream()) == hex(std::vector<uint8_t>{0xC1}));
 
-  machine.sink.set_lines(TestFixtures::ScopedByteSink_t::all_lines_asserted);
-  Program_t released;
+  machine.sink.set_lines(TestFixtures::ScopedByteSink::all_lines_asserted);
+  Program released;
   released.read_card_into(machine.slot, register_status, 0x13);
   const uint16_t released_spin = released.spin();
   released.poke();
@@ -1086,8 +1086,8 @@ TEST_CASE(
     "Super Serial Card: a programmed reset keeps the control register, "
     "clears the command register and the overrun bit, drops DTR and leaves a "
     "receive interrupt asserted; a hardware reset leaves the RDR") {
-  SerialMachine_t machine;
-  Frame_t overrun = frame_header();
+  SerialMachine machine;
+  Frame overrun = frame_header();
   overrun.at(frame_control) = control_9600_8n1;
   overrun.at(frame_command) = command_dtr_rx_irq;
   overrun.at(frame_latches) = latch_overrun | latch_rdrf;
@@ -1095,7 +1095,7 @@ TEST_CASE(
   load_frame(machine.slot, overrun);
   CHECK(machine.sink.last_line().dtr == 1);
 
-  Program_t program;
+  Program program;
   program.read_card_into(machine.slot, register_status, 0x10);
   program.sta_card(machine.slot, register_status);
   program.read_card_into(machine.slot, register_status, 0x11);
@@ -1117,7 +1117,7 @@ TEST_CASE(
   overrun.at(frame_irq) = 1;
   load_frame(machine.slot, overrun);
   CHECK(save_frame(machine.slot).at(frame_irq) == 1);
-  Program_t reset_only;
+  Program reset_only;
   reset_only.sta_card(machine.slot, register_status);
   const uint16_t reset_spin = reset_only.spin();
   reset_only.poke();
@@ -1138,11 +1138,11 @@ TEST_CASE(
 
 namespace {
 
-constexpr SuperSerialSwitches_t printer_mode_switches = {0x68, 0x0B};
+constexpr SuperSerialSwitches printer_mode_switches = {0x68, 0x0B};
 
 // Into $10 and $11, after a write to each register the card must ignore.
-auto read_switches(SerialMachine_t& machine) -> void {
-  Program_t program;
+auto read_switches(SerialMachine& machine) -> void {
+  Program program;
   program.lda_imm(0xFF);
   program.sta_card(machine.slot, register_switches_1);
   program.sta_card(machine.slot, register_switches_2);
@@ -1154,8 +1154,8 @@ auto read_switches(SerialMachine_t& machine) -> void {
 }
 
 // The queue drains in peripheral_manager_think and nowhere else.
-auto set_switches(SerialMachine_t& machine,
-                  const SuperSerialSwitches_t& switches) -> void {
+auto set_switches(SerialMachine& machine,
+                  const SuperSerialSwitches& switches) -> void {
   REQUIRE(peripheral_command(machine.slot, SUPER_SERIAL_CMD_SET_SWITCHES,
                              &switches, sizeof(switches)) == peripheral_ok);
   peripheral_manager_think(0);
@@ -1166,7 +1166,7 @@ auto set_switches(SerialMachine_t& machine,
 TEST_CASE(
     "Super Serial Card: $C0n1 and $C0n2 read the switch blocks with the "
     "undriven bits set and CTS in bit 0, $EC and $52 under the default") {
-  SerialMachine_t machine;
+  SerialMachine machine;
   read_switches(machine);
   CHECK(mem[0x10] == 0xEC);
   CHECK(mem[0x11] == 0x52);
@@ -1176,7 +1176,7 @@ TEST_CASE(
   CHECK(mem[0x10] == 0xEE);
   CHECK(mem[0x11] == 0x5A);
 
-  machine.sink.set_lines(TestFixtures::ScopedByteSink_t::all_lines_asserted &
+  machine.sink.set_lines(TestFixtures::ScopedByteSink::all_lines_asserted &
                          ~uint8_t{0x01});
   read_switches(machine);
   CHECK(mem[0x10] == 0xEE);
@@ -1185,11 +1185,11 @@ TEST_CASE(
   set_switches(machine, {0x78, 0x2F});
   read_switches(machine);
   CHECK(mem[0x11] == 0x53);
-  machine.sink.set_lines(TestFixtures::ScopedByteSink_t::all_lines_asserted);
+  machine.sink.set_lines(TestFixtures::ScopedByteSink::all_lines_asserted);
 }
 
 TEST_CASE("Super Serial Card: the switch image survives a hardware reset") {
-  SerialMachine_t machine;
+  SerialMachine machine;
   set_switches(machine, printer_mode_switches);
   linapple_reset_hard();
   read_switches(machine);
@@ -1203,8 +1203,8 @@ TEST_CASE(
     "Super Serial Card: command $0F reports a break to the host and parks a "
     "written byte until the break ends, and $00 in both registers reports no "
     "clock") {
-  SerialMachine_t machine;
-  Program_t brk;
+  SerialMachine machine;
+  Program brk;
   brk.program_acia(machine.slot, control_9600_8n1, command_break);
   brk.write_card(machine.slot, register_data, 0xC1);
   brk.delay();
@@ -1216,7 +1216,7 @@ TEST_CASE(
   CHECK(machine.sink.last_line().rts == 1);
   CHECK(machine.sink.bytes().empty());
 
-  Program_t release;
+  Program release;
   release.write_card(machine.slot, register_command, command_firmware);
   const uint16_t release_spin = release.spin();
   release.poke();
@@ -1224,7 +1224,7 @@ TEST_CASE(
   CHECK(machine.sink.last_line().brk == 0);
   CHECK(hex(machine.stream()) == hex(std::vector<uint8_t>{0xC1}));
 
-  Program_t no_clock;
+  Program no_clock;
   no_clock.program_acia(machine.slot, 0x00, 0x00);
   const uint16_t no_clock_spin = no_clock.spin();
   no_clock.poke();
@@ -1237,11 +1237,11 @@ TEST_CASE(
 TEST_CASE(
     "Super Serial Card: with three bytes queued the line is read once until "
     "the first character completes and the RDR is read") {
-  SerialMachine_t machine;
+  SerialMachine machine;
   for (uint8_t byte : {uint8_t{0xC1}, uint8_t{0xC2}, uint8_t{0xC3}}) {
     machine.sink.push_rx(machine.slot, byte);
   }
-  Program_t program;
+  Program program;
   program.program_acia(machine.slot, control_9600_8n1, command_firmware);
   const uint16_t enabled = program.spin();
   const uint16_t after_delay_entry = program.here();
@@ -1267,7 +1267,7 @@ namespace {
 // The spin reads $C0n1, which advances the chip without touching the ACIA.
 auto poke_receive_loop(int slot, uint8_t command, uint16_t* command_write_at)
     -> uint16_t {
-  Program_t program;
+  Program program;
   program.write_card(slot, register_control, control_9600_8n1);
   program.lda_imm(command);
   *command_write_at = program.here();
@@ -1280,16 +1280,16 @@ auto poke_receive_loop(int slot, uint8_t command, uint16_t* command_write_at)
   return loop;
 }
 
-struct Entry_t {
+struct Entry {
   uint64_t at;
   uint8_t count;
 };
 
 auto step_recording_entries(uint16_t entry, uint32_t cycles, uint16_t watched,
-                            uint64_t* watched_at) -> std::vector<Entry_t> {
-  std::vector<Entry_t> entries;
+                            uint64_t* watched_at) -> std::vector<Entry> {
+  std::vector<Entry> entries;
   TestFixtures::enter_at({entry, 0, 0, 0});
-  const CpuRegisters_t* regs = cpu_get_registers();
+  const CpuRegisters* regs = cpu_get_registers();
   uint32_t ran = 0;
   while (ran < cycles) {
     if (regs->pc == watched && watched_at != nullptr) {
@@ -1313,13 +1313,13 @@ TEST_CASE(
     "handler's status read releases the line and a data read does not") {
   uint16_t command_write = 0;
   {
-    SerialMachine_t machine;
+    SerialMachine machine;
     zero_page_clear(0x06, 0x06);
     poke_counting_handler(machine.slot, register_status);
     machine.sink.push_rx(machine.slot, 0xC1);
     poke_receive_loop(machine.slot, command_dtr_rx_irq, &command_write);
     uint64_t command_write_at = 0;
-    const std::vector<Entry_t> entries = step_recording_entries(
+    const std::vector<Entry> entries = step_recording_entries(
         program_start, 3000, command_write, &command_write_at);
     REQUIRE(entries.size() == 1);
     CHECK(mem[0x06] == 1);
@@ -1330,12 +1330,12 @@ TEST_CASE(
 
   // A data read clears RDRF but not the IRQ latch, so the line stays
   // asserted and the handler re-enters after every instruction.
-  SerialMachine_t re_machine;
+  SerialMachine re_machine;
   zero_page_clear(0x06, 0x06);
   poke_counting_handler(re_machine.slot, register_data);
   re_machine.sink.push_rx(re_machine.slot, 0xC2);
   poke_receive_loop(re_machine.slot, command_dtr_rx_irq, &command_write);
-  const std::vector<Entry_t> re_entries =
+  const std::vector<Entry> re_entries =
       step_recording_entries(program_start, 3000, command_write, nullptr);
   CHECK(re_entries.size() > 20);
   CHECK(mem[0x06] == re_entries.size());
@@ -1351,10 +1351,10 @@ TEST_CASE(
     "Super Serial Card: the transmit interrupt vectors at the write that "
     "empties the TDR, again one character time later while it stays empty, "
     "and is released by a status read") {
-  SerialMachine_t machine;
+  SerialMachine machine;
   zero_page_clear(0x06, 0x06);
   poke_counting_handler(machine.slot, register_status);
-  Program_t program;
+  Program program;
   program.program_acia(machine.slot, control_9600_8n1, command_dtr_tx_irq);
   program.cli();
   program.lda_imm(0xC1);
@@ -1366,7 +1366,7 @@ TEST_CASE(
   program.poke();
 
   uint64_t write_at = 0;
-  const std::vector<Entry_t> entries = step_recording_entries(
+  const std::vector<Entry> entries = step_recording_entries(
       program_start, (2 * static_cast<uint32_t>(char_9600_8n1)) + 400, write,
       &write_at);
   REQUIRE(entries.size() == 3);
@@ -1385,7 +1385,7 @@ namespace {
 
 // Each card advances only at its own accesses, so the loop reads both.
 auto poke_two_card_programs(uint8_t handler_reads_slots) -> void {
-  Program_t program;
+  Program program;
   for (int slot : {1, 2}) {
     program.program_acia(slot, control_9600_8n1, command_dtr_rx_irq);
   }
@@ -1396,7 +1396,7 @@ auto poke_two_card_programs(uint8_t handler_reads_slots) -> void {
   program.jmp(loop);
   program.poke();
 
-  Program_t handler(handler_start);
+  Program handler(handler_start);
   handler.inc_zp(0x06);
   if (handler_reads_slots == 1) {
     handler.lda_card(1, register_status);
@@ -1416,7 +1416,7 @@ auto poke_two_card_programs(uint8_t handler_reads_slots) -> void {
 TEST_CASE(
     "Super Serial Card: two cards in slots 1 and 2 raise and release their "
     "own interrupt bits, and a byte for one never reaches the other") {
-  SerialMachine_t machine({1, 2});
+  SerialMachine machine({1, 2});
 
   zero_page_clear(0x06, 0x13);
   poke_two_card_programs(2);
@@ -1452,12 +1452,12 @@ TEST_CASE(
 TEST_CASE(
     "Super Serial Card: with SW2-6 OFF a received byte sets status bit 7 and "
     "never reaches the slot's interrupt line") {
-  SerialMachine_t machine;
+  SerialMachine machine;
   set_switches(machine, {0x78, 0x0F});
   zero_page_clear(0x06, 0x06);
   // The handler acknowledges nothing, so an asserted line would re-enter it
   // after every instruction; a count of zero proves the line stayed clear.
-  Program_t handler(handler_start);
+  Program handler(handler_start);
   handler.inc_zp(0x06);
   handler.rti();
   handler.poke();
@@ -1469,7 +1469,7 @@ TEST_CASE(
   CHECK(mem[0x06] == 0);
 
   // $98 shows the byte arrived and the ACIA's own latch is set.
-  Program_t confirm;
+  Program confirm;
   confirm.read_card_into(machine.slot, register_status, 0x10);
   const uint16_t spin = confirm.spin();
   confirm.poke();
@@ -1480,10 +1480,10 @@ TEST_CASE(
 TEST_CASE(
     "Super Serial Card: shutting the card down with its interrupt asserted "
     "releases the slot's line") {
-  SerialMachine_t machine;
+  SerialMachine machine;
   machine.sink.push_rx(machine.slot, 0xC1);
   touch_card(machine, false);
-  Program_t program;
+  Program program;
   program.program_acia(machine.slot, control_9600_8n1, command_dtr_rx_irq);
   program.delay();
   program.lda_card(machine.slot, register_switches_1);
@@ -1497,12 +1497,12 @@ TEST_CASE(
   // The handler acknowledges nothing, so a line still asserted would re-enter
   // it after every instruction.
   zero_page_clear(0x06, 0x06);
-  Program_t handler(handler_start);
+  Program handler(handler_start);
   handler.inc_zp(0x06);
   handler.rti();
   handler.poke();
   poke_irq_vector(handler_start);
-  Program_t loop;
+  Program loop;
   loop.cli();
   loop.spin();
   loop.poke();
@@ -1514,9 +1514,9 @@ TEST_CASE(
     "Super Serial Card: the frame carries the registers, the latch byte and "
     "the data bytes, comes back through the ABI with the interrupt, and a "
     "byte in the receive shifter completes one character time after a load") {
-  SerialMachine_t machine;
+  SerialMachine machine;
   machine.sink.push_rx(machine.slot, 0xC1);
-  Program_t program;
+  Program program;
   program.program_acia(machine.slot, control_9600_8n1, command_dtr_rx_irq);
   program.delay();
   const uint16_t spin = program.spin();
@@ -1525,7 +1525,7 @@ TEST_CASE(
 
   // Nothing has touched the card since the byte was pulled, so it is still
   // in the shifter.
-  const Frame_t in_flight = save_frame(machine.slot);
+  const Frame in_flight = save_frame(machine.slot);
   CHECK(in_flight.at(frame_control) == control_9600_8n1);
   CHECK(in_flight.at(frame_command) == command_dtr_rx_irq);
   CHECK(in_flight.at(frame_irq) == 0x00);
@@ -1534,13 +1534,13 @@ TEST_CASE(
   CHECK(in_flight.at(frame_shift_data) == 0xC1);
 
   touch_card(machine, false);
-  Frame_t expected = frame_header();
+  Frame expected = frame_header();
   expected.at(frame_control) = control_9600_8n1;
   expected.at(frame_command) = command_dtr_rx_irq;
   expected.at(frame_irq) = 0x01;
   expected.at(frame_latches) = latch_rdrf;
   expected.at(frame_receive_data) = 0xC1;
-  const Frame_t received = save_frame(machine.slot);
+  const Frame received = save_frame(machine.slot);
   CHECK(hex(received) == hex(expected));
 
   linapple_reset_hard();
@@ -1572,15 +1572,15 @@ TEST_CASE(
     "Super Serial Card: a frame with a character in flight and a byte parked "
     "in the TDR restarts from the load, and the parked byte goes out within "
     "one character time of it") {
-  Frame_t expected = frame_header();
+  Frame expected = frame_header();
   expected.at(frame_control) = control_9600_8n1;
   expected.at(frame_command) = command_firmware;
   expected.at(frame_latches) = latch_tdr_full | latch_tx_busy;
   expected.at(frame_transmit_data) = 0xC8;
   {
-    SerialMachine_t saving;
-    g_cumulative_cycles = 5000000;
-    Program_t program;
+    SerialMachine saving;
+    cumulative_cycles = 5000000;
+    Program program;
     program.program_acia(saving.slot, control_9600_8n1, command_firmware);
     program.write_card(saving.slot, register_data, 0xC1);
     program.write_card(saving.slot, register_data, 0xC8);
@@ -1591,10 +1591,10 @@ TEST_CASE(
     CHECK(hex(saving.stream()) == hex(std::vector<uint8_t>{0xC1}));
   }
 
-  SerialMachine_t loading;
+  SerialMachine loading;
   CHECK(cpu_get_cumulative_cycles() < 5000000);
   load_frame(loading.slot, expected);
-  Program_t program;
+  Program program;
   program.read_card_into(loading.slot, register_status, 0x10);
   program.delay();
   program.read_card_into(loading.slot, register_status, 0x11);
@@ -1609,8 +1609,8 @@ TEST_CASE(
 TEST_CASE(
     "Super Serial Card: a legacy frame with a queue, flags and a "
     "configuration loads as an idle card at its registers") {
-  SerialMachine_t machine;
-  Frame_t legacy = frame_header();
+  SerialMachine machine;
+  Frame legacy = frame_header();
   legacy.at(frame_rx_count) = 0x03;
   legacy.at(frame_control) = control_9600_8n1;
   legacy.at(frame_command) = command_firmware;
@@ -1636,8 +1636,8 @@ TEST_CASE(
 TEST_CASE(
     "Super Serial Card: a legacy frame with the interrupt byte set and a "
     "queue loads as an interrupt with nothing to read, $90 then $10") {
-  SerialMachine_t machine;
-  Frame_t legacy = frame_header();
+  SerialMachine machine;
+  Frame legacy = frame_header();
   legacy.at(frame_rx_count) = 0x02;
   legacy.at(frame_control) = control_9600_8n1;
   legacy.at(frame_command) = command_dtr_rx_irq;
@@ -1645,7 +1645,7 @@ TEST_CASE(
   legacy.at(18) = 0xC1;
   legacy.at(19) = 0xC2;
   load_frame(machine.slot, legacy);
-  Program_t program;
+  Program program;
   program.read_card_into(machine.slot, register_status, 0x10);
   program.read_card_into(machine.slot, register_status, 0x11);
   const uint16_t spin = program.spin();
@@ -1658,13 +1658,13 @@ TEST_CASE(
 TEST_CASE(
     "Super Serial Card: load_state refuses the wrong version, a wrong size, "
     "a short buffer and a set bit 7 of the latch byte, changing nothing") {
-  SerialMachine_t machine;
-  Frame_t good = frame_header();
+  SerialMachine machine;
+  Frame good = frame_header();
   good.at(frame_control) = control_9600_8n1;
   good.at(frame_command) = command_firmware;
   load_frame(machine.slot, good);
 
-  Frame_t bad = good;
+  Frame bad = good;
   bad.at(frame_control) = 0x16;
   bad.at(0) = 0x02;
   CHECK(peripheral_load_state(machine.slot, bad.data(), bad.size()) ==
@@ -1707,7 +1707,7 @@ TEST_CASE(
 TEST_CASE(
     "Super Serial Card: the Pascal 1.1 init, write and status entries run "
     "from the slot page without touching $CFFF") {
-  SerialMachine_t machine;
+  SerialMachine machine;
   const auto slot_page_hi = static_cast<uint8_t>(0xC0 + machine.slot);
   const auto slot_page = static_cast<uint16_t>(slot_page_hi << 8);
   const auto entry_at = [slot_page](uint8_t offset) -> uint16_t {
@@ -1721,12 +1721,12 @@ TEST_CASE(
   CHECK(status_entry == slot_page + 0x9A);
 
   const auto slot_y = static_cast<uint8_t>(machine.slot << 4);
-  const auto call = [&](Program_t& p, uint16_t entry) -> void {
+  const auto call = [&](Program& p, uint16_t entry) -> void {
     p.ldx_imm(slot_page_hi);
     p.ldy_imm(slot_y);
     p.jsr(entry);
   };
-  const auto status_into = [&](Program_t& p, uint8_t request,
+  const auto status_into = [&](Program& p, uint8_t request,
                                uint8_t store) -> void {
     p.ldx_imm(slot_page_hi);
     p.ldy_imm(slot_y);
@@ -1737,7 +1737,7 @@ TEST_CASE(
     p.sta_zp(store);
   };
 
-  Program_t program;
+  Program program;
   call(program, init_entry);
   program.stx_zp(0x10);
   const uint16_t initialised = program.spin();
@@ -1762,7 +1762,7 @@ TEST_CASE(
 
   machine.run_until(program_start, initialised);
   CHECK(mem[0x10] == 0);
-  Frame_t frame = save_frame(machine.slot);
+  Frame frame = save_frame(machine.slot);
   CHECK(frame.at(frame_control) == control_9600_8n1);
   CHECK(frame.at(frame_command) == command_firmware);
 
@@ -1804,13 +1804,13 @@ TEST_CASE(
     "Super Serial Card: PR#2 at the Applesoft prompt programs the card to "
     "9600 8N1, hooks CSW to the slot page and streams the session to the "
     "line with bit 7 set and no line feeds") {
-  SerialSession_t session;
+  SerialSession session;
   session.boot_to_prompt();
   REQUIRE(session.sink.bytes().empty());
 
   session.harness.type_string("PR#2\r", 2);
   session.harness.run_frames(4);
-  Frame_t frame = save_frame(session.slot);
+  Frame frame = save_frame(session.slot);
   CHECK(frame.at(frame_control) == control_9600_8n1);
   CHECK(frame.at(frame_command) == command_firmware);
   CHECK(mem[0x36] == 0x07);
@@ -1842,16 +1842,16 @@ TEST_CASE(
 TEST_CASE(
     "Super Serial Card: IN#2 at the Applesoft prompt takes a line from the "
     "card into the input buffer and the next line is executed") {
-  SerialSession_t session;
+  SerialSession session;
   session.boot_to_prompt();
   session.harness.type_string("IN#2\r", 2);
   session.harness.run_frames(4);
-  Frame_t frame = save_frame(session.slot);
+  Frame frame = save_frame(session.slot);
   CHECK(frame.at(frame_control) == control_9600_8n1);
   CHECK(frame.at(frame_command) == command_firmware);
 
   const std::array<uint8_t, 16> zeros{};
-  TestFixtures::ScopedCore_t::poke(0x0200, zeros);
+  TestFixtures::ScopedCore::poke(0x0200, zeros);
   for (char c : std::string("HELLO")) {
     session.sink.push_rx(session.slot, static_cast<uint8_t>(c));
   }
@@ -1884,17 +1884,17 @@ TEST_CASE(
 TEST_CASE(
     "Super Serial Card: with DSR or DCD deasserted PR#2 waits in the "
     "firmware's ready loop and sends nothing until the line is asserted") {
-  SerialSession_t session;
+  SerialSession session;
   session.boot_to_prompt();
   session.sink.set_lines(0x01);
   session.harness.type_string("PR#2\r", 2);
   session.harness.run_frames(10);
-  Frame_t frame = save_frame(session.slot);
+  Frame frame = save_frame(session.slot);
   CHECK(frame.at(frame_control) == control_9600_8n1);
   CHECK(frame.at(frame_command) == command_firmware);
   CHECK(session.sink.bytes().empty());
 
-  session.sink.set_lines(TestFixtures::ScopedByteSink_t::all_lines_asserted);
+  session.sink.set_lines(TestFixtures::ScopedByteSink::all_lines_asserted);
   session.harness.run_frames(4);
   CHECK(hex(session.stream()) ==
         hex(std::vector<uint8_t>{high_cr, high_prompt}));
@@ -1917,7 +1917,7 @@ auto meter_cycles(uint32_t turns) -> uint64_t {
 // The priming read pulls the first queued byte at once rather than at the
 // frame's end; the meter loop touches no card register.
 auto poke_meter_program(int slot, bool prime_with_read) -> void {
-  Program_t program;
+  Program program;
   program.cli();
   if (prime_with_read) {
     program.lda_card(slot, register_switches_1);
@@ -1934,7 +1934,7 @@ auto poke_meter_program(int slot, bool prime_with_read) -> void {
 constexpr uint64_t receive_handler_cycles = 50;
 
 auto poke_receive_meter_handler(int slot) -> void {
-  Program_t handler(handler_start);
+  Program handler(handler_start);
   handler.lda_card(slot, register_status);
   handler.lda_card(slot, register_data);
   handler.ldx_zp(0x08);
@@ -1954,7 +1954,7 @@ auto poke_receive_meter_handler(int slot) -> void {
 constexpr uint64_t transmit_handler_cycles = 55;
 
 auto poke_transmit_meter_handler(int slot) -> void {
-  Program_t handler(handler_start);
+  Program handler(handler_start);
   handler.lda_card(slot, register_status);
   handler.ldx_zp(0x08);
   handler.lda_zp(0x06);
@@ -1979,14 +1979,14 @@ auto poke_transmit_meter_handler(int slot) -> void {
   poke_irq_vector(handler_start);
 }
 
-struct Meter_t {
+struct Meter {
   std::vector<uint8_t> bytes;
   std::vector<uint64_t> cycles;
 };
 
 // The 16-bit meter wraps once in a long run.
-auto read_meter(size_t count) -> Meter_t {
-  Meter_t meter;
+auto read_meter(size_t count) -> Meter {
+  Meter meter;
   uint32_t previous = 0;
   uint32_t carry = 0;
   for (size_t i = 0; i < count; ++i) {
@@ -2004,7 +2004,7 @@ auto read_meter(size_t count) -> Meter_t {
 
 // The gap is quantised by the loop (a turn of 8 or 15) and by the instruction
 // boundary at which each interrupt is taken (up to 7, plus the instruction).
-auto gaps_are_one_character(const Meter_t& meter, uint64_t character,
+auto gaps_are_one_character(const Meter& meter, uint64_t character,
                             uint64_t handler) -> void {
   constexpr uint64_t tolerance = 32;
   REQUIRE(meter.cycles.size() >= 2);
@@ -2016,10 +2016,10 @@ auto gaps_are_one_character(const Meter_t& meter, uint64_t character,
   }
 }
 
-auto prepare_metered_session(SerialSession_t& session, uint8_t control,
+auto prepare_metered_session(SerialSession& session, uint8_t control,
                              uint8_t command) -> void {
   session.harness.boot();
-  Program_t program;
+  Program program;
   program.program_acia(session.slot, control, command);
   const uint16_t spin = program.spin();
   program.poke();
@@ -2028,7 +2028,7 @@ auto prepare_metered_session(SerialSession_t& session, uint8_t control,
   REQUIRE(cpu_get_registers()->pc == spin);
   zero_page_clear(0x06, 0x08);
   const std::array<uint8_t, 96> zeros{};
-  TestFixtures::ScopedCore_t::poke(byte_table, zeros);
+  TestFixtures::ScopedCore::poke(byte_table, zeros);
 }
 
 }  // namespace
@@ -2036,7 +2036,7 @@ auto prepare_metered_session(SerialSession_t& session, uint8_t control,
 TEST_CASE(
     "Super Serial Card: an interrupt-driven receiver takes sixteen bytes "
     "1,063 cycles apart inside one frame at 9600 baud") {
-  SerialSession_t session;
+  SerialSession session;
   prepare_metered_session(session, control_9600_8n1, command_dtr_rx_irq);
   poke_receive_meter_handler(session.slot);
   poke_meter_program(session.slot, true);
@@ -2047,7 +2047,7 @@ TEST_CASE(
   session.harness.run_frames(2);
 
   REQUIRE(mem[0x08] == metered_bytes);
-  const Meter_t meter = read_meter(metered_bytes);
+  const Meter meter = read_meter(metered_bytes);
   for (size_t i = 0; i < metered_bytes; ++i) {
     CHECK(meter.bytes.at(i) == 0xC1 + i);
   }
@@ -2058,7 +2058,7 @@ TEST_CASE(
 TEST_CASE(
     "Super Serial Card: a receiver that never touches the card gets its first "
     "byte at the frame's end and the rest at the programmed rate") {
-  SerialSession_t session;
+  SerialSession session;
   prepare_metered_session(session, control_9600_8n1, command_dtr_rx_irq);
   poke_receive_meter_handler(session.slot);
   poke_meter_program(session.slot, false);
@@ -2070,7 +2070,7 @@ TEST_CASE(
   CHECK(mem[0x08] == 0);
   session.harness.run_frames(2);
   REQUIRE(mem[0x08] == metered_bytes);
-  const Meter_t meter = read_meter(metered_bytes);
+  const Meter meter = read_meter(metered_bytes);
   CHECK(meter.cycles.front() >= 17030 - 100);
   gaps_are_one_character(meter, char_9600_8n1, receive_handler_cycles);
 }
@@ -2078,12 +2078,12 @@ TEST_CASE(
 TEST_CASE(
     "Super Serial Card: an interrupt-driven sender puts sixteen bytes on the "
     "line 1,063 cycles apart inside one frame at 9600 baud") {
-  SerialSession_t session;
+  SerialSession session;
   prepare_metered_session(session, control_9600_8n1, command_dtr_only);
   poke_transmit_meter_handler(session.slot);
   // CLI after the first write, so the first interrupt taken is the one the
   // write raises, never a re-fire of the idle clock.
-  Program_t program;
+  Program program;
   program.write_card(session.slot, register_command, command_dtr_tx_irq);
   program.write_card(session.slot, register_data, 0xC1);
   program.cli();
@@ -2103,7 +2103,7 @@ TEST_CASE(
     expected.push_back(static_cast<uint8_t>(0xC1 + i));
   }
   CHECK(hex(session.stream()) == hex(expected));
-  const Meter_t meter = read_meter(metered_bytes);
+  const Meter meter = read_meter(metered_bytes);
   gaps_are_one_character(meter, char_9600_8n1, transmit_handler_cycles);
   CHECK(meter.cycles.back() - meter.cycles.front() < 17030);
   CHECK(save_frame(session.slot).at(frame_command) == command_firmware);
@@ -2114,7 +2114,7 @@ TEST_CASE(
 TEST_CASE(
     "Super Serial Card: at 300 baud the receive interrupts come 34,016 cycles "
     "apart across frame boundaries") {
-  SerialSession_t session;
+  SerialSession session;
   prepare_metered_session(session, control_300_8n1, command_dtr_rx_irq);
   poke_receive_meter_handler(session.slot);
   poke_meter_program(session.slot, true);
@@ -2125,6 +2125,6 @@ TEST_CASE(
   session.harness.run_frames(34);
 
   REQUIRE(mem[0x08] == metered_bytes);
-  const Meter_t meter = read_meter(metered_bytes);
+  const Meter meter = read_meter(metered_bytes);
   gaps_are_one_character(meter, char_300_8n1, receive_handler_cycles);
 }

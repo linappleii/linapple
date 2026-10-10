@@ -107,7 +107,7 @@ auto fall_over(int slot, SlotSink& sink, const char* action, int error)
       slot);
 }
 
-auto sink_open(void* ctx, int slot, PeripheralSinkKind_t kind) -> void {
+auto sink_open(void* ctx, int slot, PeripheralSinkKind kind) -> void {
   (void)ctx;
   SlotSink* sink = slot_sink(slot);
   if (sink == nullptr) {
@@ -175,7 +175,7 @@ auto sink_tick(void* ctx) -> void {
   }
 }
 
-const ByteSink_t printer_sink = {
+const ByteSink printer_sink = {
     .open = sink_open,
     .write = sink_write,
     .ready = sink_ready,
@@ -199,7 +199,7 @@ auto printer_frontend_install(const PrinterFrontendSettings& settings) -> void {
   }
 }
 
-auto printer_frontend_sink() -> const ByteSink_t& { return printer_sink; }
+auto printer_frontend_sink() -> const ByteSink& { return printer_sink; }
 
 auto printer_frontend_output_path(int slot) -> std::string {
   if (printer_settings.primary_slot == 0 ||

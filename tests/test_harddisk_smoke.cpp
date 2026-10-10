@@ -17,19 +17,19 @@
 
 namespace {
 
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 
 constexpr const char* harddisk_id = "linapple.harddisk";
 constexpr int card_slot = 7;
 
-auto harddisk_in_slot_7() -> TestConfig_t::Description_t {
-  TestConfig_t::Description_t description;
+auto harddisk_in_slot_7() -> TestConfig::Description {
+  TestConfig::Description description;
   description.slots[card_slot - 1] = "Harddisk";
   return description;
 }
 
-auto status() -> HarddiskStatus_t {
-  HarddiskStatus_t out{};
+auto status() -> HarddiskStatus {
+  HarddiskStatus out{};
   size_t size = sizeof(out);
   REQUIRE(peripheral_query(card_slot, harddisk_query_status, &out, &size) ==
           peripheral_ok);
@@ -37,11 +37,11 @@ auto status() -> HarddiskStatus_t {
 }
 
 // The machine a user gets from `linapple --hd1 a [--hd2 b]`.
-struct Arguments_t {
+struct Arguments {
   std::vector<std::string> words;
   std::vector<char*> pointers;
 
-  explicit Arguments_t(const std::vector<std::string>& given) : words(given) {
+  explicit Arguments(const std::vector<std::string>& given) : words(given) {
     for (std::string& word : words) {
       pointers.push_back(&word.front());
     }
@@ -53,8 +53,8 @@ struct Arguments_t {
 }  // namespace
 
 TEST_CASE("Harddisk smoke: the card is still in its slot after a boot") {
-  TestConfig_t config(harddisk_in_slot_7());
-  HeadlessHarness_t harness(config);
+  TestConfig config(harddisk_in_slot_7());
+  HeadlessHarness harness(config);
   harness.boot();
   harness.run_frames(2);
 
@@ -64,14 +64,14 @@ TEST_CASE("Harddisk smoke: the card is still in its slot after a boot") {
 TEST_CASE(
     "Harddisk smoke: an image named on the command line is in drive 1 when "
     "the machine starts") {
-  TestConfig_t config(harddisk_in_slot_7());
+  TestConfig config(harddisk_in_slot_7());
   const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
-  Arguments_t arguments({"linapple", "--hd1", image.path()});
-  HeadlessHarness_t harness(config, arguments.argc(), arguments.argv());
+  Arguments arguments({"linapple", "--hd1", image.path()});
+  HeadlessHarness harness(config, arguments.argc(), arguments.argv());
   peripheral_manager_think(0);
 
   REQUIRE(peripheral_present(card_slot, harddisk_id));
-  const HarddiskStatus_t loaded = status();
+  const HarddiskStatus loaded = status();
   CHECK(loaded.drive0_loaded == 1);
   CHECK(std::string(loaded.drive0_full_path) == image.path());
 }
@@ -175,13 +175,13 @@ auto prodos_order_of(const std::vector<uint8_t>& dos) -> std::vector<uint8_t> {
 
 // The user's image, re-ordered into a ProDOS-order copy and copied as it is,
 // each under a scratch directory so nothing of the user's is written.
-struct ProdosImages_t {
-  TestFixtures::ScopedTempDir_t dir{"linapple_hdd_prodos_"};
+struct ProdosImages {
+  TestFixtures::ScopedTempDir dir{"linapple_hdd_prodos_"};
   std::string po_drive_1;
   std::string po_drive_2;
   std::string dsk;
 
-  ProdosImages_t() {
+  ProdosImages() {
     const std::vector<uint8_t> dos = read_file(LINAPPLE_PRODOS_IMAGE);
     const std::vector<uint8_t> prodos = prodos_order_of(dos);
     po_drive_1 = dir.path() + "/prodos242-1.po";
@@ -208,7 +208,7 @@ auto device_entry(int slot, int drive) -> uint16_t {
   return main_word(static_cast<uint16_t>(devadr + (drive * 16) + (slot * 2)));
 }
 
-auto screen(const HeadlessHarness_t& harness) -> std::array<std::string, 24> {
+auto screen(const HeadlessHarness& harness) -> std::array<std::string, 24> {
   std::array<std::string, 24> rows;
   for (int row = 0; row < 24; ++row) {
     rows.at(static_cast<size_t>(row)) = harness.get_text_row(row);
@@ -216,7 +216,7 @@ auto screen(const HeadlessHarness_t& harness) -> std::array<std::string, 24> {
   return rows;
 }
 
-auto screen_has(const HeadlessHarness_t& harness, const std::string& text)
+auto screen_has(const HeadlessHarness& harness, const std::string& text)
     -> bool {
   for (const std::string& row : screen(harness)) {
     if (row.find(text) != std::string::npos) {
@@ -228,7 +228,7 @@ auto screen_has(const HeadlessHarness_t& harness, const std::string& text)
 
 // Runs a frame at a time until the text shows, and says how many it took; the
 // cap is what ends a boot that never gets there.
-auto frames_until(HeadlessHarness_t& harness, const std::string& text,
+auto frames_until(HeadlessHarness& harness, const std::string& text,
                   uint32_t cap = frame_cap) -> uint32_t {
   for (uint32_t frame = 0; frame < cap; ++frame) {
     if (screen_has(harness, text)) {
@@ -242,7 +242,7 @@ auto frames_until(HeadlessHarness_t& harness, const std::string& text,
 // Apple ASCII goes straight to the keyboard card; $0A is the down arrow. The
 // drive's turbo is off while a key is held, since a key held a hundred
 // machine frames repeats on a //e.
-auto type_codes(HeadlessHarness_t& harness, const std::string& codes) -> void {
+auto type_codes(HeadlessHarness& harness, const std::string& codes) -> void {
   const bool turbo = linapple_set_disk_turbo(false);
   for (const char c : codes) {
     linapple_set_key_state(static_cast<uint8_t>(c), true);
@@ -253,21 +253,21 @@ auto type_codes(HeadlessHarness_t& harness, const std::string& codes) -> void {
   linapple_set_disk_turbo(turbo);
 }
 
-auto command(HeadlessHarness_t& harness, const std::string& text) -> void {
+auto command(HeadlessHarness& harness, const std::string& text) -> void {
   type_codes(harness, text + "\r");
 }
 
 // Applesoft's HOME clears the screen, so what the next command prints is the
 // only thing a wait can find.
-auto clear_then(HeadlessHarness_t& harness, const std::string& text) -> void {
+auto clear_then(HeadlessHarness& harness, const std::string& text) -> void {
   command(harness, "HOME");
   command(harness, text);
 }
 
 // The machine the ProDOS legs run on: the card in slot 7 and Disk Turbo on,
 // which the hard disk honours because it reports its activity.
-auto prodos_machine() -> TestConfig_t::Description_t {
-  TestConfig_t::Description_t description = harddisk_in_slot_7();
+auto prodos_machine() -> TestConfig::Description {
+  TestConfig::Description description = harddisk_in_slot_7();
   description.extras.push_back({"Configuration", "Disk Turbo", "1"});
   return description;
 }
@@ -284,14 +284,14 @@ auto check_bitsy_bye_tables() -> void {
 
 // Bitsy Bye lists the volume with BASIC.SYSTEM fourth; three down arrows and
 // RETURN run it, and its prompt is the last thing it prints.
-auto enter_basic_system(HeadlessHarness_t& harness) -> void {
+auto enter_basic_system(HeadlessHarness& harness) -> void {
   type_codes(harness, "\x0a\x0a\x0a\r");
   REQUIRE(frames_until(harness, "PRODOS BASIC 1.6") < frame_cap);
   REQUIRE(frames_until(harness, "]") < frame_cap);
 }
 
 auto set_protect(int drive, bool on) -> void {
-  HarddiskSetProtectCmd_t cmd{};
+  HarddiskSetProtectCmd cmd{};
   cmd.drive = static_cast<uint8_t>(drive);
   cmd.write_protected = on ? 1 : 0;
   REQUIRE(peripheral_command(card_slot, harddisk_cmd_set_protect, &cmd,
@@ -300,7 +300,7 @@ auto set_protect(int drive, bool on) -> void {
 }
 
 auto eject(int drive) -> void {
-  HarddiskEjectCmd_t cmd{};
+  HarddiskEjectCmd cmd{};
   cmd.drive = static_cast<uint8_t>(drive);
   REQUIRE(peripheral_command(card_slot, harddisk_cmd_eject, &cmd,
                              sizeof(cmd)) == peripheral_ok);
@@ -308,7 +308,7 @@ auto eject(int drive) -> void {
 }
 
 // Boots the image in drive 1 to Bitsy Bye and hands back the screen.
-auto boot_to_bitsy_bye(HeadlessHarness_t& harness)
+auto boot_to_bitsy_bye(HeadlessHarness& harness)
     -> std::array<std::string, 24> {
   harness.boot();
   const uint32_t frame_at = frames_until(harness, rule, boot_cap);
@@ -327,7 +327,7 @@ auto boot_to_bitsy_bye(HeadlessHarness_t& harness)
 
 // A session resumed at Bitsy Bye still reaches its volume through the driver
 // entry the save holds, so BASIC.SYSTEM loads and catalogs drive 1.
-auto resumed_session_catalogs(HeadlessHarness_t& harness) -> void {
+auto resumed_session_catalogs(HeadlessHarness& harness) -> void {
   harness.run_frames(2);
   CHECK(screen_has(harness, bitsy_bye_title));
   CHECK(screen_has(harness, bitsy_bye_keys));
@@ -346,11 +346,11 @@ TEST_CASE(
     "installs two units on the entry at $C746, and BASIC.SYSTEM reports a "
     "protected drive 2 as WRITE PROTECTED and an ejected one as NO DEVICE "
     "CONNECTED") {
-  ProdosImages_t images;
-  TestConfig_t config(prodos_machine());
-  Arguments_t arguments(
+  ProdosImages images;
+  TestConfig config(prodos_machine());
+  Arguments arguments(
       {"linapple", "--hd1", images.po_drive_1, "--hd2", images.po_drive_2});
-  HeadlessHarness_t harness(config, arguments.argc(), arguments.argv());
+  HeadlessHarness harness(config, arguments.argc(), arguments.argv());
   peripheral_manager_think(0);
   REQUIRE(status().drive0_loaded == 1);
   REQUIRE(status().drive1_loaded == 1);
@@ -388,20 +388,20 @@ TEST_CASE(
 TEST_CASE(
     "Harddisk ProDOS: the same disk serialized in DOS order boots to the same "
     "Bitsy Bye screen through the card's own decoding") {
-  ProdosImages_t images;
+  ProdosImages images;
   std::array<std::string, 24> from_prodos_order;
   {
-    TestConfig_t config(prodos_machine());
-    Arguments_t arguments({"linapple", "--hd1", images.po_drive_1});
-    HeadlessHarness_t harness(config, arguments.argc(), arguments.argv());
+    TestConfig config(prodos_machine());
+    Arguments arguments({"linapple", "--hd1", images.po_drive_1});
+    HeadlessHarness harness(config, arguments.argc(), arguments.argv());
     peripheral_manager_think(0);
     REQUIRE(status().drive0_loaded == 1);
     from_prodos_order = boot_to_bitsy_bye(harness);
   }
   {
-    TestConfig_t config(prodos_machine());
-    Arguments_t arguments({"linapple", "--hd1", images.dsk});
-    HeadlessHarness_t harness(config, arguments.argc(), arguments.argv());
+    TestConfig config(prodos_machine());
+    Arguments arguments({"linapple", "--hd1", images.dsk});
+    HeadlessHarness harness(config, arguments.argc(), arguments.argv());
     peripheral_manager_think(0);
     REQUIRE(status().drive0_loaded == 1);
     const std::array<std::string, 24> from_dos_order =
@@ -417,12 +417,12 @@ TEST_CASE(
 TEST_CASE(
     "Harddisk ProDOS: a session saved at Bitsy Bye resumes on another "
     "machine mounting the same image and catalogs through the driver") {
-  ProdosImages_t images;
-  TestFixtures::ScopedTempFile_t saved(".aws");
+  ProdosImages images;
+  TestFixtures::ScopedTempFile saved(".aws");
   {
-    TestConfig_t config(prodos_machine());
-    Arguments_t arguments({"linapple", "--hd1", images.po_drive_1});
-    HeadlessHarness_t harness(config, arguments.argc(), arguments.argv());
+    TestConfig config(prodos_machine());
+    Arguments arguments({"linapple", "--hd1", images.po_drive_1});
+    HeadlessHarness harness(config, arguments.argc(), arguments.argv());
     peripheral_manager_think(0);
     REQUIRE(status().drive0_loaded == 1);
     boot_to_bitsy_bye(harness);
@@ -430,14 +430,14 @@ TEST_CASE(
     save_state_save();
   }
   {
-    TestConfig_t config(prodos_machine());
-    Arguments_t arguments({"linapple", "--hd1", images.po_drive_1});
-    HeadlessHarness_t harness(config, arguments.argc(), arguments.argv());
+    TestConfig config(prodos_machine());
+    Arguments arguments({"linapple", "--hd1", images.po_drive_1});
+    HeadlessHarness harness(config, arguments.argc(), arguments.argv());
     peripheral_manager_think(0);
     REQUIRE(status().drive0_loaded == 1);
     harness.boot();
     save_state_set_filename(saved.c_str());
-    TestFixtures::ScopedLogCapture_t log;
+    TestFixtures::ScopedLogCapture log;
     REQUIRE(save_state_load());
     CHECK(log.count_containing("resuming against drive 1") == 1);
     resumed_session_catalogs(harness);
@@ -457,16 +457,16 @@ TEST_CASE(
     MESSAGE("LINAPPLE_PRODOS_SESSION_AWS is not set; no such save to load");
     return;
   }
-  ProdosImages_t images;
-  TestConfig_t config(prodos_machine());
-  Arguments_t arguments({"linapple", "--hd1", images.po_drive_1});
-  HeadlessHarness_t harness(config, arguments.argc(), arguments.argv());
+  ProdosImages images;
+  TestConfig config(prodos_machine());
+  Arguments arguments({"linapple", "--hd1", images.po_drive_1});
+  HeadlessHarness harness(config, arguments.argc(), arguments.argv());
   peripheral_manager_think(0);
   REQUIRE(status().drive0_loaded == 1);
   harness.boot();
 
   save_state_set_filename(session);
-  TestFixtures::ScopedLogCapture_t log;
+  TestFixtures::ScopedLogCapture log;
   REQUIRE(save_state_load());
   CHECK(log.count_containing("Slot 7: Harddisk refused the 16-byte "
                              "fixed-body region and stays at reset") == 1);

@@ -7,7 +7,7 @@
 
 // Types ____________________________________________________________________
 
-enum HelpType_e : uint8_t {
+enum HelpType : uint8_t {
   HELP_TYPE_USAGE,
   HELP_TYPE_NOTE,
   HELP_TYPE_EXAMPLE,
@@ -16,15 +16,15 @@ enum HelpType_e : uint8_t {
   NUM_HELP_TYPES,
 };
 
-struct HelpEntry_t {
+struct HelpEntry {
   int iCommand;
-  HelpType_e eType;
+  HelpType eType;
   const char* text;
 };
 
 // Prototypes _______________________________________________________________
 
-auto HelpLastCommand() -> Update_t;
+auto HelpLastCommand() -> UpdateResult;
 
 constexpr uint32_t BYTE3_SHIFT = 24;
 constexpr uint32_t BYTE2_SHIFT = 16;

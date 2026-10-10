@@ -22,27 +22,27 @@ constexpr int slot_6 = 6;
 // Declared rather than inherited: with no configuration the slot fallbacks in
 // peripheral_register_internal supply a printer, a Super Serial Card and a
 // Mockingboard beside the Disk II, none of which these cases touch.
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 
-class DiskProtHarness_t {
+class DiskProtHarness {
  public:
-  DiskProtHarness_t() {
+  DiskProtHarness() {
     machine_.load();
     linapple_init();
     peripheral_manager_init();
     linapple_register_peripherals();
   }
 
-  ~DiskProtHarness_t() { linapple_shutdown(); }
+  ~DiskProtHarness() { linapple_shutdown(); }
 
-  DiskProtHarness_t(const DiskProtHarness_t&) = delete;
-  auto operator=(const DiskProtHarness_t&) -> DiskProtHarness_t& = delete;
-  DiskProtHarness_t(DiskProtHarness_t&&) = delete;
-  auto operator=(DiskProtHarness_t&&) -> DiskProtHarness_t& = delete;
+  DiskProtHarness(const DiskProtHarness&) = delete;
+  auto operator=(const DiskProtHarness&) -> DiskProtHarness& = delete;
+  DiskProtHarness(DiskProtHarness&&) = delete;
+  auto operator=(DiskProtHarness&&) -> DiskProtHarness& = delete;
 
   static auto insert_disk(const std::string& path, bool write_protected = false)
       -> void {
-    DiskInsertCmd_t cmd{};
+    DiskInsertCmd cmd{};
     cmd.drive = disk_drive_0;
     util_safe_strcpy(cmd.path, path.c_str(), disk_insert_path_max);
     cmd.write_protected = write_protected ? 1 : 0;
@@ -50,35 +50,35 @@ class DiskProtHarness_t {
     peripheral_manager_think(0);
   }
 
-  static auto get_status() -> DiskStatus_t {
-    DiskStatus_t status{};
+  static auto get_status() -> DiskStatus {
+    DiskStatus status{};
     size_t size = sizeof(status);
     peripheral_query(slot_6, disk_query_status, &status, &size);
     return status;
   }
 
  private:
-  TestConfig_t machine_{TestConfig_t::disk_ii_only()};
+  TestConfig machine_{TestConfig::disk_ii_only()};
 };
 
-class ScopedFileMode_t {
+class ScopedFileMode {
  public:
-  ScopedFileMode_t(std::string path, mode_t new_mode,
+  ScopedFileMode(std::string path, mode_t new_mode,
                    mode_t restore_mode = 0644)
       : path_(std::move(path)), restore_mode_(restore_mode) {
     chmod(path_.c_str(), new_mode);
   }
 
-  ~ScopedFileMode_t() {
+  ~ScopedFileMode() {
     if (!path_.empty()) {
       chmod(path_.c_str(), restore_mode_);
     }
   }
 
-  ScopedFileMode_t(const ScopedFileMode_t&) = delete;
-  auto operator=(const ScopedFileMode_t&) -> ScopedFileMode_t& = delete;
-  ScopedFileMode_t(ScopedFileMode_t&&) = delete;
-  auto operator=(ScopedFileMode_t&&) -> ScopedFileMode_t& = delete;
+  ScopedFileMode(const ScopedFileMode&) = delete;
+  auto operator=(const ScopedFileMode&) -> ScopedFileMode& = delete;
+  ScopedFileMode(ScopedFileMode&&) = delete;
+  auto operator=(ScopedFileMode&&) -> ScopedFileMode& = delete;
 
  private:
   std::string path_;
@@ -88,7 +88,7 @@ class ScopedFileMode_t {
 }  // namespace
 
 TEST_CASE("DiskIntegration: [PROT-01] Three-Layer Write Protection") {
-  DiskProtHarness_t harness;
+  DiskProtHarness harness;
 
   auto user_disk = TestFixtures::create_ephemeral("minimal.dsk");
   auto os_disk = TestFixtures::create_ephemeral("minimal.dsk");
@@ -98,7 +98,7 @@ TEST_CASE("DiskIntegration: [PROT-01] Three-Layer Write Protection") {
   // Layer 3: User runtime toggle (cmd.write_protected = true)
   {
     harness.insert_disk(user_disk.path(), true);
-    const DiskStatus_t status = harness.get_status();
+    const DiskStatus status = harness.get_status();
     CHECK(status.drive0_loaded == 1);
     CHECK(status.drive0_write_protected == 1);
     CHECK(status.drive0_last_error == disk_err_none);
@@ -108,9 +108,9 @@ TEST_CASE("DiskIntegration: [PROT-01] Three-Layer Write Protection") {
   // Superuser (root / container environments) bypasses DAC read-only
   // permissions.
   if (getuid() != 0) {
-    ScopedFileMode_t readonly_guard(os_disk.path(), 0444, 0644);
+    ScopedFileMode readonly_guard(os_disk.path(), 0444, 0644);
     harness.insert_disk(os_disk.path(), false);
-    const DiskStatus_t status = harness.get_status();
+    const DiskStatus status = harness.get_status();
     CHECK(status.drive0_loaded == 1);
     CHECK(status.drive0_write_protected == 1);
     CHECK(status.drive0_last_error == disk_err_none);
@@ -119,7 +119,7 @@ TEST_CASE("DiskIntegration: [PROT-01] Three-Layer Write Protection") {
   // Layer 1: Format/Driver Capability (WOZ2 is read-only in LinApple)
   {
     harness.insert_disk(format_disk.path(), false);
-    const DiskStatus_t status = harness.get_status();
+    const DiskStatus status = harness.get_status();
     CHECK(status.drive0_loaded == 1);
     CHECK(status.drive0_write_protected == 1);
     CHECK(status.drive0_last_error == disk_err_none);
@@ -128,7 +128,7 @@ TEST_CASE("DiskIntegration: [PROT-01] Three-Layer Write Protection") {
   // Baseline: Writable disk image is not write-protected
   {
     harness.insert_disk(rw_disk.path(), false);
-    const DiskStatus_t status = harness.get_status();
+    const DiskStatus status = harness.get_status();
     CHECK(status.drive0_loaded == 1);
     CHECK(status.drive0_write_protected == 0);
     CHECK(status.drive0_last_error == disk_err_none);

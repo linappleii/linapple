@@ -55,15 +55,15 @@ auto prepend_junk(const std::vector<uint8_t>& image, size_t junk_size)
   return wrapped;
 }
 
-struct TrackBits_t {
+struct TrackBits {
   std::vector<uint8_t> bits;
   uint32_t bit_count = 0;
   uint8_t bit_timing = 0;
 };
 
-auto read_track(const DiskFormatDriver_t& driver, void* instance,
-                uint32_t quarter_track) -> TrackBits_t {
-  TrackBits_t track;
+auto read_track(const DiskFormatDriver& driver, void* instance,
+                uint32_t quarter_track) -> TrackBits {
+  TrackBits track;
   track.bits.assign(max_track_bits / 8, 0);
   REQUIRE(driver.read_track_bits(instance, quarter_track, track.bits.data(),
                                  max_track_bits, &track.bit_count,
@@ -73,7 +73,7 @@ auto read_track(const DiskFormatDriver_t& driver, void* instance,
 
 // The sixteen sectors of a synthesised track, in the logical order the
 // given table assigns to the address fields.
-auto decode_track_with(const TrackBits_t& track, uint32_t cylinder,
+auto decode_track_with(const TrackBits& track, uint32_t cylinder,
                        const uint8_t* sector_order) -> std::vector<uint8_t> {
   std::vector<uint8_t> nibbles(nibbles_per_track, 0);
   uint32_t nibble_count = 0;
@@ -88,7 +88,7 @@ auto decode_track_with(const TrackBits_t& track, uint32_t cylinder,
   return sectors;
 }
 
-auto decode_track(const TrackBits_t& track, uint32_t cylinder,
+auto decode_track(const TrackBits& track, uint32_t cylinder,
                   DiskSectorOrder order) -> std::vector<uint8_t> {
   return decode_track_with(track, cylinder, disk_encoding_sector_order(order));
 }
@@ -99,7 +99,7 @@ TEST_CASE("DiskSector: a ProDOS-order image opens through the loader") {
   auto image = TestFixtures::create_ephemeral("minimal.po");
   disk_loader_reset();
 
-  const DiskFormatDriver_t* driver = nullptr;
+  const DiskFormatDriver* driver = nullptr;
   void* instance = nullptr;
   REQUIRE(disk_loader_open(image.c_str(), &driver, &instance) == disk_err_none);
   REQUIRE(driver != nullptr);
@@ -118,15 +118,15 @@ TEST_CASE("DiskSector: [IIE-1] a legacy image reads the same behind a prefix") {
 
   void* bare_instance = nullptr;
   void* wrapped_instance = nullptr;
-  REQUIRE(g_iie_driver.open(bare.c_str(), 0, false, &bare_instance) ==
+  REQUIRE(iie_driver.open(bare.c_str(), 0, false, &bare_instance) ==
           disk_err_none);
-  REQUIRE(g_iie_driver.open(wrapped.c_str(), prefix, false,
+  REQUIRE(iie_driver.open(wrapped.c_str(), prefix, false,
                             &wrapped_instance) == disk_err_none);
 
-  const TrackBits_t from_bare =
-      read_track(g_iie_driver, bare_instance, cylinder * 4);
-  const TrackBits_t from_wrapped =
-      read_track(g_iie_driver, wrapped_instance, cylinder * 4);
+  const TrackBits from_bare =
+      read_track(iie_driver, bare_instance, cylinder * 4);
+  const TrackBits from_wrapped =
+      read_track(iie_driver, wrapped_instance, cylinder * 4);
   CHECK(from_wrapped.bit_count == from_bare.bit_count);
   CHECK(from_wrapped.bits == from_bare.bits);
 
@@ -141,8 +141,8 @@ TEST_CASE("DiskSector: [IIE-1] a legacy image reads the same behind a prefix") {
       bare_bytes.begin() + 30 + ((cylinder + 1) * track_size));
   CHECK(sectors == file_track);
 
-  g_iie_driver.close(bare_instance);
-  g_iie_driver.close(wrapped_instance);
+  iie_driver.close(bare_instance);
+  iie_driver.close(wrapped_instance);
 }
 
 TEST_CASE("DiskSector: [IIE-2] a nibble image reads the same behind a prefix") {
@@ -154,15 +154,15 @@ TEST_CASE("DiskSector: [IIE-2] a nibble image reads the same behind a prefix") {
 
   void* bare_instance = nullptr;
   void* wrapped_instance = nullptr;
-  REQUIRE(g_iie_driver.open(bare.c_str(), 0, false, &bare_instance) ==
+  REQUIRE(iie_driver.open(bare.c_str(), 0, false, &bare_instance) ==
           disk_err_none);
-  REQUIRE(g_iie_driver.open(wrapped.c_str(), prefix, false,
+  REQUIRE(iie_driver.open(wrapped.c_str(), prefix, false,
                             &wrapped_instance) == disk_err_none);
 
   // Per-track counts of 6,208, 6,656 and 100 nibbles repeat, so track 2 is
   // the short one: 48 gap nibbles and 6 more before the data prologue read
   // as ten-cell self-sync, the other 46 as eight-cell data.
-  const TrackBits_t short_track = read_track(g_iie_driver, wrapped_instance,
+  const TrackBits short_track = read_track(iie_driver, wrapped_instance,
                                              2 * quarter_tracks_per_cylinder);
   CHECK(short_track.bit_count == (54 * 10) + (46 * 8));
   std::vector<uint8_t> expected(max_track_bits / 8, 0);
@@ -173,15 +173,15 @@ TEST_CASE("DiskSector: [IIE-2] a nibble image reads the same behind a prefix") {
   CHECK(short_track.bit_count == expected_count);
   CHECK(short_track.bits == expected);
 
-  const TrackBits_t full_track = read_track(g_iie_driver, wrapped_instance,
+  const TrackBits full_track = read_track(iie_driver, wrapped_instance,
                                             1 * quarter_tracks_per_cylinder);
-  const TrackBits_t bare_full =
-      read_track(g_iie_driver, bare_instance, 1 * quarter_tracks_per_cylinder);
+  const TrackBits bare_full =
+      read_track(iie_driver, bare_instance, 1 * quarter_tracks_per_cylinder);
   CHECK(full_track.bit_count == bare_full.bit_count);
   CHECK(full_track.bits == bare_full.bits);
 
-  g_iie_driver.close(bare_instance);
-  g_iie_driver.close(wrapped_instance);
+  iie_driver.close(bare_instance);
+  iie_driver.close(wrapped_instance);
 }
 
 TEST_CASE("DiskSector: [PO-1] a ProDOS-order volume probes definite") {
@@ -189,11 +189,11 @@ TEST_CASE("DiskSector: [PO-1] a ProDOS-order volume probes definite") {
   const std::vector<uint8_t> bytes = read_file(image.path());
   const auto size = static_cast<uint32_t>(bytes.size());
 
-  CHECK(g_po_driver.probe(bytes.data(), bytes.size(), size, ".po") ==
+  CHECK(po_driver.probe(bytes.data(), bytes.size(), size, ".po") ==
         disk_probe_definite);
-  CHECK(g_po_driver.probe(bytes.data(), bytes.size(), size, "") ==
+  CHECK(po_driver.probe(bytes.data(), bytes.size(), size, "") ==
         disk_probe_definite);
-  CHECK(g_do_driver.probe(bytes.data(), bytes.size(), size, ".po") ==
+  CHECK(do_driver.probe(bytes.data(), bytes.size(), size, ".po") ==
         disk_probe_no);
 }
 
@@ -202,13 +202,13 @@ TEST_CASE("DiskSector: [PO-2] a DOS 3.3 volume still probes definite as DOS") {
   const std::vector<uint8_t> bytes = read_file(image.path());
   const auto size = static_cast<uint32_t>(bytes.size());
 
-  CHECK(g_do_driver.probe(bytes.data(), bytes.size(), size, ".dsk") ==
+  CHECK(do_driver.probe(bytes.data(), bytes.size(), size, ".dsk") ==
         disk_probe_definite);
-  CHECK(g_po_driver.probe(bytes.data(), bytes.size(), size, ".dsk") ==
+  CHECK(po_driver.probe(bytes.data(), bytes.size(), size, ".dsk") ==
         disk_probe_no);
 
   disk_loader_reset();
-  const DiskFormatDriver_t* driver = nullptr;
+  const DiskFormatDriver* driver = nullptr;
   void* instance = nullptr;
   REQUIRE(disk_loader_open(image.c_str(), &driver, &instance) == disk_err_none);
   REQUIRE(driver != nullptr);
@@ -240,28 +240,28 @@ TEST_CASE("DiskSector: [DO-2] a ProDOS volume in DOS order probes definite") {
   std::vector<uint8_t> image = dos_order_prodos_image();
   const auto size = static_cast<uint32_t>(image.size());
 
-  CHECK(g_do_driver.probe(image.data(), image.size(), size, ".dsk") ==
+  CHECK(do_driver.probe(image.data(), image.size(), size, ".dsk") ==
         disk_probe_definite);
-  CHECK(g_po_driver.probe(image.data(), image.size(), size, "") ==
+  CHECK(po_driver.probe(image.data(), image.size(), size, "") ==
         disk_probe_possible);
 
   // A second block whose back link names the wrong predecessor breaks the
   // chain, and the order falls back to a guess.
   image[0x900] = 5;
-  CHECK(g_do_driver.probe(image.data(), image.size(), size, ".dsk") ==
+  CHECK(do_driver.probe(image.data(), image.size(), size, ".dsk") ==
         disk_probe_possible);
   image[0x900] = 2;
 
   // A key block with no successor is not a directory either.
   image[0xB02] = 0;
-  CHECK(g_do_driver.probe(image.data(), image.size(), size, ".dsk") ==
+  CHECK(do_driver.probe(image.data(), image.size(), size, ".dsk") ==
         disk_probe_possible);
   image[0xB02] = 3;
 
   auto file = TestFixtures::create_ephemeral_blank("prodos.dsk", 0);
   write_file(file.path(), image);
   disk_loader_reset();
-  const DiskFormatDriver_t* driver = nullptr;
+  const DiskFormatDriver* driver = nullptr;
   void* instance = nullptr;
   REQUIRE(disk_loader_open(file.c_str(), &driver, &instance) == disk_err_none);
   REQUIRE(driver != nullptr);
@@ -278,13 +278,13 @@ TEST_CASE(
   auto renamed = TestFixtures::create_ephemeral_blank("renamed.dsk", 0);
   write_file(renamed.path(), bytes);
 
-  CHECK(g_po_driver.probe(bytes.data(), bytes.size(), size, ".dsk") ==
+  CHECK(po_driver.probe(bytes.data(), bytes.size(), size, ".dsk") ==
         disk_probe_definite);
-  CHECK(g_do_driver.probe(bytes.data(), bytes.size(), size, ".dsk") ==
+  CHECK(do_driver.probe(bytes.data(), bytes.size(), size, ".dsk") ==
         disk_probe_possible);
 
   disk_loader_reset();
-  const DiskFormatDriver_t* driver = nullptr;
+  const DiskFormatDriver* driver = nullptr;
   void* instance = nullptr;
   REQUIRE(disk_loader_open(renamed.c_str(), &driver, &instance) ==
           disk_err_none);
@@ -293,7 +293,7 @@ TEST_CASE(
 
   // Track 1 physical sector 1 carries file sector 8 in ProDOS order, so the
   // pattern byte 0x18 says the interleave came from the ProDOS table.
-  const TrackBits_t track = read_track(*driver, instance, 1 * 4);
+  const TrackBits track = read_track(*driver, instance, 1 * 4);
   const std::vector<uint8_t> sectors =
       decode_track(track, 1, disk_sector_order_prodos);
   CHECK(sectors[8 * sector_size] == 0x18);
@@ -313,9 +313,9 @@ TEST_CASE(
   image[0x11000 + (15 * 0x100) + 2] = 14;
   const auto size = static_cast<uint32_t>(image.size());
 
-  CHECK(g_po_driver.probe(image.data(), image.size(), size, ".po") ==
+  CHECK(po_driver.probe(image.data(), image.size(), size, ".po") ==
         disk_probe_definite);
-  CHECK(g_do_driver.probe(image.data(), image.size(), size, "") ==
+  CHECK(do_driver.probe(image.data(), image.size(), size, "") ==
         disk_probe_possible);
 }
 
@@ -323,17 +323,17 @@ namespace {
 
 // Sixteen patterned sectors of one cylinder, laid down as cells the way the
 // image would synthesise them, so a write-back has a track to land.
-struct SynthesisedTrack_t {
+struct SynthesisedTrack {
   std::vector<uint8_t> sectors;
   std::vector<uint8_t> nibbles;
-  TrackBits_t track;
+  TrackBits track;
 };
 
 auto synthesise_sectors(uint32_t cylinder, DiskSectorOrder order,
                         const std::vector<uint8_t>& sectors)
-    -> SynthesisedTrack_t {
+    -> SynthesisedTrack {
   REQUIRE(sectors.size() == track_size);
-  SynthesisedTrack_t out;
+  SynthesisedTrack out;
   out.sectors = sectors;
   out.nibbles.assign(nibbles_per_track, 0);
   std::vector<uint8_t> sync_mask(nibbles_per_track, 0);
@@ -353,7 +353,7 @@ auto synthesise_sectors(uint32_t cylinder, DiskSectorOrder order,
 }
 
 auto synthesise_track(uint32_t cylinder, DiskSectorOrder order)
-    -> SynthesisedTrack_t {
+    -> SynthesisedTrack {
   std::vector<uint8_t> sectors(track_size, 0);
   for (size_t i = 0; i < track_size; ++i) {
     sectors[i] = static_cast<uint8_t>(0xA0 + (i / sector_size));
@@ -361,7 +361,7 @@ auto synthesise_track(uint32_t cylinder, DiskSectorOrder order)
   return synthesise_sectors(cylinder, order, sectors);
 }
 
-auto check_blank_read(const DiskFormatDriver_t& driver, void* instance,
+auto check_blank_read(const DiskFormatDriver& driver, void* instance,
                       uint32_t quarter_track) -> void {
   std::vector<uint8_t> bits(max_track_bits / 8, 0xEE);
   uint32_t bit_count = 123;
@@ -383,18 +383,18 @@ TEST_CASE(
   REQUIRE(before.size() == 143360);
 
   void* instance = nullptr;
-  REQUIRE(g_do_driver.open(image.c_str(), 0, false, &instance) ==
+  REQUIRE(do_driver.open(image.c_str(), 0, false, &instance) ==
           disk_err_none);
 
-  const SynthesisedTrack_t beyond = synthesise_track(35, disk_sector_order_dos);
-  CHECK(g_do_driver.write_track_bits(instance, 35 * 4, beyond.track.bits.data(),
+  const SynthesisedTrack beyond = synthesise_track(35, disk_sector_order_dos);
+  CHECK(do_driver.write_track_bits(instance, 35 * 4, beyond.track.bits.data(),
                                      beyond.track.bit_count) == disk_err_none);
   CHECK(read_file(image.path()) == before);
 
-  const SynthesisedTrack_t last = synthesise_track(34, disk_sector_order_dos);
-  CHECK(g_do_driver.write_track_bits(instance, 34 * 4, last.track.bits.data(),
+  const SynthesisedTrack last = synthesise_track(34, disk_sector_order_dos);
+  CHECK(do_driver.write_track_bits(instance, 34 * 4, last.track.bits.data(),
                                      last.track.bit_count) == disk_err_none);
-  g_do_driver.close(instance);
+  do_driver.close(instance);
 
   const std::vector<uint8_t> after = read_file(image.path());
   REQUIRE(after.size() == 143360);
@@ -404,11 +404,11 @@ TEST_CASE(
   CHECK(after[34 * track_size] == 0xA0);
   CHECK(after[(34 * track_size) + (15 * sector_size)] == 0xAF);
 
-  REQUIRE(g_do_driver.open(image.c_str(), 0, false, &instance) ==
+  REQUIRE(do_driver.open(image.c_str(), 0, false, &instance) ==
           disk_err_none);
-  const TrackBits_t read_back = read_track(g_do_driver, instance, 34 * 4);
+  const TrackBits read_back = read_track(do_driver, instance, 34 * 4);
   CHECK(decode_track(read_back, 34, disk_sector_order_dos) == last.sectors);
-  g_do_driver.close(instance);
+  do_driver.close(instance);
 }
 
 TEST_CASE("DiskSector: [SEC-B2] reads past the last track are blank surface") {
@@ -417,21 +417,21 @@ TEST_CASE("DiskSector: [SEC-B2] reads past the last track are blank surface") {
   auto nibble = TestFixtures::create_ephemeral("minimal-nibble.iie");
 
   void* instance = nullptr;
-  REQUIRE(g_do_driver.open(dsk.c_str(), 0, false, &instance) == disk_err_none);
-  check_blank_read(g_do_driver, instance, 35 * 4);
-  check_blank_read(g_do_driver, instance, 39 * 4);
-  check_blank_read(g_do_driver, instance, UINT32_MAX);
-  g_do_driver.close(instance);
+  REQUIRE(do_driver.open(dsk.c_str(), 0, false, &instance) == disk_err_none);
+  check_blank_read(do_driver, instance, 35 * 4);
+  check_blank_read(do_driver, instance, 39 * 4);
+  check_blank_read(do_driver, instance, UINT32_MAX);
+  do_driver.close(instance);
 
-  REQUIRE(g_iie_driver.open(legacy.c_str(), 0, false, &instance) ==
+  REQUIRE(iie_driver.open(legacy.c_str(), 0, false, &instance) ==
           disk_err_none);
-  check_blank_read(g_iie_driver, instance, 35 * 4);
-  g_iie_driver.close(instance);
+  check_blank_read(iie_driver, instance, 35 * 4);
+  iie_driver.close(instance);
 
-  REQUIRE(g_iie_driver.open(nibble.c_str(), 0, false, &instance) ==
+  REQUIRE(iie_driver.open(nibble.c_str(), 0, false, &instance) ==
           disk_err_none);
-  check_blank_read(g_iie_driver, instance, 35 * 4);
-  g_iie_driver.close(instance);
+  check_blank_read(iie_driver, instance, 35 * 4);
+  iie_driver.close(instance);
 }
 
 TEST_CASE(
@@ -448,16 +448,16 @@ TEST_CASE(
   write_file(image.path(), bytes);
 
   void* instance = nullptr;
-  CHECK(g_iie_driver.open(image.c_str(), 0, false, &instance) ==
+  CHECK(iie_driver.open(image.c_str(), 0, false, &instance) ==
         disk_err_corrupt);
   CHECK(instance == nullptr);
 
   bytes[16] = 0x00;
   write_file(image.path(), bytes);
-  REQUIRE(g_iie_driver.open(image.c_str(), 0, false, &instance) ==
+  REQUIRE(iie_driver.open(image.c_str(), 0, false, &instance) ==
           disk_err_none);
-  CHECK(read_track(g_iie_driver, instance, 1 * 4).bit_count > 0);
-  g_iie_driver.close(instance);
+  CHECK(read_track(iie_driver, instance, 1 * 4).bit_count > 0);
+  iie_driver.close(instance);
 }
 
 TEST_CASE("DiskSector: [SEC-E1] a file of the wrong size opens as corrupt") {
@@ -466,17 +466,17 @@ TEST_CASE("DiskSector: [SEC-E1] a file of the wrong size opens as corrupt") {
   auto short_image = TestFixtures::create_ephemeral_blank("short.po", 3072);
 
   void* instance = reinterpret_cast<void*>(1);
-  CHECK(g_do_driver.open(unaligned.c_str(), 0, false, &instance) ==
+  CHECK(do_driver.open(unaligned.c_str(), 0, false, &instance) ==
         disk_err_corrupt);
   CHECK(instance == nullptr);
   instance = reinterpret_cast<void*>(1);
-  CHECK(g_po_driver.open(short_image.c_str(), 0, false, &instance) ==
+  CHECK(po_driver.open(short_image.c_str(), 0, false, &instance) ==
         disk_err_corrupt);
   CHECK(instance == nullptr);
 
   // A prefix the file cannot contain is a header the file falls short of.
   instance = reinterpret_cast<void*>(1);
-  CHECK(g_do_driver.open(unaligned.c_str(), 6000, false, &instance) ==
+  CHECK(do_driver.open(unaligned.c_str(), 6000, false, &instance) ==
         disk_err_corrupt);
   CHECK(instance == nullptr);
 }
@@ -484,11 +484,11 @@ TEST_CASE("DiskSector: [SEC-E1] a file of the wrong size opens as corrupt") {
 TEST_CASE("DiskSector: [SEC-E2] a missing file opens as file_not_found") {
   const char* missing = "/nonexistent_dir_12345/missing.dsk";
   void* instance = reinterpret_cast<void*>(1);
-  CHECK(g_do_driver.open(missing, 0, false, &instance) ==
+  CHECK(do_driver.open(missing, 0, false, &instance) ==
         disk_err_file_not_found);
   CHECK(instance == nullptr);
   instance = reinterpret_cast<void*>(1);
-  CHECK(g_po_driver.open(missing, 0, true, &instance) ==
+  CHECK(po_driver.open(missing, 0, true, &instance) ==
         disk_err_file_not_found);
   CHECK(instance == nullptr);
 }
@@ -498,7 +498,7 @@ namespace {
 // The patterned ProDOS image cut or padded to a given size; the padding is a
 // byte no sector of the fixture carries, so a read that strays past the
 // image's 143,360 bytes shows up in the decoded track.
-auto resized_po(size_t size) -> TestFixtures::EphemeralDiskFixture_t {
+auto resized_po(size_t size) -> TestFixtures::EphemeralDiskFixture {
   auto image = TestFixtures::create_ephemeral("minimal.po");
   std::vector<uint8_t> bytes = read_file(image.path());
   REQUIRE(bytes.size() == 143360);
@@ -531,25 +531,25 @@ TEST_CASE(
        {143105U, 143200U, 143360U, 143364U, 143403U, 143488U}) {
     CAPTURE(size);
     auto image = resized_po(size);
-    CHECK(g_po_driver.probe(sample.data(), sample.size(),
+    CHECK(po_driver.probe(sample.data(), sample.size(),
                             static_cast<uint32_t>(size),
                             ".po") != disk_probe_no);
     void* instance = nullptr;
-    REQUIRE(g_po_driver.open(image.c_str(), 0, false, &instance) ==
+    REQUIRE(po_driver.open(image.c_str(), 0, false, &instance) ==
             disk_err_none);
     REQUIRE(instance != nullptr);
-    g_po_driver.close(instance);
+    po_driver.close(instance);
   }
 
   // Past the family's ceiling the size alone decides, before any allocation.
   for (const size_t size : {143489U, 163840U}) {
     CAPTURE(size);
     auto image = resized_po(size);
-    CHECK(g_po_driver.probe(sample.data(), sample.size(),
+    CHECK(po_driver.probe(sample.data(), sample.size(),
                             static_cast<uint32_t>(size),
                             ".po") == disk_probe_no);
     void* instance = reinterpret_cast<void*>(1);
-    CHECK(g_po_driver.open(image.c_str(), 0, false, &instance) ==
+    CHECK(po_driver.open(image.c_str(), 0, false, &instance) ==
           disk_err_unsupported);
     CHECK(instance == nullptr);
   }
@@ -560,11 +560,11 @@ TEST_CASE(
   for (const size_t size : {143000U, 143104U, 143365U, 143402U, 143487U}) {
     CAPTURE(size);
     auto image = resized_po(size);
-    CHECK(g_po_driver.probe(sample.data(), sample.size(),
+    CHECK(po_driver.probe(sample.data(), sample.size(),
                             static_cast<uint32_t>(size),
                             ".po") == disk_probe_no);
     void* instance = reinterpret_cast<void*>(1);
-    CHECK(g_po_driver.open(image.c_str(), 0, false, &instance) ==
+    CHECK(po_driver.open(image.c_str(), 0, false, &instance) ==
           disk_err_corrupt);
     CHECK(instance == nullptr);
   }
@@ -579,18 +579,18 @@ TEST_CASE(
   const std::vector<uint8_t> before = read_file(image.path());
 
   disk_loader_reset();
-  const DiskFormatDriver_t* driver = nullptr;
+  const DiskFormatDriver* driver = nullptr;
   void* instance = nullptr;
   REQUIRE(disk_loader_open(image.c_str(), &driver, &instance) == disk_err_none);
   REQUIRE(driver != nullptr);
   CHECK(std::string(driver->name) == "ProDOS Order");
 
-  const TrackBits_t read_back = read_track(*driver, instance, last * 4);
+  const TrackBits read_back = read_track(*driver, instance, last * 4);
   CHECK(decode_track(read_back, last, disk_sector_order_prodos) ==
         file_track(before, 0, last));
   check_blank_read(*driver, instance, 35 * 4);
 
-  const SynthesisedTrack_t written =
+  const SynthesisedTrack written =
       synthesise_track(last, disk_sector_order_prodos);
   REQUIRE(driver->write_track_bits(instance, last * 4,
                                    written.track.bits.data(),
@@ -617,7 +617,7 @@ TEST_CASE(
   const std::vector<uint8_t> before = read_file(image.path());
 
   void* instance = nullptr;
-  REQUIRE(g_po_driver.open(image.c_str(), 0, false, &instance) ==
+  REQUIRE(po_driver.open(image.c_str(), 0, false, &instance) ==
           disk_err_none);
 
   // 3,841 bytes of track 34 exist: fifteen whole sectors and one byte of the
@@ -625,17 +625,17 @@ TEST_CASE(
   const std::vector<uint8_t> expected = file_track(before, 0, last);
   REQUIRE(expected[15 * sector_size] == 0x2F);
   REQUIRE(expected[(15 * sector_size) + 1] == 0);
-  const TrackBits_t read_back = read_track(g_po_driver, instance, last * 4);
+  const TrackBits read_back = read_track(po_driver, instance, last * 4);
   CHECK(decode_track(read_back, last, disk_sector_order_prodos) == expected);
-  CHECK(decode_track(read_track(g_po_driver, instance, 33 * 4), 33,
+  CHECK(decode_track(read_track(po_driver, instance, 33 * 4), 33,
                      disk_sector_order_prodos) == file_track(before, 0, 33));
 
-  const SynthesisedTrack_t written =
+  const SynthesisedTrack written =
       synthesise_track(last, disk_sector_order_prodos);
-  REQUIRE(g_po_driver.write_track_bits(
+  REQUIRE(po_driver.write_track_bits(
               instance, last * 4, written.track.bits.data(),
               written.track.bit_count) == disk_err_none);
-  g_po_driver.close(instance);
+  po_driver.close(instance);
   const std::vector<uint8_t> after = read_file(image.path());
   CHECK(after.size() == 143360);
   CHECK(file_track(after, 0, last) == written.sectors);
@@ -645,7 +645,7 @@ namespace {
 
 // Sixteen sectors decoded as they lie on the surface: slot p is whatever the
 // image put in physical sector p.
-auto decode_physical(const TrackBits_t& track, uint32_t cylinder)
+auto decode_physical(const TrackBits& track, uint32_t cylinder)
     -> std::vector<uint8_t> {
   std::array<uint8_t, sectors_per_track> identity{};
   for (size_t i = 0; i < identity.size(); ++i) {
@@ -654,7 +654,7 @@ auto decode_physical(const TrackBits_t& track, uint32_t cylinder)
   return decode_track_with(track, cylinder, identity.data());
 }
 
-auto to_nibbles(const TrackBits_t& track) -> std::vector<uint8_t> {
+auto to_nibbles(const TrackBits& track) -> std::vector<uint8_t> {
   std::vector<uint8_t> nibbles(nibbles_per_track, 0);
   uint32_t nibble_count = 0;
   REQUIRE(disk_encoding_bits_to_nibbles(track.bits.data(), track.bit_count,
@@ -666,10 +666,10 @@ auto to_nibbles(const TrackBits_t& track) -> std::vector<uint8_t> {
 
 auto open_iie(const char* path) -> void* {
   disk_loader_reset();
-  const DiskFormatDriver_t* driver = nullptr;
+  const DiskFormatDriver* driver = nullptr;
   void* instance = nullptr;
   REQUIRE(disk_loader_open(path, &driver, &instance) == disk_err_none);
-  REQUIRE(driver == &g_iie_driver);
+  REQUIRE(driver == &iie_driver);
   REQUIRE(instance != nullptr);
   return instance;
 }
@@ -700,7 +700,7 @@ TEST_CASE(
   // Track 2's file sector s is 0x20 + s throughout, so the slots that an
   // identity map would fill with 0x21, 0x22 and 0x2D carry the sectors the
   // header map sends there instead.
-  const TrackBits_t track = read_track(g_iie_driver, instance, 2 * 4);
+  const TrackBits track = read_track(iie_driver, instance, 2 * 4);
   const std::vector<uint8_t> physical = decode_physical(track, 2);
   CHECK(physical[1 * sector_size] == 0x27);
   CHECK(physical[2 * sector_size] == 0x2E);
@@ -716,11 +716,11 @@ TEST_CASE(
   // whole track equals the file's bytes at 30 + 4096t.
   CHECK(decode_track(track, 2, disk_sector_order_dos) ==
         file_track(bytes, legacy_data_at, 2));
-  CHECK(decode_track(read_track(g_iie_driver, instance, 34 * 4), 34,
+  CHECK(decode_track(read_track(iie_driver, instance, 34 * 4), 34,
                      disk_sector_order_dos) ==
         file_track(bytes, legacy_data_at, 34));
 
-  g_iie_driver.close(instance);
+  iie_driver.close(instance);
 }
 
 TEST_CASE(
@@ -746,7 +746,7 @@ TEST_CASE(
   // Track 0 is a formatted track of zero sectors: a 48-nibble gap, the first
   // address prologue, and sixteen sectors that decode to nothing.
   const std::vector<uint8_t> track_0 =
-      to_nibbles(read_track(g_iie_driver, instance, 0));
+      to_nibbles(read_track(iie_driver, instance, 0));
   REQUIRE(track_0.size() == count_of_track_0);
   CHECK(std::vector<uint8_t>(track_0.begin(), track_0.begin() + 48) ==
         std::vector<uint8_t>(48, 0xFF));
@@ -756,7 +756,7 @@ TEST_CASE(
   CHECK(track_0 ==
         std::vector<uint8_t>(bytes.begin() + header_size,
                              bytes.begin() + header_size + count_of_track_0));
-  CHECK(decode_track(read_track(g_iie_driver, instance, 0), 0,
+  CHECK(decode_track(read_track(iie_driver, instance, 0), 0,
                      disk_sector_order_dos) ==
         std::vector<uint8_t>(track_size, 0));
 
@@ -765,13 +765,13 @@ TEST_CASE(
   const size_t track_1_at = header_size + count_of_track_0;
   const size_t track_2_at = track_1_at + count_of_track_1;
   const std::vector<uint8_t> track_1 =
-      to_nibbles(read_track(g_iie_driver, instance, 1 * 4));
+      to_nibbles(read_track(iie_driver, instance, 1 * 4));
   REQUIRE(track_1.size() == count_of_track_1);
   CHECK(track_1 ==
         std::vector<uint8_t>(bytes.begin() + track_1_at,
                              bytes.begin() + track_1_at + count_of_track_1));
 
-  const TrackBits_t short_track = read_track(g_iie_driver, instance, 2 * 4);
+  const TrackBits short_track = read_track(iie_driver, instance, 2 * 4);
   CHECK(short_track.bit_count == (54 * 10) + (46 * 8));
   const std::vector<uint8_t> track_2 = to_nibbles(short_track);
   REQUIRE(track_2.size() == count_of_track_2);
@@ -783,13 +783,13 @@ TEST_CASE(
   // Track 3 starts the cycle again, so its offset carries all three counts.
   const size_t track_3_at = track_2_at + count_of_track_2;
   const std::vector<uint8_t> track_3 =
-      to_nibbles(read_track(g_iie_driver, instance, 3 * 4));
+      to_nibbles(read_track(iie_driver, instance, 3 * 4));
   REQUIRE(track_3.size() == count_of_track_0);
   CHECK(track_3 ==
         std::vector<uint8_t>(bytes.begin() + track_3_at,
                              bytes.begin() + track_3_at + count_of_track_0));
 
-  g_iie_driver.close(instance);
+  iie_driver.close(instance);
 }
 
 namespace {
@@ -816,24 +816,24 @@ auto numbered_sectors() -> std::vector<uint8_t> {
   return sectors;
 }
 
-struct SectorWriter_t {
-  const DiskFormatDriver_t* driver;
+struct SectorWriter {
+  const DiskFormatDriver* driver;
   DiskSectorOrder order;
   const std::array<uint8_t, sectors_per_track>* slots;
   const char* fixture;
   const char* extension;
 };
 
-const std::array<SectorWriter_t, 2> sector_writers = {
-    SectorWriter_t{
-        &g_po_driver,
+const std::array<SectorWriter, 2> sector_writers = {
+    SectorWriter{
+        &po_driver,
         disk_sector_order_prodos,
         &prodos_slots,
         "minimal.po",
         ".po",
     },
-    SectorWriter_t{
-        &g_do_driver,
+    SectorWriter{
+        &do_driver,
         disk_sector_order_dos,
         &dos_slots,
         "minimal.dsk",
@@ -853,18 +853,18 @@ TEST_CASE(
   write_file(as_dos.path(), bytes);
 
   disk_loader_reset();
-  const DiskFormatDriver_t* driver = nullptr;
+  const DiskFormatDriver* driver = nullptr;
   void* po_instance = nullptr;
   REQUIRE(disk_loader_open(po.c_str(), &driver, &po_instance) == disk_err_none);
-  REQUIRE(driver == &g_po_driver);
+  REQUIRE(driver == &po_driver);
   void* do_instance = nullptr;
-  REQUIRE(g_do_driver.open(as_dos.c_str(), 0, false, &do_instance) ==
+  REQUIRE(do_driver.open(as_dos.c_str(), 0, false, &do_instance) ==
           disk_err_none);
 
-  const TrackBits_t po_track =
-      read_track(g_po_driver, po_instance, cylinder * 4);
-  const TrackBits_t do_track =
-      read_track(g_do_driver, do_instance, cylinder * 4);
+  const TrackBits po_track =
+      read_track(po_driver, po_instance, cylinder * 4);
+  const TrackBits do_track =
+      read_track(do_driver, do_instance, cylinder * 4);
   const std::vector<uint8_t> via_po = decode_physical(po_track, cylinder);
   const std::vector<uint8_t> via_do = decode_physical(do_track, cylinder);
 
@@ -885,8 +885,8 @@ TEST_CASE(
   CHECK(decode_track(do_track, cylinder, disk_sector_order_dos) ==
         file_track(bytes, 0, cylinder));
 
-  g_po_driver.close(po_instance);
-  g_do_driver.close(do_instance);
+  po_driver.close(po_instance);
+  do_driver.close(do_instance);
 }
 
 TEST_CASE(
@@ -895,7 +895,7 @@ TEST_CASE(
   constexpr uint32_t cylinder = 3;
   const std::vector<uint8_t> pattern = numbered_sectors();
 
-  for (const SectorWriter_t& writer : sector_writers) {
+  for (const SectorWriter& writer : sector_writers) {
     INFO("driver := ", std::string(writer.driver->name));
     auto image = TestFixtures::create_ephemeral_blank(
         std::string("fresh") + writer.extension, 0);
@@ -905,7 +905,7 @@ TEST_CASE(
     void* instance = nullptr;
     REQUIRE(writer.driver->open(image.c_str(), 0, false, &instance) ==
             disk_err_none);
-    const SynthesisedTrack_t written =
+    const SynthesisedTrack written =
         synthesise_sectors(cylinder, writer.order, pattern);
     REQUIRE(writer.driver->write_track_bits(
                 instance, cylinder * 4, written.track.bits.data(),
@@ -933,7 +933,7 @@ TEST_CASE(
 
     REQUIRE(writer.driver->open(image.c_str(), 0, false, &instance) ==
             disk_err_none);
-    const TrackBits_t read_back =
+    const TrackBits read_back =
         read_track(*writer.driver, instance, cylinder * 4);
     CHECK(decode_track(read_back, cylinder, writer.order) == pattern);
     const std::vector<uint8_t> physical = decode_physical(read_back, cylinder);
@@ -951,7 +951,7 @@ TEST_CASE(
   constexpr uint32_t cylinder = 3;
   const std::vector<uint8_t> pattern = numbered_sectors();
 
-  for (const SectorWriter_t& writer : sector_writers) {
+  for (const SectorWriter& writer : sector_writers) {
     INFO("driver := ", std::string(writer.driver->name));
     auto image = TestFixtures::create_ephemeral(writer.fixture);
     const std::vector<uint8_t> before = read_file(image.path());
@@ -960,7 +960,7 @@ TEST_CASE(
     REQUIRE(writer.driver->open(image.c_str(), 0, true, &instance) ==
             disk_err_none);
     CHECK(writer.driver->is_write_protected(instance));
-    const SynthesisedTrack_t written =
+    const SynthesisedTrack written =
         synthesise_sectors(cylinder, writer.order, pattern);
     CHECK(writer.driver->write_track_bits(
               instance, cylinder * 4, written.track.bits.data(),
@@ -981,7 +981,7 @@ TEST_CASE(
 TEST_CASE(
     "DiskSector: [SEC-F1-4] a created image reopens through the loader as "
     "the order its name says") {
-  for (const SectorWriter_t& writer : sector_writers) {
+  for (const SectorWriter& writer : sector_writers) {
     INFO("driver := ", std::string(writer.driver->name));
     auto image = TestFixtures::create_ephemeral_blank(
         std::string("fresh") + writer.extension, 0);
@@ -997,20 +997,20 @@ TEST_CASE(
     const auto size = static_cast<uint32_t>(bytes.size());
     CHECK(writer.driver->probe(bytes.data(), bytes.size(), size,
                                writer.extension) == disk_probe_possible);
-    const DiskFormatDriver_t& other =
-        writer.driver == &g_po_driver ? g_do_driver : g_po_driver;
+    const DiskFormatDriver& other =
+        writer.driver == &po_driver ? do_driver : po_driver;
     CHECK(other.probe(bytes.data(), bytes.size(), size, writer.extension) ==
           disk_probe_no);
 
     disk_loader_reset();
-    const DiskFormatDriver_t* driver = nullptr;
+    const DiskFormatDriver* driver = nullptr;
     void* instance = nullptr;
     REQUIRE(disk_loader_open(image.c_str(), &driver, &instance) ==
             disk_err_none);
     REQUIRE(driver == writer.driver);
     CHECK_FALSE(driver->is_write_protected(instance));
 
-    const TrackBits_t track = read_track(*driver, instance, 0);
+    const TrackBits track = read_track(*driver, instance, 0);
     CHECK(track.bit_count == 50464);
     CHECK(track.bit_timing == disk_default_bit_timing);
     CHECK(decode_track(track, 0, writer.order) ==

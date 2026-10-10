@@ -102,7 +102,7 @@ auto asset_insert_master_disk() -> int {
 
   Configuration::instance().set_string(cfg_sec_slots, cfg_disk_image1, path);
 
-  DiskInsertCmd_t cmd{};
+  DiskInsertCmd cmd{};
   cmd.drive = disk_drive_0;
   util_safe_strcpy(cmd.path, path.c_str(), disk_insert_path_max);
   cmd.write_protected = 0;

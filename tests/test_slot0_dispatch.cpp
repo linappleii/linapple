@@ -43,37 +43,37 @@ constexpr uint32_t unknown_keyboard_id = PERIPHERAL_SUBSYSTEM_KEYBOARD | 0x00FF;
 constexpr uint32_t retired_joystick_id = PERIPHERAL_SUBSYSTEM_JOYSTICK | 0x0001;
 constexpr uint32_t host_key_a = 4;
 
-enum class Order_t : uint8_t { keyboard_first, joystick_first };
+enum class Order : uint8_t { keyboard_first, joystick_first };
 
 // So that CAPTURE(order) says which pass a failure came from.
-auto operator<<(std::ostream& out, Order_t order) -> std::ostream& {
-  return out << (order == Order_t::keyboard_first ? "keyboard first"
+auto operator<<(std::ostream& out, Order order) -> std::ostream& {
+  return out << (order == Order::keyboard_first ? "keyboard first"
                                                   : "joystick first");
 }
 
-auto keyboard_descriptor() -> Peripheral_t* {
-  Peripheral_t* descriptor = peripheral_find_internal("linapple.keyboard");
+auto keyboard_descriptor() -> Peripheral* {
+  Peripheral* descriptor = peripheral_find_internal("linapple.keyboard");
   REQUIRE(descriptor != nullptr);
   return descriptor;
 }
 
-auto joystick_descriptor() -> Peripheral_t* {
-  Peripheral_t* descriptor = peripheral_find_internal("linapple.joystick");
+auto joystick_descriptor() -> Peripheral* {
+  Peripheral* descriptor = peripheral_find_internal("linapple.joystick");
   REQUIRE(descriptor != nullptr);
   return descriptor;
 }
 
 // Slot 0 fixture managing registration and teardown of keyboard and joystick.
-struct Slot0_t {
+struct Slot0 {
   Apple2Type saved_type{current_apple2_type};
   // A fresh CPU context so the I/O bridge's cycle accounting starts at zero
   // and the counter the probes set is the one the card reads.
-  CpuInstance_t* saved_cpu{cpu_get_active_context()};
-  CpuInstance_t cpu{};
+  CpuInstance* saved_cpu{cpu_get_active_context()};
+  CpuInstance cpu{};
   int keyboard_registered{-1};
   int joystick_registered{-1};
 
-  explicit Slot0_t(Order_t order) {
+  explicit Slot0(Order order) {
     cpu_set_active_context(&cpu);
     current_apple2_type = A2TYPE_APPLE2EENHANCED;
     // A hand-built machine gets no motherboard I/O handlers, so they and the
@@ -82,7 +82,7 @@ struct Slot0_t {
     REQUIRE(mem_initialize() == 0);
     switch_inputs_reset_configuration(true, true);
     peripheral_manager_init();
-    if (order == Order_t::keyboard_first) {
+    if (order == Order::keyboard_first) {
       keyboard_registered = peripheral_register(keyboard_descriptor(), 0);
       joystick_registered = peripheral_register(joystick_descriptor(), 0);
     } else {
@@ -92,7 +92,7 @@ struct Slot0_t {
     peripheral_manager_reset();
   }
 
-  ~Slot0_t() {
+  ~Slot0() {
     // The bridge's modifier record outlives the machine.
     linapple_set_modifiers(false, false, false, false);
     peripheral_manager_think(0);
@@ -102,30 +102,30 @@ struct Slot0_t {
     cpu_set_active_context(saved_cpu);
   }
 
-  Slot0_t(const Slot0_t&) = delete;
-  auto operator=(const Slot0_t&) -> Slot0_t& = delete;
-  Slot0_t(Slot0_t&&) = delete;
-  auto operator=(Slot0_t&&) -> Slot0_t& = delete;
+  Slot0(const Slot0&) = delete;
+  auto operator=(const Slot0&) -> Slot0& = delete;
+  Slot0(Slot0&&) = delete;
+  auto operator=(Slot0&&) -> Slot0& = delete;
 };
 
-void bare_log(void* /*unused*/, PeripheralLogLevel_t /*unused*/,
+void bare_log(void* /*unused*/, PeripheralLogLevel /*unused*/,
               const char* /*unused*/, ...) {}
 void bare_register_direct_io(void* /*unused*/, uint16_t /*unused*/,
                              PeripheralIOHandler /*unused*/,
                              PeripheralIOHandler /*unused*/) {}
 void bare_register_direct_io_strobe(void* /*unused*/, uint16_t /*unused*/,
-                                    PeripheralStrobeHandler_t /*unused*/) {}
+                                    PeripheralStrobeHandler /*unused*/) {}
 void bare_schedule_event(void* /*unused*/, uint64_t /*unused*/) {}
 auto bare_get_cycles() -> uint64_t { return 0; }
 auto bare_get_clock_hz() -> double { return 1020484.0; }
 auto bare_read_floating_bus(uint32_t /*unused*/) -> uint8_t { return 0; }
-auto bare_get_machine() -> PeripheralMachine_t {
+auto bare_get_machine() -> PeripheralMachine {
   return peripheral_machine_apple2e;
 }
 auto bare_get_frame_cycles() -> uint32_t { return 17030; }
 
-auto make_bare_host() -> HostInterface_t {
-  HostInterface_t host{};
+auto make_bare_host() -> HostInterface {
+  HostInterface host{};
   host.Log = bare_log;
   host.RegisterDirectIO = bare_register_direct_io;
   host.RegisterDirectIOStrobe = bare_register_direct_io_strobe;
@@ -138,16 +138,16 @@ auto make_bare_host() -> HostInterface_t {
   return host;
 }
 
-struct BareHost_t {
-  HostInterface_t host{make_bare_host()};
-  Peripheral_t* keyboard{keyboard_descriptor()};
-  Peripheral_t* joystick{joystick_descriptor()};
+struct BareHost {
+  HostInterface host{make_bare_host()};
+  Peripheral* keyboard{keyboard_descriptor()};
+  Peripheral* joystick{joystick_descriptor()};
   void* kbd{keyboard != nullptr ? keyboard->init(0, &host) : nullptr};
   void* joy{joystick != nullptr ? joystick->init(0, &host) : nullptr};
 
-  BareHost_t() = default;
+  BareHost() = default;
 
-  ~BareHost_t() {
+  ~BareHost() {
     if (kbd != nullptr) {
       keyboard->shutdown(kbd);
     }
@@ -156,10 +156,10 @@ struct BareHost_t {
     }
   }
 
-  BareHost_t(const BareHost_t&) = delete;
-  auto operator=(const BareHost_t&) -> BareHost_t& = delete;
-  BareHost_t(BareHost_t&&) = delete;
-  auto operator=(BareHost_t&&) -> BareHost_t& = delete;
+  BareHost(const BareHost&) = delete;
+  auto operator=(const BareHost&) -> BareHost& = delete;
+  BareHost(BareHost&&) = delete;
+  auto operator=(BareHost&&) -> BareHost& = delete;
 };
 
 // Commands are queued and dispatched on emulation frame boundaries.
@@ -171,8 +171,8 @@ auto send(uint32_t cmd_id, const void* data, size_t size) -> void {
 }
 
 auto key_event(uint32_t host_key, uint8_t code, bool down)
-    -> KeyboardKeyEvent_t {
-  return KeyboardKeyEvent_t{
+    -> KeyboardKeyEvent {
+  return KeyboardKeyEvent{
       host_key,
       code,
       static_cast<uint8_t>(down ? 1 : 0),
@@ -181,40 +181,40 @@ auto key_event(uint32_t host_key, uint8_t code, bool down)
 }
 
 auto press_key(uint32_t host_key, uint8_t code) -> void {
-  const KeyboardKeyEvent_t event = key_event(host_key, code, true);
+  const KeyboardKeyEvent event = key_event(host_key, code, true);
   send(keyboard_cmd_key, &event, sizeof(event));
 }
 
 auto release_key(uint32_t host_key) -> void {
-  const KeyboardKeyEvent_t event = key_event(host_key, 0, false);
+  const KeyboardKeyEvent event = key_event(host_key, 0, false);
   send(keyboard_cmd_key, &event, sizeof(event));
 }
 
-auto keyboard_state() -> KeyboardSaveState_t {
-  KeyboardSaveState_t state{};
+auto keyboard_state() -> KeyboardSaveState {
+  KeyboardSaveState state{};
   size_t size = sizeof(state);
   peripheral_save_state_by_name(0, "Keyboard", &state, &size);
   REQUIRE(size == sizeof(state));
   return state;
 }
 
-auto joystick_state() -> JoystickSaveState_t {
-  JoystickSaveState_t state{};
+auto joystick_state() -> JoystickSaveState {
+  JoystickSaveState state{};
   size_t size = sizeof(state);
   peripheral_save_state_by_name(0, "Joystick", &state, &size);
   REQUIRE(size == sizeof(state));
   return state;
 }
 
-struct HostModifiers_t {
+struct HostModifiers {
   bool shift = false;
   bool ctrl = false;
   bool open_apple = false;
   bool solid_apple = false;
 };
 
-auto host_modifiers() -> HostModifiers_t {
-  HostModifiers_t mods;
+auto host_modifiers() -> HostModifiers {
+  HostModifiers mods;
   linapple_get_modifiers(&mods.shift, &mods.ctrl, &mods.open_apple,
                          &mods.solid_apple);
   return mods;
@@ -242,31 +242,31 @@ auto release_button(uint8_t button) -> void {
 // the probe strobes at probe_counter and samples bit 7 one cycle before and at
 // the fall the position predicts.
 auto paddle_level_after(uint8_t paddle, uint64_t cycles) -> uint8_t {
-  g_cumulative_cycles = probe_counter + cycles;
+  cumulative_cycles = probe_counter + cycles;
   const uint16_t addr = static_cast<uint16_t>(addr_paddle0 + paddle);
   return (io_map_dispatch(0, addr, 0, 0, 0) & switch_bit) != 0 ? 1 : 0;
 }
 
 auto paddle_pulse_is(uint8_t paddle, uint64_t pulse) -> bool {
-  g_cumulative_cycles = probe_counter;
+  cumulative_cycles = probe_counter;
   static_cast<void>(io_map_dispatch(0, addr_trigger, 0, 0, 0));
   return paddle_level_after(paddle, pulse - 1) == 1 &&
          paddle_level_after(paddle, pulse) == 0;
 }
 
 auto move_axis(uint8_t joystick, uint8_t axis, uint8_t value) -> void {
-  const JoystickAxisPayload_t payload{joystick, axis, value, 0};
+  const JoystickAxisPayload payload{joystick, axis, value, 0};
   send(JOYSTICK_CMD_SET_AXIS, &payload, sizeof(payload));
 }
 
-const std::initializer_list<Order_t> both_orders = {
-    Order_t::keyboard_first,
-    Order_t::joystick_first,
+const std::initializer_list<Order> both_orders = {
+    Order::keyboard_first,
+    Order::joystick_first,
 };
 
 // Allocate oversized buffer to test payload bounds handling safely.
 template <typename T>
-struct OneByteLong_t {
+struct OneByteLong {
   T value;
   uint8_t extra;
 };
@@ -274,9 +274,9 @@ struct OneByteLong_t {
 }  // namespace
 
 TEST_CASE("Slot 0: a key and a button under one slot") {
-  for (Order_t order : both_orders) {
+  for (Order order : both_orders) {
     CAPTURE(order);
-    Slot0_t slot0(order);
+    Slot0 slot0(order);
     REQUIRE(slot0.keyboard_registered == 0);
     REQUIRE(slot0.joystick_registered == 0);
 
@@ -291,9 +291,9 @@ TEST_CASE("Slot 0: a key and a button under one slot") {
 }
 
 TEST_CASE("Slot 0: a stick move and the host's modifiers under one id") {
-  for (Order_t order : both_orders) {
+  for (Order order : both_orders) {
     CAPTURE(order);
-    Slot0_t slot0(order);
+    Slot0 slot0(order);
     REQUIRE(slot0.keyboard_registered == 0);
     REQUIRE(slot0.joystick_registered == 0);
 
@@ -309,9 +309,9 @@ TEST_CASE("Slot 0: a stick move and the host's modifiers under one id") {
 }
 
 TEST_CASE("Slot 0: a key leaves the sticks where they are") {
-  for (Order_t order : both_orders) {
+  for (Order order : both_orders) {
     CAPTURE(order);
-    Slot0_t slot0(order);
+    Slot0 slot0(order);
     REQUIRE(slot0.keyboard_registered == 0);
     REQUIRE(slot0.joystick_registered == 0);
 
@@ -330,17 +330,17 @@ TEST_CASE("Slot 0: a key leaves the sticks where they are") {
 }
 
 TEST_CASE("Slot 0: a connector button latches no key and reaches no modifier") {
-  for (Order_t order : both_orders) {
+  for (Order order : both_orders) {
     CAPTURE(order);
-    Slot0_t slot0(order);
+    Slot0 slot0(order);
     REQUIRE(slot0.keyboard_registered == 0);
     REQUIRE(slot0.joystick_registered == 0);
 
-    const HostModifiers_t before = host_modifiers();
+    const HostModifiers before = host_modifiers();
     press_button(1);
     settle();
 
-    const HostModifiers_t after = host_modifiers();
+    const HostModifiers after = host_modifiers();
     CHECK(after.shift == before.shift);
     CHECK(after.ctrl == before.ctrl);
     CHECK(after.open_apple == before.open_apple);
@@ -352,33 +352,33 @@ TEST_CASE("Slot 0: a connector button latches no key and reaches no modifier") {
 }
 
 TEST_CASE("Slot 0: setting modifiers does not move the stick") {
-  for (Order_t order : both_orders) {
+  for (Order order : both_orders) {
     CAPTURE(order);
-    Slot0_t slot0(order);
+    Slot0 slot0(order);
     REQUIRE(slot0.keyboard_registered == 0);
     REQUIRE(slot0.joystick_registered == 0);
 
     move_axis(0, 0, joy_off_centre);
     press_button(0);
-    const JoystickSaveState_t before = joystick_state();
+    const JoystickSaveState before = joystick_state();
 
     linapple_set_modifiers(true, true, false, false);
     settle();
 
     CHECK(host_modifiers().shift);
     CHECK(host_modifiers().ctrl);
-    const JoystickSaveState_t after = joystick_state();
+    const JoystickSaveState after = joystick_state();
     CHECK(line_level(0) == 1);
-    CHECK(std::memcmp(&before, &after, sizeof(JoystickSaveState_t)) == 0);
+    CHECK(std::memcmp(&before, &after, sizeof(JoystickSaveState)) == 0);
     CHECK(paddle_pulse_is(0, off_centre_pulse));
     release_button(0);
   }
 }
 
 TEST_CASE("Slot 0: a key reaches no switch line") {
-  for (Order_t order : both_orders) {
+  for (Order order : both_orders) {
     CAPTURE(order);
-    Slot0_t slot0(order);
+    Slot0 slot0(order);
     REQUIRE(slot0.keyboard_registered == 0);
     REQUIRE(slot0.joystick_registered == 0);
 
@@ -399,9 +399,9 @@ TEST_CASE("Slot 0: a key reaches no switch line") {
 }
 
 TEST_CASE("Slot 0: a payload of the wrong size changes nothing") {
-  for (Order_t order : both_orders) {
+  for (Order order : both_orders) {
     CAPTURE(order);
-    Slot0_t slot0(order);
+    Slot0 slot0(order);
     REQUIRE(slot0.keyboard_registered == 0);
     REQUIRE(slot0.joystick_registered == 0);
 
@@ -410,54 +410,54 @@ TEST_CASE("Slot 0: a payload of the wrong size changes nothing") {
     static_cast<void>(io_map_dispatch(0, 0xC010, 0, 0, 0));
     move_axis(0, 1, joy_off_centre);
 
-    const KeyboardSaveState_t keyboard_before = keyboard_state();
-    const JoystickSaveState_t joystick_before = joystick_state();
+    const KeyboardSaveState keyboard_before = keyboard_state();
+    const JoystickSaveState joystick_before = joystick_state();
 
     // Verify dispatch rejects invalid payload lengths.
-    const OneByteLong_t<JoystickAxisPayload_t> axis{{0, 1, joy_centre, 0}, 0};
+    const OneByteLong<JoystickAxisPayload> axis{{0, 1, joy_centre, 0}, 0};
     REQUIRE(peripheral_command(0, JOYSTICK_CMD_SET_AXIS, &axis,
-                               sizeof(JoystickAxisPayload_t) - 1) ==
+                               sizeof(JoystickAxisPayload) - 1) ==
             peripheral_ok);
     REQUIRE(peripheral_command(0, JOYSTICK_CMD_SET_AXIS, &axis,
-                               sizeof(JoystickAxisPayload_t) + 1) ==
+                               sizeof(JoystickAxisPayload) + 1) ==
             peripheral_ok);
-    const OneByteLong_t<KeyboardKeyEvent_t> key{key_event(5, 'B', true), 0};
+    const OneByteLong<KeyboardKeyEvent> key{key_event(5, 'B', true), 0};
     REQUIRE(peripheral_command(0, keyboard_cmd_key, &key,
-                               sizeof(KeyboardKeyEvent_t) - 1) ==
+                               sizeof(KeyboardKeyEvent) - 1) ==
             peripheral_ok);
     REQUIRE(peripheral_command(0, keyboard_cmd_key, &key,
-                               sizeof(KeyboardKeyEvent_t) + 1) ==
+                               sizeof(KeyboardKeyEvent) + 1) ==
             peripheral_ok);
     settle();
 
-    const KeyboardSaveState_t keyboard_after = keyboard_state();
-    const JoystickSaveState_t joystick_after = joystick_state();
+    const KeyboardSaveState keyboard_after = keyboard_state();
+    const JoystickSaveState joystick_after = joystick_state();
     CHECK(keyboard_data() == 'A');
     CHECK(line_level(0) == 0);
     CHECK(std::memcmp(&keyboard_before, &keyboard_after,
-                      sizeof(KeyboardSaveState_t)) == 0);
+                      sizeof(KeyboardSaveState)) == 0);
     CHECK(std::memcmp(&joystick_before, &joystick_after,
-                      sizeof(JoystickSaveState_t)) == 0);
+                      sizeof(JoystickSaveState)) == 0);
     CHECK(paddle_pulse_is(1, off_centre_pulse));
   }
 }
 
 TEST_CASE("Slot 0: a dispatcher says peripheral_error to the wrong size") {
-  BareHost_t bare;
-  Peripheral_t* keyboard = bare.keyboard;
-  Peripheral_t* joystick = bare.joystick;
+  BareHost bare;
+  Peripheral* keyboard = bare.keyboard;
+  Peripheral* joystick = bare.joystick;
   void* kbd = bare.kbd;
   void* joy = bare.joy;
   REQUIRE(kbd != nullptr);
   REQUIRE(joy != nullptr);
 
   const uint8_t byte = 1;
-  const OneByteLong_t<uint8_t> two_bytes{1, 0};
-  const OneByteLong_t<KeyboardKeyEvent_t> key{
+  const OneByteLong<uint8_t> two_bytes{1, 0};
+  const OneByteLong<KeyboardKeyEvent> key{
       key_event(host_key_a, 'A', true),
       0,
   };
-  constexpr size_t key_size = sizeof(KeyboardKeyEvent_t);
+  constexpr size_t key_size = sizeof(KeyboardKeyEvent);
   CHECK(keyboard->command(kbd, keyboard_cmd_key, &key, key_size) ==
         peripheral_ok);
   CHECK(keyboard->command(kbd, keyboard_cmd_key, &key, 0) == peripheral_error);
@@ -467,7 +467,7 @@ TEST_CASE("Slot 0: a dispatcher says peripheral_error to the wrong size") {
         peripheral_error);
   CHECK(keyboard->command(kbd, keyboard_cmd_key, nullptr, key_size) ==
         peripheral_error);
-  const KeyboardKeyEvent_t too_high = key_event(host_key_a, 0x80, true);
+  const KeyboardKeyEvent too_high = key_event(host_key_a, 0x80, true);
   CHECK(keyboard->command(kbd, keyboard_cmd_key, &too_high, key_size) ==
         peripheral_error);
   CHECK(keyboard->command(kbd, keyboard_cmd_release_all, &byte, sizeof(byte)) ==
@@ -481,8 +481,8 @@ TEST_CASE("Slot 0: a dispatcher says peripheral_error to the wrong size") {
   CHECK(keyboard->command(kbd, keyboard_cmd_rept, nullptr, 1) ==
         peripheral_error);
 
-  const OneByteLong_t<JoystickAxisPayload_t> axis{{0, 0, joy_off_centre, 0}, 0};
-  constexpr size_t axis_size = sizeof(JoystickAxisPayload_t);
+  const OneByteLong<JoystickAxisPayload> axis{{0, 0, joy_off_centre, 0}, 0};
+  constexpr size_t axis_size = sizeof(JoystickAxisPayload);
   CHECK(joystick->command(joy, JOYSTICK_CMD_SET_AXIS, &axis, axis_size) ==
         peripheral_ok);
   CHECK(joystick->command(joy, JOYSTICK_CMD_SET_AXIS, &axis, axis_size - 1) ==
@@ -494,9 +494,9 @@ TEST_CASE("Slot 0: a dispatcher says peripheral_error to the wrong size") {
 }
 
 TEST_CASE("Slot 0: an id from another subsystem is refused and changes none") {
-  for (Order_t order : both_orders) {
+  for (Order order : both_orders) {
     CAPTURE(order);
-    Slot0_t slot0(order);
+    Slot0 slot0(order);
     REQUIRE(slot0.keyboard_registered == 0);
     REQUIRE(slot0.joystick_registered == 0);
 
@@ -504,8 +504,8 @@ TEST_CASE("Slot 0: an id from another subsystem is refused and changes none") {
     move_axis(0, 0, joy_off_centre);
     press_button(0);
 
-    const KeyboardSaveState_t keyboard_before = keyboard_state();
-    const JoystickSaveState_t joystick_before = joystick_state();
+    const KeyboardSaveState keyboard_before = keyboard_state();
+    const JoystickSaveState joystick_before = joystick_state();
 
     // Verify commands belonging to foreign subsystems are rejected.
     const std::initializer_list<uint32_t> foreign = {
@@ -527,13 +527,13 @@ TEST_CASE("Slot 0: an id from another subsystem is refused and changes none") {
       CHECK(peripheral_query(0, cmd_id, &answer, &size) == peripheral_error);
     }
 
-    const KeyboardSaveState_t keyboard_after = keyboard_state();
-    const JoystickSaveState_t joystick_after = joystick_state();
+    const KeyboardSaveState keyboard_after = keyboard_state();
+    const JoystickSaveState joystick_after = joystick_state();
     CHECK(keyboard_data() == ('A' | strobe_bit));
     CHECK(std::memcmp(&keyboard_before, &keyboard_after,
-                      sizeof(KeyboardSaveState_t)) == 0);
+                      sizeof(KeyboardSaveState)) == 0);
     CHECK(std::memcmp(&joystick_before, &joystick_after,
-                      sizeof(JoystickSaveState_t)) == 0);
+                      sizeof(JoystickSaveState)) == 0);
     release_button(0);
     release_key(host_key_a);
   }
@@ -541,9 +541,9 @@ TEST_CASE("Slot 0: an id from another subsystem is refused and changes none") {
 
 TEST_CASE("Slot 0: a foreign id is incompatible, never an error") {
   // Peripheral query search halts on first status that is not incompatible.
-  BareHost_t bare;
-  Peripheral_t* keyboard = bare.keyboard;
-  Peripheral_t* joystick = bare.joystick;
+  BareHost bare;
+  Peripheral* keyboard = bare.keyboard;
+  Peripheral* joystick = bare.joystick;
   void* kbd = bare.kbd;
   void* joy = bare.joy;
   REQUIRE(kbd != nullptr);
@@ -559,7 +559,7 @@ TEST_CASE("Slot 0: a foreign id is incompatible, never an error") {
   const std::array<uint8_t, 4> button{{0, 1, 0, 0}};
   CHECK(keyboard->command(kbd, retired_joystick_id, button.data(),
                           button.size()) == peripheral_incompatible);
-  const KeyboardKeyEvent_t key = key_event(host_key_a, 'A', true);
+  const KeyboardKeyEvent key = key_event(host_key_a, 'A', true);
   CHECK(joystick->command(joy, keyboard_cmd_key, &key, sizeof(key)) ==
         peripheral_incompatible);
   CHECK(joystick->command(joy, keyboard_cmd_release_all, nullptr, 0) ==
@@ -592,19 +592,19 @@ TEST_CASE("Slot 0: a foreign id is incompatible, never an error") {
 }
 
 TEST_CASE("Slot 0: a command can name the peripheral it is for") {
-  for (Order_t order : both_orders) {
+  for (Order order : both_orders) {
     CAPTURE(order);
-    Slot0_t slot0(order);
+    Slot0 slot0(order);
     REQUIRE(slot0.keyboard_registered == 0);
     REQUIRE(slot0.joystick_registered == 0);
 
-    const KeyboardKeyEvent_t down = key_event(host_key_a, 'A', true);
+    const KeyboardKeyEvent down = key_event(host_key_a, 'A', true);
     REQUIRE(peripheral_command_by_id(0, "linapple.keyboard", keyboard_cmd_key,
                                      &down, sizeof(down)) == peripheral_ok);
     settle();
     CHECK(keyboard_data() == ('A' | strobe_bit));
 
-    const KeyboardKeyEvent_t other = key_event(5, 'B', true);
+    const KeyboardKeyEvent other = key_event(5, 'B', true);
     CHECK(peripheral_command_by_id(0, "linapple.disk_II", keyboard_cmd_key,
                                    &other, sizeof(other)) == peripheral_error);
     CHECK(peripheral_command_by_id(

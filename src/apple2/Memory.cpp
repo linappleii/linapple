@@ -59,24 +59,24 @@ static inline auto sw_hram_write(const MemoryInstance* ctx) noexcept -> bool {
   return (ctx->mem_mode & MF_HRAM_WRITE) != 0;
 }
 
-static MemoryInstance g_default_memory_context;
-static MemoryInstance* g_active_memory = &g_default_memory_context;
+static MemoryInstance default_memory_context;
+static MemoryInstance* active_memory = &default_memory_context;
 
-IoFunction_t* g_io_read = g_default_memory_context.io_read;
-IoFunction_t* g_io_write = g_default_memory_context.io_write;
-IoFunction_t*& IORead = g_io_read;
-IoFunction_t*& IOWrite = g_io_write;
-uint8_t** memwrite = g_default_memory_context.memwrite;
+IoFunction* io_read = default_memory_context.io_read;
+IoFunction* io_write = default_memory_context.io_write;
+IoFunction*& IORead = io_read;
+IoFunction*& IOWrite = io_write;
+uint8_t** memwrite = default_memory_context.memwrite;
 uint8_t* mem = nullptr;
 uint8_t* memdirty = nullptr;
-MemoryInitPattern_t g_memory_init_pattern = MIP_FF_FF_00_00;
-static std::vector<uint8_t> g_custom_rom_data;
+MemoryInitPattern memory_init_pattern = MIP_FF_FF_00_00;
+static std::vector<uint8_t> custom_rom_data;
 
 auto mem_set_custom_rom_data(const uint8_t* data, size_t size) -> void {
   if (data != nullptr && size > 0) {
-    g_custom_rom_data.assign(data, data + size);
+    custom_rom_data.assign(data, data + size);
   } else {
-    g_custom_rom_data.clear();
+    custom_rom_data.clear();
   }
 }
 
@@ -118,14 +118,14 @@ static auto get_machine_rom_info(Apple2Type type) -> MachineRomInfo {
 
 static auto set_mem(uint8_t* val) -> void {
   mem = val;
-  if (g_active_memory) {
-    g_active_memory->mem = val;
+  if (active_memory) {
+    active_memory->mem = val;
   }
 }
 static auto set_mem_dirty(uint8_t* val) -> void {
   memdirty = val;
-  if (g_active_memory) {
-    g_active_memory->memdirty = val;
+  if (active_memory) {
+    active_memory->memdirty = val;
   }
 }
 
@@ -136,16 +136,16 @@ MemoryInstance::~MemoryInstance() {
 }
 
 auto mem_get_active_context() noexcept -> MemoryInstance* {
-  return g_active_memory;
+  return active_memory;
 }
 
 auto mem_set_active_context(MemoryInstance* context) noexcept -> void {
   if (!context) {
     return;
   }
-  g_active_memory = context;
-  g_io_read = context->io_read;
-  g_io_write = context->io_write;
+  active_memory = context;
+  io_read = context->io_read;
+  io_write = context->io_write;
   memwrite = context->memwrite;
   mem = context->mem;
   memdirty = context->memdirty;
@@ -167,33 +167,33 @@ auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
     if ((addr & PAGE_MASK) == IO_RANGE_BEGIN) {
       uint8_t index = static_cast<uint8_t>(addr & 0xFF);
       if (write != 0) {
-        if (g_io_write[index] != nullptr) {
-          return g_io_write[index](pc, addr, write, val, cycles);
+        if (io_write[index] != nullptr) {
+          return io_write[index](pc, addr, write, val, cycles);
         }
       } else {
-        if (g_io_read[index] != nullptr) {
-          return g_io_read[index](pc, addr, write, val, cycles);
+        if (io_read[index] != nullptr) {
+          return io_read[index](pc, addr, write, val, cycles);
         }
       }
     } else {
       uint8_t page = static_cast<uint8_t>((addr >> 8) & ADDR_NIBBLE_MASK);
       if (!is_apple2()) {
-        if (!sw_slotcxrom(g_active_memory)) {
+        if (!sw_slotcxrom(active_memory)) {
           return (write != 0) ? io_write_cxxx(pc, addr, write, val, cycles)
                               : io_read_cxxx(pc, addr, write, val, cycles);
         }
-        if (page == 3 && !sw_slotc3rom(g_active_memory)) {
+        if (page == 3 && !sw_slotc3rom(active_memory)) {
           return (write != 0) ? io_write_cxxx(pc, addr, write, val, cycles)
                               : io_read_cxxx(pc, addr, write, val, cycles);
         }
       }
       if (write != 0) {
-        if (g_io_write[NUM_PAGES_64K + page] != nullptr) {
-          return g_io_write[NUM_PAGES_64K + page](pc, addr, write, val, cycles);
+        if (io_write[NUM_PAGES_64K + page] != nullptr) {
+          return io_write[NUM_PAGES_64K + page](pc, addr, write, val, cycles);
         }
       } else {
-        if (g_io_read[NUM_PAGES_64K + page] != nullptr) {
-          return g_io_read[NUM_PAGES_64K + page](pc, addr, write, val, cycles);
+        if (io_read[NUM_PAGES_64K + page] != nullptr) {
+          return io_read[NUM_PAGES_64K + page](pc, addr, write, val, cycles);
         }
       }
     }
@@ -426,7 +426,7 @@ static auto io_write_c07x(uint16_t pc, uint16_t addr, uint8_t write, uint8_t d,
   return io_null(pc, addr, write, d, executed_cycles);
 }
 
-static IoFunction_t io_read_c0xx[8] = {
+static IoFunction io_read_c0xx[8] = {
     io_read_c00x,                // Keyboard
     io_read_c01x,                // Memory/Video
     io_read_c02x,                // Cassette
@@ -436,7 +436,7 @@ static IoFunction_t io_read_c0xx[8] = {
     io_read_c07x,                // Joystick/Video
 };
 
-static IoFunction_t io_write_c0xx[8] = {
+static IoFunction io_write_c0xx[8] = {
     io_write_c00x,                 // Memory/Video
     io_write_c01x,                 // Keyboard
     io_write_c02x,                 // Cassette
@@ -487,104 +487,104 @@ static auto io_read_cxxx(uint16_t programcounter, uint16_t address,
     // Disable expansion ROM at [$C800..$CFFF]
     // . SSC will disable on an access to $CFxx - but ROM only writes to $CFFF,
     // so it doesn't matter
-    g_active_memory->io_select = 0;
-    g_active_memory->io_select_internal_rom = 0;
-    g_active_memory->peripheral_rom_slot = 0;
+    active_memory->io_select = 0;
+    active_memory->io_select_internal_rom = 0;
+    active_memory->peripheral_rom_slot = 0;
 
-    if (sw_slotcxrom(g_active_memory)) {
-      // NB. sw_slotcxrom(g_active_memory)==0 ensures that internal rom stays
+    if (sw_slotcxrom(active_memory)) {
+      // NB. sw_slotcxrom(active_memory)==0 ensures that internal rom stays
       // switched in
-      memset(g_active_memory->cx_rom_peripheral + FIRMWARE_EXPANSION_SIZE, 0,
+      memset(active_memory->cx_rom_peripheral + FIRMWARE_EXPANSION_SIZE, 0,
              FIRMWARE_EXPANSION_SIZE);
       memset(mem + FIRMWARE_EXPANSION_BEGIN, 0, FIRMWARE_EXPANSION_SIZE);
-      g_active_memory->expansion_rom_type = EXP_ROM_NULL;
+      active_memory->expansion_rom_type = EXP_ROM_NULL;
     }
-    // NB. g_active_memory->io_select won't get set, so ROM won't be switched
+    // NB. active_memory->io_select won't get set, so ROM won't be switched
     // back in...
   }
 
   uint8_t IO_STROBE = 0;
 
-  if (is_apple2() || sw_slotcxrom(g_active_memory)) {
+  if (is_apple2() || sw_slotcxrom(active_memory)) {
     if ((address >= 0xC100) && (address <= 0xC7FF)) {
       const uint32_t slot = (address >> 8) & 0xF;
       if (slot < num_slots) {
-        if ((slot != 3) && g_active_memory->expansion_rom[slot]) {
-          g_active_memory->io_select |= 1 << slot;
-        } else if (sw_slotc3rom(g_active_memory) &&
-                   g_active_memory->expansion_rom[slot]) {
-          g_active_memory->io_select |= 1 << slot;  // Slot3 & Peripheral ROM
-        } else if (!sw_slotc3rom(g_active_memory)) {
-          g_active_memory->io_select_internal_rom = 1;  // Slot3 & Internal ROM
+        if ((slot != 3) && active_memory->expansion_rom[slot]) {
+          active_memory->io_select |= 1 << slot;
+        } else if (sw_slotc3rom(active_memory) &&
+                   active_memory->expansion_rom[slot]) {
+          active_memory->io_select |= 1 << slot;  // Slot3 & Peripheral ROM
+        } else if (!sw_slotc3rom(active_memory)) {
+          active_memory->io_select_internal_rom = 1;  // Slot3 & Internal ROM
         }
       }
     } else if ((address >= 0xC800) && (address <= 0xCFFF)) {
       IO_STROBE = 1;
     }
 
-    if (g_active_memory->io_select != 0 && IO_STROBE != 0) {
+    if (active_memory->io_select != 0 && IO_STROBE != 0) {
       // Enable Peripheral Expansion ROM
       uint32_t slot = 1;
       for (; slot < num_slots; slot++) {
-        if ((g_active_memory->io_select & (1 << slot)) != 0) {
+        if ((active_memory->io_select & (1 << slot)) != 0) {
           break;
         }
       }
 
-      if ((slot < num_slots) && g_active_memory->expansion_rom[slot] &&
-          (g_active_memory->peripheral_rom_slot != slot)) {
-        if (g_active_memory->cx_rom_peripheral != nullptr) {
-          memcpy(g_active_memory->cx_rom_peripheral + FIRMWARE_EXPANSION_SIZE,
-                 g_active_memory->expansion_rom[slot], FIRMWARE_EXPANSION_SIZE);
+      if ((slot < num_slots) && active_memory->expansion_rom[slot] &&
+          (active_memory->peripheral_rom_slot != slot)) {
+        if (active_memory->cx_rom_peripheral != nullptr) {
+          memcpy(active_memory->cx_rom_peripheral + FIRMWARE_EXPANSION_SIZE,
+                 active_memory->expansion_rom[slot], FIRMWARE_EXPANSION_SIZE);
         }
         if (mem != nullptr) {
           memcpy(mem + FIRMWARE_EXPANSION_BEGIN,
-                 g_active_memory->expansion_rom[slot], FIRMWARE_EXPANSION_SIZE);
+                 active_memory->expansion_rom[slot], FIRMWARE_EXPANSION_SIZE);
         }
-        g_active_memory->expansion_rom_type = EXP_ROM_PERIPHERAL;
-        g_active_memory->peripheral_rom_slot = slot;
+        active_memory->expansion_rom_type = EXP_ROM_PERIPHERAL;
+        active_memory->peripheral_rom_slot = slot;
       }
-    } else if (g_active_memory->io_select_internal_rom != 0 && IO_STROBE != 0 &&
-               (g_active_memory->expansion_rom_type != EXP_ROM_INTERNAL)) {
+    } else if (active_memory->io_select_internal_rom != 0 && IO_STROBE != 0 &&
+               (active_memory->expansion_rom_type != EXP_ROM_INTERNAL)) {
       // Enable Internal ROM
       // . Get this for PR#3
-      if (g_active_memory->cx_rom_internal != nullptr && mem != nullptr) {
+      if (active_memory->cx_rom_internal != nullptr && mem != nullptr) {
         memcpy(mem + FIRMWARE_EXPANSION_BEGIN,
-               g_active_memory->cx_rom_internal + FIRMWARE_EXPANSION_SIZE,
+               active_memory->cx_rom_internal + FIRMWARE_EXPANSION_SIZE,
                FIRMWARE_EXPANSION_SIZE);
       }
-      g_active_memory->expansion_rom_type = EXP_ROM_INTERNAL;
-      g_active_memory->peripheral_rom_slot = 0;
+      active_memory->expansion_rom_type = EXP_ROM_INTERNAL;
+      active_memory->peripheral_rom_slot = 0;
     }
   }
 
-  if (!is_apple2() && !sw_slotcxrom(g_active_memory)) {
-    // !sw_slotc3rom(g_active_memory) = Internal ROM: $C300-C3FF
-    // !sw_slotcxrom(g_active_memory) = Internal ROM: $C100-CFFF
+  if (!is_apple2() && !sw_slotcxrom(active_memory)) {
+    // !sw_slotc3rom(active_memory) = Internal ROM: $C300-C3FF
+    // !sw_slotcxrom(active_memory) = Internal ROM: $C100-CFFF
 
     if ((address >= 0xC100) &&
         (address <=
-         0xC7FF)) {  // Don't care about state of sw_slotc3rom(g_active_memory)
-      g_active_memory->io_select_internal_rom = 1;
+         0xC7FF)) {  // Don't care about state of sw_slotc3rom(active_memory)
+      active_memory->io_select_internal_rom = 1;
     } else if ((address >= 0xC800) && (address <= 0xCFFF)) {
       IO_STROBE = 1;
     }
 
-    if (!sw_slotcxrom(g_active_memory) &&
-        g_active_memory->io_select_internal_rom != 0 && IO_STROBE != 0 &&
-        (g_active_memory->expansion_rom_type != EXP_ROM_INTERNAL)) {
+    if (!sw_slotcxrom(active_memory) &&
+        active_memory->io_select_internal_rom != 0 && IO_STROBE != 0 &&
+        (active_memory->expansion_rom_type != EXP_ROM_INTERNAL)) {
       // Enable Internal ROM
-      if (g_active_memory->cx_rom_internal != nullptr && mem != nullptr) {
+      if (active_memory->cx_rom_internal != nullptr && mem != nullptr) {
         memcpy(mem + FIRMWARE_EXPANSION_BEGIN,
-               g_active_memory->cx_rom_internal + FIRMWARE_EXPANSION_SIZE,
+               active_memory->cx_rom_internal + FIRMWARE_EXPANSION_SIZE,
                FIRMWARE_EXPANSION_SIZE);
       }
-      g_active_memory->expansion_rom_type = EXP_ROM_INTERNAL;
-      g_active_memory->peripheral_rom_slot = 0;
+      active_memory->expansion_rom_type = EXP_ROM_INTERNAL;
+      active_memory->peripheral_rom_slot = 0;
     }
   }
 
-  if ((g_active_memory->expansion_rom_type == EXP_ROM_NULL) &&
+  if ((active_memory->expansion_rom_type == EXP_ROM_NULL) &&
       (address >= 0xC800)) {
     return io_null(programcounter, address, write, value, executed_cycles);
   }
@@ -602,53 +602,53 @@ static auto io_write_cxxx(uint16_t programcounter, uint16_t address,
   return 0;
 }
 
-static uint8_t g_bm_slot_init = 0;
+static uint8_t bm_slot_init = 0;
 
 static auto init_io_handlers() -> void {
-  g_bm_slot_init = 0;
+  bm_slot_init = 0;
 
   for (uint32_t i = 0; i < NUM_IO_HANDLERS; i++) {
-    g_io_read[i] = io_null;
-    g_io_write[i] = io_null;
+    io_read[i] = io_null;
+    io_write[i] = io_null;
   }
 
   // $C000..$C07F: 1:1 mapping to existing 16-byte buckets
   for (uint32_t i = 0; i < 0x80; i++) {
-    g_io_read[i] = io_read_c0xx[i >> 4];
-    g_io_write[i] = io_write_c0xx[i >> 4];
+    io_read[i] = io_read_c0xx[i >> 4];
+    io_write[i] = io_write_c0xx[i >> 4];
   }
 
   // $C1..$CF: Page-based multiplexer
   for (uint32_t i = 0; i < 16; i++) {
-    g_io_read[NUM_PAGES_64K + i] = io_read_cxxx;
-    g_io_write[NUM_PAGES_64K + i] = io_write_cxxx;
+    io_read[NUM_PAGES_64K + i] = io_read_cxxx;
+    io_write[NUM_PAGES_64K + i] = io_write_cxxx;
   }
 
-  g_active_memory->io_select = 0;
-  g_active_memory->io_select_internal_rom = 0;
-  g_active_memory->expansion_rom_type = EXP_ROM_NULL;
-  g_active_memory->peripheral_rom_slot = 0;
+  active_memory->io_select = 0;
+  active_memory->io_select_internal_rom = 0;
+  active_memory->expansion_rom_type = EXP_ROM_NULL;
+  active_memory->peripheral_rom_slot = 0;
 
-  for (auto& rom : g_active_memory->expansion_rom) {
+  for (auto& rom : active_memory->expansion_rom) {
     rom = nullptr;
   }
 }
 
 // All slots [0..7] must register their handlers
-auto register_io_handler(uint32_t slot, IoFunction_t io_read_c0,
-                         IoFunction_t io_write_c0, IoFunction_t io_read_cx,
-                         IoFunction_t io_write_cx, void* slot_parameter,
+auto register_io_handler(uint32_t slot, IoFunction io_read_c0,
+                         IoFunction io_write_c0, IoFunction io_read_cx,
+                         IoFunction io_write_cx, void* slot_parameter,
                          const uint8_t* expansion_rom) noexcept -> void {
   if (slot >= num_slots) {
     return;
   }
-  g_bm_slot_init |= 1U << slot;
-  g_active_memory->slot_parameters[slot] = slot_parameter;
+  bm_slot_init |= 1U << slot;
+  active_memory->slot_parameters[slot] = slot_parameter;
 
   uint16_t index = static_cast<uint16_t>(0x80 + (slot << 4));
   for (uint32_t i = 0; i < 16; i++) {
-    g_io_read[index + i] = io_read_c0;
-    g_io_write[index + i] = io_write_c0;
+    io_read[index + i] = io_read_c0;
+    io_write[index + i] = io_write_c0;
   }
 
   if (slot == 0) {
@@ -662,14 +662,14 @@ auto register_io_handler(uint32_t slot, IoFunction_t io_read_c0,
     io_write_cx = io_write_cxxx;
   }
 
-  g_io_read[NUM_PAGES_64K + slot] = io_read_cx;
-  g_io_write[NUM_PAGES_64K + slot] = io_write_cx;
+  io_read[NUM_PAGES_64K + slot] = io_read_cx;
+  io_write[NUM_PAGES_64K + slot] = io_write_cx;
 
-  g_active_memory->expansion_rom[slot] = expansion_rom;
+  active_memory->expansion_rom[slot] = expansion_rom;
 }
 
-auto register_direct_io_handler(uint16_t addr, IoFunction_t read,
-                                IoFunction_t write, void* instance) noexcept
+auto register_direct_io_handler(uint16_t addr, IoFunction read,
+                                IoFunction write, void* instance) noexcept
     -> void {
   if ((addr & 0xFF00) != 0xC000) {
     return;
@@ -677,32 +677,32 @@ auto register_direct_io_handler(uint16_t addr, IoFunction_t read,
   uint8_t index = static_cast<uint8_t>(addr & 0xFF);
 
   if (read) {
-    g_io_read[index] = read;
+    io_read[index] = read;
   }
   if (write) {
-    g_io_write[index] = write;
+    io_write[index] = write;
   }
 
   (void)instance;
 }
 //===========================================================================
 
-auto get_mem_mode() noexcept -> uint32_t { return g_active_memory->mem_mode; }
+auto get_mem_mode() noexcept -> uint32_t { return active_memory->mem_mode; }
 
 auto set_mem_mode(uint32_t new_mem_mode) noexcept -> void {
-  g_active_memory->mem_mode = new_mem_mode;
+  active_memory->mem_mode = new_mem_mode;
 }
 
 static auto reset_paging(bool initialize) -> void {
-  g_active_memory->last_write_ram = false;
-  g_active_memory->mem_mode = MF_HRAM_BANK2 | MF_SLOTCXROM | MF_HRAM_WRITE;
+  active_memory->last_write_ram = false;
+  active_memory->mem_mode = MF_HRAM_BANK2 | MF_SLOTCXROM | MF_HRAM_WRITE;
   mem_update_paging(initialize, false);
 }
 
 auto mem_update_paging(bool initialize, bool updatewriteonly) -> void {
   uint8_t* oldshadow[PAGE_MAX]{};
   if (!(initialize || updatewriteonly)) {
-    memcpy(oldshadow, g_active_memory->memshadow, PAGE_MAX * sizeof(uint8_t*));
+    memcpy(oldshadow, active_memory->memshadow, PAGE_MAX * sizeof(uint8_t*));
   }
 
   if (initialize) {
@@ -716,22 +716,22 @@ auto mem_update_paging(bool initialize, bool updatewriteonly) -> void {
 
   if (!updatewriteonly) {
     for (uint32_t page = PAGE_ZERO; page < PAGE_TWO; page++) {
-      g_active_memory->memshadow[page] =
-          sw_altzp(g_active_memory) ? g_active_memory->memaux + (page << 8)
-                                    : g_active_memory->memmain + (page << 8);
+      active_memory->memshadow[page] =
+          sw_altzp(active_memory) ? active_memory->memaux + (page << 8)
+                                    : active_memory->memmain + (page << 8);
     }
   }
 
   for (uint32_t page = PAGE_TWO; page < PAGE_C0; page++) {
-    g_active_memory->memshadow[page] =
-        sw_auxread(g_active_memory) ? g_active_memory->memaux + (page << 8)
-                                    : g_active_memory->memmain + (page << 8);
-    if (sw_auxread(g_active_memory) == sw_auxwrite(g_active_memory)) {
+    active_memory->memshadow[page] =
+        sw_auxread(active_memory) ? active_memory->memaux + (page << 8)
+                                    : active_memory->memmain + (page << 8);
+    if (sw_auxread(active_memory) == sw_auxwrite(active_memory)) {
       memwrite[page] = mem + (page << 8);
-    } else if (sw_auxwrite(g_active_memory)) {
-      memwrite[page] = g_active_memory->memaux + (page << 8);
+    } else if (sw_auxwrite(active_memory)) {
+      memwrite[page] = active_memory->memaux + (page << 8);
     } else {
-      memwrite[page] = g_active_memory->memmain + (page << 8);
+      memwrite[page] = active_memory->memmain + (page << 8);
     }
   }
 
@@ -740,48 +740,48 @@ auto mem_update_paging(bool initialize, bool updatewriteonly) -> void {
       const uint32_t slot_offset = (page & 0x0f) * PAGE_SIZE;
       uint8_t* base = nullptr;
       if (page == PAGE_C3) {
-        base = (sw_slotc3rom(g_active_memory) && sw_slotcxrom(g_active_memory))
-                   ? g_active_memory->cx_rom_peripheral
-                   : g_active_memory->cx_rom_internal;
+        base = (sw_slotc3rom(active_memory) && sw_slotcxrom(active_memory))
+                   ? active_memory->cx_rom_peripheral
+                   : active_memory->cx_rom_internal;
       } else {
-        base = sw_slotcxrom(g_active_memory)
-                   ? g_active_memory->cx_rom_peripheral
-                   : g_active_memory->cx_rom_internal;
+        base = sw_slotcxrom(active_memory)
+                   ? active_memory->cx_rom_peripheral
+                   : active_memory->cx_rom_internal;
       }
-      g_active_memory->memshadow[page] =
+      active_memory->memshadow[page] =
           base ? (base + slot_offset) : (mem + (page << 8));
     }
 
     for (uint32_t page = PAGE_C8; page < PAGE_D0; page++) {
       const uint32_t rom_offset = (page & 0x0f) * PAGE_SIZE;
-      g_active_memory->memshadow[page] =
-          g_active_memory->cx_rom_internal
-              ? (g_active_memory->cx_rom_internal + rom_offset)
+      active_memory->memshadow[page] =
+          active_memory->cx_rom_internal
+              ? (active_memory->cx_rom_internal + rom_offset)
               : (mem + (page << 8));
     }
   }
 
   for (uint32_t page = PAGE_D0; page < PAGE_E0; page++) {
-    const int bankoffset = sw_hram_bank2(g_active_memory) ? 0 : LC_BANK_SIZE;
-    uint8_t* const alt_ram = sw_altzp(g_active_memory)
-                                 ? g_active_memory->memaux
-                                 : g_active_memory->memmain;
+    const int bankoffset = sw_hram_bank2(active_memory) ? 0 : LC_BANK_SIZE;
+    uint8_t* const alt_ram = sw_altzp(active_memory)
+                                 ? active_memory->memaux
+                                 : active_memory->memmain;
     uint8_t* const lc_ram =
         alt_ram ? alt_ram + (page << 8) - bankoffset : mem + (page << 8);
 
-    if (sw_highram(g_active_memory)) {
-      g_active_memory->memshadow[page] = lc_ram;
+    if (sw_highram(active_memory)) {
+      active_memory->memshadow[page] = lc_ram;
     } else {
-      g_active_memory->memshadow[page] =
-          g_active_memory->memrom
-              ? g_active_memory->memrom +
+      active_memory->memshadow[page] =
+          active_memory->memrom
+              ? active_memory->memrom +
                     (static_cast<size_t>((page - PAGE_D0) * PAGE_SIZE))
               : (mem + (page << 8));
     }
 
-    if (!sw_hram_write(g_active_memory)) {
+    if (!sw_hram_write(active_memory)) {
       memwrite[page] = nullptr;
-    } else if (sw_highram(g_active_memory)) {
+    } else if (sw_highram(active_memory)) {
       memwrite[page] = mem + (page << 8);
     } else {
       memwrite[page] = lc_ram;
@@ -789,43 +789,43 @@ auto mem_update_paging(bool initialize, bool updatewriteonly) -> void {
   }
 
   for (uint32_t page = PAGE_E0; page < PAGE_MAX; page++) {
-    uint8_t* const alt_ram = sw_altzp(g_active_memory)
-                                 ? g_active_memory->memaux
-                                 : g_active_memory->memmain;
+    uint8_t* const alt_ram = sw_altzp(active_memory)
+                                 ? active_memory->memaux
+                                 : active_memory->memmain;
     uint8_t* const lc_ram = alt_ram ? alt_ram + (page << 8) : mem + (page << 8);
 
-    if (sw_highram(g_active_memory)) {
-      g_active_memory->memshadow[page] = lc_ram;
+    if (sw_highram(active_memory)) {
+      active_memory->memshadow[page] = lc_ram;
     } else {
-      g_active_memory->memshadow[page] =
-          g_active_memory->memrom
-              ? g_active_memory->memrom +
+      active_memory->memshadow[page] =
+          active_memory->memrom
+              ? active_memory->memrom +
                     (static_cast<size_t>((page - PAGE_D0) * PAGE_SIZE))
               : (mem + (page << 8));
     }
 
-    if (!sw_hram_write(g_active_memory)) {
+    if (!sw_hram_write(active_memory)) {
       memwrite[page] = nullptr;
-    } else if (sw_highram(g_active_memory)) {
+    } else if (sw_highram(active_memory)) {
       memwrite[page] = mem + (page << 8);
     } else {
       memwrite[page] = lc_ram;
     }
   }
 
-  if (sw_80store(g_active_memory)) {
+  if (sw_80store(active_memory)) {
     for (uint32_t page = PAGE_TXT1_START; page < PAGE_TXT1_END; page++) {
-      g_active_memory->memshadow[page] =
-          sw_page2(g_active_memory) ? g_active_memory->memaux + (page << 8)
-                                    : g_active_memory->memmain + (page << 8);
+      active_memory->memshadow[page] =
+          sw_page2(active_memory) ? active_memory->memaux + (page << 8)
+                                    : active_memory->memmain + (page << 8);
       memwrite[page] = mem + (page << 8);
     }
 
-    if (sw_hires(g_active_memory)) {
+    if (sw_hires(active_memory)) {
       for (uint32_t page = PAGE_HGR1_START; page < PAGE_HGR1_END; page++) {
-        g_active_memory->memshadow[page] =
-            sw_page2(g_active_memory) ? g_active_memory->memaux + (page << 8)
-                                      : g_active_memory->memmain + (page << 8);
+        active_memory->memshadow[page] =
+            sw_page2(active_memory) ? active_memory->memaux + (page << 8)
+                                      : active_memory->memmain + (page << 8);
         memwrite[page] = mem + (page << 8);
       }
     }
@@ -836,13 +836,13 @@ auto mem_update_paging(bool initialize, bool updatewriteonly) -> void {
   // paging shadow table
   if (!updatewriteonly) {
     for (uint32_t page = PAGE_ZERO; page < PAGE_MAX; page++) {
-      if (initialize || (oldshadow[page] != g_active_memory->memshadow[page])) {
+      if (initialize || (oldshadow[page] != active_memory->memshadow[page])) {
         if ((!initialize) &&
             (((*(memdirty + page) & 1) != 0) || (page <= PAGE_ONE))) {
           *(memdirty + page) &= ~1;
           memcpy(oldshadow[page], mem + (page << 8), PAGE_SIZE);
         }
-        memcpy(mem + (page << 8), g_active_memory->memshadow[page], PAGE_SIZE);
+        memcpy(mem + (page << 8), active_memory->memshadow[page], PAGE_SIZE);
       }
     }
   }
@@ -859,34 +859,34 @@ auto mem_check_paging(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
   bool result = false;
   switch (addr) {
     case SS_RDLCRAM:
-      result = sw_hram_bank2(g_active_memory);
+      result = sw_hram_bank2(active_memory);
       break;
     case SS_RDRAMRD:
-      result = sw_highram(g_active_memory);
+      result = sw_highram(active_memory);
       break;
     case SS_RDRAMWRT:
-      result = sw_auxread(g_active_memory);
+      result = sw_auxread(active_memory);
       break;
     case SS_RDCXROM:
-      result = sw_auxwrite(g_active_memory);
+      result = sw_auxwrite(active_memory);
       break;
     case SS_RDALTZP:
-      result = !sw_slotcxrom(g_active_memory);
+      result = !sw_slotcxrom(active_memory);
       break;
     case SS_RD80STORE:
-      result = sw_altzp(g_active_memory);
+      result = sw_altzp(active_memory);
       break;
     case SS_RDSLOTC3ROM:
-      result = sw_slotc3rom(g_active_memory);
+      result = sw_slotc3rom(active_memory);
       break;
     case SS_RD80COL:
-      result = sw_80store(g_active_memory);
+      result = sw_80store(active_memory);
       break;
     case SS_RDPAGE2:
-      result = sw_page2(g_active_memory);
+      result = sw_page2(active_memory);
       break;
     case SS_RDHIRES:
-      result = sw_hires(g_active_memory);
+      result = sw_hires(active_memory);
       break;
     default:
       break;
@@ -895,74 +895,74 @@ auto mem_check_paging(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
 }
 
 auto mem_destroy() -> void {
-  if (g_active_memory->memimage != nullptr) {
-    munlock(g_active_memory->memimage, MEMORY_64K);
+  if (active_memory->memimage != nullptr) {
+    munlock(active_memory->memimage, MEMORY_64K);
   }
 
-  g_active_memory->buf_memaux.clear();
-  g_active_memory->buf_memaux.shrink_to_fit();
-  g_active_memory->buf_memmain.clear();
-  g_active_memory->buf_memmain.shrink_to_fit();
-  g_active_memory->buf_memdirty.clear();
-  g_active_memory->buf_memdirty.shrink_to_fit();
-  g_active_memory->buf_memrom.clear();
-  g_active_memory->buf_memrom.shrink_to_fit();
-  g_active_memory->buf_memimage.clear();
-  g_active_memory->buf_memimage.shrink_to_fit();
-  g_active_memory->buf_cx_rom_internal.clear();
-  g_active_memory->buf_cx_rom_internal.shrink_to_fit();
-  g_active_memory->buf_cx_rom_peripheral.clear();
-  g_active_memory->buf_cx_rom_peripheral.shrink_to_fit();
+  active_memory->buf_memaux.clear();
+  active_memory->buf_memaux.shrink_to_fit();
+  active_memory->buf_memmain.clear();
+  active_memory->buf_memmain.shrink_to_fit();
+  active_memory->buf_memdirty.clear();
+  active_memory->buf_memdirty.shrink_to_fit();
+  active_memory->buf_memrom.clear();
+  active_memory->buf_memrom.shrink_to_fit();
+  active_memory->buf_memimage.clear();
+  active_memory->buf_memimage.shrink_to_fit();
+  active_memory->buf_cx_rom_internal.clear();
+  active_memory->buf_cx_rom_internal.shrink_to_fit();
+  active_memory->buf_cx_rom_peripheral.clear();
+  active_memory->buf_cx_rom_peripheral.shrink_to_fit();
 
-  g_active_memory->memaux = nullptr;
-  g_active_memory->memmain = nullptr;
+  active_memory->memaux = nullptr;
+  active_memory->memmain = nullptr;
   set_mem_dirty(nullptr);
-  g_active_memory->memrom = nullptr;
-  g_active_memory->memimage = nullptr;
+  active_memory->memrom = nullptr;
+  active_memory->memimage = nullptr;
 
-  g_active_memory->cx_rom_internal = nullptr;
-  g_active_memory->cx_rom_peripheral = nullptr;
+  active_memory->cx_rom_internal = nullptr;
+  active_memory->cx_rom_peripheral = nullptr;
 
   set_mem(nullptr);
 
   memset(memwrite, 0, NUM_PAGES_64K * sizeof(uint8_t*));
-  memset(g_active_memory->memshadow, 0, NUM_PAGES_64K * sizeof(uint8_t*));
+  memset(active_memory->memshadow, 0, NUM_PAGES_64K * sizeof(uint8_t*));
 }
 
-auto mem_get_80store() noexcept -> bool { return sw_80store(g_active_memory); }
+auto mem_get_80store() noexcept -> bool { return sw_80store(active_memory); }
 
 auto mem_check_slotcxrom() noexcept -> bool {
-  return sw_slotcxrom(g_active_memory);
+  return sw_slotcxrom(active_memory);
 }
 
 auto mem_get_aux_ptr(uint16_t addr) noexcept -> uint8_t* {
-  return (g_active_memory->memshadow[(addr >> 8)] ==
-          (g_active_memory->memaux + (addr & PAGE_MASK)))
+  return (active_memory->memshadow[(addr >> 8)] ==
+          (active_memory->memaux + (addr & PAGE_MASK)))
              ? mem + addr
-             : g_active_memory->memaux + addr;
+             : active_memory->memaux + addr;
 }
 
 auto mem_get_main_ptr(uint16_t addr) noexcept -> uint8_t* {
-  return (g_active_memory->memshadow[(addr >> 8)] ==
-          (g_active_memory->memmain + (addr & 0xFF00)))
+  return (active_memory->memshadow[(addr >> 8)] ==
+          (active_memory->memmain + (addr & 0xFF00)))
              ? mem + addr
-             : g_active_memory->memmain + addr;
+             : active_memory->memmain + addr;
 }
 
 //===========================================================================
 
 auto mem_get_bank_ptr(uint32_t bank) noexcept -> uint8_t* {
   if (bank == 0) {
-    return g_active_memory->memmain;
+    return active_memory->memmain;
   }
   if (bank == 1) {
-    return g_active_memory->memaux;
+    return active_memory->memaux;
   }
   return nullptr;
 }
 
 auto mem_get_cx_rom_peripheral() noexcept -> uint8_t* {
-  return g_active_memory->cx_rom_peripheral;
+  return active_memory->cx_rom_peripheral;
 }
 
 // A card whose PROM presents different bytes while it waits swaps its page
@@ -978,13 +978,13 @@ auto mem_get_cx_rom_peripheral() noexcept -> uint8_t* {
 // case of their own.
 auto mem_refresh_cx_page(int slot) noexcept -> void {
   if (slot < 1 || slot > 7 || mem == nullptr ||
-      g_active_memory->cx_rom_peripheral == nullptr) {
+      active_memory->cx_rom_peripheral == nullptr) {
     return;
   }
   const auto page = static_cast<uint32_t>(PAGE_C0 + slot);
-  const uint8_t* store = g_active_memory->cx_rom_peripheral +
+  const uint8_t* store = active_memory->cx_rom_peripheral +
                          (static_cast<size_t>(slot) * PAGE_SIZE);
-  if (g_active_memory->memshadow[page] != store) {
+  if (active_memory->memshadow[page] != store) {
     return;
   }
   memcpy(mem + (page << 8), store, PAGE_SIZE);
@@ -1010,11 +1010,11 @@ auto mem_is_addr_code_memory(uint16_t addr) noexcept -> bool {
 
   if (!is_apple2() &&
       sw_slotcxrom(
-          g_active_memory)) {  // [$C100..C7FF] //e or Enhanced //e internal ROM
+          active_memory)) {  // [$C100..C7FF] //e or Enhanced //e internal ROM
     return true;
   }
 
-  if (!is_apple2() && !sw_slotc3rom(g_active_memory) &&
+  if (!is_apple2() && !sw_slotc3rom(active_memory) &&
       (addr >> 8) == 0xC3) {  // [$C300..C3FF] //e or Enhanced //e internal ROM
     return true;
   }
@@ -1022,13 +1022,13 @@ auto mem_is_addr_code_memory(uint16_t addr) noexcept -> bool {
   if (addr <= APPLE_SLOT_END)  // [$C100..C7FF]
   {
     const uint32_t slot = (addr >> 8) & 0x7;
-    return (g_bm_slot_init & (1 << slot)) != 0;  // card present in this slot?
+    return (bm_slot_init & (1 << slot)) != 0;  // card present in this slot?
   }
 
   // [$C800..CFFF]
-  if (g_active_memory->expansion_rom_type == EXP_ROM_NULL) {
-    return (g_active_memory->io_select != 0) ||
-           (g_active_memory->io_select_internal_rom != 0);
+  if (active_memory->expansion_rom_type == EXP_ROM_NULL) {
+    return (active_memory->io_select != 0) ||
+           (active_memory->io_select_internal_rom != 0);
   }
 
   return true;
@@ -1045,22 +1045,22 @@ auto mem_initialize() -> int  // returns -1 if any error during initialization
   const uint32_t Apple2eRomSize = Apple2RomSize + CxRomSize;
 
   try {
-    g_active_memory->buf_memaux.assign(MEMORY_64K, 0);
-    g_active_memory->memaux = g_active_memory->buf_memaux.data();
-    g_active_memory->buf_memmain.assign(MEMORY_64K, 0);
-    g_active_memory->memmain = g_active_memory->buf_memmain.data();
-    g_active_memory->buf_memdirty.assign(NUM_PAGES_64K, 0);
-    set_mem_dirty(g_active_memory->buf_memdirty.data());
-    g_active_memory->buf_memrom.assign(ROM_BUFFER_SIZE, 0);
-    g_active_memory->memrom = g_active_memory->buf_memrom.data();
-    g_active_memory->buf_memimage.assign(MEMORY_64K, 0);
-    g_active_memory->memimage = g_active_memory->buf_memimage.data();
-    g_active_memory->buf_cx_rom_internal.assign(CxRomSize, 0);
-    g_active_memory->cx_rom_internal =
-        g_active_memory->buf_cx_rom_internal.data();
-    g_active_memory->buf_cx_rom_peripheral.assign(CxRomSize, 0);
-    g_active_memory->cx_rom_peripheral =
-        g_active_memory->buf_cx_rom_peripheral.data();
+    active_memory->buf_memaux.assign(MEMORY_64K, 0);
+    active_memory->memaux = active_memory->buf_memaux.data();
+    active_memory->buf_memmain.assign(MEMORY_64K, 0);
+    active_memory->memmain = active_memory->buf_memmain.data();
+    active_memory->buf_memdirty.assign(NUM_PAGES_64K, 0);
+    set_mem_dirty(active_memory->buf_memdirty.data());
+    active_memory->buf_memrom.assign(ROM_BUFFER_SIZE, 0);
+    active_memory->memrom = active_memory->buf_memrom.data();
+    active_memory->buf_memimage.assign(MEMORY_64K, 0);
+    active_memory->memimage = active_memory->buf_memimage.data();
+    active_memory->buf_cx_rom_internal.assign(CxRomSize, 0);
+    active_memory->cx_rom_internal =
+        active_memory->buf_cx_rom_internal.data();
+    active_memory->buf_cx_rom_peripheral.assign(CxRomSize, 0);
+    active_memory->cx_rom_peripheral =
+        active_memory->buf_cx_rom_peripheral.data();
 
   } catch (const std::bad_alloc& e) {
     Logger::error("Unable to allocate required memory buffers: %s", e.what());
@@ -1068,36 +1068,36 @@ auto mem_initialize() -> int  // returns -1 if any error during initialization
     return -1;
   }
 
-  set_mem(g_active_memory->memmain);
+  set_mem(active_memory->memmain);
 
-  if (mlock(g_active_memory->memimage, MEMORY_64K) != 0) {
+  if (mlock(active_memory->memimage, MEMORY_64K) != 0) {
     Logger::warning("Failed to lock memory image from swapping.");
   }
 
-  mem_set_active_context(g_active_memory);
+  mem_set_active_context(active_memory);
 
   uint32_t ROM_SIZE = 0;
   const uint8_t* rom_data = nullptr;
 
-  if (!g_custom_rom_data.empty()) {
-    if (g_custom_rom_data.size() == Apple2eRomSize) {
-      rom_data = g_custom_rom_data.data();
+  if (!custom_rom_data.empty()) {
+    if (custom_rom_data.size() == Apple2eRomSize) {
+      rom_data = custom_rom_data.data();
       ROM_SIZE = Apple2eRomSize;
-    } else if (g_custom_rom_data.size() == Apple2RomSize) {
-      rom_data = g_custom_rom_data.data();
+    } else if (custom_rom_data.size() == Apple2RomSize) {
+      rom_data = custom_rom_data.data();
       ROM_SIZE = Apple2RomSize;
-    } else if (g_custom_rom_data.size() > Apple2RomSize) {
-      if (g_custom_rom_data.size() >= Apple2eRomSize &&
+    } else if (custom_rom_data.size() > Apple2RomSize) {
+      if (custom_rom_data.size() >= Apple2eRomSize &&
           (current_apple2_type == A2TYPE_APPLE2E ||
            current_apple2_type == A2TYPE_APPLE2EENHANCED ||
            current_apple2_type == A2TYPE_CLONE_PRAVETS8C ||
            current_apple2_type == A2TYPE_CLONE_TK3000E)) {
-        rom_data = g_custom_rom_data.data() +
-                   (g_custom_rom_data.size() - Apple2eRomSize);
+        rom_data = custom_rom_data.data() +
+                   (custom_rom_data.size() - Apple2eRomSize);
         ROM_SIZE = Apple2eRomSize;
       } else {
-        rom_data = g_custom_rom_data.data() +
-                   (g_custom_rom_data.size() - Apple2RomSize);
+        rom_data = custom_rom_data.data() +
+                   (custom_rom_data.size() - Apple2RomSize);
         ROM_SIZE = Apple2RomSize;
       }
     }
@@ -1105,58 +1105,58 @@ auto mem_initialize() -> int  // returns -1 if any error during initialization
     switch (current_apple2_type) {
 #if ENABLE_ROM_APPLE2
       case A2TYPE_APPLE2:
-        rom_data = g_rom_apple2;
+        rom_data = rom_apple2;
         ROM_SIZE = Apple2RomSize;
         break;
 #endif
 #if ENABLE_ROM_APPLE2PLUS
       case A2TYPE_APPLE2PLUS:
-        rom_data = g_rom_apple2_plus;
+        rom_data = rom_apple2_plus;
         ROM_SIZE = Apple2RomSize;
         break;
 #endif
 #if ENABLE_ROM_APPLE2_JPLUS
       case A2TYPE_APPLE2JPLUS:
-        rom_data = g_rom_apple2_jplus;
+        rom_data = rom_apple2_jplus;
         ROM_SIZE = Apple2RomSize;
         break;
 #endif
 #if ENABLE_ROM_APPLE2E
       case A2TYPE_APPLE2E:
-        rom_data = g_rom_apple2e;
+        rom_data = rom_apple2e;
         ROM_SIZE = Apple2eRomSize;
         break;
 #endif
 #if ENABLE_ROM_APPLE2ENHANCED
       case A2TYPE_APPLE2EENHANCED:
-        rom_data = g_rom_apple2e_enhanced;
+        rom_data = rom_apple2e_enhanced;
         ROM_SIZE = Apple2eRomSize;
         break;
 #endif
 #if ENABLE_ROM_CLONE_BASE64A
       case A2TYPE_CLONE_BASE64A:
         rom_data =
-            g_rom_clone_base64a + (g_rom_clone_base64a_size - Apple2RomSize);
+            rom_clone_base64a + (rom_clone_base64a_size - Apple2RomSize);
         ROM_SIZE = Apple2RomSize;
         break;
 #endif
 #if ENABLE_ROM_CLONE_PRAVETS
       case A2TYPE_CLONE_PRAVETS82:
-        rom_data = g_rom_clone_pravets82;
+        rom_data = rom_clone_pravets82;
         ROM_SIZE = Apple2RomSize;
         break;
       case A2TYPE_CLONE_PRAVETS8M:
-        rom_data = g_rom_clone_pravets8m;
+        rom_data = rom_clone_pravets8m;
         ROM_SIZE = Apple2RomSize;
         break;
       case A2TYPE_CLONE_PRAVETS8C:
-        rom_data = g_rom_clone_pravets8c;
+        rom_data = rom_clone_pravets8c;
         ROM_SIZE = Apple2eRomSize;
         break;
 #endif
 #if ENABLE_ROM_CLONE_TK3000E
       case A2TYPE_CLONE_TK3000E:
-        rom_data = g_rom_clone_tk3000e;
+        rom_data = rom_clone_tk3000e;
         ROM_SIZE = Apple2eRomSize;
         break;
 #endif
@@ -1179,17 +1179,17 @@ auto mem_initialize() -> int  // returns -1 if any error during initialization
 
   const uint8_t* data = rom_data;
 
-  memset(g_active_memory->cx_rom_internal, 0, CxRomSize);
-  memset(g_active_memory->cx_rom_peripheral, 0, CxRomSize);
+  memset(active_memory->cx_rom_internal, 0, CxRomSize);
+  memset(active_memory->cx_rom_peripheral, 0, CxRomSize);
 
   if (ROM_SIZE == Apple2eRomSize) {
-    memcpy(g_active_memory->cx_rom_internal, data, CxRomSize);
+    memcpy(active_memory->cx_rom_internal, data, CxRomSize);
     data += CxRomSize;
     ROM_SIZE -= CxRomSize;
   }
 
   assert(ROM_SIZE == Apple2RomSize);
-  memcpy(g_active_memory->memrom, data, Apple2RomSize);  // ROM at $D000...$FFFF
+  memcpy(active_memory->memrom, data, Apple2RomSize);  // ROM at $D000...$FFFF
 
   const uint32_t slot = 0;
   register_io_handler(slot, mem_set_paging, mem_set_paging, nullptr, nullptr,
@@ -1200,26 +1200,26 @@ auto mem_initialize() -> int  // returns -1 if any error during initialization
 }
 
 auto mem_reset() noexcept -> void {
-  memset(g_active_memory->memshadow, 0, NUM_PAGES_64K * sizeof(uint8_t*));
+  memset(active_memory->memshadow, 0, NUM_PAGES_64K * sizeof(uint8_t*));
   memset(memwrite, 0, NUM_PAGES_64K * sizeof(uint8_t*));
 
-  if (g_active_memory->memaux) {
-    memset(g_active_memory->memaux, 0, MEMORY_64K);
+  if (active_memory->memaux) {
+    memset(active_memory->memaux, 0, MEMORY_64K);
   }
-  if (g_active_memory->memmain) {
-    memset(g_active_memory->memmain, 0, MEMORY_64K);
+  if (active_memory->memmain) {
+    memset(active_memory->memmain, 0, MEMORY_64K);
   }
 
-  if (g_memory_init_pattern == MIP_FF_FF_00_00) {
+  if (memory_init_pattern == MIP_FF_FF_00_00) {
     for (uint32_t byte = 0x0000; byte < IO_RANGE_BEGIN;) {
-      g_active_memory->memmain[byte++] = 0xFF;
-      g_active_memory->memmain[byte++] = 0xFF;
+      active_memory->memmain[byte++] = 0xFF;
+      active_memory->memmain[byte++] = 0xFF;
       byte++;
       byte++;
     }
   }
 
-  set_mem(g_active_memory->memimage);
+  set_mem(active_memory->memimage);
   reset_paging(true);
 
   // Initialize & reset the cpu
@@ -1251,75 +1251,75 @@ auto mem_read_floating_bus(uint8_t highbit, uint32_t executed_cycles) noexcept
 auto mem_set_paging(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
                     uint32_t cycles) -> uint8_t {
   addr &= 0xFF;
-  uint32_t lastmemmode = g_active_memory->mem_mode;
+  uint32_t lastmemmode = active_memory->mem_mode;
 
   // Determine the new memory paging mode.
   if ((addr >= SS_LC_BEGIN) && (addr <= SS_LC_END)) {
     bool writeram = ((addr & 1) != 0);
-    g_active_memory->mem_mode &= ~(MF_HRAM_BANK2 | MF_HIGHRAM | MF_HRAM_WRITE);
+    active_memory->mem_mode &= ~(MF_HRAM_BANK2 | MF_HIGHRAM | MF_HRAM_WRITE);
     {
-      g_active_memory->last_write_ram =
+      active_memory->last_write_ram =
           true;  // note: because diags.do doesn't set switches twice!
-      if (g_active_memory->last_write_ram && writeram) {
-        g_active_memory->mem_mode |= MF_HRAM_WRITE;
+      if (active_memory->last_write_ram && writeram) {
+        active_memory->mem_mode |= MF_HRAM_WRITE;
       }
       if ((addr & 8) == 0) {
-        g_active_memory->mem_mode |= MF_HRAM_BANK2;
+        active_memory->mem_mode |= MF_HRAM_BANK2;
       }
       if (((addr & 2) >> 1) == (addr & 1)) {
-        g_active_memory->mem_mode |= MF_HIGHRAM;
+        active_memory->mem_mode |= MF_HIGHRAM;
       }
     }
-    g_active_memory->last_write_ram = writeram;
+    active_memory->last_write_ram = writeram;
   } else if (!is_apple2()) {
     switch (addr) {
       case SS_80STORE_OFF:
-        g_active_memory->mem_mode &= ~MF_80STORE;
+        active_memory->mem_mode &= ~MF_80STORE;
         break;
       case SS_80STORE_ON:
-        g_active_memory->mem_mode |= MF_80STORE;
+        active_memory->mem_mode |= MF_80STORE;
         break;
       case SS_AUXREAD_OFF:
-        g_active_memory->mem_mode &= ~MF_AUXREAD;
+        active_memory->mem_mode &= ~MF_AUXREAD;
         break;
       case SS_AUXREAD_ON:
-        g_active_memory->mem_mode |= MF_AUXREAD;
+        active_memory->mem_mode |= MF_AUXREAD;
         break;
       case SS_AUXWRITE_OFF:
-        g_active_memory->mem_mode &= ~MF_AUXWRITE;
+        active_memory->mem_mode &= ~MF_AUXWRITE;
         break;
       case SS_AUXWRITE_ON:
-        g_active_memory->mem_mode |= MF_AUXWRITE;
+        active_memory->mem_mode |= MF_AUXWRITE;
         break;
       case SS_SLOTCXROM_ON:
-        g_active_memory->mem_mode |= MF_SLOTCXROM;
+        active_memory->mem_mode |= MF_SLOTCXROM;
         break;
       case SS_SLOTCXROM_OFF:
-        g_active_memory->mem_mode &= ~MF_SLOTCXROM;
+        active_memory->mem_mode &= ~MF_SLOTCXROM;
         break;
       case SS_ALTZP_OFF:
-        g_active_memory->mem_mode &= ~MF_ALTZP;
+        active_memory->mem_mode &= ~MF_ALTZP;
         break;
       case SS_ALTZP_ON:
-        g_active_memory->mem_mode |= MF_ALTZP;
+        active_memory->mem_mode |= MF_ALTZP;
         break;
       case SS_SLOTC3ROM_OFF:
-        g_active_memory->mem_mode &= ~MF_SLOTC3ROM;
+        active_memory->mem_mode &= ~MF_SLOTC3ROM;
         break;
       case SS_SLOTC3ROM_ON:
-        g_active_memory->mem_mode |= MF_SLOTC3ROM;
+        active_memory->mem_mode |= MF_SLOTC3ROM;
         break;
       case SS_PAGE2_OFF:
-        g_active_memory->mem_mode &= ~MF_PAGE2;
+        active_memory->mem_mode &= ~MF_PAGE2;
         break;
       case SS_PAGE2_ON:
-        g_active_memory->mem_mode |= MF_PAGE2;
+        active_memory->mem_mode |= MF_PAGE2;
         break;
       case SS_HIRES_OFF:
-        g_active_memory->mem_mode &= ~MF_HIRES;
+        active_memory->mem_mode &= ~MF_HIRES;
         break;
       case SS_HIRES_ON:
-        g_active_memory->mem_mode |= MF_HIRES;
+        active_memory->mem_mode |= MF_HIRES;
         break;
       default:
         break;
@@ -1331,43 +1331,43 @@ auto mem_set_paging(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
   // does so.
   if ((addr >= 4) && (addr <= 5) && (pc <= 0xFFFC) &&
       ((read_u32_le(mem + pc) & 0x00FFFEFF) == 0x00C0028D)) {
-    g_active_memory->mode_changing = true;
+    active_memory->mode_changing = true;
     return (write != 0) ? 0 : mem_read_floating_bus(1, cycles);
   }
   if ((addr >= 0x80) && (addr <= 0x8F) && (pc <= 0xFFFC) &&
       (((read_u32_le(mem + pc) & 0x00FFFEFF) == 0x00C0048D) ||
        ((read_u32_le(mem + pc) & 0x00FFFEFF) == 0x00C0028D))) {
-    g_active_memory->mode_changing = true;
+    active_memory->mode_changing = true;
     return (write != 0) ? 0 : mem_read_floating_bus(1, cycles);
   }
 
   // If the memory paging mode has changed, update our memory images and write
   // tables.
-  if ((lastmemmode != g_active_memory->mem_mode) ||
-      g_active_memory->mode_changing) {
-    g_active_memory->mode_changing = false;
+  if ((lastmemmode != active_memory->mem_mode) ||
+      active_memory->mode_changing) {
+    active_memory->mode_changing = false;
 
     if ((lastmemmode & MF_SLOTCXROM) !=
-        (g_active_memory->mem_mode & MF_SLOTCXROM)) {
-      if (sw_slotcxrom(g_active_memory)) {
+        (active_memory->mem_mode & MF_SLOTCXROM)) {
+      if (sw_slotcxrom(active_memory)) {
         // Disable Internal ROM
         // . Similar to $CFFF access
         // . None of the peripheral cards can be driving the bus - so use the
         // null ROM
-        memset(g_active_memory->cx_rom_peripheral + FIRMWARE_EXPANSION_SIZE, 0,
+        memset(active_memory->cx_rom_peripheral + FIRMWARE_EXPANSION_SIZE, 0,
                FIRMWARE_EXPANSION_SIZE);
         memset(mem + FIRMWARE_EXPANSION_BEGIN, 0, FIRMWARE_EXPANSION_SIZE);
-        g_active_memory->expansion_rom_type = EXP_ROM_NULL;
-        g_active_memory->peripheral_rom_slot = 0;
+        active_memory->expansion_rom_type = EXP_ROM_NULL;
+        active_memory->peripheral_rom_slot = 0;
       } else {
         // Enable Internal ROM
-        if (g_active_memory->cx_rom_internal != nullptr) {
+        if (active_memory->cx_rom_internal != nullptr) {
           memcpy(mem + FIRMWARE_EXPANSION_BEGIN,
-                 g_active_memory->cx_rom_internal + FIRMWARE_EXPANSION_SIZE,
+                 active_memory->cx_rom_internal + FIRMWARE_EXPANSION_SIZE,
                  FIRMWARE_EXPANSION_SIZE);
         }
-        g_active_memory->expansion_rom_type = EXP_ROM_INTERNAL;
-        g_active_memory->peripheral_rom_slot = 0;
+        active_memory->expansion_rom_type = EXP_ROM_INTERNAL;
+        active_memory->peripheral_rom_slot = 0;
       }
     }
 
@@ -1385,15 +1385,15 @@ auto mem_get_slot_parameters(uint32_t slot) noexcept -> void* {
   if (slot >= num_slots) {
     return nullptr;
   }
-  return g_active_memory->slot_parameters[slot];
+  return active_memory->slot_parameters[slot];
 }
 
-auto mem_get_snapshot(SsBaseMemory_t* snapshot) -> uint32_t {
+auto mem_get_snapshot(SsBaseMemory* snapshot) -> uint32_t {
   if (snapshot == nullptr) {
     return 1;
   }
-  snapshot->mem_mode = g_active_memory->mem_mode;
-  snapshot->last_write_ram = g_active_memory->last_write_ram ? 1 : 0;
+  snapshot->mem_mode = active_memory->mem_mode;
+  snapshot->last_write_ram = active_memory->last_write_ram ? 1 : 0;
 
   for (uint32_t offset = 0x0000; offset < MEMORY_64K; offset += PAGE_SIZE) {
     memcpy(snapshot->mem_main + offset,
@@ -1405,15 +1405,15 @@ auto mem_get_snapshot(SsBaseMemory_t* snapshot) -> uint32_t {
   return 0;
 }
 
-auto mem_set_snapshot(const SsBaseMemory_t* snapshot) -> uint32_t {
+auto mem_set_snapshot(const SsBaseMemory* snapshot) -> uint32_t {
   if (snapshot == nullptr) {
     return 1;
   }
-  g_active_memory->mem_mode = snapshot->mem_mode;
-  g_active_memory->last_write_ram = (snapshot->last_write_ram != 0);
-  memcpy(g_active_memory->memmain, snapshot->mem_main, mem_main_size);
-  memcpy(g_active_memory->memaux, snapshot->mem_aux, mem_aux_size);
-  g_active_memory->mode_changing = false;
+  active_memory->mem_mode = snapshot->mem_mode;
+  active_memory->last_write_ram = (snapshot->last_write_ram != 0);
+  memcpy(active_memory->memmain, snapshot->mem_main, mem_main_size);
+  memcpy(active_memory->memaux, snapshot->mem_aux, mem_aux_size);
+  active_memory->mode_changing = false;
   mem_update_paging(true, false);  // Initialize=1, UpdateWriteOnly=0
 
   return 0;

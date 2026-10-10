@@ -327,7 +327,7 @@ auto linapple_get_supported_disk_extensions(int slot, char* out_buffer,
   }
   out_buffer[0] = '\0';
   for (const char* id : {"linapple.disk_II", "linapple.harddisk"}) {
-    Peripheral_t* descriptor = peripheral_find_internal(id);
+    Peripheral* descriptor = peripheral_find_internal(id);
     if (descriptor == nullptr || descriptor->query == nullptr) {
       continue;
     }
@@ -362,7 +362,7 @@ auto linapple_is_supported_disk_image(const char* path) -> bool {
   // Both cards' descriptors, with no instance: what the machine could mount,
   // whether or not a card is in a slot right now.
   for (const char* id : {"linapple.disk_II", "linapple.harddisk"}) {
-    Peripheral_t* descriptor = peripheral_find_internal(id);
+    Peripheral* descriptor = peripheral_find_internal(id);
     if (descriptor == nullptr || descriptor->query == nullptr) {
       continue;
     }
@@ -540,7 +540,7 @@ auto linapple_set_language(Apple2Language lang) noexcept -> void {
 
 auto linapple_set_key(uint32_t host_key, uint8_t apple_code, bool down)
     -> void {
-  const KeyboardKeyEvent_t ev = {
+  const KeyboardKeyEvent ev = {
       host_key,
       apple_code,
       static_cast<uint8_t>(down ? 1 : 0),

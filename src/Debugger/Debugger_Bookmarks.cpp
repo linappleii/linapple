@@ -14,17 +14,17 @@
 #include "Util_MemoryTextFile.h"
 
 // Globals
-int g_bookmarks_count = 0;
-Bookmark_t g_bookmarks[MAX_BOOKMARKS] = {};
+int bookmarks_count = 0;
+Bookmark bookmarks[MAX_BOOKMARKS] = {};
 
 #include "Debugger_Cmd_Config.h"
 
-// Bookmark_t Functions
+// Bookmark Functions
 auto Bookmark_Add(const int iBookmark, const uint16_t address) -> bool {
   if (iBookmark < MAX_BOOKMARKS) {
-    g_bookmarks[iBookmark].address = address;
-    g_bookmarks[iBookmark].bSet = true;
-    g_bookmarks_count++;
+    bookmarks[iBookmark].address = address;
+    bookmarks[iBookmark].bSet = true;
+    bookmarks_count++;
     return true;
   }
 
@@ -33,9 +33,9 @@ auto Bookmark_Add(const int iBookmark, const uint16_t address) -> bool {
 
 auto Bookmark_Del(const uint16_t address) -> bool {
   bool bDeleted = false;
-  for (auto& g_bookmark : g_bookmarks) {
-    if (g_bookmark.address == address) {
-      g_bookmark.bSet = false;
+  for (auto& bookmark : bookmarks) {
+    if (bookmark.address == address) {
+      bookmark.bSet = false;
       bDeleted = true;
     }
   }
@@ -46,8 +46,8 @@ auto Bookmark_Find(const uint16_t address) -> bool {
   // Ugh, linear search
   int iBookmark = 0;
   for (iBookmark = 0; iBookmark < MAX_BOOKMARKS; iBookmark++) {
-    if ((g_bookmarks[iBookmark].address == address) &&
-        g_bookmarks[iBookmark].bSet) {
+    if ((bookmarks[iBookmark].address == address) &&
+        bookmarks[iBookmark].bSet) {
       return true;
     }
   }
@@ -59,8 +59,8 @@ auto Bookmark_Get(const int iBookmark, uint16_t& address) -> bool {
     return false;
   }
 
-  if (g_bookmarks[iBookmark].bSet) {
-    address = g_bookmarks[iBookmark].address;
+  if (bookmarks[iBookmark].bSet) {
+    address = bookmarks[iBookmark].address;
     return true;
   }
 
@@ -70,26 +70,26 @@ auto Bookmark_Get(const int iBookmark, uint16_t& address) -> bool {
 auto Bookmark_Reset() -> void {
   int iBookmark = 0;
   for (iBookmark = 0; iBookmark < MAX_BOOKMARKS; iBookmark++) {
-    g_bookmarks[iBookmark].bSet = false;
+    bookmarks[iBookmark].bSet = false;
   }
 }
 
 auto Bookmark_Size() -> int {
-  g_bookmarks_count = 0;
+  bookmarks_count = 0;
 
   int iBookmark = 0;
   for (iBookmark = 0; iBookmark < MAX_BOOKMARKS; iBookmark++) {
-    if (g_bookmarks[iBookmark].bSet) {
-      g_bookmarks_count++;
+    if (bookmarks[iBookmark].bSet) {
+      bookmarks_count++;
     }
   }
 
-  return g_bookmarks_count;
+  return bookmarks_count;
 }
 
-auto CmdBookmark(int nArgs) -> Update_t { return CmdBookmarkAdd(nArgs); }
+auto CmdBookmark(int nArgs) -> UpdateResult { return CmdBookmarkAdd(nArgs); }
 
-auto CmdBookmarkAdd(int nArgs) -> Update_t {
+auto CmdBookmarkAdd(int nArgs) -> UpdateResult {
   // BMA [address]
   // BMA # address
   if (nArgs == 0) {
@@ -100,17 +100,17 @@ auto CmdBookmarkAdd(int nArgs) -> Update_t {
   int iBookmark = NO_6502_TARGET;
 
   if (nArgs > 1) {
-    iBookmark = g_args[1].nValue;
+    iBookmark = args[1].nValue;
     iArg++;
   }
 
   bool bAdded = false;
   for (; iArg <= nArgs; iArg++) {
-    uint16_t address = g_args[iArg].nValue;
+    uint16_t address = args[iArg].nValue;
 
     if (iBookmark == NO_6502_TARGET) {
       iBookmark = 0;
-      while ((iBookmark < MAX_BOOKMARKS) && g_bookmarks[iBookmark].bSet) {
+      while ((iBookmark < MAX_BOOKMARKS) && bookmarks[iBookmark].bSet) {
         iBookmark++;
       }
     }
@@ -123,11 +123,11 @@ auto CmdBookmarkAdd(int nArgs) -> Update_t {
       return ConsoleUpdate();
     }
 
-    if ((iBookmark < MAX_BOOKMARKS) && (g_bookmarks_count < MAX_BOOKMARKS)) {
-      g_bookmarks[iBookmark].bSet = true;
-      g_bookmarks[iBookmark].address = address;
+    if ((iBookmark < MAX_BOOKMARKS) && (bookmarks_count < MAX_BOOKMARKS)) {
+      bookmarks[iBookmark].bSet = true;
+      bookmarks[iBookmark].address = address;
       bAdded = true;
-      g_bookmarks_count++;
+      bookmarks_count++;
       iBookmark++;
     }
   }
@@ -139,59 +139,59 @@ auto CmdBookmarkAdd(int nArgs) -> Update_t {
   return UPDATE_DISASM | ConsoleUpdate();
 }
 
-auto CmdBookmarkClear(int nArgs) -> Update_t {
+auto CmdBookmarkClear(int nArgs) -> UpdateResult {
   int iBookmark = 0;
 
   int iArg = 0;
   for (iArg = 1; iArg <= nArgs; iArg++) {
-    if (strcmp(g_args[nArgs].sArg, g_parameters[PARAM_WILDSTAR].name) == 0) {
+    if (strcmp(args[nArgs].sArg, parameters[PARAM_WILDSTAR].name) == 0) {
       for (iBookmark = 0; iBookmark < MAX_BOOKMARKS; iBookmark++) {
-        if (g_bookmarks[iBookmark].bSet) {
-          g_bookmarks[iBookmark].bSet = false;
+        if (bookmarks[iBookmark].bSet) {
+          bookmarks[iBookmark].bSet = false;
         }
       }
       break;
     }
 
-    iBookmark = g_args[iArg].nValue;
-    if (g_bookmarks[iBookmark].bSet) {
-      g_bookmarks[iBookmark].bSet = false;
+    iBookmark = args[iArg].nValue;
+    if (bookmarks[iBookmark].bSet) {
+      bookmarks[iBookmark].bSet = false;
     }
   }
 
   return UPDATE_DISASM;
 }
 
-auto CmdBookmarkGoto(int nArgs) -> Update_t {
+auto CmdBookmarkGoto(int nArgs) -> UpdateResult {
   if (nArgs == 0) {
     return Help_Arg_1(CMD_BOOKMARK_GOTO);
   }
 
-  int iBookmark = g_args[1].nValue;
+  int iBookmark = args[1].nValue;
 
   uint16_t address = 0;
   if (Bookmark_Get(iBookmark, address)) {
-    g_disasm_cur_address = address;
-    g_disasm_cur_line = 0;
+    disasm_cur_address = address;
+    disasm_cur_line = 0;
     DisasmCalcTopBotAddress();
   }
 
   return UPDATE_DISASM;
 }
 
-auto CmdBookmarkList(int nArgs) -> Update_t {
+auto CmdBookmarkList(int nArgs) -> UpdateResult {
   (void)nArgs;
-  if (g_bookmarks_count == 0) {
+  if (bookmarks_count == 0) {
     char sText[CONSOLE_WIDTH];
     ConsoleBufferPushFormat(
         sText, "  There are no current bookmarks.  (Max: %d", MAX_BOOKMARKS);
   } else {
-    bwz_ListAll(g_bookmarks, MAX_BOOKMARKS);
+    bwz_ListAll(bookmarks, MAX_BOOKMARKS);
   }
   return ConsoleUpdate();
 }
 
-auto CmdBookmarkLoad(int nArgs) -> Update_t {
+auto CmdBookmarkLoad(int nArgs) -> UpdateResult {
   if (nArgs == 1) {
     //    strcpy( sMiniFileName, pFileName );
     //  strcat( sMiniFileName, ".aws" ); // HACK: MAGIC STRING
@@ -203,30 +203,30 @@ auto CmdBookmarkLoad(int nArgs) -> Update_t {
   return UPDATE_CONSOLE_DISPLAY;
 }
 
-auto CmdBookmarkSave(int nArgs) -> Update_t {
+auto CmdBookmarkSave(int nArgs) -> UpdateResult {
   char sText[CONSOLE_WIDTH];
 
-  g_config_state.Reset();
+  config_state.Reset();
 
   ConfigSave_PrepareHeader(PARAM_CAT_BOOKMARKS, CMD_BOOKMARK_CLEAR);
 
   int iBookmark = 0;
   while (iBookmark < MAX_BOOKMARKS) {
-    if (g_bookmarks[iBookmark].bSet) {
+    if (bookmarks[iBookmark].bSet) {
       snprintf(sText, sizeof(sText), "%s %x %04X\n",
-               g_commands[CMD_BOOKMARK_ADD].name, iBookmark,
-               g_bookmarks[iBookmark].address);
-      g_config_state.PushLine(sText);
+               commands[CMD_BOOKMARK_ADD].name, iBookmark,
+               bookmarks[iBookmark].address);
+      config_state.PushLine(sText);
     }
     iBookmark++;
   }
 
   if (nArgs != 0) {
-    if ((g_args[1].bType & TYPE_QUOTED_2) == 0) {
+    if ((args[1].bType & TYPE_QUOTED_2) == 0) {
       return Help_Arg_1(CMD_BOOKMARK_SAVE);
     }
 
-    if (ConfigSave_BufferToDisk(g_args[1].sArg, CONFIG_SAVE_FILE_CREATE)) {
+    if (ConfigSave_BufferToDisk(args[1].sArg, CONFIG_SAVE_FILE_CREATE)) {
       ConsoleBufferPush("Saved.");
       return ConsoleUpdate();
     }

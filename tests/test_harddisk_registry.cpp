@@ -17,7 +17,7 @@
 
 namespace {
 
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 
 constexpr const char* harddisk_id = "linapple.harddisk";
 constexpr int card_slot = 7;
@@ -50,8 +50,8 @@ auto fake_write_block(void* /*unused*/, uint32_t /*unused*/,
 
 auto fake_get_total_blocks(void* /*unused*/) -> uint32_t { return 0; }
 
-auto make_fake(const char* name) -> HarddiskFormatDriver_t {
-  HarddiskFormatDriver_t driver{};
+auto make_fake(const char* name) -> HarddiskFormatDriver {
+  HarddiskFormatDriver driver{};
   driver.abi_version = harddisk_format_abi_version;
   driver.name = name;
   driver.probe = probe_no;
@@ -87,14 +87,14 @@ auto registered_names() -> std::vector<std::string> {
 
 TEST_CASE(
     "Harddisk registry: the id resolves and a Slot 7 line places the card") {
-  Peripheral_t* descriptor = peripheral_find_internal(harddisk_id);
+  Peripheral* descriptor = peripheral_find_internal(harddisk_id);
   REQUIRE(descriptor != nullptr);
   CHECK(std::string(descriptor->id) == harddisk_id);
 
-  TestConfig_t::Description_t description;
+  TestConfig::Description description;
   description.slots[card_slot - 1] = "Harddisk";
-  TestConfig_t config(description);
-  TestFixtures::ScopedCore_t core(config);
+  TestConfig config(description);
+  TestFixtures::ScopedCore core(config);
 
   CHECK(peripheral_present(card_slot, harddisk_id));
   SS_PERIPHERAL_MANIFEST manifest;
@@ -123,9 +123,9 @@ TEST_CASE(
     "point present with its write bit, so the usable-check that admits the "
     "others admits it") {
   harddisk_loader_reset();
-  const HarddiskFormatDriver_t* nibble = nullptr;
+  const HarddiskFormatDriver* nibble = nullptr;
   for (uint32_t i = 0; i < harddisk_loader_driver_count(); ++i) {
-    const HarddiskFormatDriver_t* driver = harddisk_loader_driver_at(i);
+    const HarddiskFormatDriver* driver = harddisk_loader_driver_at(i);
     if (std::string(driver->name) == "Nibble image") {
       nibble = driver;
     }
@@ -165,7 +165,7 @@ TEST_CASE("Harddisk registry: the same driver registers once") {
   harddisk_loader_reset();
   const uint32_t baseline = harddisk_loader_driver_count();
 
-  HarddiskFormatDriver_t fake = make_fake("Fake Once");
+  HarddiskFormatDriver fake = make_fake("Fake Once");
   harddisk_loader_register(&fake);
   harddisk_loader_register(&fake);
   harddisk_loader_register(&fake);
@@ -182,27 +182,27 @@ TEST_CASE(
   harddisk_loader_reset();
   const uint32_t baseline = harddisk_loader_driver_count();
 
-  HarddiskFormatDriver_t future = make_fake("Fake Future");
+  HarddiskFormatDriver future = make_fake("Fake Future");
   future.abi_version = harddisk_format_abi_version + 1;
   harddisk_loader_register(&future);
 
-  HarddiskFormatDriver_t no_read = make_fake("Fake Unreadable");
+  HarddiskFormatDriver no_read = make_fake("Fake Unreadable");
   no_read.read_block = nullptr;
   harddisk_loader_register(&no_read);
 
-  HarddiskFormatDriver_t no_count = make_fake("Fake Uncounted");
+  HarddiskFormatDriver no_count = make_fake("Fake Uncounted");
   no_count.get_total_blocks = nullptr;
   harddisk_loader_register(&no_count);
 
-  HarddiskFormatDriver_t write_bit_only = make_fake("Fake Write Bit");
+  HarddiskFormatDriver write_bit_only = make_fake("Fake Write Bit");
   write_bit_only.capabilities = harddisk_driver_cap_write;
   harddisk_loader_register(&write_bit_only);
 
-  HarddiskFormatDriver_t write_fn_only = make_fake("Fake Write Fn");
+  HarddiskFormatDriver write_fn_only = make_fake("Fake Write Fn");
   write_fn_only.write_block = fake_write_block;
   harddisk_loader_register(&write_fn_only);
 
-  HarddiskFormatDriver_t taken = make_fake("DOS Order");
+  HarddiskFormatDriver taken = make_fake("DOS Order");
   harddisk_loader_register(&taken);
 
   CHECK(harddisk_loader_driver_count() == baseline);
@@ -222,7 +222,7 @@ TEST_CASE(
   harddisk_loader_reset();
   const uint32_t baseline = harddisk_loader_driver_count();
 
-  HarddiskFormatDriver_t fake = make_fake("Fake Transient");
+  HarddiskFormatDriver fake = make_fake("Fake Transient");
   harddisk_loader_register(&fake);
   CHECK(harddisk_loader_driver_count() == baseline + 1);
   harddisk_loader_note("Fake Transient", "a note nobody drained");

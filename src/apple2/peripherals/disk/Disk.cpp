@@ -78,7 +78,7 @@ auto path_basename(const std::string& path) -> std::string {
                                                : path;
 }
 
-struct Disk_t {
+struct Disk {
   std::string full_path;
   uint32_t quarter_track = 0;
   uint32_t bit_position = 0;
@@ -92,22 +92,22 @@ struct Disk_t {
   uint32_t motor_enable_cycles = 0;
   uint32_t write_light_cycles = 0;
   std::vector<uint8_t> track_bits;
-  const DiskFormatDriver_t* driver = nullptr;
+  const DiskFormatDriver* driver = nullptr;
   void* driver_instance = nullptr;
   DiskError last_error = disk_err_none;
 
-  Disk_t() = default;
-  ~Disk_t() = default;
+  Disk() = default;
+  ~Disk() = default;
 
-  Disk_t(const Disk_t&) = delete;
-  auto operator=(const Disk_t&) -> Disk_t& = delete;
-  Disk_t(Disk_t&&) = default;
-  auto operator=(Disk_t&&) -> Disk_t& = default;
+  Disk(const Disk&) = delete;
+  auto operator=(const Disk&) -> Disk& = delete;
+  Disk(Disk&&) = default;
+  auto operator=(Disk&&) -> Disk& = default;
 };
 
 // The two 9334 bits that tell the P6 what to do with the data register, the
 // state it is walking, and the write head's present polarity.
-struct DiskSequencer_t {
+struct DiskSequencer {
   bool q6 = false;
   bool q7 = false;
   bool write_line_active = false;
@@ -115,9 +115,9 @@ struct DiskSequencer_t {
   uint8_t state = 0;
 };
 
-struct DiskPeripheral_t {
+struct DiskPeripheral {
   // Attached physical drives
-  std::array<Disk_t, disk_drive_count> drives{};
+  std::array<Disk, disk_drive_count> drives{};
   uint16_t active_drive_index = 0;
 
   // Controller hardware registers and softswitch flip-flops
@@ -125,7 +125,7 @@ struct DiskPeripheral_t {
   uint8_t last_bus_write = 0;
   uint16_t stepper_phase_mask = 0;
   bool is_motor_on = false;
-  DiskSequencer_t sequencer{};
+  DiskSequencer sequencer{};
 
   // Rotational and timing simulation state
   uint32_t synced = 0;
@@ -135,17 +135,17 @@ struct DiskPeripheral_t {
   uint32_t quarter_track_before_release = 0;
   bool magnet_released = false;
 
-  HostInterface_t* host = nullptr;
+  HostInterface* host = nullptr;
   int slot = 0;
 
-  DiskPeripheral_t() = default;
+  DiskPeripheral() = default;
 };
 
 constexpr auto is_drive_valid(int drive_index) noexcept -> bool {
   return (drive_index >= 0 && drive_index < disk_drive_count);
 }
 
-auto get_active_drive(DiskPeripheral_t* dp) -> Disk_t& {
+auto get_active_drive(DiskPeripheral* dp) -> Disk& {
   const size_t index = (dp->active_drive_index < disk_drive_count)
                            ? static_cast<size_t>(dp->active_drive_index)
                            : 0;
@@ -155,19 +155,19 @@ auto get_active_drive(DiskPeripheral_t* dp) -> Disk_t& {
 // The 9334 latches the phase bits, but the coil drivers in the drive
 // are powered from the enable line the 556 holds up, so a latched bit only
 // pulls on the cog while that line is asserted.
-auto energised_magnets(DiskPeripheral_t* dp) -> uint16_t {
+auto energised_magnets(DiskPeripheral* dp) -> uint16_t {
   return (get_active_drive(dp).motor_enable_cycles > 0) ? dp->stepper_phase_mask
                                                         : 0;
 }
 
-auto notify_status_changed(const DiskPeripheral_t* dp) -> void {
+auto notify_status_changed(const DiskPeripheral* dp) -> void {
   if (dp != nullptr && dp->host != nullptr &&
       dp->host->NotifyStatusChanged != nullptr) {
     dp->host->NotifyStatusChanged(dp->slot);
   }
 }
 
-auto notify_activity_changed(const DiskPeripheral_t* dp, bool active) -> void {
+auto notify_activity_changed(const DiskPeripheral* dp, bool active) -> void {
   if (dp != nullptr && dp->host != nullptr &&
       dp->host->NotifyActivityChanged != nullptr) {
     dp->host->NotifyActivityChanged(dp->slot, active);
@@ -178,7 +178,7 @@ auto notify_activity_changed(const DiskPeripheral_t* dp, bool active) -> void {
 // undriven, so the 6502 reads whatever the video scanner is fetching that
 // cycle. A card with no slot and no host is not on a bus at all.
 auto read_floating_bus(void* instance, uint32_t executed_cycles) -> uint8_t {
-  const auto* dp = static_cast<const DiskPeripheral_t*>(instance);
+  const auto* dp = static_cast<const DiskPeripheral*>(instance);
   if (dp == nullptr || dp->host == nullptr ||
       dp->host->ReadFloatingBus == nullptr) {
     return 0xFF;
@@ -189,7 +189,7 @@ auto read_floating_bus(void* instance, uint32_t executed_cycles) -> uint8_t {
 // Three layers decide whether the head may write: the user's notch on
 // the drive, what the format can express, and what the driver knows about the
 // medium and the file under it.
-auto is_disk_write_protected(const DiskPeripheral_t* disk_peripheral,
+auto is_disk_write_protected(const DiskPeripheral* disk_peripheral,
                              int drive_index) -> bool {
   if (disk_peripheral == nullptr || !is_drive_valid(drive_index)) {
     return false;
@@ -215,11 +215,11 @@ auto is_disk_write_protected(const DiskPeripheral_t* disk_peripheral,
   return disk.driver->is_write_protected(disk.driver_instance);
 }
 
-auto medium_cell(const Disk_t& drive, uint32_t index) -> uint32_t {
+auto medium_cell(const Disk& drive, uint32_t index) -> uint32_t {
   return (drive.track_bits[index >> 3U] >> (7U - (index & 7U))) & 1U;
 }
 
-auto advance_medium(Disk_t* disk_ptr, uint32_t cells) -> void {
+auto advance_medium(Disk* disk_ptr, uint32_t cells) -> void {
   if (disk_ptr->bit_count == 0) {
     return;
   }
@@ -227,7 +227,7 @@ auto advance_medium(Disk_t* disk_ptr, uint32_t cells) -> void {
       (disk_ptr->bit_position + cells) % disk_ptr->bit_count;
 }
 
-auto write_medium_byte(Disk_t* disk_ptr, uint8_t value) -> void {
+auto write_medium_byte(Disk* disk_ptr, uint8_t value) -> void {
   for (uint32_t mask = 0x80U; mask != 0U; mask >>= 1U) {
     const uint32_t index = disk_ptr->bit_position;
     const auto cell = static_cast<uint8_t>(0x80U >> (index & 7U));
@@ -242,7 +242,7 @@ auto write_medium_byte(Disk_t* disk_ptr, uint8_t value) -> void {
 
 // The v1 save state carries bytes, so the medium is read out from the index
 // hole the same way the data register would read it.
-auto decode_medium_bytes(const Disk_t& drive, uint8_t* out, uint32_t max_count)
+auto decode_medium_bytes(const Disk& drive, uint8_t* out, uint32_t max_count)
     -> uint32_t {
   if (drive.bit_count < physical::cells_per_byte) {
     return 0;
@@ -267,7 +267,7 @@ auto decode_medium_bytes(const Disk_t& drive, uint8_t* out, uint32_t max_count)
   return written;
 }
 
-auto encode_medium_bytes(Disk_t* disk_ptr, const uint8_t* bytes, uint32_t count)
+auto encode_medium_bytes(Disk* disk_ptr, const uint8_t* bytes, uint32_t count)
     -> void {
   disk_ptr->bit_position = 0;
   disk_ptr->bit_count = count * physical::cells_per_byte;
@@ -278,7 +278,7 @@ auto encode_medium_bytes(Disk_t* disk_ptr, const uint8_t* bytes, uint32_t count)
   disk_ptr->cell_remaining = 0;
 }
 
-auto write_track_to_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
+auto write_track_to_driver(DiskPeripheral* disk_peripheral, int drive_index)
     -> void {
   if (disk_peripheral == nullptr || !is_drive_valid(drive_index)) {
     return;
@@ -312,7 +312,7 @@ auto write_track_to_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
 // arm needs a few cells to stop ringing before the amplifier can lock -
 // AppleWin measured seven against Balance of Power, which reads one track
 // to find its place on the next.
-auto rescale_head_angle(Disk_t* disk_ptr, uint32_t previous_position,
+auto rescale_head_angle(Disk* disk_ptr, uint32_t previous_position,
                         uint32_t previous_count) -> void {
   if (disk_ptr->bit_count == 0) {
     disk_ptr->bit_position = 0;
@@ -329,7 +329,7 @@ auto rescale_head_angle(Disk_t* disk_ptr, uint32_t previous_position,
       (scaled + physical::head_settling_cells) % disk_ptr->bit_count);
 }
 
-auto read_track_from_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
+auto read_track_from_driver(DiskPeripheral* disk_peripheral, int drive_index)
     -> void {
   if (disk_peripheral == nullptr || !is_drive_valid(drive_index)) {
     return;
@@ -373,7 +373,7 @@ auto read_track_from_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
   rescale_head_angle(disk_ptr, previous_position, previous_count);
 }
 
-auto close_format_driver(Disk_t* disk_ptr) -> void {
+auto close_format_driver(Disk* disk_ptr) -> void {
   if (disk_ptr == nullptr || disk_ptr->driver == nullptr) {
     return;
   }
@@ -385,7 +385,7 @@ auto close_format_driver(Disk_t* disk_ptr) -> void {
   disk_ptr->driver_instance = nullptr;
 }
 
-auto eject_disk_from_drive(DiskPeripheral_t* disk_peripheral, int drive_index)
+auto eject_disk_from_drive(DiskPeripheral* disk_peripheral, int drive_index)
     -> void {
   if (disk_peripheral == nullptr || !is_drive_valid(drive_index)) {
     return;
@@ -393,7 +393,7 @@ auto eject_disk_from_drive(DiskPeripheral_t* disk_peripheral, int drive_index)
 
   auto& disk = disk_peripheral->drives.at(static_cast<size_t>(drive_index));
   if (disk.driver == nullptr) {
-    disk = Disk_t();
+    disk = Disk();
     return;
   }
 
@@ -405,12 +405,12 @@ auto eject_disk_from_drive(DiskPeripheral_t* disk_peripheral, int drive_index)
 
   notify_status_changed(disk_peripheral);
 
-  disk = Disk_t();
+  disk = Disk();
 }
 
-auto settle_head(DiskPeripheral_t* disk_peripheral) -> void;
+auto settle_head(DiskPeripheral* disk_peripheral) -> void;
 
-auto sync_drive_motor_state(DiskPeripheral_t* disk_peripheral) -> void {
+auto sync_drive_motor_state(DiskPeripheral* disk_peripheral) -> void {
   if (disk_peripheral == nullptr) {
     return;
   }
@@ -433,7 +433,7 @@ auto sync_drive_motor_state(DiskPeripheral_t* disk_peripheral) -> void {
   }
 }
 
-auto insert_disk_into_drive(DiskPeripheral_t* disk_peripheral, int drive_index,
+auto insert_disk_into_drive(DiskPeripheral* disk_peripheral, int drive_index,
                             const char* image_path, bool write_protected)
     -> DiskError {
   if (disk_peripheral == nullptr || image_path == nullptr ||
@@ -445,7 +445,7 @@ auto insert_disk_into_drive(DiskPeripheral_t* disk_peripheral, int drive_index,
   if (drive.driver != nullptr) {
     eject_disk_from_drive(disk_peripheral, drive_index);
   }
-  drive = Disk_t();
+  drive = Disk();
 
   drive.is_user_write_protected = write_protected;
   const DiskError error =
@@ -473,7 +473,7 @@ auto disk_io_control_motor(void* instance, uint16_t /*unused*/,
     return read_floating_bus(instance, executed_cycles);
   }
 
-  auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
+  auto* disk_peripheral = static_cast<DiskPeripheral*>(instance);
 
   disk_peripheral->is_motor_on = (memory_address & 0x01) != 0;
 
@@ -487,7 +487,7 @@ auto disk_io_control_motor(void* instance, uint16_t /*unused*/,
 
 // A track change is where the image gets the chance to take what the
 // head wrote, because the buffer only holds one track at a time.
-auto move_head_to(DiskPeripheral_t* disk_peripheral, uint32_t quarter_track)
+auto move_head_to(DiskPeripheral* disk_peripheral, uint32_t quarter_track)
     -> void {
   auto& drive = get_active_drive(disk_peripheral);
   if (quarter_track == drive.quarter_track) {
@@ -504,7 +504,7 @@ auto move_head_to(DiskPeripheral_t* disk_peripheral, uint32_t quarter_track)
 // Each one draws it onto its own half track; the magnet directly across from
 // the cog pulls it in no direction at all. Two live magnets share the cog
 // between them, which is how the head comes to rest on an odd quarter track.
-auto settle_head(DiskPeripheral_t* disk_peripheral) -> void {
+auto settle_head(DiskPeripheral* disk_peripheral) -> void {
   auto& drive = get_active_drive(disk_peripheral);
 
   const auto here = static_cast<int32_t>(drive.quarter_track);
@@ -544,7 +544,7 @@ auto disk_io_control_stepper(void* instance, uint16_t /*unused*/,
     return read_floating_bus(instance, executed_cycles);
   }
 
-  auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
+  auto* disk_peripheral = static_cast<DiskPeripheral*>(instance);
   auto& drive = get_active_drive(disk_peripheral);
 
   const int strobe_phase = (memory_address >> 1) & 0x03;
@@ -600,7 +600,7 @@ auto disk_io_enable_drive(void* instance, uint16_t /*unused*/,
     return read_floating_bus(instance, executed_cycles);
   }
 
-  auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
+  auto* disk_peripheral = static_cast<DiskPeripheral*>(instance);
 
   const uint16_t new_drive_index = static_cast<uint16_t>(memory_address & 0x01);
   if (new_drive_index != disk_peripheral->active_drive_index) {
@@ -619,7 +619,7 @@ auto disk_io_enable_drive(void* instance, uint16_t /*unused*/,
   return read_floating_bus(instance, executed_cycles);
 }
 #if ENABLE_ROM_DISK2
-auto p6_opcode(uint8_t address) -> uint8_t { return g_rom_disk2_p6[address]; }
+auto p6_opcode(uint8_t address) -> uint8_t { return rom_disk2_p6[address]; }
 #else
 // A controller built without its sequencer PROM has an empty socket: the
 // state register never leaves zero and the data register never moves.
@@ -632,7 +632,7 @@ auto p6_opcode(uint8_t) -> uint8_t { return 0x08; }
 // belongs to the card instance rather than to the process, so two cards
 // never draw from one stream and a test replaying the same card sees the
 // same noise every run.
-auto noise_pulse(DiskPeripheral_t* disk_peripheral) -> bool {
+auto noise_pulse(DiskPeripheral* disk_peripheral) -> bool {
   disk_peripheral->noise_seed =
       (disk_peripheral->noise_seed * physical::noise_multiplier) +
       physical::noise_increment;
@@ -642,7 +642,7 @@ auto noise_pulse(DiskPeripheral_t* disk_peripheral) -> bool {
 
 // The cell the write head is laying down is the one whose window is ending,
 // which is the cell behind the one about to arrive.
-auto commit_write_cell(DiskPeripheral_t* disk_peripheral, Disk_t* drive)
+auto commit_write_cell(DiskPeripheral* disk_peripheral, Disk* drive)
     -> void {
   const uint32_t index =
       (drive->bit_position + drive->bit_count - 1) % drive->bit_count;
@@ -659,7 +659,7 @@ auto commit_write_cell(DiskPeripheral_t* disk_peripheral, Disk_t* drive)
 // One 2 MHz step of medium under the head. The MC3470 answers a flux
 // reversal with a single pulse, so a step that brings in more than one cell
 // still reports one.
-auto advance_medium_one_step(DiskPeripheral_t* disk_peripheral, Disk_t* drive,
+auto advance_medium_one_step(DiskPeripheral* disk_peripheral, Disk* drive,
                              bool may_write) -> bool {
   if (drive->bit_count == 0) {
     return noise_pulse(disk_peripheral);
@@ -691,7 +691,7 @@ auto advance_medium_one_step(DiskPeripheral_t* disk_peripheral, Disk_t* drive,
 // pulse, the two 9334 mode bits and the data register's top bit. The byte it
 // answers with carries the next state scattered over four address lines and,
 // in its low nibble, what the 74LS323 must do with the byte it holds.
-auto sequencer_step(DiskPeripheral_t* disk_peripheral, Disk_t* drive,
+auto sequencer_step(DiskPeripheral* disk_peripheral, Disk* drive,
                     bool is_protected, bool may_write) -> void {
   const bool pulse = advance_medium_one_step(disk_peripheral, drive, may_write);
 
@@ -745,7 +745,7 @@ auto sequencer_step(DiskPeripheral_t* disk_peripheral, Disk_t* drive,
   }
 }
 
-auto run_sequencer_cycles(DiskPeripheral_t* disk_peripheral, uint32_t cycles)
+auto run_sequencer_cycles(DiskPeripheral* disk_peripheral, uint32_t cycles)
     -> void {
   if (cycles == 0) {
     return;
@@ -777,7 +777,7 @@ auto run_sequencer_cycles(DiskPeripheral_t* disk_peripheral, uint32_t cycles)
 // the medium and the sequencer are brought up to the cycle the 6502 is on
 // before the access is served; the mark never moves backwards within a
 // slice, and think finishes it.
-auto sync_sequencer_to_cycle(DiskPeripheral_t* disk_peripheral,
+auto sync_sequencer_to_cycle(DiskPeripheral* disk_peripheral,
                              uint32_t executed_cycles) -> void {
   if (executed_cycles <= disk_peripheral->synced) {
     return;
@@ -796,7 +796,7 @@ auto disk_io_mode_switch(void* instance, uint16_t /*unused*/,
     return read_floating_bus(instance, executed_cycles);
   }
 
-  auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
+  auto* disk_peripheral = static_cast<DiskPeripheral*>(instance);
 
   if (is_write != 0) {
     disk_peripheral->last_bus_write = data_value;
@@ -821,7 +821,7 @@ auto disk_io_mode_switch(void* instance, uint16_t /*unused*/,
   return disk_peripheral->io_latch;
 }
 
-auto update_drive_physics(DiskPeripheral_t* disk_peripheral, Disk_t* disk_ptr,
+auto update_drive_physics(DiskPeripheral* disk_peripheral, Disk* disk_ptr,
                           uint32_t elapsed_cycles) -> void {
   if (disk_peripheral == nullptr || disk_ptr == nullptr) {
     return;
@@ -863,7 +863,7 @@ auto update_drive_physics(DiskPeripheral_t* disk_peripheral, Disk_t* disk_ptr,
   }
 }
 
-auto update_physical_disk_state(DiskPeripheral_t* disk_peripheral,
+auto update_physical_disk_state(DiskPeripheral* disk_peripheral,
                                 uint32_t elapsed_cycles) -> void {
   if (disk_peripheral == nullptr) {
     return;
@@ -876,7 +876,7 @@ auto update_physical_disk_state(DiskPeripheral_t* disk_peripheral,
   }
 }
 
-auto swap_drives(DiskPeripheral_t* disk_peripheral) -> bool {
+auto swap_drives(DiskPeripheral* disk_peripheral) -> bool {
   if (disk_peripheral == nullptr) {
     return false;
   }
@@ -893,7 +893,7 @@ auto swap_drives(DiskPeripheral_t* disk_peripheral) -> bool {
   return true;
 }
 
-auto initialize_peripheral(DiskPeripheral_t* disk_peripheral) -> void {
+auto initialize_peripheral(DiskPeripheral* disk_peripheral) -> void {
   if (disk_peripheral == nullptr) {
     return;
   }
@@ -910,7 +910,7 @@ auto initialize_peripheral(DiskPeripheral_t* disk_peripheral) -> void {
   disk_peripheral->last_bus_write = 0;
   disk_peripheral->stepper_phase_mask = 0;
   disk_peripheral->is_motor_on = false;
-  disk_peripheral->sequencer = DiskSequencer_t{};
+  disk_peripheral->sequencer = DiskSequencer{};
   disk_peripheral->synced = 0;
   disk_peripheral->noise_seed = physical::noise_seed_start;
   disk_peripheral->magnet_released = false;
@@ -924,13 +924,13 @@ auto initialize_peripheral(DiskPeripheral_t* disk_peripheral) -> void {
   notify_status_changed(disk_peripheral);
 }
 
-auto get_peripheral_status(DiskPeripheral_t* disk_peripheral,
-                           DiskStatus_t* status) -> void {
+auto get_peripheral_status(DiskPeripheral* disk_peripheral,
+                           DiskStatus* status) -> void {
   if (disk_peripheral == nullptr || status == nullptr) {
     return;
   }
 
-  *status = DiskStatus_t{};
+  *status = DiskStatus{};
 
   {
     auto& drive = disk_peripheral->drives.at(0);
@@ -961,12 +961,12 @@ auto get_peripheral_status(DiskPeripheral_t* disk_peripheral,
   }
 }
 
-using DiskIoHandler_t = auto (*)(void* instance, uint16_t program_counter,
+using DiskIoHandler = auto (*)(void* instance, uint16_t program_counter,
                                  uint16_t memory_address, uint8_t is_write,
                                  uint8_t data_value, uint32_t executed_cycles)
     -> uint8_t;
 
-constexpr std::array<DiskIoHandler_t, 16> disk_io_handlers = {
+constexpr std::array<DiskIoHandler, 16> disk_io_handlers = {
     disk_io_control_stepper,  // 0x0: Phase 0 Off
     disk_io_control_stepper,  // 0x1: Phase 0 On
     disk_io_control_stepper,  // 0x2: Phase 1 Off
@@ -994,7 +994,7 @@ auto disk_io_read(void* instance, uint16_t program_counter,
   if (instance == nullptr || is_write != 0) {
     return read_floating_bus(instance, executed_cycles);
   }
-  auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
+  auto* disk_peripheral = static_cast<DiskPeripheral*>(instance);
   sync_sequencer_to_cycle(disk_peripheral, executed_cycles);
 
   const uint16_t addr = memory_address & regs::addr_hi_mask;
@@ -1014,7 +1014,7 @@ auto disk_io_write(void* instance, uint16_t program_counter,
   if (instance == nullptr || is_write == 0) {
     return 0;
   }
-  sync_sequencer_to_cycle(static_cast<DiskPeripheral_t*>(instance),
+  sync_sequencer_to_cycle(static_cast<DiskPeripheral*>(instance),
                           executed_cycles);
   const uint16_t addr = memory_address & regs::addr_hi_mask;
   const size_t handler_index = addr & regs::addr_mask;
@@ -1022,12 +1022,12 @@ auto disk_io_write(void* instance, uint16_t program_counter,
                                            data_value, executed_cycles);
 }
 
-auto cmd_handle_insert(DiskPeripheral_t* dp, const void* data, size_t size)
-    -> PeripheralStatus_t {
-  if (dp == nullptr || data == nullptr || size != sizeof(DiskInsertCmd_t)) {
+auto cmd_handle_insert(DiskPeripheral* dp, const void* data, size_t size)
+    -> PeripheralStatus {
+  if (dp == nullptr || data == nullptr || size != sizeof(DiskInsertCmd)) {
     return peripheral_error;
   }
-  const auto* c = static_cast<const DiskInsertCmd_t*>(data);
+  const auto* c = static_cast<const DiskInsertCmd*>(data);
   if (!is_drive_valid(c->drive) ||
       memchr(c->path, '\0', sizeof(c->path)) == nullptr) {
     return peripheral_error;
@@ -1037,12 +1037,12 @@ auto cmd_handle_insert(DiskPeripheral_t* dp, const void* data, size_t size)
   return (error == disk_err_none) ? peripheral_ok : peripheral_error;
 }
 
-auto cmd_handle_eject(DiskPeripheral_t* dp, const void* data, size_t size)
-    -> PeripheralStatus_t {
-  if (dp == nullptr || data == nullptr || size != sizeof(DiskEjectCmd_t)) {
+auto cmd_handle_eject(DiskPeripheral* dp, const void* data, size_t size)
+    -> PeripheralStatus {
+  if (dp == nullptr || data == nullptr || size != sizeof(DiskEjectCmd)) {
     return peripheral_error;
   }
-  const auto* c = static_cast<const DiskEjectCmd_t*>(data);
+  const auto* c = static_cast<const DiskEjectCmd*>(data);
   if (!is_drive_valid(c->drive)) {
     return peripheral_error;
   }
@@ -1050,12 +1050,12 @@ auto cmd_handle_eject(DiskPeripheral_t* dp, const void* data, size_t size)
   return peripheral_ok;
 }
 
-auto cmd_handle_set_protect(DiskPeripheral_t* dp, const void* data, size_t size)
-    -> PeripheralStatus_t {
-  if (dp == nullptr || data == nullptr || size != sizeof(DiskSetProtectCmd_t)) {
+auto cmd_handle_set_protect(DiskPeripheral* dp, const void* data, size_t size)
+    -> PeripheralStatus {
+  if (dp == nullptr || data == nullptr || size != sizeof(DiskSetProtectCmd)) {
     return peripheral_error;
   }
-  const auto* c = static_cast<const DiskSetProtectCmd_t*>(data);
+  const auto* c = static_cast<const DiskSetProtectCmd*>(data);
   if (!is_drive_valid(c->drive)) {
     return peripheral_error;
   }
@@ -1067,15 +1067,15 @@ auto cmd_handle_set_protect(DiskPeripheral_t* dp, const void* data, size_t size)
 
 // A command larger than the queue's payload is dropped before it reaches the
 // card, which would look like a silent refusal to create anything.
-static_assert(sizeof(DiskCreateImageCmd_t) <= PERIPHERAL_CMD_MAX_DATA,
-              "DiskCreateImageCmd_t must fit in one queued command");
+static_assert(sizeof(DiskCreateImageCmd) <= PERIPHERAL_CMD_MAX_DATA,
+              "DiskCreateImageCmd must fit in one queued command");
 
 auto cmd_handle_create_image(const void* data, size_t size)
-    -> PeripheralStatus_t {
-  if (data == nullptr || size != sizeof(DiskCreateImageCmd_t)) {
+    -> PeripheralStatus {
+  if (data == nullptr || size != sizeof(DiskCreateImageCmd)) {
     return peripheral_error;
   }
-  const auto* c = static_cast<const DiskCreateImageCmd_t*>(data);
+  const auto* c = static_cast<const DiskCreateImageCmd*>(data);
   if (memchr(c->path, '\0', sizeof(c->path)) == nullptr ||
       memchr(c->format_name, '\0', sizeof(c->format_name)) == nullptr) {
     return peripheral_error;
@@ -1087,7 +1087,7 @@ auto cmd_handle_create_image(const void* data, size_t size)
 
 auto report_refused_driver(void* context, const char* driver_name,
                            const char* reason) -> void {
-  auto* dp = static_cast<DiskPeripheral_t*>(context);
+  auto* dp = static_cast<DiskPeripheral*>(context);
   if (dp == nullptr || dp->host == nullptr || dp->host->Log == nullptr) {
     return;
   }
@@ -1095,7 +1095,7 @@ auto report_refused_driver(void* context, const char* driver_name,
                 driver_name, reason);
 }
 
-auto disk_abi_init(int slot, HostInterface_t* host) -> void* {
+auto disk_abi_init(int slot, HostInterface* host) -> void* {
   if (host == nullptr || host->RegisterIO == nullptr) {
     return nullptr;
   }
@@ -1104,7 +1104,7 @@ auto disk_abi_init(int slot, HostInterface_t* host) -> void* {
     return nullptr;
   }
 #endif
-  auto dp = std::unique_ptr<DiskPeripheral_t>(new DiskPeripheral_t());
+  auto dp = std::unique_ptr<DiskPeripheral>(new DiskPeripheral());
   dp->host = host;
   dp->slot = slot;
 
@@ -1127,7 +1127,7 @@ auto disk_abi_init(int slot, HostInterface_t* host) -> void* {
   }
 
 #if ENABLE_ROM_DISK2
-  host->RegisterCxROM(slot, g_rom_disk2);
+  host->RegisterCxROM(slot, rom_disk2);
 #endif
   host->RegisterIO(slot, disk_io_read, disk_io_write, nullptr, nullptr);
 
@@ -1138,41 +1138,41 @@ auto disk_abi_reset(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
-  initialize_peripheral(static_cast<DiskPeripheral_t*>(instance));
+  initialize_peripheral(static_cast<DiskPeripheral*>(instance));
 }
 
 auto disk_abi_shutdown(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
-  auto* dp = static_cast<DiskPeripheral_t*>(instance);
+  auto* dp = static_cast<DiskPeripheral*>(instance);
   for (int i = 0; i < disk_drive_count; ++i) {
     eject_disk_from_drive(dp, i);
   }
-  const std::unique_ptr<DiskPeripheral_t> cleanup(dp);
+  const std::unique_ptr<DiskPeripheral> cleanup(dp);
 }
 
 auto disk_abi_think(void* instance, uint32_t elapsed_cycles) -> void {
   if (instance == nullptr || elapsed_cycles == 0) {
     return;
   }
-  auto* disk_peripheral = static_cast<DiskPeripheral_t*>(instance);
+  auto* disk_peripheral = static_cast<DiskPeripheral*>(instance);
   sync_sequencer_to_cycle(disk_peripheral, elapsed_cycles);
   disk_peripheral->synced = 0;
   update_physical_disk_state(disk_peripheral, elapsed_cycles);
 }
 
 auto disk_abi_command(void* instance, uint32_t cmd, const void* data,
-                      size_t size) -> PeripheralStatus_t {
+                      size_t size) -> PeripheralStatus {
   if (instance == nullptr) {
     return peripheral_error;
   }
-  auto* dp = static_cast<DiskPeripheral_t*>(instance);
+  auto* dp = static_cast<DiskPeripheral*>(instance);
   if (!peripheral_cmd_is_mine(cmd, PERIPHERAL_SUBSYSTEM_DISK)) {
     return peripheral_incompatible;  // another peripheral in the slot owns it
   }
 
-  switch (static_cast<DiskCmd_t>(cmd)) {
+  switch (static_cast<DiskCmd>(cmd)) {
     case disk_cmd_insert:
       return cmd_handle_insert(dp, data, size);
     case disk_cmd_eject:
@@ -1190,7 +1190,7 @@ auto disk_abi_command(void* instance, uint32_t cmd, const void* data,
 }
 
 auto disk_abi_query(void* instance, uint32_t cmd, void* data, size_t* size)
-    -> PeripheralStatus_t {
+    -> PeripheralStatus {
   if (size == nullptr) {
     return peripheral_error;
   }
@@ -1204,8 +1204,8 @@ auto disk_abi_query(void* instance, uint32_t cmd, void* data, size_t* size)
       if (instance == nullptr) {
         return peripheral_error;
       }
-      auto* dp = static_cast<DiskPeripheral_t*>(instance);
-      const size_t required_size = sizeof(DiskStatus_t);
+      auto* dp = static_cast<DiskPeripheral*>(instance);
+      const size_t required_size = sizeof(DiskStatus);
       if (data == nullptr) {
         *size = required_size;
         return peripheral_ok;
@@ -1214,7 +1214,7 @@ auto disk_abi_query(void* instance, uint32_t cmd, void* data, size_t* size)
         *size = required_size;
         return peripheral_error;
       }
-      get_peripheral_status(dp, static_cast<DiskStatus_t*>(data));
+      get_peripheral_status(dp, static_cast<DiskStatus*>(data));
       *size = required_size;
       return peripheral_ok;
     }
@@ -1248,7 +1248,7 @@ auto disk_abi_query(void* instance, uint32_t cmd, void* data, size_t* size)
       return peripheral_ok;
     }
     case disk_query_format_name: {
-      const size_t required_size = sizeof(DiskFormatNameQuery_t);
+      const size_t required_size = sizeof(DiskFormatNameQuery);
       if (data == nullptr) {
         *size = required_size;
         return peripheral_ok;
@@ -1257,8 +1257,8 @@ auto disk_abi_query(void* instance, uint32_t cmd, void* data, size_t* size)
         *size = required_size;
         return peripheral_error;
       }
-      auto* query = static_cast<DiskFormatNameQuery_t*>(data);
-      const DiskFormatDriver_t* driver = disk_loader_driver_at(query->index);
+      auto* query = static_cast<DiskFormatNameQuery*>(data);
+      const DiskFormatDriver* driver = disk_loader_driver_at(query->index);
       if (driver == nullptr || driver->name == nullptr) {
         return peripheral_error;
       }
@@ -1275,16 +1275,16 @@ auto disk_abi_query(void* instance, uint32_t cmd, void* data, size_t* size)
 
 // The v1 compatibility shim. Everything below, down to the end of
 // disk_state_v1_read, is the only code that knows the shape of
-// DiskSavedState_t; the card itself works in cells. Save files have carried
+// DiskSavedState; the card itself works in cells. Save files have carried
 // this 13,897-byte layout since 1.x and keep carrying it until 4.0.0, so each
 // place the conversion loses something says so beside the field that loses it.
 
-static_assert(sizeof(DiskSavedState_t) == 13897,
+static_assert(sizeof(DiskSavedState) == 13897,
               "the v1 disk save state is a fixed 13,897 bytes");
 
-auto disk_state_v1_write(DiskPeripheral_t* dp, void* buffer, size_t* size)
-    -> PeripheralStatus_t {
-  const size_t required_size = sizeof(DiskSavedState_t);
+auto disk_state_v1_write(DiskPeripheral* dp, void* buffer, size_t* size)
+    -> PeripheralStatus {
+  const size_t required_size = sizeof(DiskSavedState);
   if (buffer == nullptr) {
     *size = required_size;
     return peripheral_ok;
@@ -1294,11 +1294,11 @@ auto disk_state_v1_write(DiskPeripheral_t* dp, void* buffer, size_t* size)
     return peripheral_error;
   }
 
-  auto* s = static_cast<DiskSavedState_t*>(buffer);
-  *s = DiskSavedState_t{};
+  auto* s = static_cast<DiskSavedState*>(buffer);
+  *s = DiskSavedState{};
 
   s->header.version = static_cast<uint32_t>(disk_state_version);
-  s->header.size = sizeof(DiskSavedState_t);
+  s->header.size = sizeof(DiskSavedState);
 
   for (int i = 0; i < disk_drive_count; ++i) {
     auto& d = dp->drives.at(static_cast<size_t>(i));
@@ -1355,13 +1355,13 @@ auto disk_state_v1_write(DiskPeripheral_t* dp, void* buffer, size_t* size)
   return peripheral_ok;
 }
 
-auto disk_state_v1_read(DiskPeripheral_t* dp, const void* buffer, size_t size)
-    -> PeripheralStatus_t {
-  const size_t required_size = sizeof(DiskSavedState_t);
+auto disk_state_v1_read(DiskPeripheral* dp, const void* buffer, size_t size)
+    -> PeripheralStatus {
+  const size_t required_size = sizeof(DiskSavedState);
   if (buffer == nullptr || size < required_size) {
     return peripheral_error;
   }
-  const auto* s = static_cast<const DiskSavedState_t*>(buffer);
+  const auto* s = static_cast<const DiskSavedState*>(buffer);
 
   if (s->header.version != static_cast<uint32_t>(disk_state_version) ||
       s->header.size != required_size) {
@@ -1373,7 +1373,7 @@ auto disk_state_v1_read(DiskPeripheral_t* dp, const void* buffer, size_t size)
       (s->active_drive_index < disk_drive_count) ? s->active_drive_index : 0;
   dp->io_latch = s->io_latch;
   dp->is_motor_on = (s->is_motor_on != 0);
-  dp->sequencer = DiskSequencer_t{};
+  dp->sequencer = DiskSequencer{};
   dp->sequencer.q7 = (s->is_write_mode != 0);
   dp->synced = 0;
 
@@ -1441,26 +1441,26 @@ auto disk_state_v1_read(DiskPeripheral_t* dp, const void* buffer, size_t size)
 // End of the v1 compatibility shim.
 
 auto disk_abi_save_state(void* instance, void* buffer, size_t* size)
-    -> PeripheralStatus_t {
+    -> PeripheralStatus {
   if (instance == nullptr || size == nullptr) {
     return peripheral_error;
   }
-  return disk_state_v1_write(static_cast<DiskPeripheral_t*>(instance), buffer,
+  return disk_state_v1_write(static_cast<DiskPeripheral*>(instance), buffer,
                              size);
 }
 
 auto disk_abi_load_state(void* instance, const void* buffer, size_t size)
-    -> PeripheralStatus_t {
+    -> PeripheralStatus {
   if (instance == nullptr) {
     return peripheral_error;
   }
-  return disk_state_v1_read(static_cast<DiskPeripheral_t*>(instance), buffer,
+  return disk_state_v1_read(static_cast<DiskPeripheral*>(instance), buffer,
                             size);
 }
 
 }  // namespace
 
-static Peripheral_t disk_peripheral = {
+static Peripheral disk_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.disk_II",
     .name = "Disk II",
@@ -1481,6 +1481,6 @@ static Peripheral_t disk_peripheral = {
 };
 
 // Peripheral registry requires non-const pointer.
-auto disk_get_descriptor() -> Peripheral_t* { return &disk_peripheral; }
+auto disk_get_descriptor() -> Peripheral* { return &disk_peripheral; }
 
 PERIPHERAL_REGISTER(disk_peripheral)

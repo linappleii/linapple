@@ -28,7 +28,7 @@ namespace {
 // Declared rather than inherited: with no configuration the slot fallbacks in
 // peripheral_register_internal supply a printer, a Super Serial Card and a
 // Mockingboard beside the Disk II, none of which these cases touch.
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 }  // namespace
 
 namespace {
@@ -85,23 +85,23 @@ auto write_all_zero_woz2(const char* path) -> void {
 }  // namespace
 
 TEST_CASE("DiskIntegration: [INT-04] WOZ Integration Check") {
-  TestConfig_t machine(TestConfig_t::disk_ii_only());
+  TestConfig machine(TestConfig::disk_ii_only());
   machine.load();
   linapple_init();
   peripheral_manager_init();
   linapple_register_peripherals();
 
   auto ephemeral_disk = TestFixtures::create_ephemeral("minimal.woz");
-  DiskInsertCmd_t cmd{};
+  DiskInsertCmd cmd{};
   cmd.drive = disk_drive_0;
   cmd.write_protected = 0;
   util_safe_strcpy(cmd.path, ephemeral_disk.c_str(), disk_insert_path_max);
   peripheral_command(slot_6, disk_cmd_insert, &cmd, sizeof(cmd));
   peripheral_manager_think(0);
 
-  DiskStatus_t status{};
+  DiskStatus status{};
   size_t size = sizeof(status);
-  PeripheralStatus_t ps =
+  PeripheralStatus ps =
       peripheral_query(slot_6, disk_query_status, &status, &size);
 
   REQUIRE(ps == peripheral_ok);
@@ -113,18 +113,18 @@ TEST_CASE("DiskIntegration: [INT-04] WOZ Integration Check") {
 }
 
 TEST_CASE("DiskWOZ: [WOZ-3] All-zero bitstream does not infinite loop") {
-  TestFixtures::ScopedTempFile_t temp_woz(".woz");
+  TestFixtures::ScopedTempFile temp_woz(".woz");
   write_all_zero_woz2(temp_woz.c_str());
 
   void* instance = nullptr;
-  DiskError err = g_woz2_driver.open(temp_woz.c_str(), 0, false, &instance);
+  DiskError err = woz2_driver.open(temp_woz.c_str(), 0, false, &instance);
   REQUIRE(err == disk_err_none);
   REQUIRE(instance != nullptr);
 
   std::vector<uint8_t> bits(max_track_bits / 8, 0xFF);
   uint32_t bit_count = 0;
   uint8_t bit_timing = 0;
-  CHECK(g_woz2_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
+  CHECK(woz2_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
                                       &bit_count,
                                       &bit_timing) == disk_err_none);
 
@@ -134,12 +134,12 @@ TEST_CASE("DiskWOZ: [WOZ-3] All-zero bitstream does not infinite loop") {
     CHECK(bits[i] == 0);
   }
 
-  g_woz2_driver.close(instance);
+  woz2_driver.close(instance);
 }
 
 TEST_CASE(
     "DiskWOZ: [WOZ-1/2] Corrupted chunk size does not loop or crash open") {
-  TestFixtures::ScopedTempFile_t corrupted_file(".woz");
+  TestFixtures::ScopedTempFile corrupted_file(".woz");
   {
     FilePtr f(fopen(corrupted_file.c_str(), "wb"), fclose);
     REQUIRE(f != nullptr);
@@ -160,7 +160,7 @@ TEST_CASE(
 
   void* instance = nullptr;
   DiskError err =
-      g_woz2_driver.open(corrupted_file.c_str(), 0, false, &instance);
+      woz2_driver.open(corrupted_file.c_str(), 0, false, &instance);
   CHECK(err == disk_err_corrupt);
   CHECK(instance == nullptr);
 }
@@ -187,7 +187,7 @@ auto read_file(const std::string& path) -> std::vector<uint8_t> {
   return data;
 }
 
-auto read_quarter_track(const DiskFormatDriver_t& driver, void* instance,
+auto read_quarter_track(const DiskFormatDriver& driver, void* instance,
                         uint32_t quarter_track, std::vector<uint8_t>* bits,
                         uint32_t* bit_count, uint8_t* bit_timing)
     -> DiskError {
@@ -198,7 +198,7 @@ auto read_quarter_track(const DiskFormatDriver_t& driver, void* instance,
                                 max_track_bits, bit_count, bit_timing);
 }
 
-auto check_wrapped_track_reads(const DiskFormatDriver_t& driver, void* instance)
+auto check_wrapped_track_reads(const DiskFormatDriver& driver, void* instance)
     -> void {
   const std::vector<uint8_t> bare =
       read_file(TestFixtures::get_fixture_path("minimal-track.woz"));
@@ -239,13 +239,13 @@ TEST_CASE(
           macbinary_header_size + track_fixture_bytes);
 
   void* instance = nullptr;
-  REQUIRE(g_woz2_driver.open(image.c_str(), macbinary_header_size, false,
+  REQUIRE(woz2_driver.open(image.c_str(), macbinary_header_size, false,
                              &instance) == disk_err_none);
   REQUIRE(instance != nullptr);
 
-  check_wrapped_track_reads(g_woz2_driver, instance);
+  check_wrapped_track_reads(woz2_driver, instance);
 
-  g_woz2_driver.close(instance);
+  woz2_driver.close(instance);
 }
 
 TEST_CASE(
@@ -255,28 +255,28 @@ TEST_CASE(
                    macbinary_header_size + track_fixture_bytes - 1) == 0);
 
   void* instance = nullptr;
-  REQUIRE(g_woz2_driver.open(image.c_str(), macbinary_header_size, false,
+  REQUIRE(woz2_driver.open(image.c_str(), macbinary_header_size, false,
                              &instance) == disk_err_none);
 
   std::vector<uint8_t> bits;
   uint32_t bit_count = 0;
   uint8_t bit_timing = 0;
-  CHECK(read_quarter_track(g_woz2_driver, instance, 0, &bits, &bit_count,
+  CHECK(read_quarter_track(woz2_driver, instance, 0, &bits, &bit_count,
                            &bit_timing) == disk_err_corrupt);
   CHECK(bit_count == 0);
   CHECK(bits[0] == 0xEE);
 
-  g_woz2_driver.close(instance);
+  woz2_driver.close(instance);
 }
 
 TEST_CASE("DiskWOZ: the loader strips MacBinary and reads the tracks past it") {
   auto image = TestFixtures::create_ephemeral("minimal-macbinary.woz");
   disk_loader_reset();
 
-  const DiskFormatDriver_t* driver = nullptr;
+  const DiskFormatDriver* driver = nullptr;
   void* instance = nullptr;
   REQUIRE(disk_loader_open(image.c_str(), &driver, &instance) == disk_err_none);
-  REQUIRE(driver == &g_woz2_driver);
+  REQUIRE(driver == &woz2_driver);
   REQUIRE(instance != nullptr);
 
   check_wrapped_track_reads(*driver, instance);
@@ -305,12 +305,12 @@ auto open_patched_track_image(int64_t offset, uint8_t value) -> DiskError {
 
   void* instance = nullptr;
   const DiskError err =
-      g_woz2_driver.open(image.c_str(), 0, false, &instance);
+      woz2_driver.open(image.c_str(), 0, false, &instance);
   if (err != disk_err_none) {
     CHECK(instance == nullptr);
   }
   if (instance != nullptr) {
-    g_woz2_driver.close(instance);
+    woz2_driver.close(instance);
   }
   return err;
 }
@@ -342,20 +342,20 @@ TEST_CASE("DiskWOZ: a 2.1 image's flux-only quarter track reads as no cells") {
   auto image = TestFixtures::create_ephemeral("woz21-flux.woz");
 
   void* instance = nullptr;
-  REQUIRE(g_woz2_driver.open(image.c_str(), 0, false, &instance) ==
+  REQUIRE(woz2_driver.open(image.c_str(), 0, false, &instance) ==
           disk_err_none);
   REQUIRE(instance != nullptr);
 
   std::vector<uint8_t> bits;
   uint32_t bit_count = 0;
   uint8_t bit_timing = 0;
-  CHECK(read_quarter_track(g_woz2_driver, instance, 0, &bits, &bit_count,
+  CHECK(read_quarter_track(woz2_driver, instance, 0, &bits, &bit_count,
                            &bit_timing) == disk_err_none);
   CHECK(bit_count == 0);
   CHECK(bit_timing == 32);
   CHECK(bits[0] == 0xEE);
 
-  g_woz2_driver.close(instance);
+  woz2_driver.close(instance);
 }
 
 TEST_CASE("DiskWOZ: a track that starts inside the header is corrupt") {
@@ -364,58 +364,58 @@ TEST_CASE("DiskWOZ: a track that starts inside the header is corrupt") {
   patch(image.path(), trks_entry_0_offset, &header_block, 1);
 
   void* instance = nullptr;
-  REQUIRE(g_woz2_driver.open(image.c_str(), 0, false, &instance) ==
+  REQUIRE(woz2_driver.open(image.c_str(), 0, false, &instance) ==
           disk_err_none);
 
   std::vector<uint8_t> bits;
   uint32_t bit_count = 0;
   uint8_t bit_timing = 0;
-  CHECK(read_quarter_track(g_woz2_driver, instance, 0, &bits, &bit_count,
+  CHECK(read_quarter_track(woz2_driver, instance, 0, &bits, &bit_count,
                            &bit_timing) == disk_err_corrupt);
   CHECK(bit_count == 0);
   CHECK(bits[0] == 0xEE);
 
-  g_woz2_driver.close(instance);
+  woz2_driver.close(instance);
 }
 
 TEST_CASE("DiskWOZ: a track may span as many blocks as the buffer holds") {
-  TestFixtures::ScopedTempFile_t widest(".woz");
+  TestFixtures::ScopedTempFile widest(".woz");
   write_zero_track_woz2(widest.c_str(), widest_block_span, max_track_bits);
 
   void* instance = nullptr;
-  REQUIRE(g_woz2_driver.open(widest.c_str(), 0, false, &instance) ==
+  REQUIRE(woz2_driver.open(widest.c_str(), 0, false, &instance) ==
           disk_err_none);
 
   std::vector<uint8_t> bits;
   uint32_t bit_count = 0;
   uint8_t bit_timing = 0;
-  CHECK(read_quarter_track(g_woz2_driver, instance, 0, &bits, &bit_count,
+  CHECK(read_quarter_track(woz2_driver, instance, 0, &bits, &bit_count,
                            &bit_timing) == disk_err_none);
   CHECK(bit_count == max_track_bits);
   CHECK(bits[0] == 0);
   CHECK(bits[(max_track_bits / 8) - 1] == 0);
 
-  g_woz2_driver.close(instance);
+  woz2_driver.close(instance);
 }
 
 TEST_CASE("DiskWOZ: a track spanning one block too many is unsupported") {
-  TestFixtures::ScopedTempFile_t too_wide(".woz");
+  TestFixtures::ScopedTempFile too_wide(".woz");
   write_zero_track_woz2(too_wide.c_str(), widest_block_span + 1,
                         max_track_bits + 1);
 
   void* instance = nullptr;
-  REQUIRE(g_woz2_driver.open(too_wide.c_str(), 0, false, &instance) ==
+  REQUIRE(woz2_driver.open(too_wide.c_str(), 0, false, &instance) ==
           disk_err_none);
 
   std::vector<uint8_t> bits;
   uint32_t bit_count = 0;
   uint8_t bit_timing = 0;
-  CHECK(read_quarter_track(g_woz2_driver, instance, 0, &bits, &bit_count,
+  CHECK(read_quarter_track(woz2_driver, instance, 0, &bits, &bit_count,
                            &bit_timing) == disk_err_unsupported);
   CHECK(bit_count == 0);
   CHECK(bits[0] == 0xEE);
 
-  g_woz2_driver.close(instance);
+  woz2_driver.close(instance);
 }
 
 namespace {
@@ -459,9 +459,9 @@ constexpr size_t macbinary_pad_bytes = 80;
 auto open_v2(const std::string& path, uint32_t base_offset) -> DiskError {
   void* instance = nullptr;
   const DiskError err =
-      g_woz2_driver.open(path.c_str(), base_offset, false, &instance);
+      woz2_driver.open(path.c_str(), base_offset, false, &instance);
   if (instance != nullptr) {
-    g_woz2_driver.close(instance);
+    woz2_driver.close(instance);
   }
   return err;
 }
@@ -534,11 +534,11 @@ auto read_qt0_of_patched_track_image(int64_t offset, const uint8_t* bytes,
   patch(image.path(), offset, bytes, len);
 
   void* instance = nullptr;
-  REQUIRE(g_woz2_driver.open(image.c_str(), 0, false, &instance) ==
+  REQUIRE(woz2_driver.open(image.c_str(), 0, false, &instance) ==
           disk_err_none);
-  const DiskError err = read_quarter_track(g_woz2_driver, instance, 0, bits,
+  const DiskError err = read_quarter_track(woz2_driver, instance, 0, bits,
                                              bit_count, bit_timing);
-  g_woz2_driver.close(instance);
+  woz2_driver.close(instance);
   return err;
 }
 
@@ -610,13 +610,13 @@ TEST_CASE(
               static_cast<off_t>(woz_header_size + cells_kept_after_cut)) == 0);
 
   void* instance = nullptr;
-  REQUIRE(g_woz2_driver.open(image.c_str(), 0, false, &instance) ==
+  REQUIRE(woz2_driver.open(image.c_str(), 0, false, &instance) ==
           disk_err_none);
 
   std::vector<uint8_t> bits;
   uint32_t bit_count = 0;
   uint8_t bit_timing = 0;
-  CHECK(read_quarter_track(g_woz2_driver, instance, 0, &bits, &bit_count,
+  CHECK(read_quarter_track(woz2_driver, instance, 0, &bits, &bit_count,
                            &bit_timing) == disk_err_corrupt);
   CHECK(bit_count == 0);
   CHECK(bit_timing == 32);
@@ -625,32 +625,32 @@ TEST_CASE(
   CHECK(bits[0] == 0xEE);
   CHECK(bits[cells_kept_after_cut - 1] == 0xEE);
 
-  g_woz2_driver.close(instance);
+  woz2_driver.close(instance);
 }
 
 TEST_CASE("DiskWOZ: a quarter track past the map is a bad argument") {
   auto image = TestFixtures::create_ephemeral("minimal-track.woz");
   void* instance = nullptr;
-  REQUIRE(g_woz2_driver.open(image.c_str(), 0, false, &instance) ==
+  REQUIRE(woz2_driver.open(image.c_str(), 0, false, &instance) ==
           disk_err_none);
 
   std::vector<uint8_t> bits;
   uint32_t bit_count = 0;
   uint8_t bit_timing = 0;
-  CHECK(read_quarter_track(g_woz2_driver, instance,
+  CHECK(read_quarter_track(woz2_driver, instance,
                            first_quarter_track_past_map, &bits, &bit_count,
                            &bit_timing) == disk_err_invalid_argument);
   CHECK(bit_count == 0);
   CHECK(bit_timing == 32);
   CHECK(bits[0] == 0xEE);
 
-  CHECK(read_quarter_track(g_woz2_driver, instance, UINT32_MAX, &bits,
+  CHECK(read_quarter_track(woz2_driver, instance, UINT32_MAX, &bits,
                            &bit_count,
                            &bit_timing) == disk_err_invalid_argument);
   CHECK(bit_count == 0);
   CHECK(bits[0] == 0xEE);
 
-  g_woz2_driver.close(instance);
+  woz2_driver.close(instance);
 }
 
 TEST_CASE("DiskWOZ: the last TMAP entry reaches a record like the first") {
@@ -662,30 +662,30 @@ TEST_CASE("DiskWOZ: the last TMAP entry reaches a record like the first") {
   patch(image.path(), tmap_entry_159_offset, &record_0, 1);
 
   void* instance = nullptr;
-  REQUIRE(g_woz2_driver.open(image.c_str(), 0, false, &instance) ==
+  REQUIRE(woz2_driver.open(image.c_str(), 0, false, &instance) ==
           disk_err_none);
 
   std::vector<uint8_t> bits;
   uint32_t bit_count = 0;
   uint8_t bit_timing = 0;
-  CHECK(read_quarter_track(g_woz2_driver, instance, 0, &bits, &bit_count,
+  CHECK(read_quarter_track(woz2_driver, instance, 0, &bits, &bit_count,
                            &bit_timing) == disk_err_none);
   CHECK(bit_count == 0);
 
-  CHECK(read_quarter_track(g_woz2_driver, instance, 1, &bits, &bit_count,
+  CHECK(read_quarter_track(woz2_driver, instance, 1, &bits, &bit_count,
                            &bit_timing) == disk_err_none);
   CHECK(bit_count == track_fixture_bit_count);
   CHECK(std::memcmp(bits.data(), track_fixture_pattern,
                     sizeof(track_fixture_pattern)) == 0);
 
-  CHECK(read_quarter_track(g_woz2_driver, instance, last_quarter_track, &bits,
+  CHECK(read_quarter_track(woz2_driver, instance, last_quarter_track, &bits,
                            &bit_count, &bit_timing) == disk_err_none);
   CHECK(bit_count == track_fixture_bit_count);
   CHECK(bit_timing == 32);
   CHECK(std::memcmp(bits.data(), track_fixture_pattern,
                     sizeof(track_fixture_pattern)) == 0);
 
-  g_woz2_driver.close(instance);
+  woz2_driver.close(instance);
 }
 
 namespace {
@@ -756,20 +756,20 @@ auto build_track_image_with_meta_and_writ(const std::string& path) -> void {
 }  // namespace
 
 TEST_CASE("DiskWOZ: META and WRIT chunks are walked past, not read") {
-  TestFixtures::ScopedTempFile_t image(".woz");
+  TestFixtures::ScopedTempFile image(".woz");
   build_track_image_with_meta_and_writ(image.path());
   REQUIRE(read_file(image.path()).size() ==
           track_fixture_bytes + chunk_header_size + writ_chunk_data_size);
 
   void* instance = nullptr;
-  REQUIRE(g_woz2_driver.open(image.c_str(), 0, false, &instance) ==
+  REQUIRE(woz2_driver.open(image.c_str(), 0, false, &instance) ==
           disk_err_none);
   REQUIRE(instance != nullptr);
 
   std::vector<uint8_t> bits;
   uint32_t bit_count = 0;
   uint8_t bit_timing = 0;
-  CHECK(read_quarter_track(g_woz2_driver, instance, 0, &bits, &bit_count,
+  CHECK(read_quarter_track(woz2_driver, instance, 0, &bits, &bit_count,
                            &bit_timing) == disk_err_none);
   CHECK(bit_count == track_fixture_bit_count);
   CHECK(bit_timing == 32);
@@ -778,9 +778,9 @@ TEST_CASE("DiskWOZ: META and WRIT chunks are walked past, not read") {
   CHECK(bits[0] == 0x01);
   CHECK(bits[1] == 0x08);
 
-  CHECK(read_quarter_track(g_woz2_driver, instance, unmapped_quarter_track,
+  CHECK(read_quarter_track(woz2_driver, instance, unmapped_quarter_track,
                            &bits, &bit_count, &bit_timing) == disk_err_none);
   CHECK(bit_count == 0);
 
-  g_woz2_driver.close(instance);
+  woz2_driver.close(instance);
 }

@@ -29,7 +29,7 @@
 // easily-swappable-parameters is mandated by the shared sector image ABI
 // signatures.
 
-struct SectorDiskImage_t {
+struct SectorDiskImage {
   FilePtr file{nullptr, fclose};
   uint32_t data_offset = 0;
   uint32_t track_count = 0;
@@ -40,13 +40,13 @@ struct SectorDiskImage_t {
   std::array<uint8_t, nibbles_per_track> sync_mask{};
   std::array<uint8_t, sector_image_track_bytes> sectors{};
 
-  SectorDiskImage_t() = default;
-  ~SectorDiskImage_t() = default;
+  SectorDiskImage() = default;
+  ~SectorDiskImage() = default;
 
-  SectorDiskImage_t(const SectorDiskImage_t&) = delete;
-  auto operator=(const SectorDiskImage_t&) -> SectorDiskImage_t& = delete;
-  SectorDiskImage_t(SectorDiskImage_t&&) = default;
-  auto operator=(SectorDiskImage_t&&) -> SectorDiskImage_t& = default;
+  SectorDiskImage(const SectorDiskImage&) = delete;
+  auto operator=(const SectorDiskImage&) -> SectorDiskImage& = delete;
+  SectorDiskImage(SectorDiskImage&&) = default;
+  auto operator=(SectorDiskImage&&) -> SectorDiskImage& = default;
 };
 
 namespace {
@@ -151,7 +151,7 @@ auto sector_disk_image_open(const char* path, uint32_t file_offset,
     return disk_err_corrupt;
   }
 
-  auto image_ptr = std::unique_ptr<SectorDiskImage_t>(new SectorDiskImage_t());
+  auto image_ptr = std::unique_ptr<SectorDiskImage>(new SectorDiskImage());
   image_ptr->file = std::move(file);
   image_ptr->host_read_only = host_read_only;
   image_ptr->data_offset = file_offset;
@@ -164,21 +164,21 @@ auto sector_disk_image_open(const char* path, uint32_t file_offset,
 }
 
 auto sector_disk_image_close(void* instance) -> void {
-  delete static_cast<SectorDiskImage_t*>(instance);
+  delete static_cast<SectorDiskImage*>(instance);
 }
 
 auto sector_disk_image_is_write_protected(void* instance) -> bool {
   if (instance == nullptr) {
     return true;
   }
-  return static_cast<SectorDiskImage_t*>(instance)->host_read_only;
+  return static_cast<SectorDiskImage*>(instance)->host_read_only;
 }
 
 auto sector_disk_image_read_track_bits(void* instance, uint32_t quarter_track,
                                        uint8_t* bits, uint32_t max_bits,
                                        uint32_t* out_bit_count,
                                        uint8_t* out_bit_timing) -> DiskError {
-  auto* image_ptr = static_cast<SectorDiskImage_t*>(instance);
+  auto* image_ptr = static_cast<SectorDiskImage*>(instance);
   if (image_ptr == nullptr || bits == nullptr || out_bit_count == nullptr ||
       out_bit_timing == nullptr) {
     return disk_err_invalid_argument;
@@ -231,7 +231,7 @@ auto sector_disk_image_read_track_bits(void* instance, uint32_t quarter_track,
 auto sector_disk_image_write_track_bits(void* instance, uint32_t quarter_track,
                                         const uint8_t* bits, uint32_t bit_count)
     -> DiskError {
-  auto* image_ptr = static_cast<SectorDiskImage_t*>(instance);
+  auto* image_ptr = static_cast<SectorDiskImage*>(instance);
   if (image_ptr == nullptr || bits == nullptr) {
     return disk_err_invalid_argument;
   }

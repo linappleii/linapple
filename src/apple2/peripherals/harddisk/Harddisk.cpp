@@ -274,11 +274,11 @@ const std::array<uint8_t, physical::rom_size> harddisk_rom = {
     },
 };
 
-struct Harddisk_t {
+struct Harddisk {
   std::string full_path;
   std::string display_name;
   bool is_loaded = false;
-  const HarddiskFormatDriver_t* driver = nullptr;
+  const HarddiskFormatDriver* driver = nullptr;
   void* driver_instance = nullptr;
   bool user_write_protected = false;
   HarddiskError last_error = harddisk_err_none;
@@ -287,8 +287,8 @@ struct Harddisk_t {
 // One register set, not one per drive: a controller has one command
 // register, one unit latch, one block register and one buffer, and the unit
 // selects the drive when the command executes.
-struct HarddiskPeripheral_t {
-  std::array<Harddisk_t, harddisk_drive_count> drives{};
+struct HarddiskPeripheral {
+  std::array<Harddisk, harddisk_drive_count> drives{};
   std::array<uint8_t, physical::rom_size> rom{};
   std::array<uint8_t, physical::block_size> buffer{};
   uint16_t block = 0;
@@ -300,7 +300,7 @@ struct HarddiskPeripheral_t {
   uint8_t data_phase = harddisk_phase_idle;
   bool buffer_poisoned = false;
   int slot = 0;
-  HostInterface_t* host = nullptr;
+  HostInterface* host = nullptr;
 };
 
 auto copy_string_to_buffer(const std::string& src, char* dest, size_t capacity)
@@ -317,19 +317,19 @@ auto is_drive_valid(int drive_index) -> bool {
   return (drive_index >= 0 && drive_index < harddisk_drive_count);
 }
 
-auto selected_drive(HarddiskPeripheral_t* card) -> Harddisk_t& {
+auto selected_drive(HarddiskPeripheral* card) -> Harddisk& {
   const size_t index = (card->unit & physical::unit_drive_bit) != 0 ? 1 : 0;
   return card->drives.at(index);
 }
 
-auto notify_status_changed(const HarddiskPeripheral_t* card) -> void {
+auto notify_status_changed(const HarddiskPeripheral* card) -> void {
   if (card != nullptr && card->host != nullptr &&
       card->host->NotifyStatusChanged != nullptr) {
     card->host->NotifyStatusChanged(card->slot);
   }
 }
 
-auto notify_activity_changed(const HarddiskPeripheral_t* card, bool active)
+auto notify_activity_changed(const HarddiskPeripheral* card, bool active)
     -> void {
   if (card != nullptr && card->host != nullptr &&
       card->host->NotifyActivityChanged != nullptr) {
@@ -339,7 +339,7 @@ auto notify_activity_changed(const HarddiskPeripheral_t* card, bool active)
 
 // The registers above the block count drive nothing onto the data bus, so a
 // read there sees whatever the video scanner is fetching that cycle.
-auto read_floating_bus(const HarddiskPeripheral_t* card,
+auto read_floating_bus(const HarddiskPeripheral* card,
                        uint32_t executed_cycles) -> uint8_t {
   if (card == nullptr || card->host == nullptr ||
       card->host->ReadFloatingBus == nullptr) {
@@ -350,7 +350,7 @@ auto read_floating_bus(const HarddiskPeripheral_t* card,
 
 // One answer to "may this be written": the user's flag, and whatever the
 // driver knows about the file and the medium.
-auto is_write_protected(const Harddisk_t& drive) -> bool {
+auto is_write_protected(const Harddisk& drive) -> bool {
   if (drive.user_write_protected) {
     return true;
   }
@@ -359,7 +359,7 @@ auto is_write_protected(const Harddisk_t& drive) -> bool {
          drive.driver->is_write_protected(drive.driver_instance);
 }
 
-auto total_blocks(const Harddisk_t& drive) -> uint32_t {
+auto total_blocks(const Harddisk& drive) -> uint32_t {
   if (drive.driver == nullptr || drive.driver_instance == nullptr ||
       drive.driver->get_total_blocks == nullptr) {
     return 0;
@@ -367,7 +367,7 @@ auto total_blocks(const Harddisk_t& drive) -> uint32_t {
   return drive.driver->get_total_blocks(drive.driver_instance);
 }
 
-auto end_data_phase(HarddiskPeripheral_t* card) -> void {
+auto end_data_phase(HarddiskPeripheral* card) -> void {
   if (card->data_phase == harddisk_phase_read_out) {
     notify_activity_changed(card, false);
   }
@@ -376,7 +376,7 @@ auto end_data_phase(HarddiskPeripheral_t* card) -> void {
 
 // How a name is shown is the frontend's choice; the card hands over the
 // file's own.
-auto update_image_metadata(Harddisk_t* drive, const char* path) -> void {
+auto update_image_metadata(Harddisk* drive, const char* path) -> void {
   if (drive == nullptr || path == nullptr) {
     return;
   }
@@ -395,7 +395,7 @@ auto update_image_metadata(Harddisk_t* drive, const char* path) -> void {
 // record is told here.
 auto report_loader_note(void* context, const char* driver_name,
                         const char* reason) -> void {
-  auto* card = static_cast<HarddiskPeripheral_t*>(context);
+  auto* card = static_cast<HarddiskPeripheral*>(context);
   if (card == nullptr || card->host == nullptr || card->host->Log == nullptr) {
     return;
   }
@@ -403,7 +403,7 @@ auto report_loader_note(void* context, const char* driver_name,
                   driver_name, reason);
 }
 
-auto eject_harddisk_from_drive(HarddiskPeripheral_t* card, int drive_index)
+auto eject_harddisk_from_drive(HarddiskPeripheral* card, int drive_index)
     -> void {
   if (card == nullptr || !is_drive_valid(drive_index)) {
     return;
@@ -416,10 +416,10 @@ auto eject_harddisk_from_drive(HarddiskPeripheral_t* card, int drive_index)
     harddisk_loader_drain_rejections(report_loader_note, card);
   }
 
-  drive = Harddisk_t();
+  drive = Harddisk();
 }
 
-auto insert_harddisk_into_drive(HarddiskPeripheral_t* card, int drive_index,
+auto insert_harddisk_into_drive(HarddiskPeripheral* card, int drive_index,
                                 const char* path, bool write_protected)
     -> HarddiskError {
   if (card == nullptr || !is_drive_valid(drive_index) || path == nullptr) {
@@ -461,8 +461,8 @@ auto insert_harddisk_into_drive(HarddiskPeripheral_t* card, int drive_index,
 // The checks run in a fixed order so the code a caller sees is deterministic:
 // an unknown command, then an empty drive, then protection, then the block
 // range, then the medium itself.
-auto execute_command(HarddiskPeripheral_t* card) -> uint8_t {
-  Harddisk_t& drive = selected_drive(card);
+auto execute_command(HarddiskPeripheral* card) -> uint8_t {
+  Harddisk& drive = selected_drive(card);
 
   if (card->command > prodos_cmd_format) {
     return harddisk_prodos_io_error;
@@ -530,7 +530,7 @@ auto execute_command(HarddiskPeripheral_t* card) -> uint8_t {
 auto harddisk_io_command(void* instance, uint16_t /*unused*/,
                          uint16_t /*unused*/, uint8_t is_write,
                          uint8_t data_value, uint32_t /*unused*/) -> uint8_t {
-  auto* card = static_cast<HarddiskPeripheral_t*>(instance);
+  auto* card = static_cast<HarddiskPeripheral*>(instance);
   if (is_write == 0) {
     return card->result;
   }
@@ -542,7 +542,7 @@ auto harddisk_io_command(void* instance, uint16_t /*unused*/,
 auto harddisk_io_unit(void* instance, uint16_t /*unused*/, uint16_t /*unused*/,
                       uint8_t is_write, uint8_t data_value, uint32_t /*unused*/)
     -> uint8_t {
-  auto* card = static_cast<HarddiskPeripheral_t*>(instance);
+  auto* card = static_cast<HarddiskPeripheral*>(instance);
   if (is_write == 0) {
     return card->unit;
   }
@@ -555,7 +555,7 @@ auto harddisk_io_unit(void* instance, uint16_t /*unused*/, uint16_t /*unused*/,
 auto harddisk_io_block_low(void* instance, uint16_t /*unused*/,
                            uint16_t /*unused*/, uint8_t is_write,
                            uint8_t data_value, uint32_t /*unused*/) -> uint8_t {
-  auto* card = static_cast<HarddiskPeripheral_t*>(instance);
+  auto* card = static_cast<HarddiskPeripheral*>(instance);
   if (is_write == 0) {
     return static_cast<uint8_t>(card->block & 0xFF);
   }
@@ -567,7 +567,7 @@ auto harddisk_io_block_high(void* instance, uint16_t /*unused*/,
                             uint16_t /*unused*/, uint8_t is_write,
                             uint8_t data_value, uint32_t /*unused*/)
     -> uint8_t {
-  auto* card = static_cast<HarddiskPeripheral_t*>(instance);
+  auto* card = static_cast<HarddiskPeripheral*>(instance);
   if (is_write == 0) {
     return static_cast<uint8_t>(card->block >> 8);
   }
@@ -579,7 +579,7 @@ auto harddisk_io_block_high(void* instance, uint16_t /*unused*/,
 auto harddisk_io_data(void* instance, uint16_t /*unused*/, uint16_t /*unused*/,
                       uint8_t is_write, uint8_t data_value, uint32_t /*unused*/)
     -> uint8_t {
-  auto* card = static_cast<HarddiskPeripheral_t*>(instance);
+  auto* card = static_cast<HarddiskPeripheral*>(instance);
   const size_t index = card->data_index;
   card->data_index =
       static_cast<uint16_t>((card->data_index + 1) % physical::block_size);
@@ -605,7 +605,7 @@ auto harddisk_io_data(void* instance, uint16_t /*unused*/, uint16_t /*unused*/,
 auto harddisk_io_count_low(void* instance, uint16_t /*unused*/,
                            uint16_t /*unused*/, uint8_t is_write,
                            uint8_t /*unused*/, uint32_t /*unused*/) -> uint8_t {
-  auto* card = static_cast<HarddiskPeripheral_t*>(instance);
+  auto* card = static_cast<HarddiskPeripheral*>(instance);
   if (is_write != 0) {
     return 0;
   }
@@ -616,7 +616,7 @@ auto harddisk_io_count_high(void* instance, uint16_t /*unused*/,
                             uint16_t /*unused*/, uint8_t is_write,
                             uint8_t /*unused*/, uint32_t /*unused*/)
     -> uint8_t {
-  auto* card = static_cast<HarddiskPeripheral_t*>(instance);
+  auto* card = static_cast<HarddiskPeripheral*>(instance);
   if (is_write != 0) {
     return 0;
   }
@@ -630,16 +630,16 @@ auto harddisk_io_floating(void* instance, uint16_t /*unused*/,
   if (is_write != 0) {
     return 0;
   }
-  return read_floating_bus(static_cast<HarddiskPeripheral_t*>(instance),
+  return read_floating_bus(static_cast<HarddiskPeripheral*>(instance),
                            executed_cycles);
 }
 
-using HarddiskIoHandler_t = auto (*)(void* instance, uint16_t program_counter,
+using HarddiskIoHandler = auto (*)(void* instance, uint16_t program_counter,
                                      uint16_t memory_address, uint8_t is_write,
                                      uint8_t data_value,
                                      uint32_t executed_cycles) -> uint8_t;
 
-constexpr std::array<HarddiskIoHandler_t, regs::count> harddisk_io_handlers =
+constexpr std::array<HarddiskIoHandler, regs::count> harddisk_io_handlers =
     {
         harddisk_io_command,    harddisk_io_unit,     harddisk_io_block_low,
         harddisk_io_block_high, harddisk_io_data,     harddisk_io_count_low,
@@ -658,7 +658,7 @@ auto harddisk_io_read(void* instance, uint16_t program_counter,
                       uint16_t memory_address, uint8_t is_write,
                       uint8_t /*unused*/, uint32_t executed_cycles) -> uint8_t {
   if (instance == nullptr || is_write != 0) {
-    return read_floating_bus(static_cast<HarddiskPeripheral_t*>(instance),
+    return read_floating_bus(static_cast<HarddiskPeripheral*>(instance),
                              executed_cycles);
   }
   const size_t handler_index = memory_address & regs::addr_mask;
@@ -682,7 +682,7 @@ auto harddisk_io_write(void* instance, uint16_t program_counter,
 // Better no card than a phantom one: without these members the firmware
 // cannot be seen, the registers cannot be reached or the host cannot be told
 // what the card is doing, and the log names the missing one.
-auto missing_host_member(const HostInterface_t* host) -> const char* {
+auto missing_host_member(const HostInterface* host) -> const char* {
   if (host->RegisterIO == nullptr) {
     return "RegisterIO";
   }
@@ -704,7 +704,7 @@ auto missing_host_member(const HostInterface_t* host) -> const char* {
 // Power-on state. Whether a real controller's RESET' clears its latches is
 // not known; ProDOS rewrites every register per call, so nothing depends on
 // it.
-auto power_on(HarddiskPeripheral_t* card) -> void {
+auto power_on(HarddiskPeripheral* card) -> void {
   card->unit = 0;
   card->command = 0;
   card->result = harddisk_prodos_ok;
@@ -715,7 +715,7 @@ auto power_on(HarddiskPeripheral_t* card) -> void {
   card->buffer_poisoned = false;
 }
 
-auto harddisk_abi_init(int slot, HostInterface_t* host) -> void* {
+auto harddisk_abi_init(int slot, HostInterface* host) -> void* {
   if (host == nullptr || host->Log == nullptr) {
     return nullptr;
   }
@@ -726,8 +726,8 @@ auto harddisk_abi_init(int slot, HostInterface_t* host) -> void* {
     return nullptr;
   }
 
-  auto card = std::unique_ptr<HarddiskPeripheral_t>(new (std::nothrow)
-                                                        HarddiskPeripheral_t());
+  auto card = std::unique_ptr<HarddiskPeripheral>(new (std::nothrow)
+                                                        HarddiskPeripheral());
   if (!card) {
     return nullptr;
   }
@@ -749,37 +749,37 @@ auto harddisk_abi_reset(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
-  power_on(static_cast<HarddiskPeripheral_t*>(instance));
+  power_on(static_cast<HarddiskPeripheral*>(instance));
 }
 
 auto harddisk_abi_shutdown(void* instance) -> void {
   if (instance == nullptr) {
     return;
   }
-  const std::unique_ptr<HarddiskPeripheral_t> card(
-      static_cast<HarddiskPeripheral_t*>(instance));
+  const std::unique_ptr<HarddiskPeripheral> card(
+      static_cast<HarddiskPeripheral*>(instance));
   for (int i = 0; i < harddisk_drive_count; ++i) {
     eject_harddisk_from_drive(card.get(), i);
   }
 }
 
 auto harddisk_abi_command(void* instance, uint32_t cmd_id, const void* payload,
-                          size_t payload_size) -> PeripheralStatus_t {
+                          size_t payload_size) -> PeripheralStatus {
   if (instance == nullptr) {
     return peripheral_error;
   }
-  auto* card = static_cast<HarddiskPeripheral_t*>(instance);
+  auto* card = static_cast<HarddiskPeripheral*>(instance);
 
   if (!peripheral_cmd_is_mine(cmd_id, PERIPHERAL_SUBSYSTEM_HARDDISK)) {
     return peripheral_incompatible;
   }
 
-  switch (static_cast<HarddiskCmd_t>(cmd_id)) {
+  switch (static_cast<HarddiskCmd>(cmd_id)) {
     case harddisk_cmd_insert: {
-      if (payload == nullptr || payload_size != sizeof(HarddiskInsertCmd_t)) {
+      if (payload == nullptr || payload_size != sizeof(HarddiskInsertCmd)) {
         return peripheral_error;
       }
-      const auto* cmd = static_cast<const HarddiskInsertCmd_t*>(payload);
+      const auto* cmd = static_cast<const HarddiskInsertCmd*>(payload);
       if (!is_drive_valid(cmd->drive) ||
           memchr(cmd->path, '\0', sizeof(cmd->path)) == nullptr) {
         return peripheral_error;
@@ -794,10 +794,10 @@ auto harddisk_abi_command(void* instance, uint32_t cmd_id, const void* payload,
       return peripheral_ok;
     }
     case harddisk_cmd_eject: {
-      if (payload == nullptr || payload_size != sizeof(HarddiskEjectCmd_t)) {
+      if (payload == nullptr || payload_size != sizeof(HarddiskEjectCmd)) {
         return peripheral_error;
       }
-      const auto* cmd = static_cast<const HarddiskEjectCmd_t*>(payload);
+      const auto* cmd = static_cast<const HarddiskEjectCmd*>(payload);
       if (!is_drive_valid(cmd->drive)) {
         return peripheral_error;
       }
@@ -807,10 +807,10 @@ auto harddisk_abi_command(void* instance, uint32_t cmd_id, const void* payload,
     }
     case harddisk_cmd_set_protect: {
       if (payload == nullptr ||
-          payload_size != sizeof(HarddiskSetProtectCmd_t)) {
+          payload_size != sizeof(HarddiskSetProtectCmd)) {
         return peripheral_error;
       }
-      const auto* cmd = static_cast<const HarddiskSetProtectCmd_t*>(payload);
+      const auto* cmd = static_cast<const HarddiskSetProtectCmd*>(payload);
       if (!is_drive_valid(cmd->drive)) {
         return peripheral_error;
       }
@@ -825,7 +825,7 @@ auto harddisk_abi_command(void* instance, uint32_t cmd_id, const void* payload,
   return peripheral_incompatible;
 }
 
-auto activity_status(const HarddiskPeripheral_t* card) -> uint8_t {
+auto activity_status(const HarddiskPeripheral* card) -> uint8_t {
   switch (card->data_phase) {
     case harddisk_phase_read_out:
       return harddisk_status_read;
@@ -837,7 +837,7 @@ auto activity_status(const HarddiskPeripheral_t* card) -> uint8_t {
 }
 
 auto harddisk_abi_query(void* instance, uint32_t cmd_id, void* data,
-                        size_t* size) -> PeripheralStatus_t {
+                        size_t* size) -> PeripheralStatus {
   if (size == nullptr) {
     return peripheral_error;
   }
@@ -861,7 +861,7 @@ auto harddisk_abi_query(void* instance, uint32_t cmd_id, void* data,
     return peripheral_incompatible;
   }
 
-  constexpr size_t required_size = sizeof(HarddiskStatus_t);
+  constexpr size_t required_size = sizeof(HarddiskStatus);
   if (data == nullptr) {
     *size = required_size;
     return peripheral_ok;
@@ -876,11 +876,11 @@ auto harddisk_abi_query(void* instance, uint32_t cmd_id, void* data,
     return peripheral_error;
   }
 
-  const auto* card = static_cast<const HarddiskPeripheral_t*>(instance);
-  auto* status = static_cast<HarddiskStatus_t*>(data);
+  const auto* card = static_cast<const HarddiskPeripheral*>(instance);
+  auto* status = static_cast<HarddiskStatus*>(data);
   std::memset(status, 0, required_size);
 
-  const Harddisk_t& drive0 = card->drives.at(0);
+  const Harddisk& drive0 = card->drives.at(0);
   status->drive0_last_error = static_cast<int32_t>(drive0.last_error);
   status->drive0_loaded = drive0.is_loaded ? 1 : 0;
   status->drive0_write_protected = is_write_protected(drive0) ? 1 : 0;
@@ -889,7 +889,7 @@ auto harddisk_abi_query(void* instance, uint32_t cmd_id, void* data,
   copy_string_to_buffer(drive0.full_path, status->drive0_full_path,
                         harddisk_status_path_max);
 
-  const Harddisk_t& drive1 = card->drives.at(1);
+  const Harddisk& drive1 = card->drives.at(1);
   status->drive1_last_error = static_cast<int32_t>(drive1.last_error);
   status->drive1_loaded = drive1.is_loaded ? 1 : 0;
   status->drive1_write_protected = is_write_protected(drive1) ? 1 : 0;
@@ -904,27 +904,27 @@ auto harddisk_abi_query(void* instance, uint32_t cmd_id, void* data,
   return peripheral_ok;
 }
 
-static_assert(sizeof(HarddiskSaveState_t) == harddisk_save_state_size,
+static_assert(sizeof(HarddiskSaveState) == harddisk_save_state_size,
               "the frame is twenty bytes");
-static_assert(offsetof(HarddiskSaveState_t, version) == 0 &&
-                  offsetof(HarddiskSaveState_t, struct_size) == 4 &&
-                  offsetof(HarddiskSaveState_t, unit) == 8 &&
-                  offsetof(HarddiskSaveState_t, command) == 9 &&
-                  offsetof(HarddiskSaveState_t, result) == 10 &&
-                  offsetof(HarddiskSaveState_t, data_phase) == 11 &&
-                  offsetof(HarddiskSaveState_t, block) == 12 &&
-                  offsetof(HarddiskSaveState_t, data_index) == 14 &&
-                  offsetof(HarddiskSaveState_t, block_count) == 16 &&
-                  offsetof(HarddiskSaveState_t, reserved) == 18,
+static_assert(offsetof(HarddiskSaveState, version) == 0 &&
+                  offsetof(HarddiskSaveState, struct_size) == 4 &&
+                  offsetof(HarddiskSaveState, unit) == 8 &&
+                  offsetof(HarddiskSaveState, command) == 9 &&
+                  offsetof(HarddiskSaveState, result) == 10 &&
+                  offsetof(HarddiskSaveState, data_phase) == 11 &&
+                  offsetof(HarddiskSaveState, block) == 12 &&
+                  offsetof(HarddiskSaveState, data_index) == 14 &&
+                  offsetof(HarddiskSaveState, block_count) == 16 &&
+                  offsetof(HarddiskSaveState, reserved) == 18,
               "every field sits where a file written earlier put it");
 
 auto harddisk_abi_save_state(void* instance, void* buffer, size_t* size)
-    -> PeripheralStatus_t {
+    -> PeripheralStatus {
   if (size == nullptr) {
     return peripheral_error;
   }
 
-  constexpr size_t required = sizeof(HarddiskSaveState_t);
+  constexpr size_t required = sizeof(HarddiskSaveState);
 
   if (buffer == nullptr) {
     *size = required;
@@ -940,8 +940,8 @@ auto harddisk_abi_save_state(void* instance, void* buffer, size_t* size)
     return peripheral_error;
   }
 
-  const auto* card = static_cast<const HarddiskPeripheral_t*>(instance);
-  auto* frame = static_cast<HarddiskSaveState_t*>(buffer);
+  const auto* card = static_cast<const HarddiskPeripheral*>(instance);
+  auto* frame = static_cast<HarddiskSaveState*>(buffer);
 
   std::memset(frame, 0, required);
   frame->version = HARDDISK_STATE_VERSION;
@@ -959,13 +959,13 @@ auto harddisk_abi_save_state(void* instance, void* buffer, size_t* size)
 }
 
 auto harddisk_abi_load_state(void* instance, const void* buffer, size_t size)
-    -> PeripheralStatus_t {
+    -> PeripheralStatus {
   if (instance == nullptr || buffer == nullptr ||
-      size < sizeof(HarddiskSaveState_t)) {
+      size < sizeof(HarddiskSaveState)) {
     return peripheral_error;
   }
 
-  HarddiskSaveState_t frame{};
+  HarddiskSaveState frame{};
   std::memcpy(&frame, buffer, sizeof(frame));
   if (frame.version != HARDDISK_STATE_VERSION ||
       frame.struct_size != harddisk_save_state_size ||
@@ -973,7 +973,7 @@ auto harddisk_abi_load_state(void* instance, const void* buffer, size_t size)
     return peripheral_error;
   }
 
-  auto* card = static_cast<HarddiskPeripheral_t*>(instance);
+  auto* card = static_cast<HarddiskPeripheral*>(instance);
   card->unit = frame.unit;
   card->command = frame.command;
   card->result = frame.result;
@@ -989,8 +989,8 @@ auto harddisk_abi_load_state(void* instance, const void* buffer, size_t size)
   // configuration is what the saved session resumes against, and the log is
   // the only record of which that was.
   if (card->host != nullptr && card->host->Log != nullptr) {
-    const Harddisk_t& drive0 = card->drives.at(0);
-    const Harddisk_t& drive1 = card->drives.at(1);
+    const Harddisk& drive0 = card->drives.at(0);
+    const Harddisk& drive1 = card->drives.at(1);
     card->host->Log(card, log_info,
                     "Hard disk: resuming against drive 1 '%s' and drive 2 "
                     "'%s'\n",
@@ -1003,7 +1003,7 @@ auto harddisk_abi_load_state(void* instance, const void* buffer, size_t size)
   // gives. A write in flight is gone with its bytes: the buffer is marked so
   // the one WRITE that would have used it fails instead of writing zeros.
   if (card->data_phase == harddisk_phase_read_out) {
-    Harddisk_t& drive = selected_drive(card);
+    Harddisk& drive = selected_drive(card);
     if (drive.is_loaded &&
         drive.driver->read_block(drive.driver_instance, card->block,
                                  card->buffer.data()) != harddisk_err_none) {
@@ -1024,7 +1024,7 @@ auto harddisk_abi_load_state(void* instance, const void* buffer, size_t size)
 
 }  // namespace
 
-static Peripheral_t harddisk_peripheral = {
+static Peripheral harddisk_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.harddisk",
     .name = "Harddisk",
@@ -1045,7 +1045,7 @@ static Peripheral_t harddisk_peripheral = {
 };
 
 // Peripheral registry requires non-const pointer.
-extern "C" auto harddisk_get_descriptor() -> Peripheral_t* {
+extern "C" auto harddisk_get_descriptor() -> Peripheral* {
   return &harddisk_peripheral;
 }
 

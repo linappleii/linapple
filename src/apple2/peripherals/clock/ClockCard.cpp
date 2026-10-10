@@ -65,7 +65,7 @@ constexpr int minute_max = 59;
 struct ClockCard {
   std::array<uint8_t, latch_count> latches{};
   std::array<uint8_t, rom_size> rom{};
-  HostInterface_t* host = nullptr;
+  HostInterface* host = nullptr;
   int slot = 0;
   bool reported_missing_time = false;
 };
@@ -88,7 +88,7 @@ auto set_latch_pair(ClockCard* card, size_t index, int value) -> void {
 
 // Latch local time fields from host platform interface.
 auto update_latches(ClockCard* card) -> void {
-  HostLocalTime_t now{};
+  HostLocalTime now{};
   if (!card->host->GetLocalTime(&now)) {
     if (!card->reported_missing_time && card->host->Log != nullptr) {
       card->host->Log(card, log_warn,
@@ -135,7 +135,7 @@ auto clockcard_io_read(void* instance, uint16_t program_counter,
   return card->host->ReadFloatingBus(executed_cycles);
 }
 
-auto missing_host_member(const HostInterface_t* host) -> const char* {
+auto missing_host_member(const HostInterface* host) -> const char* {
   if (host->RegisterIO == nullptr) {
     return "RegisterIO";
   }
@@ -151,7 +151,7 @@ auto missing_host_member(const HostInterface_t* host) -> const char* {
   return nullptr;
 }
 
-auto clockcard_abi_init(int slot, HostInterface_t* host) -> void* {
+auto clockcard_abi_init(int slot, HostInterface* host) -> void* {
   if (host == nullptr) {
     return nullptr;
   }
@@ -193,7 +193,7 @@ auto clockcard_abi_shutdown(void* instance) -> void {
 
 // Clock card has no mutable commands or query endpoints.
 auto clockcard_abi_command(void* instance, uint32_t cmd_id, const void* data,
-                           size_t size) -> PeripheralStatus_t {
+                           size_t size) -> PeripheralStatus {
   (void)cmd_id;
   (void)data;
   (void)size;
@@ -205,7 +205,7 @@ auto clockcard_abi_command(void* instance, uint32_t cmd_id, const void* data,
 
 // NOLINTBEGIN(readability-non-const-parameter) - signature defined by PeripheralQueryFn ABI
 auto clockcard_abi_query(void* instance, uint32_t query_id, void* out,
-                         size_t* size) -> PeripheralStatus_t {
+                         size_t* size) -> PeripheralStatus {
   (void)instance;
   (void)query_id;
   (void)out;
@@ -216,28 +216,28 @@ auto clockcard_abi_query(void* instance, uint32_t query_id, void* out,
 }
 // NOLINTEND(readability-non-const-parameter)
 
-static_assert(sizeof(ClockCardSaveState_t) == 32,
+static_assert(sizeof(ClockCardSaveState) == 32,
               "the clock card's state frame is part of the plugin ABI");
-static_assert(offsetof(ClockCardSaveState_t, version) == 0,
+static_assert(offsetof(ClockCardSaveState, version) == 0,
               "the frame header is version then size");
-static_assert(offsetof(ClockCardSaveState_t, struct_size) == 4,
+static_assert(offsetof(ClockCardSaveState, struct_size) == 4,
               "the frame header is version then size");
-static_assert(offsetof(ClockCardSaveState_t, fixed_epoch) == 8,
+static_assert(offsetof(ClockCardSaveState, fixed_epoch) == 8,
               "the pin fields keep their place so every frame written loads");
-static_assert(offsetof(ClockCardSaveState_t, latches) == 16,
+static_assert(offsetof(ClockCardSaveState, latches) == 16,
               "the latches sit where every frame written has them");
-static_assert(offsetof(ClockCardSaveState_t, use_fixed_epoch) == 26,
+static_assert(offsetof(ClockCardSaveState, use_fixed_epoch) == 26,
               "the latches fill bytes 16 through 25");
-static_assert(offsetof(ClockCardSaveState_t, reserved) == 27,
+static_assert(offsetof(ClockCardSaveState, reserved) == 27,
               "the pin flag is the byte after the latches");
 
 auto clockcard_abi_save_state(void* instance, void* state_buffer,
-                              size_t* buffer_size) -> PeripheralStatus_t {
+                              size_t* buffer_size) -> PeripheralStatus {
   if (buffer_size == nullptr) {
     return peripheral_error;
   }
 
-  constexpr size_t required_size = sizeof(ClockCardSaveState_t);
+  constexpr size_t required_size = sizeof(ClockCardSaveState);
   if (state_buffer == nullptr) {
     *buffer_size = required_size;
     return peripheral_ok;
@@ -248,7 +248,7 @@ auto clockcard_abi_save_state(void* instance, void* state_buffer,
   }
 
   const auto* card = static_cast<const ClockCard*>(instance);
-  ClockCardSaveState_t state{};
+  ClockCardSaveState state{};
   state.version = CLOCKCARD_STATE_VERSION;
   state.struct_size = static_cast<uint32_t>(required_size);
   std::copy(card->latches.begin(), card->latches.end(), state.latches);
@@ -274,14 +274,14 @@ auto latches_form_a_calendar(const uint8_t* latches) -> bool {
 
 // Load state bounded by recorded struct_size.
 auto clockcard_abi_load_state(void* instance, const void* state_buffer,
-                              size_t buffer_size) -> PeripheralStatus_t {
-  constexpr size_t header_size = offsetof(ClockCardSaveState_t, fixed_epoch);
+                              size_t buffer_size) -> PeripheralStatus {
+  constexpr size_t header_size = offsetof(ClockCardSaveState, fixed_epoch);
   if (instance == nullptr || state_buffer == nullptr ||
       buffer_size < header_size) {
     return peripheral_error;
   }
 
-  ClockCardSaveState_t state{};
+  ClockCardSaveState state{};
   std::memcpy(&state, state_buffer, header_size);
   if (state.struct_size != sizeof(state) || buffer_size < state.struct_size) {
     return peripheral_error;
@@ -302,7 +302,7 @@ auto clockcard_abi_load_state(void* instance, const void* state_buffer,
 
 }  // namespace
 
-static Peripheral_t clockcard_peripheral = {
+static Peripheral clockcard_peripheral = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "linapple.clock",
     .name = "Clock Card",
@@ -323,7 +323,7 @@ static Peripheral_t clockcard_peripheral = {
 };
 
 // Peripheral registry requires non-const pointer.
-auto clockcard_get_descriptor() -> Peripheral_t* {
+auto clockcard_get_descriptor() -> Peripheral* {
   return &clockcard_peripheral;
 }
 

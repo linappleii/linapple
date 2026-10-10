@@ -38,11 +38,11 @@ constexpr uint32_t cells_per_byte = 8;
 // forty-eight byte gap 1.
 constexpr uint32_t nominal_track_cells = 50464;
 
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 
-class DiskBitsHarness_t {
+class DiskBitsHarness {
  public:
-  DiskBitsHarness_t() {
+  DiskBitsHarness() {
     machine_.load();
     linapple_init();
     peripheral_manager_init();
@@ -50,7 +50,7 @@ class DiskBitsHarness_t {
 
     disk_ = TestFixtures::create_ephemeral("minimal.dsk");
 
-    DiskInsertCmd_t cmd{};
+    DiskInsertCmd cmd{};
     cmd.drive = disk_drive_0;
     util_safe_strcpy(cmd.path, disk_.path().c_str(), disk_insert_path_max);
     peripheral_command(slot_6, disk_cmd_insert, &cmd, sizeof(cmd));
@@ -62,12 +62,12 @@ class DiskBitsHarness_t {
     peripheral_manager_think(1);
   }
 
-  ~DiskBitsHarness_t() { linapple_shutdown(); }
+  ~DiskBitsHarness() { linapple_shutdown(); }
 
-  DiskBitsHarness_t(const DiskBitsHarness_t&) = delete;
-  auto operator=(const DiskBitsHarness_t&) -> DiskBitsHarness_t& = delete;
-  DiskBitsHarness_t(DiskBitsHarness_t&&) = delete;
-  auto operator=(DiskBitsHarness_t&&) -> DiskBitsHarness_t& = delete;
+  DiskBitsHarness(const DiskBitsHarness&) = delete;
+  auto operator=(const DiskBitsHarness&) -> DiskBitsHarness& = delete;
+  DiskBitsHarness(DiskBitsHarness&&) = delete;
+  auto operator=(DiskBitsHarness&&) -> DiskBitsHarness& = delete;
 
   static auto read(uint16_t address, uint32_t cycle) -> uint8_t {
     return io_map_dispatch(0, address, 0, 0, cycle);
@@ -77,8 +77,8 @@ class DiskBitsHarness_t {
     peripheral_manager_think(cycles);
   }
 
-  static auto state() -> DiskSavedState_t {
-    DiskSavedState_t saved{};
+  static auto state() -> DiskSavedState {
+    DiskSavedState saved{};
     size_t size = sizeof(saved);
     peripheral_save_state(slot_6, &saved, &size);
     return saved;
@@ -89,21 +89,21 @@ class DiskBitsHarness_t {
   }
 
   static auto park_at_index_hole() -> void {
-    DiskSavedState_t saved = state();
+    DiskSavedState saved = state();
     saved.drives[0].current_byte_pos = 0;
     peripheral_load_state(slot_6, &saved, sizeof(saved));
     io_map_dispatch(0, io_motor_on, 0, 0, 0);
   }
 
  private:
-  TestConfig_t machine_{TestConfig_t::disk_ii_only()};
-  TestFixtures::EphemeralDiskFixture_t disk_;
+  TestConfig machine_{TestConfig::disk_ii_only()};
+  TestFixtures::EphemeralDiskFixture disk_;
 };
 
 }  // namespace
 
 TEST_CASE("DiskBits: [BITS-01] One emulated second carries 255,121 cells") {
-  DiskBitsHarness_t harness;
+  DiskBitsHarness harness;
   harness.park_at_index_hole();
   REQUIRE(harness.byte_position() == 0);
 
@@ -117,7 +117,7 @@ TEST_CASE("DiskBits: [BITS-01] One emulated second carries 255,121 cells") {
 }
 
 TEST_CASE("DiskBits: [BITS-02] A 50,464-cell track wraps exactly") {
-  DiskBitsHarness_t harness;
+  DiskBitsHarness harness;
   harness.park_at_index_hole();
   REQUIRE(harness.byte_position() == 0);
 
@@ -133,7 +133,7 @@ TEST_CASE("DiskBits: [BITS-02] A 50,464-cell track wraps exactly") {
 }
 
 TEST_CASE("DiskBits: [BITS-03] Reads 32 cycles apart are a byte apart") {
-  DiskBitsHarness_t harness;
+  DiskBitsHarness harness;
   harness.park_at_index_hole();
 
   constexpr uint32_t cycles_per_nibble = cells_per_byte * cycles_per_cell;
@@ -146,7 +146,7 @@ TEST_CASE("DiskBits: [BITS-03] Reads 32 cycles apart are a byte apart") {
 }
 
 TEST_CASE("DiskBits: [BITS-04] A head step keeps the angle it left on") {
-  DiskBitsHarness_t harness;
+  DiskBitsHarness harness;
   harness.park_at_index_hole();
 
   constexpr uint32_t travel_cycles = 4000;
@@ -171,7 +171,7 @@ TEST_CASE("DiskBits: [BITS-04] A head step keeps the angle it left on") {
 
   constexpr int32_t travelled_bytes = static_cast<int32_t>(
       strobes * hold_cycles / cycles_per_cell / cells_per_byte);
-  const DiskSavedState_t after = harness.state();
+  const DiskSavedState after = harness.state();
   CHECK(after.drives[0].track == 1);
   CHECK(after.drives[0].current_byte_pos > before);
   CHECK(after.drives[0].current_byte_pos <= before + travelled_bytes + 2);

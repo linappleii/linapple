@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-using ColorRef_t = uint32_t;
+using ColorRef = uint32_t;
 
 // Colors ___________________________________________________________________
 
@@ -18,7 +18,7 @@ enum Color_Schemes_e : uint8_t {
 // Named, since they are easier to remember.
 // Ok, maybe RGB + CYMK is a little "too" cute. But what the hell, it works out
 // nicely.
-enum DebugPalette_e : uint8_t {
+enum DebugPalette : uint8_t {
   // mipmap level:   8   7   6   5   4   3   2   1   0
   // color depth:  256 224 192 160 128  96  64  32   0
   //               +32 +32 +32 +32 +32 +32 +32 +32
@@ -115,7 +115,7 @@ enum DebugPalette_e : uint8_t {
 
 // Yeah, this was a PITA to organize.
 //
-enum DebugColors_e : uint8_t {
+enum DebugColors : uint8_t {
   BG_CONSOLE_OUTPUT  // Black   Window
   ,
   FG_CONSOLE_OUTPUT  // White
@@ -257,11 +257,11 @@ enum DebugColors_e : uint8_t {
   NUM_DEBUG_COLORS,
 };
 
-extern int g_color_scheme;
-extern int g_color_index[NUM_DEBUG_COLORS];
+extern int color_scheme;
+extern int color_index[NUM_DEBUG_COLORS];
 
 // Color
-auto DebuggerGetColor(int iColor) -> ColorRef_t;
-auto DebuggerSetColor(int iScheme, int iColor, ColorRef_t nColor) -> bool;
+auto DebuggerGetColor(int iColor) -> ColorRef;
+auto DebuggerSetColor(int iScheme, int iColor, ColorRef nColor) -> bool;
 auto ConfigColorsReset(void) -> void;
 auto CmdColorGet(int iScheme, int iColor) -> void;

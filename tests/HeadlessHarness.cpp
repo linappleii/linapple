@@ -23,7 +23,7 @@
 
 namespace {
 
-HeadlessHarness_t* active_harness = nullptr;
+HeadlessHarness* active_harness = nullptr;
 
 auto on_audio(const char* peripheral_id, int slot, const float* const* channels,
               size_t num_channels, size_t num_samples) -> void {
@@ -38,15 +38,15 @@ auto on_audio(const char* peripheral_id, int slot, const float* const* channels,
 
 }  // namespace
 
-HeadlessHarness_t::HeadlessHarness_t(
-    const TestFixtures::ScopedTestConfig_t& test_config) {
+HeadlessHarness::HeadlessHarness(
+    const TestFixtures::ScopedTestConfig& test_config) {
   AppConfig config = {};
   app_config_default(&config);
   start(test_config, &config);
 }
 
-HeadlessHarness_t::HeadlessHarness_t(
-    const TestFixtures::ScopedTestConfig_t& test_config, int argc,
+HeadlessHarness::HeadlessHarness(
+    const TestFixtures::ScopedTestConfig& test_config, int argc,
     char** argv) {
   // Parsed into the one configuration object, as every frontend's main does,
   // so the controller reads its paths from the instance's own buffers.
@@ -57,8 +57,8 @@ HeadlessHarness_t::HeadlessHarness_t(
   app_controller_load_initial_media(&config);
 }
 
-auto HeadlessHarness_t::start(
-    const TestFixtures::ScopedTestConfig_t& test_config, AppConfig* config)
+auto HeadlessHarness::start(
+    const TestFixtures::ScopedTestConfig& test_config, AppConfig* config)
     -> void {
   active_harness = this;
 
@@ -74,7 +74,7 @@ auto HeadlessHarness_t::start(
   is_initialized = true;
 }
 
-HeadlessHarness_t::~HeadlessHarness_t() {
+HeadlessHarness::~HeadlessHarness() {
   if (is_initialized) {
     video_set_rendering_enabled(true);
     linapple_set_audio_channel_callback(nullptr);
@@ -86,12 +86,12 @@ HeadlessHarness_t::~HeadlessHarness_t() {
   }
 }
 
-auto HeadlessHarness_t::mount_disk(int slot, int drive, const std::string& path)
+auto HeadlessHarness::mount_disk(int slot, int drive, const std::string& path)
     -> void {
   const char* reg_key = (drive == 0) ? cfg_disk_image1 : cfg_disk_image2;
   Configuration::instance().set_string("Slots", reg_key, path);
 
-  DiskInsertCmd_t cmd{};
+  DiskInsertCmd cmd{};
   cmd.drive = (drive == 0) ? disk_drive_0 : disk_drive_1;
   util_safe_strcpy(cmd.path, path.c_str(), disk_insert_path_max);
   cmd.write_protected = 0;
@@ -99,24 +99,24 @@ auto HeadlessHarness_t::mount_disk(int slot, int drive, const std::string& path)
   peripheral_manager_think(100);
 }
 
-auto HeadlessHarness_t::boot() -> void {
+auto HeadlessHarness::boot() -> void {
   linapple_reset_hard();
   system_state.mode = app_mode_running;
 }
 
-auto HeadlessHarness_t::reset_soft() -> void {
+auto HeadlessHarness::reset_soft() -> void {
   linapple_reset_soft();
   system_state.mode = app_mode_running;
 }
 
-auto HeadlessHarness_t::run_frames(uint32_t count) -> void {
+auto HeadlessHarness::run_frames(uint32_t count) -> void {
   constexpr int apple2_frame_cycles = 17030;
   for (uint32_t i = 0; i < count; ++i) {
     linapple_run_frame(apple2_frame_cycles);
   }
 }
 
-auto HeadlessHarness_t::type_string(const std::string& text,
+auto HeadlessHarness::type_string(const std::string& text,
                                     uint32_t frames_per_stroke) -> void {
   // Without the card the case would fail downstream for no visible reason.
   REQUIRE(peripheral_present(0, "linapple.keyboard"));
@@ -137,7 +137,7 @@ auto HeadlessHarness_t::type_string(const std::string& text,
   linapple_set_disk_turbo(disk_turbo);
 }
 
-auto HeadlessHarness_t::get_frame_crc32() -> uint32_t {
+auto HeadlessHarness::get_frame_crc32() -> uint32_t {
   video_redraw_screen();
   const uint32_t* pixels = video_get_output_buffer();
   if (pixels == nullptr) {
@@ -147,7 +147,7 @@ auto HeadlessHarness_t::get_frame_crc32() -> uint32_t {
   return crc32_compute(pixels, pixel_count * sizeof(uint32_t));
 }
 
-auto HeadlessHarness_t::get_text_row(int row, bool trim_trailing)
+auto HeadlessHarness::get_text_row(int row, bool trim_trailing)
     -> std::string {
   if (row < 0 || row >= 24 || mem == nullptr) {
     return "";
@@ -180,15 +180,15 @@ auto HeadlessHarness_t::get_text_row(int row, bool trim_trailing)
   return row_str;
 }
 
-auto HeadlessHarness_t::get_audio_sample_count() const -> size_t {
+auto HeadlessHarness::get_audio_sample_count() const -> size_t {
   return total_audio_samples;
 }
 
-auto HeadlessHarness_t::assert_screen_matches(uint32_t golden_crc) -> void {
+auto HeadlessHarness::assert_screen_matches(uint32_t golden_crc) -> void {
   CHECK(get_frame_crc32() == golden_crc);
 }
 
-auto HeadlessHarness_t::handle_audio(const int16_t* samples, size_t num_samples)
+auto HeadlessHarness::handle_audio(const int16_t* samples, size_t num_samples)
     -> void {
   (void)samples;
   total_audio_samples += num_samples;

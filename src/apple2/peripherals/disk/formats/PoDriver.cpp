@@ -49,7 +49,7 @@ const char* const po_supported_exts[] = {"po", nullptr};
 
 }  // namespace
 
-extern "C" const DiskFormatDriver_t g_po_driver = {
+extern "C" const DiskFormatDriver po_driver = {
     .abi_version = disk_format_abi_version,
     .capabilities = disk_driver_cap_write | disk_driver_cap_create,
     .name = "ProDOS Order",
@@ -63,6 +63,6 @@ extern "C" const DiskFormatDriver_t g_po_driver = {
     .create = sector_disk_image_create,
 };
 
-static const DiskFormatRegistration_t registration{&g_po_driver};
+static const DiskFormatRegistration registration{&po_driver};
 
 // NOLINTEND(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)

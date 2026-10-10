@@ -60,7 +60,7 @@ static_assert(sector_map_offset + sectors_per_track <=
               "IIE header sector map exceeds allocated header size");
 }  // namespace iie
 
-struct IieInstance_t {
+struct IieInstance {
   FilePtr file{nullptr, fclose};
   std::array<uint8_t, iie::header_size> header{};
   std::array<uint8_t, sectors_per_track> sector_order{};
@@ -72,13 +72,13 @@ struct IieInstance_t {
   std::array<uint16_t, iie::tracks> track_nibble_counts{};
   bool host_read_only = false;
 
-  IieInstance_t() = default;
-  ~IieInstance_t() = default;
+  IieInstance() = default;
+  ~IieInstance() = default;
 
-  IieInstance_t(const IieInstance_t&) = delete;
-  auto operator=(const IieInstance_t&) -> IieInstance_t& = delete;
-  IieInstance_t(IieInstance_t&&) = default;
-  auto operator=(IieInstance_t&&) -> IieInstance_t& = default;
+  IieInstance(const IieInstance&) = delete;
+  auto operator=(const IieInstance&) -> IieInstance& = delete;
+  IieInstance(IieInstance&&) = default;
+  auto operator=(IieInstance&&) -> IieInstance& = default;
 };
 
 // The header map runs from file sector to physical slot; the nibblizer's
@@ -137,7 +137,7 @@ auto iie_open(const char* path, uint32_t file_offset, bool read_only,
     return disk_err_invalid_argument;
   }
 
-  auto instance_ptr = std::unique_ptr<IieInstance_t>(new IieInstance_t());
+  auto instance_ptr = std::unique_ptr<IieInstance>(new IieInstance());
 
   instance_ptr->host_read_only = read_only;
   if (!read_only) {
@@ -214,14 +214,14 @@ auto iie_open(const char* path, uint32_t file_offset, bool read_only,
 }
 
 auto iie_close(void* instance_handle) -> void {
-  delete reinterpret_cast<IieInstance_t*>(instance_handle);
+  delete reinterpret_cast<IieInstance*>(instance_handle);
 }
 
 auto iie_is_write_protected(void* instance_handle) -> bool {
   if (instance_handle == nullptr) {
     return true;
   }
-  return reinterpret_cast<IieInstance_t*>(instance_handle)->host_read_only;
+  return reinterpret_cast<IieInstance*>(instance_handle)->host_read_only;
 }
 
 auto iie_read_track_bits(void* instance_handle, uint32_t quarter_track,
@@ -235,7 +235,7 @@ auto iie_read_track_bits(void* instance_handle, uint32_t quarter_track,
   *out_bit_count = 0;
   *out_bit_timing = disk_default_bit_timing;
 
-  auto* ii_ptr = reinterpret_cast<IieInstance_t*>(instance_handle);
+  auto* ii_ptr = reinterpret_cast<IieInstance*>(instance_handle);
 
   // The image holds 35 tracks; past them the surface is blank, as a WOZ
   // treats an unrecorded track.
@@ -281,7 +281,7 @@ const char* const iie_supported_exts[] = {"iie", nullptr};
 
 }  // namespace
 
-extern "C" const DiskFormatDriver_t g_iie_driver = {
+extern "C" const DiskFormatDriver iie_driver = {
     .abi_version = disk_format_abi_version,
     .capabilities = 0,
     .name = "IIE",
@@ -295,6 +295,6 @@ extern "C" const DiskFormatDriver_t g_iie_driver = {
     .create = nullptr,
 };
 
-static const DiskFormatRegistration_t registration{&g_iie_driver};
+static const DiskFormatRegistration registration{&iie_driver};
 
 // NOLINTEND(google-runtime-int, cppcoreguidelines-owning-memory, bugprone-easily-swappable-parameters, modernize-make-unique)

@@ -146,7 +146,7 @@ using FrontendAudioChannelCallback = void (*)(const char* peripheral_id,
                                               size_t num_channels,
                                               size_t num_samples);
 using FrontendAudioSourceRegisterCallback = void (*)(
-    int slot, const char* peripheral_id, const PeripheralAudioInfo_t* info);
+    int slot, const char* peripheral_id, const PeripheralAudioInfo* info);
 using FrontendAudioSourceUnregisterCallback = void (*)(int slot);
 extern FrontendAudioChannelCallback frontend_audio_channel_cb;
 extern FrontendAudioSourceRegisterCallback frontend_audio_register_cb;
@@ -212,15 +212,15 @@ auto peripheral_announce_audio_sources() -> void;
 // NOLINTBEGIN(readability-redundant-declaration)
 // Justification: Re-exported via Core Bridge for frontends without Peripheral.h
 auto peripheral_command(int slot, uint32_t cmd_id, const void* data,
-                        size_t size) -> PeripheralStatus_t;
+                        size_t size) -> PeripheralStatus;
 auto peripheral_query(int slot, uint32_t cmd_id, void* out, size_t* out_size)
-    -> PeripheralStatus_t;
+    -> PeripheralStatus;
 auto peripheral_command_by_id(int slot, const char* peripheral_id,
                               uint32_t cmd_id, const void* data, size_t size)
-    -> PeripheralStatus_t;
+    -> PeripheralStatus;
 auto peripheral_query_by_id(int slot, const char* peripheral_id,
                             uint32_t cmd_id, void* out, size_t* out_size)
-    -> PeripheralStatus_t;
+    -> PeripheralStatus;
 // NOLINTEND(readability-redundant-declaration)
 
 // A seven-bit code under a strobe, as the motherboard sees it; host_key pairs

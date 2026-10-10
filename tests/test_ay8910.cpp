@@ -250,13 +250,13 @@ TEST_CASE("AY-3-8910: The Sixteen Envelope Shapes Match The Data Sheet") {
   // (the end of the first sweep), and the volume exactly two whole cycles in.
   // The non-continue shapes and the two that hold at silence are the ones the
   // old model got backwards.
-  struct Expectation_t {
+  struct Expectation {
     uint8_t shape;
     uint8_t first;
     uint8_t end_of_sweep;
     uint8_t at_two_cycles;
   };
-  constexpr Expectation_t expectations[16] = {
+  constexpr Expectation expectations[16] = {
       {0x0, 15, 0, 0},  {0x1, 15, 0, 0},  {0x2, 15, 0, 0},  {0x3, 15, 0, 0},
       {0x4, 0, 15, 0},  {0x5, 0, 15, 0},  {0x6, 0, 15, 0},  {0x7, 0, 15, 0},
       {0x8, 15, 0, 15}, {0x9, 15, 0, 0},  {0xA, 15, 0, 15}, {0xB, 15, 0, 15},

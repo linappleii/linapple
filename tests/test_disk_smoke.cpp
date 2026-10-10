@@ -25,18 +25,18 @@
 
 namespace {
 
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 
-struct SmokeTestFixture_t {
-  explicit SmokeTestFixture_t(const TestFixtures::ScopedTestConfig_t& config,
+struct SmokeTestFixture {
+  explicit SmokeTestFixture(const TestFixtures::ScopedTestConfig& config,
                               const std::string& image_path1 = "",
                               const std::string& image_path2 = "") {
     init(config, image_path1, image_path2);
   }
 
-  ~SmokeTestFixture_t() { shutdown(); }
+  ~SmokeTestFixture() { shutdown(); }
 
-  auto init(const TestFixtures::ScopedTestConfig_t& config,
+  auto init(const TestFixtures::ScopedTestConfig& config,
             const std::string& image_path1 = "",
             const std::string& image_path2 = "") -> void {
     if (initialized_) {
@@ -64,10 +64,10 @@ struct SmokeTestFixture_t {
     }
   }
 
-  SmokeTestFixture_t(const SmokeTestFixture_t&) = delete;
-  auto operator=(const SmokeTestFixture_t&) -> SmokeTestFixture_t& = delete;
-  SmokeTestFixture_t(SmokeTestFixture_t&&) = delete;
-  auto operator=(SmokeTestFixture_t&&) -> SmokeTestFixture_t& = delete;
+  SmokeTestFixture(const SmokeTestFixture&) = delete;
+  auto operator=(const SmokeTestFixture&) -> SmokeTestFixture& = delete;
+  SmokeTestFixture(SmokeTestFixture&&) = delete;
+  auto operator=(SmokeTestFixture&&) -> SmokeTestFixture& = delete;
 
  private:
   bool initialized_ = false;
@@ -76,14 +76,14 @@ struct SmokeTestFixture_t {
 }  // namespace
 
 TEST_CASE("DiskSmoke: [SMK-01] DOS 3.3 Boot") {
-  TestConfig_t config(TestConfig_t::disk_ii_only());
-  HeadlessHarness_t harness(config);
+  TestConfig config(TestConfig::disk_ii_only());
+  HeadlessHarness harness(config);
   auto disk = TestFixtures::create_ephemeral("Master.dsk");
   harness.mount_disk(6, 0, disk);
   harness.boot();
   harness.run_frames(250);
 
-  DiskStatus_t status{};
+  DiskStatus status{};
   size_t size = sizeof(status);
   peripheral_query(6, disk_query_status, &status, &size);
   CHECK(status.drive0_loaded == true);
@@ -98,20 +98,20 @@ TEST_CASE("DiskSmoke: [SMK-01] DOS 3.3 Boot") {
 
 TEST_CASE("DiskSmoke: [SMK-03] WOZ 2 Boot") {
   auto disk = TestFixtures::create_ephemeral("minimal.woz");
-  TestConfig_t config(TestConfig_t::disk_ii_only());
-  SmokeTestFixture_t fixture(config, disk.path());
+  TestConfig config(TestConfig::disk_ii_only());
+  SmokeTestFixture fixture(config, disk.path());
 
-  DiskStatus_t status{};
+  DiskStatus status{};
   size_t size = sizeof(status);
   peripheral_query(6, disk_query_status, &status, &size);
   CHECK(status.drive0_loaded == true);
 }
 
 TEST_CASE("DiskSmoke: [SMK-05] error - Missing File") {
-  TestConfig_t config(TestConfig_t::disk_ii_only());
-  SmokeTestFixture_t fixture(config, "/tmp/nonexistent_smoke_file_12345.dsk");
+  TestConfig config(TestConfig::disk_ii_only());
+  SmokeTestFixture fixture(config, "/tmp/nonexistent_smoke_file_12345.dsk");
 
-  DiskStatus_t status{};
+  DiskStatus status{};
   size_t size = sizeof(status);
   peripheral_query(6, disk_query_status, &status, &size);
   CHECK(status.drive0_loaded == false);
@@ -119,16 +119,16 @@ TEST_CASE("DiskSmoke: [SMK-05] error - Missing File") {
 }
 
 TEST_CASE("DiskSmoke: [SMK-06] error - Corrupt WOZ") {
-  TestFixtures::ScopedTempFile_t corrupt_file(".woz");
+  TestFixtures::ScopedTempFile corrupt_file(".woz");
   {
     std::ofstream ofs(corrupt_file.path(), std::ios::binary);
     REQUIRE(ofs.is_open());
     ofs.write("NOTWOZXX", 8);
   }
 
-  TestConfig_t config(TestConfig_t::disk_ii_only());
-  SmokeTestFixture_t fixture(config, corrupt_file.path());
-  DiskStatus_t status{};
+  TestConfig config(TestConfig::disk_ii_only());
+  SmokeTestFixture fixture(config, corrupt_file.path());
+  DiskStatus status{};
   size_t size = sizeof(status);
   peripheral_query(6, disk_query_status, &status, &size);
   CHECK(status.drive0_loaded == false);
@@ -137,10 +137,10 @@ TEST_CASE("DiskSmoke: [SMK-06] error - Corrupt WOZ") {
 
 TEST_CASE("DiskSmoke: [SMK-07] error - Unsupported Format") {
   auto unsupported_disk = TestFixtures::create_ephemeral("minimal.txt");
-  TestConfig_t config(TestConfig_t::disk_ii_only());
-  SmokeTestFixture_t fixture(config, unsupported_disk.path());
+  TestConfig config(TestConfig::disk_ii_only());
+  SmokeTestFixture fixture(config, unsupported_disk.path());
 
-  DiskStatus_t status{};
+  DiskStatus status{};
   size_t size = sizeof(status);
   peripheral_query(6, disk_query_status, &status, &size);
   CHECK(status.drive0_loaded == false);
@@ -149,8 +149,8 @@ TEST_CASE("DiskSmoke: [SMK-07] error - Unsupported Format") {
 
 TEST_CASE("DiskSmoke: [SMK-08] Save/Restore Persistence") {
   auto disk = TestFixtures::create_ephemeral("minimal.woz");
-  TestConfig_t config(TestConfig_t::disk_ii_only());
-  SmokeTestFixture_t fixture(config, disk.path());
+  TestConfig config(TestConfig::disk_ii_only());
+  SmokeTestFixture fixture(config, disk.path());
 
   size_t state_size = 0;
   peripheral_save_state(6, nullptr, &state_size);
@@ -162,7 +162,7 @@ TEST_CASE("DiskSmoke: [SMK-08] Save/Restore Persistence") {
 
   peripheral_load_state(6, buffer.data(), state_size);
 
-  DiskStatus_t status{};
+  DiskStatus status{};
   size_t size = sizeof(status);
   peripheral_query(6, disk_query_status, &status, &size);
   CHECK(status.drive0_loaded == true);
@@ -173,10 +173,10 @@ TEST_CASE("DiskSmoke: [SMK-10] Drive Swapping") {
   auto disk1 = TestFixtures::create_ephemeral("minimal.dsk");
   auto disk2 = TestFixtures::create_ephemeral("minimal.woz");
 
-  TestConfig_t config(TestConfig_t::disk_ii_only());
-  SmokeTestFixture_t fixture(config, disk1.path(), disk2.path());
+  TestConfig config(TestConfig::disk_ii_only());
+  SmokeTestFixture fixture(config, disk1.path(), disk2.path());
 
-  DiskStatus_t status{};
+  DiskStatus status{};
   size_t size = sizeof(status);
 
   // Swap
@@ -193,24 +193,24 @@ TEST_CASE(
     "registration") {
   disk_loader_reset();
 
-  DiskFormatDriver_t bad_floppy1 = g_do_driver;
+  DiskFormatDriver bad_floppy1 = do_driver;
   bad_floppy1.capabilities = disk_driver_cap_write;
   bad_floppy1.write_track_bits = nullptr;
   disk_loader_register(&bad_floppy1);
 
-  DiskFormatDriver_t bad_floppy2 = g_do_driver;
+  DiskFormatDriver bad_floppy2 = do_driver;
   bad_floppy2.capabilities = 0;
-  bad_floppy2.write_track_bits = g_do_driver.write_track_bits;
+  bad_floppy2.write_track_bits = do_driver.write_track_bits;
   disk_loader_register(&bad_floppy2);
 
   // Well-formed copies of two built-in descriptors: they pass the shape check
   // and are then refused by name, since the originals outlive the reset.
-  DiskFormatDriver_t valid_floppy_ro = g_woz2_driver;
+  DiskFormatDriver valid_floppy_ro = woz2_driver;
   valid_floppy_ro.capabilities = 0;
   valid_floppy_ro.write_track_bits = nullptr;
   disk_loader_register(&valid_floppy_ro);
 
-  DiskFormatDriver_t valid_floppy_rw = g_do_driver;
+  DiskFormatDriver valid_floppy_rw = do_driver;
   disk_loader_register(&valid_floppy_rw);
 
   // Null pointer registrations are safely ignored
@@ -221,7 +221,7 @@ TEST_CASE(
 TEST_CASE(
     "DiskSmoke: [DSK-2] DOS 3.3 VTOC signature detection via "
     "disk_loader_open") {
-  TestFixtures::ScopedTempFile_t tmp_dos(".dsk");
+  TestFixtures::ScopedTempFile tmp_dos(".dsk");
   std::vector<uint8_t> disk_image(143360, 0);
   for (int loop = 1; loop <= 15; ++loop) {
     disk_image[0x11000 + 2 + (loop * 0x100)] = static_cast<uint8_t>(loop - 1);
@@ -234,13 +234,13 @@ TEST_CASE(
   }
 
   disk_loader_reset();
-  disk_loader_register(&g_do_driver);
+  disk_loader_register(&do_driver);
 
-  const DiskFormatDriver_t* selected_driver = nullptr;
+  const DiskFormatDriver* selected_driver = nullptr;
   void* disk_instance = nullptr;
   CHECK(disk_loader_open(tmp_dos.c_str(), &selected_driver, &disk_instance) ==
         disk_err_none);
-  CHECK(selected_driver == &g_do_driver);
+  CHECK(selected_driver == &do_driver);
   if (selected_driver != nullptr && disk_instance != nullptr &&
       selected_driver->close != nullptr) {
     selected_driver->close(disk_instance);
@@ -250,8 +250,8 @@ TEST_CASE(
 
 #ifdef ENABLE_PERIPHERAL_KEYBOARD
 TEST_CASE("DiskSmoke: [SMK-07] SAVE and CATALOG in DOS 3.3") {
-  TestConfig_t config(TestConfig_t::disk_ii_only());
-  HeadlessHarness_t harness(config);
+  TestConfig config(TestConfig::disk_ii_only());
+  HeadlessHarness harness(config);
   auto disk = TestFixtures::create_ephemeral("Master.dsk");
   harness.mount_disk(6, 0, disk);
   harness.boot();

@@ -12,43 +12,43 @@
 
 namespace {
 
-struct ScopedDebuggerState_t {
-  Arg_t saved_args[MAX_ARGS]{};
-  Arg_t saved_arg_raw[MAX_ARGS]{};
-  int saved_arg_raw_count{g_arg_raw_count};
-  int saved_display_total{g_console_display_total};
-  int saved_display_start{g_console_display_start};
-  int saved_display_lines{g_console_display_lines};
-  int saved_display_width{g_console_display_width};
-  conchar_t saved_display[CONSOLE_DISPLAY_HEIGHT][CONSOLE_WIDTH]{};
+struct ScopedDebuggerState {
+  Arg saved_args[MAX_ARGS]{};
+  Arg saved_arg_raw[MAX_ARGS]{};
+  int saved_arg_raw_count{arg_raw_count};
+  int saved_display_total{console_display_total};
+  int saved_display_start{console_display_start};
+  int saved_display_lines{console_display_lines};
+  int saved_display_width{console_display_width};
+  ConChar saved_display[CONSOLE_DISPLAY_HEIGHT][CONSOLE_WIDTH]{};
 
-  ScopedDebuggerState_t() {
-    std::memcpy(saved_args, g_args, sizeof(saved_args));
-    std::memcpy(saved_arg_raw, g_arg_raw, sizeof(saved_arg_raw));
-    std::memcpy(saved_display, g_console_display, sizeof(saved_display));
+  ScopedDebuggerState() {
+    std::memcpy(saved_args, args, sizeof(saved_args));
+    std::memcpy(saved_arg_raw, arg_raw, sizeof(saved_arg_raw));
+    std::memcpy(saved_display, console_display, sizeof(saved_display));
 
     ArgsClear();
-    g_console_display_total = 0;
-    g_console_display_start = 0;
-    std::memset(g_console_display, 0, sizeof(g_console_display));
+    console_display_total = 0;
+    console_display_start = 0;
+    std::memset(console_display, 0, sizeof(console_display));
   }
 
-  ~ScopedDebuggerState_t() {
-    std::memcpy(g_args, saved_args, sizeof(saved_args));
-    std::memcpy(g_arg_raw, saved_arg_raw, sizeof(saved_arg_raw));
-    g_arg_raw_count = saved_arg_raw_count;
-    g_console_display_total = saved_display_total;
-    g_console_display_start = saved_display_start;
-    g_console_display_lines = saved_display_lines;
-    g_console_display_width = saved_display_width;
-    std::memcpy(g_console_display, saved_display, sizeof(saved_display));
+  ~ScopedDebuggerState() {
+    std::memcpy(args, saved_args, sizeof(saved_args));
+    std::memcpy(arg_raw, saved_arg_raw, sizeof(saved_arg_raw));
+    arg_raw_count = saved_arg_raw_count;
+    console_display_total = saved_display_total;
+    console_display_start = saved_display_start;
+    console_display_lines = saved_display_lines;
+    console_display_width = saved_display_width;
+    std::memcpy(console_display, saved_display, sizeof(saved_display));
   }
 
-  ScopedDebuggerState_t(const ScopedDebuggerState_t&) = delete;
-  auto operator=(const ScopedDebuggerState_t&)
-      -> ScopedDebuggerState_t& = delete;
-  ScopedDebuggerState_t(ScopedDebuggerState_t&&) = delete;
-  auto operator=(ScopedDebuggerState_t&&) -> ScopedDebuggerState_t& = delete;
+  ScopedDebuggerState(const ScopedDebuggerState&) = delete;
+  auto operator=(const ScopedDebuggerState&)
+      -> ScopedDebuggerState& = delete;
+  ScopedDebuggerState(ScopedDebuggerState&&) = delete;
+  auto operator=(ScopedDebuggerState&&) -> ScopedDebuggerState& = delete;
 };
 
 }  // namespace
@@ -97,54 +97,54 @@ TEST_CASE("Debugger Parser: String and Case Manipulation") {
 
 TEST_CASE("Debugger Parser: Tokenization and Matching") {
   SUBCASE("ParserFindToken matches operator tokens") {
-    ArgToken_e token = NO_TOKEN;
-    const char* rest = ParserFindToken(":1000", g_tokens, NUM_TOKENS, &token);
+    ArgToken token = NO_TOKEN;
+    const char* rest = ParserFindToken(":1000", tokens, NUM_TOKENS, &token);
     CHECK(token == TOKEN_COLON);
     CHECK(rest != nullptr);
     CHECK(strcmp(rest, "1000") == 0);
 
     token = NO_TOKEN;
-    rest = ParserFindToken(",20", g_tokens, NUM_TOKENS, &token);
+    rest = ParserFindToken(",20", tokens, NUM_TOKENS, &token);
     CHECK(token == TOKEN_COMMA);
     CHECK(rest != nullptr);
     CHECK(strcmp(rest, "20") == 0);
 
     token = NO_TOKEN;
-    rest = ParserFindToken("LDA", g_tokens, NUM_TOKENS, &token);
+    rest = ParserFindToken("LDA", tokens, NUM_TOKENS, &token);
     CHECK(token == NO_TOKEN);
     CHECK(rest == nullptr);
   }
 
   SUBCASE("FindTokenOrAlphaNumeric identifies alphanumeric start or tokens") {
-    ArgToken_e token = NO_TOKEN;
+    ArgToken token = NO_TOKEN;
     const char* rest =
-        FindTokenOrAlphaNumeric("LDA #$01", g_tokens, NUM_TOKENS, &token);
+        FindTokenOrAlphaNumeric("LDA #$01", tokens, NUM_TOKENS, &token);
     CHECK(token == TOKEN_ALPHANUMERIC);
     CHECK(rest != nullptr);
     CHECK(strcmp(rest, "LDA #$01") == 0);
 
     token = NO_TOKEN;
-    rest = FindTokenOrAlphaNumeric(":1000", g_tokens, NUM_TOKENS, &token);
+    rest = FindTokenOrAlphaNumeric(":1000", tokens, NUM_TOKENS, &token);
     CHECK(token == TOKEN_COLON);
     CHECK(rest != nullptr);
     CHECK(strcmp(rest, "1000") == 0);
 
     token = NO_TOKEN;
-    rest = FindTokenOrAlphaNumeric(",20", g_tokens, NUM_TOKENS, &token);
+    rest = FindTokenOrAlphaNumeric(",20", tokens, NUM_TOKENS, &token);
     CHECK(token == TOKEN_COMMA);
     CHECK(rest != nullptr);
     CHECK(strcmp(rest, "20") == 0);
 
     token = TOKEN_ALPHANUMERIC;
-    rest = FindTokenOrAlphaNumeric("?unknown", g_tokens, NUM_TOKENS, &token);
+    rest = FindTokenOrAlphaNumeric("?unknown", tokens, NUM_TOKENS, &token);
     CHECK(token == NO_TOKEN);
     CHECK(rest != nullptr);
     CHECK(strcmp(rest, "?unknown") == 0);
   }
 
   SUBCASE("SkipUntilToken advances through alphanumeric chars to next token") {
-    ArgToken_e token = NO_TOKEN;
-    const char* rest = SkipUntilToken("LDA #$01", g_tokens, NUM_TOKENS, &token);
+    ArgToken token = NO_TOKEN;
+    const char* rest = SkipUntilToken("LDA #$01", tokens, NUM_TOKENS, &token);
     CHECK(token == TOKEN_SPACE);
     CHECK(rest != nullptr);
     CHECK(strcmp(rest, " #$01") == 0);
@@ -152,52 +152,52 @@ TEST_CASE("Debugger Parser: Tokenization and Matching") {
 }
 
 TEST_CASE("Debugger Parser: Command Line and Arguments Parsing") {
-  const ScopedDebuggerState_t state_guard;
+  const ScopedDebuggerState state_guard;
 
   SUBCASE("Parse simple memory examine command") {
     char input[64] = "300";
     int arg_count = ParseInput(input, true);
     CHECK(arg_count == 0);
-    CHECK(strcmp(g_args[0].sArg, "300") == 0);
+    CHECK(strcmp(args[0].sArg, "300") == 0);
   }
 
   SUBCASE("Parse command with quoted filename and arguments") {
     char input[128] = "BLOAD \"MYFILE.BIN\", 2000";
     int arg_count = ParseInput(input, true);
     CHECK(arg_count == 3);
-    CHECK(strcmp(g_args[0].sArg, "BLOAD") == 0);
-    CHECK(strcmp(g_args[1].sArg, "MYFILE.BIN") == 0);
-    CHECK(g_args[2].eToken == TOKEN_COMMA);
-    CHECK(strcmp(g_args[3].sArg, "2000") == 0);
+    CHECK(strcmp(args[0].sArg, "BLOAD") == 0);
+    CHECK(strcmp(args[1].sArg, "MYFILE.BIN") == 0);
+    CHECK(args[2].eToken == TOKEN_COMMA);
+    CHECK(strcmp(args[3].sArg, "2000") == 0);
   }
 
   SUBCASE("Parse memory range with colon") {
     char input[64] = "M 300:310";
     int arg_count = ParseInput(input, true);
     CHECK(arg_count == 3);
-    CHECK(strcmp(g_args[0].sArg, "M") == 0);
-    CHECK(strcmp(g_args[1].sArg, "300") == 0);
-    CHECK(g_args[2].eToken == TOKEN_COLON);
-    CHECK(strcmp(g_args[3].sArg, "310") == 0);
+    CHECK(strcmp(args[0].sArg, "M") == 0);
+    CHECK(strcmp(args[1].sArg, "300") == 0);
+    CHECK(args[2].eToken == TOKEN_COLON);
+    CHECK(strcmp(args[3].sArg, "310") == 0);
   }
 }
 
 TEST_CASE("Debugger Range: Parsing and Calculations") {
-  const ScopedDebuggerState_t state_guard;
+  const ScopedDebuggerState state_guard;
 
   SUBCASE("Range_Get and Range_CalcEndLen with address range") {
-    g_args[1].nValue = 0x1000;
-    g_args[2].eToken = TOKEN_COLON;
-    g_args[3].nValue = 0x10FF;
+    args[1].nValue = 0x1000;
+    args[2].eToken = TOKEN_COLON;
+    args[3].nValue = 0x10FF;
 
     uint16_t addr1 = 0;
     uint16_t addr2 = 0;
-    RangeType_t rtype = Range_Get(addr1, addr2, 1);
+    RangeType rtype = Range_Get(addr1, addr2, 1);
     CHECK(rtype == RANGE_HAS_END);
     CHECK(addr1 == 0x1000);
     CHECK(addr2 == 0x10FF);
 
-    RangeEndLen_t end_len = {0, 0};
+    RangeEndLen end_len = {0, 0};
     bool ok = Range_CalcEndLen(rtype, addr1, addr2, end_len);
     CHECK(ok == true);
     CHECK(end_len.nAddressEnd == 0x10FF);
@@ -205,18 +205,18 @@ TEST_CASE("Debugger Range: Parsing and Calculations") {
   }
 
   SUBCASE("Range_Get and Range_CalcEndLen with reversed address range") {
-    g_args[1].nValue = 0x2000;
-    g_args[2].eToken = TOKEN_COLON;
-    g_args[3].nValue = 0x1000;
+    args[1].nValue = 0x2000;
+    args[2].eToken = TOKEN_COLON;
+    args[3].nValue = 0x1000;
 
     uint16_t addr1 = 0;
     uint16_t addr2 = 0;
-    RangeType_t rtype = Range_Get(addr1, addr2, 1);
+    RangeType rtype = Range_Get(addr1, addr2, 1);
     CHECK(rtype == RANGE_HAS_END);
     CHECK(addr1 == 0x1000);
     CHECK(addr2 == 0x2000);
 
-    RangeEndLen_t end_len = {0, 0};
+    RangeEndLen end_len = {0, 0};
     bool ok = Range_CalcEndLen(rtype, addr1, addr2, end_len);
     CHECK(ok == true);
     CHECK(end_len.nAddressEnd == 0x2000);
@@ -224,18 +224,18 @@ TEST_CASE("Debugger Range: Parsing and Calculations") {
   }
 
   SUBCASE("Range_Get with comma length") {
-    g_args[1].nValue = 0x2000;
-    g_args[2].eToken = TOKEN_COMMA;
-    g_args[3].nValue = 0x10;
+    args[1].nValue = 0x2000;
+    args[2].eToken = TOKEN_COMMA;
+    args[3].nValue = 0x10;
 
     uint16_t addr1 = 0;
     uint16_t addr2 = 0;
-    RangeType_t rtype = Range_Get(addr1, addr2, 1);
+    RangeType rtype = Range_Get(addr1, addr2, 1);
     CHECK(rtype == RANGE_HAS_LEN);
     CHECK(addr1 == 0x2000);
     CHECK(addr2 == 0x10);
 
-    RangeEndLen_t end_len = {0, 0};
+    RangeEndLen end_len = {0, 0};
     bool ok = Range_CalcEndLen(rtype, addr1, addr2, end_len);
     CHECK(ok == true);
     CHECK(end_len.nAddressEnd == 0x200F);
@@ -243,17 +243,17 @@ TEST_CASE("Debugger Range: Parsing and Calculations") {
   }
 
   SUBCASE("Range_Get missing second argument returns error") {
-    g_args[1].nValue = 0x3000;
-    g_args[2].eToken = NO_TOKEN;
+    args[1].nValue = 0x3000;
+    args[2].eToken = NO_TOKEN;
 
     uint16_t addr1 = 0;
     uint16_t addr2 = 0;
-    RangeType_t rtype = Range_Get(addr1, addr2, 1);
+    RangeType rtype = Range_Get(addr1, addr2, 1);
     CHECK(rtype == RANGE_MISSING_ARG_2);
     CHECK(addr1 == 0x3000);
     CHECK(addr2 == 0);
 
-    RangeEndLen_t end_len = {0, 0};
+    RangeEndLen end_len = {0, 0};
     bool ok = Range_CalcEndLen(rtype, addr1, addr2, end_len);
     CHECK(ok == false);
   }
@@ -304,25 +304,25 @@ TEST_CASE("Debugger Assembler: Mnemonic Hashing and Opcode Identification") {
 }
 
 TEST_CASE("Debugger Console: Viewport Display Sizing and Bounding (TASK-5)") {
-  const ScopedDebuggerState_t state_guard;
+  const ScopedDebuggerState state_guard;
 
   static_assert(CONSOLE_DISPLAY_HEIGHT == 48, "Viewport height must be 48");
-  static_assert(sizeof(g_console_display) == 7680,
-                "g_console_display must be right-sized to 48 x 80 x 2 bytes");
+  static_assert(sizeof(console_display) == 7680,
+                "console_display must be right-sized to 48 x 80 x 2 bytes");
 
-  constexpr conchar_t input_canary = static_cast<conchar_t>(0x55AA);
-  g_console_display[0][0] = input_canary;
+  constexpr ConChar input_canary = static_cast<ConChar>(0x55AA);
+  console_display[0][0] = input_canary;
 
-  conchar_t line[CONSOLE_WIDTH] = {0};
+  ConChar line[CONSOLE_WIDTH] = {0};
   for (int i = 0; i < 100; ++i) {
-    line[0] = static_cast<conchar_t>('0' + (i % 10));
+    line[0] = static_cast<ConChar>('0' + (i % 10));
     ConsoleDisplayPush(line);
   }
 
-  CHECK(g_console_display_total == 47);
-  CHECK(g_console_display[0][0] == input_canary);
-  CHECK(g_console_display[CONSOLE_FIRST_LINE][0] ==
-        static_cast<conchar_t>('9'));
-  CHECK(g_console_display[CONSOLE_DISPLAY_HEIGHT - 1][0] ==
-        static_cast<conchar_t>('3'));
+  CHECK(console_display_total == 47);
+  CHECK(console_display[0][0] == input_canary);
+  CHECK(console_display[CONSOLE_FIRST_LINE][0] ==
+        static_cast<ConChar>('9'));
+  CHECK(console_display[CONSOLE_DISPLAY_HEIGHT - 1][0] ==
+        static_cast<ConChar>('3'));
 }

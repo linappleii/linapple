@@ -56,15 +56,15 @@ constexpr uint32_t first_data_nibble_index = 71;
 
 constexpr uint8_t expected_volume = 0xFE;
 
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 
-struct Medium_t {
+struct Medium {
   std::vector<uint8_t> cells;
   uint32_t cell_count = 0;
   uint8_t bit_timing = disk_default_bit_timing;
 };
 
-Medium_t g_medium;
+Medium medium;
 
 auto set_cell(std::vector<uint8_t>* packed, uint32_t index, bool one) -> void {
   const auto mask = static_cast<uint8_t>(0x80U >> (index & 7U));
@@ -82,7 +82,7 @@ auto medium_probe(const uint8_t* /*unused*/, size_t /*unused*/,
 
 auto medium_open(const char* /*unused*/, uint32_t /*unused*/, bool /*unused*/,
                  void** out_instance) -> DiskError {
-  *out_instance = &g_medium;
+  *out_instance = &medium;
   return disk_err_none;
 }
 
@@ -93,19 +93,19 @@ auto medium_is_write_protected(void* /*unused*/) -> bool { return true; }
 auto medium_read(void* /*unused*/, uint32_t /*unused*/, uint8_t* bits,
                  uint32_t max_bits, uint32_t* out_bit_count,
                  uint8_t* out_bit_timing) -> DiskError {
-  if (g_medium.cell_count > max_bits) {
+  if (medium.cell_count > max_bits) {
     return disk_err_unsupported;
   }
-  for (size_t byte = 0; byte < g_medium.cells.size(); ++byte) {
-    bits[byte] = g_medium.cells[byte];
+  for (size_t byte = 0; byte < medium.cells.size(); ++byte) {
+    bits[byte] = medium.cells[byte];
   }
-  *out_bit_count = g_medium.cell_count;
-  *out_bit_timing = g_medium.bit_timing;
+  *out_bit_count = medium.cell_count;
+  *out_bit_timing = medium.bit_timing;
   return disk_err_none;
 }
 
-auto medium_driver() -> const DiskFormatDriver_t* {
-  static const DiskFormatDriver_t driver = {
+auto medium_driver() -> const DiskFormatDriver* {
+  static const DiskFormatDriver driver = {
       disk_format_abi_version,
       0,
       "AAA Synthetic Medium",
@@ -121,10 +121,10 @@ auto medium_driver() -> const DiskFormatDriver_t* {
   return &driver;
 }
 
-struct ScopedMediumFile_t {
+struct ScopedMediumFile {
   char path[64] = "/tmp/linapple_e2e_XXXXXX";
 
-  ScopedMediumFile_t() {
+  ScopedMediumFile() {
     const int fd = mkstemp(path);
     if (fd >= 0) {
       const std::vector<uint8_t> junk(64, 0x2B);
@@ -133,30 +133,30 @@ struct ScopedMediumFile_t {
       close(fd);
     }
   }
-  ~ScopedMediumFile_t() { unlink(path); }
+  ~ScopedMediumFile() { unlink(path); }
 
-  ScopedMediumFile_t(const ScopedMediumFile_t&) = delete;
-  auto operator=(const ScopedMediumFile_t&) -> ScopedMediumFile_t& = delete;
-  ScopedMediumFile_t(ScopedMediumFile_t&&) = delete;
-  auto operator=(ScopedMediumFile_t&&) -> ScopedMediumFile_t& = delete;
+  ScopedMediumFile(const ScopedMediumFile&) = delete;
+  auto operator=(const ScopedMediumFile&) -> ScopedMediumFile& = delete;
+  ScopedMediumFile(ScopedMediumFile&&) = delete;
+  auto operator=(ScopedMediumFile&&) -> ScopedMediumFile& = delete;
 };
 
-class CardHarness_t {
+class CardHarness {
  public:
-  CardHarness_t() {
+  CardHarness() {
     machine_.load();
     linapple_init();
     peripheral_manager_init();
     linapple_register_peripherals();
     disk_loader_register(medium_driver());
 
-    DiskInsertCmd_t cmd{};
+    DiskInsertCmd cmd{};
     cmd.drive = disk_drive_0;
     util_safe_strcpy(cmd.path, file_.path, disk_insert_path_max);
     peripheral_command(slot_6, disk_cmd_insert, &cmd, sizeof(cmd));
     peripheral_manager_think(0);
 
-    DiskStatus_t status{};
+    DiskStatus status{};
     size_t size = sizeof(status);
     peripheral_query(slot_6, disk_query_status, &status, &size);
     REQUIRE(status.drive0_loaded == 1);
@@ -168,36 +168,36 @@ class CardHarness_t {
     io_map_dispatch(0, io_q6_clear, 0, 0, 0);
   }
 
-  ~CardHarness_t() {
+  ~CardHarness() {
     linapple_shutdown();
     disk_loader_reset();
   }
 
-  CardHarness_t(const CardHarness_t&) = delete;
-  auto operator=(const CardHarness_t&) -> CardHarness_t& = delete;
-  CardHarness_t(CardHarness_t&&) = delete;
-  auto operator=(CardHarness_t&&) -> CardHarness_t& = delete;
+  CardHarness(const CardHarness&) = delete;
+  auto operator=(const CardHarness&) -> CardHarness& = delete;
+  CardHarness(CardHarness&&) = delete;
+  auto operator=(CardHarness&&) -> CardHarness& = delete;
 
   static auto poll(uint32_t cycle) -> uint8_t {
     return io_map_dispatch(0, io_q6_clear, 0, 0, cycle);
   }
 
  private:
-  TestConfig_t machine_{TestConfig_t::disk_ii_only()};
-  ScopedMediumFile_t file_;
+  TestConfig machine_{TestConfig::disk_ii_only()};
+  ScopedMediumFile file_;
 };
 
-struct Arrival_t {
+struct Arrival {
   uint32_t cycle;
   uint8_t value;
 };
 
 // The RWTS read loop: poll the data register until bit 7 comes back, take
 // the byte, and wait for the register to drop before taking the next one.
-auto collect_arrivals(CardHarness_t* harness, uint32_t first_cycle,
+auto collect_arrivals(CardHarness* harness, uint32_t first_cycle,
                       uint32_t last_cycle, uint32_t step)
-    -> std::vector<Arrival_t> {
-  std::vector<Arrival_t> arrivals;
+    -> std::vector<Arrival> {
+  std::vector<Arrival> arrivals;
   bool register_is_clear = true;
   for (uint32_t cycle = first_cycle; cycle <= last_cycle; cycle += step) {
     const uint8_t value = harness->poll(cycle);
@@ -217,13 +217,13 @@ auto decode_4and4(uint8_t high, uint8_t low) -> uint8_t {
   return static_cast<uint8_t>(((high << 1U) | 1U) & low);
 }
 
-using SectorImage_t = std::array<uint8_t, track_data_size>;
-using NibbleTrack_t = std::array<uint8_t, nibbles_per_track>;
+using SectorImage = std::array<uint8_t, track_data_size>;
+using NibbleTrack = std::array<uint8_t, nibbles_per_track>;
 
 // Each sector gets its own ramp, so a sector read out of the wrong slot or a
 // field taken one nibble out of step changes the bytes that come back.
-auto make_sector_image() -> SectorImage_t {
-  SectorImage_t image{};
+auto make_sector_image() -> SectorImage {
+  SectorImage image{};
   for (size_t sector = 0; sector < sectors_per_track; ++sector) {
     for (size_t offset = 0; offset < sector_size; ++offset) {
       image[(sector * sector_size) + offset] =
@@ -233,14 +233,14 @@ auto make_sector_image() -> SectorImage_t {
   return image;
 }
 
-struct SynthesisedTrack_t {
-  NibbleTrack_t nibbles{};
-  NibbleTrack_t sync_mask{};
+struct SynthesisedTrack {
+  NibbleTrack nibbles{};
+  NibbleTrack sync_mask{};
   uint32_t count = 0;
 };
 
-auto synthesise_track_0(const SectorImage_t& sectors) -> SynthesisedTrack_t {
-  SynthesisedTrack_t out;
+auto synthesise_track_0(const SectorImage& sectors) -> SynthesisedTrack {
+  SynthesisedTrack out;
   std::array<uint8_t, disk_encoding_scratch_size> scratch{};
   REQUIRE(disk_encoding_nibblize_track(
               disk_encoding_sector_order(disk_sector_order_dos), 0,
@@ -250,26 +250,26 @@ auto synthesise_track_0(const SectorImage_t& sectors) -> SynthesisedTrack_t {
   return out;
 }
 
-auto install_track(const SynthesisedTrack_t& track) -> void {
-  g_medium.cells.assign(max_track_bits / 8, 0);
+auto install_track(const SynthesisedTrack& track) -> void {
+  medium.cells.assign(max_track_bits / 8, 0);
   uint32_t cell_count = 0;
   REQUIRE(disk_encoding_nibbles_to_bits(track.nibbles.data(), track.count,
                                         track.sync_mask.data(),
-                                        g_medium.cells.data(), max_track_bits,
+                                        medium.cells.data(), max_track_bits,
                                         &cell_count) == disk_err_none);
   REQUIRE(cell_count == track_cell_count);
-  g_medium.cell_count = cell_count;
-  g_medium.bit_timing = disk_default_bit_timing;
-  g_medium.cells.resize(track_cell_count / 8);
+  medium.cell_count = cell_count;
+  medium.bit_timing = disk_default_bit_timing;
+  medium.cells.resize(track_cell_count / 8);
 }
 
 }  // namespace
 
 TEST_CASE("DiskE2E: [E2E-01] The first address field arrives behind gap 1") {
   install_track(synthesise_track_0(make_sector_image()));
-  CardHarness_t harness;
+  CardHarness harness;
 
-  const std::vector<Arrival_t> arrivals =
+  const std::vector<Arrival> arrivals =
       collect_arrivals(&harness, 1, addr_field_last_arrival + 1, 1);
   REQUIRE(arrivals.size() == 62);
 
@@ -300,9 +300,9 @@ TEST_CASE("DiskE2E: [E2E-01] The first address field arrives behind gap 1") {
 }
 
 TEST_CASE("DiskE2E: [E2E-02] The data field answers a 32-cycle poll exactly") {
-  const SynthesisedTrack_t track = synthesise_track_0(make_sector_image());
+  const SynthesisedTrack track = synthesise_track_0(make_sector_image());
   install_track(track);
-  CardHarness_t harness;
+  CardHarness harness;
 
   // Inside a data field every nibble is eight cells, so the poll that took
   // the first one lands on each of the others thirty-two cycles apart.
@@ -319,22 +319,22 @@ TEST_CASE("DiskE2E: [E2E-02] The data field answers a 32-cycle poll exactly") {
 }
 
 TEST_CASE("DiskE2E: [E2E-03] A revolution decodes to the sixteen sectors") {
-  const SectorImage_t original = make_sector_image();
+  const SectorImage original = make_sector_image();
   install_track(synthesise_track_0(original));
-  CardHarness_t harness;
+  CardHarness harness;
 
   // Four cycles a poll: a byte holds the register for far longer than that,
   // so no arrival is missed and a whole revolution stays inside the budget.
-  const std::vector<Arrival_t> arrivals =
+  const std::vector<Arrival> arrivals =
       collect_arrivals(&harness, 1, track_cycle_count, 4);
   REQUIRE(arrivals.size() == track_nibble_count);
 
-  NibbleTrack_t read_back{};
+  NibbleTrack read_back{};
   for (size_t index = 0; index < arrivals.size(); ++index) {
     read_back[index] = arrivals[index].value;
   }
 
-  SectorImage_t decoded{};
+  SectorImage decoded{};
   std::array<uint8_t, disk_encoding_scratch_size> scratch{};
   REQUIRE(disk_encoding_denibblize_track(
               disk_encoding_sector_order(disk_sector_order_dos), 0,
@@ -366,19 +366,19 @@ constexpr uint32_t last_solid_arrival =
 constexpr uint32_t flat_nibble_count = 96;
 
 auto install_weak_medium() -> void {
-  g_medium.cells.assign(weak_cell_count / 8, 0xFF);
+  medium.cells.assign(weak_cell_count / 8, 0xFF);
   for (uint32_t cell = weak_gap_first_cell;
        cell < weak_gap_first_cell + weak_gap_cells; ++cell) {
-    set_cell(&g_medium.cells, cell, false);
+    set_cell(&medium.cells, cell, false);
   }
-  g_medium.cell_count = weak_cell_count;
-  g_medium.bit_timing = disk_default_bit_timing;
+  medium.cell_count = weak_cell_count;
+  medium.bit_timing = disk_default_bit_timing;
 }
 
-auto values_of(const std::vector<Arrival_t>& arrivals) -> std::vector<uint8_t> {
+auto values_of(const std::vector<Arrival>& arrivals) -> std::vector<uint8_t> {
   std::vector<uint8_t> values;
   values.reserve(arrivals.size());
-  for (const Arrival_t& arrival : arrivals) {
+  for (const Arrival& arrival : arrivals) {
     values.push_back(arrival.value);
   }
   return values;
@@ -388,9 +388,9 @@ auto values_of(const std::vector<Arrival_t>& arrivals) -> std::vector<uint8_t> {
 
 TEST_CASE("DiskE2E: [E2E-04] A blank stretch reads differently each lap") {
   install_weak_medium();
-  CardHarness_t harness;
+  CardHarness harness;
 
-  const std::vector<Arrival_t> solid =
+  const std::vector<Arrival> solid =
       collect_arrivals(&harness, 1, last_solid_arrival, 1);
   REQUIRE(solid.size() == solid_bytes_before_gap);
   for (uint32_t index = 0; index < solid_bytes_before_gap; ++index) {
@@ -402,9 +402,9 @@ TEST_CASE("DiskE2E: [E2E-04] A blank stretch reads differently each lap") {
   // The same four hundred cells, once on this lap and once on the next.
   // Twenty-nine unreadable ones is far more entropy than two passes can
   // agree on, so the same surface answers differently the second time past.
-  const std::vector<Arrival_t> first_pass =
+  const std::vector<Arrival> first_pass =
       collect_arrivals(&harness, last_solid_arrival + 1, weak_lap_cycles, 1);
-  const std::vector<Arrival_t> second_pass =
+  const std::vector<Arrival> second_pass =
       collect_arrivals(&harness, weak_lap_cycles + last_solid_arrival + 1,
                        2 * weak_lap_cycles, 1);
   CHECK(values_of(first_pass) != values_of(second_pass));
@@ -413,14 +413,14 @@ TEST_CASE("DiskE2E: [E2E-04] A blank stretch reads differently each lap") {
 TEST_CASE("DiskE2E: [E2E-05] The flattened path reads a blank stretch twice") {
   install_weak_medium();
 
-  NibbleTrack_t first_pass{};
-  NibbleTrack_t second_pass{};
+  NibbleTrack first_pass{};
+  NibbleTrack second_pass{};
   uint32_t first_count = 0;
   uint32_t second_count = 0;
-  REQUIRE(disk_encoding_bits_to_nibbles(g_medium.cells.data(), weak_cell_count,
+  REQUIRE(disk_encoding_bits_to_nibbles(medium.cells.data(), weak_cell_count,
                                         first_pass.data(), nibbles_per_track,
                                         &first_count) == disk_err_none);
-  REQUIRE(disk_encoding_bits_to_nibbles(g_medium.cells.data(), weak_cell_count,
+  REQUIRE(disk_encoding_bits_to_nibbles(medium.cells.data(), weak_cell_count,
                                         second_pass.data(), nibbles_per_track,
                                         &second_count) == disk_err_none);
 

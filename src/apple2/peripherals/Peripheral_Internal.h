@@ -16,7 +16,7 @@ extern "C" {
 auto peripheral_register_internal() -> void;
 auto peripheral_plugins_init(const char* plugin_dir = nullptr) -> void;
 auto peripheral_plugins_shutdown() -> void;
-auto peripheral_find_internal(const char* name) -> Peripheral_t*;
+auto peripheral_find_internal(const char* name) -> Peripheral*;
 auto peripheral_get_plugin_path(const char* name) -> const char*;
 // The slot the Mouse in slot 4 key took over, with the descriptor names of the
 // card it installed and of the card [Slots] would have put there ("" for none).
@@ -39,11 +39,11 @@ auto peripheral_requested_slot() -> int;
 // NOLINTBEGIN(modernize-use-using, cppcoreguidelines-use-enum-class, readability-identifier-naming)
 
 // Test hook: inject frozen host clock provider.
-typedef bool (*LocalTimeProvider_t)(void* ctx, HostLocalTime_t* out);
-auto linapple_set_local_time_provider(LocalTimeProvider_t provider, void* ctx)
+typedef bool (*LocalTimeProvider)(void* ctx, HostLocalTime* out);
+auto linapple_set_local_time_provider(LocalTimeProvider provider, void* ctx)
     -> void;
 
-// The frontend behind HostInterface_t's sink members. The tokens cards hold
+// The frontend behind HostInterface's sink members. The tokens cards hold
 // are the bridge's own and keyed by slot, so one vtable serves every card and
 // can be installed or replaced while cards hold them: the bridge opens a slot
 // through the installed vtable on its first write or readiness poll, closes
@@ -58,28 +58,28 @@ auto linapple_set_local_time_provider(LocalTimeProvider_t provider, void* ctx)
 // get_lines is false. The last line format a slot sent is replayed to
 // set_line right after open, so one sent before the sink existed reaches it.
 typedef struct {
-  void (*open)(void* ctx, int slot, PeripheralSinkKind_t kind);
+  void (*open)(void* ctx, int slot, PeripheralSinkKind kind);
   void (*write)(void* ctx, int slot, uint8_t byte);
   bool (*ready)(void* ctx, int slot);
   void (*close)(void* ctx, int slot);
   void (*tick)(void* ctx);
   bool (*read)(void* ctx, int slot, uint8_t* byte);
-  void (*set_line)(void* ctx, int slot, const PeripheralSerialLine_t* line);
+  void (*set_line)(void* ctx, int slot, const PeripheralSerialLine* line);
   bool (*get_lines)(void* ctx, int slot, uint8_t* lines);
-} ByteSink_t;
+} ByteSink;
 
 // A vtable and the context it was installed with, returned together so that a
 // guard putting the previous sink back restores both.
 typedef struct {
-  const ByteSink_t* vtable;
+  const ByteSink* vtable;
   void* ctx;
-} ByteSinkBinding_t;
+} ByteSinkBinding;
 
 // Installs the sink behind the host interface and returns what it replaced.
 // nullptr uninstalls: every token stays valid, writes are dropped and no slot
 // is ready.
-auto linapple_set_byte_sink(const ByteSink_t* vtable, void* ctx)
-    -> ByteSinkBinding_t;
+auto linapple_set_byte_sink(const ByteSink* vtable, void* ctx)
+    -> ByteSinkBinding;
 
 // NOLINTEND(modernize-use-using, cppcoreguidelines-use-enum-class, readability-identifier-naming)
 
@@ -88,4 +88,4 @@ auto linapple_set_byte_sink(const ByteSink_t* vtable, void* ctx)
 #endif
 
 // The built-in descriptors in the order they are walked: sorted by id.
-auto peripheral_get_builtin_registry() -> std::vector<Peripheral_t*>&;
+auto peripheral_get_builtin_registry() -> std::vector<Peripheral*>&;

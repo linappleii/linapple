@@ -22,8 +22,8 @@
 
 namespace {
 
-using TestFixtures::ScopedCore_t;
-using TestFixtures::ScopedTestConfig_t;
+using TestFixtures::ScopedCore;
+using TestFixtures::ScopedTestConfig;
 
 constexpr uint32_t frame_cycles = 17030;
 // The longest 6502 instruction: the latest an event lands past its cycle when
@@ -32,19 +32,19 @@ constexpr uint64_t one_instruction = 7;
 constexpr uint16_t program_start = 0x0300;
 constexpr uint16_t spin_at = 0x030B;
 
-struct Wake_t {
+struct Wake {
   uint64_t at;
   uint32_t cycles;
 };
 
-struct Read_t {
+struct Read {
   uint32_t executed_cycles;
   uint64_t at;
   uint8_t bus;
 };
 
-struct Bench_t {
-  HostInterface_t* host = nullptr;
+struct Bench {
+  HostInterface* host = nullptr;
   int slot = 0;
 
   uint64_t reset_offset = 0;
@@ -54,8 +54,8 @@ struct Bench_t {
   bool reschedule_now_from_think = false;
   bool keep_rescheduling = false;
 
-  std::vector<Wake_t> wakes;
-  std::vector<Read_t> reads;
+  std::vector<Wake> wakes;
+  std::vector<Read> reads;
   std::vector<uint64_t> targets;
 
   auto schedule(uint64_t at) -> void {
@@ -63,9 +63,9 @@ struct Bench_t {
     host->ScheduleEvent(this, at);
   }
 
-  auto woken() const -> std::vector<Wake_t> {
-    std::vector<Wake_t> out;
-    for (const Wake_t& wake : wakes) {
+  auto woken() const -> std::vector<Wake> {
+    std::vector<Wake> out;
+    for (const Wake& wake : wakes) {
       if (wake.cycles == 0) {
         out.push_back(wake);
       }
@@ -73,9 +73,9 @@ struct Bench_t {
     return out;
   }
 
-  auto frame_ends() const -> std::vector<Wake_t> {
-    std::vector<Wake_t> out;
-    for (const Wake_t& wake : wakes) {
+  auto frame_ends() const -> std::vector<Wake> {
+    std::vector<Wake> out;
+    for (const Wake& wake : wakes) {
       if (wake.cycles != 0) {
         out.push_back(wake);
       }
@@ -84,17 +84,17 @@ struct Bench_t {
   }
 };
 
-std::array<Bench_t, num_slots> g_bench{};
+std::array<Bench, num_slots> bench{};
 
-auto bench_at(int slot) -> Bench_t& {
-  return g_bench.at(static_cast<size_t>(slot));
+auto bench_at(int slot) -> Bench& {
+  return bench.at(static_cast<size_t>(slot));
 }
 
 auto bench_read_c0(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
                    uint8_t val, uint32_t executed_cycles) -> uint8_t {
   (void)pc;
   (void)val;
-  auto* bench = static_cast<Bench_t*>(instance);
+  auto* bench = static_cast<Bench*>(instance);
   const uint8_t bus = bench->host->ReadFloatingBus(executed_cycles);
   if (write != 0 || (addr & 0x0F) != 0) {
     return bus;
@@ -107,8 +107,8 @@ auto bench_read_c0(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
   return bus;
 }
 
-auto bench_init(int slot, HostInterface_t* host) -> void* {
-  Bench_t& bench = bench_at(slot);
+auto bench_init(int slot, HostInterface* host) -> void* {
+  Bench& bench = bench_at(slot);
   bench.host = host;
   bench.slot = slot;
   host->RegisterIO(slot, bench_read_c0, bench_read_c0, nullptr, nullptr);
@@ -116,7 +116,7 @@ auto bench_init(int slot, HostInterface_t* host) -> void* {
 }
 
 auto bench_reset(void* instance) -> void {
-  auto* bench = static_cast<Bench_t*>(instance);
+  auto* bench = static_cast<Bench*>(instance);
   if (bench->keep_rescheduling) {
     bench->schedule(bench->host->GetCycles() + 1000);
     return;
@@ -132,7 +132,7 @@ auto bench_reset(void* instance) -> void {
 auto bench_shutdown(void* instance) -> void { (void)instance; }
 
 auto bench_think(void* instance, uint32_t cycles) -> void {
-  auto* bench = static_cast<Bench_t*>(instance);
+  auto* bench = static_cast<Bench*>(instance);
   bench->wakes.push_back({bench->host->GetCycles(), cycles});
   if (cycles != 0) {
     return;
@@ -145,7 +145,7 @@ auto bench_think(void* instance, uint32_t cycles) -> void {
   }
 }
 
-Peripheral_t g_bench_card = {
+Peripheral bench_card = {
     LINAPPLE_ABI_VERSION,
     "test.event_bench",
     "EventBench",
@@ -165,8 +165,8 @@ Peripheral_t g_bench_card = {
     nullptr,
 };
 
-auto register_bench(int slot) -> Bench_t& {
-  REQUIRE(peripheral_register(&g_bench_card, slot) == 0);
+auto register_bench(int slot) -> Bench& {
+  REQUIRE(peripheral_register(&bench_card, slot) == 0);
   return bench_at(slot);
 }
 
@@ -188,17 +188,17 @@ auto poke_two_reads_then_spin(int slot) -> void {
       0xAD, c0,   0xC0,  // LDA $C0n0
       0x4C, 0x0B, 0x03,  // JMP spin
   };
-  ScopedCore_t::poke(program_start, program);
+  ScopedCore::poke(program_start, program);
 }
 
 auto poke_spin() -> void {
   const std::array<uint8_t, 3> program = {0x4C, 0x00, 0x03};
-  ScopedCore_t::poke(program_start, program);
+  ScopedCore::poke(program_start, program);
 }
 
 // Interrupts masked: no boundary carries the 7-cycle interrupt entry.
 auto enter(uint16_t pc) -> void {
-  CpuRegisters_t* regs = cpu_get_registers();
+  CpuRegisters* regs = cpu_get_registers();
   regs->pc = pc;
   regs->ps |= 0x04;
 }
@@ -212,12 +212,12 @@ auto within_one_instruction_after(uint64_t at, uint64_t target) -> bool {
 TEST_CASE(
     "Device events: an event scheduled from reset wakes the card once at its "
     "cycle, and the frame-end think still comes once with the frame's total") {
-  ScopedTestConfig_t config(ScopedTestConfig_t::enhanced_2e_only());
-  HeadlessHarness_t harness(config);
+  ScopedTestConfig config(ScopedTestConfig::enhanced_2e_only());
+  HeadlessHarness harness(config);
   constexpr int slot = 1;
-  bench_at(slot) = Bench_t();
+  bench_at(slot) = Bench();
   bench_at(slot).reset_offset = 500;
-  Bench_t& bench = register_bench(slot);
+  Bench& bench = register_bench(slot);
   harness.boot();
   poke_spin();
   enter(program_start);
@@ -229,10 +229,10 @@ TEST_CASE(
   CHECK(executed >= frame_cycles);
   CHECK(executed <= frame_cycles + one_instruction);
 
-  const std::vector<Wake_t> woken = bench.woken();
+  const std::vector<Wake> woken = bench.woken();
   REQUIRE(woken.size() == 1);
   CHECK(within_one_instruction_after(woken.at(0).at, target));
-  const std::vector<Wake_t> ends = bench.frame_ends();
+  const std::vector<Wake> ends = bench.frame_ends();
   REQUIRE(ends.size() == 1);
   CHECK(ends.at(0).cycles == executed);
   CHECK(ends.at(0).at > woken.at(0).at);
@@ -242,13 +242,13 @@ TEST_CASE(
 TEST_CASE(
     "Device events: an event scheduled from inside a register access ends "
     "the running slice and is serviced within one instruction") {
-  ScopedTestConfig_t config(ScopedTestConfig_t::enhanced_2e_only());
-  HeadlessHarness_t harness(config);
+  ScopedTestConfig config(ScopedTestConfig::enhanced_2e_only());
+  HeadlessHarness harness(config);
   constexpr int slot = 1;
-  bench_at(slot) = Bench_t();
+  bench_at(slot) = Bench();
   bench_at(slot).read_schedules = true;
   bench_at(slot).read_offset = 300;
-  Bench_t& bench = register_bench(slot);
+  Bench& bench = register_bench(slot);
   harness.boot();
   poke_two_reads_then_spin(slot);
   enter(program_start);
@@ -258,7 +258,7 @@ TEST_CASE(
 
   REQUIRE(bench.reads.size() == 2);
   REQUIRE(bench.targets.size() == 2);
-  const std::vector<Wake_t> woken = bench.woken();
+  const std::vector<Wake> woken = bench.woken();
   REQUIRE(woken.size() == 2);
   for (size_t i = 0; i < woken.size(); ++i) {
     CHECK(within_one_instruction_after(woken.at(i).at, bench.targets.at(i)));
@@ -269,12 +269,12 @@ TEST_CASE(
 TEST_CASE(
     "Device events: two reads either side of an event see the offsets of one "
     "batch, so the slices continue the frame's count") {
-  ScopedTestConfig_t config(ScopedTestConfig_t::enhanced_2e_only());
-  HeadlessHarness_t harness(config);
+  ScopedTestConfig config(ScopedTestConfig::enhanced_2e_only());
+  HeadlessHarness harness(config);
   constexpr int slot = 1;
-  bench_at(slot) = Bench_t();
+  bench_at(slot) = Bench();
   bench_at(slot).reset_offset = 300;
-  Bench_t& bench = register_bench(slot);
+  Bench& bench = register_bench(slot);
   harness.boot();
   poke_two_reads_then_spin(slot);
   enter(program_start);
@@ -291,13 +291,13 @@ TEST_CASE(
 }
 
 TEST_CASE("Device events: scheduling cycle 0 cancels and nothing wakes") {
-  ScopedTestConfig_t config(ScopedTestConfig_t::enhanced_2e_only());
-  HeadlessHarness_t harness(config);
+  ScopedTestConfig config(ScopedTestConfig::enhanced_2e_only());
+  HeadlessHarness harness(config);
   constexpr int slot = 1;
-  bench_at(slot) = Bench_t();
+  bench_at(slot) = Bench();
   bench_at(slot).reset_offset = 500;
   bench_at(slot).cancel_after_reset = true;
-  Bench_t& bench = register_bench(slot);
+  Bench& bench = register_bench(slot);
   harness.boot();
   poke_spin();
   enter(program_start);
@@ -311,11 +311,11 @@ TEST_CASE("Device events: scheduling cycle 0 cancels and nothing wakes") {
 TEST_CASE(
     "Device events: a target behind the counter is serviced at the next "
     "boundary, one instruction on") {
-  ScopedTestConfig_t config(ScopedTestConfig_t::enhanced_2e_only());
-  HeadlessHarness_t harness(config);
+  ScopedTestConfig config(ScopedTestConfig::enhanced_2e_only());
+  HeadlessHarness harness(config);
   constexpr int slot = 1;
-  bench_at(slot) = Bench_t();
-  Bench_t& bench = register_bench(slot);
+  bench_at(slot) = Bench();
+  Bench& bench = register_bench(slot);
   harness.boot();
   poke_two_reads_then_spin(slot);
   enter(program_start);
@@ -331,7 +331,7 @@ TEST_CASE(
   harness.run_frames(1);
 
   REQUIRE(bench.reads.size() == 2);
-  const std::vector<Wake_t> woken = bench.woken();
+  const std::vector<Wake> woken = bench.woken();
   REQUIRE(woken.size() == 2);
   for (size_t i = 0; i < woken.size(); ++i) {
     const uint64_t read_at = bench.reads.at(i).at;
@@ -343,14 +343,14 @@ TEST_CASE(
 TEST_CASE(
     "Device events: two cards in two slots are each woken at their own cycle, "
     "in order") {
-  ScopedTestConfig_t config(ScopedTestConfig_t::enhanced_2e_only());
-  HeadlessHarness_t harness(config);
-  bench_at(1) = Bench_t();
+  ScopedTestConfig config(ScopedTestConfig::enhanced_2e_only());
+  HeadlessHarness harness(config);
+  bench_at(1) = Bench();
   bench_at(1).reset_offset = 500;
-  bench_at(3) = Bench_t();
+  bench_at(3) = Bench();
   bench_at(3).reset_offset = 900;
-  Bench_t& first = register_bench(1);
-  Bench_t& second = register_bench(3);
+  Bench& first = register_bench(1);
+  Bench& second = register_bench(3);
   harness.boot();
   poke_spin();
   enter(program_start);
@@ -371,13 +371,13 @@ TEST_CASE(
     "Device events: a card that re-schedules now from its own wake is woken "
     "again after exactly one instruction, never twice in one pass, and the "
     "frame completes") {
-  ScopedTestConfig_t config(ScopedTestConfig_t::enhanced_2e_only());
-  HeadlessHarness_t harness(config);
+  ScopedTestConfig config(ScopedTestConfig::enhanced_2e_only());
+  HeadlessHarness harness(config);
   constexpr int slot = 1;
-  bench_at(slot) = Bench_t();
+  bench_at(slot) = Bench();
   bench_at(slot).reset_offset = 100;
   bench_at(slot).reschedule_now_from_think = true;
-  Bench_t& bench = register_bench(slot);
+  Bench& bench = register_bench(slot);
   harness.boot();
   poke_spin();
   enter(program_start);
@@ -386,7 +386,7 @@ TEST_CASE(
   CHECK(executed >= frame_cycles);
   CHECK(executed <= frame_cycles + one_instruction);
 
-  const std::vector<Wake_t> woken = bench.woken();
+  const std::vector<Wake> woken = bench.woken();
   REQUIRE(woken.size() > 100);
   for (size_t i = 1; i < woken.size(); ++i) {
     CHECK(woken.at(i).at > woken.at(i - 1).at);
@@ -400,13 +400,13 @@ TEST_CASE(
     "at most one instruction, thinks once with that total, and reads the same "
     "scanner byte as a frame with none") {
   constexpr int slot = 1;
-  std::array<std::vector<Read_t>, 2> reads{};
+  std::array<std::vector<Read>, 2> reads{};
   for (size_t leg = 0; leg < 2; ++leg) {
-    ScopedTestConfig_t config(ScopedTestConfig_t::enhanced_2e_only());
-    HeadlessHarness_t harness(config);
-    bench_at(slot) = Bench_t();
+    ScopedTestConfig config(ScopedTestConfig::enhanced_2e_only());
+    HeadlessHarness harness(config);
+    bench_at(slot) = Bench();
     bench_at(slot).reset_offset = leg == 0 ? 0 : 500;
-    Bench_t& bench = register_bench(slot);
+    Bench& bench = register_bench(slot);
     harness.boot();
     poke_two_reads_then_spin(slot);
     enter(program_start);
@@ -414,7 +414,7 @@ TEST_CASE(
     const uint32_t executed = linapple_run_frame(frame_cycles);
     CHECK(executed >= frame_cycles);
     CHECK(executed <= frame_cycles + one_instruction);
-    const std::vector<Wake_t> ends = bench.frame_ends();
+    const std::vector<Wake> ends = bench.frame_ends();
     REQUIRE(ends.size() == 1);
     CHECK(ends.at(0).cycles == executed);
     CHECK(bench.woken().size() == leg);
@@ -433,13 +433,13 @@ TEST_CASE(
 TEST_CASE(
     "Device events: a direct cpu_execute runs to its count whatever is "
     "scheduled, and the event is serviced when the next frame begins") {
-  ScopedTestConfig_t config(ScopedTestConfig_t::enhanced_2e_only());
-  HeadlessHarness_t harness(config);
+  ScopedTestConfig config(ScopedTestConfig::enhanced_2e_only());
+  HeadlessHarness harness(config);
   constexpr int slot = 1;
-  bench_at(slot) = Bench_t();
+  bench_at(slot) = Bench();
   bench_at(slot).read_schedules = true;
   bench_at(slot).read_offset = 300;
-  Bench_t& bench = register_bench(slot);
+  Bench& bench = register_bench(slot);
   harness.boot();
   poke_two_reads_then_spin(slot);
   enter(program_start);
@@ -454,7 +454,7 @@ TEST_CASE(
   const uint64_t before = cpu_get_cumulative_cycles();
   CHECK(before > bench.targets.at(0));
   harness.run_frames(1);
-  const std::vector<Wake_t> woken = bench.woken();
+  const std::vector<Wake> woken = bench.woken();
   REQUIRE(woken.size() >= 1);
   CHECK(woken.at(0).at == before);
 }
@@ -462,11 +462,11 @@ TEST_CASE(
 TEST_CASE(
     "Device events: a reset clears a pending event, and an event scheduled "
     "from reset survives it") {
-  ScopedTestConfig_t config(ScopedTestConfig_t::enhanced_2e_only());
-  HeadlessHarness_t harness(config);
+  ScopedTestConfig config(ScopedTestConfig::enhanced_2e_only());
+  HeadlessHarness harness(config);
   constexpr int slot = 1;
-  bench_at(slot) = Bench_t();
-  Bench_t& bench = register_bench(slot);
+  bench_at(slot) = Bench();
+  Bench& bench = register_bench(slot);
   harness.boot();
   poke_spin();
   enter(program_start);
@@ -491,12 +491,12 @@ TEST_CASE(
 TEST_CASE(
     "Device events: unregistering the card drops its event and the next frame "
     "runs unsliced") {
-  ScopedTestConfig_t config(ScopedTestConfig_t::enhanced_2e_only());
-  HeadlessHarness_t harness(config);
+  ScopedTestConfig config(ScopedTestConfig::enhanced_2e_only());
+  HeadlessHarness harness(config);
   constexpr int slot = 1;
-  bench_at(slot) = Bench_t();
+  bench_at(slot) = Bench();
   bench_at(slot).reset_offset = 500;
-  Bench_t& bench = register_bench(slot);
+  Bench& bench = register_bench(slot);
   harness.boot();
   poke_spin();
   enter(program_start);
@@ -510,11 +510,11 @@ TEST_CASE(
 }
 
 TEST_CASE("Device events: cpu_execute(0) still runs exactly one instruction") {
-  ScopedTestConfig_t config(ScopedTestConfig_t::enhanced_2e_only());
-  HeadlessHarness_t harness(config);
+  ScopedTestConfig config(ScopedTestConfig::enhanced_2e_only());
+  HeadlessHarness harness(config);
   harness.boot();
   const std::array<uint8_t, 2> nops = {0xEA, 0xEA};
-  ScopedCore_t::poke(program_start, nops);
+  ScopedCore::poke(program_start, nops);
   enter(program_start);
 
   CHECK(cpu_execute(0) == 2);
@@ -524,7 +524,7 @@ TEST_CASE("Device events: cpu_execute(0) still runs exactly one instruction") {
 #ifdef ENABLE_PERIPHERAL_DISK
 namespace {
 
-struct BootRecord_t {
+struct BootRecord {
   int prompt_frame = -1;
   std::array<std::string, 24> rows;
   bool drive_error = false;
@@ -532,20 +532,20 @@ struct BootRecord_t {
 
 // The Disk II never schedules, so with the bench quiet each frame is one
 // slice.
-auto boot_master_disk(bool bench_schedules) -> BootRecord_t {
-  ScopedTestConfig_t::Description_t description;
+auto boot_master_disk(bool bench_schedules) -> BootRecord {
+  ScopedTestConfig::Description description;
   description.slots[5] = "Disk II";
   description.extras.push_back({"Configuration", "Disk Turbo", "0"});
-  ScopedTestConfig_t config(description);
-  HeadlessHarness_t harness(config);
-  bench_at(1) = Bench_t();
+  ScopedTestConfig config(description);
+  HeadlessHarness harness(config);
+  bench_at(1) = Bench();
   bench_at(1).keep_rescheduling = bench_schedules;
-  Bench_t& bench = register_bench(1);
+  Bench& bench = register_bench(1);
   auto disk = TestFixtures::create_ephemeral("Master.dsk");
   harness.mount_disk(6, 0, disk);
   harness.boot();
 
-  BootRecord_t record;
+  BootRecord record;
   for (int frame = 0; frame < 400 && record.prompt_frame < 0; ++frame) {
     harness.run_frames(1);
     for (int row = 0; row < 24; ++row) {
@@ -559,7 +559,7 @@ auto boot_master_disk(bool bench_schedules) -> BootRecord_t {
     }
   }
 
-  DiskStatus_t status{};
+  DiskStatus status{};
   size_t size = sizeof(status);
   peripheral_query(6, disk_query_status, &status, &size);
   record.drive_error = status.drive0_last_error != disk_err_none;
@@ -572,8 +572,8 @@ auto boot_master_disk(bool bench_schedules) -> BootRecord_t {
 TEST_CASE(
     "Device events: the Disk II boots DOS 3.3 to the same screen at the same "
     "frame whether or not a card slices the frames") {
-  const BootRecord_t quiet = boot_master_disk(false);
-  const BootRecord_t sliced = boot_master_disk(true);
+  const BootRecord quiet = boot_master_disk(false);
+  const BootRecord sliced = boot_master_disk(true);
   REQUIRE(quiet.prompt_frame >= 0);
   CHECK(sliced.prompt_frame == quiet.prompt_frame);
   CHECK(sliced.rows == quiet.rows);
@@ -606,17 +606,17 @@ auto poke_t1_sampler() -> void {
       0xD0, 0xF2,        // BNE loop
       0x4C, 0x1D, 0x03,  // JMP self (table full)
   };
-  ScopedCore_t::poke(program_start, program);
+  ScopedCore::poke(program_start, program);
 }
 
 auto sample_t1(bool bench_schedules) -> std::array<uint8_t, 256> {
-  ScopedTestConfig_t::Description_t description;
+  ScopedTestConfig::Description description;
   description.slots[3] = "Mockingboard";
-  ScopedTestConfig_t config(description);
-  HeadlessHarness_t harness(config);
-  bench_at(1) = Bench_t();
+  ScopedTestConfig config(description);
+  HeadlessHarness harness(config);
+  bench_at(1) = Bench();
   bench_at(1).keep_rescheduling = bench_schedules;
-  Bench_t& bench = register_bench(1);
+  Bench& bench = register_bench(1);
   harness.boot();
   poke_t1_sampler();
   enter(program_start);

@@ -40,7 +40,7 @@ auto nb2_create(const char* path) -> DiskError {
 const char* const nb2_supported_exts[] = {"nb2", nullptr};
 }  // namespace
 
-extern "C" const DiskFormatDriver_t g_nb2_driver = {
+extern "C" const DiskFormatDriver nb2_driver = {
     .abi_version = disk_format_abi_version,
     .capabilities = disk_driver_cap_write | disk_driver_cap_create,
     .name = "NB2 (6384-nibble)",
@@ -54,6 +54,6 @@ extern "C" const DiskFormatDriver_t g_nb2_driver = {
     .create = nb2_create,
 };
 
-static const DiskFormatRegistration_t registration{&g_nb2_driver};
+static const DiskFormatRegistration registration{&nb2_driver};
 
 // NOLINTEND(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)

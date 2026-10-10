@@ -120,15 +120,15 @@ auto populate_test_track(std::array<uint8_t, track_data_size>& track) -> void {
   }
 }
 
-struct NibblizedTrack_t {
+struct NibblizedTrack {
   std::array<uint8_t, nibbles_per_track> nibbles{};
   std::array<uint8_t, nibbles_per_track> sync_mask{};
   uint32_t count = 0;
 };
 
 auto nibblize(const std::array<uint8_t, track_data_size>& sectors,
-              const uint8_t* order, uint32_t track) -> NibblizedTrack_t {
-  NibblizedTrack_t out;
+              const uint8_t* order, uint32_t track) -> NibblizedTrack {
+  NibblizedTrack out;
   std::array<uint8_t, disk_encoding_scratch_size> scratch{};
   REQUIRE(disk_encoding_nibblize_track(order, track, sectors.data(),
                                        out.nibbles.data(), out.sync_mask.data(),
@@ -141,7 +141,7 @@ auto execute_round_trip(int track_num, bool is_dos_order) -> void {
   std::array<uint8_t, track_data_size> original_track{};
   populate_test_track(original_track);
 
-  const NibblizedTrack_t track = nibblize(
+  const NibblizedTrack track = nibblize(
       original_track,
       disk_encoding_sector_order(is_dos_order ? disk_sector_order_dos
                                               : disk_sector_order_prodos),
@@ -217,7 +217,7 @@ TEST_CASE("DiskGCR: [GCR-04] Custom Sector Order Round-Trip") {
     std::array<uint8_t, track_data_size> original_track{};
     populate_test_track(original_track);
 
-    const NibblizedTrack_t track =
+    const NibblizedTrack track =
         nibblize(original_track, custom_dos_order.data(), 1);
     CHECK(track.count == expected_nibble_count);
 
@@ -257,7 +257,7 @@ TEST_CASE("DiskGCR: [GCR-04] Custom Sector Order Round-Trip") {
     std::array<uint8_t, track_data_size> original_track{};
     populate_test_track(original_track);
 
-    const NibblizedTrack_t track =
+    const NibblizedTrack track =
         nibblize(original_track, custom_prodos_order.data(), 2);
     CHECK(track.count == expected_nibble_count);
 
@@ -300,7 +300,7 @@ TEST_CASE("DiskGCR: [GCR-04] Custom Sector Order Round-Trip") {
     std::array<uint8_t, track_data_size> original_track{};
     populate_test_track(original_track);
 
-    const NibblizedTrack_t track =
+    const NibblizedTrack track =
         nibblize(original_track, custom_rev_order.data(), 5);
     CHECK(track.count == expected_nibble_count);
 
@@ -327,7 +327,7 @@ TEST_CASE(
   std::array<uint8_t, track_data_size> original_track{};
   populate_test_track(original_track);
 
-  const NibblizedTrack_t track = nibblize(
+  const NibblizedTrack track = nibblize(
       original_track, disk_encoding_sector_order(disk_sector_order_dos), 0);
 
   CHECK(track.count == expected_nibble_count);
@@ -427,7 +427,7 @@ TEST_CASE(
     std::array<uint8_t, track_data_size> original_track{};
     populate_test_track(original_track);
 
-    NibblizedTrack_t track = nibblize(
+    NibblizedTrack track = nibblize(
         original_track, disk_encoding_sector_order(disk_sector_order_dos), 0);
 
     // Sector 0 address field opens after gap 1:
@@ -523,7 +523,7 @@ TEST_CASE("DiskGCR: [GCR-08] A flipped data nibble is refused, not decoded") {
   std::array<uint8_t, track_data_size> original_track{};
   populate_test_track(original_track);
 
-  NibblizedTrack_t track = nibblize(
+  NibblizedTrack track = nibblize(
       original_track, disk_encoding_sector_order(disk_sector_order_dos), 0);
 
   // Sector 0's data field opens 71 nibbles in: gap 1 is 48, the address
@@ -549,7 +549,7 @@ TEST_CASE("DiskGCR: [GCR-09] An address field for another track is refused") {
   std::array<uint8_t, track_data_size> original_track{};
   populate_test_track(original_track);
 
-  const NibblizedTrack_t track = nibblize(
+  const NibblizedTrack track = nibblize(
       original_track, disk_encoding_sector_order(disk_sector_order_dos), 0);
 
   // The head reads a well-formed track that says it is track 0 while the

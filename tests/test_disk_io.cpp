@@ -50,24 +50,24 @@ constexpr uint8_t bus_marker = 0x5A;
 constexpr uint8_t register_marker = 0x3C;
 
 auto mark_floating_bus() -> void {
-  TestFixtures::ScopedCore_t::poke(
+  TestFixtures::ScopedCore::poke(
       video_get_scanner_address(nullptr, probe_cycles), &bus_marker, 1);
 }
 
 // Declared rather than inherited: with no configuration the slot fallbacks in
 // peripheral_register_internal supply a printer, a Super Serial Card and a
 // Mockingboard beside the Disk II, none of which these cases touch.
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 
-auto disk_ii_no_speed_statement() -> TestConfig_t::Description_t {
-  TestConfig_t::Description_t description;
+auto disk_ii_no_speed_statement() -> TestConfig::Description {
+  TestConfig::Description description;
   description.slots[5] = "Disk II";
   return description;
 }
 
-class DiskIoHarness_t {
+class DiskIoHarness {
  public:
-  explicit DiskIoHarness_t(bool insert_default_disk = true) {
+  explicit DiskIoHarness(bool insert_default_disk = true) {
     machine_.load();
     linapple_init();
     peripheral_manager_init();
@@ -84,21 +84,21 @@ class DiskIoHarness_t {
       // Ensure track 0 is primed into memory
       read_byte();
 
-      DiskSavedState_t state = get_saved_state();
+      DiskSavedState state = get_saved_state();
       state.drives[0].current_byte_pos = 0;
       load_saved_state(state);
     }
   }
 
-  ~DiskIoHarness_t() { linapple_shutdown(); }
+  ~DiskIoHarness() { linapple_shutdown(); }
 
-  DiskIoHarness_t(const DiskIoHarness_t&) = delete;
-  auto operator=(const DiskIoHarness_t&) -> DiskIoHarness_t& = delete;
-  DiskIoHarness_t(DiskIoHarness_t&&) = delete;
-  auto operator=(DiskIoHarness_t&&) -> DiskIoHarness_t& = delete;
+  DiskIoHarness(const DiskIoHarness&) = delete;
+  auto operator=(const DiskIoHarness&) -> DiskIoHarness& = delete;
+  DiskIoHarness(DiskIoHarness&&) = delete;
+  auto operator=(DiskIoHarness&&) -> DiskIoHarness& = delete;
 
   static auto mount_disk(const std::string& path, int drive_idx = 0) -> void {
-    DiskInsertCmd_t cmd{};
+    DiskInsertCmd cmd{};
     cmd.drive = (drive_idx == 1) ? disk_drive_1 : disk_drive_0;
     cmd.write_protected = 0;
     util_safe_strcpy(cmd.path, path.c_str(), disk_insert_path_max);
@@ -111,7 +111,7 @@ class DiskIoHarness_t {
   }
 
   static auto eject_disk(int drive_idx = 0) -> void {
-    DiskEjectCmd_t cmd{};
+    DiskEjectCmd cmd{};
     cmd.drive = (drive_idx == 1) ? disk_drive_1 : disk_drive_0;
     peripheral_command(slot_6, disk_cmd_eject, &cmd, sizeof(cmd));
   }
@@ -176,18 +176,18 @@ class DiskIoHarness_t {
     peripheral_manager_think(cycles);
   }
 
-  static auto save_state(DiskSavedState_t& out_state) -> void {
+  static auto save_state(DiskSavedState& out_state) -> void {
     size_t size = sizeof(out_state);
     peripheral_save_state(slot_6, &out_state, &size);
   }
 
-  static auto get_saved_state() -> DiskSavedState_t {
-    DiskSavedState_t state{};
+  static auto get_saved_state() -> DiskSavedState {
+    DiskSavedState state{};
     save_state(state);
     return state;
   }
 
-  static auto load_saved_state(const DiskSavedState_t& in_state) -> void {
+  static auto load_saved_state(const DiskSavedState& in_state) -> void {
     peripheral_load_state(slot_6, &in_state, sizeof(in_state));
   }
 
@@ -197,8 +197,8 @@ class DiskIoHarness_t {
   }
 
  private:
-  TestConfig_t machine_{disk_ii_no_speed_statement()};
-  TestFixtures::EphemeralDiskFixture_t disk_fixture_;
+  TestConfig machine_{disk_ii_no_speed_statement()};
+  TestFixtures::EphemeralDiskFixture disk_fixture_;
   uint32_t slice_cycle_ = 0;
   bool register_is_clear_ = true;
 };
@@ -206,7 +206,7 @@ class DiskIoHarness_t {
 }  // namespace
 
 TEST_CASE("DiskIO: [IO-01] Sequential Read") {
-  DiskIoHarness_t harness;
+  DiskIoHarness harness;
 
   harness.select_read_mode();
 
@@ -250,13 +250,13 @@ TEST_CASE("DiskIO: [IO-01] Sequential Read") {
 }
 
 TEST_CASE("DiskIO: [IO-02] Spindle Rotation") {
-  DiskIoHarness_t harness;
+  DiskIoHarness harness;
 
   harness.select_read_mode();
 
-  const uint8_t b_start = harness.read_byte();
+  const uint8_t byte_start = harness.read_byte();
   harness.end_slice();
-  const DiskSavedState_t state_before = harness.get_saved_state();
+  const DiskSavedState state_before = harness.get_saved_state();
   const int32_t pos_before = state_before.drives[0].current_byte_pos;
 
   // The medium is clocked in 125 ns units, four to a sequencer step and two
@@ -268,18 +268,18 @@ TEST_CASE("DiskIO: [IO-02] Spindle Rotation") {
 
   const int32_t expected_pos = pos_before + expected_advance;
 
-  const DiskSavedState_t state_after = harness.get_saved_state();
+  const DiskSavedState state_after = harness.get_saved_state();
   CHECK(state_after.drives[0].current_byte_pos == expected_pos);
 
   // The head has moved on, so the byte under it is a different one.
-  const uint8_t b_after = harness.read_byte();
-  CHECK((b_after & latch_bit) != 0);
-  CHECK(b_after != b_start);
+  const uint8_t byte_after = harness.read_byte();
+  CHECK((byte_after & latch_bit) != 0);
+  CHECK(byte_after != byte_start);
 }
 
 TEST_CASE("DiskIO: [IO-03] Floating Bus Accuracy") {
   // Construct harness with no disk loaded in drive 0
-  DiskIoHarness_t harness(false);
+  DiskIoHarness harness(false);
 
   harness.power_motor_on();
   harness.select_read_mode();
@@ -294,7 +294,7 @@ TEST_CASE("DiskIO: [IO-03] Floating Bus Accuracy") {
 }
 
 TEST_CASE("DiskIO: [IO-04] Latch Persistence") {
-  DiskIoHarness_t harness;
+  DiskIoHarness harness;
   mark_floating_bus();
 
   // Loading the register is the sequencer's job, so the byte the 6502 puts on
@@ -310,7 +310,7 @@ TEST_CASE("DiskIO: [IO-04] Latch Persistence") {
   // $C0ED is odd, so the register it loads never reaches the data bus
   CHECK(harness.read_switch(io_latch_switch, probe_cycles) == bus_marker);
 
-  DiskSavedState_t state_55 = harness.get_saved_state();
+  DiskSavedState state_55 = harness.get_saved_state();
   CHECK(state_55.io_latch == pattern_55);
   CHECK(state_55.is_write_mode != 0);
 
@@ -318,7 +318,7 @@ TEST_CASE("DiskIO: [IO-04] Latch Persistence") {
   harness.think(settle_cycles);
   CHECK(harness.read_switch(io_latch_switch, probe_cycles) == bus_marker);
 
-  DiskSavedState_t state_aa = harness.get_saved_state();
+  DiskSavedState state_aa = harness.get_saved_state();
   CHECK(state_aa.io_latch == pattern_aa);
 
   // Sensing write protect at $C0EE takes the register over. The shift-right
@@ -331,13 +331,13 @@ TEST_CASE("DiskIO: [IO-04] Latch Persistence") {
       harness.read_switch(io_read_write_switch, probe_cycles);
   CHECK((protect_sense == 0x00 || protect_sense == 0xFF));
 
-  DiskSavedState_t state_read_mode = harness.get_saved_state();
+  DiskSavedState state_read_mode = harness.get_saved_state();
   CHECK(state_read_mode.io_latch == protect_sense);
   CHECK(state_read_mode.is_write_mode == 0);
 }
 
 TEST_CASE("DiskIO: [IO-21] Odd switches read the bus the card sits on") {
-  DiskIoHarness_t harness(false);
+  DiskIoHarness harness(false);
   mark_floating_bus();
 
   // A0 is high on these four, so the data register stays off the bus and what
@@ -351,7 +351,7 @@ TEST_CASE("DiskIO: [IO-21] Odd switches read the bus the card sits on") {
 }
 
 TEST_CASE("DiskIO: [IO-22] Even switches answer with the data register") {
-  DiskIoHarness_t harness(false);
+  DiskIoHarness harness(false);
   mark_floating_bus();
 
   // Holding the card in load mode makes the register a latch again: every
@@ -374,7 +374,7 @@ TEST_CASE("DiskIO: [IO-22] Even switches answer with the data register") {
 }
 
 TEST_CASE("DiskIO: [IO-23] The read-mode switch drives the write-protect bit") {
-  DiskIoHarness_t harness(false);
+  DiskIoHarness harness(false);
   mark_floating_bus();
 
   harness.power_motor_on();

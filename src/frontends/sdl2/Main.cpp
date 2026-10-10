@@ -27,9 +27,9 @@
 
 namespace {
 
-SDL_AudioDeviceID g_audio_device = 0;
-std::string g_audio_dump_file;
-AudioDumper g_audio_dumper;
+SDL_AudioDeviceID audio_device = 0;
+std::string audio_dump_file;
+AudioDumper audio_dumper;
 
 auto sdl2_audio_callback(void* userdata, Uint8* stream, int len) -> void {
   (void)userdata;
@@ -41,8 +41,8 @@ auto sdl2_audio_callback(void* userdata, Uint8* stream, int len) -> void {
   const int num_samples = len / (static_cast<int>(sizeof(int16_t)));
   audio_mixer_get_samples(temp_buf, static_cast<size_t>(num_samples));
 
-  if (audio_dumper_is_active(&g_audio_dumper)) {
-    audio_dumper_put_samples(&g_audio_dumper, temp_buf,
+  if (audio_dumper_is_active(&audio_dumper)) {
+    audio_dumper_put_samples(&audio_dumper, temp_buf,
                              static_cast<uint32_t>(num_samples));
   }
 }
@@ -50,7 +50,7 @@ auto sdl2_audio_callback(void* userdata, Uint8* stream, int len) -> void {
 }  // namespace
 
 auto ds_init() -> bool {
-  if (g_audio_device != 0U) {
+  if (audio_device != 0U) {
     return true;
   }
 
@@ -77,26 +77,26 @@ auto ds_init() -> bool {
   desired.callback = sdl2_audio_callback;
   desired.userdata = nullptr;
 
-  g_audio_device = SDL_OpenAudioDevice(nullptr, 0, &desired, &obtained, 0);
-  if (g_audio_device == 0) {
+  audio_device = SDL_OpenAudioDevice(nullptr, 0, &desired, &obtained, 0);
+  if (audio_device == 0) {
     std::printf("Unable to open SDL audio: %s\n", SDL_GetError());
     return false;
   }
 
   const auto device_rate_hz = static_cast<uint32_t>(obtained.freq);
 
-  if (!g_audio_dump_file.empty()) {
-    audio_dumper_initialize(&g_audio_dumper, g_audio_dump_file.c_str(),
+  if (!audio_dump_file.empty()) {
+    audio_dumper_initialize(&audio_dumper, audio_dump_file.c_str(),
                             device_rate_hz, 2);
   }
 
-  SDL_PauseAudioDevice(g_audio_device, 0);
+  SDL_PauseAudioDevice(audio_device, 0);
 
   audio_mixer_initialize(device_rate_hz);
 
   linapple_set_audio_source_register_callback(
       [](int slot, const char* peripheral_id,
-         const PeripheralAudioInfo_t* info) -> void {
+         const PeripheralAudioInfo* info) -> void {
         audio_mixer_register_source(slot, peripheral_id, info);
       });
 
@@ -118,16 +118,16 @@ auto ds_shutdown() -> void {
   linapple_set_audio_source_register_callback(nullptr);
   linapple_set_audio_source_unregister_callback(nullptr);
 
-  if (g_audio_device != 0U) {
-    SDL_PauseAudioDevice(g_audio_device, 1);
-    SDL_CloseAudioDevice(g_audio_device);
-    g_audio_device = 0;
+  if (audio_device != 0U) {
+    SDL_PauseAudioDevice(audio_device, 1);
+    SDL_CloseAudioDevice(audio_device);
+    audio_device = 0;
   }
 
   audio_mixer_destroy();
 
-  if (audio_dumper_is_active(&g_audio_dumper)) {
-    audio_dumper_finalize(&g_audio_dumper);
+  if (audio_dumper_is_active(&audio_dumper)) {
+    audio_dumper_finalize(&audio_dumper);
   }
 }
 
@@ -176,7 +176,7 @@ auto main(int argc, char** argv) -> int {
   }
 
   if (config.audio_dump_path.at(0) != '\0') {
-    g_audio_dump_file = config.audio_dump_path.data();
+    audio_dump_file = config.audio_dump_path.data();
   }
 
   if (sys_init() != 0) {

@@ -30,7 +30,7 @@
 
 namespace {
 
-struct BlockDiskImage_t {
+struct BlockDiskImage {
   FilePtr file{nullptr, fclose};
   std::string path;
   uint64_t data_offset = 0;
@@ -38,13 +38,13 @@ struct BlockDiskImage_t {
   bool host_read_only = false;
   BlockDiskOrder order = block_disk_order_prodos;
 
-  BlockDiskImage_t() = default;
-  ~BlockDiskImage_t() = default;
+  BlockDiskImage() = default;
+  ~BlockDiskImage() = default;
 
-  BlockDiskImage_t(const BlockDiskImage_t&) = delete;
-  auto operator=(const BlockDiskImage_t&) -> BlockDiskImage_t& = delete;
-  BlockDiskImage_t(BlockDiskImage_t&&) = default;
-  auto operator=(BlockDiskImage_t&&) -> BlockDiskImage_t& = default;
+  BlockDiskImage(const BlockDiskImage&) = delete;
+  auto operator=(const BlockDiskImage&) -> BlockDiskImage& = delete;
+  BlockDiskImage(BlockDiskImage&&) = default;
+  auto operator=(BlockDiskImage&&) -> BlockDiskImage& = default;
 };
 
 constexpr uint32_t block_size = 512;
@@ -170,11 +170,11 @@ auto has_prodos_directory(const uint8_t* header_data, size_t header_size,
   return false;
 }
 
-auto image(void* instance) -> BlockDiskImage_t* {
-  return static_cast<BlockDiskImage_t*>(instance);
+auto image(void* instance) -> BlockDiskImage* {
+  return static_cast<BlockDiskImage*>(instance);
 }
 
-auto seek_to(BlockDiskImage_t* image_ptr, uint64_t offset) -> bool {
+auto seek_to(BlockDiskImage* image_ptr, uint64_t offset) -> bool {
   return fseeko(image_ptr->file.get(), static_cast<off_t>(offset), SEEK_SET) ==
          0;
 }
@@ -233,7 +233,7 @@ auto block_disk_image_open(const char* path, uint32_t file_offset,
     return harddisk_err_invalid_format;
   }
 
-  auto image_ptr = std::unique_ptr<BlockDiskImage_t>(new BlockDiskImage_t());
+  auto image_ptr = std::unique_ptr<BlockDiskImage>(new BlockDiskImage());
   image_ptr->file = std::move(file);
   image_ptr->path = path;
   image_ptr->host_read_only = host_read_only;
@@ -246,7 +246,7 @@ auto block_disk_image_open(const char* path, uint32_t file_offset,
 }
 
 auto block_disk_image_close(void* instance) -> void {
-  BlockDiskImage_t* image_ptr = image(instance);
+  BlockDiskImage* image_ptr = image(instance);
   if (image_ptr == nullptr) {
     return;
   }
@@ -262,7 +262,7 @@ auto block_disk_image_close(void* instance) -> void {
 }
 
 auto block_disk_image_is_write_protected(void* instance) -> bool {
-  const BlockDiskImage_t* image_ptr = image(instance);
+  const BlockDiskImage* image_ptr = image(instance);
   if (image_ptr == nullptr) {
     return true;
   }
@@ -271,7 +271,7 @@ auto block_disk_image_is_write_protected(void* instance) -> bool {
 
 auto block_disk_image_read_block(void* instance, uint32_t block_num,
                                  uint8_t* buffer) -> HarddiskError {
-  BlockDiskImage_t* image_ptr = image(instance);
+  BlockDiskImage* image_ptr = image(instance);
   if (image_ptr == nullptr || buffer == nullptr ||
       block_num >= image_ptr->total_blocks) {
     return harddisk_err_io;
@@ -298,7 +298,7 @@ auto block_disk_image_read_block(void* instance, uint32_t block_num,
 
 auto block_disk_image_write_block(void* instance, uint32_t block_num,
                                   const uint8_t* buffer) -> HarddiskError {
-  BlockDiskImage_t* image_ptr = image(instance);
+  BlockDiskImage* image_ptr = image(instance);
   if (image_ptr == nullptr || buffer == nullptr) {
     return harddisk_err_io;
   }
@@ -333,7 +333,7 @@ auto block_disk_image_write_block(void* instance, uint32_t block_num,
 }
 
 auto block_disk_image_get_total_blocks(void* instance) -> uint32_t {
-  const BlockDiskImage_t* image_ptr = image(instance);
+  const BlockDiskImage* image_ptr = image(instance);
   if (image_ptr == nullptr) {
     return 0;
   }

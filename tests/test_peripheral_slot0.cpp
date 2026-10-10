@@ -9,24 +9,24 @@
 
 namespace {
 
-struct ScopedMemoryContext_t {
+struct ScopedMemoryContext {
   Apple2Type orig_type{current_apple2_type};
 
-  ScopedMemoryContext_t() {
+  ScopedMemoryContext() {
     current_apple2_type = A2TYPE_APPLE2EENHANCED;
     mem_initialize();
   }
 
-  ~ScopedMemoryContext_t() {
+  ~ScopedMemoryContext() {
     mem_destroy();
     current_apple2_type = orig_type;
   }
 
-  ScopedMemoryContext_t(const ScopedMemoryContext_t&) = delete;
-  auto operator=(const ScopedMemoryContext_t&)
-      -> ScopedMemoryContext_t& = delete;
-  ScopedMemoryContext_t(ScopedMemoryContext_t&&) = delete;
-  auto operator=(ScopedMemoryContext_t&&) -> ScopedMemoryContext_t& = delete;
+  ScopedMemoryContext(const ScopedMemoryContext&) = delete;
+  auto operator=(const ScopedMemoryContext&)
+      -> ScopedMemoryContext& = delete;
+  ScopedMemoryContext(ScopedMemoryContext&&) = delete;
+  auto operator=(ScopedMemoryContext&&) -> ScopedMemoryContext& = delete;
 };
 
 }  // namespace
@@ -37,7 +37,7 @@ static int p2_resets = 0;
 static int p1_thinks = 0;
 static int p2_thinks = 0;
 
-static auto Mock1_Init(int slot, HostInterface_t* host) -> void* {
+static auto Mock1_Init(int slot, HostInterface* host) -> void* {
   (void)slot;
   (void)host;
   return (void*)0x1111;
@@ -54,7 +54,7 @@ static void Mock1_Think(void* instance, uint32_t cycles) {
   }
 }
 
-static auto Mock2_Init(int slot, HostInterface_t* host) -> void* {
+static auto Mock2_Init(int slot, HostInterface* host) -> void* {
   (void)slot;
   (void)host;
   return (void*)0x2222;
@@ -71,7 +71,7 @@ static void Mock2_Think(void* instance, uint32_t cycles) {
   }
 }
 
-static Peripheral_t g_mock1 = {
+static Peripheral mock1 = {
     LINAPPLE_ABI_VERSION,
     "test.mock1",
     "Mock1",
@@ -91,7 +91,7 @@ static Peripheral_t g_mock1 = {
     nullptr,  // Query
 };
 
-static Peripheral_t g_mock2 = {
+static Peripheral mock2 = {
     LINAPPLE_ABI_VERSION,
     "test.mock2",
     "Mock2",
@@ -114,15 +114,15 @@ static Peripheral_t g_mock2 = {
 TEST_CASE("Peripheral Slot 0: Multi-Occupancy") {
   p1_resets = p2_resets = 0;
   p1_thinks = p2_thinks = 0;
-  g_mock1.compatible_slots = PERIPHERAL_MASK_INTERNAL;
-  g_mock2.compatible_slots = PERIPHERAL_MASK_INTERNAL;
+  mock1.compatible_slots = PERIPHERAL_MASK_INTERNAL;
+  mock2.compatible_slots = PERIPHERAL_MASK_INTERNAL;
 
   peripheral_manager_init();
 
   // Register first peripheral in Slot 0
-  CHECK(peripheral_register(&g_mock1, 0) == 0);
+  CHECK(peripheral_register(&mock1, 0) == 0);
   // Register second peripheral in Slot 0
-  CHECK(peripheral_register(&g_mock2, 0) == 0);
+  CHECK(peripheral_register(&mock2, 0) == 0);
 
   // Verify both receive Reset
   peripheral_manager_reset();
@@ -135,9 +135,9 @@ TEST_CASE("Peripheral Slot 0: Multi-Occupancy") {
   CHECK(p2_thinks == 1);
 
   // Verify Slot 1 does NOT support multi-occupancy
-  Peripheral_t local_mock1 = g_mock1;
+  Peripheral local_mock1 = mock1;
   local_mock1.compatible_slots = 0x02;  // Slot 1
-  Peripheral_t local_mock2 = g_mock2;
+  Peripheral local_mock2 = mock2;
   local_mock2.compatible_slots = 0x02;  // Slot 1
 
   CHECK(peripheral_register(&local_mock1, 1) == 0);
@@ -146,17 +146,17 @@ TEST_CASE("Peripheral Slot 0: Multi-Occupancy") {
   peripheral_manager_shutdown();
 }
 
-static HostInterface_t* captured_host = nullptr;
+static HostInterface* captured_host = nullptr;
 
 TEST_CASE("Peripheral ABI: host_reset_system") {
-  ScopedMemoryContext_t mem_guard;
+  ScopedMemoryContext mem_guard;
   p1_resets = 0;
   captured_host = nullptr;
   peripheral_manager_init();
 
-  Peripheral_t trigger_p = g_mock1;
+  Peripheral trigger_p = mock1;
   trigger_p.compatible_slots = PERIPHERAL_MASK_INTERNAL;
-  trigger_p.init = [](int slot, HostInterface_t* host) -> void* {
+  trigger_p.init = [](int slot, HostInterface* host) -> void* {
     (void)slot;
     captured_host = host;
     return (void*)0x1111;

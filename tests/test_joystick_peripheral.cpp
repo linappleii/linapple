@@ -75,18 +75,18 @@ constexpr uint32_t probe_cycle_cap = 64;
 constexpr uint32_t unknown_joystick_id = PERIPHERAL_SUBSYSTEM_JOYSTICK | 0x00FF;
 
 // The card as the registry hands it out, which is what the machine wires in.
-auto game_port() -> Peripheral_t* {
-  Peripheral_t* descriptor = peripheral_find_internal("linapple.joystick");
+auto game_port() -> Peripheral* {
+  Peripheral* descriptor = peripheral_find_internal("linapple.joystick");
   REQUIRE(descriptor != nullptr);
   return descriptor;
 }
 
-using Frame_t = std::array<uint8_t, sizeof(JoystickSaveState_t)>;
+using Frame = std::array<uint8_t, sizeof(JoystickSaveState)>;
 
 // Header: version 1, struct_size 56 ($38). A cold start has every timer
 // expired, so one strobe at cycle 1,000,000 ($0F4240) triggers all four; the
 // rest goes out as zeros, little-endian.
-constexpr Frame_t frame_after_one_strobe = {
+constexpr Frame frame_after_one_strobe = {
     {
         0x01, 0x00, 0x00, 0x00, 0x38, 0x00, 0x00, 0x00,  //
         0x40, 0x42, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00,  //
@@ -105,7 +105,7 @@ constexpr Frame_t frame_after_one_strobe = {
 // the fourth only channel 0 (50 is past 10, short of 120). So the triggers are
 // 1,001,450 ($0F47EA), 1,001,400 ($0F47B8), 1,001,200 ($0F46F0) and 1,000,000
 // ($0F4240).
-constexpr Frame_t frame_after_four_strobes = {
+constexpr Frame frame_after_four_strobes = {
     {
         0x01, 0x00, 0x00, 0x00, 0x38, 0x00, 0x00, 0x00,  //
         0xEA, 0x47, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00,  //
@@ -117,8 +117,8 @@ constexpr Frame_t frame_after_four_strobes = {
     },
 };
 
-auto axis_payload(uint8_t paddle, uint8_t position) -> JoystickAxisPayload_t {
-  JoystickAxisPayload_t payload{};
+auto axis_payload(uint8_t paddle, uint8_t position) -> JoystickAxisPayload {
+  JoystickAxisPayload payload{};
   payload.joystick = static_cast<uint8_t>(paddle / 2);
   payload.axis = static_cast<uint8_t>(paddle % 2);
   payload.value = position;
@@ -130,13 +130,13 @@ auto axis_payload(uint8_t paddle, uint8_t position) -> JoystickAxisPayload_t {
 // instruction at a time so that every I/O access is charged at the cumulative
 // count the instruction began with. Commands go through the manager's queue
 // and are drained by one think, as a running machine drains them once a frame.
-struct GamePortMachine_t {
-  TestFixtures::ScopedTestConfig_t config;
-  TestFixtures::ScopedCore_t core;
+struct GamePortMachine {
+  TestFixtures::ScopedTestConfig config;
+  TestFixtures::ScopedCore core;
   uint8_t bus_marker = marker_low;
 
-  GamePortMachine_t()
-      : config(TestFixtures::ScopedTestConfig_t::enhanced_2e_only()),
+  GamePortMachine()
+      : config(TestFixtures::ScopedTestConfig::enhanced_2e_only()),
         core(config) {
     linapple_reset_hard();
     move_off_cycle_zero();
@@ -146,7 +146,7 @@ struct GamePortMachine_t {
   // the first instruction a fresh core runs is one that touches no I/O.
   static auto move_off_cycle_zero() -> void {
     constexpr uint8_t nop = 0xEA;
-    TestFixtures::ScopedCore_t::poke(probe_base, &nop, 1);
+    TestFixtures::ScopedCore::poke(probe_base, &nop, 1);
     TestFixtures::enter_at({probe_base, 0, 0, 0});
     static_cast<void>(cpu_execute(0));
     REQUIRE(cpu_get_cumulative_cycles() > 0);
@@ -160,7 +160,7 @@ struct GamePortMachine_t {
   }
 
   static auto set_paddle(uint8_t paddle, uint8_t position) -> void {
-    const JoystickAxisPayload_t payload = axis_payload(paddle, position);
+    const JoystickAxisPayload payload = axis_payload(paddle, position);
     send(JOYSTICK_CMD_SET_AXIS, &payload, sizeof(payload));
   }
 
@@ -168,7 +168,7 @@ struct GamePortMachine_t {
   // per-call count of zero, and while no frame runs the scanner stands still,
   // so one byte at its address is what every read's bits 0-6 return.
   auto place_bus_marker() const -> void {
-    TestFixtures::ScopedCore_t::poke(video_get_scanner_address(nullptr, 0),
+    TestFixtures::ScopedCore::poke(video_get_scanner_address(nullptr, 0),
                                      &bus_marker, 1);
   }
 
@@ -181,7 +181,7 @@ struct GamePortMachine_t {
         static_cast<uint8_t>(addr & 0xFF),
         static_cast<uint8_t>(addr >> 8),
     };
-    TestFixtures::ScopedCore_t::poke(probe_base, lda);
+    TestFixtures::ScopedCore::poke(probe_base, lda);
     TestFixtures::enter_at({probe_base, 0, 0, 0});
     static_cast<void>(cpu_execute(0));
     REQUIRE(cpu_get_registers()->pc ==
@@ -190,7 +190,7 @@ struct GamePortMachine_t {
   }
 
   auto read_at(uint16_t addr, uint64_t counter) const -> uint8_t {
-    g_cumulative_cycles = counter;
+    cumulative_cycles = counter;
     return read(addr);
   }
 
@@ -200,13 +200,13 @@ struct GamePortMachine_t {
 
   // One STA abs from RAM.
   static auto write_at(uint16_t addr, uint64_t counter) -> void {
-    g_cumulative_cycles = counter;
+    cumulative_cycles = counter;
     const std::array<uint8_t, 3> sta = {
         0x8D,
         static_cast<uint8_t>(addr & 0xFF),
         static_cast<uint8_t>(addr >> 8),
     };
-    TestFixtures::ScopedCore_t::poke(probe_base, sta);
+    TestFixtures::ScopedCore::poke(probe_base, sta);
     TestFixtures::enter_at({probe_base, 0, 0, 0});
     static_cast<void>(cpu_execute(0));
     REQUIRE(cpu_get_registers()->pc ==
@@ -218,7 +218,7 @@ struct GamePortMachine_t {
   }
 
   static auto let_every_timer_fall() -> void {
-    g_cumulative_cycles += longest_pulse_and_then_some;
+    cumulative_cycles += longest_pulse_and_then_some;
   }
 
   // A program from $0300 with X set, stepped until the PC lands on stop_pc or
@@ -227,12 +227,12 @@ struct GamePortMachine_t {
   auto run(const std::array<uint8_t, N>& program, uint16_t stop_pc, uint8_t x,
            uint32_t cap) const -> uint32_t {
     place_bus_marker();
-    TestFixtures::ScopedCore_t::poke(program_base, program);
+    TestFixtures::ScopedCore::poke(program_base, program);
     TestFixtures::enter_at({program_base, 0, x, 0});
     return TestFixtures::step_until_pc(stop_pc, cap);
   }
 
-  struct Pread_t {
+  struct Pread {
     uint8_t y;
     uint32_t cycles;
     bool returned;
@@ -241,7 +241,7 @@ struct GamePortMachine_t {
   // LDX #paddle; JSR $FB1E; NOP at $0300: the LDX and the JSR run first, then
   // the cycles are counted from the fetch at $FB1E to the landing on the NOP,
   // so the figure excludes the JSR's six and is PREAD's own.
-  auto pread(uint8_t paddle) const -> Pread_t {
+  auto pread(uint8_t paddle) const -> Pread {
     const std::array<uint8_t, 6> caller = {
         0xA2, paddle, 0x20, 0x1E, 0xFB, 0xEA,
     };
@@ -259,8 +259,8 @@ struct GamePortMachine_t {
     };
   }
 
-  static auto frame() -> Frame_t {
-    Frame_t frame{};
+  static auto frame() -> Frame {
+    Frame frame{};
     size_t size = frame.size();
     peripheral_save_state_by_name(slot0, "Joystick", frame.data(), &size);
     REQUIRE(size == frame.size());
@@ -268,18 +268,18 @@ struct GamePortMachine_t {
   }
 };
 
-struct BenchHandler_t {
+struct BenchHandler {
   void* instance;
   PeripheralIOHandler read;
   PeripheralIOHandler write;
-  PeripheralStrobeHandler_t on_strobe;
+  PeripheralStrobeHandler on_strobe;
 };
 
 // A host built by hand, for what the real one cannot show: a member missing,
 // the log line it draws, and the status a call returns.
-class BenchHost_t {
+class BenchHost {
  public:
-  BenchHost_t() {
+  BenchHost() {
     active = this;
     host_.Log = bench_log;
     host_.AssertIrq = bench_assert_irq;
@@ -292,19 +292,19 @@ class BenchHost_t {
     host_.ReadFloatingBus = bench_read_floating_bus;
   }
 
-  ~BenchHost_t() {
+  ~BenchHost() {
     for (void* instance : instances_) {
       game_port()->shutdown(instance);
     }
     active = nullptr;
   }
 
-  BenchHost_t(const BenchHost_t&) = delete;
-  auto operator=(const BenchHost_t&) -> BenchHost_t& = delete;
-  BenchHost_t(BenchHost_t&&) = delete;
-  auto operator=(BenchHost_t&&) -> BenchHost_t& = delete;
+  BenchHost(const BenchHost&) = delete;
+  auto operator=(const BenchHost&) -> BenchHost& = delete;
+  BenchHost(BenchHost&&) = delete;
+  auto operator=(BenchHost&&) -> BenchHost& = delete;
 
-  auto host() -> HostInterface_t* { return &host_; }
+  auto host() -> HostInterface* { return &host_; }
 
   auto create() -> void* {
     void* instance = game_port()->init(slot0, &host_);
@@ -332,18 +332,18 @@ class BenchHost_t {
   }
 
  private:
-  HostInterface_t host_{};
-  std::map<uint16_t, BenchHandler_t> handlers_;
+  HostInterface host_{};
+  std::map<uint16_t, BenchHandler> handlers_;
   std::vector<void*> instances_;
   std::vector<std::string> lines_;
   uint64_t cycles_ = 0;
   uint8_t marker_ = marker_low;
 
-  static BenchHost_t* active;
+  static BenchHost* active;
 
   // NOLINTBEGIN(cppcoreguidelines-pro-type-vararg)
-  // Justification: Log is variadic in the HostInterface_t ABI.
-  static auto bench_log(void* instance, PeripheralLogLevel_t level,
+  // Justification: Log is variadic in the HostInterface ABI.
+  static auto bench_log(void* instance, PeripheralLogLevel level,
                         const char* fmt, ...) -> void {
     (void)instance;
     (void)level;
@@ -391,16 +391,16 @@ class BenchHost_t {
                                        PeripheralIOHandler write) -> void {
     if (active != nullptr) {
       active->handlers_[addr] =
-          BenchHandler_t{instance, read, write, nullptr};
+          BenchHandler{instance, read, write, nullptr};
     }
   }
 
   static auto bench_register_direct_io_strobe(void* instance, uint16_t addr,
-                                              PeripheralStrobeHandler_t strobe)
+                                              PeripheralStrobeHandler strobe)
       -> void {
     if (active != nullptr) {
       active->handlers_[addr] =
-          BenchHandler_t{instance, nullptr, nullptr, strobe};
+          BenchHandler{instance, nullptr, nullptr, strobe};
     }
   }
 
@@ -414,10 +414,10 @@ class BenchHost_t {
   }
 };
 
-BenchHost_t* BenchHost_t::active = nullptr;
+BenchHost* BenchHost::active = nullptr;
 
-auto save_frame(void* instance) -> Frame_t {
-  Frame_t frame{};
+auto save_frame(void* instance) -> Frame {
+  Frame frame{};
   size_t size = frame.size();
   REQUIRE(game_port()->save_state(instance, frame.data(), &size) ==
           peripheral_ok);
@@ -425,7 +425,7 @@ auto save_frame(void* instance) -> Frame_t {
   return frame;
 }
 
-auto trigger_in(const Frame_t& frame, size_t paddle) -> uint64_t {
+auto trigger_in(const Frame& frame, size_t paddle) -> uint64_t {
   uint64_t trigger = 0;
   std::memcpy(&trigger, &frame.at(8 + (paddle * 8)), sizeof(trigger));
   return trigger;
@@ -434,7 +434,7 @@ auto trigger_in(const Frame_t& frame, size_t paddle) -> uint64_t {
 TEST_CASE(
     "Game port: the registry resolves the card by id and by name, and the "
     "descriptor is the motherboard's port") {
-  Peripheral_t* descriptor = game_port();
+  Peripheral* descriptor = game_port();
   CHECK(peripheral_find_internal("Joystick") == descriptor);
   CHECK(peripheral_find_internal("linapple.game-port") == nullptr);
 
@@ -459,36 +459,36 @@ TEST_CASE(
 TEST_CASE(
     "Game port: a host missing one of the four members the port needs gets "
     "no card and hears which") {
-  BenchHost_t bench;
+  BenchHost bench;
   CHECK(game_port()->init(slot0, nullptr) == nullptr);
 
-  struct Missing_t {
+  struct Missing {
     const char* name;
-    void (*strip)(HostInterface_t*);
+    void (*strip)(HostInterface*);
   };
-  const std::array<Missing_t, 4> members = {
+  const std::array<Missing, 4> members = {
       {
           {
               "RegisterDirectIO",
-              [](HostInterface_t* h) -> void { h->RegisterDirectIO = nullptr; },
+              [](HostInterface* h) -> void { h->RegisterDirectIO = nullptr; },
           },
           {
               "RegisterDirectIOStrobe",
-              [](HostInterface_t* h) -> void {
+              [](HostInterface* h) -> void {
                 h->RegisterDirectIOStrobe = nullptr;
               },
           },
           {"GetCycles",
-           [](HostInterface_t* h) -> void { h->GetCycles = nullptr; }},
+           [](HostInterface* h) -> void { h->GetCycles = nullptr; }},
           {
               "ReadFloatingBus",
-              [](HostInterface_t* h) -> void { h->ReadFloatingBus = nullptr; },
+              [](HostInterface* h) -> void { h->ReadFloatingBus = nullptr; },
           },
       },
   };
-  for (const Missing_t& member : members) {
+  for (const Missing& member : members) {
     CAPTURE(member.name);
-    HostInterface_t partial = *bench.host();
+    HostInterface partial = *bench.host();
     member.strip(&partial);
     const size_t logged_before = bench.log_lines().size();
     CHECK(game_port()->init(slot0, &partial) == nullptr);
@@ -498,7 +498,7 @@ TEST_CASE(
   }
 
   // A host that cannot log is refused all the same, silently.
-  HostInterface_t mute = *bench.host();
+  HostInterface mute = *bench.host();
   mute.Log = nullptr;
   mute.GetCycles = nullptr;
   const size_t logged_before = bench.log_lines().size();
@@ -511,7 +511,7 @@ TEST_CASE(
 TEST_CASE(
     "Game port: PREAD returns the position for every paddle at 0, 1, 127, "
     "254 and 255, in 11p + 23 cycles from its first fetch") {
-  GamePortMachine_t machine;
+  GamePortMachine machine;
 
   // Strobe at the read cycle T0 of LDA $C070; LDY, NOP, NOP and the fourth
   // cycle of LDA $C064,X put sample 0 at T0 + 10, and the loop (LDA 4, BPL
@@ -521,11 +521,11 @@ TEST_CASE(
   // complete at T0 + 11p + 19; T0 is the fourth cycle of the fetch at $FB1E,
   // so the run from that fetch to the landing on the return address is
   // 11p + 23 cycles: 23, 34, 1,420, 2,817 and 2,828.
-  struct Golden_t {
+  struct Golden {
     uint8_t position;
     uint32_t cycles;
   };
-  const std::array<Golden_t, 5> goldens = {
+  const std::array<Golden, 5> goldens = {
       {
           {0, 23},
           {1, 34},
@@ -535,12 +535,12 @@ TEST_CASE(
       },
   };
   for (uint8_t paddle = 0; paddle < 4; ++paddle) {
-    for (const Golden_t& golden : goldens) {
+    for (const Golden& golden : goldens) {
       CAPTURE(paddle);
       CAPTURE(golden.position);
-      GamePortMachine_t::set_paddle(paddle, golden.position);
-      GamePortMachine_t::let_every_timer_fall();
-      const GamePortMachine_t::Pread_t result = machine.pread(paddle);
+      GamePortMachine::set_paddle(paddle, golden.position);
+      GamePortMachine::let_every_timer_fall();
+      const GamePortMachine::Pread result = machine.pread(paddle);
       REQUIRE(result.returned);
       CHECK(result.y == golden.position);
       CHECK(result.cycles == golden.cycles);
@@ -551,10 +551,10 @@ TEST_CASE(
 TEST_CASE(
     "Game port: reading paddle 1 right after paddle 0 returns 243, not 255, "
     "because the second strobe finds its timer still high") {
-  GamePortMachine_t machine;
-  GamePortMachine_t::set_paddle(0, 10);
-  GamePortMachine_t::set_paddle(1, 255);
-  GamePortMachine_t::let_every_timer_fall();
+  GamePortMachine machine;
+  GamePortMachine::set_paddle(0, 10);
+  GamePortMachine::set_paddle(1, 255);
+  GamePortMachine::let_every_timer_fall();
 
   // LDX #0; JSR $FB1E; LDX #1; JSR $FB1E; NOP. The first strobe at T0 starts
   // both timers; paddle 0's falls at T0 + 120 and PREAD returns 10 at T0 +
@@ -580,8 +580,8 @@ TEST_CASE(
 TEST_CASE(
     "Game port: a strobe and a sample nine and ten cycles apart read a "
     "ten-cycle pulse high, then low") {
-  GamePortMachine_t machine;
-  GamePortMachine_t::set_paddle(0, 0);
+  GamePortMachine machine;
+  GamePortMachine::set_paddle(0, 0);
 
   // Position 0 is a 10-cycle pulse, so a sample 9 cycles after the strobe is
   // the last high one and a sample at 10 the first low one. LDA $C070 (4),
@@ -607,25 +607,25 @@ TEST_CASE(
   constexpr uint16_t after_sample = program_base + 9;
   constexpr uint32_t probe_cycles = 13;
 
-  GamePortMachine_t::let_every_timer_fall();
+  GamePortMachine::let_every_timer_fall();
   CHECK(machine.run(nine_indexed, after_sample, 0, probe_cycle_cap) ==
         probe_cycles);
   REQUIRE(cpu_get_registers()->pc == after_sample);
   CHECK((cpu_get_registers()->a & bit7) == bit7);
 
-  GamePortMachine_t::let_every_timer_fall();
+  GamePortMachine::let_every_timer_fall();
   CHECK(machine.run(nine_absolute, after_sample, 0, probe_cycle_cap) ==
         probe_cycles);
   REQUIRE(cpu_get_registers()->pc == after_sample);
   CHECK((cpu_get_registers()->a & bit7) == bit7);
 
-  GamePortMachine_t::let_every_timer_fall();
+  GamePortMachine::let_every_timer_fall();
   CHECK(machine.run(ten_indexed, after_sample, 0, probe_cycle_cap) ==
         probe_cycles + 1);
   REQUIRE(cpu_get_registers()->pc == after_sample);
   CHECK((cpu_get_registers()->a & bit7) == 0);
 
-  GamePortMachine_t::let_every_timer_fall();
+  GamePortMachine::let_every_timer_fall();
   CHECK(machine.run(ten_absolute, after_sample, 0, probe_cycle_cap) ==
         probe_cycles + 1);
   REQUIRE(cpu_get_registers()->pc == after_sample);
@@ -635,8 +635,8 @@ TEST_CASE(
 TEST_CASE(
     "Game port: every address from $C070 to $C07E strobes an idle timer, "
     "read or written, and $C07F does not") {
-  GamePortMachine_t machine;
-  GamePortMachine_t::set_paddle(0, 0);
+  GamePortMachine machine;
+  GamePortMachine::set_paddle(0, 0);
 
   // Position 0 is a 10-cycle pulse: high nine cycles after the strobe, low
   // at ten; by the next address the timer is idle again.
@@ -663,15 +663,15 @@ TEST_CASE(
 TEST_CASE(
     "Game port: a strobe during a pulse leaves that channel's fall time "
     "where it was") {
-  GamePortMachine_t machine;
+  GamePortMachine machine;
 
   // Paddle 0 at 100 is an 11 x 100 + 10 = 1,110-cycle pulse; paddle 1 at 0 a
   // 10-cycle one. A second strobe 500 cycles in finds paddle 1 idle and
   // restarts it, and finds paddle 0 high and leaves it: it falls at 1,110,
   // not at 500 + 1,110 (Sather 7-24; NE558 datasheet, output independent of
   // trigger conditions).
-  GamePortMachine_t::set_paddle(0, 100);
-  GamePortMachine_t::set_paddle(1, 0);
+  GamePortMachine::set_paddle(0, 100);
+  GamePortMachine::set_paddle(1, 0);
   machine.strobe_at(far_counter);
   machine.strobe_at(far_counter + 500);
   CHECK(machine.high_at(addr_paddle1, far_counter + 509));
@@ -681,7 +681,7 @@ TEST_CASE(
 }
 
 TEST_CASE("Game port: $C06C to $C06F read as $C064 to $C067") {
-  GamePortMachine_t machine;
+  GamePortMachine machine;
 
   // Every paddle at the centre, 127, is an 11 x 127 + 10 = 1,407-cycle pulse.
   constexpr uint64_t centre_pulse = 1407;
@@ -698,28 +698,28 @@ TEST_CASE("Game port: $C06C to $C06F read as $C064 to $C067") {
 }
 
 TEST_CASE("Game port: a position changed mid-pulse moves that channel's fall") {
-  GamePortMachine_t machine;
+  GamePortMachine machine;
 
   // The capacitor charges through the pot it has now, so a pulse started at
   // 10 (120 cycles) and moved to 200 runs to 11 x 200 + 10 = 2,210, and one
   // started at 200 and moved to 10 is over at 120.
-  GamePortMachine_t::set_paddle(0, 10);
+  GamePortMachine::set_paddle(0, 10);
   machine.strobe_at(far_counter);
-  GamePortMachine_t::set_paddle(0, 200);
+  GamePortMachine::set_paddle(0, 200);
   CHECK(machine.high_at(addr_paddle0, far_counter + 500));
   CHECK(machine.high_at(addr_paddle0, far_counter + 2209));
   CHECK_FALSE(machine.high_at(addr_paddle0, far_counter + 2210));
 
   const uint64_t second = far_counter + longest_pulse_and_then_some;
   machine.strobe_at(second);
-  GamePortMachine_t::set_paddle(0, 10);
+  GamePortMachine::set_paddle(0, 10);
   CHECK(machine.high_at(addr_paddle0, second + 119));
   CHECK_FALSE(machine.high_at(addr_paddle0, second + 120));
 }
 
 TEST_CASE(
     "Game port: a pot moved after its pulse ended does not revive the pulse") {
-  GamePortMachine_t machine;
+  GamePortMachine machine;
 
   // One PREAD per position with nothing between them but the caller's own
   // instructions. The pulse at 1 is 21 cycles and is over before PREAD
@@ -730,21 +730,21 @@ TEST_CASE(
   // datasheet; Sather 7-11): a timer that measured the finished 21-cycle
   // pulse against the pot's new position would take it for a running
   // 1,407-cycle one, refuse the strobe and count the remainder, 124.
-  struct Golden_t {
+  struct Golden {
     uint8_t position;
     uint32_t cycles;
   };
-  const std::array<Golden_t, 3> goldens = {
+  const std::array<Golden, 3> goldens = {
       {
           {1, 34},
           {127, 1420},
           {254, 2817},
       },
   };
-  for (const Golden_t& golden : goldens) {
+  for (const Golden& golden : goldens) {
     CAPTURE(golden.position);
-    GamePortMachine_t::set_paddle(0, golden.position);
-    const GamePortMachine_t::Pread_t result = machine.pread(0);
+    GamePortMachine::set_paddle(0, golden.position);
+    const GamePortMachine::Pread result = machine.pread(0);
     REQUIRE(result.returned);
     CHECK(result.y == golden.position);
     CHECK(result.cycles == golden.cycles);
@@ -754,7 +754,7 @@ TEST_CASE(
 TEST_CASE(
     "Game port: bits 0-6 are the floating bus and bit 7 the timer on a "
     "paddle") {
-  GamePortMachine_t machine;
+  GamePortMachine machine;
 
   // Paddle 0 at the centre is a 1,407-cycle pulse. With scanner byte $5A a
   // charging timer reads $DA and an expired one $5A; with scanner byte $DA
@@ -775,11 +775,11 @@ TEST_CASE(
 }
 
 TEST_CASE("Game port: a running pulse survives a hard reset") {
-  GamePortMachine_t machine;
+  GamePortMachine machine;
 
   // Position 255 is a 2,815-cycle pulse. The NE558's RESET pin is unused in
   // the Apple (Sather 7-11), so RESET' lets the pulse run out on its own.
-  GamePortMachine_t::set_paddle(0, 255);
+  GamePortMachine::set_paddle(0, 255);
   machine.strobe_at(far_counter);
   linapple_reset_hard();
   CHECK(machine.high_at(addr_paddle0, far_counter + 2814));
@@ -789,7 +789,7 @@ TEST_CASE("Game port: a running pulse survives a hard reset") {
 TEST_CASE(
     "Game port: a cold start reads every paddle expired, and so does a "
     "strobe the counter is wound back past") {
-  GamePortMachine_t machine;
+  GamePortMachine machine;
 
   // Before the first trigger the NE558's outputs are low (datasheet note 3).
   for (uint8_t paddle = 0; paddle < 4; ++paddle) {
@@ -804,16 +804,16 @@ TEST_CASE(
   // frame still carries the 1,000,000 triggers until the next strobe, which
   // finds every channel idle and moves them to 1,000 ($03E8).
   machine.strobe_at(far_counter);
-  CHECK(GamePortMachine_t::frame() == frame_after_one_strobe);
+  CHECK(GamePortMachine::frame() == frame_after_one_strobe);
   constexpr uint64_t wound_back = 1000;
   for (uint8_t paddle = 0; paddle < 4; ++paddle) {
     CAPTURE(paddle);
     CHECK_FALSE(machine.high_at(static_cast<uint16_t>(addr_paddle0 + paddle),
                                 wound_back));
   }
-  CHECK(GamePortMachine_t::frame() == frame_after_one_strobe);
+  CHECK(GamePortMachine::frame() == frame_after_one_strobe);
   machine.strobe_at(wound_back);
-  const Frame_t moved = GamePortMachine_t::frame();
+  const Frame moved = GamePortMachine::frame();
   for (size_t paddle = 0; paddle < 4; ++paddle) {
     CAPTURE(paddle);
     CHECK(trigger_in(moved, paddle) == wound_back);
@@ -822,31 +822,31 @@ TEST_CASE(
 
 TEST_CASE(
     "Game port: the frame after one strobe from a cold start is the literal") {
-  GamePortMachine_t first;
-  GamePortMachine_t::set_paddle(0, 255);
+  GamePortMachine first;
+  GamePortMachine::set_paddle(0, 255);
   first.strobe_at(far_counter);
-  CHECK(GamePortMachine_t::frame() == frame_after_one_strobe);
+  CHECK(GamePortMachine::frame() == frame_after_one_strobe);
 }
 
 TEST_CASE(
     "Game port: four spaced strobes at distinct positions leave four "
     "distinct triggers in the frame") {
-  GamePortMachine_t machine;
-  GamePortMachine_t::set_paddle(0, 0);
-  GamePortMachine_t::set_paddle(1, 10);
-  GamePortMachine_t::set_paddle(2, 100);
-  GamePortMachine_t::set_paddle(3, 255);
+  GamePortMachine machine;
+  GamePortMachine::set_paddle(0, 0);
+  GamePortMachine::set_paddle(1, 10);
+  GamePortMachine::set_paddle(2, 100);
+  GamePortMachine::set_paddle(3, 255);
   machine.strobe_at(far_counter);
   machine.strobe_at(far_counter + 1200);
   machine.strobe_at(far_counter + 1400);
   machine.strobe_at(far_counter + 1450);
-  CHECK(GamePortMachine_t::frame() == frame_after_four_strobes);
+  CHECK(GamePortMachine::frame() == frame_after_four_strobes);
 }
 
 TEST_CASE(
     "Game port: a rejected load reports an error and changes nothing, and an "
     "accepted one loads any trigger") {
-  BenchHost_t bench;
+  BenchHost bench;
   void* port = bench.create();
   REQUIRE(port != nullptr);
   bench.set_cycles(far_counter);
@@ -855,19 +855,19 @@ TEST_CASE(
 
   // Each rejected frame carries different triggers so that a load that
   // slipped through would show in the re-saved frame.
-  Frame_t short_frame = frame_after_four_strobes;
+  Frame short_frame = frame_after_four_strobes;
   CHECK(game_port()->load_state(port, short_frame.data(),
                                 short_frame.size() - 1) == peripheral_error);
-  std::array<uint8_t, sizeof(JoystickSaveState_t) + 1> long_frame{};
+  std::array<uint8_t, sizeof(JoystickSaveState) + 1> long_frame{};
   std::copy(frame_after_four_strobes.begin(), frame_after_four_strobes.end(),
             long_frame.begin());
   CHECK(game_port()->load_state(port, long_frame.data(), long_frame.size()) ==
         peripheral_error);
-  Frame_t bad_version = frame_after_four_strobes;
+  Frame bad_version = frame_after_four_strobes;
   bad_version.at(0) = 0x02;
   CHECK(game_port()->load_state(port, bad_version.data(), bad_version.size()) ==
         peripheral_error);
-  Frame_t bad_struct_size = frame_after_four_strobes;
+  Frame bad_struct_size = frame_after_four_strobes;
   bad_struct_size.at(4) = 0x30;
   CHECK(game_port()->load_state(port, bad_struct_size.data(),
                                 bad_struct_size.size()) == peripheral_error);
@@ -884,7 +884,7 @@ TEST_CASE(
 
   // Any trigger loads; one the counter can never reach reads expired, as a
   // real machine's timer would three milliseconds after anything.
-  Frame_t all_ones = frame_after_one_strobe;
+  Frame all_ones = frame_after_one_strobe;
   std::fill(all_ones.begin() + 8, all_ones.begin() + 40, 0xFF);
   CHECK(game_port()->load_state(port, all_ones.data(), all_ones.size()) ==
         peripheral_ok);
@@ -897,8 +897,8 @@ TEST_CASE(
 
   size_t size = 0;
   CHECK(game_port()->save_state(port, nullptr, &size) == peripheral_ok);
-  CHECK(size == sizeof(JoystickSaveState_t));
-  Frame_t scratch{};
+  CHECK(size == sizeof(JoystickSaveState));
+  Frame scratch{};
   size = scratch.size() - 1;
   CHECK(game_port()->save_state(port, scratch.data(), &size) ==
         peripheral_error);
@@ -912,7 +912,7 @@ TEST_CASE(
 TEST_CASE(
     "Game port: an unknown id in its own subsystem and a foreign id are "
     "incompatible, and the wrong payload size is an error") {
-  BenchHost_t bench;
+  BenchHost bench;
   void* port = bench.create();
   REQUIRE(port != nullptr);
 
@@ -938,7 +938,7 @@ TEST_CASE(
                              bytes.data(),
                              bytes.size()) == peripheral_incompatible);
 
-  const JoystickAxisPayload_t axis = axis_payload(0, 200);
+  const JoystickAxisPayload axis = axis_payload(0, 200);
   CHECK(game_port()->command(port, JOYSTICK_CMD_SET_AXIS, &axis,
                              sizeof(axis)) == peripheral_ok);
   CHECK(game_port()->command(port, JOYSTICK_CMD_SET_AXIS, &axis,
@@ -953,12 +953,12 @@ TEST_CASE(
 }
 
 TEST_CASE("Game port: a joystick or axis out of range is refused") {
-  BenchHost_t bench;
+  BenchHost bench;
   void* port = bench.create();
   REQUIRE(port != nullptr);
 
   // The last value in range is taken and the first beyond it refused.
-  JoystickAxisPayload_t axis = axis_payload(3, 0);
+  JoystickAxisPayload axis = axis_payload(3, 0);
   CHECK(game_port()->command(port, JOYSTICK_CMD_SET_AXIS, &axis,
                              sizeof(axis)) == peripheral_ok);
   axis.joystick = 2;
@@ -971,7 +971,7 @@ TEST_CASE("Game port: a joystick or axis out of range is refused") {
 }
 
 TEST_CASE("Game port: every query is incompatible") {
-  BenchHost_t bench;
+  BenchHost bench;
   void* port = bench.create();
   REQUIRE(port != nullptr);
 
@@ -999,34 +999,34 @@ TEST_CASE("Game port: every query is incompatible") {
 
 TEST_CASE("Game port: the C99 view of the frame matches the C++ one") {
   CHECK(joystick_abi_c_descriptor() == game_port());
-  static_assert(sizeof(JoystickSaveState_t) == 56,
+  static_assert(sizeof(JoystickSaveState) == 56,
                 "the version-1 frame is 56 bytes");
   CHECK(joystick_abi_c_state_size() == 56);
-  CHECK(joystick_abi_c_state_size() == sizeof(JoystickSaveState_t));
+  CHECK(joystick_abi_c_state_size() == sizeof(JoystickSaveState));
   CHECK(joystick_abi_c_state_version() == JOYSTICK_STATE_VERSION);
 
   CHECK(joystick_abi_c_trigger_cycle_offset() == 8);
   CHECK(joystick_abi_c_trigger_cycle_offset() ==
-        offsetof(JoystickSaveState_t, trigger_cycle));
+        offsetof(JoystickSaveState, trigger_cycle));
   CHECK(joystick_abi_c_trigger_cycle_size() == 32);
   CHECK(joystick_abi_c_trigger_cycle_size() ==
-        sizeof(JoystickSaveState_t::trigger_cycle));
+        sizeof(JoystickSaveState::trigger_cycle));
   CHECK(joystick_abi_c_x_pos_offset() == 40);
-  CHECK(joystick_abi_c_x_pos_offset() == offsetof(JoystickSaveState_t, x_pos));
+  CHECK(joystick_abi_c_x_pos_offset() == offsetof(JoystickSaveState, x_pos));
   CHECK(joystick_abi_c_y_pos_offset() == 42);
-  CHECK(joystick_abi_c_y_pos_offset() == offsetof(JoystickSaveState_t, y_pos));
+  CHECK(joystick_abi_c_y_pos_offset() == offsetof(JoystickSaveState, y_pos));
   CHECK(joystick_abi_c_buttons_offset() == 44);
   CHECK(joystick_abi_c_buttons_offset() ==
-        offsetof(JoystickSaveState_t, buttons));
+        offsetof(JoystickSaveState, buttons));
   CHECK(joystick_abi_c_trim_x_offset() == 48);
   CHECK(joystick_abi_c_trim_x_offset() ==
-        offsetof(JoystickSaveState_t, trim_x));
+        offsetof(JoystickSaveState, trim_x));
   CHECK(joystick_abi_c_trim_y_offset() == 50);
   CHECK(joystick_abi_c_trim_y_offset() ==
-        offsetof(JoystickSaveState_t, trim_y));
+        offsetof(JoystickSaveState, trim_y));
 
   CHECK(joystick_abi_c_axis_payload_size() == 4);
-  CHECK(joystick_abi_c_axis_payload_size() == sizeof(JoystickAxisPayload_t));
+  CHECK(joystick_abi_c_axis_payload_size() == sizeof(JoystickAxisPayload));
 }
 
 }  // namespace

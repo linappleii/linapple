@@ -32,27 +32,27 @@ const int MAX_DISPLAY_TARGET_PTR_LINES = 3;
 // --- Functions moved from Debugger_Display.cpp ---
 
 auto DrawMemory(int line, int iMemDump) -> void {
-  if ((g_window_this != WINDOW_CODE) && !(g_window_this == WINDOW_DATA)) {
+  if ((window_this != WINDOW_CODE) && !(window_this == WINDOW_DATA)) {
     return;
   }
 
-  MemoryDump_t* pMD = &g_mem_dump[iMemDump];
+  MemoryDump* pMD = &mem_dump[iMemDump];
   bool bActive = pMD->bActive;
   if (!bActive) {
     return;
   }
 
   uint16_t addr = pMD->address;
-  DEVICE_e eDevice = pMD->eDevice;
-  MemoryView_e iView = pMD->eView;
+  Device eDevice = pMD->eDevice;
+  MemoryView iView = pMD->eView;
 
-  Rect_t rect;
+  Rect rect;
   rect.left = DISPLAY_MINIMEM_COLUMN;
-  rect.top = (line * g_font_height);
+  rect.top = (line * font_height);
   rect.right = DISPLAY_WIDTH;
-  rect.bottom = rect.top + g_font_height;
+  rect.bottom = rect.top + font_height;
 
-  Rect_t rect2;
+  Rect rect2;
   rect2 = rect;
 
   const int MAX_MEM_VIEW_TXT = 16;
@@ -90,7 +90,7 @@ auto DrawMemory(int line, int iMemDump) -> void {
 
   uint16_t iAddress = addr;
 
-  int nLines = g_display_memory_lines;
+  int nLines = display_memory_lines;
   int nCols = 4;
 
   if (iView != MEM_VIEW_HEX) {
@@ -143,22 +143,22 @@ auto DrawMemory(int line, int iMemDump) -> void {
       iAddress++;
     }
 
-    rect.top += g_font_height;
-    rect.bottom += g_font_height;
+    rect.top += font_height;
+    rect.bottom += font_height;
   }
 }
 
 auto DrawRegister(int line, const char* name, const int nBytes,
                   const uint16_t nValue, int iSource) -> void {
-  if ((g_window_this != WINDOW_CODE) && !(g_window_this == WINDOW_DATA)) {
+  if ((window_this != WINDOW_CODE) && !(window_this == WINDOW_DATA)) {
     return;
   }
 
-  int nFontWidth = g_font_config[FONT_INFO].font_width_avg;
+  int nFontWidth = font_config[FONT_INFO].font_width_avg;
 
-  Rect_t rect;
-  rect.top = line * g_font_height;
-  rect.bottom = rect.top + g_font_height;
+  Rect rect;
+  rect.top = line * font_height;
+  rect.bottom = rect.top + font_height;
   rect.left = DISPLAY_REGS_COLUMN;
   rect.right = rect.left + (10 * nFontWidth);
 
@@ -188,7 +188,7 @@ auto DrawRegister(int line, const char* name, const int nBytes,
 }
 
 auto DrawRegisters(int line) -> void {
-  const char** sReg = g_breakpoint_source;
+  const char** sReg = breakpoint_source;
 
   DrawRegister(line++, sReg[BP_SRC_REG_A], 1, cpu_get_registers()->a,
                PARAM_REG_A);
@@ -204,7 +204,7 @@ auto DrawRegisters(int line) -> void {
                PARAM_REG_SP);
 }
 
-static auto DrawSoftSwitchHighlight(Rect_t& temp, bool bSet, const char* sOn,
+static auto DrawSoftSwitchHighlight(Rect& temp, bool bSet, const char* sOn,
                                     const char* sOff, int bg = BG_INFO)
     -> void {
   ColorizeFlags(bSet, bg);
@@ -218,7 +218,7 @@ static auto DrawSoftSwitchHighlight(Rect_t& temp, bool bSet, const char* sOn,
   PrintTextCursorX(sOff, temp);
 }
 
-static auto DrawSoftSwitchAddress(Rect_t& rect, int address,
+static auto DrawSoftSwitchAddress(Rect& rect, int address,
                                   int bg_default = BG_INFO) -> void {
   char sText[4] = "";
 
@@ -231,11 +231,11 @@ static auto DrawSoftSwitchAddress(Rect_t& rect, int address,
   PrintTextCursorX(":", rect);
 }
 
-static auto DrawSoftSwitch(Rect_t& rect, int address, bool bSet,
+static auto DrawSoftSwitch(Rect& rect, int address, bool bSet,
                            const char* sPrefix, const char* sOn,
                            const char* sOff, const char* sSuffix = nullptr,
                            int bg_default = BG_INFO) -> void {
-  Rect_t temp = rect;
+  Rect temp = rect;
 
   DrawSoftSwitchAddress(temp, address, bg_default);
 
@@ -252,11 +252,11 @@ static auto DrawSoftSwitch(Rect_t& rect, int address, bool bSet,
     PrintTextCursorX(sSuffix, temp);
   }
 
-  rect.top += g_font_height;
-  rect.bottom += g_font_height;
+  rect.top += font_height;
+  rect.bottom += font_height;
 }
 
-static auto DrawTriStateSoftSwitch(Rect_t& rect, int address,
+static auto DrawTriStateSoftSwitch(Rect& rect, int address,
                                    const int iBankDisplay, int iActive,
                                    const char* sPrefix, const char* sOn,
                                    const char* sOff,
@@ -269,7 +269,7 @@ static auto DrawTriStateSoftSwitch(Rect_t& rect, int address,
   if (bSet) {
     DrawSoftSwitch(rect, address, bSet, nullptr, sOn, sOff, " ", bg_default);
   } else {
-    Rect_t temp = rect;
+    Rect temp = rect;
     int iBank = ((get_mem_mode() & MF_HRAM_BANK2) != 0U) ? 2 : 1;
     bool bDisabled = ((iActive == 0) && (iBank == iBankDisplay));
 
@@ -292,14 +292,14 @@ static auto DrawTriStateSoftSwitch(Rect_t& rect, int address,
     DebuggerSetColorFG(DebuggerGetColor(FG_INFO_TITLE));
     PrintTextCursorX(" ", temp);
 
-    rect.top += g_font_height;
-    rect.bottom += g_font_height;
+    rect.top += font_height;
+    rect.bottom += font_height;
   }
 }
 
-static auto DrawSoftSwitchLanguageCardBank(Rect_t& rect, const int iBankDisplay,
+static auto DrawSoftSwitchLanguageCardBank(Rect& rect, const int iBankDisplay,
                                            int bg_default = BG_INFO) -> void {
-  const int w = g_font_config[FONT_DISASM_DEFAULT].font_width_avg;
+  const int w = font_config[FONT_DISASM_DEFAULT].font_width_avg;
   const int dx80 = 7 * w;
   const int dx88 = 8 * w;
 
@@ -319,8 +319,8 @@ static auto DrawSoftSwitchLanguageCardBank(Rect_t& rect, const int iBankDisplay,
   DrawTriStateSoftSwitch(rect, address, iBankDisplay, iBankActive, nullptr, sOn,
                          sOff, " ", bg_default);
 
-  rect.top -= g_font_height;
-  rect.bottom -= g_font_height;
+  rect.top -= font_height;
+  rect.bottom -= font_height;
 
   if (iBankDisplay == 2) {
     rect.left += dx80;
@@ -343,16 +343,16 @@ static auto DrawSoftSwitchLanguageCardBank(Rect_t& rect, const int iBankDisplay,
     PrintTextCursorX("   ", rect);
   }
 
-  rect.top += g_font_height;
-  rect.bottom += g_font_height;
+  rect.top += font_height;
+  rect.bottom += font_height;
 }
 
-static auto DrawSoftSwitchMainAuxBanks(Rect_t& rect) -> void {
-  Rect_t temp = rect;
-  rect.top += g_font_height;
-  rect.bottom += g_font_height;
+static auto DrawSoftSwitchMainAuxBanks(Rect& rect) -> void {
+  Rect temp = rect;
+  rect.top += font_height;
+  rect.bottom += font_height;
 
-  int w = g_font_config[FONT_DISASM_DEFAULT].font_width_avg;
+  int w = font_config[FONT_DISASM_DEFAULT].font_width_avg;
   int dx = 7 * w;
 
   int address = 0xC002;
@@ -361,8 +361,8 @@ static auto DrawSoftSwitchMainAuxBanks(Rect_t& rect) -> void {
   temp.right = rect.left + dx;
   DrawSoftSwitch(temp, address, !bMainRead, "R", "m", "x", nullptr, BG_DATA_2);
 
-  temp.top -= g_font_height;
-  temp.bottom -= g_font_height;
+  temp.top -= font_height;
+  temp.bottom -= font_height;
   temp.left += dx;
   temp.right += 3 * w;
 
@@ -372,13 +372,13 @@ static auto DrawSoftSwitchMainAuxBanks(Rect_t& rect) -> void {
 }
 
 auto DrawSoftSwitches(int iSoftSwitch) -> void {
-  Rect_t rect;
-  int nFontWidth = g_font_config[FONT_INFO].font_width_avg;
+  Rect rect;
+  int nFontWidth = font_config[FONT_INFO].font_width_avg;
 
   rect.left = DISPLAY_SOFTSWITCH_COLUMN;
-  rect.top = iSoftSwitch * g_font_height;
+  rect.top = iSoftSwitch * font_height;
   rect.right = rect.left + (10 * nFontWidth) + 1;
-  rect.bottom = rect.top + g_font_height;
+  rect.bottom = rect.top + font_height;
 
   DebuggerSetColorBG(DebuggerGetColor(BG_INFO));
   DebuggerSetColorFG(DebuggerGetColor(FG_INFO_TITLE));
@@ -424,7 +424,7 @@ auto DrawSoftSwitches(int iSoftSwitch) -> void {
 }
 
 auto DrawTargets(int line) -> void {
-  if ((g_window_this != WINDOW_CODE) && !(g_window_this == WINDOW_DATA)) {
+  if ((window_this != WINDOW_CODE) && !(window_this == WINDOW_DATA)) {
     return;
   }
 
@@ -435,8 +435,8 @@ auto DrawTargets(int line) -> void {
 
   aTarget[1] = aTarget[2];
 
-  Rect_t rect;
-  int nFontWidth = g_font_config[FONT_INFO].font_width_avg;
+  Rect rect;
+  int nFontWidth = font_config[FONT_INFO].font_width_avg;
 
   int iAddress = MAX_DISPLAY_TARGET_PTR_LINES;
   while ((iAddress--) != 0) {
@@ -456,10 +456,10 @@ auto DrawTargets(int line) -> void {
     }
 
     rect.left = DISPLAY_TARGETS_COLUMN;
-    rect.top = (line + iAddress) * g_font_height;
+    rect.top = (line + iAddress) * font_height;
     int nColumn = rect.left + (7 * nFontWidth);
     rect.right = nColumn;
-    rect.bottom = rect.top + g_font_height;
+    rect.bottom = rect.top + font_height;
 
     if (iAddress == 0) {
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_ADDRESS));
@@ -472,15 +472,15 @@ auto DrawTargets(int line) -> void {
 }
 
 auto DrawWatches(int line) -> void {
-  if ((g_window_this != WINDOW_CODE) && !(g_window_this == WINDOW_DATA)) {
+  if ((window_this != WINDOW_CODE) && !(window_this == WINDOW_DATA)) {
     return;
   }
 
-  Rect_t rect;
+  Rect rect;
   rect.left = DISPLAY_WATCHES_COLUMN;
-  rect.top = (line * g_font_height);
+  rect.top = (line * font_height);
   rect.right = DISPLAY_WIDTH;
-  rect.bottom = rect.top + g_font_height;
+  rect.bottom = rect.top + font_height;
 
   char sText[16] = "Watches";
 
@@ -488,8 +488,8 @@ auto DrawWatches(int line) -> void {
 
   int iWatch = 0;
   for (iWatch = 0; iWatch < MAX_WATCHES; iWatch++) {
-    if (g_watches[iWatch].bEnabled) {
-      Rect_t rect2 = rect;
+    if (watches[iWatch].bEnabled) {
+      Rect rect2 = rect;
 
       DebuggerSetColorBG(DebuggerGetColor(BG_INFO_WATCH));
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_TITLE));
@@ -499,7 +499,7 @@ auto DrawWatches(int line) -> void {
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_BULLET));
       PrintTextCursorX(sText, rect2);
 
-      snprintf(sText, sizeof(sText), "%04X", g_watches[iWatch].address);
+      snprintf(sText, sizeof(sText), "%04X", watches[iWatch].address);
       DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_ADDRESS));
       PrintTextCursorX(sText, rect2);
 
@@ -508,13 +508,13 @@ auto DrawWatches(int line) -> void {
 
       uint8_t nTarget8 = 0;
 
-      nTarget8 = static_cast<unsigned>(*(mem + g_watches[iWatch].address));
+      nTarget8 = static_cast<unsigned>(*(mem + watches[iWatch].address));
       snprintf(sText, sizeof(sText), "%02X", nTarget8);
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_OPCODE));
       PrintTextCursorX(sText, rect2);
 
       nTarget8 = static_cast<unsigned>(
-          *(mem + static_cast<uint16_t>(g_watches[iWatch].address + 1)));
+          *(mem + static_cast<uint16_t>(watches[iWatch].address + 1)));
       snprintf(sText, sizeof(sText), "%02X", nTarget8);
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_OPCODE));
       PrintTextCursorX(sText, rect2);
@@ -524,8 +524,8 @@ auto DrawWatches(int line) -> void {
       PrintTextCursorX(sText, rect2);
 
       uint16_t nTarget16 =
-          *(mem + g_watches[iWatch].address) |
-          (*(mem + static_cast<uint16_t>(g_watches[iWatch].address + 1)) << 8);
+          *(mem + watches[iWatch].address) |
+          (*(mem + static_cast<uint16_t>(watches[iWatch].address + 1)) << 8);
       snprintf(sText, sizeof(sText), "%04X", nTarget16);
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_ADDRESS));
       PrintTextCursorX(sText, rect2);
@@ -533,8 +533,8 @@ auto DrawWatches(int line) -> void {
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_OPERATOR));
       PrintTextCursorX(")", rect2);
 
-      rect.top += g_font_height;
-      rect.bottom += g_font_height;
+      rect.top += font_height;
+      rect.bottom += font_height;
 
       rect2 = rect;
 
@@ -557,21 +557,21 @@ auto DrawWatches(int line) -> void {
         PrintTextCursorX(sText, rect2);
       }
     }
-    rect.top += g_font_height;
-    rect.bottom += g_font_height;
+    rect.top += font_height;
+    rect.bottom += font_height;
   }
 }
 
 auto DrawZeroPagePointers(int line) -> void {
-  if ((g_window_this != WINDOW_CODE) && !(g_window_this == WINDOW_DATA)) {
+  if ((window_this != WINDOW_CODE) && !(window_this == WINDOW_DATA)) {
     return;
   }
 
-  int nFontWidth = g_font_config[FONT_INFO].font_width_avg;
+  int nFontWidth = font_config[FONT_INFO].font_width_avg;
 
-  Rect_t rect;
-  rect.top = line * g_font_height;
-  rect.bottom = rect.top + g_font_height;
+  Rect rect;
+  rect.top = line * font_height;
+  rect.bottom = rect.top + font_height;
   rect.left = DISPLAY_ZEROPAGE_COLUMN;
   rect.right = rect.left + (10 * nFontWidth);
 
@@ -581,9 +581,9 @@ auto DrawZeroPagePointers(int line) -> void {
   char sText[nMaxSymbolLen + 1] = "";
 
   for (int iZP = 0; iZP < MAX_ZEROPAGE_POINTERS; iZP++) {
-    Rect_t rect2 = rect;
+    Rect rect2 = rect;
 
-    Breakpoint_t* pZP = &g_zero_page_pointers[iZP];
+    Breakpoint* pZP = &zero_page_pointers[iZP];
     bool bEnabled = pZP->bEnabled;
 
     if (bEnabled) {
@@ -594,8 +594,8 @@ auto DrawZeroPagePointers(int line) -> void {
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_BULLET));
       PrintTextCursorX(sText, rect2);
 
-      uint8_t nZPAddr1 = g_zero_page_pointers[iZP].address & 0xFF;
-      uint8_t nZPAddr2 = (g_zero_page_pointers[iZP].address + 1) & 0xFF;
+      uint8_t nZPAddr1 = zero_page_pointers[iZP].address & 0xFF;
+      uint8_t nZPAddr2 = (zero_page_pointers[iZP].address + 1) & 0xFF;
 
       const char* pSymbol2 = GetSymbol(nZPAddr2, 2);
       const char* pSymbol1 = GetSymbol(nZPAddr1, 2);
@@ -622,8 +622,8 @@ auto DrawZeroPagePointers(int line) -> void {
       PrintText(sText, rect2);
 
       rect2.left = rect.left;
-      rect2.top += g_font_height;
-      rect2.bottom += g_font_height;
+      rect2.top += font_height;
+      rect2.bottom += font_height;
 
       snprintf(sText, sizeof(sText), "%02X", nZPAddr1);
       DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_ADDRESS));
@@ -646,12 +646,12 @@ auto DrawZeroPagePointers(int line) -> void {
       DebuggerSetColorFG(DebuggerGetColor(FG_INFO_OPCODE));
       PrintTextCursorX(sText, rect2);
     }
-    rect.top += (g_font_height * 2);
-    rect.bottom += (g_font_height * 2);
+    rect.top += (font_height * 2);
+    rect.bottom += (font_height * 2);
   }
 }
 
-static auto DrawSubWindow_Data(Update_t bUpdate) -> void {
+static auto DrawSubWindow_Data(UpdateResult bUpdate) -> void {
   (void)bUpdate;
   int iBackground = 0;
 
@@ -667,17 +667,17 @@ static auto DrawSubWindow_Data(Update_t bUpdate) -> void {
 
   int iMemDump = 0;
 
-  MemoryDump_t* pMD = &g_mem_dump[iMemDump];
+  MemoryDump* pMD = &mem_dump[iMemDump];
   uint16_t address = pMD->address;
 
-  Rect_t rect;
+  Rect rect;
   rect.top = 0 + 0;
 
   int byte = 0;
   uint16_t iAddress = address;
 
   int iLine = 0;
-  int nLines = g_disasm_win_height;
+  int nLines = disasm_win_height;
 
   for (iLine = 0; iLine < nLines; iLine++) {
     iAddress = address;
@@ -694,7 +694,7 @@ static auto DrawSubWindow_Data(Update_t bUpdate) -> void {
     }
     sOpcodes[static_cast<size_t>(nMaxOpcodes) * 3U] = 0;
 
-    int nFontHeight = g_font_config[FONT_DISASM_DEFAULT].line_height;
+    int nFontHeight = font_config[FONT_DISASM_DEFAULT].line_height;
 
     rect.left = 0;
     const int DISPLAY_DISASM_RIGHT = 353;
@@ -712,7 +712,7 @@ static auto DrawSubWindow_Data(Update_t bUpdate) -> void {
     PrintTextCursorX((const char*)sAddress, rect);
 
     DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_OPERATOR));
-    if (g_config_disasm_address_colon) {
+    if (config_disasm_address_colon) {
       PrintTextCursorX(":", rect);
     }
 
@@ -728,7 +728,7 @@ static auto DrawSubWindow_Data(Update_t bUpdate) -> void {
 
     DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_CHAR));
 
-    MemoryView_e eView = pMD->eView;
+    MemoryView eView = pMD->eView;
     if ((eView != MEM_VIEW_ASCII) && (eView != MEM_VIEW_APPLE)) {
       eView = MEM_VIEW_ASCII;
     }
@@ -753,28 +753,28 @@ static auto DrawSubWindow_Data(Update_t bUpdate) -> void {
   }
 }
 
-auto DrawSubWindow_Symbols(Update_t bUpdate) -> void { (void)bUpdate; }
+auto DrawSubWindow_Symbols(UpdateResult bUpdate) -> void { (void)bUpdate; }
 
-auto DrawSubWindow_ZeroPage(Update_t bUpdate) -> void { (void)bUpdate; }
+auto DrawSubWindow_ZeroPage(UpdateResult bUpdate) -> void { (void)bUpdate; }
 
-auto DrawWindow_Data(Update_t bUpdate) -> void {
-  DrawSubWindow_Data(g_window_this);
-  DrawSubWindow_Info(bUpdate, g_window_this);
+auto DrawWindow_Data(UpdateResult bUpdate) -> void {
+  DrawSubWindow_Data(window_this);
+  DrawSubWindow_Info(bUpdate, window_this);
 }
 
-auto DrawWindow_IO(Update_t bUpdate) -> void {
-  DrawSubWindow_IO(g_window_this);
-  DrawSubWindow_Info(bUpdate, g_window_this);
+auto DrawWindow_IO(UpdateResult bUpdate) -> void {
+  DrawSubWindow_IO(window_this);
+  DrawSubWindow_Info(bUpdate, window_this);
 }
 
-auto DrawWindow_Symbols(Update_t bUpdate) -> void {
-  DrawSubWindow_Symbols(g_window_this);
-  DrawSubWindow_Info(bUpdate, g_window_this);
+auto DrawWindow_Symbols(UpdateResult bUpdate) -> void {
+  DrawSubWindow_Symbols(window_this);
+  DrawSubWindow_Info(bUpdate, window_this);
 }
 
-auto DrawWindow_ZeroPage(Update_t bUpdate) -> void {
+auto DrawWindow_ZeroPage(UpdateResult bUpdate) -> void {
   DrawSubWindow_ZeroPage(bUpdate);
-  DrawSubWindow_Info(bUpdate, g_window_this);
+  DrawSubWindow_Info(bUpdate, window_this);
 }
 
 auto DrawVideoScannerInfo(int line) -> void { (void)line; }

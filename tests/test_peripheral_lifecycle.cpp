@@ -26,18 +26,18 @@
 #include "test_fixtures.h"
 #include "test_fixtures_core.h"
 
-static bool g_mock_shutdown_called = false;
+static bool mock_shutdown_called = false;
 
-static auto Mock_Init(int slot, HostInterface_t* host) -> void* {
+static auto Mock_Init(int slot, HostInterface* host) -> void* {
   (void)slot;
-  g_mock_shutdown_called = false;
+  mock_shutdown_called = false;
   // We'll use a dummy pointer as the instance.
   void* instance = (void*)0xDEADBEEF;
   host->RegisterDirectIO(
       instance, 0xC000,
       [](void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
          uint32_t) -> uint8_t {
-        if (instance == (void*)0xDEADBEEF && !g_mock_shutdown_called) {
+        if (instance == (void*)0xDEADBEEF && !mock_shutdown_called) {
           return 0xAA;
         }
         return 0xEE;
@@ -48,11 +48,11 @@ static auto Mock_Init(int slot, HostInterface_t* host) -> void* {
 
 static auto Mock_Shutdown(void* instance) -> void {
   if (instance == (void*)0xDEADBEEF) {
-    g_mock_shutdown_called = true;
+    mock_shutdown_called = true;
   }
 }
 
-static Peripheral_t g_mock_peripheral = {
+static Peripheral mock_peripheral = {
     LINAPPLE_ABI_VERSION,
     "test.mock",
     "MockPeripheral",
@@ -73,30 +73,30 @@ static Peripheral_t g_mock_peripheral = {
 };
 
 TEST_CASE("Peripheral Manager: Direct IO handlers are cleared during re-init") {
-  TestFixtures::ScopedTestConfig_t machine(
-      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  TestFixtures::ScopedTestConfig machine(
+      TestFixtures::ScopedTestConfig::enhanced_2e_only());
   machine.load();
   linapple_init();
 
   // 1. Initial setup
   peripheral_manager_init();
-  peripheral_register(&g_mock_peripheral, 1);
+  peripheral_register(&mock_peripheral, 1);
 
   // Verify it works
   CHECK(io_map_dispatch(0, 0xC000, 0, 0, 0) == 0xAA);
 
   // 2. Re-init
   // The bug is that peripheral_manager_init calls clear_all_peripherals()
-  // which frees instances, but hasn't yet zeroed g_num_direct_handlers.
+  // which frees instances, but hasn't yet zeroed num_direct_handlers.
   // If we call io_map_dispatch after clear_all_peripherals() but before
-  // g_num_direct_handlers = 0, we get a UAF or access to stale instance.
+  // num_direct_handlers = 0, we get a UAF or access to stale instance.
 
   peripheral_manager_init();
 
   // After Init, the old handler should be gone.
   // In the buggy version, if we hadn't called the second part of Init,
   // this would hit the lambda with a stale instance or 0xDEADBEEF but
-  // g_mock_shutdown_called=true.
+  // mock_shutdown_called=true.
 
   // Actually, io_map_dispatch should return floating bus (0) or default io_null
   // if no handler is found. io_null returns mem_read_floating_bus which might
@@ -112,14 +112,14 @@ TEST_CASE("Peripheral Manager: Direct IO handlers are cleared during re-init") {
 TEST_CASE(
     "Peripheral Manager: Direct IO handlers are cleared when a peripheral is "
     "unregistered") {
-  TestFixtures::ScopedTestConfig_t machine(
-      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  TestFixtures::ScopedTestConfig machine(
+      TestFixtures::ScopedTestConfig::enhanced_2e_only());
   machine.load();
   linapple_init();
   peripheral_manager_init();
 
   // 1. Register
-  peripheral_register(&g_mock_peripheral, 1);
+  peripheral_register(&mock_peripheral, 1);
   CHECK(io_map_dispatch(0, 0xC000, 0, 0, 0) == 0xAA);
 
   // 2. Unregister
@@ -138,18 +138,18 @@ TEST_CASE(
 }
 
 TEST_CASE("Peripheral Manager: host_get_config lifetime") {
-  TestFixtures::ScopedTestConfig_t machine(
-      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  TestFixtures::ScopedTestConfig machine(
+      TestFixtures::ScopedTestConfig::enhanced_2e_only());
   machine.load();
   linapple_init();
   peripheral_manager_init();
 
-  // We need a way to get the HostInterface_t.
+  // We need a way to get the HostInterface.
   // We can use a dummy peripheral and register it.
   static char captured_val1[32];
   static char captured_val2[32];
 
-  static Peripheral_t test_api_config = {
+  static Peripheral test_api_config = {
       LINAPPLE_ABI_VERSION,
       "test.config",
       "ConfigTest",
@@ -158,7 +158,7 @@ TEST_CASE("Peripheral Manager: host_get_config lifetime") {
       "1.0.0",
       0xFF,
       -1,
-      [](int slot, HostInterface_t* host) -> void* {
+      [](int slot, HostInterface* host) -> void* {
         (void)slot;
         host->GetConfig("Peripheral", "TestKey1", captured_val1,
                         sizeof(captured_val1));
@@ -213,8 +213,8 @@ TEST_CASE("Peripheral Manager: Plugin path construction") {
 }
 
 TEST_CASE("Peripheral Manager: Command payload capacity") {
-  TestFixtures::ScopedTestConfig_t machine(
-      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  TestFixtures::ScopedTestConfig machine(
+      TestFixtures::ScopedTestConfig::enhanced_2e_only());
   machine.load();
   linapple_init();
   peripheral_manager_init();
@@ -222,7 +222,7 @@ TEST_CASE("Peripheral Manager: Command payload capacity") {
   static size_t captured_size = 0;
   static uint8_t last_byte = 0;
 
-  static Peripheral_t test_api = {
+  static Peripheral test_api = {
       LINAPPLE_ABI_VERSION,
       "test.max_payload",
       "MaxPayloadTest",
@@ -231,14 +231,14 @@ TEST_CASE("Peripheral Manager: Command payload capacity") {
       "1.0.0",
       0xFF,
       -1,
-      [](int, HostInterface_t*) -> void* { return (void*)0x1; },
+      [](int, HostInterface*) -> void* { return (void*)0x1; },
       nullptr,
       nullptr,
       nullptr,
       nullptr,
       nullptr,
       nullptr,
-      [](void*, uint32_t, const void* data, size_t size) -> PeripheralStatus_t {
+      [](void*, uint32_t, const void* data, size_t size) -> PeripheralStatus {
         captured_size = size;
         if (size > 0) {
           last_byte = static_cast<const uint8_t*>(data)[size - 1];
@@ -254,7 +254,7 @@ TEST_CASE("Peripheral Manager: Command payload capacity") {
   std::vector<uint8_t> payload(512, 0xAA);
   payload.back() = 0xBB;
 
-  PeripheralStatus_t status =
+  PeripheralStatus status =
       peripheral_command(1, 0x123, payload.data(), payload.size());
   CHECK(status == peripheral_ok);
 
@@ -279,8 +279,8 @@ TEST_CASE("Peripheral Manager: Command payload capacity") {
 
 TEST_CASE(
     "Peripheral Manager: Dynamic plugin loader success path and lifecycle") {
-  TestFixtures::ScopedTestConfig_t machine(
-      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  TestFixtures::ScopedTestConfig machine(
+      TestFixtures::ScopedTestConfig::enhanced_2e_only());
   machine.load();
   linapple_init();
   peripheral_manager_init();
@@ -289,7 +289,7 @@ TEST_CASE(
   peripheral_plugins_init(exec_dir.c_str());
 
   // 1. Verify clock plugin resolution and ABI
-  Peripheral_t* clock_desc = peripheral_find_internal("linapple.clock");
+  Peripheral* clock_desc = peripheral_find_internal("linapple.clock");
   REQUIRE(clock_desc != nullptr);
   CHECK(clock_desc->abi_version == LINAPPLE_ABI_VERSION);
   CHECK(std::string(clock_desc->id) == "linapple.clock");
@@ -304,7 +304,7 @@ TEST_CASE(
   // Subsequent dlopen verifies only published descriptor symbol is visible.
   void* clock_handle = dlopen(clock_path, RTLD_NOW | RTLD_LOCAL);
   REQUIRE(clock_handle != nullptr);
-  auto* exported = static_cast<Peripheral_t*>(
+  auto* exported = static_cast<Peripheral*>(
       dlsym(clock_handle, "linapple_peripheral_descriptor"));
   REQUIRE(exported != nullptr);
   CHECK(std::string(exported->id) == "linapple.clock");
@@ -312,7 +312,7 @@ TEST_CASE(
   dlclose(clock_handle);
 
   // 2. Verify printer plugin resolution and ABI
-  Peripheral_t* printer_desc = peripheral_find_internal("linapple.printer");
+  Peripheral* printer_desc = peripheral_find_internal("linapple.printer");
   REQUIRE(printer_desc != nullptr);
   CHECK(printer_desc->abi_version == LINAPPLE_ABI_VERSION);
   CHECK(std::string(printer_desc->id) == "linapple.printer");
@@ -326,7 +326,7 @@ TEST_CASE(
 
   void* printer_handle = dlopen(printer_path, RTLD_NOW | RTLD_LOCAL);
   REQUIRE(printer_handle != nullptr);
-  auto* printer_exported = static_cast<Peripheral_t*>(
+  auto* printer_exported = static_cast<Peripheral*>(
       dlsym(printer_handle, "linapple_peripheral_descriptor"));
   REQUIRE(printer_exported != nullptr);
   CHECK(std::string(printer_exported->id) == "linapple.printer");
@@ -345,24 +345,24 @@ TEST_CASE(
   REQUIRE(clock_desc->load_state != nullptr);
   size_t state_sz = 0;
   peripheral_save_state(4, nullptr, &state_sz);
-  REQUIRE(state_sz == sizeof(ClockCardSaveState_t));
+  REQUIRE(state_sz == sizeof(ClockCardSaveState));
   std::vector<uint8_t> state_buf(state_sz, 0);
   peripheral_save_state(4, state_buf.data(), &state_sz);
-  CHECK(state_sz == sizeof(ClockCardSaveState_t));
+  CHECK(state_sz == sizeof(ClockCardSaveState));
   peripheral_load_state(4, state_buf.data(), state_sz);
 
   // Test minimal host interface directly against plugin entry points.
-  HostInterface_t bare_host{};
+  HostInterface bare_host{};
   bare_host.RegisterIO = [](int, PeripheralIOHandler, PeripheralIOHandler,
                             PeripheralIOHandler, PeripheralIOHandler) {};
   bare_host.RegisterCxROM = [](int, const uint8_t*) {};
-  bare_host.GetLocalTime = [](HostLocalTime_t*) -> bool { return false; };
+  bare_host.GetLocalTime = [](HostLocalTime*) -> bool { return false; };
   bare_host.ReadFloatingBus = [](uint32_t) -> uint8_t { return 0; };
   void* bare_card = clock_desc->init(4, &bare_host);
   REQUIRE(bare_card != nullptr);
   size_t probe = 0;
   CHECK(clock_desc->save_state(bare_card, nullptr, &probe) == peripheral_ok);
-  CHECK(probe == sizeof(ClockCardSaveState_t));
+  CHECK(probe == sizeof(ClockCardSaveState));
   CHECK(clock_desc->save_state(bare_card, state_buf.data(), &state_sz) ==
         peripheral_ok);
   CHECK(clock_desc->load_state(bare_card, state_buf.data(), state_sz) ==
@@ -383,15 +383,15 @@ TEST_CASE("Peripheral Manager: A declared machine reaches the slots") {
   // core and then cleared the slots left every card to be registered by hand,
   // so the declaration described nothing and the hand registration was the
   // only truth.
-  TestFixtures::ScopedTestConfig_t::Description_t description;
+  TestFixtures::ScopedTestConfig::Description description;
 #ifdef ENABLE_PERIPHERAL_MOCKINGBOARD
   description.slots[3] = "Mockingboard";
 #endif
 #ifdef ENABLE_PERIPHERAL_DISK
   description.slots[5] = "Disk II";
 #endif
-  TestFixtures::ScopedTestConfig_t config(description);
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedTestConfig config(description);
+  TestFixtures::ScopedCore core(config);
 
   SS_PERIPHERAL_MANIFEST manifest;
   peripheral_get_manifest(&manifest);
@@ -418,8 +418,8 @@ TEST_CASE(
   // Slot 0 is the one slot no configuration key names, so a plugin reaches it
   // only by declaring it. Without this the internal speaker vanishes from
   // every build that ships it as a shared object.
-  TestFixtures::ScopedTestConfig_t config(
-      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  TestFixtures::ScopedTestConfig config(
+      TestFixtures::ScopedTestConfig::enhanced_2e_only());
   REQUIRE(config.load());
 
   peripheral_plugins_shutdown();
@@ -440,7 +440,7 @@ TEST_CASE(
 TEST_CASE(
     "Peripheral Manager: Plugin loader ABI verification and error handling") {
   SUBCASE("ABI mismatch rejection") {
-    Peripheral_t mismatched_api = {
+    Peripheral mismatched_api = {
         LINAPPLE_ABI_VERSION + 99,
         "test.mismatched_abi",
         "MismatchedABITest",
@@ -475,7 +475,7 @@ TEST_CASE(
     REQUIRE(self_handle != nullptr);
 
     // Missing descriptor symbol on arbitrary handle
-    auto* missing = reinterpret_cast<Peripheral_t*>(
+    auto* missing = reinterpret_cast<Peripheral*>(
         dlsym(self_handle, "nonexistent_peripheral_descriptor_symbol"));
     CHECK(missing == nullptr);
 
@@ -489,11 +489,11 @@ TEST_CASE(
   // the manifest names. Static initialisation gives no order of its own, so
   // the registry has to, and ids descend so that the speaker stays the front
   // device older readers compare the manifest with.
-  TestFixtures::ScopedTestConfig_t config(
-      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedTestConfig config(
+      TestFixtures::ScopedTestConfig::enhanced_2e_only());
+  TestFixtures::ScopedCore core(config);
 
-  const std::vector<Peripheral_t*>& registry =
+  const std::vector<Peripheral*>& registry =
       peripheral_get_builtin_registry();
   REQUIRE(registry.size() >= 2);
   for (size_t i = 1; i < registry.size(); ++i) {
@@ -504,8 +504,8 @@ TEST_CASE(
     CHECK(std::strcmp(registry[i - 1]->id, registry[i]->id) > 0);
   }
 
-  const Peripheral_t* front = nullptr;
-  for (const Peripheral_t* p : registry) {
+  const Peripheral* front = nullptr;
+  for (const Peripheral* p : registry) {
     if (p->default_slot == 0) {
       front = p;
       break;
@@ -549,7 +549,7 @@ TEST_CASE(
   std::string log;
   Logger::set_callback_with_context(record_log_line, &log);
 
-  TestFixtures::ScopedTestConfig_t::Description_t description;
+  TestFixtures::ScopedTestConfig::Description description;
   description.slots[0] = "Parallel Printer";
   description.slots[1] = "Super Serial Card";
   description.slots[3] = "Mockingboard";
@@ -561,8 +561,8 @@ TEST_CASE(
   description.slots[6] = "Harddisk";
 #endif
   {
-    TestFixtures::ScopedTestConfig_t config(description);
-    TestFixtures::ScopedCore_t core(config);
+    TestFixtures::ScopedTestConfig config(description);
+    TestFixtures::ScopedCore core(config);
 
     CHECK(log.find("Too many direct IO handlers") == std::string::npos);
 
@@ -578,9 +578,9 @@ TEST_CASE(
     constexpr uint16_t last_paddle = 0xC067;
     constexpr uint16_t paddle_strobe = 0xC070;
     constexpr uint64_t long_after_any_pulse = 1000000;
-    TestFixtures::ScopedCore_t::poke(
+    TestFixtures::ScopedCore::poke(
         video_get_scanner_address(nullptr, probe_cycle), &marker, 1);
-    g_cumulative_cycles = long_after_any_pulse;
+    cumulative_cycles = long_after_any_pulse;
     // PB2 has no pull-down on the keyboard or in a two-button plug, so its
     // open TTL input reads high (Sather, Understanding the Apple II, 7-9 and
     // 7-11); PB0, PB1 and the expired timers read low.
@@ -603,16 +603,16 @@ TEST_CASE(
 namespace {
 
 constexpr size_t page_size = 256;
-std::array<uint8_t, page_size> g_page_card_rom{};
+std::array<uint8_t, page_size> page_card_rom{};
 
-auto page_card_init(int slot, HostInterface_t* host) -> void* {
-  host->RegisterCxROM(slot, g_page_card_rom.data());
-  return g_page_card_rom.data();
+auto page_card_init(int slot, HostInterface* host) -> void* {
+  host->RegisterCxROM(slot, page_card_rom.data());
+  return page_card_rom.data();
 }
 
 auto page_card_shutdown(void* instance) -> void { (void)instance; }
 
-Peripheral_t g_page_card = {
+Peripheral page_card = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "test.page_card",
     .name = "Page Card",
@@ -637,18 +637,18 @@ Peripheral_t g_page_card = {
 TEST_CASE(
     "Peripheral Manager: an unregistered card's $Cn00 page reads zero in the "
     "store and the live image") {
-  TestFixtures::ScopedTestConfig_t config(
-      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedTestConfig config(
+      TestFixtures::ScopedTestConfig::enhanced_2e_only());
+  TestFixtures::ScopedCore core(config);
 
   for (size_t i = 0; i < page_size; ++i) {
-    g_page_card_rom.at(i) = static_cast<uint8_t>(i ^ 0xA5);
+    page_card_rom.at(i) = static_cast<uint8_t>(i ^ 0xA5);
   }
   constexpr int slot = 4;
   constexpr uint16_t page = 0xC400;
-  REQUIRE(peripheral_register(&g_page_card, slot) == 0);
-  REQUIRE(mem[page] == g_page_card_rom.at(0));
-  REQUIRE(mem[page + page_size - 1] == g_page_card_rom.at(page_size - 1));
+  REQUIRE(peripheral_register(&page_card, slot) == 0);
+  REQUIRE(mem[page] == page_card_rom.at(0));
+  REQUIRE(mem[page + page_size - 1] == page_card_rom.at(page_size - 1));
 
   REQUIRE(peripheral_unregister(slot) == 0);
   const uint8_t* store = mem_get_cx_rom_peripheral() + (slot * page_size);
@@ -662,15 +662,15 @@ namespace {
 
 // A card that keeps its host, so a case can report activity the way a card
 // does: through the host interface and nothing else.
-HostInterface_t* g_activity_card_host = nullptr;
+HostInterface* activity_card_host = nullptr;
 
-auto activity_card_init(int slot, HostInterface_t* host) -> void* {
+auto activity_card_init(int slot, HostInterface* host) -> void* {
   (void)slot;
-  g_activity_card_host = host;
-  return &g_activity_card_host;
+  activity_card_host = host;
+  return &activity_card_host;
 }
 
-Peripheral_t g_activity_card = {
+Peripheral activity_card = {
     .abi_version = LINAPPLE_ABI_VERSION,
     .id = "test.activity_card",
     .name = "Activity Card",
@@ -695,36 +695,36 @@ constexpr const char* run_request_line = "for this run";
 // The line naming a fallback slot is the one thing a user sees of the request
 // at the default verbosity, so the level it is logged at is part of the
 // contract and a case asks for it; the shared capture drops the level.
-class ScopedLevelLog_t {
+class ScopedLevelLog {
  public:
-  struct Line_t {
+  struct Line {
     LogLevel level;
     std::string text;
   };
 
-  ScopedLevelLog_t() : verbosity_(Logger::get_verbosity()) {
+  ScopedLevelLog() : verbosity_(Logger::get_verbosity()) {
     Logger::set_verbosity(LogLevel::info);
     Logger::set_callback_with_context(collect, &lines_);
   }
-  ~ScopedLevelLog_t() {
+  ~ScopedLevelLog() {
     Logger::set_callback_with_context(nullptr, nullptr);
     Logger::set_verbosity(verbosity_);
   }
-  ScopedLevelLog_t(const ScopedLevelLog_t&) = delete;
-  auto operator=(const ScopedLevelLog_t&) -> ScopedLevelLog_t& = delete;
-  ScopedLevelLog_t(ScopedLevelLog_t&&) = delete;
-  auto operator=(ScopedLevelLog_t&&) -> ScopedLevelLog_t& = delete;
+  ScopedLevelLog(const ScopedLevelLog&) = delete;
+  auto operator=(const ScopedLevelLog&) -> ScopedLevelLog& = delete;
+  ScopedLevelLog(ScopedLevelLog&&) = delete;
+  auto operator=(ScopedLevelLog&&) -> ScopedLevelLog& = delete;
 
   auto count_containing(const std::string& needle) const -> size_t {
     size_t n = 0;
-    for (const Line_t& line : lines_) {
+    for (const Line& line : lines_) {
       n += (line.text.find(needle) != std::string::npos) ? 1 : 0;
     }
     return n;
   }
   auto count_at(LogLevel level, const std::string& needle) const -> size_t {
     size_t n = 0;
-    for (const Line_t& line : lines_) {
+    for (const Line& line : lines_) {
       n += (line.level == level && line.text.find(needle) != std::string::npos)
                ? 1
                : 0;
@@ -735,13 +735,13 @@ class ScopedLevelLog_t {
  private:
   static auto collect(LogLevel level, const char* message, void* user_data)
       -> void {
-    auto* lines = static_cast<std::vector<Line_t>*>(user_data);
+    auto* lines = static_cast<std::vector<Line>*>(user_data);
     if (lines != nullptr && message != nullptr) {
       lines->push_back({level, message});
     }
   }
 
-  std::vector<Line_t> lines_;
+  std::vector<Line> lines_;
   LogLevel verbosity_;
 };
 
@@ -750,16 +750,16 @@ class ScopedLevelLog_t {
 TEST_CASE(
     "Peripheral Manager: peripheral_slot_of names the lowest slot holding the "
     "id and -1 for none") {
-  TestFixtures::ScopedTestConfig_t config(
-      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedTestConfig config(
+      TestFixtures::ScopedTestConfig::enhanced_2e_only());
+  TestFixtures::ScopedCore core(config);
 
   CHECK(peripheral_slot_of("test.page_card") == -1);
   CHECK(peripheral_slot_of(nullptr) == -1);
 
-  REQUIRE(peripheral_register(&g_page_card, 5) == 0);
+  REQUIRE(peripheral_register(&page_card, 5) == 0);
   CHECK(peripheral_slot_of("test.page_card") == 5);
-  REQUIRE(peripheral_register(&g_activity_card, 2) == 0);
+  REQUIRE(peripheral_register(&activity_card, 2) == 0);
   CHECK(peripheral_slot_of("test.page_card") == 5);
   CHECK(peripheral_slot_of("test.activity_card") == 2);
 
@@ -768,45 +768,45 @@ TEST_CASE(
   CHECK(peripheral_slot_of("test.activity_card") == 2);
 
   // Two of one card: the lower slot is the answer.
-  REQUIRE(peripheral_register(&g_page_card, 6) == 0);
-  REQUIRE(peripheral_register(&g_page_card, 3) == 0);
+  REQUIRE(peripheral_register(&page_card, 6) == 0);
+  REQUIRE(peripheral_register(&page_card, 3) == 0);
   CHECK(peripheral_slot_of("test.page_card") == 3);
 }
 
 TEST_CASE(
     "Peripheral Manager: an activity poll answers once per report, clears on "
     "the read and leaves the level alone") {
-  TestFixtures::ScopedTestConfig_t config(
-      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedTestConfig config(
+      TestFixtures::ScopedTestConfig::enhanced_2e_only());
+  TestFixtures::ScopedCore core(config);
   constexpr int slot = 5;
-  REQUIRE(peripheral_register(&g_activity_card, slot) == 0);
-  REQUIRE(g_activity_card_host != nullptr);
-  REQUIRE(g_activity_card_host->NotifyActivityChanged != nullptr);
+  REQUIRE(peripheral_register(&activity_card, slot) == 0);
+  REQUIRE(activity_card_host != nullptr);
+  REQUIRE(activity_card_host->NotifyActivityChanged != nullptr);
 
   CHECK_FALSE(peripheral_activity_poll(slot));
   CHECK_FALSE(peripheral_is_any_active());
 
-  g_activity_card_host->NotifyActivityChanged(slot, true);
+  activity_card_host->NotifyActivityChanged(slot, true);
   CHECK(peripheral_is_any_active());
   CHECK(peripheral_activity_poll(slot));
   CHECK_FALSE(peripheral_activity_poll(slot));
   CHECK(peripheral_is_any_active());
 
-  g_activity_card_host->NotifyActivityChanged(slot, false);
+  activity_card_host->NotifyActivityChanged(slot, false);
   CHECK_FALSE(peripheral_activity_poll(slot));
   CHECK_FALSE(peripheral_is_any_active());
 
   // A burst that starts and ends between two polls is still seen once.
-  g_activity_card_host->NotifyActivityChanged(slot, true);
-  g_activity_card_host->NotifyActivityChanged(slot, false);
+  activity_card_host->NotifyActivityChanged(slot, true);
+  activity_card_host->NotifyActivityChanged(slot, false);
   CHECK(peripheral_activity_poll(slot));
   CHECK_FALSE(peripheral_activity_poll(slot));
 
   CHECK_FALSE(peripheral_activity_poll(-1));
   CHECK_FALSE(peripheral_activity_poll(static_cast<int>(num_slots)));
 
-  g_activity_card_host->NotifyActivityChanged(slot, true);
+  activity_card_host->NotifyActivityChanged(slot, true);
   peripheral_manager_reset();
   CHECK_FALSE(peripheral_activity_poll(slot));
 }
@@ -814,10 +814,10 @@ TEST_CASE(
 TEST_CASE(
     "Peripheral Manager: a run request for a card the build lacks installs "
     "nothing and reports no slot") {
-  TestFixtures::ScopedTestConfig_t config(
-      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  TestFixtures::ScopedTestConfig config(
+      TestFixtures::ScopedTestConfig::enhanced_2e_only());
   linapple_request_card_for_run("test.no_such_card");
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedCore core(config);
 
   CHECK(linapple_requested_slot() == -1);
   SS_PERIPHERAL_MANIFEST manifest;
@@ -836,17 +836,17 @@ constexpr const char* harddisk_id = "linapple.harddisk";
 // The core takes the machine type from the configuration only through the
 // application controller, so a case built on the bridge alone names the
 // model here and puts the previous one back.
-class ScopedMachineType_t {
+class ScopedMachineType {
  public:
-  explicit ScopedMachineType_t(Apple2Type type)
+  explicit ScopedMachineType(Apple2Type type)
       : previous_(linapple_get_apple2_type()) {
     linapple_set_apple2_type(type);
   }
-  ~ScopedMachineType_t() { linapple_set_apple2_type(previous_); }
-  ScopedMachineType_t(const ScopedMachineType_t&) = delete;
-  auto operator=(const ScopedMachineType_t&) -> ScopedMachineType_t& = delete;
-  ScopedMachineType_t(ScopedMachineType_t&&) = delete;
-  auto operator=(ScopedMachineType_t&&) -> ScopedMachineType_t& = delete;
+  ~ScopedMachineType() { linapple_set_apple2_type(previous_); }
+  ScopedMachineType(const ScopedMachineType&) = delete;
+  auto operator=(const ScopedMachineType&) -> ScopedMachineType& = delete;
+  ScopedMachineType(ScopedMachineType&&) = delete;
+  auto operator=(ScopedMachineType&&) -> ScopedMachineType& = delete;
 
  private:
   Apple2Type previous_;
@@ -863,23 +863,23 @@ TEST_CASE(
     "Peripheral Manager: peripheral_slot_of finds the hard disk wherever the "
     "slot table put it") {
   SUBCASE("slot 7") {
-    TestFixtures::ScopedTestConfig_t::Description_t description;
+    TestFixtures::ScopedTestConfig::Description description;
     description.slots[6] = "Harddisk";
-    TestFixtures::ScopedTestConfig_t config(description);
-    TestFixtures::ScopedCore_t core(config);
+    TestFixtures::ScopedTestConfig config(description);
+    TestFixtures::ScopedCore core(config);
     CHECK(peripheral_slot_of(harddisk_id) == 7);
   }
   SUBCASE("slot 5") {
-    TestFixtures::ScopedTestConfig_t::Description_t description;
+    TestFixtures::ScopedTestConfig::Description description;
     description.slots[4] = "Harddisk";
-    TestFixtures::ScopedTestConfig_t config(description);
-    TestFixtures::ScopedCore_t core(config);
+    TestFixtures::ScopedTestConfig config(description);
+    TestFixtures::ScopedCore core(config);
     CHECK(peripheral_slot_of(harddisk_id) == 5);
   }
   SUBCASE("none") {
-    TestFixtures::ScopedTestConfig_t config(
-        TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
-    TestFixtures::ScopedCore_t core(config);
+    TestFixtures::ScopedTestConfig config(
+        TestFixtures::ScopedTestConfig::enhanced_2e_only());
+    TestFixtures::ScopedCore core(config);
     CHECK(peripheral_slot_of(harddisk_id) == -1);
   }
 }
@@ -887,11 +887,11 @@ TEST_CASE(
 TEST_CASE(
     "Peripheral Manager: a run request takes an empty slot 7 silently and "
     "writes nothing into the slot table") {
-  TestFixtures::ScopedTestConfig_t config(
-      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
-  TestFixtures::ScopedLogCapture_t log;
+  TestFixtures::ScopedTestConfig config(
+      TestFixtures::ScopedTestConfig::enhanced_2e_only());
+  TestFixtures::ScopedLogCapture log;
   linapple_request_card_for_run(harddisk_id);
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedCore core(config);
 
   CHECK(peripheral_present(7, harddisk_id));
   CHECK(linapple_requested_slot() == 7);
@@ -909,12 +909,12 @@ TEST_CASE(
 TEST_CASE(
     "Peripheral Manager: a run request is satisfied by the hard disk the slot "
     "table already placed, wherever that is") {
-  TestFixtures::ScopedTestConfig_t::Description_t description;
+  TestFixtures::ScopedTestConfig::Description description;
   description.slots[4] = "Harddisk";
-  TestFixtures::ScopedTestConfig_t config(description);
-  TestFixtures::ScopedLogCapture_t log;
+  TestFixtures::ScopedTestConfig config(description);
+  TestFixtures::ScopedLogCapture log;
   linapple_request_card_for_run(harddisk_id);
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedCore core(config);
 
   CHECK(peripheral_present(5, harddisk_id));
   CHECK_FALSE(peripheral_present(7, harddisk_id));
@@ -925,15 +925,15 @@ TEST_CASE(
 TEST_CASE(
     "Peripheral Manager: a run request lasts one registration and is asked "
     "for again by whoever still wants it") {
-  TestFixtures::ScopedTestConfig_t config(
-      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  TestFixtures::ScopedTestConfig config(
+      TestFixtures::ScopedTestConfig::enhanced_2e_only());
   linapple_request_card_for_run(harddisk_id);
   {
-    TestFixtures::ScopedCore_t core(config);
+    TestFixtures::ScopedCore core(config);
     REQUIRE(peripheral_present(7, harddisk_id));
   }
   {
-    TestFixtures::ScopedCore_t core(config);
+    TestFixtures::ScopedCore core(config);
     CHECK_FALSE(peripheral_present(7, harddisk_id));
     CHECK(linapple_requested_slot() == -1);
   }
@@ -945,7 +945,7 @@ constexpr const char* harddisk_key_line = "Harddisk Enable is set, but [Slots]";
 
 // The fixture writes every slot; a file saved without a Slot 7 line leaves it
 // out, which is the only case Harddisk Enable decides.
-auto drop_slot_line(const TestFixtures::ScopedTestConfig_t& config, int slot)
+auto drop_slot_line(const TestFixtures::ScopedTestConfig& config, int slot)
     -> void {
   std::ifstream in(config.path());
   std::stringstream kept;
@@ -968,12 +968,12 @@ TEST_CASE(
     "whatever Harddisk Enable says, and logs nothing") {
   for (const char* key : {"0", "1"}) {
     CAPTURE(key);
-    TestFixtures::ScopedTestConfig_t::Description_t description;
+    TestFixtures::ScopedTestConfig::Description description;
     description.slots[6] = "Harddisk";
     description.extras.push_back({"Configuration", "Harddisk Enable", key});
-    TestFixtures::ScopedTestConfig_t config(description);
-    TestFixtures::ScopedLogCapture_t log;
-    TestFixtures::ScopedCore_t core(config);
+    TestFixtures::ScopedTestConfig config(description);
+    TestFixtures::ScopedLogCapture log;
+    TestFixtures::ScopedCore core(config);
 
     CHECK(peripheral_present(7, harddisk_id));
     CHECK(log.count_containing(harddisk_key_line) == 0);
@@ -983,11 +983,11 @@ TEST_CASE(
 TEST_CASE(
     "Peripheral Manager: Harddisk Enable = 1 beside a Slot 7 line naming no "
     "card installs nothing and says why once") {
-  TestFixtures::ScopedTestConfig_t::Description_t description;
+  TestFixtures::ScopedTestConfig::Description description;
   description.extras.push_back({"Configuration", "Harddisk Enable", "1"});
-  TestFixtures::ScopedTestConfig_t config(description);
-  TestFixtures::ScopedLogCapture_t log;
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedTestConfig config(description);
+  TestFixtures::ScopedLogCapture log;
+  TestFixtures::ScopedCore core(config);
 
   CHECK(peripheral_slot_of(harddisk_id) == -1);
   CHECK(log.count_containing(
@@ -998,12 +998,12 @@ TEST_CASE(
 TEST_CASE(
     "Peripheral Manager: Harddisk Enable = 1 beside a Slot 7 line naming "
     "another card keeps that card and says why once") {
-  TestFixtures::ScopedTestConfig_t::Description_t description;
+  TestFixtures::ScopedTestConfig::Description description;
   description.slots[6] = "Clock Card";
   description.extras.push_back({"Preferences", "Harddisk Enable", "1"});
-  TestFixtures::ScopedTestConfig_t config(description);
-  TestFixtures::ScopedLogCapture_t log;
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedTestConfig config(description);
+  TestFixtures::ScopedLogCapture log;
+  TestFixtures::ScopedCore core(config);
 
   CHECK(peripheral_present(7, "linapple.clock"));
   CHECK(peripheral_slot_of(harddisk_id) == -1);
@@ -1015,13 +1015,13 @@ TEST_CASE(
 TEST_CASE(
     "Peripheral Manager: with no Slot 7 line Harddisk Enable decides, "
     "[Preferences] before [Configuration]") {
-  struct Row_t {
+  struct Row {
     const char* preferences;
     const char* configuration;
     bool installed;
   };
   // An empty value leaves the key out of that section.
-  const std::array<Row_t, 6> rows = {
+  const std::array<Row, 6> rows = {
       {
           {"1", "", true},
           {"", "1", true},
@@ -1031,10 +1031,10 @@ TEST_CASE(
           {"", "", false},
       },
   };
-  for (const Row_t& row : rows) {
+  for (const Row& row : rows) {
     CAPTURE(row.preferences);
     CAPTURE(row.configuration);
-    TestFixtures::ScopedTestConfig_t::Description_t description;
+    TestFixtures::ScopedTestConfig::Description description;
     if (*row.preferences != '\0') {
       description.extras.push_back(
           {"Preferences", "Harddisk Enable", row.preferences});
@@ -1043,10 +1043,10 @@ TEST_CASE(
       description.extras.push_back(
           {"Configuration", "Harddisk Enable", row.configuration});
     }
-    TestFixtures::ScopedTestConfig_t config(description);
+    TestFixtures::ScopedTestConfig config(description);
     drop_slot_line(config, 7);
-    TestFixtures::ScopedLogCapture_t log;
-    TestFixtures::ScopedCore_t core(config);
+    TestFixtures::ScopedLogCapture log;
+    TestFixtures::ScopedCore core(config);
 
     CHECK(peripheral_present(7, harddisk_id) == row.installed);
     CHECK(peripheral_slot_of(harddisk_id) == (row.installed ? 7 : -1));
@@ -1058,12 +1058,12 @@ TEST_CASE(
 TEST_CASE(
     "Peripheral Manager: a run request never displaces the card in slot 7 and "
     "names the slot it took below it once") {
-  TestFixtures::ScopedTestConfig_t::Description_t description;
+  TestFixtures::ScopedTestConfig::Description description;
   description.slots[6] = "Clock Card";
-  TestFixtures::ScopedTestConfig_t config(description);
-  ScopedLevelLog_t log;
+  TestFixtures::ScopedTestConfig config(description);
+  ScopedLevelLog log;
   linapple_request_card_for_run(harddisk_id);
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedCore core(config);
 
   CHECK(peripheral_present(7, "linapple.clock"));
   CHECK(peripheral_present(6, harddisk_id));
@@ -1082,40 +1082,40 @@ TEST_CASE(
 TEST_CASE(
     "Peripheral Manager: a run request skips slot 3 on a //e, whose page the "
     "internal firmware owns, and takes it on a II Plus") {
-  struct Model_t {
+  struct Model {
     int config_type;
     Apple2Type type;
     int expected_slot;
   };
-  const std::array<Model_t, 3> models = {
+  const std::array<Model, 3> models = {
       {
           {
-              TestFixtures::ScopedTestConfig_t::machine_apple2e_enhanced,
+              TestFixtures::ScopedTestConfig::machine_apple2e_enhanced,
               A2TYPE_APPLE2EENHANCED,
               2,
           },
-          {TestFixtures::ScopedTestConfig_t::machine_apple2e, A2TYPE_APPLE2E,
+          {TestFixtures::ScopedTestConfig::machine_apple2e, A2TYPE_APPLE2E,
            2},
           {
-              TestFixtures::ScopedTestConfig_t::machine_apple2_plus,
+              TestFixtures::ScopedTestConfig::machine_apple2_plus,
               A2TYPE_APPLE2PLUS,
               3,
           },
       },
   };
-  for (const Model_t& model : models) {
+  for (const Model& model : models) {
     CAPTURE(model.config_type);
-    TestFixtures::ScopedTestConfig_t::Description_t description;
+    TestFixtures::ScopedTestConfig::Description description;
     description.machine_type = model.config_type;
     description.slots[6] = "Clock Card";
     description.slots[5] = "Disk II";
     description.slots[4] = "Mockingboard";
     description.slots[3] = "Mockingboard";
-    TestFixtures::ScopedTestConfig_t config(description);
-    ScopedLevelLog_t log;
-    ScopedMachineType_t machine(model.type);
+    TestFixtures::ScopedTestConfig config(description);
+    ScopedLevelLog log;
+    ScopedMachineType machine(model.type);
     linapple_request_card_for_run(harddisk_id);
-    TestFixtures::ScopedCore_t core(config);
+    TestFixtures::ScopedCore core(config);
 
     CHECK(peripheral_slot_of(harddisk_id) == model.expected_slot);
     CHECK(linapple_requested_slot() == model.expected_slot);
@@ -1135,15 +1135,15 @@ TEST_CASE(
 TEST_CASE(
     "Peripheral Manager: a run request with no free slot installs nothing and "
     "leaves every card where it was") {
-  TestFixtures::ScopedTestConfig_t::Description_t description;
+  TestFixtures::ScopedTestConfig::Description description;
   description.slots[6] = "Clock Card";
   for (size_t i = 0; i < 6; ++i) {
     description.slots[i] = "Mockingboard";
   }
-  TestFixtures::ScopedTestConfig_t config(description);
-  TestFixtures::ScopedLogCapture_t log;
+  TestFixtures::ScopedTestConfig config(description);
+  TestFixtures::ScopedLogCapture log;
   linapple_request_card_for_run(harddisk_id);
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedCore core(config);
 
   CHECK(linapple_requested_slot() == -1);
   CHECK(peripheral_slot_of(harddisk_id) == -1);
@@ -1162,14 +1162,14 @@ TEST_CASE(
 TEST_CASE(
     "Peripheral Manager: the Mouse in slot 4 key is applied before a run "
     "request, so the two never contend for a slot") {
-  TestFixtures::ScopedTestConfig_t::Description_t description;
+  TestFixtures::ScopedTestConfig::Description description;
   description.slots[6] = "Clock Card";
   description.slots[5] = "Disk II";
   description.slots[4] = "Mockingboard";
   description.extras.push_back({"Configuration", "Mouse in slot 4", "1"});
-  TestFixtures::ScopedTestConfig_t config(description);
+  TestFixtures::ScopedTestConfig config(description);
   linapple_request_card_for_run(harddisk_id);
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedCore core(config);
 
   CHECK(peripheral_present(4, "linapple.mouse"));
   CHECK(peripheral_slot_of(harddisk_id) == 2);

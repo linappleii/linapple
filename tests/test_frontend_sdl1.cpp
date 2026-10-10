@@ -74,11 +74,11 @@ TEST_CASE("SDL1 Frontend Initialization and Screen Scaling") {
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
-  REQUIRE(g_screen != nullptr);
+  REQUIRE(screen != nullptr);
 
-  CHECK(g_screen->w == 1120);
-  CHECK(g_screen->h == 768);
-  CHECK(g_window_resized == true);
+  CHECK(screen->w == 1120);
+  CHECK(screen->h == 768);
+  CHECK(window_resized == true);
 
   frame_destroy_window();
   asset_quit();
@@ -97,23 +97,23 @@ TEST_CASE("SDL1 Frontend Fullscreen Toggle Preserves Scaled Dimensions") {
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
-  REQUIRE(g_screen != nullptr);
-  CHECK(g_screen->w == 1120);
-  CHECK(g_screen->h == 768);
+  REQUIRE(screen != nullptr);
+  CHECK(screen->w == 1120);
+  CHECK(screen->h == 768);
 
   // 2. Toggle into fullscreen mode
   set_fullscreen_mode();
   // Simulate monitor resolution delivered via SDL resize event in fullscreen
   frame_on_resize(1920, 1080);
-  CHECK(g_screen->w == 1920);
-  CHECK(g_screen->h == 1080);
+  CHECK(screen->w == 1920);
+  CHECK(screen->h == 1080);
 
   // In 1920x1080 fullscreen, 4:3 / 560x384 aspect ratio should be preserved
   // target_w = 1575, target_h = 1080, offset_x = (1920 - 1575) / 2 = 172
-  CHECK(g_new_rect.w == 1575);
-  CHECK(g_new_rect.h == 1080);
-  CHECK(g_new_rect.x == 172);
-  CHECK(g_new_rect.y == 0);
+  CHECK(new_rect.w == 1575);
+  CHECK(new_rect.h == 1080);
+  CHECK(new_rect.x == 172);
+  CHECK(new_rect.y == 0);
 
   // 3. Return to windowed mode (F6)
   set_normal_mode();
@@ -121,12 +121,12 @@ TEST_CASE("SDL1 Frontend Fullscreen Toggle Preserves Scaled Dimensions") {
   // Windowed mode must restore original configured dimensions and full rect
   CHECK(system_state.screen_width == 1120);
   CHECK(system_state.screen_height == 768);
-  CHECK(g_screen->w == 1120);
-  CHECK(g_screen->h == 768);
-  CHECK(g_new_rect.w == 1120);
-  CHECK(g_new_rect.h == 768);
-  CHECK(g_new_rect.x == 0);
-  CHECK(g_new_rect.y == 0);
+  CHECK(screen->w == 1120);
+  CHECK(screen->h == 768);
+  CHECK(new_rect.w == 1120);
+  CHECK(new_rect.h == 768);
+  CHECK(new_rect.x == 0);
+  CHECK(new_rect.y == 0);
 
   frame_destroy_window();
   asset_quit();
@@ -144,7 +144,7 @@ TEST_CASE("SDL1 Frontend Help Screen Quit Event Handling") {
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
-  REQUIRE(g_screen != nullptr);
+  REQUIRE(screen != nullptr);
 
   // Push an SDL_QUIT event into the event queue (0 is success in SDL 1.2)
   SDL_Event quit_event{};
@@ -178,7 +178,7 @@ TEST_CASE("SDL1 Frontend Help Screen Key Down Dismissal") {
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
-  REQUIRE(g_screen != nullptr);
+  REQUIRE(screen != nullptr);
 
   // Push an SDL_KEYDOWN event into the event queue (0 is success in SDL 1.2)
   SDL_Event key_event{};
@@ -214,7 +214,7 @@ TEST_CASE("SDL1 Frontend Help Screen Scaling at High Screen Factors") {
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
-  REQUIRE(g_screen != nullptr);
+  REQUIRE(screen != nullptr);
 
   // Set distinct test pixel in video output buffer
   uint32_t* output = video_get_output_buffer();
@@ -231,10 +231,10 @@ TEST_CASE("SDL1 Frontend Help Screen Scaling at High Screen Factors") {
   frame_show_help_screen(static_cast<int>(system_state.screen_width),
                          static_cast<int>(system_state.screen_height));
 
-  // Verify that after dismissal, g_screen is properly restored with the
+  // Verify that after dismissal, screen is properly restored with the
   // emulator frame
   const auto* screen_pixels =
-      reinterpret_cast<const uint32_t*>(g_screen->pixels);
+      reinterpret_cast<const uint32_t*>(screen->pixels);
   CHECK(screen_pixels[0] == 0x00FF0000);
 
   frame_destroy_window();
@@ -254,15 +254,15 @@ TEST_CASE(
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
-  REQUIRE(g_screen != nullptr);
+  REQUIRE(screen != nullptr);
 
   // Switch to Fullscreen and simulate 1920x1080 resolution
   set_fullscreen_mode();
   frame_on_resize(1920, 1080);
-  REQUIRE(g_screen->w == 1920);
-  REQUIRE(g_screen->h == 1080);
+  REQUIRE(screen->w == 1920);
+  REQUIRE(screen->h == 1080);
 
-  // g_new_rect in 1920x1080: x = 172, w = 1575
+  // new_rect in 1920x1080: x = 172, w = 1575
   // The pillarbox margins are x < 172 and x >= 1747
 
   // Queue key event so frame_show_help_screen dismisses immediately
@@ -275,11 +275,11 @@ TEST_CASE(
                          static_cast<int>(system_state.screen_height));
 
   const auto* screen_pixels =
-      reinterpret_cast<const uint32_t*>(g_screen->pixels);
-  int pitch_pixels = g_screen->pitch / 4;
+      reinterpret_cast<const uint32_t*>(screen->pixels);
+  int pitch_pixels = screen->pitch / 4;
 
   // Simulate next emulator frame rendering after help screen was dismissed
-  g_frame_ready = true;
+  frame_ready = true;
   draw_frame_window();
 
   int nonzero_left_margin = 0;
@@ -320,20 +320,20 @@ TEST_CASE("SDL1 Frontend Disk Chooser Modal Outline Borders Rendered") {
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
-  REQUIRE(g_screen != nullptr);
+  REQUIRE(screen != nullptr);
 
   // Set up disk choose state
-  g_disk_choose_state.active = true;
-  g_disk_choose_state.slot = 6;
-  g_disk_choose_state.bg_screen.reset(SDL_CreateRGBSurface(
+  disk_choose_state.active = true;
+  disk_choose_state.slot = 6;
+  disk_choose_state.bg_screen.reset(SDL_CreateRGBSurface(
       0, 560, 384, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0));
-  g_disk_choose_state.list_handle = nullptr;
+  disk_choose_state.list_handle = nullptr;
 
   disk_choose_draw();
 
   const auto* screen_pixels =
-      reinterpret_cast<const uint32_t*>(g_screen->pixels);
-  int pitch_pixels = g_screen->pitch / 4;
+      reinterpret_cast<const uint32_t*>(screen->pixels);
+  int pitch_pixels = screen->pitch / 4;
 
   const int sx = 560;
   const int sy = 384;
@@ -359,8 +359,8 @@ TEST_CASE("SDL1 Frontend Disk Chooser Modal Outline Borders Rendered") {
   CHECK(screen_pixels[(box_y + 10) * pitch_pixels + 480] == 0x00FFFFFF);
 
   // Teardown
-  g_disk_choose_state.active = false;
-  g_disk_choose_state.bg_screen.reset();
+  disk_choose_state.active = false;
+  disk_choose_state.bg_screen.reset();
   frame_destroy_window();
   asset_quit();
   SDL_Quit();
@@ -377,7 +377,7 @@ TEST_CASE("SDL1 Frontend Help Screen F12 Event Handling") {
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
-  REQUIRE(g_screen != nullptr);
+  REQUIRE(screen != nullptr);
 
   system_state.mode = app_mode_running;
 
@@ -415,7 +415,7 @@ TEST_CASE("SDL1 Frontend Disk Choose Quit Event Handling") {
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
-  REQUIRE(g_screen != nullptr);
+  REQUIRE(screen != nullptr);
 
   system_state.mode = app_mode_running;
 
@@ -457,7 +457,7 @@ TEST_CASE("SDL1 Frontend Disk Choose Key Down Dismissal") {
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
-  REQUIRE(g_screen != nullptr);
+  REQUIRE(screen != nullptr);
 
   system_state.mode = app_mode_running;
 
@@ -500,7 +500,7 @@ TEST_CASE("SDL1 Frontend Disk Choose F12 Event Handling") {
 
   int win_result = frame_create_window();
   REQUIRE(win_result == 0);
-  REQUIRE(g_screen != nullptr);
+  REQUIRE(screen != nullptr);
 
   system_state.mode = app_mode_running;
 
@@ -557,13 +557,13 @@ TEST_CASE("SDL1 Frontend Joystick Config Out-of-Range Handling") {
 
 namespace {
 
-struct MouseInputMachine_t {
-  TestFixtures::ScopedTestConfig_t config;
-  TestFixtures::ScopedCore_t core;
+struct MouseInputMachine {
+  TestFixtures::ScopedTestConfig config;
+  TestFixtures::ScopedCore core;
   AppMode saved_mode;
 
-  explicit MouseInputMachine_t(
-      const TestFixtures::ScopedTestConfig_t::Description_t& description)
+  explicit MouseInputMachine(
+      const TestFixtures::ScopedTestConfig::Description& description)
       : config(description), core(config), saved_mode(system_state.mode) {
     SDL_putenv(const_cast<char*>("SDL_VIDEODRIVER=dummy"));
     REQUIRE(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK) == 0);
@@ -576,25 +576,25 @@ struct MouseInputMachine_t {
     system_state.mode = app_mode_running;
     system_state.screen_width = 560;
     system_state.screen_height = 384;
-    g_window_resized = false;
-    g_buttondown = -1;
+    window_resized = false;
+    buttondown = -1;
     SDL_SetModState(KMOD_NONE);
   }
 
-  ~MouseInputMachine_t() {
+  ~MouseInputMachine() {
     SDL_SetModState(KMOD_NONE);
     mouse_input_release();
-    g_window_resized = false;
-    g_buttondown = -1;
+    window_resized = false;
+    buttondown = -1;
     system_state.mode = saved_mode;
     joy_frontend_shutdown();
     SDL_Quit();
   }
 
-  MouseInputMachine_t(const MouseInputMachine_t&) = delete;
-  auto operator=(const MouseInputMachine_t&) -> MouseInputMachine_t& = delete;
-  MouseInputMachine_t(MouseInputMachine_t&&) = delete;
-  auto operator=(MouseInputMachine_t&&) -> MouseInputMachine_t& = delete;
+  MouseInputMachine(const MouseInputMachine&) = delete;
+  auto operator=(const MouseInputMachine&) -> MouseInputMachine& = delete;
+  MouseInputMachine(MouseInputMachine&&) = delete;
+  auto operator=(MouseInputMachine&&) -> MouseInputMachine& = delete;
 
   static auto click(Uint8 button, bool down) -> void {
     SDL_Event event{};
@@ -615,8 +615,8 @@ struct MouseInputMachine_t {
   }
 };
 
-auto mouse_as_joystick() -> TestFixtures::ScopedTestConfig_t::Description_t {
-  TestFixtures::ScopedTestConfig_t::Description_t description;
+auto mouse_as_joystick() -> TestFixtures::ScopedTestConfig::Description {
+  TestFixtures::ScopedTestConfig::Description description;
   description.extras.push_back({"Configuration", "Joystick 0", "4"});
   return description;
 }
@@ -626,32 +626,32 @@ auto mouse_as_joystick() -> TestFixtures::ScopedTestConfig_t::Description_t {
 TEST_CASE(
     "SDL1 mouse capture: with no mouse card and no mouse-emulated joystick "
     "neither a left nor a middle click takes the pointer") {
-  MouseInputMachine_t machine(
-      TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  MouseInputMachine machine(
+      TestFixtures::ScopedTestConfig::enhanced_2e_only());
   CHECK_FALSE(mouse_input_consumer_present());
 
-  MouseInputMachine_t::click(SDL_BUTTON_LEFT, true);
-  MouseInputMachine_t::click(SDL_BUTTON_LEFT, false);
+  MouseInputMachine::click(SDL_BUTTON_LEFT, true);
+  MouseInputMachine::click(SDL_BUTTON_LEFT, false);
   CHECK_FALSE(mouse_input_is_captured());
-  MouseInputMachine_t::click(SDL_BUTTON_MIDDLE, true);
-  MouseInputMachine_t::click(SDL_BUTTON_MIDDLE, false);
+  MouseInputMachine::click(SDL_BUTTON_MIDDLE, true);
+  MouseInputMachine::click(SDL_BUTTON_MIDDLE, false);
   CHECK_FALSE(mouse_input_is_captured());
 }
 
 TEST_CASE(
     "SDL1 mouse capture: a mouse-emulated joystick is a consumer, so a left "
     "click captures and a Shift-click releases") {
-  MouseInputMachine_t machine(mouse_as_joystick());
+  MouseInputMachine machine(mouse_as_joystick());
   REQUIRE_FALSE(mouse_frontend_card_present());
   REQUIRE(joy_frontend_is_mouse_emulation_active());
 
-  MouseInputMachine_t::click(SDL_BUTTON_LEFT, true);
-  MouseInputMachine_t::click(SDL_BUTTON_LEFT, false);
+  MouseInputMachine::click(SDL_BUTTON_LEFT, true);
+  MouseInputMachine::click(SDL_BUTTON_LEFT, false);
   CHECK(mouse_input_is_captured());
 
   SDL_SetModState(KMOD_LSHIFT);
-  MouseInputMachine_t::click(SDL_BUTTON_LEFT, true);
-  MouseInputMachine_t::click(SDL_BUTTON_LEFT, false);
+  MouseInputMachine::click(SDL_BUTTON_LEFT, true);
+  MouseInputMachine::click(SDL_BUTTON_LEFT, false);
   CHECK_FALSE(mouse_input_is_captured());
 }
 
@@ -669,12 +669,12 @@ constexpr size_t mouse_frame_ddrb = 59;
 constexpr size_t mouse_frame_port_b_shadow = 73;
 constexpr size_t mouse_frame_mode = 74;
 
-using MouseFrame_t = std::array<uint8_t, mouse_frame_size>;
+using MouseFrame = std::array<uint8_t, mouse_frame_size>;
 
 // The loader is the one public path that turns tracking on without running
 // the firmware.
 auto turn_mouse_tracking_on(int slot) -> void {
-  MouseFrame_t frame{};
+  MouseFrame frame{};
   frame.at(0) = MOUSE_STATE_VERSION;
   frame.at(4) = mouse_frame_size;
   frame.at(mouse_frame_max_x) = 0xFF;
@@ -693,7 +693,7 @@ auto turn_mouse_tracking_on(int slot) -> void {
 
 auto mouse_position_x(int slot) -> int16_t {
   peripheral_manager_think(0);
-  MouseFrame_t frame{};
+  MouseFrame frame{};
   size_t size = frame.size();
   peripheral_save_state(slot, frame.data(), &size);
   REQUIRE(size == frame.size());
@@ -701,8 +701,8 @@ auto mouse_position_x(int slot) -> int16_t {
                               (frame.at(mouse_frame_position_x + 1) << 8));
 }
 
-auto mouse_in_slot_4() -> TestFixtures::ScopedTestConfig_t::Description_t {
-  TestFixtures::ScopedTestConfig_t::Description_t description;
+auto mouse_in_slot_4() -> TestFixtures::ScopedTestConfig::Description {
+  TestFixtures::ScopedTestConfig::Description description;
   description.slots[3] = "Mouse Interface";
   return description;
 }
@@ -713,39 +713,39 @@ TEST_CASE(
     "SDL1 mouse capture: with a mouse card in slot 4 the first left click "
     "captures, a toolbar key or a pause refuses it, the middle button "
     "toggles, and a Shift-click releases") {
-  MouseInputMachine_t machine(mouse_in_slot_4());
+  MouseInputMachine machine(mouse_in_slot_4());
   REQUIRE(mouse_frontend_card_slot() == 4);
 
   SUBCASE("the first left click captures and a Shift-click releases") {
-    MouseInputMachine_t::click(SDL_BUTTON_LEFT, true);
-    MouseInputMachine_t::click(SDL_BUTTON_LEFT, false);
+    MouseInputMachine::click(SDL_BUTTON_LEFT, true);
+    MouseInputMachine::click(SDL_BUTTON_LEFT, false);
     CHECK(mouse_input_is_captured());
     SDL_SetModState(KMOD_LSHIFT);
-    MouseInputMachine_t::click(SDL_BUTTON_LEFT, true);
-    MouseInputMachine_t::click(SDL_BUTTON_LEFT, false);
+    MouseInputMachine::click(SDL_BUTTON_LEFT, true);
+    MouseInputMachine::click(SDL_BUTTON_LEFT, false);
     CHECK_FALSE(mouse_input_is_captured());
   }
 
   SUBCASE("a left click while a toolbar key is held is ignored") {
-    g_buttondown = btn_help;
-    MouseInputMachine_t::click(SDL_BUTTON_LEFT, true);
-    MouseInputMachine_t::click(SDL_BUTTON_LEFT, false);
+    buttondown = btn_help;
+    MouseInputMachine::click(SDL_BUTTON_LEFT, true);
+    MouseInputMachine::click(SDL_BUTTON_LEFT, false);
     CHECK_FALSE(mouse_input_is_captured());
   }
 
   SUBCASE("a left click while paused captures nothing") {
     system_state.mode = app_mode_paused;
-    MouseInputMachine_t::click(SDL_BUTTON_LEFT, true);
-    MouseInputMachine_t::click(SDL_BUTTON_LEFT, false);
+    MouseInputMachine::click(SDL_BUTTON_LEFT, true);
+    MouseInputMachine::click(SDL_BUTTON_LEFT, false);
     CHECK_FALSE(mouse_input_is_captured());
   }
 
   SUBCASE("the middle button captures and releases in turn") {
-    MouseInputMachine_t::click(SDL_BUTTON_MIDDLE, true);
-    MouseInputMachine_t::click(SDL_BUTTON_MIDDLE, false);
+    MouseInputMachine::click(SDL_BUTTON_MIDDLE, true);
+    MouseInputMachine::click(SDL_BUTTON_MIDDLE, false);
     CHECK(mouse_input_is_captured());
-    MouseInputMachine_t::click(SDL_BUTTON_MIDDLE, true);
-    MouseInputMachine_t::click(SDL_BUTTON_MIDDLE, false);
+    MouseInputMachine::click(SDL_BUTTON_MIDDLE, true);
+    MouseInputMachine::click(SDL_BUTTON_MIDDLE, false);
     CHECK_FALSE(mouse_input_is_captured());
   }
 }
@@ -753,40 +753,40 @@ TEST_CASE(
 TEST_CASE(
     "SDL1 mouse capture: Mouse Capture = 0 refuses the left and the middle "
     "click even with a card present") {
-  TestFixtures::ScopedTestConfig_t::Description_t description =
+  TestFixtures::ScopedTestConfig::Description description =
       mouse_in_slot_4();
   description.extras.push_back({"Configuration", "Mouse Capture", "0"});
-  MouseInputMachine_t machine(description);
+  MouseInputMachine machine(description);
   REQUIRE(mouse_frontend_card_present());
   REQUIRE_FALSE(mouse_frontend_capture_enabled());
 
-  MouseInputMachine_t::click(SDL_BUTTON_LEFT, true);
-  MouseInputMachine_t::click(SDL_BUTTON_LEFT, false);
+  MouseInputMachine::click(SDL_BUTTON_LEFT, true);
+  MouseInputMachine::click(SDL_BUTTON_LEFT, false);
   CHECK_FALSE(mouse_input_is_captured());
-  MouseInputMachine_t::click(SDL_BUTTON_MIDDLE, true);
-  MouseInputMachine_t::click(SDL_BUTTON_MIDDLE, false);
+  MouseInputMachine::click(SDL_BUTTON_MIDDLE, true);
+  MouseInputMachine::click(SDL_BUTTON_MIDDLE, false);
   CHECK_FALSE(mouse_input_is_captured());
 }
 
 TEST_CASE(
     "SDL1 mouse motion: a captured motion event reaches the card as counts "
     "scaled to the window") {
-  MouseInputMachine_t machine(mouse_in_slot_4());
+  MouseInputMachine machine(mouse_in_slot_4());
   turn_mouse_tracking_on(4);
   REQUIRE(mouse_position_x(4) == 0);
 
-  MouseInputMachine_t::move(2, 0, 2, 0);
+  MouseInputMachine::move(2, 0, 2, 0);
   CHECK(mouse_position_x(4) == 0);
 
-  MouseInputMachine_t::click(SDL_BUTTON_LEFT, true);
-  MouseInputMachine_t::click(SDL_BUTTON_LEFT, false);
+  MouseInputMachine::click(SDL_BUTTON_LEFT, true);
+  MouseInputMachine::click(SDL_BUTTON_LEFT, false);
   REQUIRE(mouse_input_is_captured());
 
-  MouseInputMachine_t::move(2, 0, 4, 0);
+  MouseInputMachine::move(2, 0, 4, 0);
   CHECK(mouse_position_x(4) == 1);
-  MouseInputMachine_t::move(1, 0, 5, 0);
+  MouseInputMachine::move(1, 0, 5, 0);
   CHECK(mouse_position_x(4) == 1);
-  MouseInputMachine_t::move(1, 0, 6, 0);
+  MouseInputMachine::move(1, 0, 6, 0);
   CHECK(mouse_position_x(4) == 2);
 }
 #endif
@@ -813,26 +813,26 @@ constexpr uint32_t rept_frames = 10;
 constexpr int x11_min_keycode = 8;
 
 // The model is process-wide and a harness-built machine leaves it behind.
-struct Model_t {
+struct Model {
   Apple2Type saved = current_apple2_type;
-  explicit Model_t(Apple2Type type) { current_apple2_type = type; }
-  ~Model_t() { current_apple2_type = saved; }
-  Model_t(const Model_t&) = delete;
-  auto operator=(const Model_t&) -> Model_t& = delete;
-  Model_t(Model_t&&) = delete;
-  auto operator=(Model_t&&) -> Model_t& = delete;
+  explicit Model(Apple2Type type) { current_apple2_type = type; }
+  ~Model() { current_apple2_type = saved; }
+  Model(const Model&) = delete;
+  auto operator=(const Model&) -> Model& = delete;
+  Model(Model&&) = delete;
+  auto operator=(Model&&) -> Model& = delete;
 };
 
 // Under the dummy video driver the usage comes from the keysym, so a
 // constructed event's scancode is whatever the case says.
-struct KeyMachine_t {
-  Model_t model;
-  TestFixtures::ScopedTestConfig_t config;
-  TestFixtures::ScopedCore_t core;
+struct KeyMachine {
+  Model model;
+  TestFixtures::ScopedTestConfig config;
+  TestFixtures::ScopedCore core;
   AppMode saved_mode;
 
-  explicit KeyMachine_t(
-      const TestFixtures::ScopedTestConfig_t::Description_t& description,
+  explicit KeyMachine(
+      const TestFixtures::ScopedTestConfig::Description& description,
       Apple2Type type = A2TYPE_APPLE2EENHANCED)
       : model(type),
         config(description),
@@ -851,12 +851,12 @@ struct KeyMachine_t {
     linapple_set_rocker_switch(false);
     frontend_update_keyboard_mapping();
     system_state.mode = app_mode_running;
-    g_buttondown = -1;
+    buttondown = -1;
     SDL_SetModState(KMOD_NONE);
     settle();
   }
 
-  ~KeyMachine_t() {
+  ~KeyMachine() {
     keyboard_release_host_modifiers();
     settle();
     Configuration::instance().data.erase("Keyboard.Custom");
@@ -865,16 +865,16 @@ struct KeyMachine_t {
     keyboard_set_caps_mode(caps_mode_host);
     keyboard_set_mapping_mode(kbd_mode_symbolic);
     SDL_SetModState(KMOD_NONE);
-    g_buttondown = -1;
+    buttondown = -1;
     system_state.mode = saved_mode;
     joy_frontend_shutdown();
     SDL_Quit();
   }
 
-  KeyMachine_t(const KeyMachine_t&) = delete;
-  auto operator=(const KeyMachine_t&) -> KeyMachine_t& = delete;
-  KeyMachine_t(KeyMachine_t&&) = delete;
-  auto operator=(KeyMachine_t&&) -> KeyMachine_t& = delete;
+  KeyMachine(const KeyMachine&) = delete;
+  auto operator=(const KeyMachine&) -> KeyMachine& = delete;
+  KeyMachine(KeyMachine&&) = delete;
+  auto operator=(KeyMachine&&) -> KeyMachine& = delete;
 
   // A think drains the command queue, as a running machine does once a frame.
   static auto settle() -> void { peripheral_manager_think(0); }
@@ -922,7 +922,7 @@ struct KeyMachine_t {
   // keyboard behind the test's back.
   static auto run_frames(uint32_t count) -> void {
     const std::array<uint8_t, 3> spin = {0x4C, 0x00, 0x03};
-    TestFixtures::ScopedCore_t::poke(spin_address, spin);
+    TestFixtures::ScopedCore::poke(spin_address, spin);
     TestFixtures::enter_at({spin_address, 0, 0, 0});
     for (uint32_t i = 0; i < count; ++i) {
       linapple_run_frame(ntsc_frame_cycles);
@@ -934,7 +934,7 @@ struct KeyMachine_t {
   // or BIT $C010 / NOP.
   static auto stepped_latch() -> uint8_t {
     const std::array<uint8_t, 6> probe = {0xAD, 0x00, 0xC0, 0x85, 0x10, 0xEA};
-    TestFixtures::ScopedCore_t::poke(probe_address, probe);
+    TestFixtures::ScopedCore::poke(probe_address, probe);
     TestFixtures::enter_at({probe_address, 0, 0, 0});
     TestFixtures::step_until_pc(probe_address + 5, probe_cycle_cap);
     REQUIRE(cpu_get_registers()->pc == probe_address + 5);
@@ -943,31 +943,31 @@ struct KeyMachine_t {
 
   static auto stepped_clear_strobe() -> void {
     const std::array<uint8_t, 4> probe = {0x2C, 0x10, 0xC0, 0xEA};
-    TestFixtures::ScopedCore_t::poke(probe_address, probe);
+    TestFixtures::ScopedCore::poke(probe_address, probe);
     TestFixtures::enter_at({probe_address, 0, 0, 0});
     TestFixtures::step_until_pc(probe_address + 3, probe_cycle_cap);
     REQUIRE(cpu_get_registers()->pc == probe_address + 3);
   }
 };
 
-auto custom_switches(TestFixtures::ScopedTestConfig_t::MachineType_t model)
-    -> TestFixtures::ScopedTestConfig_t::Description_t {
-  TestFixtures::ScopedTestConfig_t::Description_t description;
+auto custom_switches(TestFixtures::ScopedTestConfig::MachineType model)
+    -> TestFixtures::ScopedTestConfig::Description {
+  TestFixtures::ScopedTestConfig::Description description;
   description.machine_type = model;
   description.extras.push_back({"Keyboard.Custom", "Tab", "OpenApple"});
   description.extras.push_back({"Keyboard.Custom", "Grave", "Rept"});
   return description;
 }
 
-auto positional() -> TestFixtures::ScopedTestConfig_t::Description_t {
-  TestFixtures::ScopedTestConfig_t::Description_t description;
+auto positional() -> TestFixtures::ScopedTestConfig::Description {
+  TestFixtures::ScopedTestConfig::Description description;
   description.extras.push_back({"Keyboard", "Mapping Mode", "1"});
   return description;
 }
 
 // The kernel's evdev code and the usage its HID driver assigns it
 // (drivers/hid/hid-input.c, hid_keyboard[]).
-struct KernelUsage_t {
+struct KernelUsage {
   int evdev;
   int usage;
 };
@@ -983,7 +983,7 @@ constexpr int usage_delete = 76;
 constexpr int usage_end = 77;
 constexpr int usage_page_down = 78;
 
-constexpr std::array<KernelUsage_t, 78> kernel_usages = {{
+constexpr std::array<KernelUsage, 78> kernel_usages = {{
     {KEY_A, keyb_idx_a},
     {KEY_B, keyb_idx_b},
     {KEY_C, keyb_idx_c},
@@ -1078,7 +1078,7 @@ TEST_CASE(
   CHECK(sdl1_x11_keycode_to_hid(KEY_1 + x11_min_keycode) == 30);
   CHECK(sdl1_x11_keycode_to_hid(KEY_ENTER + x11_min_keycode) == 40);
 
-  for (const KernelUsage_t& row : kernel_usages) {
+  for (const KernelUsage& row : kernel_usages) {
     CAPTURE(row.evdev);
     CAPTURE(row.usage);
     CHECK(sdl1_x11_keycode_to_hid(
@@ -1103,179 +1103,179 @@ TEST_CASE(
 TEST_CASE(
     "SDL1 keys: under a driver other than X11 a key's usage comes from its "
     "keysym, so positional mode types the keysym's key whatever the scancode") {
-  KeyMachine_t machine(positional());
+  KeyMachine machine(positional());
   REQUIRE(keyboard_get_mapping_mode() == kbd_mode_positional);
   // The A key's X11 keycode with the A keysym: both paths agree.
-  KeyMachine_t::key(KEY_A + x11_min_keycode, SDLK_a, KMOD_NONE, true);
-  CHECK(KeyMachine_t::latch() == 0xC1);
-  KeyMachine_t::key(KEY_A + x11_min_keycode, SDLK_a, KMOD_NONE, false);
-  KeyMachine_t::clear_strobe();
+  KeyMachine::key(KEY_A + x11_min_keycode, SDLK_a, KMOD_NONE, true);
+  CHECK(KeyMachine::latch() == 0xC1);
+  KeyMachine::key(KEY_A + x11_min_keycode, SDLK_a, KMOD_NONE, false);
+  KeyMachine::clear_strobe();
   // The B key's X11 keycode with the A keysym: the keysym wins here.
-  KeyMachine_t::key(KEY_B + x11_min_keycode, SDLK_a, KMOD_NONE, true);
-  CHECK(KeyMachine_t::latch() == 0xC1);
-  KeyMachine_t::key(KEY_B + x11_min_keycode, SDLK_a, KMOD_NONE, false);
-  KeyMachine_t::clear_strobe();
-  KeyMachine_t::key(0, SDLK_q, KMOD_NONE, true);
-  CHECK(KeyMachine_t::latch() == 0xD1);
-  KeyMachine_t::key(0, SDLK_q, KMOD_NONE, false);
+  KeyMachine::key(KEY_B + x11_min_keycode, SDLK_a, KMOD_NONE, true);
+  CHECK(KeyMachine::latch() == 0xC1);
+  KeyMachine::key(KEY_B + x11_min_keycode, SDLK_a, KMOD_NONE, false);
+  KeyMachine::clear_strobe();
+  KeyMachine::key(0, SDLK_q, KMOD_NONE, true);
+  CHECK(KeyMachine::latch() == 0xD1);
+  KeyMachine::key(0, SDLK_q, KMOD_NONE, false);
 }
 
 TEST_CASE(
     "SDL1 keys: A types $C1 with caps on and $E1 with it off, Left Alt is "
     "Open Apple and Right Alt Solid Apple, and a focus loss lets go of the key "
     "and the switch") {
-  KeyMachine_t machine(TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  KeyMachine machine(TestFixtures::ScopedTestConfig::enhanced_2e_only());
   REQUIRE(keyboard_get_caps());
-  REQUIRE_FALSE(KeyMachine_t::any_key_down());
+  REQUIRE_FALSE(KeyMachine::any_key_down());
 
-  KeyMachine_t::key(0, SDLK_a, KMOD_NONE, true);
-  CHECK(KeyMachine_t::latch() == 0xC1);
-  CHECK(KeyMachine_t::any_key_down());
-  KeyMachine_t::key(0, SDLK_a, KMOD_NONE, false);
-  CHECK_FALSE(KeyMachine_t::any_key_down());
-  KeyMachine_t::clear_strobe();
+  KeyMachine::key(0, SDLK_a, KMOD_NONE, true);
+  CHECK(KeyMachine::latch() == 0xC1);
+  CHECK(KeyMachine::any_key_down());
+  KeyMachine::key(0, SDLK_a, KMOD_NONE, false);
+  CHECK_FALSE(KeyMachine::any_key_down());
+  KeyMachine::clear_strobe();
 
   keyboard_set_caps(false);
-  KeyMachine_t::key(0, SDLK_a, KMOD_NONE, true);
-  CHECK(KeyMachine_t::latch() == 0xE1);
-  KeyMachine_t::key(0, SDLK_a, KMOD_NONE, false);
-  KeyMachine_t::clear_strobe();
+  KeyMachine::key(0, SDLK_a, KMOD_NONE, true);
+  CHECK(KeyMachine::latch() == 0xE1);
+  KeyMachine::key(0, SDLK_a, KMOD_NONE, false);
+  KeyMachine::clear_strobe();
 
-  CHECK(KeyMachine_t::pushbutton(0) == 0);
-  CHECK(KeyMachine_t::pushbutton(1) == 0);
-  KeyMachine_t::key(0, SDLK_LALT, KMOD_LALT, true);
-  CHECK(KeyMachine_t::pushbutton(0) == 1);
-  CHECK(KeyMachine_t::pushbutton(1) == 0);
-  KeyMachine_t::key(0, SDLK_LALT, KMOD_NONE, false);
-  CHECK(KeyMachine_t::pushbutton(0) == 0);
-  KeyMachine_t::key(0, SDLK_RALT, KMOD_RALT, true);
-  CHECK(KeyMachine_t::pushbutton(0) == 0);
-  CHECK(KeyMachine_t::pushbutton(1) == 1);
-  KeyMachine_t::key(0, SDLK_RALT, KMOD_NONE, false);
-  CHECK(KeyMachine_t::pushbutton(1) == 0);
+  CHECK(KeyMachine::pushbutton(0) == 0);
+  CHECK(KeyMachine::pushbutton(1) == 0);
+  KeyMachine::key(0, SDLK_LALT, KMOD_LALT, true);
+  CHECK(KeyMachine::pushbutton(0) == 1);
+  CHECK(KeyMachine::pushbutton(1) == 0);
+  KeyMachine::key(0, SDLK_LALT, KMOD_NONE, false);
+  CHECK(KeyMachine::pushbutton(0) == 0);
+  KeyMachine::key(0, SDLK_RALT, KMOD_RALT, true);
+  CHECK(KeyMachine::pushbutton(0) == 0);
+  CHECK(KeyMachine::pushbutton(1) == 1);
+  KeyMachine::key(0, SDLK_RALT, KMOD_NONE, false);
+  CHECK(KeyMachine::pushbutton(1) == 0);
   // An Alt key is a switch, not a matrix key.
-  CHECK_FALSE(KeyMachine_t::any_key_down());
+  CHECK_FALSE(KeyMachine::any_key_down());
 
-  KeyMachine_t::key(0, SDLK_a, KMOD_NONE, true);
-  KeyMachine_t::key(0, SDLK_LALT, KMOD_LALT, true);
-  REQUIRE(KeyMachine_t::any_key_down());
-  REQUIRE(KeyMachine_t::pushbutton(0) == 1);
-  KeyMachine_t::focus(false);
-  CHECK_FALSE(KeyMachine_t::any_key_down());
-  CHECK(KeyMachine_t::pushbutton(0) == 0);
+  KeyMachine::key(0, SDLK_a, KMOD_NONE, true);
+  KeyMachine::key(0, SDLK_LALT, KMOD_LALT, true);
+  REQUIRE(KeyMachine::any_key_down());
+  REQUIRE(KeyMachine::pushbutton(0) == 1);
+  KeyMachine::focus(false);
+  CHECK_FALSE(KeyMachine::any_key_down());
+  CHECK(KeyMachine::pushbutton(0) == 0);
   // The releases the window manager ate change nothing when they arrive.
-  KeyMachine_t::key(0, SDLK_a, KMOD_NONE, false);
-  KeyMachine_t::key(0, SDLK_LALT, KMOD_NONE, false);
-  CHECK_FALSE(KeyMachine_t::any_key_down());
-  CHECK(KeyMachine_t::pushbutton(0) == 0);
+  KeyMachine::key(0, SDLK_a, KMOD_NONE, false);
+  KeyMachine::key(0, SDLK_LALT, KMOD_NONE, false);
+  CHECK_FALSE(KeyMachine::any_key_down());
+  CHECK(KeyMachine::pushbutton(0) == 0);
 }
 
 TEST_CASE(
     "SDL1 keys: a custom Tab is Open Apple and types nothing, and a custom "
     "Grave is the REPT key, which repeats a held key on a II Plus and does "
     "nothing on a //e") {
-  using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+  using TestConfig = TestFixtures::ScopedTestConfig;
 
   SUBCASE("Enhanced //e") {
-    KeyMachine_t machine(
-        custom_switches(TestConfig_t::machine_apple2e_enhanced));
-    KeyMachine_t::key(0, SDLK_a, KMOD_NONE, true);
-    REQUIRE(KeyMachine_t::latch() == 0xC1);
-    KeyMachine_t::clear_strobe();
+    KeyMachine machine(
+        custom_switches(TestConfig::machine_apple2e_enhanced));
+    KeyMachine::key(0, SDLK_a, KMOD_NONE, true);
+    REQUIRE(KeyMachine::latch() == 0xC1);
+    KeyMachine::clear_strobe();
 
-    KeyMachine_t::key(0, SDLK_TAB, KMOD_NONE, true);
-    CHECK(KeyMachine_t::pushbutton(0) == 1);
-    CHECK(KeyMachine_t::latch() == 0x41);
-    KeyMachine_t::key(0, SDLK_TAB, KMOD_NONE, false);
-    CHECK(KeyMachine_t::pushbutton(0) == 0);
+    KeyMachine::key(0, SDLK_TAB, KMOD_NONE, true);
+    CHECK(KeyMachine::pushbutton(0) == 1);
+    CHECK(KeyMachine::latch() == 0x41);
+    KeyMachine::key(0, SDLK_TAB, KMOD_NONE, false);
+    CHECK(KeyMachine::pushbutton(0) == 0);
 
-    KeyMachine_t::key(0, SDLK_BACKQUOTE, KMOD_NONE, true);
-    CHECK(KeyMachine_t::latch() == 0x41);
-    KeyMachine_t::run_frames(rept_frames);
-    CHECK(KeyMachine_t::stepped_latch() == 0x41);
-    KeyMachine_t::key(0, SDLK_BACKQUOTE, KMOD_NONE, false);
-    KeyMachine_t::key(0, SDLK_a, KMOD_NONE, false);
+    KeyMachine::key(0, SDLK_BACKQUOTE, KMOD_NONE, true);
+    CHECK(KeyMachine::latch() == 0x41);
+    KeyMachine::run_frames(rept_frames);
+    CHECK(KeyMachine::stepped_latch() == 0x41);
+    KeyMachine::key(0, SDLK_BACKQUOTE, KMOD_NONE, false);
+    KeyMachine::key(0, SDLK_a, KMOD_NONE, false);
   }
 
   SUBCASE("II Plus") {
-    KeyMachine_t machine(custom_switches(TestConfig_t::machine_apple2_plus),
+    KeyMachine machine(custom_switches(TestConfig::machine_apple2_plus),
                          A2TYPE_APPLE2PLUS);
-    KeyMachine_t::key(0, SDLK_a, KMOD_NONE, true);
-    REQUIRE(KeyMachine_t::latch() == 0xC1);
-    KeyMachine_t::clear_strobe();
-    REQUIRE((KeyMachine_t::latch() & bit7) == 0);
+    KeyMachine::key(0, SDLK_a, KMOD_NONE, true);
+    REQUIRE(KeyMachine::latch() == 0xC1);
+    KeyMachine::clear_strobe();
+    REQUIRE((KeyMachine::latch() & bit7) == 0);
 
     // The first REPT strobe comes one period after the press, so the press
     // itself latches nothing.
-    KeyMachine_t::key(0, SDLK_BACKQUOTE, KMOD_NONE, true);
-    CHECK(KeyMachine_t::latch() == 0x41);
-    KeyMachine_t::run_frames(rept_frames);
-    CHECK(KeyMachine_t::stepped_latch() == 0xC1);
+    KeyMachine::key(0, SDLK_BACKQUOTE, KMOD_NONE, true);
+    CHECK(KeyMachine::latch() == 0x41);
+    KeyMachine::run_frames(rept_frames);
+    CHECK(KeyMachine::stepped_latch() == 0xC1);
 
-    KeyMachine_t::stepped_clear_strobe();
-    KeyMachine_t::key(0, SDLK_BACKQUOTE, KMOD_NONE, false);
-    KeyMachine_t::run_frames(rept_frames);
-    CHECK(KeyMachine_t::stepped_latch() == 0x41);
-    KeyMachine_t::key(0, SDLK_a, KMOD_NONE, false);
+    KeyMachine::stepped_clear_strobe();
+    KeyMachine::key(0, SDLK_BACKQUOTE, KMOD_NONE, false);
+    KeyMachine::run_frames(rept_frames);
+    CHECK(KeyMachine::stepped_latch() == 0x41);
+    KeyMachine::key(0, SDLK_a, KMOD_NONE, false);
   }
 }
 
 TEST_CASE(
     "SDL1 keys: in host mode caps follows the host's lock state on focus gain "
     "and at the key's edges, and in emulated mode a press toggles it") {
-  KeyMachine_t machine(TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+  KeyMachine machine(TestFixtures::ScopedTestConfig::enhanced_2e_only());
   REQUIRE(keyboard_get_caps_mode() == caps_mode_host);
 
   keyboard_set_caps(false);
   SDL_SetModState(KMOD_CAPS);
-  KeyMachine_t::focus(true);
+  KeyMachine::focus(true);
   CHECK(keyboard_get_caps());
   SDL_SetModState(KMOD_NONE);
-  KeyMachine_t::focus(true);
+  KeyMachine::focus(true);
   CHECK_FALSE(keyboard_get_caps());
 
   // SDL reports the lock's new state in the event's modifiers.
-  KeyMachine_t::key(0, SDLK_CAPSLOCK, KMOD_CAPS, true);
+  KeyMachine::key(0, SDLK_CAPSLOCK, KMOD_CAPS, true);
   CHECK(keyboard_get_caps());
-  KeyMachine_t::key(0, SDLK_CAPSLOCK, KMOD_NONE, false);
+  KeyMachine::key(0, SDLK_CAPSLOCK, KMOD_NONE, false);
   CHECK_FALSE(keyboard_get_caps());
 
   keyboard_set_caps_mode(caps_mode_emulated);
-  KeyMachine_t::key(0, SDLK_CAPSLOCK, KMOD_NONE, true);
+  KeyMachine::key(0, SDLK_CAPSLOCK, KMOD_NONE, true);
   CHECK(keyboard_get_caps());
-  KeyMachine_t::key(0, SDLK_CAPSLOCK, KMOD_NONE, false);
+  KeyMachine::key(0, SDLK_CAPSLOCK, KMOD_NONE, false);
   CHECK(keyboard_get_caps());
-  KeyMachine_t::key(0, SDLK_CAPSLOCK, KMOD_NONE, true);
+  KeyMachine::key(0, SDLK_CAPSLOCK, KMOD_NONE, true);
   CHECK_FALSE(keyboard_get_caps());
   // The host's lock state is not the emulated key's business.
   SDL_SetModState(KMOD_CAPS);
-  KeyMachine_t::focus(true);
+  KeyMachine::focus(true);
   CHECK_FALSE(keyboard_get_caps());
 }
 
 TEST_CASE(
     "SDL1 keys: a configured second joystick that is not plugged in leaves "
     "PB2 open at rest") {
-  TestFixtures::ScopedTestConfig_t::Description_t description =
-      TestFixtures::ScopedTestConfig_t::enhanced_2e_only();
+  TestFixtures::ScopedTestConfig::Description description =
+      TestFixtures::ScopedTestConfig::enhanced_2e_only();
   description.extras.push_back({"Configuration", "Joystick 1", "1"});
-  KeyMachine_t machine(description);
-  CHECK(KeyMachine_t::pushbutton(0) == 0);
-  CHECK(KeyMachine_t::pushbutton(1) == 0);
-  CHECK(KeyMachine_t::pushbutton(2) == 1);
+  KeyMachine machine(description);
+  CHECK(KeyMachine::pushbutton(0) == 0);
+  CHECK(KeyMachine::pushbutton(1) == 0);
+  CHECK(KeyMachine::pushbutton(2) == 1);
 }
 
 TEST_CASE(
     "SDL1 keys: Alt+1 with the shipped quick-save modifier names a snapshot "
     "slot and reaches no card") {
-  KeyMachine_t machine(TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
-  KeyMachine_t::key(0, SDLK_1, KMOD_LALT, true);
-  CHECK((KeyMachine_t::latch() & bit7) == 0);
-  CHECK_FALSE(KeyMachine_t::any_key_down());
+  KeyMachine machine(TestFixtures::ScopedTestConfig::enhanced_2e_only());
+  KeyMachine::key(0, SDLK_1, KMOD_LALT, true);
+  CHECK((KeyMachine::latch() & bit7) == 0);
+  CHECK_FALSE(KeyMachine::any_key_down());
   CHECK(std::string(save_state_get_filename()).find("SaveState1.aws") !=
         std::string::npos);
-  KeyMachine_t::key(0, SDLK_1, KMOD_LALT, false);
-  CHECK_FALSE(KeyMachine_t::any_key_down());
+  KeyMachine::key(0, SDLK_1, KMOD_LALT, false);
+  CHECK_FALSE(KeyMachine::any_key_down());
 }
 
 #endif
@@ -1287,14 +1287,14 @@ namespace {
 constexpr int harddisk_test_slot = 5;
 constexpr const char* harddisk_image_key = "Harddisk Image 1";
 
-auto harddisk_in_slot_5() -> TestFixtures::ScopedTestConfig_t::Description_t {
-  TestFixtures::ScopedTestConfig_t::Description_t description;
+auto harddisk_in_slot_5() -> TestFixtures::ScopedTestConfig::Description {
+  TestFixtures::ScopedTestConfig::Description description;
   description.slots[harddisk_test_slot - 1] = "Harddisk";
   return description;
 }
 
-auto harddisk_status() -> HarddiskStatus_t {
-  HarddiskStatus_t out{};
+auto harddisk_status() -> HarddiskStatus {
+  HarddiskStatus out{};
   size_t size = sizeof(out);
   REQUIRE(peripheral_query(harddisk_test_slot, harddisk_query_status, &out,
                            &size) == peripheral_ok);
@@ -1333,7 +1333,7 @@ TEST_CASE(
     "manager finds it and the key is persisted empty; with no card the "
     "chooser does not open and the log says so") {
   SUBCASE("the card in slot 5") {
-    KeyMachine_t machine(harddisk_in_slot_5());
+    KeyMachine machine(harddisk_in_slot_5());
     harddisk_frontend_initialize();
     REQUIRE(harddisk_frontend_slot() == harddisk_test_slot);
     const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
@@ -1342,20 +1342,20 @@ TEST_CASE(
     REQUIRE(harddisk_saved_key() == image.path());
 
     const auto chord = static_cast<SDLMod>(KMOD_CTRL | KMOD_SHIFT);
-    KeyMachine_t::key(KEY_F3 + x11_min_keycode, SDLK_F3, chord, true);
-    KeyMachine_t::key(KEY_F3 + x11_min_keycode, SDLK_F3, chord, false);
+    KeyMachine::key(KEY_F3 + x11_min_keycode, SDLK_F3, chord, true);
+    KeyMachine::key(KEY_F3 + x11_min_keycode, SDLK_F3, chord, false);
     CHECK(harddisk_status().drive0_loaded == 0);
     CHECK(harddisk_saved_key().empty());
   }
 
   SUBCASE("no card anywhere") {
-    KeyMachine_t machine(TestFixtures::ScopedTestConfig_t::enhanced_2e_only());
+    KeyMachine machine(TestFixtures::ScopedTestConfig::enhanced_2e_only());
     harddisk_frontend_initialize();
     REQUIRE(harddisk_frontend_slot() == harddisk_frontend_no_card);
-    TestFixtures::ScopedLogCapture_t log;
-    KeyMachine_t::key(KEY_F3 + x11_min_keycode, SDLK_F3,
+    TestFixtures::ScopedLogCapture log;
+    KeyMachine::key(KEY_F3 + x11_min_keycode, SDLK_F3,
                       static_cast<SDLMod>(KMOD_SHIFT), true);
-    KeyMachine_t::key(KEY_F3 + x11_min_keycode, SDLK_F3,
+    KeyMachine::key(KEY_F3 + x11_min_keycode, SDLK_F3,
                       static_cast<SDLMod>(KMOD_SHIFT), false);
     CHECK(log.count_containing("no hard disk is installed") == 1);
   }
@@ -1364,7 +1364,7 @@ TEST_CASE(
 TEST_CASE(
     "SDL1 hard disk: the lamp lights on the frame after a read, shows prot "
     "for a loaded protected drive, and goes out once the hold has run") {
-  KeyMachine_t machine(harddisk_in_slot_5());
+  KeyMachine machine(harddisk_in_slot_5());
   harddisk_frontend_initialize();
   REQUIRE(harddisk_frontend_slot() == harddisk_test_slot);
   const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
@@ -1376,29 +1376,29 @@ TEST_CASE(
   harddisk_drain_data_port();
   frame_refresh();
   CHECK(frame_status_led(lamp_harddisk) == lamp_base + harddisk_status_read);
-  CHECK(g_status_cycle == show_cycles);
+  CHECK(status_cycle == show_cycles);
 
   // Nothing happened, so the frame leaves the lamp as it was.
   frame_refresh();
   CHECK(frame_status_led(lamp_harddisk) == lamp_base + harddisk_status_read);
 
-  g_status_cycle = 0;
+  status_cycle = 0;
   frame_refresh();
   CHECK(frame_status_led(lamp_harddisk) == lamp_base + harddisk_status_off);
 
-  HarddiskSetProtectCmd_t protect{};
+  HarddiskSetProtectCmd protect{};
   protect.drive = harddisk_drive_0;
   protect.write_protected = 1;
   REQUIRE(peripheral_command(harddisk_test_slot, harddisk_cmd_set_protect,
                              &protect, sizeof(protect)) == peripheral_ok);
-  KeyMachine_t::settle();
+  KeyMachine::settle();
   CHECK(frame_status_led(lamp_harddisk) == lamp_base + harddisk_status_prot);
 
   harddisk_read_block_1();
   harddisk_drain_data_port();
   frame_refresh();
   CHECK(frame_status_led(lamp_harddisk) == lamp_base + harddisk_status_read);
-  g_status_cycle = 0;
+  status_cycle = 0;
   frame_refresh();
   CHECK(frame_status_led(lamp_harddisk) == lamp_base + harddisk_status_prot);
 }

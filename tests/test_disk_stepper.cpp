@@ -39,11 +39,11 @@ constexpr int track_sample_bytes = 64;
 // Declared rather than inherited: with no configuration the slot fallbacks in
 // peripheral_register_internal supply a printer, a Super Serial Card and a
 // Mockingboard beside the Disk II, none of which these cases touch.
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 
-class DiskStepperHarness_t {
+class DiskStepperHarness {
  public:
-  explicit DiskStepperHarness_t(const std::string& fixture_name = "Master.dsk")
+  explicit DiskStepperHarness(const std::string& fixture_name = "Master.dsk")
       : disk_fixture_(TestFixtures::create_ephemeral(fixture_name)) {
     machine_.load();
     linapple_init();
@@ -54,12 +54,12 @@ class DiskStepperHarness_t {
     spin_up();
   }
 
-  ~DiskStepperHarness_t() { linapple_shutdown(); }
+  ~DiskStepperHarness() { linapple_shutdown(); }
 
-  DiskStepperHarness_t(const DiskStepperHarness_t&) = delete;
-  auto operator=(const DiskStepperHarness_t&) -> DiskStepperHarness_t& = delete;
-  DiskStepperHarness_t(DiskStepperHarness_t&&) = delete;
-  auto operator=(DiskStepperHarness_t&&) -> DiskStepperHarness_t& = delete;
+  DiskStepperHarness(const DiskStepperHarness&) = delete;
+  auto operator=(const DiskStepperHarness&) -> DiskStepperHarness& = delete;
+  DiskStepperHarness(DiskStepperHarness&&) = delete;
+  auto operator=(DiskStepperHarness&&) -> DiskStepperHarness& = delete;
 
   auto step_phase(int phase, bool on) const -> void {
     const uint16_t addr = static_cast<uint16_t>(
@@ -161,7 +161,7 @@ class DiskStepperHarness_t {
     io_map_dispatch(0, write_mode_switch, 0, 0, slice_cycle_);
   }
 
-  static auto save_state(DiskSavedState_t& out_state) -> void {
+  static auto save_state(DiskSavedState& out_state) -> void {
     size_t size = sizeof(out_state);
     peripheral_save_state(slot_6, &out_state, &size);
   }
@@ -170,14 +170,14 @@ class DiskStepperHarness_t {
   // hole puts the write over sync bytes no sector needs.
   auto park_at_index_hole() -> void {
     end_slice();
-    DiskSavedState_t state{};
+    DiskSavedState state{};
     save_state(state);
     state.drives[0].current_byte_pos = 0;
     peripheral_load_state(slot_6, &state, sizeof(state));
   }
 
-  static auto get_saved_state() -> DiskSavedState_t {
-    DiskSavedState_t state{};
+  static auto get_saved_state() -> DiskSavedState {
+    DiskSavedState state{};
     save_state(state);
     return state;
   }
@@ -208,7 +208,7 @@ class DiskStepperHarness_t {
 
  private:
   auto mount_disk() -> void {
-    DiskInsertCmd_t cmd{};
+    DiskInsertCmd cmd{};
     cmd.drive = static_cast<uint8_t>(disk_drive_0);
     cmd.write_protected = 0;
     util_safe_strcpy(cmd.path, disk_fixture_.c_str(), disk_insert_path_max);
@@ -217,7 +217,7 @@ class DiskStepperHarness_t {
   }
 
   static auto spin_up() -> void {
-    DiskStatus_t status{};
+    DiskStatus status{};
     size_t status_size = sizeof(status);
     peripheral_query(slot_6, disk_query_status, &status, &status_size);
     REQUIRE(status.drive0_loaded == 1);
@@ -228,8 +228,8 @@ class DiskStepperHarness_t {
     peripheral_manager_think(spin_settle_cycles);
   }
 
-  TestConfig_t machine_{TestConfig_t::disk_ii_only()};
-  TestFixtures::EphemeralDiskFixture_t disk_fixture_;
+  TestConfig machine_{TestConfig::disk_ii_only()};
+  TestFixtures::EphemeralDiskFixture disk_fixture_;
 };
 
 auto read_disk_track_bytes(const std::string& file_path, int track_index)
@@ -249,7 +249,7 @@ auto read_disk_track_bytes(const std::string& file_path, int track_index)
 }  // namespace
 
 TEST_CASE("DiskStepper: [STEP-01] Phase to Track Mapping") {
-  DiskStepperHarness_t harness;
+  DiskStepperHarness harness;
 
   // Verify initial state: head begins at phase 0, track 0
   CHECK(harness.get_phase() == 0);
@@ -277,7 +277,7 @@ TEST_CASE("DiskStepper: [STEP-01] Phase to Track Mapping") {
   CHECK(harness.get_track() == 1);
 
   // Save state and verify head position in saved state ABI
-  DiskSavedState_t state{};
+  DiskSavedState state{};
   harness.save_state(state);
   CHECK(state.drives[0].phase == 2);
   CHECK(state.drives[0].track == 1);
@@ -322,7 +322,7 @@ TEST_CASE("DiskStepper: [STEP-01] Phase to Track Mapping") {
 }
 
 TEST_CASE("DiskStepper: [STEP-02] Track Clamping") {
-  DiskStepperHarness_t harness;
+  DiskStepperHarness harness;
 
   CHECK(harness.get_phase() == 0);
   CHECK(harness.get_track() == 0);
@@ -345,7 +345,7 @@ TEST_CASE("DiskStepper: [STEP-02] Track Clamping") {
   CHECK(harness.get_phase() == max_disk_phases - 1);
   CHECK(harness.get_track() == tracks_per_disk - 1);
 
-  DiskSavedState_t state{};
+  DiskSavedState state{};
   harness.save_state(state);
   CHECK(state.drives[0].phase == max_disk_phases - 1);
   CHECK(state.drives[0].track == tracks_per_disk - 1);
@@ -365,7 +365,7 @@ TEST_CASE("DiskStepper: [STEP-02] Track Clamping") {
 }
 
 TEST_CASE("DiskStepper: [STEP-03] Seeking offers the dirty track") {
-  DiskStepperHarness_t harness;
+  DiskStepperHarness harness;
 
   CHECK(harness.get_phase() == 0);
   CHECK(harness.get_track() == 0);
@@ -374,7 +374,7 @@ TEST_CASE("DiskStepper: [STEP-03] Seeking offers the dirty track") {
   // 1. Enter Write Mode
   harness.set_write_mode();
   {
-    DiskSavedState_t state{};
+    DiskSavedState state{};
     harness.save_state(state);
     CHECK(state.is_write_mode == 1);
   }
@@ -386,7 +386,7 @@ TEST_CASE("DiskStepper: [STEP-03] Seeking offers the dirty track") {
   // Track must be marked dirty prior to seek
   CHECK(harness.is_dirty() == true);
   {
-    DiskSavedState_t state{};
+    DiskSavedState state{};
     harness.save_state(state);
     CHECK(state.drives[0].is_dirty == 1);
   }
@@ -402,7 +402,7 @@ TEST_CASE("DiskStepper: [STEP-03] Seeking offers the dirty track") {
   // in gap 1, so all sixteen sectors still read back and the image takes it.
   CHECK(harness.is_dirty() == false);
   {
-    DiskSavedState_t state{};
+    DiskSavedState state{};
     harness.save_state(state);
     CHECK(state.drives[0].is_dirty == 0);
     CHECK(state.drives[0].track == 1);
@@ -412,7 +412,7 @@ TEST_CASE("DiskStepper: [STEP-03] Seeking offers the dirty track") {
   CHECK(harness.get_track() == 0);
 
   // Query driver to verify healthy status following flushed write
-  DiskStatus_t status{};
+  DiskStatus status{};
   size_t status_size = sizeof(status);
   peripheral_query(slot_6, disk_query_status, &status, &status_size);
   CHECK(status.drive0_loaded == 1);
@@ -421,7 +421,7 @@ TEST_CASE("DiskStepper: [STEP-03] Seeking offers the dirty track") {
 
 TEST_CASE(
     "DiskStepper: [STEP-04] Cylinder Boundary Seek Preserves Adjacent Track") {
-  DiskStepperHarness_t harness("Master.dsk");
+  DiskStepperHarness harness("Master.dsk");
 
   // Baseline read of Track 16 and Track 17 contents from disk image file.
   // Track 17 contains VTOC and Catalog sectors; Track 16 contains file data
@@ -487,7 +487,7 @@ TEST_CASE(
 
   // Query peripheral status to ensure drive is healthy
   harness.set_read_mode();
-  DiskStatus_t status{};
+  DiskStatus status{};
   size_t status_size = sizeof(status);
   peripheral_query(slot_6, disk_query_status, &status, &status_size);
   CHECK(status.drive0_loaded == 1);
@@ -495,7 +495,7 @@ TEST_CASE(
 }
 
 TEST_CASE("DiskStepper: [STEP-05] Motor spindown offers the dirty track") {
-  DiskStepperHarness_t harness("Master.dsk");
+  DiskStepperHarness harness("Master.dsk");
 
   // Baseline read of Track 0 contents from disk image file
   const std::vector<uint8_t> orig_track0 =
@@ -542,7 +542,7 @@ TEST_CASE("DiskStepper: [STEP-05] Motor spindown offers the dirty track") {
 
   // 6. Verify peripheral reports drive is no longer spinning and status is
   // clean
-  DiskStatus_t status{};
+  DiskStatus status{};
   size_t status_size = sizeof(status);
   peripheral_query(slot_6, disk_query_status, &status, &status_size);
   CHECK(status.drive0_loaded == 1);
@@ -551,7 +551,7 @@ TEST_CASE("DiskStepper: [STEP-05] Motor spindown offers the dirty track") {
 }
 
 TEST_CASE("DiskStepper: [STEP-06] A dead motor timer leaves the head alone") {
-  DiskStepperHarness_t harness;
+  DiskStepperHarness harness;
 
   harness.step_phase(1, true);
   harness.step_phase(1, false);
@@ -582,14 +582,14 @@ constexpr uint32_t recorder_cell_count = 4096;
 constexpr uint32_t quarter_track_unread = 0xFFFFFFFFU;
 constexpr uint32_t magnet_hold_cycles = 64;
 
-struct TrackRecorder_t {
+struct TrackRecorder {
   std::array<uint8_t, recorder_cell_count / 8> cells{};
   uint32_t last_read_quarter_track = quarter_track_unread;
   uint32_t last_written_quarter_track = quarter_track_unread;
   std::vector<uint8_t> last_written_cells;
 };
 
-TrackRecorder_t g_recorder;
+TrackRecorder recorder;
 
 auto recorder_probe(const uint8_t* /*unused*/, size_t /*unused*/,
                     uint32_t /*unused*/, const char* /*unused*/)
@@ -599,7 +599,7 @@ auto recorder_probe(const uint8_t* /*unused*/, size_t /*unused*/,
 
 auto recorder_open(const char* /*unused*/, uint32_t /*unused*/, bool /*unused*/,
                    void** out_instance) -> DiskError {
-  *out_instance = &g_recorder;
+  *out_instance = &recorder;
   return disk_err_none;
 }
 
@@ -613,9 +613,9 @@ auto recorder_read(void* /*unused*/, uint32_t quarter_track, uint8_t* bits,
   if (recorder_cell_count > max_bits) {
     return disk_err_unsupported;
   }
-  g_recorder.last_read_quarter_track = quarter_track;
-  for (size_t byte = 0; byte < g_recorder.cells.size(); ++byte) {
-    bits[byte] = g_recorder.cells[byte];
+  recorder.last_read_quarter_track = quarter_track;
+  for (size_t byte = 0; byte < recorder.cells.size(); ++byte) {
+    bits[byte] = recorder.cells[byte];
   }
   *out_bit_count = recorder_cell_count;
   *out_bit_timing = disk_default_bit_timing;
@@ -627,13 +627,13 @@ auto recorder_write(void* /*unused*/, uint32_t quarter_track,
   if (bit_count != recorder_cell_count) {
     return disk_err_unsupported;
   }
-  g_recorder.last_written_quarter_track = quarter_track;
-  g_recorder.last_written_cells.assign(bits, bits + (bit_count / 8));
+  recorder.last_written_quarter_track = quarter_track;
+  recorder.last_written_cells.assign(bits, bits + (bit_count / 8));
   return disk_err_none;
 }
 
-auto recorder_driver() -> const DiskFormatDriver_t* {
-  static const DiskFormatDriver_t driver = {
+auto recorder_driver() -> const DiskFormatDriver* {
+  static const DiskFormatDriver driver = {
       disk_format_abi_version,
       disk_driver_cap_write,
       "AAA Quarter Track Recorder",
@@ -649,17 +649,17 @@ auto recorder_driver() -> const DiskFormatDriver_t* {
   return &driver;
 }
 
-class QuarterTrackHarness_t {
+class QuarterTrackHarness {
  public:
-  QuarterTrackHarness_t() {
-    g_recorder = TrackRecorder_t{};
+  QuarterTrackHarness() {
+    recorder = TrackRecorder{};
     machine_.load();
     linapple_init();
     peripheral_manager_init();
     linapple_register_peripherals();
     disk_loader_register(recorder_driver());
 
-    DiskInsertCmd_t cmd{};
+    DiskInsertCmd cmd{};
     cmd.drive = disk_drive_0;
     util_safe_strcpy(cmd.path, fixture_.c_str(), disk_insert_path_max);
     peripheral_command(slot_6, disk_cmd_insert, &cmd, sizeof(cmd));
@@ -670,20 +670,20 @@ class QuarterTrackHarness_t {
     io_map_dispatch(0, read_mode_switch, 0, 0, 0);
     io_map_dispatch(0, read_write_switch, 0, 0, 0);
     peripheral_manager_think(magnet_hold_cycles);
-    REQUIRE(g_recorder.last_read_quarter_track == 0);
+    REQUIRE(recorder.last_read_quarter_track == 0);
     quarter_track_ = 0;
   }
 
-  ~QuarterTrackHarness_t() {
+  ~QuarterTrackHarness() {
     linapple_shutdown();
     disk_loader_reset();
   }
 
-  QuarterTrackHarness_t(const QuarterTrackHarness_t&) = delete;
-  auto operator=(const QuarterTrackHarness_t&)
-      -> QuarterTrackHarness_t& = delete;
-  QuarterTrackHarness_t(QuarterTrackHarness_t&&) = delete;
-  auto operator=(QuarterTrackHarness_t&&) -> QuarterTrackHarness_t& = delete;
+  QuarterTrackHarness(const QuarterTrackHarness&) = delete;
+  auto operator=(const QuarterTrackHarness&)
+      -> QuarterTrackHarness& = delete;
+  QuarterTrackHarness(QuarterTrackHarness&&) = delete;
+  auto operator=(QuarterTrackHarness&&) -> QuarterTrackHarness& = delete;
 
   static auto strobe(int phase, bool on, uint32_t hold_cycles) -> void {
     const auto address =
@@ -701,8 +701,8 @@ class QuarterTrackHarness_t {
   auto quarter_track() -> uint32_t {
     io_map_dispatch(0, read_write_switch, 0, 0, 1);
     peripheral_manager_think(2);
-    if (g_recorder.last_read_quarter_track != quarter_track_unread) {
-      quarter_track_ = g_recorder.last_read_quarter_track;
+    if (recorder.last_read_quarter_track != quarter_track_unread) {
+      quarter_track_ = recorder.last_read_quarter_track;
     }
     return quarter_track_;
   }
@@ -727,8 +727,8 @@ class QuarterTrackHarness_t {
   }
 
  private:
-  TestConfig_t machine_{TestConfig_t::disk_ii_only()};
-  TestFixtures::EphemeralDiskFixture_t fixture_ =
+  TestConfig machine_{TestConfig::disk_ii_only()};
+  TestFixtures::EphemeralDiskFixture fixture_ =
       TestFixtures::create_ephemeral("minimal.dsk");
   uint32_t quarter_track_ = 0;
 };
@@ -736,7 +736,7 @@ class QuarterTrackHarness_t {
 }  // namespace
 
 TEST_CASE("DiskStepper: [STEP-07] Two magnets park the head between them") {
-  QuarterTrackHarness_t harness;
+  QuarterTrackHarness harness;
 
   // Walking the magnets a pair at a time visits the odd quarter tracks the
   // half-track model could never reach.
@@ -759,7 +759,7 @@ TEST_CASE("DiskStepper: [STEP-07] Two magnets park the head between them") {
 TEST_CASE("DiskStepper: [STEP-08] Recalibration lands on quarter track 0") {
   for (const int start_half_track : {3, 10, 39, 40, 61, 79}) {
     CAPTURE(start_half_track);
-    QuarterTrackHarness_t harness;
+    QuarterTrackHarness harness;
 
     for (int step = 0; step < start_half_track; ++step) {
       harness.strobe((step + 1) & 3, true);
@@ -786,7 +786,7 @@ TEST_CASE("DiskStepper: [STEP-08] Recalibration lands on quarter track 0") {
 
 TEST_CASE("DiskStepper: [STEP-09] Two magnets dropped together cancel") {
   {
-    QuarterTrackHarness_t harness;
+    QuarterTrackHarness harness;
     harness.strobe(0, true);
     harness.strobe(1, true);
     const uint32_t parked = harness.quarter_track();
@@ -800,7 +800,7 @@ TEST_CASE("DiskStepper: [STEP-09] Two magnets dropped together cancel") {
     CHECK(harness.quarter_track() == parked);
   }
   {
-    QuarterTrackHarness_t harness;
+    QuarterTrackHarness harness;
     harness.strobe(0, true);
     harness.strobe(1, true);
     REQUIRE(harness.quarter_track() == 1);
@@ -814,7 +814,7 @@ TEST_CASE("DiskStepper: [STEP-09] Two magnets dropped together cancel") {
 
 TEST_CASE(
     "DiskStepper: [STEP-10] A seek hands the written track to the driver") {
-  QuarterTrackHarness_t harness;
+  QuarterTrackHarness harness;
 
   const std::vector<uint8_t> payload = {
       0xFF, 0xFF, 0xFF, 0xD5, 0xAA, 0x96, 0xFF, 0xFE,
@@ -831,9 +831,9 @@ TEST_CASE(
   harness.strobe(1, true);
   harness.strobe(0, false);
 
-  REQUIRE(g_recorder.last_written_quarter_track != quarter_track_unread);
-  CHECK(g_recorder.last_written_quarter_track == 0);
-  REQUIRE(g_recorder.last_written_cells.size() == recorder_cell_count / 8);
+  REQUIRE(recorder.last_written_quarter_track != quarter_track_unread);
+  CHECK(recorder.last_written_quarter_track == 0);
+  REQUIRE(recorder.last_written_cells.size() == recorder_cell_count / 8);
 
   // The cells the driver was handed decode to the nibbles that went out.
   std::vector<uint8_t> decoded;
@@ -842,7 +842,7 @@ TEST_CASE(
   for (uint32_t cell = 0; cell < recorder_cell_count && decoded.size() < 16;
        ++cell) {
     const uint32_t bit =
-        (g_recorder.last_written_cells[cell >> 3U] >> (7U - (cell & 7U))) & 1U;
+        (recorder.last_written_cells[cell >> 3U] >> (7U - (cell & 7U))) & 1U;
     if (filled == 0 && bit == 0) {
       continue;
     }
@@ -867,7 +867,7 @@ TEST_CASE(
 
 TEST_CASE(
     "DiskStepper: [STEP-11] The 9334 holds the magnets through DRIVES OFF") {
-  QuarterTrackHarness_t harness;
+  QuarterTrackHarness harness;
 
   // Phase 1 alone pulls the cog from quarter track 0 onto its own half track.
   harness.strobe(1, true);
@@ -883,7 +883,7 @@ TEST_CASE(
   // The hold lapses: every coil drops at once, so the head stays where it was
   // while the latch still reads both bits.
   peripheral_manager_think(motor_spindown_cycles);
-  DiskSavedState_t lapsed{};
+  DiskSavedState lapsed{};
   size_t lapsed_size = sizeof(lapsed);
   peripheral_save_state(slot_6, &lapsed, &lapsed_size);
   CHECK(lapsed.drives[0].spinning_ticks == 0);
@@ -895,7 +895,7 @@ TEST_CASE(
   // track 2; a dark drive leaves it at 3, which rounds to 1.
   harness.strobe(3, true);
   harness.strobe(1, false);
-  DiskSavedState_t dark{};
+  DiskSavedState dark{};
   size_t dark_size = sizeof(dark);
   peripheral_save_state(slot_6, &dark, &dark_size);
   CHECK(dark.stepper_phase_mask == 0x0C);
@@ -910,7 +910,7 @@ TEST_CASE(
 
   // RESET' is the only line that clears the 9334.
   peripheral_manager_reset();
-  DiskSavedState_t reset{};
+  DiskSavedState reset{};
   size_t reset_size = sizeof(reset);
   peripheral_save_state(slot_6, &reset, &reset_size);
   CHECK(reset.stepper_phase_mask == 0);

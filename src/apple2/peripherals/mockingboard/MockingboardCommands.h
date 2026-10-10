@@ -69,13 +69,13 @@ typedef struct {
   uint32_t reserved_timer_status;
   uint8_t reserved_end[4];
   uint8_t reserved_accum[8];
-} MockingboardChipSaveState_t;
+} MockingboardChipSaveState;
 
 typedef struct {
   uint32_t version;     /* 0..3 */
   uint32_t struct_size; /* 4..7 */
 
-  MockingboardChipSaveState_t
+  MockingboardChipSaveState
       chips[MOCKINGBOARD_NUM_CHIPS]; /* 8..183 (176 bytes) */
 
   uint32_t psg_remainder; /* 184..187 */
@@ -83,7 +83,7 @@ typedef struct {
   uint8_t reserved_counts[4];
   uint8_t reserved_cycles[24];
   uint8_t reserved_final[8];
-} MockingboardSaveState_t;
+} MockingboardSaveState;
 
 #ifdef __cplusplus
 }

@@ -20,14 +20,14 @@ enum { JOYSTICK_STATE_VERSION = 1 };
 // against older headers.
 typedef enum {
   JOYSTICK_CMD_SET_AXIS = PERIPHERAL_SUBSYSTEM_JOYSTICK | 0x0000,
-} JoystickCommand_t;
+} JoystickCommand;
 
 typedef struct {
   uint8_t joystick;
   uint8_t axis;
   uint8_t value;
   uint8_t padding;
-} JoystickAxisPayload_t;
+} JoystickAxisPayload;
 
 // x_pos, y_pos, buttons, trim_x, trim_y and the reserved bytes are the host's
 // or the motherboard's, written as zeros and read past; they keep their place
@@ -43,7 +43,7 @@ typedef struct {
   int16_t trim_x;
   int16_t trim_y;
   uint8_t reserved1[4];
-} JoystickSaveState_t;
+} JoystickSaveState;
 
 #ifdef __cplusplus
 }

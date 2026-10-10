@@ -5,10 +5,10 @@
 
 // NOLINTBEGIN(readability-identifier-naming)
 // Justification: Legacy fields must match the stable .aws save-state format.
-struct Peripheral_t;
+struct Peripheral;
 
-struct SsIoSpeaker_t {
-  uint64_t g_spkr_last_cycle =
+struct SsIoSpeaker {
+  uint64_t spkr_last_cycle =
       0;  // Legacy AppleWin field; scheduled for removal
   uint64_t quiet_cycle_count = 0;
   uint32_t recently_active = 0;
@@ -19,4 +19,4 @@ struct SsIoSpeaker_t {
 };
 // NOLINTEND(readability-identifier-naming)
 
-auto speaker_get_descriptor() -> Peripheral_t*;
+auto speaker_get_descriptor() -> Peripheral*;

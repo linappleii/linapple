@@ -58,7 +58,7 @@ constexpr uint8_t token_rem = 0xB2;
 constexpr uint8_t high_bit_mask = 0x80;
 constexpr uint8_t ascii_7bit_mask = 0x7F;
 
-struct TokenDef_t {
+struct TokenDef {
   uint8_t token;
   const char* name;
   size_t length;
@@ -66,7 +66,7 @@ struct TokenDef_t {
 
 // Applesoft BASIC tokens ($80..$EA) ordered by keyword length descending
 // to ensure longest-prefix matching (e.g. ATN before AT, HCOLOR= before COLOR=)
-const std::array<TokenDef_t, 107> applesoft_tokens = {
+const std::array<TokenDef, 107> applesoft_tokens = {
     {
         {0x92, "HCOLOR=", 7}, {0x9C, "NOTRACE", 7}, {0x9E, "INVERSE", 7},
         {0xAE, "RESTORE", 7}, {0x99, "SCALE=", 6},  {0x9A, "SHLOAD", 6},
@@ -107,12 +107,12 @@ const std::array<TokenDef_t, 107> applesoft_tokens = {
     },
 };
 
-struct ParsedLine_t {
+struct ParsedLine {
   uint16_t line_number = 0;
   std::vector<uint8_t> token_bytes;
 
-  ParsedLine_t() = default;
-  ParsedLine_t(uint16_t num, std::vector<uint8_t> bytes)
+  ParsedLine() = default;
+  ParsedLine(uint16_t num, std::vector<uint8_t> bytes)
       : line_number(num), token_bytes(std::move(bytes)) {}
 };
 
@@ -257,7 +257,7 @@ auto find_token_name(uint8_t token) -> const char* {
   return nullptr;
 }
 
-auto match_token(const std::string& content, size_t pos) -> const TokenDef_t* {
+auto match_token(const std::string& content, size_t pos) -> const TokenDef* {
   for (const auto& t : applesoft_tokens) {
     if (iequals_prefix(content, pos, t.name, t.length)) {
       return &t;
@@ -418,7 +418,7 @@ auto parse_explicit_line(const std::string& sanitized, uint16_t* out_num,
 }
 
 auto inject_program_lines(uint16_t txttab, uint16_t himem,
-                          const std::vector<ParsedLine_t>& lines) -> uint16_t {
+                          const std::vector<ParsedLine>& lines) -> uint16_t {
   uint16_t current_addr = txttab;
   for (const auto& line : lines) {
     size_t line_size = 4 + line.token_bytes.size() + 1;
@@ -671,7 +671,7 @@ auto basic_sync_import_from_string(const std::string& text, BasicLineMode mode)
   bool force_uppercase = is_uppercase_only_machine();
   std::istringstream stream(text);
   std::string raw_line;
-  std::vector<ParsedLine_t> lines;
+  std::vector<ParsedLine> lines;
   uint32_t file_line_index = 1;
 
   while (std::getline(stream, raw_line)) {
@@ -697,7 +697,7 @@ auto basic_sync_import_from_string(const std::string& text, BasicLineMode mode)
   }
 
   std::sort(lines.begin(), lines.end(),
-            [](const ParsedLine_t& a, const ParsedLine_t& b) -> bool {
+            [](const ParsedLine& a, const ParsedLine& b) -> bool {
               return a.line_number < b.line_number;
             });
 

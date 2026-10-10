@@ -77,7 +77,7 @@ const char* const nibble_refusal_supported_exts[] = {
 
 }  // namespace
 
-extern "C" const HarddiskFormatDriver_t g_nibble_refusal_driver = {
+extern "C" const HarddiskFormatDriver nibble_refusal_driver = {
     .abi_version = harddisk_format_abi_version,
     .capabilities = harddisk_driver_cap_write,
     .name = "Nibble image",
@@ -91,7 +91,7 @@ extern "C" const HarddiskFormatDriver_t g_nibble_refusal_driver = {
     .get_total_blocks = nibble_refusal_get_total_blocks,
 };
 
-static const HarddiskFormatRegistration_t registration{
-    &g_nibble_refusal_driver};
+static const HarddiskFormatRegistration registration{
+    &nibble_refusal_driver};
 
 // NOLINTEND(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)

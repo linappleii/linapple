@@ -16,7 +16,7 @@ auto audio_mixer_destroy() -> void;
 auto audio_mixer_clear_buffers() -> void;
 
 auto audio_mixer_register_source(int slot, const char* peripheral_id,
-                                 const PeripheralAudioInfo_t* info) -> void;
+                                 const PeripheralAudioInfo* info) -> void;
 auto audio_mixer_unregister_source(int slot) -> void;
 
 auto audio_mixer_upload_channels(const char* peripheral_id, int slot,

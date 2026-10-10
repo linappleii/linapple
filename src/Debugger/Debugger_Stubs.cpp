@@ -6,20 +6,20 @@
 // NOLINTBEGIN(cppcoreguidelines-use-enum-class, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, modernize-use-trailing-return-type)
 // Dummy coordinates and configurations for
 // linkers
-using ColorRef_t = uint32_t;
-enum DebugVirtualTextScreen_e {
+using ColorRef = uint32_t;
+enum DebugVirtualTextScreen {
   DEBUG_VIRTUAL_TEXT_WIDTH = 80,
   DEBUG_VIRTUAL_TEXT_HEIGHT = 48
 };
 
-VideoSurface* g_debug_screen = nullptr;
-bool g_debugger_eat_key = false;
+VideoSurface* debug_screen = nullptr;
+bool debugger_eat_key = false;
 
-char g_debugger_virtual_text_screen[DEBUG_VIRTUAL_TEXT_HEIGHT]
+char debugger_virtual_text_screen[DEBUG_VIRTUAL_TEXT_HEIGHT]
                                    [DEBUG_VIRTUAL_TEXT_WIDTH] = {};
-ColorRef_t g_debugger_virtual_text_screen_fg[DEBUG_VIRTUAL_TEXT_HEIGHT]
+ColorRef debugger_virtual_text_screen_fg[DEBUG_VIRTUAL_TEXT_HEIGHT]
                                             [DEBUG_VIRTUAL_TEXT_WIDTH] = {};
-ColorRef_t g_debugger_virtual_text_screen_bg[DEBUG_VIRTUAL_TEXT_HEIGHT]
+ColorRef debugger_virtual_text_screen_bg[DEBUG_VIRTUAL_TEXT_HEIGHT]
                                             [DEBUG_VIRTUAL_TEXT_WIDTH] = {};
 
 auto debug_begin() -> void {}

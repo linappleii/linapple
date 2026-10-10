@@ -9,9 +9,9 @@
 #include "apple2/peripherals/clock/ClockCardCommands.h"
 
 size_t clockcard_abi_c_state_size(void) {
-  ClockCardSaveState_t state;
+  ClockCardSaveState state;
   state.version = CLOCKCARD_STATE_VERSION;
-  state.struct_size = (uint32_t)sizeof(ClockCardSaveState_t);
+  state.struct_size = (uint32_t)sizeof(ClockCardSaveState);
   state.fixed_epoch = 0;
   state.use_fixed_epoch = 0;
   state.latches[CLOCKCARD_LATCH_COUNT - 1] = 0;
@@ -19,19 +19,19 @@ size_t clockcard_abi_c_state_size(void) {
 }
 
 size_t clockcard_abi_c_fixed_epoch_offset(void) {
-  return offsetof(ClockCardSaveState_t, fixed_epoch);
+  return offsetof(ClockCardSaveState, fixed_epoch);
 }
 
 size_t clockcard_abi_c_latches_offset(void) {
-  return offsetof(ClockCardSaveState_t, latches);
+  return offsetof(ClockCardSaveState, latches);
 }
 
 size_t clockcard_abi_c_use_fixed_epoch_offset(void) {
-  return offsetof(ClockCardSaveState_t, use_fixed_epoch);
+  return offsetof(ClockCardSaveState, use_fixed_epoch);
 }
 
 size_t clockcard_abi_c_reserved_offset(void) {
-  return offsetof(ClockCardSaveState_t, reserved);
+  return offsetof(ClockCardSaveState, reserved);
 }
 
 uint32_t clockcard_abi_c_state_version(void) { return CLOCKCARD_STATE_VERSION; }

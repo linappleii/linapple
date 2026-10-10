@@ -31,7 +31,7 @@
 
 namespace {
 
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 
 constexpr const char* harddisk_id = "linapple.harddisk";
 constexpr int card_slot = 7;
@@ -78,8 +78,8 @@ constexpr std::array<std::array<uint8_t, 2>, 8> fig_3_14 = {
     },
 };
 
-auto harddisk_in_slot_7() -> TestConfig_t::Description_t {
-  TestConfig_t::Description_t description;
+auto harddisk_in_slot_7() -> TestConfig::Description {
+  TestConfig::Description description;
   description.slots[card_slot - 1] = "Harddisk";
   return description;
 }
@@ -88,7 +88,7 @@ auto settle() -> void { peripheral_manager_think(0); }
 
 auto insert(int drive, const std::string& path, bool write_protected = false)
     -> void {
-  HarddiskInsertCmd_t cmd{};
+  HarddiskInsertCmd cmd{};
   cmd.drive = static_cast<uint8_t>(drive);
   cmd.write_protected = write_protected ? 1 : 0;
   std::strncpy(cmd.path, path.c_str(), sizeof(cmd.path) - 1);
@@ -98,15 +98,15 @@ auto insert(int drive, const std::string& path, bool write_protected = false)
 }
 
 auto eject(int drive) -> void {
-  HarddiskEjectCmd_t cmd{};
+  HarddiskEjectCmd cmd{};
   cmd.drive = static_cast<uint8_t>(drive);
   REQUIRE(peripheral_command(card_slot, harddisk_cmd_eject, &cmd,
                              sizeof(cmd)) == peripheral_ok);
   settle();
 }
 
-auto status() -> HarddiskStatus_t {
-  HarddiskStatus_t out{};
+auto status() -> HarddiskStatus {
+  HarddiskStatus out{};
   size_t size = sizeof(out);
   REQUIRE(peripheral_query(card_slot, harddisk_query_status, &out, &size) ==
           peripheral_ok);
@@ -137,13 +137,13 @@ auto card_block_count() -> uint32_t {
          (static_cast<uint32_t>(peek(reg_count_high)) << 8);
 }
 
-struct CardRead_t {
+struct CardRead {
   uint8_t result;
   std::array<uint8_t, block_size> bytes;
 };
 
-auto card_read(int drive, uint32_t block) -> CardRead_t {
-  CardRead_t out{};
+auto card_read(int drive, uint32_t block) -> CardRead {
+  CardRead out{};
   poke(reg_unit, unit_for(drive));
   poke(reg_block_low, static_cast<uint8_t>(block & 0xFF));
   poke(reg_block_high, static_cast<uint8_t>(block >> 8));
@@ -173,9 +173,9 @@ auto card_write(int drive, uint32_t block,
 // past it faults in every build instead of landing in live memory. The guard
 // spans a whole 140 K image, because the catalog track a short header lacks
 // lies 73 KB past its start.
-class GuardedBuffer_t {
+class GuardedBuffer {
  public:
-  explicit GuardedBuffer_t(size_t size) : size_(size) {
+  explicit GuardedBuffer(size_t size) : size_(size) {
     const auto page = static_cast<size_t>(sysconf(_SC_PAGESIZE));
     const size_t data_bytes = ((size + page - 1) / page) * page;
     const size_t guard_bytes = ((dos_image_size + page - 1) / page) * page;
@@ -187,11 +187,11 @@ class GuardedBuffer_t {
     REQUIRE(mprotect(base_ + data_bytes, guard_bytes, PROT_NONE) == 0);
     data_ = base_ + data_bytes - size;
   }
-  ~GuardedBuffer_t() { munmap(base_, mapped_); }
-  GuardedBuffer_t(const GuardedBuffer_t&) = delete;
-  auto operator=(const GuardedBuffer_t&) -> GuardedBuffer_t& = delete;
-  GuardedBuffer_t(GuardedBuffer_t&&) = delete;
-  auto operator=(GuardedBuffer_t&&) -> GuardedBuffer_t& = delete;
+  ~GuardedBuffer() { munmap(base_, mapped_); }
+  GuardedBuffer(const GuardedBuffer&) = delete;
+  auto operator=(const GuardedBuffer&) -> GuardedBuffer& = delete;
+  GuardedBuffer(GuardedBuffer&&) = delete;
+  auto operator=(GuardedBuffer&&) -> GuardedBuffer& = delete;
 
   auto data() -> uint8_t* { return data_; }
   auto size() const -> size_t { return size_; }
@@ -226,7 +226,7 @@ auto write_file(const std::string& path, const std::vector<uint8_t>& bytes)
 
 // A fixture under a name of the test's choosing, since the name is part of
 // what the probes decide by.
-auto copy_as(const TestFixtures::ScopedTempDir_t& dir,
+auto copy_as(const TestFixtures::ScopedTempDir& dir,
              const std::string& fixture, const std::string& name)
     -> std::string {
   const std::string target = dir.path() + "/" + name;
@@ -234,7 +234,7 @@ auto copy_as(const TestFixtures::ScopedTempDir_t& dir,
   return target;
 }
 
-auto zero_file(const TestFixtures::ScopedTempDir_t& dir,
+auto zero_file(const TestFixtures::ScopedTempDir& dir,
                const std::string& name, size_t size) -> std::string {
   const std::string target = dir.path() + "/" + name;
   write_file(target, std::vector<uint8_t>(size, 0));
@@ -290,23 +290,23 @@ auto write_block_1_lands_in_dos_order(const std::string& path) -> bool {
   return dos;
 }
 
-struct OpenImage_t {
-  const HarddiskFormatDriver_t* driver = nullptr;
+struct OpenImage {
+  const HarddiskFormatDriver* driver = nullptr;
   void* instance = nullptr;
   HarddiskError error = harddisk_err_none;
 
-  OpenImage_t() = default;
-  explicit OpenImage_t(const std::string& path)
+  OpenImage() = default;
+  explicit OpenImage(const std::string& path)
       : error(harddisk_loader_open(path.c_str(), &driver, &instance)) {}
-  ~OpenImage_t() {
+  ~OpenImage() {
     if (driver != nullptr && instance != nullptr) {
       driver->close(instance);
     }
   }
-  OpenImage_t(const OpenImage_t&) = delete;
-  auto operator=(const OpenImage_t&) -> OpenImage_t& = delete;
-  OpenImage_t(OpenImage_t&&) = delete;
-  auto operator=(OpenImage_t&&) -> OpenImage_t& = delete;
+  OpenImage(const OpenImage&) = delete;
+  auto operator=(const OpenImage&) -> OpenImage& = delete;
+  OpenImage(OpenImage&&) = delete;
+  auto operator=(OpenImage&&) -> OpenImage& = delete;
 
   auto blocks() const -> uint32_t { return driver->get_total_blocks(instance); }
   auto read(uint32_t block) const -> std::array<uint8_t, block_size> {
@@ -327,17 +327,17 @@ auto drain_notes() -> std::vector<std::string> {
   return notes;
 }
 
-class ScopedFileMode_t {
+class ScopedFileMode {
  public:
-  ScopedFileMode_t(std::string path, mode_t new_mode, mode_t restore_mode)
+  ScopedFileMode(std::string path, mode_t new_mode, mode_t restore_mode)
       : path_(std::move(path)), restore_mode_(restore_mode) {
     chmod(path_.c_str(), new_mode);
   }
-  ~ScopedFileMode_t() { chmod(path_.c_str(), restore_mode_); }
-  ScopedFileMode_t(const ScopedFileMode_t&) = delete;
-  auto operator=(const ScopedFileMode_t&) -> ScopedFileMode_t& = delete;
-  ScopedFileMode_t(ScopedFileMode_t&&) = delete;
-  auto operator=(ScopedFileMode_t&&) -> ScopedFileMode_t& = delete;
+  ~ScopedFileMode() { chmod(path_.c_str(), restore_mode_); }
+  ScopedFileMode(const ScopedFileMode&) = delete;
+  auto operator=(const ScopedFileMode&) -> ScopedFileMode& = delete;
+  ScopedFileMode(ScopedFileMode&&) = delete;
+  auto operator=(ScopedFileMode&&) -> ScopedFileMode& = delete;
 
  private:
   std::string path_;
@@ -347,8 +347,8 @@ class ScopedFileMode_t {
 // A host with every member the card asks for and nothing behind any of them,
 // for a case that needs the card's answer and not a machine.
 // NOLINTBEGIN(cppcoreguidelines-pro-type-vararg)
-// Justification: Log is variadic in the HostInterface_t ABI.
-auto silent_log(void* /*unused*/, PeripheralLogLevel_t /*unused*/,
+// Justification: Log is variadic in the HostInterface ABI.
+auto silent_log(void* /*unused*/, PeripheralLogLevel /*unused*/,
                 const char* /*unused*/, ...) -> void {}
 // NOLINTEND(cppcoreguidelines-pro-type-vararg)
 auto silent_register_io(int /*unused*/, PeripheralIOHandler /*unused*/,
@@ -361,8 +361,8 @@ auto silent_notify_status(int /*unused*/) -> void {}
 auto silent_notify_activity(int /*unused*/, bool /*unused*/) -> void {}
 auto silent_floating_bus(uint32_t /*unused*/) -> uint8_t { return 0; }
 
-auto silent_host() -> HostInterface_t {
-  HostInterface_t host{};
+auto silent_host() -> HostInterface {
+  HostInterface host{};
   host.Log = silent_log;
   host.RegisterIO = silent_register_io;
   host.RegisterCxROM = silent_register_cx_rom;
@@ -377,7 +377,7 @@ auto silent_host() -> HostInterface_t {
 TEST_CASE(
     "Harddisk drivers: a ProDOS-order image opens through the loader and its "
     "volume directory key block reads back through the driver") {
-  const OpenImage_t image(TestFixtures::get_fixture_path("minimal.po"));
+  const OpenImage image(TestFixtures::get_fixture_path("minimal.po"));
   REQUIRE(image.error == harddisk_err_none);
   REQUIRE(image.driver != nullptr);
   REQUIRE(image.instance != nullptr);
@@ -389,11 +389,11 @@ TEST_CASE(
 TEST_CASE(
     "Harddisk drivers: a 140 K image is decoded by its contents where they "
     "read coherently, by its name otherwise, and never refused for them") {
-  TestFixtures::ScopedTempDir_t dir("linapple_hdd_drivers_");
-  TestConfig_t config(harddisk_in_slot_7());
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedTempDir dir("linapple_hdd_drivers_");
+  TestConfig config(harddisk_in_slot_7());
+  TestFixtures::ScopedCore core(config);
   REQUIRE(peripheral_present(card_slot, harddisk_id));
-  TestFixtures::ScopedLogCapture_t log;
+  TestFixtures::ScopedLogCapture log;
 
   SUBCASE("a DOS-order ProDOS volume is served through the sector map") {
     const std::string path =
@@ -401,7 +401,7 @@ TEST_CASE(
     insert(0, path);
     REQUIRE(status().drive0_loaded == 1);
     CHECK(is_key_block(card_read(0, volume_directory_key_block).bytes));
-    const CardRead_t block0 = card_read(0, 0);
+    const CardRead block0 = card_read(0, 0);
     REQUIRE(block0.result == prodos_ok);
     const std::vector<uint8_t> file = read_file(path);
     CHECK(std::vector<uint8_t>(block0.bytes.begin(),
@@ -415,7 +415,7 @@ TEST_CASE(
     const std::string path = TestFixtures::get_fixture_path("minimal.po");
     insert(0, path);
     REQUIRE(status().drive0_loaded == 1);
-    const CardRead_t block2 = card_read(0, volume_directory_key_block);
+    const CardRead block2 = card_read(0, volume_directory_key_block);
     REQUIRE(block2.result == prodos_ok);
     CHECK(is_key_block(block2.bytes));
     CHECK(std::vector<uint8_t>(block2.bytes.begin(), block2.bytes.end()) ==
@@ -502,7 +502,7 @@ TEST_CASE(
     REQUIRE(status().drive0_loaded == 1);
     CHECK(card_status(0) == prodos_ok);
     CHECK(card_block_count() == 1);
-    const CardRead_t block0 = card_read(0, 0);
+    const CardRead block0 = card_read(0, 0);
     CHECK(block0.result == prodos_ok);
     CHECK(all_equal(block0.bytes, 'A'));
     CHECK(card_read(0, 1).result == prodos_io_error);
@@ -512,9 +512,9 @@ TEST_CASE(
 TEST_CASE(
     "Harddisk drivers: a 2MG is served by its header's fields, its chunks "
     "never served as blocks, and a malformed header refused") {
-  TestFixtures::ScopedTempDir_t dir("linapple_hdd_2mg_");
-  TestConfig_t config(harddisk_in_slot_7());
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedTempDir dir("linapple_hdd_2mg_");
+  TestConfig config(harddisk_in_slot_7());
+  TestFixtures::ScopedCore core(config);
   REQUIRE(peripheral_present(card_slot, harddisk_id));
 
   SUBCASE("format 1 serves the blocks data_length names") {
@@ -613,18 +613,18 @@ TEST_CASE(
 TEST_CASE(
     "Harddisk drivers: nibble and flux images, an empty file, a missing path "
     "and an image past what ProDOS can count are each answered by name") {
-  TestFixtures::ScopedTempDir_t dir("linapple_hdd_refuse_");
-  TestConfig_t config(harddisk_in_slot_7());
-  TestFixtures::ScopedCore_t core(config);
+  TestFixtures::ScopedTempDir dir("linapple_hdd_refuse_");
+  TestConfig config(harddisk_in_slot_7());
+  TestFixtures::ScopedCore core(config);
   REQUIRE(peripheral_present(card_slot, harddisk_id));
-  TestFixtures::ScopedLogCapture_t log;
+  TestFixtures::ScopedLogCapture log;
 
   for (const char* name : {"minimal.nib", "minimal.nb2", "minimal.woz"}) {
     CAPTURE(name);
     insert(0, TestFixtures::get_fixture_path(name));
     CHECK(status().drive0_loaded == 0);
     CHECK(status().drive0_last_error == harddisk_err_not_block_image);
-    const OpenImage_t direct(TestFixtures::get_fixture_path(name));
+    const OpenImage direct(TestFixtures::get_fixture_path(name));
     CHECK(direct.error == harddisk_err_not_block_image);
     CHECK(direct.instance == nullptr);
     REQUIRE(direct.driver != nullptr);
@@ -651,7 +651,7 @@ TEST_CASE(
   CHECK(card_block_count() == max_prodos_blocks);
   CHECK(card_read(0, max_prodos_blocks).result == prodos_ok);
   CHECK(log.count_containing("ProDOS can address 65535") == 1);
-  const OpenImage_t direct(sparse.path());
+  const OpenImage direct(sparse.path());
   REQUIRE(direct.error == harddisk_err_none);
   CHECK(direct.blocks() == max_prodos_blocks + 1);
 }
@@ -666,8 +666,8 @@ TEST_CASE(
             before.data(), before.size()) == expected.size());
   CHECK(std::string(before.data()) == expected);
   {
-    TestConfig_t config(harddisk_in_slot_7());
-    TestFixtures::ScopedCore_t core(config);
+    TestConfig config(harddisk_in_slot_7());
+    TestFixtures::ScopedCore core(config);
     REQUIRE(peripheral_present(card_slot, harddisk_id));
     std::array<char, 256> queried{};
     size_t size = queried.size();
@@ -691,8 +691,8 @@ TEST_CASE(
   const auto scratch = TestFixtures::create_ephemeral("minimal-block.hdv");
   const std::array<uint8_t, block_size> pattern = pattern_block(0x11);
   {
-    TestConfig_t config(harddisk_in_slot_7());
-    TestFixtures::ScopedCore_t core(config);
+    TestConfig config(harddisk_in_slot_7());
+    TestFixtures::ScopedCore core(config);
     REQUIRE(peripheral_present(card_slot, harddisk_id));
     insert(0, scratch.path());
     REQUIRE(status().drive0_loaded == 1);
@@ -709,11 +709,11 @@ TEST_CASE(
     CHECK(read_file(scratch.path()) == file);
   }
   {
-    TestConfig_t config(harddisk_in_slot_7());
-    TestFixtures::ScopedCore_t core(config);
+    TestConfig config(harddisk_in_slot_7());
+    TestFixtures::ScopedCore core(config);
     insert(0, scratch.path());
     REQUIRE(status().drive0_loaded == 1);
-    const CardRead_t block5 = card_read(0, 5);
+    const CardRead block5 = card_read(0, 5);
     CHECK(block5.result == prodos_ok);
     CHECK(block5.bytes == pattern);
   }
@@ -722,14 +722,14 @@ TEST_CASE(
 TEST_CASE(
     "Harddisk drivers: a read-only file, a locked 2MG and an archive are "
     "protected, refuse WRITE with the ProDOS code and still read") {
-  TestConfig_t config(harddisk_in_slot_7());
-  TestFixtures::ScopedCore_t core(config);
+  TestConfig config(harddisk_in_slot_7());
+  TestFixtures::ScopedCore core(config);
   REQUIRE(peripheral_present(card_slot, harddisk_id));
 
   // Superuser bypasses the file mode, as test_disk_prot does.
   if (getuid() != 0) {
     const auto scratch = TestFixtures::create_ephemeral("minimal-block.hdv");
-    const ScopedFileMode_t readonly(scratch.path(), 0444, 0644);
+    const ScopedFileMode readonly(scratch.path(), 0444, 0644);
     insert(0, scratch.path());
     REQUIRE(status().drive0_loaded == 1);
     CHECK(status().drive0_write_protected == 1);
@@ -749,7 +749,7 @@ TEST_CASE(
   CHECK(card_write(0, 1, pattern_block(0)) == prodos_write_protected);
   CHECK(all_equal(card_read(0, 1).bytes, 0x01));
 
-  const OpenImage_t archive(
+  const OpenImage archive(
       TestFixtures::get_fixture_path("minimal-block.hdv.gz"));
   REQUIRE(archive.error == harddisk_err_none);
   CHECK(archive.driver->is_write_protected(archive.instance));
@@ -761,7 +761,7 @@ TEST_CASE(
 TEST_CASE(
     "Harddisk drivers: the card's sector map is Fig. 3.14 of Beneath Apple "
     "ProDOS, and the content check finds each file system in its order") {
-  TestFixtures::ScopedTempDir_t dir("linapple_hdd_map_");
+  TestFixtures::ScopedTempDir dir("linapple_hdd_map_");
 
   // DOS sector s of every track holds the byte s, so the file is built from
   // sector numbers alone and a block reads as the pair the figure names.
@@ -776,7 +776,7 @@ TEST_CASE(
   const std::string path = dir.path() + "/sectors.dsk";
   write_file(path, image);
 
-  const OpenImage_t opened(path);
+  const OpenImage opened(path);
   REQUIRE(opened.error == harddisk_err_none);
   CHECK(std::string(opened.driver->name) == "DOS Order");
   for (uint32_t track = 0; track < 35; ++track) {
@@ -836,7 +836,7 @@ TEST_CASE(
     const std::vector<uint8_t> bytes =
         read_file(TestFixtures::get_fixture_path(fixture));
     REQUIRE(bytes.size() >= header_size);
-    GuardedBuffer_t header(header_size);
+    GuardedBuffer header(header_size);
     std::copy_n(bytes.begin(), static_cast<ptrdiff_t>(header_size),
                 header.data());
     return block_disk_image_probe_signature(header.data(), header_size,
@@ -851,7 +851,7 @@ TEST_CASE(
   CHECK(probe("minimal.po", probe_window, block_disk_order_prodos) ==
         harddisk_probe_definite);
 
-  GuardedBuffer_t short_header(100);
+  GuardedBuffer short_header(100);
   std::fill_n(short_header.data(), short_header.size(), 0);
   CHECK(block_disk_image_probe_signature(
             short_header.data(), short_header.size(), dos_image_size,
@@ -868,19 +868,19 @@ TEST_CASE(
     "Harddisk drivers: an image the loader refuses is the insert's answer, "
     "an error to a direct caller and the drive's last error through the "
     "queue") {
-  Peripheral_t* descriptor = peripheral_find_internal(harddisk_id);
+  Peripheral* descriptor = peripheral_find_internal(harddisk_id);
   REQUIRE(descriptor != nullptr);
 
-  HarddiskInsertCmd_t cmd{};
+  HarddiskInsertCmd cmd{};
   cmd.drive = harddisk_drive_0;
   std::strncpy(cmd.path, missing_path, sizeof(cmd.path) - 1);
 
-  HostInterface_t host = silent_host();
+  HostInterface host = silent_host();
   void* instance = descriptor->init(card_slot, &host);
   REQUIRE(instance != nullptr);
   CHECK(descriptor->command(instance, harddisk_cmd_insert, &cmd, sizeof(cmd)) ==
         peripheral_error);
-  HarddiskStatus_t direct{};
+  HarddiskStatus direct{};
   size_t size = sizeof(direct);
   REQUIRE(descriptor->query(instance, harddisk_query_status, &direct, &size) ==
           peripheral_ok);
@@ -888,13 +888,13 @@ TEST_CASE(
   CHECK(direct.drive0_last_error == harddisk_err_not_found);
   descriptor->shutdown(instance);
 
-  TestConfig_t config(harddisk_in_slot_7());
-  TestFixtures::ScopedCore_t core(config);
+  TestConfig config(harddisk_in_slot_7());
+  TestFixtures::ScopedCore core(config);
   REQUIRE(peripheral_present(card_slot, harddisk_id));
   CHECK(peripheral_command(card_slot, harddisk_cmd_insert, &cmd, sizeof(cmd)) ==
         peripheral_ok);
   settle();
-  HarddiskStatus_t queued = status();
+  HarddiskStatus queued = status();
   CHECK(queued.drive0_loaded == 0);
   CHECK(queued.drive0_last_error == harddisk_err_not_found);
   CHECK(drain_notes().empty());

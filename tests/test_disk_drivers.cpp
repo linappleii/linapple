@@ -28,9 +28,9 @@
 
 namespace {
 
-class ScopedTempFile_t {
+class ScopedTempFile {
  public:
-  explicit ScopedTempFile_t(const std::string& ext = "") {
+  explicit ScopedTempFile(const std::string& ext = "") {
     const char* tmpdir = std::getenv("TMPDIR");
     std::string base_dir =
         (tmpdir != nullptr && tmpdir[0] != '\0') ? tmpdir : "/tmp";
@@ -49,17 +49,17 @@ class ScopedTempFile_t {
     }
   }
 
-  ~ScopedTempFile_t() { unlink_file(); }
+  ~ScopedTempFile() { unlink_file(); }
 
-  ScopedTempFile_t(const ScopedTempFile_t&) = delete;
-  auto operator=(const ScopedTempFile_t&) -> ScopedTempFile_t& = delete;
+  ScopedTempFile(const ScopedTempFile&) = delete;
+  auto operator=(const ScopedTempFile&) -> ScopedTempFile& = delete;
 
-  ScopedTempFile_t(ScopedTempFile_t&& other) noexcept
+  ScopedTempFile(ScopedTempFile&& other) noexcept
       : path_(std::move(other.path_)) {
     other.path_.clear();
   }
 
-  auto operator=(ScopedTempFile_t&& other) noexcept -> ScopedTempFile_t& {
+  auto operator=(ScopedTempFile&& other) noexcept -> ScopedTempFile& {
     if (this != &other) {
       unlink_file();
       path_ = std::move(other.path_);
@@ -126,7 +126,7 @@ TEST_CASE("DiskDrivers: [DRV-01] DO Driver Probing") {
     buffer[0x11000 + 2 + (loop * 0x100)] = static_cast<uint8_t>(loop - 1);
   }
 
-  CHECK(g_do_driver.probe(buffer.data(), buffer.size(), 143360, ".do") ==
+  CHECK(do_driver.probe(buffer.data(), buffer.size(), 143360, ".do") ==
         disk_probe_definite);
 }
 
@@ -144,7 +144,7 @@ TEST_CASE("DiskDrivers: [DRV-02] PO Driver Probing") {
   buffer[1538] = 0;
   buffer[1539] = 0;
 
-  CHECK(g_po_driver.probe(buffer.data(), buffer.size(), 143360, ".po") ==
+  CHECK(po_driver.probe(buffer.data(), buffer.size(), 143360, ".po") ==
         disk_probe_definite);
 }
 
@@ -153,15 +153,15 @@ TEST_CASE("DiskDrivers: [DRV-02B] Extension Hint Discrimination") {
 
   // When given .po hint on an unindexed/raw 140k image:
   // PO driver should claim 'possible', but DO driver must NOT claim 'possible'
-  CHECK(g_po_driver.probe(blank_buffer.data(), blank_buffer.size(), 143360,
+  CHECK(po_driver.probe(blank_buffer.data(), blank_buffer.size(), 143360,
                           ".po") == disk_probe_possible);
-  CHECK(g_do_driver.probe(blank_buffer.data(), blank_buffer.size(), 143360,
+  CHECK(do_driver.probe(blank_buffer.data(), blank_buffer.size(), 143360,
                           ".po") == disk_probe_no);
 
   // When given .do / .dsk hint on an unindexed/raw 140k image:
-  CHECK(g_do_driver.probe(blank_buffer.data(), blank_buffer.size(), 143360,
+  CHECK(do_driver.probe(blank_buffer.data(), blank_buffer.size(), 143360,
                           ".dsk") == disk_probe_possible);
-  CHECK(g_po_driver.probe(blank_buffer.data(), blank_buffer.size(), 143360,
+  CHECK(po_driver.probe(blank_buffer.data(), blank_buffer.size(), 143360,
                           ".dsk") == disk_probe_no);
 }
 
@@ -170,41 +170,41 @@ TEST_CASE("DiskDrivers: [DRV-03] IIE Driver Probing") {
   std::copy_n("SIMSYSTEM_IIE", 13, header);
   header[13] = 2;  // Variant
 
-  CHECK(g_iie_driver.probe(header, 88, 143360, ".iie") == disk_probe_definite);
+  CHECK(iie_driver.probe(header, 88, 143360, ".iie") == disk_probe_definite);
 
   header[0] = 'X';
-  CHECK(g_iie_driver.probe(header, 88, 143360, ".iie") == disk_probe_no);
+  CHECK(iie_driver.probe(header, 88, 143360, ".iie") == disk_probe_no);
 }
 
 TEST_CASE("DiskDrivers: [DRV-04] WOZ 2 Driver Probing") {
   uint8_t header[1536]{};
   std::copy_n("WOZ2\xFF\n\r\n", 8, header);
 
-  CHECK(g_woz2_driver.probe(header, 1536, 1536, ".woz") == disk_probe_definite);
+  CHECK(woz2_driver.probe(header, 1536, 1536, ".woz") == disk_probe_definite);
 
   header[0] = 'X';
-  CHECK(g_woz2_driver.probe(header, 1536, 1536, ".woz") == disk_probe_no);
+  CHECK(woz2_driver.probe(header, 1536, 1536, ".woz") == disk_probe_no);
 }
 
 TEST_CASE("DiskDrivers: [DRV-05] NIB Driver Probing") {
   std::vector<uint8_t> buffer(232960, 0);
-  CHECK(g_nib_driver.probe(buffer.data(), buffer.size(), 232960, ".nib") ==
+  CHECK(nib_driver.probe(buffer.data(), buffer.size(), 232960, ".nib") ==
         disk_probe_definite);
 }
 
 TEST_CASE("DiskDrivers: [DRV-06] NB2 Driver Probing") {
   std::vector<uint8_t> buffer(223440, 0);
-  CHECK(g_nb2_driver.probe(buffer.data(), buffer.size(), 223440, ".nb2") ==
+  CHECK(nb2_driver.probe(buffer.data(), buffer.size(), 223440, ".nb2") ==
         disk_probe_definite);
 }
 
 TEST_CASE("DiskDrivers: [DRV-07] NIB Track Round-trip") {
-  ScopedTempFile_t tmp_file(".nib");
+  ScopedTempFile tmp_file(".nib");
   tmp_file.unlink_file();
-  REQUIRE(g_nib_driver.create(tmp_file.c_str()) == disk_err_none);
+  REQUIRE(nib_driver.create(tmp_file.c_str()) == disk_err_none);
 
   void* instance = nullptr;
-  REQUIRE(g_nib_driver.open(tmp_file.c_str(), 0, false, &instance) ==
+  REQUIRE(nib_driver.open(tmp_file.c_str(), 0, false, &instance) ==
           disk_err_none);
 
   // Every byte a Disk II can find again carries bit 7; a run of cells that
@@ -217,29 +217,29 @@ TEST_CASE("DiskDrivers: [DRV-07] NIB Track Round-trip") {
   constexpr uint32_t quarter_track_5 = 20;
   std::vector<uint8_t> bits;
   const uint32_t written_bits = to_bits(original, &bits);
-  CHECK(g_nib_driver.write_track_bits(instance, quarter_track_5, bits.data(),
+  CHECK(nib_driver.write_track_bits(instance, quarter_track_5, bits.data(),
                                       written_bits) == disk_err_none);
 
   std::vector<uint8_t> read_bits(max_track_bits / 8, 0);
   uint32_t read_bit_count = 0;
   uint8_t bit_timing = 0;
-  CHECK(g_nib_driver.read_track_bits(
+  CHECK(nib_driver.read_track_bits(
             instance, quarter_track_5, read_bits.data(), max_track_bits,
             &read_bit_count, &bit_timing) == disk_err_none);
 
   CHECK(read_bit_count == written_bits);
   CHECK(to_nibbles(read_bits, read_bit_count) == original);
 
-  g_nib_driver.close(instance);
+  nib_driver.close(instance);
 
   // Verify persistence across re-open through the driver ABI (Seam 4)
   void* reopen_instance = nullptr;
-  REQUIRE(g_nib_driver.open(tmp_file.c_str(), 0, false, &reopen_instance) ==
+  REQUIRE(nib_driver.open(tmp_file.c_str(), 0, false, &reopen_instance) ==
           disk_err_none);
 
   std::vector<uint8_t> persisted_bits(max_track_bits / 8, 0);
   uint32_t persisted_bit_count = 0;
-  CHECK(g_nib_driver.read_track_bits(reopen_instance, quarter_track_5,
+  CHECK(nib_driver.read_track_bits(reopen_instance, quarter_track_5,
                                      persisted_bits.data(), max_track_bits,
                                      &persisted_bit_count,
                                      &bit_timing) == disk_err_none);
@@ -247,16 +247,16 @@ TEST_CASE("DiskDrivers: [DRV-07] NIB Track Round-trip") {
   CHECK(persisted_bit_count == written_bits);
   CHECK(to_nibbles(persisted_bits, persisted_bit_count) == original);
 
-  g_nib_driver.close(reopen_instance);
+  nib_driver.close(reopen_instance);
 }
 
 TEST_CASE("DiskDrivers: [DRV-08] NB2 Track Round-trip") {
-  ScopedTempFile_t tmp_file(".nb2");
+  ScopedTempFile tmp_file(".nb2");
   tmp_file.unlink_file();
-  REQUIRE(g_nb2_driver.create(tmp_file.c_str()) == disk_err_none);
+  REQUIRE(nb2_driver.create(tmp_file.c_str()) == disk_err_none);
 
   void* instance = nullptr;
-  REQUIRE(g_nb2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
+  REQUIRE(nb2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
           disk_err_none);
 
   constexpr size_t nb2_nibbles_per_track = 6384;
@@ -268,33 +268,33 @@ TEST_CASE("DiskDrivers: [DRV-08] NB2 Track Round-trip") {
   constexpr uint32_t quarter_track_10 = 40;
   std::vector<uint8_t> bits;
   const uint32_t written_bits = to_bits(original, &bits);
-  CHECK(g_nb2_driver.write_track_bits(instance, quarter_track_10, bits.data(),
+  CHECK(nb2_driver.write_track_bits(instance, quarter_track_10, bits.data(),
                                       written_bits) == disk_err_none);
 
   std::vector<uint8_t> read_bits(max_track_bits / 8, 0);
   uint32_t read_bit_count = 0;
   uint8_t bit_timing = 0;
-  CHECK(g_nb2_driver.read_track_bits(
+  CHECK(nb2_driver.read_track_bits(
             instance, quarter_track_10, read_bits.data(), max_track_bits,
             &read_bit_count, &bit_timing) == disk_err_none);
 
   CHECK(read_bit_count == written_bits);
   CHECK(to_nibbles(read_bits, read_bit_count) == original);
 
-  g_nb2_driver.close(instance);
+  nb2_driver.close(instance);
 }
 
 TEST_CASE("DiskDrivers: [DRV-09] WOZ 2 Driver Probing") {
   uint8_t header[1536]{};
   std::copy_n("WOZ2\xFF\n\r\n", 8, header);
 
-  CHECK(g_woz2_driver.probe(header, 1536, 1536, ".woz") == disk_probe_definite);
+  CHECK(woz2_driver.probe(header, 1536, 1536, ".woz") == disk_probe_definite);
 
-  CHECK(g_woz2_driver.probe(header, 1536, 1535, ".woz") == disk_probe_no);
+  CHECK(woz2_driver.probe(header, 1536, 1535, ".woz") == disk_probe_no);
 }
 
 TEST_CASE("DiskDrivers: [DRV-10] WOZ 3.5\" Rejection") {
-  ScopedTempFile_t tmp_file(".woz");
+  ScopedTempFile tmp_file(".woz");
   FILE* f = fopen(tmp_file.c_str(), "wb");
   REQUIRE(f != nullptr);
   uint8_t header[1536]{};
@@ -311,12 +311,12 @@ TEST_CASE("DiskDrivers: [DRV-10] WOZ 3.5\" Rejection") {
   fclose(f);
 
   void* instance = nullptr;
-  CHECK(g_woz2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
+  CHECK(woz2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
         disk_err_unsupported_format);
 }
 
 TEST_CASE("DiskDrivers: [DRV-11] WOZ Write Protect") {
-  ScopedTempFile_t tmp_file(".woz");
+  ScopedTempFile tmp_file(".woz");
   auto create_woz_wp = [](const char* path, uint8_t wp_byte) -> void {
     FILE* f = fopen(path, "wb");
     REQUIRE(f != nullptr);
@@ -338,20 +338,20 @@ TEST_CASE("DiskDrivers: [DRV-11] WOZ Write Protect") {
   void* instance = nullptr;
 
   create_woz_wp(tmp_file.c_str(), 1);
-  REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
+  REQUIRE(woz2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
           disk_err_none);
-  CHECK(g_woz2_driver.is_write_protected(instance) == true);
-  g_woz2_driver.close(instance);
+  CHECK(woz2_driver.is_write_protected(instance) == true);
+  woz2_driver.close(instance);
 
   create_woz_wp(tmp_file.c_str(), 0);
-  REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
+  REQUIRE(woz2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
           disk_err_none);
-  CHECK(g_woz2_driver.is_write_protected(instance) == false);
-  g_woz2_driver.close(instance);
+  CHECK(woz2_driver.is_write_protected(instance) == false);
+  woz2_driver.close(instance);
 }
 
 TEST_CASE("DiskDrivers: [DRV-12] WOZ Unrecorded Track") {
-  ScopedTempFile_t tmp_file(".woz");
+  ScopedTempFile tmp_file(".woz");
   FILE* f = fopen(tmp_file.c_str(), "wb");
   REQUIRE(f != nullptr);
   uint8_t h[1536]{};
@@ -368,7 +368,7 @@ TEST_CASE("DiskDrivers: [DRV-12] WOZ Unrecorded Track") {
   fclose(f);
 
   void* instance = nullptr;
-  REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
+  REQUIRE(woz2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
           disk_err_none);
 
   std::vector<uint8_t> bits(max_track_bits / 8, 0);
@@ -377,16 +377,16 @@ TEST_CASE("DiskDrivers: [DRV-12] WOZ Unrecorded Track") {
 
   // TMAP 0xFF is surface the image never recorded. It is not a read failure:
   // the card gets no cells and hears the head amplifier instead.
-  CHECK(g_woz2_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
+  CHECK(woz2_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
                                       &bit_count,
                                       &bit_timing) == disk_err_none);
   CHECK(bit_count == 0);
 
-  g_woz2_driver.close(instance);
+  woz2_driver.close(instance);
 }
 
 TEST_CASE("DiskDrivers: [DRV-14] WOZ reports the cell time INFO measured") {
-  ScopedTempFile_t tmp_file(".woz");
+  ScopedTempFile tmp_file(".woz");
   auto create_woz_timing = [](const char* path, uint8_t timing) -> void {
     FILE* f = fopen(path, "wb");
     REQUIRE(f != nullptr);
@@ -413,36 +413,36 @@ TEST_CASE("DiskDrivers: [DRV-14] WOZ reports the cell time INFO measured") {
 
   constexpr uint8_t fast_cell_time = 31;
   create_woz_timing(tmp_file.c_str(), fast_cell_time);
-  REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
+  REQUIRE(woz2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
           disk_err_none);
-  CHECK(g_woz2_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
+  CHECK(woz2_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
                                       &bit_count,
                                       &bit_timing) == disk_err_none);
   CHECK(bit_timing == fast_cell_time);
-  g_woz2_driver.close(instance);
+  woz2_driver.close(instance);
 
   create_woz_timing(tmp_file.c_str(), 0);
-  REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
+  REQUIRE(woz2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
           disk_err_none);
-  CHECK(g_woz2_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
+  CHECK(woz2_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
                                       &bit_count,
                                       &bit_timing) == disk_err_none);
   CHECK(bit_timing == disk_default_bit_timing);
-  g_woz2_driver.close(instance);
+  woz2_driver.close(instance);
 }
 
 TEST_CASE("DiskDrivers: [DRV-13] DO Track Round-trip") {
-  ScopedTempFile_t tmp_do(".do");
+  ScopedTempFile tmp_do(".do");
   tmp_do.unlink_file();
-  REQUIRE(g_do_driver.create(tmp_do.c_str()) == disk_err_none);
+  REQUIRE(do_driver.create(tmp_do.c_str()) == disk_err_none);
 
   void* inst = nullptr;
-  REQUIRE(g_do_driver.open(tmp_do.c_str(), 0, false, &inst) == disk_err_none);
+  REQUIRE(do_driver.open(tmp_do.c_str(), 0, false, &inst) == disk_err_none);
 
   std::vector<uint8_t> bits(max_track_bits / 8, 0);
   uint32_t bit_count = 0;
   uint8_t bit_timing = 0;
-  CHECK(g_do_driver.read_track_bits(inst, 0, bits.data(), max_track_bits,
+  CHECK(do_driver.read_track_bits(inst, 0, bits.data(), max_track_bits,
                                     &bit_count, &bit_timing) == disk_err_none);
   // 5808 data nibbles at eight cells and 400 sync nibbles at ten: one
   // revolution in 197.8 ms at four CPU cycles a cell.
@@ -450,11 +450,11 @@ TEST_CASE("DiskDrivers: [DRV-13] DO Track Round-trip") {
   CHECK(bit_count == synthesised_track_bits);
   CHECK(bit_timing == disk_default_bit_timing);
 
-  g_do_driver.close(inst);
+  do_driver.close(inst);
 }
 
 TEST_CASE("DiskDrivers: [SEC-01] WOZ rejects an out-of-bounds trks_index") {
-  ScopedTempFile_t tmp_file(".woz");
+  ScopedTempFile tmp_file(".woz");
   FILE* f = fopen(tmp_file.c_str(), "wb");
   REQUIRE(f != nullptr);
   uint8_t h[1536]{};
@@ -472,23 +472,23 @@ TEST_CASE("DiskDrivers: [SEC-01] WOZ rejects an out-of-bounds trks_index") {
   fclose(f);
 
   void* instance = nullptr;
-  REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
+  REQUIRE(woz2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
           disk_err_none);
 
   std::vector<uint8_t> bits(max_track_bits / 8, 0);
   uint32_t bit_count = 123;
   uint8_t bit_timing = 0;
-  CHECK(g_woz2_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
+  CHECK(woz2_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
                                       &bit_count,
                                       &bit_timing) == disk_err_corrupt);
 
   CHECK(bit_count == 0);
 
-  g_woz2_driver.close(instance);
+  woz2_driver.close(instance);
 }
 
 TEST_CASE("DiskDrivers: [SEC-02] WOZ rejects a bit_count past block_count") {
-  ScopedTempFile_t tmp_file(".woz");
+  ScopedTempFile tmp_file(".woz");
   FILE* f = fopen(tmp_file.c_str(), "wb");
   REQUIRE(f != nullptr);
   uint8_t h[1536]{};
@@ -519,77 +519,77 @@ TEST_CASE("DiskDrivers: [SEC-02] WOZ rejects a bit_count past block_count") {
   fclose(f);
 
   void* instance = nullptr;
-  REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
+  REQUIRE(woz2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
           disk_err_none);
 
   std::vector<uint8_t> bits(max_track_bits / 8, 0);
   uint32_t bit_count = 123;
   uint8_t bit_timing = 0;
-  CHECK(g_woz2_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
+  CHECK(woz2_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
                                       &bit_count,
                                       &bit_timing) == disk_err_corrupt);
 
   CHECK(bit_count == 0);
 
-  g_woz2_driver.close(instance);
+  woz2_driver.close(instance);
 }
 
 TEST_CASE("DiskDrivers: [SEC-03] DO track past the image is blank surface") {
-  ScopedTempFile_t tmp_do(".do");
+  ScopedTempFile tmp_do(".do");
   tmp_do.unlink_file();
-  REQUIRE(g_do_driver.create(tmp_do.c_str()) == disk_err_none);
+  REQUIRE(do_driver.create(tmp_do.c_str()) == disk_err_none);
 
   void* inst = nullptr;
-  REQUIRE(g_do_driver.open(tmp_do.c_str(), 0, false, &inst) == disk_err_none);
+  REQUIRE(do_driver.open(tmp_do.c_str(), 0, false, &inst) == disk_err_none);
 
   std::vector<uint8_t> bits(max_track_bits / 8, 0);
   uint32_t bit_count = 123;
   uint8_t bit_timing = 0;
 
   constexpr uint32_t quarter_track_40 = 160;
-  CHECK(g_do_driver.read_track_bits(inst, quarter_track_40, bits.data(),
+  CHECK(do_driver.read_track_bits(inst, quarter_track_40, bits.data(),
                                     max_track_bits, &bit_count,
                                     &bit_timing) == disk_err_none);
   CHECK(bit_count == 0);
 
   bit_count = 123;
-  CHECK(g_do_driver.read_track_bits(inst, UINT32_MAX, bits.data(),
+  CHECK(do_driver.read_track_bits(inst, UINT32_MAX, bits.data(),
                                     max_track_bits, &bit_count,
                                     &bit_timing) == disk_err_none);
   CHECK(bit_count == 0);
 
-  g_do_driver.close(inst);
+  do_driver.close(inst);
 }
 
 TEST_CASE("DiskDrivers: [DRV-08] Driver Supported Extensions") {
-  REQUIRE(g_do_driver.supported_exts != nullptr);
-  CHECK(strcmp(g_do_driver.supported_exts[0], "do") == 0);
-  CHECK(strcmp(g_do_driver.supported_exts[1], "dsk") == 0);
-  CHECK(g_do_driver.supported_exts[2] == nullptr);
+  REQUIRE(do_driver.supported_exts != nullptr);
+  CHECK(strcmp(do_driver.supported_exts[0], "do") == 0);
+  CHECK(strcmp(do_driver.supported_exts[1], "dsk") == 0);
+  CHECK(do_driver.supported_exts[2] == nullptr);
 
-  REQUIRE(g_po_driver.supported_exts != nullptr);
-  CHECK(strcmp(g_po_driver.supported_exts[0], "po") == 0);
-  CHECK(g_po_driver.supported_exts[1] == nullptr);
+  REQUIRE(po_driver.supported_exts != nullptr);
+  CHECK(strcmp(po_driver.supported_exts[0], "po") == 0);
+  CHECK(po_driver.supported_exts[1] == nullptr);
 
-  REQUIRE(g_nib_driver.supported_exts != nullptr);
-  CHECK(strcmp(g_nib_driver.supported_exts[0], "nib") == 0);
-  CHECK(g_nib_driver.supported_exts[1] == nullptr);
+  REQUIRE(nib_driver.supported_exts != nullptr);
+  CHECK(strcmp(nib_driver.supported_exts[0], "nib") == 0);
+  CHECK(nib_driver.supported_exts[1] == nullptr);
 
-  REQUIRE(g_nb2_driver.supported_exts != nullptr);
-  CHECK(strcmp(g_nb2_driver.supported_exts[0], "nb2") == 0);
-  CHECK(g_nb2_driver.supported_exts[1] == nullptr);
+  REQUIRE(nb2_driver.supported_exts != nullptr);
+  CHECK(strcmp(nb2_driver.supported_exts[0], "nb2") == 0);
+  CHECK(nb2_driver.supported_exts[1] == nullptr);
 
-  REQUIRE(g_woz2_driver.supported_exts != nullptr);
-  CHECK(strcmp(g_woz2_driver.supported_exts[0], "woz") == 0);
-  CHECK(g_woz2_driver.supported_exts[1] == nullptr);
+  REQUIRE(woz2_driver.supported_exts != nullptr);
+  CHECK(strcmp(woz2_driver.supported_exts[0], "woz") == 0);
+  CHECK(woz2_driver.supported_exts[1] == nullptr);
 
-  REQUIRE(g_iie_driver.supported_exts != nullptr);
-  CHECK(strcmp(g_iie_driver.supported_exts[0], "iie") == 0);
-  CHECK(g_iie_driver.supported_exts[1] == nullptr);
+  REQUIRE(iie_driver.supported_exts != nullptr);
+  CHECK(strcmp(iie_driver.supported_exts[0], "iie") == 0);
+  CHECK(iie_driver.supported_exts[1] == nullptr);
 }
 
 TEST_CASE("DiskDrivers: [IIE-1] Reject truncated IIE disk image") {
-  ScopedTempFile_t tmp_iie(".iie");
+  ScopedTempFile tmp_iie(".iie");
   {
     FILE* f = fopen(tmp_iie.c_str(), "wb");
     REQUIRE(f != nullptr);
@@ -599,12 +599,12 @@ TEST_CASE("DiskDrivers: [IIE-1] Reject truncated IIE disk image") {
   }
 
   void* inst = nullptr;
-  CHECK(g_iie_driver.open(tmp_iie.c_str(), 0, false, &inst) != disk_err_none);
+  CHECK(iie_driver.open(tmp_iie.c_str(), 0, false, &inst) != disk_err_none);
   CHECK(inst == nullptr);
 }
 
 TEST_CASE("DiskDrivers: [DSK-2] Reject unaligned sector disk image") {
-  ScopedTempFile_t tmp_unaligned(".dsk");
+  ScopedTempFile tmp_unaligned(".dsk");
   {
     FILE* f = fopen(tmp_unaligned.c_str(), "wb");
     REQUIRE(f != nullptr);
@@ -614,7 +614,7 @@ TEST_CASE("DiskDrivers: [DSK-2] Reject unaligned sector disk image") {
   }
 
   void* inst = nullptr;
-  CHECK(g_do_driver.open(tmp_unaligned.c_str(), 0, false, &inst) !=
+  CHECK(do_driver.open(tmp_unaligned.c_str(), 0, false, &inst) !=
         disk_err_none);
   CHECK(inst == nullptr);
 }
@@ -622,11 +622,11 @@ TEST_CASE("DiskDrivers: [DSK-2] Reject unaligned sector disk image") {
 TEST_CASE(
     "DiskDrivers: [RET-1] Create valid sector disk and propagate creation "
     "failure") {
-  ScopedTempFile_t tmp_new(".dsk");
+  ScopedTempFile tmp_new(".dsk");
   tmp_new.unlink_file();
 
-  REQUIRE(g_do_driver.create != nullptr);
-  CHECK(g_do_driver.create(tmp_new.c_str()) == disk_err_none);
+  REQUIRE(do_driver.create != nullptr);
+  CHECK(do_driver.create(tmp_new.c_str()) == disk_err_none);
 
   FILE* f = fopen(tmp_new.c_str(), "rb");
   REQUIRE(f != nullptr);
@@ -635,17 +635,17 @@ TEST_CASE(
   fclose(f);
 
   // Unwritable / invalid path fails cleanly and returns error
-  CHECK(g_do_driver.create("/nonexistent_dir_12345/test.dsk") == disk_err_io);
+  CHECK(do_driver.create("/nonexistent_dir_12345/test.dsk") == disk_err_io);
 }
 
 TEST_CASE(
     "DiskDrivers: [RET-2] Create valid nibble image and propagate creation "
     "failure") {
-  ScopedTempFile_t tmp_nib(".nib");
+  ScopedTempFile tmp_nib(".nib");
   tmp_nib.unlink_file();
 
-  REQUIRE(g_nib_driver.create != nullptr);
-  CHECK(g_nib_driver.create(tmp_nib.c_str()) == disk_err_none);
+  REQUIRE(nib_driver.create != nullptr);
+  CHECK(nib_driver.create(tmp_nib.c_str()) == disk_err_none);
 
   FILE* f = fopen(tmp_nib.c_str(), "rb");
   REQUIRE(f != nullptr);
@@ -654,7 +654,7 @@ TEST_CASE(
   fclose(f);
 
   // Unwritable / invalid path fails cleanly and returns error
-  CHECK(g_nib_driver.create("/nonexistent_dir_12345/test.nib") == disk_err_io);
+  CHECK(nib_driver.create("/nonexistent_dir_12345/test.nib") == disk_err_io);
 }
 
 TEST_CASE(
@@ -668,19 +668,19 @@ TEST_CASE(
 
   // Definitively recognized as DOS order even with ambiguous or missing
   // extension hint
-  CHECK(g_do_driver.probe(buffer.data(), buffer.size(), 143360, "") ==
+  CHECK(do_driver.probe(buffer.data(), buffer.size(), 143360, "") ==
         disk_probe_definite);
-  CHECK(g_do_driver.probe(buffer.data(), buffer.size(), 143360, ".dsk") ==
+  CHECK(do_driver.probe(buffer.data(), buffer.size(), 143360, ".dsk") ==
         disk_probe_definite);
   // PO driver only sees possible based on size, but not definite
-  CHECK(g_po_driver.probe(buffer.data(), buffer.size(), 143360, "") ==
+  CHECK(po_driver.probe(buffer.data(), buffer.size(), 143360, "") ==
         disk_probe_possible);
-  CHECK(g_po_driver.probe(buffer.data(), buffer.size(), 143360, ".do") ==
+  CHECK(po_driver.probe(buffer.data(), buffer.size(), 143360, ".do") ==
         disk_probe_no);
 }
 
 TEST_CASE("DiskDrivers: [NIB-3] A truncated nibble track ends where it ends") {
-  ScopedTempFile_t tmp_nib(".nib");
+  ScopedTempFile tmp_nib(".nib");
 
   FILE* f = fopen(tmp_nib.c_str(), "wb");
   REQUIRE(f != nullptr);
@@ -689,24 +689,24 @@ TEST_CASE("DiskDrivers: [NIB-3] A truncated nibble track ends where it ends") {
   fclose(f);
 
   void* instance = nullptr;
-  CHECK(g_nib_driver.open(tmp_nib.c_str(), 0, false, &instance) ==
+  CHECK(nib_driver.open(tmp_nib.c_str(), 0, false, &instance) ==
         disk_err_none);
   REQUIRE(instance != nullptr);
 
   std::vector<uint8_t> bits(max_track_bits / 8, 0);
   uint32_t bit_count = 0;
   uint8_t bit_timing = 0;
-  CHECK(g_nib_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
+  CHECK(nib_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
                                      &bit_count, &bit_timing) == disk_err_none);
 
   CHECK(bit_count == 100 * 8);
   CHECK(to_nibbles(bits, bit_count) == short_track);
 
-  g_nib_driver.close(instance);
+  nib_driver.close(instance);
 }
 
 TEST_CASE("DiskDrivers: [IIE-14] IIE Driver invalid variant rejection") {
-  ScopedTempFile_t tmp_iie(".iie");
+  ScopedTempFile tmp_iie(".iie");
 
   FILE* f = fopen(tmp_iie.c_str(), "wb");
   REQUIRE(f != nullptr);
@@ -717,15 +717,15 @@ TEST_CASE("DiskDrivers: [IIE-14] IIE Driver invalid variant rejection") {
   fclose(f);
 
   void* instance = nullptr;
-  DiskError err = g_iie_driver.open(tmp_iie.c_str(), 0, false, &instance);
+  DiskError err = iie_driver.open(tmp_iie.c_str(), 0, false, &instance);
   CHECK(err == disk_err_unsupported_format);
   CHECK(instance == nullptr);
 }
 
 TEST_CASE("DiskDrivers: [DRV-15] A track written back lands in the image") {
-  ScopedTempFile_t tmp_do(".do");
+  ScopedTempFile tmp_do(".do");
   tmp_do.unlink_file();
-  REQUIRE(g_do_driver.create(tmp_do.c_str()) == disk_err_none);
+  REQUIRE(do_driver.create(tmp_do.c_str()) == disk_err_none);
 
   constexpr size_t dos_track_bytes = 4096;
   const std::vector<uint8_t> pristine_track(dos_track_bytes, 0);
@@ -735,11 +735,11 @@ TEST_CASE("DiskDrivers: [DRV-15] A track written back lands in the image") {
   uint8_t bit_timing = 0;
 
   void* inst = nullptr;
-  REQUIRE(g_do_driver.open(tmp_do.c_str(), 0, false, &inst) == disk_err_none);
-  REQUIRE(g_do_driver.read_track_bits(inst, 0, bits.data(), max_track_bits,
+  REQUIRE(do_driver.open(tmp_do.c_str(), 0, false, &inst) == disk_err_none);
+  REQUIRE(do_driver.read_track_bits(inst, 0, bits.data(), max_track_bits,
                                       &bit_count,
                                       &bit_timing) == disk_err_none);
-  g_do_driver.close(inst);
+  do_driver.close(inst);
 
   // Scribble over the image behind the driver's back, so a write that never
   // reaches the file cannot pass this case.
@@ -751,19 +751,19 @@ TEST_CASE("DiskDrivers: [DRV-15] A track written back lands in the image") {
     fclose(f);
   }
 
-  REQUIRE(g_do_driver.open(tmp_do.c_str(), 0, false, &inst) == disk_err_none);
-  CHECK(g_do_driver.write_track_bits(inst, 0, bits.data(), bit_count) ==
+  REQUIRE(do_driver.open(tmp_do.c_str(), 0, false, &inst) == disk_err_none);
+  CHECK(do_driver.write_track_bits(inst, 0, bits.data(), bit_count) ==
         disk_err_none);
-  g_do_driver.close(inst);
+  do_driver.close(inst);
 
   CHECK(read_image_track(tmp_do.path(), 0, dos_track_bytes) == pristine_track);
 }
 
 TEST_CASE(
     "DiskDrivers: [DRV-16] A track short a sector never reaches the image") {
-  ScopedTempFile_t tmp_do(".do");
+  ScopedTempFile tmp_do(".do");
   tmp_do.unlink_file();
-  REQUIRE(g_do_driver.create(tmp_do.c_str()) == disk_err_none);
+  REQUIRE(do_driver.create(tmp_do.c_str()) == disk_err_none);
 
   constexpr size_t dos_track_bytes = 4096;
 
@@ -772,8 +772,8 @@ TEST_CASE(
   uint8_t bit_timing = 0;
 
   void* inst = nullptr;
-  REQUIRE(g_do_driver.open(tmp_do.c_str(), 0, false, &inst) == disk_err_none);
-  REQUIRE(g_do_driver.read_track_bits(inst, 0, bits.data(), max_track_bits,
+  REQUIRE(do_driver.open(tmp_do.c_str(), 0, false, &inst) == disk_err_none);
+  REQUIRE(do_driver.read_track_bits(inst, 0, bits.data(), max_track_bits,
                                       &bit_count,
                                       &bit_timing) == disk_err_none);
 
@@ -791,9 +791,9 @@ TEST_CASE(
 
   const std::vector<uint8_t> before =
       read_image_track(tmp_do.path(), 0, dos_track_bytes);
-  CHECK(g_do_driver.write_track_bits(inst, 0, broken_bits.data(),
+  CHECK(do_driver.write_track_bits(inst, 0, broken_bits.data(),
                                      broken_count) == disk_err_corrupt);
-  g_do_driver.close(inst);
+  do_driver.close(inst);
 
   CHECK(read_image_track(tmp_do.path(), 0, dos_track_bytes) == before);
 }
@@ -832,7 +832,7 @@ auto write_woz_with_track(const std::string& path,
 }  // namespace
 
 TEST_CASE("DiskDrivers: [DRV-17] A recorded WOZ track reads back cell exact") {
-  ScopedTempFile_t tmp_file(".woz");
+  ScopedTempFile tmp_file(".woz");
 
   const std::vector<uint8_t> recorded = {0xFF, 0xFF, 0xFF, 0xD5, 0xAA, 0x96};
   constexpr uint32_t recorded_bits = 48;
@@ -841,24 +841,24 @@ TEST_CASE("DiskDrivers: [DRV-17] A recorded WOZ track reads back cell exact") {
                        measured_timing);
 
   void* instance = nullptr;
-  REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
+  REQUIRE(woz2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
           disk_err_none);
 
   std::vector<uint8_t> bits(max_track_bits / 8, 0);
   uint32_t bit_count = 0;
   uint8_t bit_timing = 0;
-  CHECK(g_woz2_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
+  CHECK(woz2_driver.read_track_bits(instance, 0, bits.data(), max_track_bits,
                                       &bit_count,
                                       &bit_timing) == disk_err_none);
   CHECK(bit_count == recorded_bits);
   CHECK(bit_timing == measured_timing);
   CHECK(to_nibbles(bits, bit_count) == recorded);
 
-  g_woz2_driver.close(instance);
+  woz2_driver.close(instance);
 }
 
 TEST_CASE("DiskDrivers: [DRV-18] A track wider than the buffer is refused") {
-  ScopedTempFile_t tmp_file(".woz");
+  ScopedTempFile tmp_file(".woz");
 
   const std::vector<uint8_t> recorded = {0xFF, 0xFF, 0xFF, 0xD5, 0xAA, 0x96};
   constexpr uint32_t recorded_bits = 48;
@@ -866,7 +866,7 @@ TEST_CASE("DiskDrivers: [DRV-18] A track wider than the buffer is refused") {
                        disk_default_bit_timing);
 
   void* instance = nullptr;
-  REQUIRE(g_woz2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
+  REQUIRE(woz2_driver.open(tmp_file.c_str(), 0, false, &instance) ==
           disk_err_none);
 
   std::vector<uint8_t> bits(max_track_bits / 8, 0xC3);
@@ -875,12 +875,12 @@ TEST_CASE("DiskDrivers: [DRV-18] A track wider than the buffer is refused") {
 
   // Forty cells of room for forty-eight cells of track: the driver refuses
   // rather than handing the card a revolution with its tail missing.
-  CHECK(g_woz2_driver.read_track_bits(instance, 0, bits.data(), 40, &bit_count,
+  CHECK(woz2_driver.read_track_bits(instance, 0, bits.data(), 40, &bit_count,
                                       &bit_timing) == disk_err_unsupported);
   CHECK(bit_count == 0);
   CHECK(bits[0] == 0xC3);
 
-  g_woz2_driver.close(instance);
+  woz2_driver.close(instance);
 }
 
 TEST_CASE("DiskDrivers: [DRV-19] Every driver answers a null argument as one") {
@@ -889,7 +889,7 @@ TEST_CASE("DiskDrivers: [DRV-19] Every driver answers a null argument as one") {
   CHECK(count == 7);
 
   for (uint32_t i = 0; i < count; ++i) {
-    const DiskFormatDriver_t* driver = disk_loader_driver_at(i);
+    const DiskFormatDriver* driver = disk_loader_driver_at(i);
     REQUIRE(driver != nullptr);
     INFO(driver->name);
 
@@ -917,7 +917,7 @@ TEST_CASE("DiskDrivers: [DRV-19] Every driver answers a null argument as one") {
 TEST_CASE(
     "DiskDrivers: [RET-3] Creating over an existing file leaves it as it "
     "was") {
-  ScopedTempFile_t occupied(".dsk");
+  ScopedTempFile occupied(".dsk");
   const std::vector<uint8_t> contents = {
       'n', 'o', 't', ' ', 'a', ' ', 'd', 'i', 's', 'k',
   };
@@ -928,10 +928,10 @@ TEST_CASE(
     fclose(f);
   }
 
-  CHECK(g_do_driver.create(occupied.c_str()) == disk_err_io);
-  CHECK(g_po_driver.create(occupied.c_str()) == disk_err_io);
-  CHECK(g_nib_driver.create(occupied.c_str()) == disk_err_io);
-  CHECK(g_nb2_driver.create(occupied.c_str()) == disk_err_io);
+  CHECK(do_driver.create(occupied.c_str()) == disk_err_io);
+  CHECK(po_driver.create(occupied.c_str()) == disk_err_io);
+  CHECK(nib_driver.create(occupied.c_str()) == disk_err_io);
+  CHECK(nb2_driver.create(occupied.c_str()) == disk_err_io);
 
   FILE* f = fopen(occupied.c_str(), "rb");
   REQUIRE(f != nullptr);
@@ -944,29 +944,29 @@ TEST_CASE(
 TEST_CASE("DiskDrivers: [RET-4] The loader's create names each refusal") {
   disk_loader_reset();
 
-  ScopedTempFile_t gzipped(".dsk.gz");
+  ScopedTempFile gzipped(".dsk.gz");
   gzipped.unlink_file();
   CHECK(disk_loader_create(gzipped.c_str(), "DOS Order") ==
         disk_err_invalid_argument);
   CHECK(access(gzipped.c_str(), F_OK) != 0);
-  ScopedTempFile_t zipped(".ZIP");
+  ScopedTempFile zipped(".ZIP");
   zipped.unlink_file();
   CHECK(disk_loader_create(zipped.c_str(), "DOS Order") ==
         disk_err_invalid_argument);
   CHECK(access(zipped.c_str(), F_OK) != 0);
 
-  ScopedTempFile_t woz(".woz");
+  ScopedTempFile woz(".woz");
   woz.unlink_file();
   CHECK(disk_loader_create(woz.c_str(), "WOZ 2") == disk_err_unsupported);
   CHECK(access(woz.c_str(), F_OK) != 0);
 
-  ScopedTempFile_t tape(".dsk");
+  ScopedTempFile tape(".dsk");
   tape.unlink_file();
   CHECK(disk_loader_create(tape.c_str(), "Tape") ==
         disk_err_unsupported_format);
   CHECK(access(tape.c_str(), F_OK) != 0);
 
-  ScopedTempFile_t fresh(".po");
+  ScopedTempFile fresh(".po");
   fresh.unlink_file();
   REQUIRE(disk_loader_create(fresh.c_str(), "ProDOS Order") == disk_err_none);
   CHECK(disk_loader_create(fresh.c_str(), "ProDOS Order") == disk_err_io);

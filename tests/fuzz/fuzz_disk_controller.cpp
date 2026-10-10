@@ -40,9 +40,9 @@ constexpr size_t track_data_size = sectors_per_track * sector_size;
 // One synthesised DOS 3.3 track, laid out as cells once and handed to every
 // input. The medium is fixed so a crash the fuzzer finds is a property of the
 // access sequence rather than of a track it also had to invent.
-std::vector<uint8_t> g_medium_cells;
+std::vector<uint8_t> medium_cells;
 
-bool g_host_saw_null = false;
+bool host_saw_null = false;
 
 auto build_medium() -> void {
   std::vector<uint8_t> sectors(track_data_size, 0);
@@ -59,15 +59,15 @@ auto build_medium() -> void {
           scratch.data()) != disk_err_none) {
     abort();
   }
-  g_medium_cells.assign(max_track_bits / 8, 0);
+  medium_cells.assign(max_track_bits / 8, 0);
   uint32_t cell_count = 0;
   if (disk_encoding_nibbles_to_bits(
-          nibbles.data(), nibble_count, sync_mask.data(), g_medium_cells.data(),
+          nibbles.data(), nibble_count, sync_mask.data(), medium_cells.data(),
           max_track_bits, &cell_count) != disk_err_none ||
       cell_count != medium_cell_count) {
     abort();
   }
-  g_medium_cells.resize(medium_cell_count / 8);
+  medium_cells.resize(medium_cell_count / 8);
 }
 
 auto medium_probe(const uint8_t*, size_t, uint32_t, const char*)
@@ -77,7 +77,7 @@ auto medium_probe(const uint8_t*, size_t, uint32_t, const char*)
 
 auto medium_open(const char*, uint32_t, bool, void** out_instance)
     -> DiskError {
-  *out_instance = &g_medium_cells;
+  *out_instance = &medium_cells;
   return disk_err_none;
 }
 
@@ -93,7 +93,7 @@ auto medium_read(void*, uint32_t quarter_track, uint8_t* bits,
   if (quarter_track >= 160 || medium_cell_count > max_bits) {
     return disk_err_invalid_argument;
   }
-  memcpy(bits, g_medium_cells.data(), g_medium_cells.size());
+  memcpy(bits, medium_cells.data(), medium_cells.size());
   *out_bit_count = medium_cell_count;
   return disk_err_none;
 }
@@ -103,16 +103,16 @@ auto medium_read(void*, uint32_t quarter_track, uint8_t* bits,
 auto medium_write(void*, uint32_t, const uint8_t* bits, uint32_t bit_count)
     -> DiskError {
   if (bits == nullptr) {
-    g_host_saw_null = true;
+    host_saw_null = true;
     return disk_err_invalid_argument;
   }
   assert(bit_count == medium_cell_count);
-  memcpy(g_medium_cells.data(), bits, g_medium_cells.size());
+  memcpy(medium_cells.data(), bits, medium_cells.size());
   return disk_err_none;
 }
 
-auto medium_driver() -> const DiskFormatDriver_t* {
-  static const DiskFormatDriver_t driver = {disk_format_abi_version,
+auto medium_driver() -> const DiskFormatDriver* {
+  static const DiskFormatDriver driver = {disk_format_abi_version,
                                             disk_driver_cap_write,
                                             "AAA Fuzz Medium",
                                             nullptr,
@@ -126,44 +126,44 @@ auto medium_driver() -> const DiskFormatDriver_t* {
   return &driver;
 }
 
-PeripheralIOHandler g_read_c0 = nullptr;
-PeripheralIOHandler g_write_c0 = nullptr;
+PeripheralIOHandler read_c0 = nullptr;
+PeripheralIOHandler write_c0 = nullptr;
 
 auto mock_register_io(int, PeripheralIOHandler read_c0,
                       PeripheralIOHandler write_c0, PeripheralIOHandler,
                       PeripheralIOHandler) -> void {
-  g_read_c0 = read_c0;
-  g_write_c0 = write_c0;
+  read_c0 = read_c0;
+  write_c0 = write_c0;
 }
 
 auto mock_register_cx_rom(int, const uint8_t* rom_ptr) -> void {
-  g_host_saw_null = g_host_saw_null || (rom_ptr == nullptr);
+  host_saw_null = host_saw_null || (rom_ptr == nullptr);
 }
 
-auto mock_log(void* instance, PeripheralLogLevel_t, const char* fmt, ...)
+auto mock_log(void* instance, PeripheralLogLevel, const char* fmt, ...)
     -> void {
-  g_host_saw_null =
-      g_host_saw_null || (instance == nullptr) || (fmt == nullptr);
+  host_saw_null =
+      host_saw_null || (instance == nullptr) || (fmt == nullptr);
 }
 
-uint8_t g_bus_byte = 0x5A;
+uint8_t bus_byte = 0x5A;
 
-auto mock_read_floating_bus(uint32_t) -> uint8_t { return g_bus_byte; }
+auto mock_read_floating_bus(uint32_t) -> uint8_t { return bus_byte; }
 
 auto mock_notify_status(int slot) -> void {
-  g_host_saw_null = g_host_saw_null || (slot != card_slot);
+  host_saw_null = host_saw_null || (slot != card_slot);
 }
 
 auto mock_notify_activity(int slot, bool) -> void {
-  g_host_saw_null = g_host_saw_null || (slot != card_slot);
+  host_saw_null = host_saw_null || (slot != card_slot);
 }
 
 // A file the loader can stat and read a header out of; the driver above
 // ignores its contents and answers with the in-memory medium.
-struct MediumFile_t {
+struct MediumFile {
   char path[64] = "/tmp/linapple_fuzz_disk_ctl_XXXXXX";
 
-  MediumFile_t() {
+  MediumFile() {
     const int fd = mkstemp(path);
     if (fd < 0) {
       abort();
@@ -173,14 +173,14 @@ struct MediumFile_t {
     static_cast<void>(written);
     close(fd);
   }
-  ~MediumFile_t() { unlink(path); }
+  ~MediumFile() { unlink(path); }
 
-  MediumFile_t(const MediumFile_t&) = delete;
-  auto operator=(const MediumFile_t&) -> MediumFile_t& = delete;
+  MediumFile(const MediumFile&) = delete;
+  auto operator=(const MediumFile&) -> MediumFile& = delete;
 };
 
-auto state_of(Peripheral_t* card, void* instance) -> DiskSavedState_t {
-  DiskSavedState_t state{};
+auto state_of(Peripheral* card, void* instance) -> DiskSavedState {
+  DiskSavedState state{};
   size_t size = sizeof(state);
   if (card->save_state(instance, &state, &size) != peripheral_ok ||
       size != sizeof(state) || state.header.size != sizeof(state)) {
@@ -191,7 +191,7 @@ auto state_of(Peripheral_t* card, void* instance) -> DiskSavedState_t {
 
 // The head is somewhere on the medium it was given, whatever the guest did
 // to the switches on the way there.
-auto check_position(const DiskSavedState_t& state) -> void {
+auto check_position(const DiskSavedState& state) -> void {
   for (const auto& drive : state.drives) {
     assert(drive.current_byte_pos >= 0);
     assert(static_cast<uint32_t>(drive.current_byte_pos) * 8 <
@@ -202,7 +202,7 @@ auto check_position(const DiskSavedState_t& state) -> void {
 }  // namespace
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
-  static MediumFile_t medium_file;
+  static MediumFile medium_file;
   static const bool medium_ready = [] {
     build_medium();
     disk_loader_register(medium_driver());
@@ -210,9 +210,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   }();
   static_cast<void>(medium_ready);
 
-  Peripheral_t* card = disk_get_descriptor();
+  Peripheral* card = disk_get_descriptor();
 
-  HostInterface_t host{};
+  HostInterface host{};
   host.Log = mock_log;
   host.RegisterIO = mock_register_io;
   host.RegisterCxROM = mock_register_cx_rom;
@@ -220,16 +220,16 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   host.NotifyStatusChanged = mock_notify_status;
   host.NotifyActivityChanged = mock_notify_activity;
 
-  g_read_c0 = nullptr;
-  g_write_c0 = nullptr;
-  g_host_saw_null = false;
+  read_c0 = nullptr;
+  write_c0 = nullptr;
+  host_saw_null = false;
 
   void* instance = card->init(card_slot, &host);
-  if (instance == nullptr || g_read_c0 == nullptr || g_write_c0 == nullptr) {
+  if (instance == nullptr || read_c0 == nullptr || write_c0 == nullptr) {
     return 0;
   }
 
-  DiskInsertCmd_t insert{};
+  DiskInsertCmd insert{};
   insert.drive = disk_drive_0;
   memcpy(insert.path, medium_file.path, strlen(medium_file.path) + 1);
   if (card->command(instance, disk_cmd_insert, &insert, sizeof(insert)) !=
@@ -243,13 +243,13 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     const auto address = static_cast<uint16_t>(card_page | (record[1] & 0x0FU));
     const uint32_t cycle = static_cast<uint32_t>(record[3]) |
                            (static_cast<uint32_t>(record[4]) << 8U);
-    g_bus_byte = record[5];
+    bus_byte = record[5];
 
     switch (record[0] & 0x03U) {
       case 0:
       case 1: {
-        const uint8_t answer = g_read_c0(instance, 0, address, 0, 0, cycle);
-        const DiskSavedState_t after = state_of(card, instance);
+        const uint8_t answer = read_c0(instance, 0, address, 0, 0, cycle);
+        const DiskSavedState after = state_of(card, instance);
         // A0 low gates the 74LS323 onto the data bus, so an even offset
         // answers with the register the state file also carries.
         if ((address & 1U) == 0) {
@@ -259,14 +259,14 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
         // The sync mark never moves backwards inside a slice: the same
         // access at the same cycle leaves the medium exactly where it was.
-        g_read_c0(instance, 0, address, 0, 0, cycle);
-        const DiskSavedState_t again = state_of(card, instance);
+        read_c0(instance, 0, address, 0, 0, cycle);
+        const DiskSavedState again = state_of(card, instance);
         assert(again.drives[0].current_byte_pos ==
                after.drives[0].current_byte_pos);
         break;
       }
       case 2: {
-        g_write_c0(instance, 0, address, 1, record[2], cycle);
+        write_c0(instance, 0, address, 1, record[2], cycle);
         check_position(state_of(card, instance));
         break;
       }
@@ -276,7 +276,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
         break;
       }
     }
-    assert(!g_host_saw_null);
+    assert(!host_saw_null);
   }
 
   card->shutdown(instance);

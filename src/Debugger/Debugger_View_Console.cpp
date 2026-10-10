@@ -10,7 +10,7 @@
 
 // Functions moved from Debugger_Display.cpp
 
-auto DrawSubWindow_Console(Update_t bUpdate) -> void {
+auto DrawSubWindow_Console(UpdateResult bUpdate) -> void {
   if (!can_draw_debugger()) {
     return;
   }
@@ -19,12 +19,12 @@ auto DrawSubWindow_Console(Update_t bUpdate) -> void {
       ((bUpdate & UPDATE_CONSOLE_INPUT) != 0)) {
     DebuggerSetColorBG(DebuggerGetColor(BG_CONSOLE_OUTPUT));
 
-    int iLine = g_console_display_start + CONSOLE_FIRST_LINE;
-    for (int y = 1; y < g_console_display_lines; y++) {
+    int iLine = console_display_start + CONSOLE_FIRST_LINE;
+    for (int y = 1; y < console_display_lines; y++) {
       if (iLine < CONSOLE_DISPLAY_HEIGHT &&
-          iLine <= (g_console_display_total + CONSOLE_FIRST_LINE)) {
+          iLine <= (console_display_total + CONSOLE_FIRST_LINE)) {
         DebuggerSetColorFG(DebuggerGetColor(FG_CONSOLE_OUTPUT));
-        DrawConsoleLine(g_console_display[iLine], y);
+        DrawConsoleLine(console_display[iLine], y);
       } else {
         DrawConsoleLine(nullptr, y);
       }
@@ -35,30 +35,30 @@ auto DrawSubWindow_Console(Update_t bUpdate) -> void {
   }
 }
 
-auto DrawWindow_Console(Update_t bUpdate) -> void { (void)bUpdate; }
+auto DrawWindow_Console(UpdateResult bUpdate) -> void { (void)bUpdate; }
 
 auto DrawWindowBackground_Main(int iWindow) -> void {
   (void)iWindow;
   DebuggerSetColorBG(DebuggerGetColor(BG_DISASM_1));
 
-  Rect_t rect;
+  Rect rect;
   rect.left = 0;
   rect.top = 0;
   rect.right = DISPLAY_DISASM_RIGHT;
-  int nTop = GetConsoleTopPixels(g_console_display_lines - 1);
+  int nTop = GetConsoleTopPixels(console_display_lines - 1);
   rect.bottom = nTop;
-  FillRect(&rect, g_console_brush_bg);
+  FillRect(&rect, console_brush_bg);
 }
 
 auto DrawWindowBackground_Info(int iWindow) -> void {
   (void)iWindow;
   DebuggerSetColorBG(DebuggerGetColor(BG_INFO));
 
-  Rect_t rect;
+  Rect rect;
   rect.top = 0;
   rect.left = DISPLAY_DISASM_RIGHT;
   rect.right = DISPLAY_WIDTH;
-  int nTop = GetConsoleTopPixels(g_console_display_lines - 1);
+  int nTop = GetConsoleTopPixels(console_display_lines - 1);
   rect.bottom = nTop;
-  FillRect(&rect, g_console_brush_bg);
+  FillRect(&rect, console_brush_bg);
 }

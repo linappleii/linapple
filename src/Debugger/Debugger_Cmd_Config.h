@@ -4,24 +4,24 @@
 #include "Debugger_Types.h"
 #include "Util_MemoryTextFile.h"
 
-extern MemoryTextFile_t g_config_state;
-extern bool g_report_missing_scripts;
+extern MemoryTextFile config_state;
+extern bool report_missing_scripts;
 
-auto CmdConfigColorMono(int nArgs) -> Update_t;
-auto CmdConfigHColor(int nArgs) -> Update_t;
-auto CmdConfigLoad(int nArgs) -> Update_t;
-auto CmdConfigSave(int nArgs) -> Update_t;
-auto CmdConfigDisasm(int nArgs) -> Update_t;
-auto CmdConfigFontLoad(int nArgs) -> Update_t;
-auto CmdConfigFontSave(int nArgs) -> Update_t;
-auto CmdConfigFontMode(int nArgs) -> Update_t;
-auto CmdConfigFont(int nArgs) -> Update_t;
-auto CmdConfigSetFont(int nArgs) -> Update_t;
-auto CmdConfigGetFont(int nArgs) -> Update_t;
-auto CmdConfigSetDebugDir(int nArgs) -> Update_t;
+auto CmdConfigColorMono(int nArgs) -> UpdateResult;
+auto CmdConfigHColor(int nArgs) -> UpdateResult;
+auto CmdConfigLoad(int nArgs) -> UpdateResult;
+auto CmdConfigSave(int nArgs) -> UpdateResult;
+auto CmdConfigDisasm(int nArgs) -> UpdateResult;
+auto CmdConfigFontLoad(int nArgs) -> UpdateResult;
+auto CmdConfigFontSave(int nArgs) -> UpdateResult;
+auto CmdConfigFontMode(int nArgs) -> UpdateResult;
+auto CmdConfigFont(int nArgs) -> UpdateResult;
+auto CmdConfigSetFont(int nArgs) -> UpdateResult;
+auto CmdConfigGetFont(int nArgs) -> UpdateResult;
+auto CmdConfigSetDebugDir(int nArgs) -> UpdateResult;
 
-auto ConfigSave_BufferToDisk(const char* pFileName, ConfigSave_t eConfigSave)
+auto ConfigSave_BufferToDisk(const char* pFileName, ConfigSave eConfigSave)
     -> bool;
-auto ConfigSave_PrepareHeader(Parameters_e eCategory, Commands_e eCommandClear)
+auto ConfigSave_PrepareHeader(Parameters eCategory, Commands eCommandClear)
     -> void;
 auto UpdateWindowFontHeights(int nFontHeight) -> void;

@@ -3,10 +3,10 @@
 
 #include "Debugger_Types.h"
 
-auto CmdBenchmark(int nArgs) -> Update_t;
-auto CmdBenchmarkStart(int nArgs) -> Update_t;
-auto CmdBenchmarkStop(int nArgs) -> Update_t;
-auto CmdProfile(int nArgs) -> Update_t;
+auto CmdBenchmark(int nArgs) -> UpdateResult;
+auto CmdBenchmarkStart(int nArgs) -> UpdateResult;
+auto CmdBenchmarkStop(int nArgs) -> UpdateResult;
+auto CmdProfile(int nArgs) -> UpdateResult;
 
 auto ProfileReset() -> void;
 auto ProfileSave() -> bool;

@@ -17,7 +17,7 @@
 extern "C" {
 #endif
 
-typedef struct NibbleDiskImage_t NibbleDiskImage_t;
+typedef struct NibbleDiskImage NibbleDiskImage;
 
 /* The largest image the family describes: thirty-five whole tracks of the
    longest slot. A file with more behind its offset is refused before anything
@@ -51,7 +51,7 @@ DiskError nibble_disk_image_open(const char* path, uint32_t file_offset,
                                    uint32_t track_nibbles, bool read_only,
                                    void** out_instance);
 
-/* These four carry the DiskFormatDriver_t signatures, instance being the
+/* These four carry the DiskFormatDriver signatures, instance being the
    pointer open handed out, so a driver descriptor names them directly. Open
    and create stay with the driver because NIB and NB2 differ only in the
    track size they pass here. */

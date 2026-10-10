@@ -11,10 +11,10 @@
 
 namespace {
 
-struct termios g_orig_termios;
-volatile sig_atomic_t g_terminal_initialized = 0;
-std::atomic<bool> g_resized(false);
-std::atomic<bool> g_interrupted(false);
+struct termios orig_termios;
+volatile sig_atomic_t terminal_initialized = 0;
+std::atomic<bool> resized(false);
+std::atomic<bool> interrupted(false);
 bool atexit_registered = false;
 
 constexpr const char* enter_alt_screen_hide_cursor = "\x1b[?1049h\x1b[?25l";
@@ -30,10 +30,10 @@ auto signal_handler(int sig) -> void {
     case SIGTERM:
     case SIGHUP:
     case SIGQUIT:
-      g_interrupted = true;
+      interrupted = true;
       break;
     case SIGWINCH:
-      g_resized = true;
+      resized = true;
       break;
     default:
       break;
@@ -41,14 +41,14 @@ auto signal_handler(int sig) -> void {
 }
 
 auto restore_terminal_signal_safe() -> void {
-  if (g_terminal_initialized == 0) {
+  if (terminal_initialized == 0) {
     return;
   }
   ssize_t n =
       write(STDOUT_FILENO, restore_terminal, sizeof(restore_terminal) - 1);
   (void)n;
-  tcsetattr(STDIN_FILENO, TCSAFLUSH, &g_orig_termios);
-  g_terminal_initialized = 0;
+  tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
+  terminal_initialized = 0;
 }
 
 auto fatal_signal_handler(int sig) -> void {
@@ -63,7 +63,7 @@ auto fatal_signal_handler(int sig) -> void {
 }  // namespace
 
 auto tui_terminal_initialize() -> int {
-  if (g_terminal_initialized != 0) {
+  if (terminal_initialized != 0) {
     return 0;
   }
 
@@ -71,12 +71,12 @@ auto tui_terminal_initialize() -> int {
     return 1;
   }
 
-  if (tcgetattr(STDIN_FILENO, &g_orig_termios) == -1) {
+  if (tcgetattr(STDIN_FILENO, &orig_termios) == -1) {
     perror("tcgetattr");
     return 1;
   }
 
-  struct termios raw = g_orig_termios;
+  struct termios raw = orig_termios;
   raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
   raw.c_oflag &= ~(OPOST);
   raw.c_cflag |= (CS8);
@@ -117,25 +117,25 @@ auto tui_terminal_initialize() -> int {
     atexit_registered = true;
   }
 
-  g_terminal_initialized = 1;
+  terminal_initialized = 1;
   return 0;
 }
 
 auto tui_terminal_shutdown() -> void {
-  if (g_terminal_initialized == 0) {
+  if (terminal_initialized == 0) {
     return;
   }
 
   fputs(restore_terminal, stdout);
   fflush(stdout);
 
-  tcsetattr(STDIN_FILENO, TCSAFLUSH, &g_orig_termios);
+  tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
 
-  g_terminal_initialized = 0;
+  terminal_initialized = 0;
 }
 
-auto tui_terminal_was_resized() -> bool { return g_resized.load(); }
+auto tui_terminal_was_resized() -> bool { return resized.load(); }
 
-auto tui_terminal_clear_resized() -> void { g_resized = false; }
+auto tui_terminal_clear_resized() -> void { resized = false; }
 
-auto tui_terminal_is_interrupted() -> bool { return g_interrupted.load(); }
+auto tui_terminal_is_interrupted() -> bool { return interrupted.load(); }

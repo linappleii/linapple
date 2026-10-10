@@ -16,16 +16,16 @@
 #include "core/Util_Path.h"
 
 // Globals originally from Debug.cpp
-bool g_benchmarking = false;
-bool g_profiling = false;
+bool benchmarking = false;
+bool profiling = false;
 
-ProfileOpcode_t g_profile_opcodes[NUM_OPCODES];
-ProfileOpmode_t g_profile_opmodes[NUM_OPMODES];
-uint64_t g_profile_begin_cycles = 0;  // g_cumulative_cycles // PROFILE RESET
+ProfileOpcode profile_opcodes[NUM_OPCODES];
+ProfileOpmode profile_opmodes[NUM_OPMODES];
+uint64_t profile_begin_cycles = 0;  // cumulative_cycles // PROFILE RESET
 
-const char* const g_file_name_profile = "Profile.txt";
-int g_profile_line_count = 0;
-char g_profile_line[NUM_PROFILE_LINES][CONSOLE_WIDTH] = {};
+const char* const file_name_profile = "Profile.txt";
+int profile_line_count = 0;
+char profile_line[NUM_PROFILE_LINES][CONSOLE_WIDTH] = {};
 
 uint32_t extbench = 0;
 
@@ -33,34 +33,34 @@ uint32_t extbench = 0;
 
 // Implementation ___________________________________________________________
 
-auto CmdBenchmarkStart(int nArgs) -> Update_t {
+auto CmdBenchmarkStart(int nArgs) -> UpdateResult {
   (void)nArgs;
-  g_benchmarking = true;
+  benchmarking = true;
   extbench = 0;
   return UPDATE_CONSOLE_DISPLAY;
 }
 
-auto CmdBenchmark(int nArgs) -> Update_t {
+auto CmdBenchmark(int nArgs) -> UpdateResult {
   if (nArgs == 0) {
-    g_benchmarking = false;
+    benchmarking = false;
   } else {
-    g_benchmarking = true;
+    benchmarking = true;
     extbench = 0;
   }
 
   return UPDATE_CONSOLE_DISPLAY;
 }
 
-static auto CmdProfileList(int nArgs) -> Update_t;
+static auto CmdProfileList(int nArgs) -> UpdateResult;
 
-auto CmdProfile(int nArgs) -> Update_t {
+auto CmdProfile(int nArgs) -> UpdateResult {
   if (nArgs == 0) {
     return CmdProfileList(0);
   }
 
   int iArg = 1;
   int iParam = 0;
-  bool bFound = FindParam(g_args[iArg].sArg, MATCH_EXACT, iParam,
+  bool bFound = FindParam(args[iArg].sArg, MATCH_EXACT, iParam,
                           PARAM_PROFILE_BEGIN, PARAM_PROFILE_END) > 0;
 
   if (bFound) {
@@ -69,13 +69,13 @@ auto CmdProfile(int nArgs) -> Update_t {
     } else if (iParam == PARAM_PROFILE_SAVE) {
       if (ProfileSave()) {
         char sText[CONSOLE_WIDTH];
-        ConsoleBufferPushFormat(sText, " Saved: %s", g_file_name_profile);
+        ConsoleBufferPushFormat(sText, " Saved: %s", file_name_profile);
       }
     } else if (iParam == PARAM_PROFILE_LIST) {
       return CmdProfileList(0);
     } else {
-      g_profiling = (iParam == PARAM_PROFILE_ON);
-      g_profile_begin_cycles = g_cumulative_cycles;
+      profiling = (iParam == PARAM_PROFILE_ON);
+      profile_begin_cycles = cumulative_cycles;
     }
   } else {
     return Help_Arg_1(CMD_PROFILE);
@@ -89,8 +89,8 @@ auto ProfileLinePeek(int iLine) -> char* {
 
   iLine = std::max(iLine, 0);
 
-  if (iLine <= g_profile_line_count) {
-    text = &g_profile_line[iLine][0];
+  if (iLine <= profile_line_count) {
+    text = &profile_line[iLine][0];
   }
 
   return text;
@@ -99,18 +99,18 @@ auto ProfileLinePeek(int iLine) -> char* {
 auto ProfileReset() -> void {
   int opcode = 0;
   for (opcode = 0; opcode < NUM_OPCODES; opcode++) {
-    g_profile_opcodes[opcode].opcode = opcode;
-    g_profile_opcodes[opcode].count = 0;
+    profile_opcodes[opcode].opcode = opcode;
+    profile_opcodes[opcode].count = 0;
   }
 
   int iOpmode = 0;
   for (iOpmode = 0; iOpmode < NUM_OPMODES; iOpmode++) {
-    g_profile_opmodes[iOpmode].opmode = iOpmode;
-    g_profile_opmodes[iOpmode].count = 0;
+    profile_opmodes[iOpmode].opmode = iOpmode;
+    profile_opmodes[iOpmode].count = 0;
   }
 
-  g_profile_line_count = 0;
-  g_profile_begin_cycles = g_cumulative_cycles;
+  profile_line_count = 0;
+  profile_begin_cycles = cumulative_cycles;
 }
 
 auto ProfileFormat(bool bSeperateColumns, int eFormatMode) -> void {
@@ -122,32 +122,32 @@ auto ProfileFormat(bool bSeperateColumns, int eFormatMode) -> void {
   bool bOpcodeGood = true;
   bool bOpmodeGood = true;
 
-  std::vector<ProfileOpcode_t> vProfileOpcode(&g_profile_opcodes[0],
-                                              &g_profile_opcodes[NUM_OPCODES]);
-  std::vector<ProfileOpmode_t> vProfileOpmode(&g_profile_opmodes[0],
-                                              &g_profile_opmodes[NUM_OPMODES]);
+  std::vector<ProfileOpcode> vProfileOpcode(&profile_opcodes[0],
+                                              &profile_opcodes[NUM_OPCODES]);
+  std::vector<ProfileOpmode> vProfileOpmode(&profile_opmodes[0],
+                                              &profile_opmodes[NUM_OPMODES]);
 
   // sort >
-  std::sort(vProfileOpcode.begin(), vProfileOpcode.end(), ProfileOpcode_t());
-  std::sort(vProfileOpmode.begin(), vProfileOpmode.end(), ProfileOpmode_t());
+  std::sort(vProfileOpcode.begin(), vProfileOpcode.end(), ProfileOpcode());
+  std::sort(vProfileOpmode.begin(), vProfileOpmode.end(), ProfileOpmode());
 
-  g_profile_line_count = 0;
-  char* text = &g_profile_line[0][0];
+  profile_line_count = 0;
+  char* text = &profile_line[0][0];
 
-  uint64_t nTotalCycles = g_cumulative_cycles - g_profile_begin_cycles;
-  snprintf(text, sizeof(g_profile_line[0]), "Cycles: %llu\n",
+  uint64_t nTotalCycles = cumulative_cycles - profile_begin_cycles;
+  snprintf(text, sizeof(profile_line[0]), "Cycles: %llu\n",
            static_cast<unsigned long long>(nTotalCycles));
-  g_profile_line_count++;
+  profile_line_count++;
 
   while (bOpcodeGood || bOpmodeGood) {
-    text = &g_profile_line[g_profile_line_count][0];
+    text = &profile_line[profile_line_count][0];
     char op_text[CONSOLE_WIDTH] = "";
     char mode_text[CONSOLE_WIDTH] = "";
 
     if (opcode < NUM_OPCODES) {
       if (vProfileOpcode.at(static_cast<size_t>(opcode)).count > 0) {
         snprintf(op_text, sizeof(op_text), "%s: %llu",
-                 g_opcodes65_c02[vProfileOpcode.at(static_cast<size_t>(opcode))
+                 opcodes65_c02[vProfileOpcode.at(static_cast<size_t>(opcode))
                                      .opcode]
                      .sMnemonic,
                  static_cast<unsigned long long>(
@@ -160,7 +160,7 @@ auto ProfileFormat(bool bSeperateColumns, int eFormatMode) -> void {
     if (iOpmode < NUM_OPMODES) {
       if (vProfileOpmode.at(static_cast<size_t>(iOpmode)).count > 0) {
         snprintf(mode_text, sizeof(mode_text), "  %s: %llu",
-                 g_opmodes[static_cast<size_t>(
+                 opmodes[static_cast<size_t>(
                                vProfileOpmode.at(static_cast<size_t>(iOpmode))
                                    .opmode)]
                      .name,
@@ -172,36 +172,36 @@ auto ProfileFormat(bool bSeperateColumns, int eFormatMode) -> void {
     }
 
     if (op_text[0] != '\0' || mode_text[0] != '\0') {
-      snprintf(text, sizeof(g_profile_line[0]), "%s%s\n", op_text, mode_text);
-      g_profile_line_count++;
+      snprintf(text, sizeof(profile_line[0]), "%s%s\n", op_text, mode_text);
+      profile_line_count++;
     }
 
     opcode++;
     iOpmode++;
 
-    if (g_profile_line_count >= (NUM_PROFILE_LINES - 1)) {
+    if (profile_line_count >= (NUM_PROFILE_LINES - 1)) {
       break;
     }
   }
 }
 
-static auto CmdProfileList(int nArgs) -> Update_t {
+static auto CmdProfileList(int nArgs) -> UpdateResult {
   (void)nArgs;
   ProfileFormat(true, 0);
 
-  int nLines = std::min(g_profile_line_count, g_console_display_lines - 1);
+  int nLines = std::min(profile_line_count, console_display_lines - 1);
   return ConsoleBufferTryUnpause(nLines);
 }
 
 auto ProfileSave() -> bool {
   bool bStatus = false;
-  FilePtr hFile(fopen(g_file_name_profile, "w"), fclose);
+  FilePtr hFile(fopen(file_name_profile, "w"), fclose);
 
   if (hFile) {
     ProfileFormat(true, 0);
 
     char* text = nullptr;
-    int nLine = g_profile_line_count;
+    int nLine = profile_line_count;
     int iLine = 0;
 
     for (iLine = 0; iLine < nLine; iLine++) {

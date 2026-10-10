@@ -34,11 +34,11 @@ constexpr uint32_t settle_cycles = 32;
 // One full motor-off hold of 1,159,235 cycles plus slack.
 constexpr uint32_t cycles_to_expire_motor = 1400000;
 
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
 
-class DiskModesHarness_t {
+class DiskModesHarness {
  public:
-  explicit DiskModesHarness_t(bool write_protected) {
+  explicit DiskModesHarness(bool write_protected) {
     machine_.load();
     linapple_init();
     peripheral_manager_init();
@@ -46,7 +46,7 @@ class DiskModesHarness_t {
 
     disk_ = TestFixtures::create_ephemeral("minimal.dsk");
 
-    DiskInsertCmd_t cmd{};
+    DiskInsertCmd cmd{};
     cmd.drive = disk_drive_0;
     cmd.write_protected = write_protected ? 1 : 0;
     util_safe_strcpy(cmd.path, disk_.path().c_str(), disk_insert_path_max);
@@ -54,12 +54,12 @@ class DiskModesHarness_t {
     peripheral_manager_think(0);
   }
 
-  ~DiskModesHarness_t() { linapple_shutdown(); }
+  ~DiskModesHarness() { linapple_shutdown(); }
 
-  DiskModesHarness_t(const DiskModesHarness_t&) = delete;
-  auto operator=(const DiskModesHarness_t&) -> DiskModesHarness_t& = delete;
-  DiskModesHarness_t(DiskModesHarness_t&&) = delete;
-  auto operator=(DiskModesHarness_t&&) -> DiskModesHarness_t& = delete;
+  DiskModesHarness(const DiskModesHarness&) = delete;
+  auto operator=(const DiskModesHarness&) -> DiskModesHarness& = delete;
+  DiskModesHarness(DiskModesHarness&&) = delete;
+  auto operator=(DiskModesHarness&&) -> DiskModesHarness& = delete;
 
   static auto read_at(uint16_t address, uint32_t cycle) -> uint8_t {
     return io_map_dispatch(0, address, 0, 0, cycle);
@@ -89,8 +89,8 @@ class DiskModesHarness_t {
     peripheral_manager_think(cycles);
   }
 
-  static auto state() -> DiskSavedState_t {
-    DiskSavedState_t saved{};
+  static auto state() -> DiskSavedState {
+    DiskSavedState saved{};
     size_t size = sizeof(saved);
     peripheral_save_state(slot_6, &saved, &size);
     return saved;
@@ -113,8 +113,8 @@ class DiskModesHarness_t {
   }
 
  private:
-  TestConfig_t machine_{TestConfig_t::disk_ii_only()};
-  TestFixtures::EphemeralDiskFixture_t disk_;
+  TestConfig machine_{TestConfig::disk_ii_only()};
+  TestFixtures::EphemeralDiskFixture disk_;
   uint32_t cycle_ = 0;
 };
 
@@ -123,7 +123,7 @@ class DiskModesHarness_t {
 TEST_CASE("DiskModes: [MODE-01] Each Q7/Q6 pair picks its own function") {
   for (const bool protect : {false, true}) {
     CAPTURE(protect);
-    DiskModesHarness_t harness(protect);
+    DiskModesHarness harness(protect);
     harness.start_drive();
 
     // {Q7=1, Q6=1} loads what the 6502 put on the bus.
@@ -172,7 +172,7 @@ TEST_CASE("DiskModes: [MODE-02] No mode switch moves the register itself") {
          {io_q6_clear, io_q6_set, io_q7_clear, io_q7_set}) {
       CAPTURE(protect);
       CAPTURE(address);
-      DiskModesHarness_t harness(protect);
+      DiskModesHarness harness(protect);
       harness.start_drive();
       harness.load_register(marker);
 
@@ -192,7 +192,7 @@ TEST_CASE("DiskModes: [MODE-03] Write protect answers in either Q7 state") {
     for (const bool start_in_write_mode : {false, true}) {
       CAPTURE(protect);
       CAPTURE(start_in_write_mode);
-      DiskModesHarness_t harness(protect);
+      DiskModesHarness harness(protect);
       harness.start_drive();
 
       harness.load_register(marker);
@@ -212,7 +212,7 @@ TEST_CASE("DiskModes: [MODE-03] Write protect answers in either Q7 state") {
 }
 
 TEST_CASE("DiskModes: [MODE-04] A stopped drive holds the data register") {
-  DiskModesHarness_t harness(false);
+  DiskModesHarness harness(false);
   harness.start_drive();
   harness.load_register(marker);
   const uint8_t held = harness.data_register();
@@ -234,7 +234,7 @@ TEST_CASE("DiskModes: [MODE-04] A stopped drive holds the data register") {
 }
 
 TEST_CASE("DiskModes: [MODE-05] Motor off keeps the magnets and Q6") {
-  DiskModesHarness_t harness(false);
+  DiskModesHarness harness(false);
   harness.start_drive();
 
   harness.read(io_phase_1_on);
@@ -245,7 +245,7 @@ TEST_CASE("DiskModes: [MODE-05] Motor off keeps the magnets and Q6") {
   harness.read(io_motor_off);
 
   // The 9334 holds its phase bits through DRIVES OFF; only RESET' clears them.
-  const DiskSavedState_t after_off = harness.state();
+  const DiskSavedState after_off = harness.state();
   CHECK(after_off.stepper_phase_mask == phase_1_bit);
   CHECK(after_off.is_write_mode != 0);
   CHECK(after_off.io_latch == marker);
@@ -261,7 +261,7 @@ TEST_CASE("DiskModes: [MODE-05] Motor off keeps the magnets and Q6") {
 }
 
 TEST_CASE("DiskModes: [MODE-06] Reset clears every switch on the card") {
-  DiskModesHarness_t harness(false);
+  DiskModesHarness harness(false);
   harness.start_drive();
   harness.read(io_drive_1);
   harness.read(io_phase_1_on);
@@ -270,7 +270,7 @@ TEST_CASE("DiskModes: [MODE-06] Reset clears every switch on the card") {
 
   peripheral_manager_reset();
 
-  const DiskSavedState_t after_reset = harness.state();
+  const DiskSavedState after_reset = harness.state();
   CHECK(after_reset.stepper_phase_mask == 0);
   CHECK(after_reset.active_drive_index == 0);
   CHECK(after_reset.is_motor_on == 0);

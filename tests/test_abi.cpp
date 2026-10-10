@@ -16,20 +16,20 @@
 
 // --- Dummy Peripheral Implementation ---
 
-static bool g_dummy_reset_called = false;
-static bool g_dummy_shutdown_called = false;
-static HostInterface_t* g_captured_host = nullptr;
+static bool dummy_reset_called = false;
+static bool dummy_shutdown_called = false;
+static HostInterface* captured_host = nullptr;
 
-static uint32_t g_last_cmd_id = 0;
-static uint8_t g_last_cmd_data[PERIPHERAL_CMD_MAX_DATA]{};
-static size_t g_last_cmd_data_size = 0;
-static std::atomic<int> g_cmd_call_count{0};
+static uint32_t last_cmd_id = 0;
+static uint8_t last_cmd_data[PERIPHERAL_CMD_MAX_DATA]{};
+static size_t last_cmd_data_size = 0;
+static std::atomic<int> cmd_call_count{0};
 
 namespace {
 
-using DummyInstance_t = struct {
+using DummyInstance = struct {
   uint8_t last_val;
-  HostInterface_t* host;
+  HostInterface* host;
 };
 
 }  // namespace
@@ -42,7 +42,7 @@ static auto Dummy_IORead(void* instance, uint16_t pc, uint16_t addr,
   (void)write;
   (void)val;
   (void)cycles;
-  return (static_cast<DummyInstance_t*>(instance))->last_val;
+  return (static_cast<DummyInstance*>(instance))->last_val;
 }
 
 static auto Dummy_IOWrite(void* instance, uint16_t pc, uint16_t addr,
@@ -52,15 +52,15 @@ static auto Dummy_IOWrite(void* instance, uint16_t pc, uint16_t addr,
   (void)addr;
   (void)write;
   (void)cycles;
-  (static_cast<DummyInstance_t*>(instance))->last_val = val;
-  (static_cast<DummyInstance_t*>(instance))
+  (static_cast<DummyInstance*>(instance))->last_val = val;
+  (static_cast<DummyInstance*>(instance))
       ->host->Log(instance, log_info, "Wrote %02X", val);
   return 0;
 }
 
-static auto Dummy_Init(int slot, HostInterface_t* host) -> void* {
-  g_captured_host = host;
-  auto* inst = new DummyInstance_t();
+static auto Dummy_Init(int slot, HostInterface* host) -> void* {
+  captured_host = host;
+  auto* inst = new DummyInstance();
   inst->last_val = 0;
   inst->host = host;
 
@@ -77,27 +77,27 @@ static auto Dummy_Init(int slot, HostInterface_t* host) -> void* {
 
 static void Dummy_Reset(void* instance) {
   (void)instance;
-  g_dummy_reset_called = true;
+  dummy_reset_called = true;
 }
 
 static void Dummy_Shutdown(void* instance) {
-  g_dummy_shutdown_called = true;
-  delete static_cast<DummyInstance_t*>(instance);
+  dummy_shutdown_called = true;
+  delete static_cast<DummyInstance*>(instance);
 }
 
 static auto Dummy_Command(void* /*instance*/, uint32_t cmd_id, const void* data,
-                          size_t size) -> PeripheralStatus_t {
-  g_last_cmd_id = cmd_id;
-  g_last_cmd_data_size = size;
+                          size_t size) -> PeripheralStatus {
+  last_cmd_id = cmd_id;
+  last_cmd_data_size = size;
   if (size > 0 && data) {
-    memcpy(g_last_cmd_data, data, size);
+    memcpy(last_cmd_data, data, size);
   }
-  ++g_cmd_call_count;
+  ++cmd_call_count;
   return peripheral_ok;
 }
 
 static auto Dummy_Query(void* /*instance*/, uint32_t /*cmd_id*/, void* out,
-                        size_t* out_size) -> PeripheralStatus_t {
+                        size_t* out_size) -> PeripheralStatus {
   const uint32_t response = 0xDEADBEEF;
   if (out && out_size && *out_size >= sizeof(response)) {
     memcpy(out, &response, sizeof(response));
@@ -107,7 +107,7 @@ static auto Dummy_Query(void* /*instance*/, uint32_t /*cmd_id*/, void* out,
   return peripheral_error;
 }
 
-static Peripheral_t g_dummy_peripheral = {
+static Peripheral dummy_peripheral = {
     LINAPPLE_ABI_VERSION,
     "test.dummy",
     "Dummy Peripheral",
@@ -135,10 +135,10 @@ TEST_CASE("ABI: [ABI-01] Peripheral Registration and Lifecycle") {
   set_mem_mode(get_mem_mode() | MF_SLOTCXROM);  // Enable slot ROM
   peripheral_manager_init();
 
-  g_dummy_reset_called = false;
-  g_dummy_shutdown_called = false;
+  dummy_reset_called = false;
+  dummy_shutdown_called = false;
 
-  int result = peripheral_register(&g_dummy_peripheral, 2);
+  int result = peripheral_register(&dummy_peripheral, 2);
   CHECK(result == 0);
 
   // Verify I/O works
@@ -154,15 +154,15 @@ TEST_CASE("ABI: [ABI-01] Peripheral Registration and Lifecycle") {
 
   // Verify Reset propagation
   peripheral_manager_reset();
-  CHECK(g_dummy_reset_called == true);
+  CHECK(dummy_reset_called == true);
 
   // Verify Shutdown
   peripheral_manager_shutdown();
-  CHECK(g_dummy_shutdown_called == true);
+  CHECK(dummy_shutdown_called == true);
 }
 
 TEST_CASE("ABI: [ABI-02] ABI Version Validation") {
-  Peripheral_t bad_abi = g_dummy_peripheral;
+  Peripheral bad_abi = dummy_peripheral;
   bad_abi.abi_version = 999;
 
   peripheral_manager_init();
@@ -171,7 +171,7 @@ TEST_CASE("ABI: [ABI-02] ABI Version Validation") {
 }
 
 TEST_CASE("ABI: [ABI-03] Slot Compatibility Validation") {
-  Peripheral_t slot_specific = g_dummy_peripheral;
+  Peripheral slot_specific = dummy_peripheral;
   slot_specific.compatible_slots = (1 << 4);  // Only Slot 4
 
   peripheral_manager_init();
@@ -191,13 +191,13 @@ TEST_CASE("ABI: [ABI-04] HostInterface GetConfig stub returns false") {
   current_apple2_type = A2TYPE_APPLE2EENHANCED;
   mem_initialize();
   peripheral_manager_init();
-  peripheral_register(&g_dummy_peripheral, 2);
+  peripheral_register(&dummy_peripheral, 2);
 
-  REQUIRE(g_captured_host != nullptr);
+  REQUIRE(captured_host != nullptr);
   char buf[32];
-  CHECK(g_captured_host->GetConfig("section", "key", buf, sizeof(buf)) ==
+  CHECK(captured_host->GetConfig("section", "key", buf, sizeof(buf)) ==
         false);
-  CHECK(g_captured_host->GetConfig("", "", buf, sizeof(buf)) == false);
+  CHECK(captured_host->GetConfig("", "", buf, sizeof(buf)) == false);
 
   peripheral_manager_shutdown();
 }
@@ -207,15 +207,15 @@ TEST_CASE(
   current_apple2_type = A2TYPE_APPLE2EENHANCED;
   mem_initialize();
   peripheral_manager_init();
-  peripheral_register(&g_dummy_peripheral, 2);
+  peripheral_register(&dummy_peripheral, 2);
 
-  REQUIRE(g_captured_host != nullptr);
-  REQUIRE(g_captured_host->GetClockHz != nullptr);
-  CHECK(g_captured_host->GetClockHz() == doctest::Approx(clock_6502_ntsc));
-  g_captured_host->SetConfig("section", "key", "value");
-  g_captured_host->NotifyStatusChanged(2);
-  g_captured_host->NotifyActivityChanged(2, true);
-  g_captured_host->NotifyActivityChanged(2, false);
+  REQUIRE(captured_host != nullptr);
+  REQUIRE(captured_host->GetClockHz != nullptr);
+  CHECK(captured_host->GetClockHz() == doctest::Approx(clock_6502_ntsc));
+  captured_host->SetConfig("section", "key", "value");
+  captured_host->NotifyStatusChanged(2);
+  captured_host->NotifyActivityChanged(2, true);
+  captured_host->NotifyActivityChanged(2, false);
 
   peripheral_manager_shutdown();
 }
@@ -225,24 +225,24 @@ TEST_CASE(
   current_apple2_type = A2TYPE_APPLE2EENHANCED;
   mem_initialize();
   peripheral_manager_init();
-  peripheral_register(&g_dummy_peripheral, 2);
+  peripheral_register(&dummy_peripheral, 2);
 
-  g_last_cmd_id = 0;
-  g_last_cmd_data_size = 0;
-  g_cmd_call_count = 0;
+  last_cmd_id = 0;
+  last_cmd_data_size = 0;
+  cmd_call_count = 0;
 
   const uint32_t payload = 0xCAFEBABE;
-  PeripheralStatus_t status =
+  PeripheralStatus status =
       peripheral_command(2, 0x0001, &payload, sizeof(payload));
   CHECK(status == peripheral_ok);
-  CHECK(g_cmd_call_count == 0);  // not yet delivered
+  CHECK(cmd_call_count == 0);  // not yet delivered
 
   peripheral_manager_think(0);
-  CHECK(g_cmd_call_count == 1);
-  CHECK(g_last_cmd_id == 0x0001);
-  CHECK(g_last_cmd_data_size == sizeof(payload));
+  CHECK(cmd_call_count == 1);
+  CHECK(last_cmd_id == 0x0001);
+  CHECK(last_cmd_data_size == sizeof(payload));
   uint32_t received = 0;
-  memcpy(&received, g_last_cmd_data, sizeof(received));
+  memcpy(&received, last_cmd_data, sizeof(received));
   CHECK(received == 0xCAFEBABE);
 
   peripheral_manager_shutdown();
@@ -253,14 +253,14 @@ TEST_CASE("ABI: [ABI-07] peripheral_command rejects oversized payload") {
 
   const size_t oversized = PERIPHERAL_CMD_MAX_DATA + 1;
   uint8_t buf[oversized]{};
-  PeripheralStatus_t status = peripheral_command(2, 0x0001, buf, oversized);
+  PeripheralStatus status = peripheral_command(2, 0x0001, buf, oversized);
   CHECK(status == peripheral_error);
 }
 
 TEST_CASE(
     "ABI: [ABI-08] peripheral_command silently skips peripheral with no "
     "command handler") {
-  Peripheral_t no_cmd = g_dummy_peripheral;
+  Peripheral no_cmd = dummy_peripheral;
   no_cmd.command = nullptr;
 
   current_apple2_type = A2TYPE_APPLE2EENHANCED;
@@ -268,11 +268,11 @@ TEST_CASE(
   peripheral_manager_init();
   peripheral_register(&no_cmd, 2);
 
-  g_cmd_call_count = 0;
+  cmd_call_count = 0;
   const uint32_t payload = 0x01;
   peripheral_command(2, 0x0001, &payload, sizeof(payload));
   peripheral_manager_think(0);  // must not crash
-  CHECK(g_cmd_call_count == 0);
+  CHECK(cmd_call_count == 0);
 
   peripheral_manager_shutdown();
 }
@@ -282,11 +282,11 @@ TEST_CASE(
   current_apple2_type = A2TYPE_APPLE2EENHANCED;
   mem_initialize();
   peripheral_manager_init();
-  peripheral_register(&g_dummy_peripheral, 2);
+  peripheral_register(&dummy_peripheral, 2);
 
   uint32_t result = 0;
   size_t out_size = sizeof(result);
-  PeripheralStatus_t status = peripheral_query(2, 0x0005, &result, &out_size);
+  PeripheralStatus status = peripheral_query(2, 0x0005, &result, &out_size);
   CHECK(status == peripheral_ok);
   CHECK(result == 0xDEADBEEF);
 
@@ -297,9 +297,9 @@ TEST_CASE("ABI: [ABI-10] peripheral_command is thread-safe") {
   current_apple2_type = A2TYPE_APPLE2EENHANCED;
   mem_initialize();
   peripheral_manager_init();
-  peripheral_register(&g_dummy_peripheral, 2);
+  peripheral_register(&dummy_peripheral, 2);
 
-  g_cmd_call_count = 0;
+  cmd_call_count = 0;
   const int THREADS = 4;
   const int CMDS_PER_THREAD = 50;
   const uint32_t payload = 0x01;
@@ -318,7 +318,7 @@ TEST_CASE("ABI: [ABI-10] peripheral_command is thread-safe") {
   }
 
   peripheral_manager_think(0);
-  CHECK(g_cmd_call_count == THREADS * CMDS_PER_THREAD);
+  CHECK(cmd_call_count == THREADS * CMDS_PER_THREAD);
 
   peripheral_manager_shutdown();
 }

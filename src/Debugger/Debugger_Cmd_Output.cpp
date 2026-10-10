@@ -21,7 +21,7 @@
 namespace {
 
 // Types used by CmdOutputPrint and CmdOutputPrintf
-enum PrintState_e : uint8_t {
+enum PrintState : uint8_t {
   PS_LITERAL,
   PS_ESCAPE,
   PS_NEXT_ARG_BIN,
@@ -30,7 +30,7 @@ enum PrintState_e : uint8_t {
   PS_NEXT_ARG_CHR,
 };
 
-struct PrintFormat_t {
+struct PrintFormat {
   int nValue;
   int eType;
 };
@@ -45,7 +45,7 @@ auto DebuggerRunScript(const char* pFileName) -> void {
     return;
   }
 
-  MemoryTextFile_t script;
+  MemoryTextFile script;
   std::string sFileName;
 
   if (*pFileName == '/') {
@@ -56,21 +56,21 @@ auto DebuggerRunScript(const char* pFileName) -> void {
     sFileName += pFileName;
   }
 
-  if (g_console_input_ptr == nullptr) {
+  if (console_input_ptr == nullptr) {
     ConsoleInputReset();
   }
 
   if (script.Read(sFileName)) {
     int nLine = script.GetNumLines();
     for (int iLine = 0; iLine < nLine; iLine++) {
-      if (g_console_input_ptr == nullptr) {
+      if (console_input_ptr == nullptr) {
         break;
       }
-      script.GetLine(iLine, g_console_input_ptr, CONSOLE_WIDTH - 2);
-      g_console_input_chars = static_cast<int>(strlen(g_console_input_ptr));
+      script.GetLine(iLine, console_input_ptr, CONSOLE_WIDTH - 2);
+      console_input_chars = static_cast<int>(strlen(console_input_ptr));
       DebuggerProcessCommand(false);
     }
-  } else if (g_report_missing_scripts) {
+  } else if (report_missing_scripts) {
     char sText[CONSOLE_WIDTH];
     ConsolePrintFormat(sText, "%sCouldn't load filename:", CHC_ERROR);
     ConsolePrintFormat(sText, "%s%s", CHC_STRING, sFileName.c_str());
@@ -78,12 +78,12 @@ auto DebuggerRunScript(const char* pFileName) -> void {
 }
 
 //===========================================================================
-auto CmdOutputCalc(int nArgs) -> Update_t {
+auto CmdOutputCalc(int nArgs) -> UpdateResult {
   if (nArgs == 0) {
     return Help_Arg_1(CMD_OUTPUT_CALC);
   }
 
-  uint16_t address = g_args[1].nValue;
+  uint16_t address = args[1].nValue;
   char sText[CONSOLE_WIDTH];
 
   bool bHi = false;
@@ -129,12 +129,12 @@ auto CmdOutputCalc(int nArgs) -> Update_t {
 }
 
 //===========================================================================
-auto CmdOutputEcho(int nArgs) -> Update_t {
+auto CmdOutputEcho(int nArgs) -> UpdateResult {
   (void)nArgs;
-  if ((g_args[1].bType & TYPE_QUOTED_2) != 0) {
-    ConsoleDisplayPush(g_args[1].sArg);
+  if ((args[1].bType & TYPE_QUOTED_2) != 0) {
+    ConsoleDisplayPush(args[1].sArg);
   } else {
-    const char* text = g_console_first_arg;  // ConsoleInputPeek();
+    const char* text = console_first_arg;  // ConsoleInputPeek();
     if (text) {
       ConsoleDisplayPush(text);
     }
@@ -144,7 +144,7 @@ auto CmdOutputEcho(int nArgs) -> Update_t {
 }
 
 //===========================================================================
-auto CmdOutputPrint(int nArgs) -> Update_t {
+auto CmdOutputPrint(int nArgs) -> UpdateResult {
   // PRINT "A:",A," X:",X
   char sText[CONSOLE_WIDTH] = "";
   int nLen = 0;
@@ -157,12 +157,12 @@ auto CmdOutputPrint(int nArgs) -> Update_t {
   }
 
   for (iArg = 1; iArg <= nArgs; iArg++) {
-    if ((g_args[iArg].bType & TYPE_QUOTED_2) != 0) {
-      nLen += StringCat(sText, g_args[iArg].sArg, CONSOLE_WIDTH);
+    if ((args[iArg].bType & TYPE_QUOTED_2) != 0) {
+      nLen += StringCat(sText, args[iArg].sArg, CONSOLE_WIDTH);
       continue;
     }
 
-    if (!ArgsGetValue(&g_args[iArg], &nValue)) {
+    if (!ArgsGetValue(&args[iArg], &nValue)) {
       return Help_Arg_1(CMD_OUTPUT_PRINT);
     }
 
@@ -177,19 +177,19 @@ auto CmdOutputPrint(int nArgs) -> Update_t {
 }
 
 //===========================================================================
-auto CmdOutputPrintf(int nArgs) -> Update_t {
+auto CmdOutputPrintf(int nArgs) -> UpdateResult {
   // PRINTF "A:%d X:%d",A,X
   // PRINTF "Hex:%x  Dec:%d  Bin:%z",A,A,A
 
   char sText[CONSOLE_WIDTH] = "";
 
-  std::vector<Arg_t> aValues;
+  std::vector<Arg> aValues;
   int iValue = 0;
   uint16_t nValue = 0;
   int nParamValues = 0;
   int nWidth = 0;
   int nLen = 0;
-  PrintState_e eThis = PS_LITERAL;
+  PrintState eThis = PS_LITERAL;
   int iArg = 0;
   const char* pFormat = nullptr;
 
@@ -197,17 +197,17 @@ auto CmdOutputPrintf(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_OUTPUT_PRINTF);
   }
 
-  if ((g_args[1].bType & TYPE_QUOTED_2) == 0) {
+  if ((args[1].bType & TYPE_QUOTED_2) == 0) {
     return Help_Arg_1(CMD_OUTPUT_PRINTF);
   }
 
   nParamValues = nArgs - 1;
 
   for (iArg = 2; iArg <= nArgs; iArg++) {
-    aValues.push_back(g_args[iArg]);
+    aValues.push_back(args[iArg]);
   }
 
-  pFormat = g_args[1].sArg;
+  pFormat = args[1].sArg;
 
   while ((*pFormat) != 0) {
     char c = *pFormat++;
@@ -326,7 +326,7 @@ auto CmdOutputPrintf(int nArgs) -> Update_t {
 }
 
 //===========================================================================
-auto CmdOutputRun(int nArgs) -> Update_t {
+auto CmdOutputRun(int nArgs) -> UpdateResult {
   if (nArgs == 0) {
     return Help_Arg_1(CMD_OUTPUT_RUN);
   }
@@ -335,7 +335,7 @@ auto CmdOutputRun(int nArgs) -> Update_t {
     return Help_Arg_1(CMD_OUTPUT_RUN);
   }
 
-  DebuggerRunScript(g_args[1].sArg);
+  DebuggerRunScript(args[1].sArg);
 
   return ConsoleUpdate();
 }

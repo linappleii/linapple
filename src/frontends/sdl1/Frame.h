@@ -27,16 +27,16 @@ constexpr int btn_savest = 10;
 constexpr int btn_quit = 11;
 
 constexpr int screen_bpp = 8;
-extern SDL_Surface* g_screen;
-extern SdlSurfacePtr g_texture;
+extern SDL_Surface* screen;
+extern SdlSurfacePtr texture;
 
 constexpr int show_cycles = 15;
 
-extern bool g_window_resized;
-extern int g_buttondown;
+extern bool window_resized;
+extern int buttondown;
 
-extern SDL_Rect g_orig_rect;
-extern SDL_Rect g_new_rect;
+extern SDL_Rect orig_rect;
+extern SDL_Rect new_rect;
 
 auto init_sdl() -> int;
 

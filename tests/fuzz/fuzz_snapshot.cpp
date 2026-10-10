@@ -41,8 +41,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     initialized = true;
   }
 
-  auto snapshot = std::unique_ptr<Snapshot_t>(new Snapshot_t());
-  std::memcpy(snapshot.get(), data, std::min(size, sizeof(Snapshot_t)));
+  auto snapshot = std::unique_ptr<Snapshot>(new Snapshot());
+  std::memcpy(snapshot.get(), data, std::min(size, sizeof(Snapshot)));
 
   // Verify deserializing arbitrary/corrupted memory snapshots does not crash or
   // corrupt host state

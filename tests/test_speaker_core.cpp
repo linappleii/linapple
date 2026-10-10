@@ -15,8 +15,8 @@
 
 namespace {
 
-using TestConfig_t = TestFixtures::ScopedTestConfig_t;
-using TestFixtures::ScopedCore_t;
+using TestConfig = TestFixtures::ScopedTestConfig;
+using TestFixtures::ScopedCore;
 
 constexpr uint16_t ADDR_SPEAKER = 0xC030;
 // A slot-0 soft switch nothing else claims, so a strobe registered there can
@@ -25,42 +25,42 @@ constexpr uint16_t ADDR_MOCK_STROBE = 0xC0F0;
 constexpr uint32_t NTSC_FRAME_CYCLES = 17030;
 constexpr float EDGE_POSITIVE = 2.0F;
 
-struct MockState_t {
-  HostInterface_t* host = nullptr;
+struct MockState {
+  HostInterface* host = nullptr;
   int strobe_count = 0;
   bool answers_audio = true;
   bool registers_strobe = false;
-  PeripheralAudioInfo_t info{};
+  PeripheralAudioInfo info{};
 };
 
-MockState_t g_mock;
+MockState mock;
 
 auto mock_strobe(void* instance) -> void {
-  static_cast<MockState_t*>(instance)->strobe_count++;
+  static_cast<MockState*>(instance)->strobe_count++;
 }
 
-auto mock_init(int slot, HostInterface_t* host) -> void* {
+auto mock_init(int slot, HostInterface* host) -> void* {
   (void)slot;
-  g_mock.host = host;
-  if (g_mock.registers_strobe && host != nullptr &&
+  mock.host = host;
+  if (mock.registers_strobe && host != nullptr &&
       host->RegisterDirectIOStrobe != nullptr) {
-    host->RegisterDirectIOStrobe(&g_mock, ADDR_MOCK_STROBE, mock_strobe);
+    host->RegisterDirectIOStrobe(&mock, ADDR_MOCK_STROBE, mock_strobe);
   }
-  return &g_mock;
+  return &mock;
 }
 
 auto mock_shutdown(void* instance) -> void { (void)instance; }
 
 auto mock_query(void* instance, uint32_t cmd_id, void* out, size_t* out_size)
-    -> PeripheralStatus_t {
+    -> PeripheralStatus {
   (void)instance;
   if (out_size == nullptr) {
     return peripheral_error;
   }
-  if (cmd_id != PERIPHERAL_QUERY_AUDIO_INFO || !g_mock.answers_audio) {
+  if (cmd_id != PERIPHERAL_QUERY_AUDIO_INFO || !mock.answers_audio) {
     return peripheral_incompatible;
   }
-  constexpr size_t required = sizeof(PeripheralAudioInfo_t);
+  constexpr size_t required = sizeof(PeripheralAudioInfo);
   if (out == nullptr) {
     *out_size = required;
     return peripheral_ok;
@@ -69,12 +69,12 @@ auto mock_query(void* instance, uint32_t cmd_id, void* out, size_t* out_size)
     *out_size = required;
     return peripheral_error;
   }
-  std::memcpy(out, &g_mock.info, required);
+  std::memcpy(out, &mock.info, required);
   *out_size = required;
   return peripheral_ok;
 }
 
-Peripheral_t g_mock_descriptor = {
+Peripheral mock_descriptor = {
     LINAPPLE_ABI_VERSION,
     "test.mock.audio",
     "MockAudio",
@@ -100,91 +100,91 @@ Peripheral_t g_mock_descriptor = {
  * The descriptor is a C-ABI struct of free functions, so what the mock
  * answers has to live in a file-static; this bounds its lifetime to one case.
  */
-class ScopedMock_t {
+class ScopedMock {
  public:
-  ScopedMock_t() { g_mock = MockState_t(); }
-  ~ScopedMock_t() { g_mock = MockState_t(); }
+  ScopedMock() { mock = MockState(); }
+  ~ScopedMock() { mock = MockState(); }
 
-  ScopedMock_t(const ScopedMock_t&) = delete;
-  auto operator=(const ScopedMock_t&) -> ScopedMock_t& = delete;
-  ScopedMock_t(ScopedMock_t&&) = delete;
-  auto operator=(ScopedMock_t&&) -> ScopedMock_t& = delete;
+  ScopedMock(const ScopedMock&) = delete;
+  auto operator=(const ScopedMock&) -> ScopedMock& = delete;
+  ScopedMock(ScopedMock&&) = delete;
+  auto operator=(ScopedMock&&) -> ScopedMock& = delete;
 
-  static auto descriptor() -> Peripheral_t* { return &g_mock_descriptor; }
-  static auto host() -> HostInterface_t* { return g_mock.host; }
-  static auto strobe_count() -> int { return g_mock.strobe_count; }
+  static auto descriptor() -> Peripheral* { return &mock_descriptor; }
+  static auto host() -> HostInterface* { return mock.host; }
+  static auto strobe_count() -> int { return mock.strobe_count; }
 
   static auto register_strobe_on_init() -> void {
-    g_mock.registers_strobe = true;
+    mock.registers_strobe = true;
   }
-  static auto answer_nothing() -> void { g_mock.answers_audio = false; }
+  static auto answer_nothing() -> void { mock.answers_audio = false; }
 
   static auto answer_absolute(uint32_t rate_hz, uint32_t num_channels) -> void {
-    g_mock.answers_audio = true;
-    g_mock.info = PeripheralAudioInfo_t();
-    g_mock.info.time_base = peripheral_audio_absolute;
-    g_mock.info.sample_rate = rate_hz;
-    g_mock.info.num_channels = num_channels;
-    g_mock.info.peak_magnitude = 1.0F;
+    mock.answers_audio = true;
+    mock.info = PeripheralAudioInfo();
+    mock.info.time_base = peripheral_audio_absolute;
+    mock.info.sample_rate = rate_hz;
+    mock.info.num_channels = num_channels;
+    mock.info.peak_magnitude = 1.0F;
     for (uint32_t c = 0; c < num_channels; ++c) {
-      g_mock.info.channels[c].default_pan_left = 1.0F;
-      g_mock.info.channels[c].default_pan_right = 1.0F;
+      mock.info.channels[c].default_pan_left = 1.0F;
+      mock.info.channels[c].default_pan_right = 1.0F;
     }
   }
 };
 
-struct AnnounceRecord_t {
+struct AnnounceRecord {
   int slot = -1;
   std::string id;
-  PeripheralAudioInfo_t info{};
+  PeripheralAudioInfo info{};
 };
 
-std::vector<AnnounceRecord_t> g_announcements;
+std::vector<AnnounceRecord> announcements;
 
 auto record_announcement(int slot, const char* peripheral_id,
-                         const PeripheralAudioInfo_t* info) -> void {
-  AnnounceRecord_t record;
+                         const PeripheralAudioInfo* info) -> void {
+  AnnounceRecord record;
   record.slot = slot;
   record.id = (peripheral_id != nullptr) ? peripheral_id : "";
   record.info = *info;
-  g_announcements.push_back(record);
+  announcements.push_back(record);
 }
 
-class ScopedAnnounceRecorder_t {
+class ScopedAnnounceRecorder {
  public:
-  ScopedAnnounceRecorder_t() {
-    g_announcements.clear();
+  ScopedAnnounceRecorder() {
+    announcements.clear();
     linapple_set_audio_source_register_callback(record_announcement);
   }
 
-  ~ScopedAnnounceRecorder_t() {
+  ~ScopedAnnounceRecorder() {
     linapple_set_audio_source_register_callback(nullptr);
-    g_announcements.clear();
+    announcements.clear();
   }
 
-  ScopedAnnounceRecorder_t(const ScopedAnnounceRecorder_t&) = delete;
-  auto operator=(const ScopedAnnounceRecorder_t&)
-      -> ScopedAnnounceRecorder_t& = delete;
-  ScopedAnnounceRecorder_t(ScopedAnnounceRecorder_t&&) = delete;
-  auto operator=(ScopedAnnounceRecorder_t&&)
-      -> ScopedAnnounceRecorder_t& = delete;
+  ScopedAnnounceRecorder(const ScopedAnnounceRecorder&) = delete;
+  auto operator=(const ScopedAnnounceRecorder&)
+      -> ScopedAnnounceRecorder& = delete;
+  ScopedAnnounceRecorder(ScopedAnnounceRecorder&&) = delete;
+  auto operator=(ScopedAnnounceRecorder&&)
+      -> ScopedAnnounceRecorder& = delete;
 
-  static auto count() -> size_t { return g_announcements.size(); }
-  static auto at(size_t index) -> const AnnounceRecord_t& {
-    return g_announcements.at(index);
+  static auto count() -> size_t { return announcements.size(); }
+  static auto at(size_t index) -> const AnnounceRecord& {
+    return announcements.at(index);
   }
 
   // Subscribing replays whatever the core already holds, and the core always
   // holds the motherboard speaker. A case about a card in an expansion slot
   // drops that replay rather than counting it.
-  static auto forget_replay() -> void { g_announcements.clear(); }
+  static auto forget_replay() -> void { announcements.clear(); }
 };
 
-std::vector<float> g_pushed_samples;
-std::vector<std::string> g_pushed_ids;
-size_t g_push_count = 0;
-size_t g_pushed_channels = 0;
-int g_pushed_slot = -1;
+std::vector<float> pushed_samples;
+std::vector<std::string> pushed_ids;
+size_t recorder_push_count = 0;
+size_t pushed_channels = 0;
+int pushed_slot = -1;
 
 auto record_push(const char* peripheral_id, int slot,
                  const float* const* channels, size_t num_channels,
@@ -193,45 +193,45 @@ auto record_push(const char* peripheral_id, int slot,
       num_samples == 0) {
     return;
   }
-  g_push_count++;
-  g_pushed_channels = num_channels;
-  g_pushed_slot = slot;
-  g_pushed_ids.emplace_back((peripheral_id != nullptr) ? peripheral_id : "");
-  g_pushed_samples.insert(g_pushed_samples.end(), channels[0],
+  recorder_push_count++;
+  pushed_channels = num_channels;
+  pushed_slot = slot;
+  pushed_ids.emplace_back((peripheral_id != nullptr) ? peripheral_id : "");
+  pushed_samples.insert(pushed_samples.end(), channels[0],
                           channels[0] + num_samples);
 }
 
-class ScopedPushRecorder_t {
+class ScopedPushRecorder {
  public:
-  ScopedPushRecorder_t() {
+  ScopedPushRecorder() {
     clear();
     linapple_set_audio_channel_callback(record_push);
   }
 
-  ~ScopedPushRecorder_t() {
+  ~ScopedPushRecorder() {
     linapple_set_audio_channel_callback(nullptr);
     clear();
   }
 
-  ScopedPushRecorder_t(const ScopedPushRecorder_t&) = delete;
-  auto operator=(const ScopedPushRecorder_t&) -> ScopedPushRecorder_t& = delete;
-  ScopedPushRecorder_t(ScopedPushRecorder_t&&) = delete;
-  auto operator=(ScopedPushRecorder_t&&) -> ScopedPushRecorder_t& = delete;
+  ScopedPushRecorder(const ScopedPushRecorder&) = delete;
+  auto operator=(const ScopedPushRecorder&) -> ScopedPushRecorder& = delete;
+  ScopedPushRecorder(ScopedPushRecorder&&) = delete;
+  auto operator=(ScopedPushRecorder&&) -> ScopedPushRecorder& = delete;
 
-  static auto push_count() -> size_t { return g_push_count; }
-  static auto channels() -> size_t { return g_pushed_channels; }
-  static auto slot() -> int { return g_pushed_slot; }
-  static auto ids() -> const std::vector<std::string>& { return g_pushed_ids; }
+  static auto push_count() -> size_t { return recorder_push_count; }
+  static auto channels() -> size_t { return pushed_channels; }
+  static auto slot() -> int { return pushed_slot; }
+  static auto ids() -> const std::vector<std::string>& { return pushed_ids; }
   static auto samples() -> const std::vector<float>& {
-    return g_pushed_samples;
+    return pushed_samples;
   }
 
   static auto clear() -> void {
-    g_pushed_samples.clear();
-    g_pushed_ids.clear();
-    g_push_count = 0;
-    g_pushed_channels = 0;
-    g_pushed_slot = -1;
+    pushed_samples.clear();
+    pushed_ids.clear();
+    recorder_push_count = 0;
+    pushed_channels = 0;
+    pushed_slot = -1;
   }
 };
 
@@ -246,9 +246,9 @@ TEST_CASE("Speaker Core Seam: The Strobe Bridge Strobes And Returns The Bus") {
   // invoke the handler and answer with io_null: the floating bus on a read,
   // zero on a write. A bridge that strobes and returns zero on a read, or
   // returns the bus without strobing, fails here.
-  TestConfig_t config(TestConfig_t::enhanced_2e_only());
-  ScopedCore_t core(config);
-  ScopedMock_t mock;
+  TestConfig config(TestConfig::enhanced_2e_only());
+  ScopedCore core(config);
+  ScopedMock mock;
   mock.register_strobe_on_init();
   REQUIRE(peripheral_register(mock.descriptor(), 0) == 0);
   REQUIRE(mock.strobe_count() == 0);
@@ -275,9 +275,9 @@ TEST_CASE("Speaker Core Seam: A Read And A Write At $C030 Sound The Same") {
   // Any access to the soft switch toggles the flip-flop on real hardware, so
   // the two directions must reach the same handler and produce the same cone
   // motion.
-  TestConfig_t config(TestConfig_t::enhanced_2e_only());
-  ScopedCore_t core(config);
-  ScopedPushRecorder_t pushes;
+  TestConfig config(TestConfig::enhanced_2e_only());
+  ScopedCore core(config);
+  ScopedPushRecorder pushes;
 
   io_map_dispatch(0, ADDR_SPEAKER, 0, 0, 0);
   cpu_calc_cycles(1);
@@ -288,12 +288,12 @@ TEST_CASE("Speaker Core Seam: A Read And A Write At $C030 Sound The Same") {
 
   // Settle the cone so the next edge starts from rest, then drive it with a
   // write instead of a read.
-  ScopedPushRecorder_t::clear();
+  ScopedPushRecorder::clear();
   for (int frame = 0; frame < 12; ++frame) {
     cpu_calc_cycles(NTSC_FRAME_CYCLES * (frame + 2));
     peripheral_manager_think(NTSC_FRAME_CYCLES);
   }
-  ScopedPushRecorder_t::clear();
+  ScopedPushRecorder::clear();
 
   const uint32_t settled = NTSC_FRAME_CYCLES * 13;
   io_map_dispatch(0, ADDR_SPEAKER, 1, 0x00, settled);
@@ -314,11 +314,11 @@ TEST_CASE("Speaker Core Seam: A Read And A Write At $C030 Sound The Same") {
 // =============================================================================
 
 TEST_CASE("Speaker Core Seam: Registration Announces The Source Once") {
-  TestConfig_t config(TestConfig_t::enhanced_2e_only());
-  ScopedCore_t core(config);
-  ScopedAnnounceRecorder_t recorder;
-  ScopedAnnounceRecorder_t::forget_replay();
-  ScopedMock_t mock;
+  TestConfig config(TestConfig::enhanced_2e_only());
+  ScopedCore core(config);
+  ScopedAnnounceRecorder recorder;
+  ScopedAnnounceRecorder::forget_replay();
+  ScopedMock mock;
   mock.answer_absolute(44100, 1);
 
   REQUIRE(peripheral_register(mock.descriptor(), 3) == 0);
@@ -333,11 +333,11 @@ TEST_CASE("Speaker Core Seam: Registration Announces The Source Once") {
 TEST_CASE("Speaker Core Seam: NotifyStatusChanged Re-Announces Its Own Slot") {
   // The verb already meant "re-read me", and a layout change is that kind of
   // event. A bridge that keeps (void)slot cannot satisfy the first notify.
-  TestConfig_t config(TestConfig_t::enhanced_2e_only());
-  ScopedCore_t core(config);
-  ScopedAnnounceRecorder_t recorder;
-  ScopedAnnounceRecorder_t::forget_replay();
-  ScopedMock_t mock;
+  TestConfig config(TestConfig::enhanced_2e_only());
+  ScopedCore core(config);
+  ScopedAnnounceRecorder recorder;
+  ScopedAnnounceRecorder::forget_replay();
+  ScopedMock mock;
   mock.answer_absolute(44100, 1);
 
   REQUIRE(peripheral_register(mock.descriptor(), 3) == 0);
@@ -360,11 +360,11 @@ TEST_CASE("Speaker Core Seam: NotifyStatusChanged Re-Announces Its Own Slot") {
 }
 
 TEST_CASE("Speaker Core Seam: A Non-Audio Peripheral Announces Nothing") {
-  TestConfig_t config(TestConfig_t::enhanced_2e_only());
-  ScopedCore_t core(config);
-  ScopedAnnounceRecorder_t recorder;
-  ScopedAnnounceRecorder_t::forget_replay();
-  ScopedMock_t mock;
+  TestConfig config(TestConfig::enhanced_2e_only());
+  ScopedCore core(config);
+  ScopedAnnounceRecorder recorder;
+  ScopedAnnounceRecorder::forget_replay();
+  ScopedMock mock;
   mock.answer_nothing();
 
   REQUIRE(peripheral_register(mock.descriptor(), 5) == 0);
@@ -380,9 +380,9 @@ TEST_CASE("Speaker Core Seam: Registering The Speaker Announces It Once") {
   // routing stable for the session. Subscribing before the core is the only
   // way to hear the registration itself rather than the replay, which is
   // what the late-subscriber case below covers.
-  TestConfig_t config(TestConfig_t::enhanced_2e_only());
-  ScopedAnnounceRecorder_t recorder;
-  ScopedCore_t core(config);
+  TestConfig config(TestConfig::enhanced_2e_only());
+  ScopedAnnounceRecorder recorder;
+  ScopedCore core(config);
 
   REQUIRE(recorder.count() == 1);
   CHECK(recorder.at(0).slot == 0);
@@ -399,9 +399,9 @@ TEST_CASE("Speaker Core Seam: Registering The Speaker Announces It Once") {
 
 TEST_CASE("Speaker Core Seam: The Speaker Through The Real Host") {
   // The one case where the speaker and the bridge meet: no mocks anywhere.
-  TestConfig_t config(TestConfig_t::enhanced_2e_only());
-  ScopedCore_t core(config);
-  ScopedPushRecorder_t pushes;
+  TestConfig config(TestConfig::enhanced_2e_only());
+  ScopedCore core(config);
+  ScopedPushRecorder pushes;
 
   const uint8_t bus_value = io_map_dispatch(0, ADDR_SPEAKER, 0, 0, 0);
   CHECK(bus_value == mem_read_floating_bus(0));
@@ -423,8 +423,8 @@ TEST_CASE(
   // The bridge brings the cumulative cycle count up to the current
   // instruction before dispatching, which is what makes GetCycles() inside a
   // strobe exact and is why the strobe needs no cycle count of its own.
-  TestConfig_t config(TestConfig_t::enhanced_2e_only());
-  ScopedCore_t core(config);
+  TestConfig config(TestConfig::enhanced_2e_only());
+  ScopedCore core(config);
 
   const uint64_t initial_cycles = cpu_get_cumulative_cycles();
   constexpr uint32_t instruction_cycle_offset = 512;
@@ -441,9 +441,9 @@ TEST_CASE(
   // Strobes spread across one video frame must land at their own cycles.
   // Collapsing them onto sample zero at the frame boundary is what turns a
   // 1 kHz tone into 60 Hz mush.
-  TestConfig_t config(TestConfig_t::enhanced_2e_only());
-  ScopedCore_t core(config);
-  ScopedPushRecorder_t pushes;
+  TestConfig config(TestConfig::enhanced_2e_only());
+  ScopedCore core(config);
+  ScopedPushRecorder pushes;
 
   for (uint32_t cycle = 1000; cycle < 17000; cycle += 1000) {
     io_map_dispatch(0, ADDR_SPEAKER, 0, 0, cycle);
@@ -494,7 +494,7 @@ constexpr size_t DRAINED_FRAMES = 800;
 auto install_mixer_callbacks() -> void {
   linapple_set_audio_source_register_callback(
       [](int slot, const char* peripheral_id,
-         const PeripheralAudioInfo_t* info) -> void {
+         const PeripheralAudioInfo* info) -> void {
         audio_mixer_register_source(slot, peripheral_id, info);
       });
   linapple_set_audio_channel_callback(
@@ -509,7 +509,7 @@ auto install_mixer_callbacks() -> void {
 // with the callbacks installed either side of the speaker's registration.
 auto tone_through_mixer(bool subscribe_before_register)
     -> std::vector<int16_t> {
-  TestConfig_t config(TestConfig_t::enhanced_2e_only());
+  TestConfig config(TestConfig::enhanced_2e_only());
   audio_mixer_initialize(DEVICE_RATE_HZ);
 
   // The speaker is soldered to the motherboard, so the core registers it as
@@ -517,7 +517,7 @@ auto tone_through_mixer(bool subscribe_before_register)
   if (subscribe_before_register) {
     install_mixer_callbacks();
   }
-  ScopedCore_t core(config);
+  ScopedCore core(config);
   if (!subscribe_before_register) {
     install_mixer_callbacks();
   }
@@ -548,11 +548,11 @@ TEST_CASE("Speaker Core Seam: A Late Subscriber Learns What Is Already There") {
   // session_init calls app_controller_initialize first and ds_init() last, and
   // tui/Main.cpp does the same. A callback that only hears about future
   // registrations hears nothing at all, and the machine is silent.
-  TestConfig_t config(TestConfig_t::enhanced_2e_only());
-  ScopedCore_t core(config);
+  TestConfig config(TestConfig::enhanced_2e_only());
+  ScopedCore core(config);
 
   // The recorder subscribes late, exactly as ds_init() does.
-  ScopedAnnounceRecorder_t recorder;
+  ScopedAnnounceRecorder recorder;
 
   REQUIRE(recorder.count() == 1);
   CHECK(recorder.at(0).slot == 0);

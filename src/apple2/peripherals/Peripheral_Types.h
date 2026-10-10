@@ -14,21 +14,21 @@ typedef enum {
   peripheral_error = -1,
   peripheral_incompatible = -2,
   peripheral_busy = -3,
-} PeripheralStatus_t;
+} PeripheralStatus;
 
 typedef enum {
   log_debug = 0,
   log_info,
   log_warn,
   log_error,
-} PeripheralLogLevel_t;
+} PeripheralLogLevel;
 
 // What a byte stream leaving a card is for. The host names its destination by
 // slot and kind, so two printer cards get two destinations.
 typedef enum {
   peripheral_sink_printer = 1,
   peripheral_sink_serial = 2,
-} PeripheralSinkKind_t;
+} PeripheralSinkKind;
 
 typedef enum {
   peripheral_serial_parity_none = 0,
@@ -36,7 +36,7 @@ typedef enum {
   peripheral_serial_parity_even,
   peripheral_serial_parity_mark,
   peripheral_serial_parity_space,
-} PeripheralSerialParity_t;
+} PeripheralSerialParity;
 
 // baud 0 means the card has selected no clock; stop_half_bits is 2, 3 or 4 so
 // 1.5 stop bits are exact; dtr, rts and brk are 1 = asserted, as the kernel's
@@ -50,7 +50,7 @@ typedef struct {
   uint8_t rts;
   uint8_t brk;
   uint8_t padding[2];
-} PeripheralSerialLine_t;
+} PeripheralSerialLine;
 
 // The II's keyboard encoder is on the keyboard (Apple II Reference Manual
 // 1979, p. 102), the //e's on the main board (IIe Technical Reference Manual,
@@ -60,9 +60,9 @@ typedef enum {
   peripheral_machine_apple2 = 0,
   peripheral_machine_apple2_plus = 1,
   peripheral_machine_apple2e = 2,
-} PeripheralMachine_t;
+} PeripheralMachine;
 
-enum IrqSrc_t {
+enum IrqSrc {
   is_6522 = 0,
   is_speech,
   is_ssc,

@@ -6,7 +6,7 @@
 
 #include "apple2/peripherals/Peripheral_Types.h"
 
-struct SsCpu6502_t;
+struct SsCpu6502;
 
 // 6502 Architecture Vectors
 constexpr uint16_t NMI_VECTOR_ADDR = 0xFFFA;
@@ -26,7 +26,7 @@ struct CpuRegisters {
   uint16_t sp = 0;  // 16-bit to store pre-computed page 1 address (0x0100 | S)
   bool is_jammed = false;  // CPU has crashed on illegal instruction (NMOS 6502)
 };
-using CpuRegisters_t = CpuRegisters;
+using CpuRegisters = CpuRegisters;
 
 // The slice bound and flag are not here: no context switch happens inside
 // cpu_execute_slice.
@@ -39,12 +39,12 @@ struct CpuInstance {
   uint32_t bm_nmi = 0;
   bool nmi_flank = false;
 };
-using CpuInstance_t = CpuInstance;
+using CpuInstance = CpuInstance;
 
 auto cpu_get_registers() noexcept -> CpuRegisters*;
 auto cpu_get_cumulative_cycles() noexcept -> uint64_t;
 auto cpu_add_cumulative_cycles(uint32_t cycles) noexcept -> void;
-extern uint64_t g_cumulative_cycles;
+extern uint64_t cumulative_cycles;
 
 auto cpu_get_active_context() noexcept -> CpuInstance*;
 auto cpu_set_active_context(CpuInstance* context) noexcept -> void;
@@ -70,11 +70,11 @@ auto cpu_initialize() noexcept -> void;
 auto cpu_step() -> void;
 auto cpu_setup_benchmark() -> void;
 auto cpu_irq_reset() noexcept -> void;
-auto cpu_irq_assert(IrqSrc_t device) noexcept -> void;
-auto cpu_irq_deassert(IrqSrc_t device) noexcept -> void;
+auto cpu_irq_assert(IrqSrc device) noexcept -> void;
+auto cpu_irq_deassert(IrqSrc device) noexcept -> void;
 auto cpu_nmi_reset() noexcept -> void;
-auto cpu_nmi_assert(IrqSrc_t device) noexcept -> void;
-auto cpu_nmi_deassert(IrqSrc_t device) noexcept -> void;
+auto cpu_nmi_assert(IrqSrc device) noexcept -> void;
+auto cpu_nmi_deassert(IrqSrc device) noexcept -> void;
 auto cpu_reset() noexcept -> void;
-auto cpu_get_snapshot(SsCpu6502_t* snapshot) noexcept -> uint32_t;
-auto cpu_set_snapshot(const SsCpu6502_t* snapshot) noexcept -> uint32_t;
+auto cpu_get_snapshot(SsCpu6502* snapshot) noexcept -> uint32_t;
+auto cpu_set_snapshot(const SsCpu6502* snapshot) noexcept -> uint32_t;

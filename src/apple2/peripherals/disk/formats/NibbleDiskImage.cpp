@@ -41,7 +41,7 @@ auto has_woz_magic(const uint8_t* header_data, size_t header_size) -> bool {
 // for C++11 compatibility and handle-based resource management.
 // easily-swappable-parameters is mandated by the Disk Driver ABI signatures.
 
-struct NibbleDiskImage_t {
+struct NibbleDiskImage {
   FilePtr file{nullptr, fclose};
   uint32_t data_offset = 0;
   uint32_t track_size = 0;
@@ -51,13 +51,13 @@ struct NibbleDiskImage_t {
   // count rather than silently cut to fit.
   std::array<uint8_t, nibbles_per_track + 1> nibbles{};
 
-  NibbleDiskImage_t() = default;
-  ~NibbleDiskImage_t() = default;
+  NibbleDiskImage() = default;
+  ~NibbleDiskImage() = default;
 
-  NibbleDiskImage_t(const NibbleDiskImage_t&) = delete;
-  auto operator=(const NibbleDiskImage_t&) -> NibbleDiskImage_t& = delete;
-  NibbleDiskImage_t(NibbleDiskImage_t&&) = default;
-  auto operator=(NibbleDiskImage_t&&) -> NibbleDiskImage_t& = default;
+  NibbleDiskImage(const NibbleDiskImage&) = delete;
+  auto operator=(const NibbleDiskImage&) -> NibbleDiskImage& = delete;
+  NibbleDiskImage(NibbleDiskImage&&) = default;
+  auto operator=(NibbleDiskImage&&) -> NibbleDiskImage& = default;
 };
 
 extern "C" auto nibble_disk_image_probe(const uint8_t* header_data,
@@ -130,7 +130,7 @@ extern "C" auto nibble_disk_image_open(const char* path, uint32_t file_offset,
     return disk_err_corrupt;
   }
 
-  auto image_ptr = std::unique_ptr<NibbleDiskImage_t>(new NibbleDiskImage_t());
+  auto image_ptr = std::unique_ptr<NibbleDiskImage>(new NibbleDiskImage());
   image_ptr->file = std::move(file);
   image_ptr->host_read_only = host_read_only;
   image_ptr->data_offset = file_offset;
@@ -145,20 +145,20 @@ extern "C" auto nibble_disk_image_open(const char* path, uint32_t file_offset,
 }
 
 extern "C" auto nibble_disk_image_close(void* instance) -> void {
-  delete static_cast<NibbleDiskImage_t*>(instance);
+  delete static_cast<NibbleDiskImage*>(instance);
 }
 
 extern "C" auto nibble_disk_image_is_write_protected(void* instance) -> bool {
   if (instance == nullptr) {
     return true;
   }
-  return static_cast<NibbleDiskImage_t*>(instance)->host_read_only;
+  return static_cast<NibbleDiskImage*>(instance)->host_read_only;
 }
 
 extern "C" auto nibble_disk_image_read_track_bits(
     void* instance, uint32_t quarter_track, uint8_t* bits, uint32_t max_bits,
     uint32_t* out_bit_count, uint8_t* out_bit_timing) -> DiskError {
-  auto* image_ptr = static_cast<NibbleDiskImage_t*>(instance);
+  auto* image_ptr = static_cast<NibbleDiskImage*>(instance);
   if (image_ptr == nullptr || bits == nullptr || out_bit_count == nullptr ||
       out_bit_timing == nullptr) {
     return disk_err_invalid_argument;
@@ -203,7 +203,7 @@ extern "C" auto nibble_disk_image_write_track_bits(void* instance,
                                                    const uint8_t* bits,
                                                    uint32_t bit_count)
     -> DiskError {
-  auto* image_ptr = static_cast<NibbleDiskImage_t*>(instance);
+  auto* image_ptr = static_cast<NibbleDiskImage*>(instance);
   if (image_ptr == nullptr || bits == nullptr) {
     return disk_err_invalid_argument;
   }

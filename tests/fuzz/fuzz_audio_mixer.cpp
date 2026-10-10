@@ -23,9 +23,9 @@ constexpr size_t max_drain_frames = 2048;
 // what it was asked for is the one overrun a caller can see from outside.
 constexpr int16_t guard_value = 0x5A5A;
 
-class ByteReader_t {
+class ByteReader {
  public:
-  ByteReader_t(const uint8_t* data, size_t size) : data_(data), size_(size) {}
+  ByteReader(const uint8_t* data, size_t size) : data_(data), size_(size) {}
 
   auto exhausted() const -> bool { return offset_ >= size_; }
 
@@ -52,10 +52,10 @@ class ByteReader_t {
   size_t offset_ = 0;
 };
 
-auto make_info(ByteReader_t& reader) -> PeripheralAudioInfo_t {
-  PeripheralAudioInfo_t info{};
+auto make_info(ByteReader& reader) -> PeripheralAudioInfo {
+  PeripheralAudioInfo info{};
   const uint8_t form = reader.u8();
-  info.time_base = static_cast<PeripheralAudioTimeBase_t>(form & 0x03);
+  info.time_base = static_cast<PeripheralAudioTimeBase>(form & 0x03);
   info.cycle_divisor = reader.u8();
   info.sample_rate = static_cast<uint32_t>(reader.u16()) * 8;
   info.num_channels = reader.u8() % (PERIPHERAL_AUDIO_MAX_CHANNELS + 2);
@@ -81,7 +81,7 @@ auto drain_and_check(size_t frames) -> void {
 }  // namespace
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
-  ByteReader_t reader(data, size);
+  ByteReader reader(data, size);
 
   // Capped at 192 kHz: the ring is sized from the rate, and there is nothing
   // to learn from allocating megabytes per iteration.
@@ -99,7 +99,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
     switch (op % 8) {
       case 0: {
-        const PeripheralAudioInfo_t info = make_info(reader);
+        const PeripheralAudioInfo info = make_info(reader);
         audio_mixer_register_source(slot, "fuzz.source", &info);
         break;
       }

@@ -74,7 +74,7 @@ auto disk_select(int drive) -> void {
   const std::string file_path =
       (full_path == "/") ? ("/" + filename) : (full_path + "/" + filename);
 
-  DiskInsertCmd_t cmd{};
+  DiskInsertCmd cmd{};
   cmd.drive = static_cast<uint8_t>(drive);
   util_safe_strcpy(cmd.path, file_path.c_str(), sizeof(cmd.path));
   cmd.write_protected = 0;
@@ -176,7 +176,7 @@ auto disk_ftp_select_image(int drive) -> void {
 
   const std::string local_path =
       std::string(system_state.ftp_local_dir.data()) + "/" + safe_filename;
-  DiskInsertCmd_t cmd{};
+  DiskInsertCmd cmd{};
   cmd.drive = static_cast<uint8_t>(drive);
   util_safe_strcpy(cmd.path, local_path.c_str(), sizeof(cmd.path));
   cmd.write_protected = 0;
