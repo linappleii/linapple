@@ -560,7 +560,7 @@ struct Row_t {
 
 // Labels: RET1 $1E, RET2 $38, FAILJ $3F, DRIVER $46, W1 $62, W2 $6C, EXEC
 // $78, R1 $8A, R2 $94, DONE $9E, STATUS $A2, ERROR $AD, FAIL $AF, MONITOR $C7.
-const std::vector<Row_t> k_listing = {
+const Row_t k_listing[] = {
     {0x00, m_lda, mode_immediate, 0x20},
     {0x02, m_lda, mode_immediate, 0x00},
     {0x04, m_lda, mode_immediate, 0x03},

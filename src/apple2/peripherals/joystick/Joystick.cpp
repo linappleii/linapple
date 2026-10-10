@@ -210,7 +210,7 @@ auto joystick_abi_command(void* instance, uint32_t command_id,
 }
 
 // The port has no queries: its state is read through the switches and timers.
-// NOLINTNEXTLINE(readability-non-const-parameter) - signature defined by PeripheralQueryFn ABI
+// NOLINTBEGIN(readability-non-const-parameter) - signature defined by PeripheralQueryFn ABI
 auto joystick_abi_query(void* instance, uint32_t query_id, void* output,
                         size_t* output_size) -> PeripheralStatus_t {
   (void)instance;
@@ -221,6 +221,7 @@ auto joystick_abi_query(void* instance, uint32_t query_id, void* output,
   }
   return peripheral_incompatible;
 }
+// NOLINTEND(readability-non-const-parameter)
 
 static_assert(sizeof(JoystickSaveState_t) == 56,
               "the game port's state frame is part of the plugin ABI");

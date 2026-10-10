@@ -264,7 +264,7 @@ auto printer_abi_command(void* instance, uint32_t command_id,
   return peripheral_incompatible;
 }
 
-// NOLINTNEXTLINE(readability-non-const-parameter) - signature defined by PeripheralQueryFn ABI
+// NOLINTBEGIN(readability-non-const-parameter) - signature defined by PeripheralQueryFn ABI
 auto printer_abi_query(void* instance, uint32_t query_id, void* output,
                        size_t* output_size) -> PeripheralStatus_t {
   (void)instance;
@@ -275,6 +275,7 @@ auto printer_abi_query(void* instance, uint32_t query_id, void* output,
   }
   return peripheral_incompatible;
 }
+// NOLINTEND(readability-non-const-parameter)
 
 static_assert(sizeof(PrinterSaveState_t) == 24,
               "the printer card's state frame is part of the plugin ABI");
@@ -377,8 +378,6 @@ static Peripheral_t printer_peripheral = {
 };
 
 // Peripheral registry requires non-const pointer.
-auto printer_get_descriptor() -> Peripheral_t* {
-  return &printer_peripheral;
-}
+auto printer_get_descriptor() -> Peripheral_t* { return &printer_peripheral; }
 
 PERIPHERAL_REGISTER(printer_peripheral)

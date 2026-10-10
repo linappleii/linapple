@@ -28,8 +28,7 @@ namespace {
 auto read_file(const std::string& path) -> std::vector<uint8_t> {
   std::ifstream in(path, std::ios::binary);
   REQUIRE(in.is_open());
-  return std::vector<uint8_t>(std::istreambuf_iterator<char>(in),
-                              std::istreambuf_iterator<char>());
+  return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
 }
 
 struct TrackBits_t {
@@ -564,9 +563,8 @@ auto slot_of(const std::vector<uint8_t>& file, uint32_t track,
              uint32_t track_nibbles) -> std::vector<uint8_t> {
   const size_t at = static_cast<size_t>(track) * track_nibbles;
   REQUIRE(file.size() >= at + track_nibbles);
-  return std::vector<uint8_t>(
-      file.begin() + static_cast<std::ptrdiff_t>(at),
-      file.begin() + static_cast<std::ptrdiff_t>(at + track_nibbles));
+  return {file.begin() + static_cast<std::ptrdiff_t>(at),
+          file.begin() + static_cast<std::ptrdiff_t>(at + track_nibbles)};
 }
 
 }  // namespace

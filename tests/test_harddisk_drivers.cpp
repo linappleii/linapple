@@ -258,9 +258,8 @@ auto all_equal(const std::array<uint8_t, block_size>& bytes, uint8_t value)
 auto slice(const std::vector<uint8_t>& bytes, size_t offset, size_t count)
     -> std::vector<uint8_t> {
   REQUIRE(offset + count <= bytes.size());
-  return std::vector<uint8_t>(
-      bytes.begin() + static_cast<ptrdiff_t>(offset),
-      bytes.begin() + static_cast<ptrdiff_t>(offset + count));
+  return {bytes.begin() + static_cast<ptrdiff_t>(offset),
+          bytes.begin() + static_cast<ptrdiff_t>(offset + count)};
 }
 
 auto is_key_block(const std::array<uint8_t, block_size>& bytes) -> bool {

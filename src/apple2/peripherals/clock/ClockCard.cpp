@@ -203,7 +203,7 @@ auto clockcard_abi_command(void* instance, uint32_t cmd_id, const void* data,
   return peripheral_incompatible;
 }
 
-// NOLINTNEXTLINE(readability-non-const-parameter) - signature defined by PeripheralQueryFn ABI
+// NOLINTBEGIN(readability-non-const-parameter) - signature defined by PeripheralQueryFn ABI
 auto clockcard_abi_query(void* instance, uint32_t query_id, void* out,
                          size_t* size) -> PeripheralStatus_t {
   (void)instance;
@@ -214,6 +214,7 @@ auto clockcard_abi_query(void* instance, uint32_t query_id, void* out,
   }
   return peripheral_incompatible;
 }
+// NOLINTEND(readability-non-const-parameter)
 
 static_assert(sizeof(ClockCardSaveState_t) == 32,
               "the clock card's state frame is part of the plugin ABI");

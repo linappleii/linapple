@@ -91,7 +91,7 @@ auto payload_name_of(const std::string& archive) -> std::string {
   std::array<char, 256> name{};
   REQUIRE(image_container_payload_name(archive.c_str(), name.data(),
                                        name.size()) == image_container_ok);
-  return std::string(name.data());
+  return name.data();
 }
 
 auto count_container_temps(const std::string& dir) -> int {

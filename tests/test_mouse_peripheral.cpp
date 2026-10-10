@@ -1251,6 +1251,7 @@ auto read_addresses(MouseMachine_t& machine,
                                    program.size());
   machine.run_until(program_start, spin);
   std::vector<uint8_t> values;
+  values.reserve(addresses.size());
   zero_page = 0x10;
   for (size_t i = 0; i < addresses.size(); ++i) {
     values.push_back(mem[zero_page++]);

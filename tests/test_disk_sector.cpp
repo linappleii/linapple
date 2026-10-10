@@ -34,8 +34,7 @@ constexpr size_t track_size = sector_size * sectors_per_track;
 auto read_file(const std::string& path) -> std::vector<uint8_t> {
   std::ifstream in(path, std::ios::binary);
   REQUIRE(in.is_open());
-  return std::vector<uint8_t>(std::istreambuf_iterator<char>(in),
-                              std::istreambuf_iterator<char>());
+  return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
 }
 
 auto write_file(const std::string& path, const std::vector<uint8_t>& bytes)

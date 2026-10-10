@@ -74,6 +74,7 @@ auto drain_names() -> std::vector<std::string> {
 
 auto registered_names() -> std::vector<std::string> {
   std::vector<std::string> names;
+  names.reserve(harddisk_loader_driver_count());
   for (uint32_t i = 0; i < harddisk_loader_driver_count(); ++i) {
     names.emplace_back(harddisk_loader_driver_at(i)->name);
   }

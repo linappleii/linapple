@@ -608,8 +608,8 @@ auto any_key_down() -> bool {
 auto file_bytes(const std::string& path) -> std::vector<char> {
   std::ifstream in(path, std::ios::binary);
   REQUIRE(in.good());
-  return std::vector<char>((std::istreambuf_iterator<char>(in)),
-                           std::istreambuf_iterator<char>());
+  return {(std::istreambuf_iterator<char>(in)),
+          std::istreambuf_iterator<char>()};
 }
 
 }  // namespace
@@ -944,7 +944,7 @@ auto file_names(const std::string& path, int slot) -> std::string {
   in.read(name.data(), static_cast<std::streamsize>(name.size()));
   REQUIRE(in.good());
   name.back() = '\0';
-  return std::string(name.data());
+  return name.data();
 }
 
 auto patched_copy(const std::string& source,

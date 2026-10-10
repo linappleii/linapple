@@ -686,17 +686,6 @@ auto open_peer(const ScopedLogCapture_t& log) -> std::string {
   return path;
 }
 
-#if defined(ENABLE_PERIPHERAL_KEYBOARD)
-// After PR#2 hooks CSW: CRDO and the prompt, GETLN's echo of PRINT "HELLO"
-// and its Return, HELLO, CRDO and the prompt, GETLN's echo of PR#0 and its
-// Return. In communications mode the firmware sends each COUT byte with bit 7
-// intact and no line feed (SW2-5 OFF).
-const std::vector<uint8_t> applesoft_session_stream = {
-    0x8D, 0xDD, 0xD0, 0xD2, 0xC9, 0xCE, 0xD4, 0xA0, 0xA2, 0xC8,
-    0xC5, 0xCC, 0xCC, 0xCF, 0xA2, 0x8D, 0xC8, 0xC5, 0xCC, 0xCC,
-    0xCF, 0x8D, 0x8D, 0xDD, 0xD0, 0xD2, 0xA3, 0xB0, 0x8D};
-#endif
-
 }  // namespace
 
 #if defined(ENABLE_PERIPHERAL_KEYBOARD)
@@ -765,6 +754,10 @@ TEST_CASE(
   harness.run_frames(4);
   harness.type_string("PR#0\r", 2);
   harness.run_frames(4);
+  const std::vector<uint8_t> applesoft_session_stream = {
+      0x8D, 0xDD, 0xD0, 0xD2, 0xC9, 0xCE, 0xD4, 0xA0, 0xA2, 0xC8,
+      0xC5, 0xCC, 0xCC, 0xCF, 0xA2, 0x8D, 0xC8, 0xC5, 0xCC, 0xCC,
+      0xCF, 0x8D, 0x8D, 0xDD, 0xD0, 0xD2, 0xA3, 0xB0, 0x8D};
   CHECK(hex(peer.read_bytes(applesoft_session_stream.size())) ==
         hex(applesoft_session_stream));
   CHECK(peer.has_byte() == false);

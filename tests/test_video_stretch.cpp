@@ -16,8 +16,7 @@ namespace {
 using UniqueSurface_t = std::unique_ptr<VideoSurface, void (*)(VideoSurface*)>;
 
 auto make_surface(int width, int height, int bpp) -> UniqueSurface_t {
-  return UniqueSurface_t(video_create_surface(width, height, bpp),
-                         video_destroy_surface);
+  return {video_create_surface(width, height, bpp), video_destroy_surface};
 }
 
 auto get_pixel32(const VideoSurface* s, int x, int y) -> uint32_t {

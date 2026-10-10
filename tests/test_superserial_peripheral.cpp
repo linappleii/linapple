@@ -168,9 +168,7 @@ class BenchHost_t {
     return false;
   }
   static auto bench_sink_close(void* sink) -> void { (void)sink; }
-  static auto bench_sink_read(void* sink, uint8_t* byte) -> bool {
-    (void)sink;
-    (void)byte;
+  static auto bench_sink_read(void* /*sink*/, uint8_t* /*byte*/) -> bool {
     return false;
   }
   static auto bench_sink_set_line(void* sink,
@@ -178,9 +176,7 @@ class BenchHost_t {
     (void)sink;
     (void)line;
   }
-  static auto bench_sink_get_lines(void* sink, uint8_t* lines) -> bool {
-    (void)sink;
-    (void)lines;
+  static auto bench_sink_get_lines(void* /*sink*/, uint8_t* /*lines*/) -> bool {
     return false;
   }
   static auto bench_schedule_event(void* instance, uint64_t at_cycle) -> void {
@@ -2076,6 +2072,7 @@ TEST_CASE(
 
   REQUIRE(mem[0x08] == metered_bytes);
   std::vector<uint8_t> expected;
+  expected.reserve(metered_bytes);
   for (size_t i = 0; i < metered_bytes; ++i) {
     expected.push_back(static_cast<uint8_t>(0xC1 + i));
   }

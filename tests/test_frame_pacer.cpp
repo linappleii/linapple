@@ -14,13 +14,15 @@ constexpr uint32_t PAL_FRAME_CYCLES = 20313;
 
 // A frame of wall time is the machine's frame in cycles over its clock. The
 // pacer derives it the same way; stated here so a formula change fails.
-auto period_ns_for(uint32_t cycles, double clock_hz) -> int64_t {
+constexpr auto period_ns_for(uint32_t cycles, double clock_hz) noexcept
+    -> int64_t {
   return static_cast<int64_t>((static_cast<double>(cycles) * 1e9) / clock_hz);
 }
 
-const int64_t NTSC_PERIOD_NS =
+constexpr int64_t NTSC_PERIOD_NS =
     period_ns_for(NTSC_FRAME_CYCLES, clock_6502_ntsc);
-const int64_t PAL_PERIOD_NS = period_ns_for(PAL_FRAME_CYCLES, clock_6502_pal);
+constexpr int64_t PAL_PERIOD_NS =
+    period_ns_for(PAL_FRAME_CYCLES, clock_6502_pal);
 
 // The injected clock. A pacer under test never waits: the fake sleep simply
 // moves the clock to the deadline, which is what a perfect sleep would do.

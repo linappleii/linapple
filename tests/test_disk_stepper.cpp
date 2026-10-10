@@ -583,7 +583,7 @@ constexpr uint32_t quarter_track_unread = 0xFFFFFFFFU;
 constexpr uint32_t magnet_hold_cycles = 64;
 
 struct TrackRecorder_t {
-  std::vector<uint8_t> cells = std::vector<uint8_t>(recorder_cell_count / 8, 0);
+  std::array<uint8_t, recorder_cell_count / 8> cells{};
   uint32_t last_read_quarter_track = quarter_track_unread;
   uint32_t last_written_quarter_track = quarter_track_unread;
   std::vector<uint8_t> last_written_cells;

@@ -86,7 +86,7 @@ static auto capturing_disk_host() -> HostInterface_t {
   return h;
 }
 
-static HostInterface_t g_test_disk_host = [] {
+static HostInterface_t g_test_disk_host = []() noexcept {
   HostInterface_t h{};
   h.RegisterIO = [](int, PeripheralIOHandler, PeripheralIOHandler,
                     PeripheralIOHandler, PeripheralIOHandler) {};

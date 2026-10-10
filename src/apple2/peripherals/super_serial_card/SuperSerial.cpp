@@ -427,7 +427,7 @@ auto super_serial_abi_command(void* instance, uint32_t command_id,
   return peripheral_ok;
 }
 
-// NOLINTNEXTLINE(readability-non-const-parameter) - signature defined by PeripheralQueryFn ABI
+// NOLINTBEGIN(readability-non-const-parameter) - signature defined by PeripheralQueryFn ABI
 auto super_serial_abi_query(void* instance, uint32_t query_id, void* output,
                             size_t* output_size) -> PeripheralStatus_t {
   (void)instance;
@@ -438,6 +438,7 @@ auto super_serial_abi_query(void* instance, uint32_t query_id, void* output,
   }
   return peripheral_incompatible;
 }
+// NOLINTEND(readability-non-const-parameter)
 
 auto super_serial_abi_save_state(void* instance, void* state_buffer,
                                  size_t* buffer_size) -> PeripheralStatus_t {

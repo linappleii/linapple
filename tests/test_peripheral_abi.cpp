@@ -940,7 +940,8 @@ constexpr uint8_t image_b_displacement = 0x20;
 constexpr uint8_t image_a_tail = 0xAA;
 constexpr uint8_t image_b_tail = 0x55;
 
-auto cx_image(uint8_t displacement, uint8_t tail) -> std::array<uint8_t, 256> {
+auto cx_image(uint8_t displacement, uint8_t tail) noexcept
+    -> std::array<uint8_t, 256> {
   std::array<uint8_t, 256> image{};
   image.fill(opcode_rts);
   image[0x00] = opcode_sec;

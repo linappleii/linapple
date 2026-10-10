@@ -165,6 +165,7 @@ auto find_row(const HeadlessHarness_t& harness, const std::string& text)
 
 auto screen(const HeadlessHarness_t& harness) -> std::vector<std::string> {
   std::vector<std::string> rows;
+  rows.reserve(text_rows);
   for (int row = 0; row < text_rows; ++row) {
     rows.push_back(harness.get_text_row(row));
   }

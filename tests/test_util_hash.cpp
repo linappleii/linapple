@@ -38,6 +38,7 @@ TEST_CASE("Util_Hash: Consistency") {
 TEST_CASE("Util_Hash: Concurrency and Thread Safety") {
   constexpr size_t k_num_threads = 8;
   std::vector<std::thread> threads;
+  threads.reserve(k_num_threads);
   std::vector<std::string> results(k_num_threads);
 
   for (size_t t = 0; t < k_num_threads; ++t) {
