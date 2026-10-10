@@ -94,7 +94,7 @@ TEST_CASE("DiskIntegration: [INT-04] WOZ Integration Check") {
   auto ephemeral_disk = TestFixtures::create_ephemeral("minimal.woz");
   DiskInsertCmd_t cmd{};
   cmd.drive = disk_drive_0;
-  cmd.write_protected = false;
+  cmd.write_protected = 0;
   util_safe_strcpy(cmd.path, ephemeral_disk.c_str(), disk_insert_path_max);
   peripheral_command(slot_6, disk_cmd_insert, &cmd, sizeof(cmd));
   peripheral_manager_think(0);

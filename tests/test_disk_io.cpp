@@ -7,9 +7,9 @@
 
 #include "apple2/Memory.h"
 #include "apple2/Video.h"
+#include "apple2/peripherals/Peripheral.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "core/LinAppleCore.h"
-#include "apple2/peripherals/Peripheral.h"
 #include "core/Registry.h"
 #include "core/Util_Text.h"
 #include "doctest.h"
@@ -100,7 +100,7 @@ class DiskIoHarness_t {
   auto mount_disk(const std::string& path, int drive_idx = 0) -> void {
     DiskInsertCmd_t cmd{};
     cmd.drive = (drive_idx == 1) ? disk_drive_1 : disk_drive_0;
-    cmd.write_protected = false;
+    cmd.write_protected = 0;
     util_safe_strcpy(cmd.path, path.c_str(), disk_insert_path_max);
     peripheral_command(slot_6, disk_cmd_insert, &cmd, sizeof(cmd));
     peripheral_manager_think(0);

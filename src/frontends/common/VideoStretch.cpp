@@ -263,7 +263,7 @@ static auto copy8mono(const uint8_t* src, int src_w, uint8_t* dst, int dst_x,
     }
     int cur_x = dst_x + i;
     if (cur_x >= 0 && cur_x < max_w) {
-      dst[cur_x] = src[src_x] ? fgbrush : bgbrush;
+      dst[cur_x] = (src[src_x] != 0) ? fgbrush : bgbrush;
     }
   }
 }
@@ -284,7 +284,7 @@ static auto copy8mono4(const uint8_t* src, int src_w, uint32_t* dst, int dst_x,
     }
     int cur_x = dst_x + i;
     if (cur_x >= 0 && cur_x < max_w) {
-      dst[cur_x] = src[src_x] ? fgbrush : bgbrush;
+      dst[cur_x] = (src[src_x] != 0) ? fgbrush : bgbrush;
     }
   }
 }

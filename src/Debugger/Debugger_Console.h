@@ -159,10 +159,10 @@ inline conchar_t ConsoleColor_MakeColor(uint8_t color, uint8_t text) {
 inline auto ConsoleColor_StringLength(const char* text) -> int {
   const char* src_ptr = text;
   int length = 0;
-  while (*src_ptr) {
+  while (*src_ptr != '\0') {
     if (ConsoleColor_IsCharMeta(*src_ptr)) {
       src_ptr++;  // Skip meta character
-      if (*src_ptr) {
+      if (*src_ptr != '\0') {
         src_ptr++;  // Skip color code
       }
     } else {

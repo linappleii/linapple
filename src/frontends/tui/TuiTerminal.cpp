@@ -42,7 +42,7 @@ auto signal_handler(int sig) -> void {
 }
 
 auto restore_terminal_signal_safe() -> void {
-  if (!g_terminal_initialized) {
+  if (g_terminal_initialized == 0) {
     return;
   }
   ssize_t n =

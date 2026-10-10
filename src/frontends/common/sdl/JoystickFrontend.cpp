@@ -232,10 +232,10 @@ static auto send_keypad_axes(size_t joy_num) -> void {
   static constexpr std::array<int, 16> corner_convert_lookup = {
       {-1, -1, -1, 8, -1, 6, -1, -1, -1, -1, 2, -1, 0, -1, -1, -1},
   };
-  int corner_idx = (static_cast<int>(0 == key_down.at(1))) |
-                   (static_cast<int>(0 == key_down.at(3)) << 1) |
-                   (static_cast<int>(0 == key_down.at(5)) << 2) |
-                   (static_cast<int>(0 == key_down.at(7)) << 3);
+  int corner_idx = (static_cast<int>(!key_down.at(1))) |
+                   (static_cast<int>(!key_down.at(3)) << 1) |
+                   (static_cast<int>(!key_down.at(5)) << 2) |
+                   (static_cast<int>(!key_down.at(7)) << 3);
   int corner_override_idx =
       corner_convert_lookup.at(static_cast<size_t>(corner_idx));
   if (corner_override_idx >= 0) {

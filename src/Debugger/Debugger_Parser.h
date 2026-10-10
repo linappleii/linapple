@@ -21,7 +21,7 @@ inline auto SkipUntilToken(const char* src_ptr, const TokenTable_t* aTokens,
     *pToken_ = NO_TOKEN;
   }
 
-  while (src_ptr && (*src_ptr)) {
+  while (src_ptr != nullptr && (*src_ptr != '\0')) {
     if (ParserFindToken(src_ptr, aTokens, nTokens, pToken_)) {
       return src_ptr;
     }

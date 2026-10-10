@@ -166,7 +166,7 @@ auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
   try {
     if ((addr & PAGE_MASK) == IO_RANGE_BEGIN) {
       uint8_t index = static_cast<uint8_t>(addr & 0xFF);
-      if (write) {
+      if (write != 0) {
         if (g_io_write[index] != nullptr) {
           return g_io_write[index](pc, addr, write, val, cycles);
         }
@@ -179,15 +179,15 @@ auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
       uint8_t page = static_cast<uint8_t>((addr >> 8) & ADDR_NIBBLE_MASK);
       if (!is_apple2()) {
         if (!sw_slotcxrom(g_active_memory)) {
-          return write ? io_write_cxxx(pc, addr, write, val, cycles)
-                       : io_read_cxxx(pc, addr, write, val, cycles);
+          return (write != 0) ? io_write_cxxx(pc, addr, write, val, cycles)
+                              : io_read_cxxx(pc, addr, write, val, cycles);
         }
         if (page == 3 && !sw_slotc3rom(g_active_memory)) {
-          return write ? io_write_cxxx(pc, addr, write, val, cycles)
-                       : io_read_cxxx(pc, addr, write, val, cycles);
+          return (write != 0) ? io_write_cxxx(pc, addr, write, val, cycles)
+                              : io_read_cxxx(pc, addr, write, val, cycles);
         }
       }
-      if (write) {
+      if (write != 0) {
         if (g_io_write[NUM_PAGES_64K + page] != nullptr) {
           return g_io_write[NUM_PAGES_64K + page](pc, addr, write, val, cycles);
         }
@@ -450,7 +450,7 @@ auto io_null(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
   (void)val;
   (void)pc;
   (void)addr;
-  if (!write) {
+  if (write == 0) {
     return mem_read_floating_bus(cycles);
   }
   return 0;
@@ -522,11 +522,11 @@ static auto io_read_cxxx(uint16_t programcounter, uint16_t address,
       IO_STROBE = 1;
     }
 
-    if (g_active_memory->io_select && IO_STROBE) {
+    if (g_active_memory->io_select != 0 && IO_STROBE != 0) {
       // Enable Peripheral Expansion ROM
       uint32_t slot = 1;
       for (; slot < num_slots; slot++) {
-        if (g_active_memory->io_select & (1 << slot)) {
+        if ((g_active_memory->io_select & (1 << slot)) != 0) {
           break;
         }
       }
@@ -544,7 +544,7 @@ static auto io_read_cxxx(uint16_t programcounter, uint16_t address,
         g_active_memory->expansion_rom_type = EXP_ROM_PERIPHERAL;
         g_active_memory->peripheral_rom_slot = slot;
       }
-    } else if (g_active_memory->io_select_internal_rom && IO_STROBE &&
+    } else if (g_active_memory->io_select_internal_rom != 0 && IO_STROBE != 0 &&
                (g_active_memory->expansion_rom_type != EXP_ROM_INTERNAL)) {
       // Enable Internal ROM
       // . Get this for PR#3
@@ -571,7 +571,7 @@ static auto io_read_cxxx(uint16_t programcounter, uint16_t address,
     }
 
     if (!sw_slotcxrom(g_active_memory) &&
-        g_active_memory->io_select_internal_rom && IO_STROBE &&
+        g_active_memory->io_select_internal_rom != 0 && IO_STROBE != 0 &&
         (g_active_memory->expansion_rom_type != EXP_ROM_INTERNAL)) {
       // Enable Internal ROM
       if (g_active_memory->cx_rom_internal != nullptr && mem != nullptr) {
@@ -726,8 +726,7 @@ auto mem_update_paging(bool initialize, bool updatewriteonly) -> void {
     g_active_memory->memshadow[page] =
         sw_auxread(g_active_memory) ? g_active_memory->memaux + (page << 8)
                                     : g_active_memory->memmain + (page << 8);
-    if ((sw_auxread(g_active_memory) != 0) ==
-        (sw_auxwrite(g_active_memory) != 0)) {
+    if (sw_auxread(g_active_memory) == sw_auxwrite(g_active_memory)) {
       memwrite[page] = mem + (page << 8);
     } else if (sw_auxwrite(g_active_memory)) {
       memwrite[page] = g_active_memory->memaux + (page << 8);
@@ -838,7 +837,8 @@ auto mem_update_paging(bool initialize, bool updatewriteonly) -> void {
   if (!updatewriteonly) {
     for (uint32_t page = PAGE_ZERO; page < PAGE_MAX; page++) {
       if (initialize || (oldshadow[page] != g_active_memory->memshadow[page])) {
-        if ((!initialize) && ((*(memdirty + page) & 1) || (page <= PAGE_ONE))) {
+        if ((!initialize) &&
+            (((*(memdirty + page) & 1) != 0) || (page <= PAGE_ONE))) {
           *(memdirty + page) &= ~1;
           memcpy(oldshadow[page], mem + (page << 8), PAGE_SIZE);
         }
@@ -929,12 +929,10 @@ auto mem_destroy() -> void {
   memset(g_active_memory->memshadow, 0, NUM_PAGES_64K * sizeof(uint8_t*));
 }
 
-auto mem_get_80store() noexcept -> bool {
-  return sw_80store(g_active_memory) != 0;
-}
+auto mem_get_80store() noexcept -> bool { return sw_80store(g_active_memory); }
 
 auto mem_check_slotcxrom() noexcept -> bool {
-  return sw_slotcxrom(g_active_memory) != 0;
+  return sw_slotcxrom(g_active_memory);
 }
 
 auto mem_get_aux_ptr(uint16_t addr) noexcept -> uint8_t* {
@@ -1029,8 +1027,8 @@ auto mem_is_addr_code_memory(uint16_t addr) noexcept -> bool {
 
   // [$C800..CFFF]
   if (g_active_memory->expansion_rom_type == EXP_ROM_NULL) {
-    return g_active_memory->io_select ||
-           g_active_memory->io_select_internal_rom;
+    return (g_active_memory->io_select != 0) ||
+           (g_active_memory->io_select_internal_rom != 0);
   }
 
   return true;
@@ -1247,7 +1245,7 @@ auto mem_read_floating_bus(uint8_t highbit, uint32_t executed_cycles) noexcept
   uint8_t r = (mem != nullptr)
                   ? *(mem + video_get_scanner_address(nullptr, executed_cycles))
                   : 0xFF;
-  return (r & ~0x80) | (highbit ? 0x80 : 0);
+  return (r & ~0x80) | ((highbit != 0) ? 0x80 : 0);
 }
 
 auto mem_set_paging(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
@@ -1257,7 +1255,7 @@ auto mem_set_paging(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
 
   // Determine the new memory paging mode.
   if ((addr >= SS_LC_BEGIN) && (addr <= SS_LC_END)) {
-    bool writeram = (addr & 1);
+    bool writeram = ((addr & 1) != 0);
     g_active_memory->mem_mode &= ~(MF_HRAM_BANK2 | MF_HIGHRAM | MF_HRAM_WRITE);
     {
       g_active_memory->last_write_ram =
@@ -1265,7 +1263,7 @@ auto mem_set_paging(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
       if (g_active_memory->last_write_ram && writeram) {
         g_active_memory->mem_mode |= MF_HRAM_WRITE;
       }
-      if (!(addr & 8)) {
+      if ((addr & 8) == 0) {
         g_active_memory->mem_mode |= MF_HRAM_BANK2;
       }
       if (((addr & 2) >> 1) == (addr & 1)) {
@@ -1334,13 +1332,13 @@ auto mem_set_paging(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
   if ((addr >= 4) && (addr <= 5) && (pc <= 0xFFFC) &&
       ((read_u32_le(mem + pc) & 0x00FFFEFF) == 0x00C0028D)) {
     g_active_memory->mode_changing = true;
-    return write ? 0 : mem_read_floating_bus(1, cycles);
+    return (write != 0) ? 0 : mem_read_floating_bus(1, cycles);
   }
   if ((addr >= 0x80) && (addr <= 0x8F) && (pc <= 0xFFFC) &&
       (((read_u32_le(mem + pc) & 0x00FFFEFF) == 0x00C0048D) ||
        ((read_u32_le(mem + pc) & 0x00FFFEFF) == 0x00C0028D))) {
     g_active_memory->mode_changing = true;
-    return write ? 0 : mem_read_floating_bus(1, cycles);
+    return (write != 0) ? 0 : mem_read_floating_bus(1, cycles);
   }
 
   // If the memory paging mode has changed, update our memory images and write
@@ -1380,7 +1378,7 @@ auto mem_set_paging(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
     return video_set_mode(pc, addr, write, val, cycles);
   }
 
-  return write ? 0 : mem_read_floating_bus(cycles);
+  return (write != 0) ? 0 : mem_read_floating_bus(cycles);
 }
 
 auto mem_get_slot_parameters(uint32_t slot) noexcept -> void* {

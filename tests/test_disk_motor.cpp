@@ -111,7 +111,7 @@ class DiskMotorHarness_t {
   auto mount_disk() -> void {
     DiskInsertCmd_t cmd{};
     cmd.drive = disk_drive_0;
-    cmd.write_protected = false;
+    cmd.write_protected = 0;
     util_safe_strcpy(cmd.path, disk_fixture_.c_str(), disk_insert_path_max);
     peripheral_command(slot_6, disk_cmd_insert, &cmd, sizeof(cmd));
   }

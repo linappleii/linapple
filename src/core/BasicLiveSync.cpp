@@ -362,11 +362,12 @@ auto parse_positional_line(const std::string& sanitized, uint32_t line_index,
   *out_num = static_cast<uint16_t>(line_index);
 
   size_t pos = 0;
-  while (pos < sanitized.length() && std::isdigit(sanitized.at(pos))) {
+  while (pos < sanitized.length() &&
+         std::isdigit(static_cast<unsigned char>(sanitized.at(pos))) != 0) {
     pos++;
   }
   if (pos == 0 || pos >= sanitized.length() ||
-      !std::isspace(sanitized.at(pos))) {
+      std::isspace(static_cast<unsigned char>(sanitized.at(pos))) == 0) {
     *out_statement = sanitized;
     return true;
   }
@@ -378,7 +379,8 @@ auto parse_positional_line(const std::string& sanitized, uint32_t line_index,
     return true;
   }
 
-  while (pos < sanitized.length() && std::isspace(sanitized.at(pos))) {
+  while (pos < sanitized.length() &&
+         std::isspace(static_cast<unsigned char>(sanitized.at(pos))) != 0) {
     pos++;
   }
   *out_statement = sanitized.substr(pos);
@@ -388,11 +390,13 @@ auto parse_positional_line(const std::string& sanitized, uint32_t line_index,
 auto parse_explicit_line(const std::string& sanitized, uint16_t* out_num,
                          std::string* out_statement) -> bool {
   size_t pos = 0;
-  while (pos < sanitized.length() && std::isspace(sanitized.at(pos))) {
+  while (pos < sanitized.length() &&
+         std::isspace(static_cast<unsigned char>(sanitized.at(pos))) != 0) {
     pos++;
   }
   size_t num_start = pos;
-  while (pos < sanitized.length() && std::isdigit(sanitized.at(pos))) {
+  while (pos < sanitized.length() &&
+         std::isdigit(static_cast<unsigned char>(sanitized.at(pos))) != 0) {
     pos++;
   }
   if (pos == num_start) {
@@ -405,7 +409,8 @@ auto parse_explicit_line(const std::string& sanitized, uint16_t* out_num,
                      : static_cast<uint64_t>(max_line_number);
   *out_num = static_cast<uint16_t>(std::min<uint64_t>(val, max_line_number));
 
-  while (pos < sanitized.length() && std::isspace(sanitized.at(pos))) {
+  while (pos < sanitized.length() &&
+         std::isspace(static_cast<unsigned char>(sanitized.at(pos))) != 0) {
     pos++;
   }
   *out_statement = sanitized.substr(pos);
