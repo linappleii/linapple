@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -166,7 +167,7 @@ TEST_CASE("DiskDrivers: [DRV-02B] Extension Hint Discrimination") {
 
 TEST_CASE("DiskDrivers: [DRV-03] IIE Driver Probing") {
   uint8_t header[88]{};
-  memcpy(header, "SIMSYSTEM_IIE", 13);
+  std::copy_n("SIMSYSTEM_IIE", 13, header);
   header[13] = 2;  // Variant
 
   CHECK(g_iie_driver.probe(header, 88, 143360, ".iie") == disk_probe_definite);
@@ -177,7 +178,7 @@ TEST_CASE("DiskDrivers: [DRV-03] IIE Driver Probing") {
 
 TEST_CASE("DiskDrivers: [DRV-04] WOZ 2 Driver Probing") {
   uint8_t header[1536]{};
-  memcpy(header, "WOZ2\xFF\n\r\n", 8);
+  std::copy_n("WOZ2\xFF\n\r\n", 8, header);
 
   CHECK(g_woz2_driver.probe(header, 1536, 1536, ".woz") == disk_probe_definite);
 
@@ -285,7 +286,7 @@ TEST_CASE("DiskDrivers: [DRV-08] NB2 Track Round-trip") {
 
 TEST_CASE("DiskDrivers: [DRV-09] WOZ 2 Driver Probing") {
   uint8_t header[1536]{};
-  memcpy(header, "WOZ2\xFF\n\r\n", 8);
+  std::copy_n("WOZ2\xFF\n\r\n", 8, header);
 
   CHECK(g_woz2_driver.probe(header, 1536, 1536, ".woz") == disk_probe_definite);
 
@@ -297,12 +298,12 @@ TEST_CASE("DiskDrivers: [DRV-10] WOZ 3.5\" Rejection") {
   FILE* f = fopen(tmp_file.c_str(), "wb");
   REQUIRE(f != nullptr);
   uint8_t header[1536]{};
-  memcpy(header, "WOZ2\xFF\n\r\n", 8);
-  memcpy(header + 12, "INFO", 4);
+  std::copy_n("WOZ2\xFF\n\r\n", 8, header);
+  std::copy_n("INFO", 4, header + 12);
   header[16] = 60;  // INFO chunk size
-  memcpy(header + 80, "TMAP", 4);
+  std::copy_n("TMAP", 4, header + 80);
   header[84] = 160;
-  memcpy(header + 248, "TRKS", 4);
+  std::copy_n("TRKS", 4, header + 248);
   header[252] = 1;
   header[20] = 2;
   header[21] = 2;  // 3.5" disk type
@@ -320,12 +321,12 @@ TEST_CASE("DiskDrivers: [DRV-11] WOZ Write Protect") {
     FILE* f = fopen(path, "wb");
     REQUIRE(f != nullptr);
     uint8_t h[1536]{};
-    memcpy(h, "WOZ2\xFF\n\r\n", 8);
-    memcpy(h + 12, "INFO", 4);
+    std::copy_n("WOZ2\xFF\n\r\n", 8, h);
+    std::copy_n("INFO", 4, h + 12);
     h[16] = 60;
-    memcpy(h + 80, "TMAP", 4);
+    std::copy_n("TMAP", 4, h + 80);
     h[84] = 160;
-    memcpy(h + 248, "TRKS", 4);
+    std::copy_n("TRKS", 4, h + 248);
     h[252] = 1;
     h[20] = 2;
     h[21] = 1;        // 5.25"
@@ -354,14 +355,14 @@ TEST_CASE("DiskDrivers: [DRV-12] WOZ Unrecorded Track") {
   FILE* f = fopen(tmp_file.c_str(), "wb");
   REQUIRE(f != nullptr);
   uint8_t h[1536]{};
-  memcpy(h, "WOZ2\xFF\n\r\n", 8);
-  memcpy(h + 12, "INFO", 4);
+  std::copy_n("WOZ2\xFF\n\r\n", 8, h);
+  std::copy_n("INFO", 4, h + 12);
   h[16] = 60;
   h[20] = 2;
   h[21] = 1;
-  memcpy(h + 80, "TMAP", 4);
+  std::copy_n("TMAP", 4, h + 80);
   h[84] = 160;
-  memcpy(h + 248, "TRKS", 4);
+  std::copy_n("TRKS", 4, h + 248);
   memset(h + 88, 0xFF, 160);  // TMAP: all unrecorded
   fwrite(h, 1, 1536, f);
   fclose(f);
@@ -390,14 +391,14 @@ TEST_CASE("DiskDrivers: [DRV-14] WOZ reports the cell time INFO measured") {
     FILE* f = fopen(path, "wb");
     REQUIRE(f != nullptr);
     uint8_t h[1536]{};
-    memcpy(h, "WOZ2\xFF\n\r\n", 8);
-    memcpy(h + 12, "INFO", 4);
+    std::copy_n("WOZ2\xFF\n\r\n", 8, h);
+    std::copy_n("INFO", 4, h + 12);
     h[16] = 60;
     h[20] = 2;
     h[21] = 1;
-    memcpy(h + 80, "TMAP", 4);
+    std::copy_n("TMAP", 4, h + 80);
     h[84] = 160;
-    memcpy(h + 248, "TRKS", 4);
+    std::copy_n("TRKS", 4, h + 248);
     memset(h + 88, 0xFF, 160);
     // INFO chunk data starts at 20; optimal_bit_timing is its fortieth byte.
     h[20 + 39] = timing;
@@ -457,14 +458,14 @@ TEST_CASE("DiskDrivers: [SEC-01] WOZ rejects an out-of-bounds trks_index") {
   FILE* f = fopen(tmp_file.c_str(), "wb");
   REQUIRE(f != nullptr);
   uint8_t h[1536]{};
-  memcpy(h, "WOZ2\xFF\n\r\n", 8);
-  memcpy(h + 12, "INFO", 4);
+  std::copy_n("WOZ2\xFF\n\r\n", 8, h);
+  std::copy_n("INFO", 4, h + 12);
   h[16] = 60;
   h[20] = 2;
   h[21] = 1;
-  memcpy(h + 80, "TMAP", 4);
+  std::copy_n("TMAP", 4, h + 80);
   h[84] = 160;
-  memcpy(h + 248, "TRKS", 4);
+  std::copy_n("TRKS", 4, h + 248);
   // TMAP starts at offset 88. Set track 0 to use trks_index 160 (out of bounds)
   h[88] = 160;
   fwrite(h, 1, 1536, f);
