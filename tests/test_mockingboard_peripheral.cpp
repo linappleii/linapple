@@ -639,7 +639,7 @@ TEST_CASE("Mockingboard Peripheral: MB-17 Corrupt Save State Rejection") {
       for (const float sample : harness.channel(v)) {
         // The card's output stage is AC coupled, so a voice that is unipolar
         // inside the chip is bounded in both directions once it leaves.
-        if (!(sample >= -1.0F && sample <= 1.0F)) {
+        if (sample < -1.0F || sample > 1.0F) {
           within_peak = false;
         }
       }
@@ -993,9 +993,9 @@ TEST_CASE("Mockingboard Peripheral: MB-29 Audio Info Contents") {
   CHECK(info.num_channels == MB_VOICES);
   CHECK(info.peak_magnitude == 1.0F);
 
-  const char* const expected_names[MB_VOICES] = {
-      "AY0 Voice A", "AY0 Voice B", "AY0 Voice C",
-      "AY1 Voice A", "AY1 Voice B", "AY1 Voice C"};
+  const char* const expected_names[MB_VOICES] = {"AY0 Voice A", "AY0 Voice B",
+                                                 "AY0 Voice C", "AY1 Voice A",
+                                                 "AY1 Voice B", "AY1 Voice C"};
   for (size_t i = 0; i < MB_VOICES; ++i) {
     CHECK(std::strcmp(info.channels[i].name, expected_names[i]) == 0);
   }
@@ -1141,7 +1141,8 @@ TEST_CASE("Mockingboard Peripheral: MB-36 A Write Lands On Its Own Cycle") {
   CHECK(harness.channel(0)[0] == doctest::Approx(1.0F).epsilon(1e-6));
 }
 
-TEST_CASE("Mockingboard Peripheral: MB-37 A Rewound Slice Mark Charges Nothing") {
+TEST_CASE(
+    "Mockingboard Peripheral: MB-37 A Rewound Slice Mark Charges Nothing") {
   constexpr uint16_t latch = 0x1000;
   MockingboardHarness harness;
   REQUIRE(harness.create_card(4) != nullptr);
@@ -1206,7 +1207,8 @@ TEST_CASE("Mockingboard Peripheral: MB-38 A Zero-Cycle Slice Changes Nothing") {
   CHECK(harness.channel(0) == after_empty_slices);
 }
 
-TEST_CASE("Mockingboard Peripheral: MB-39 A Frame At Maximum Speed Is Seamless") {
+TEST_CASE(
+    "Mockingboard Peripheral: MB-39 A Frame At Maximum Speed Is Seamless") {
   // One frame at emulation_speed_max, the longest slice the core ever hands a
   // peripheral, and 84 scratch chunks of it.
   constexpr uint32_t max_speed_frame = 681200;
@@ -1310,7 +1312,8 @@ TEST_CASE("Mockingboard Peripheral: MB-41 A State Of Nothing But Ones") {
   CHECK(within_peak);
 }
 
-TEST_CASE("Mockingboard Peripheral: MB-42 The AY Bus Ignores What It Cannot Do") {
+TEST_CASE(
+    "Mockingboard Peripheral: MB-42 The AY Bus Ignores What It Cannot Do") {
   MockingboardHarness harness;
   REQUIRE(harness.create_card(4) != nullptr);
 

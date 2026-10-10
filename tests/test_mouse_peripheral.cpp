@@ -2441,7 +2441,7 @@ TEST_CASE(
   BasicSession_t basic;
   basic.type_line("PR#4 : PRINT CHR$(1) : PR#0");
   move_mouse(test_slot, 37, 11);
-  basic.type_line("10 IN#4 : INPUT X,Y,S : IN#0 : PRINT X;\",\";Y;\",\";S");
+  basic.type_line(R"(10 IN#4 : INPUT X,Y,S : IN#0 : PRINT X;",";Y;",";S)");
   basic.type_line("RUN");
   CHECK(basic.screen_has_row("37,11,4"));
 

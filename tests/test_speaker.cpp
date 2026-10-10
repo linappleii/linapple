@@ -170,9 +170,11 @@ struct SpeakerHarness_t {
     if (it == strobes_.end() || it->second.on_strobe == nullptr) {
       return;
     }
-    void* target = (inst != nullptr)                  ? inst
-                   : (it->second.instance != nullptr) ? it->second.instance
-                                                      : primary_instance_;
+    void* target = inst;
+    if (target == nullptr) {
+      target = (it->second.instance != nullptr) ? it->second.instance
+                                                : primary_instance_;
+    }
     it->second.on_strobe(target);
   }
 

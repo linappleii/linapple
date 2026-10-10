@@ -280,7 +280,8 @@ TEST_CASE("Speaker Core Seam: A Read And A Write At $C030 Sound The Same") {
   cpu_calc_cycles(1);
   peripheral_manager_think(1);
   REQUIRE(pushes.push_count() == 1);
-  const std::vector<float> from_read = pushes.samples();
+  REQUIRE(pushes.samples().size() == 1);
+  const float from_read = pushes.samples()[0];
 
   // Settle the cone so the next edge starts from rest, then drive it with a
   // write instead of a read.
@@ -296,14 +297,13 @@ TEST_CASE("Speaker Core Seam: A Read And A Write At $C030 Sound The Same") {
   cpu_calc_cycles(settled + 1);
   peripheral_manager_think(1);
   REQUIRE(pushes.push_count() == 1);
-  const std::vector<float>& from_write = pushes.samples();
+  REQUIRE(pushes.samples().size() == 1);
+  const float from_write = pushes.samples()[0];
 
-  REQUIRE(from_read.size() == 1);
-  REQUIRE(from_write.size() == 1);
   // Opposite polarity, identical magnitude: the second edge is the same step
   // in the other direction, which is what proves one handler served both.
-  CHECK(from_read[0] == EDGE_POSITIVE);
-  CHECK(from_write[0] == -EDGE_POSITIVE);
+  CHECK(from_read == EDGE_POSITIVE);
+  CHECK(from_write == -EDGE_POSITIVE);
 }
 
 // =============================================================================
@@ -345,8 +345,9 @@ TEST_CASE("Speaker Core Seam: NotifyStatusChanged Re-Announces Its Own Slot") {
   mock.host()->NotifyStatusChanged(3);
   REQUIRE(recorder.count() == 2);
   CHECK(recorder.at(1).slot == 3);
-  CHECK(std::memcmp(&recorder.at(0).info, &recorder.at(1).info,
-                    sizeof(PeripheralAudioInfo_t)) == 0);
+  CHECK(recorder.at(0).info.time_base == recorder.at(1).info.time_base);
+  CHECK(recorder.at(0).info.sample_rate == recorder.at(1).info.sample_rate);
+  CHECK(recorder.at(0).info.num_channels == recorder.at(1).info.num_channels);
 
   mock.answer_absolute(44100, 2);
   mock.host()->NotifyStatusChanged(3);

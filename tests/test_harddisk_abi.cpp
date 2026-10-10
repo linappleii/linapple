@@ -71,9 +71,12 @@ class BenchHost_t {
     host_.ReadFloatingBus = bench_read_floating_bus;
     s_active = this;
   }
-  ~BenchHost_t() {
-    for (void* instance : instances_) {
-      harddisk()->shutdown(instance);
+  ~BenchHost_t() noexcept {
+    Peripheral_t* descriptor = peripheral_find_internal(harddisk_id);
+    if (descriptor != nullptr) {
+      for (void* instance : instances_) {
+        descriptor->shutdown(instance);
+      }
     }
     if (s_active == this) {
       s_active = nullptr;

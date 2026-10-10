@@ -37,7 +37,7 @@ extern FontConfig_t g_font_config[NUM_FONTS];
 auto DebuggerSetColorFG(ColorRef_t nRGB) -> void;
 auto DebuggerSetColorBG(ColorRef_t nRGB, bool bTransparent = false) -> void;
 
-auto PrintGlyph(int x, int y, int iChar) -> void;
+auto PrintGlyph(int x, int y, int glyph) -> void;
 auto PrintText(const char* text, Rect_t& rRect) -> int;
 auto PrintTextCursorX(const char* text, Rect_t& rRect) -> int;
 auto PrintTextCursorY(const char* text, Rect_t& rRect) -> int;

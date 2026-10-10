@@ -271,7 +271,7 @@ auto CmdMemoryFill(int nArgs) -> Update_t {
   // F address end value
   // F address,len value
   // F address:end value
-  if ((nArgs == 0) || (nArgs < 3) || (nArgs > 4)) {
+  if ((nArgs < 3) || (nArgs > 4)) {
     return Help_Arg_1(CMD_MEMORY_FILL);
   }
 

@@ -71,11 +71,9 @@ auto create_test_gz(const char* gz_path, const uint8_t* data, size_t size)
   if (gz == nullptr) {
     return false;
   }
-  if (size > 0) {
-    if (gzwrite(gz, data, static_cast<unsigned int>(size)) <= 0) {
-      gzclose(gz);
-      return false;
-    }
+  if (size > 0 && gzwrite(gz, data, static_cast<unsigned int>(size)) <= 0) {
+    gzclose(gz);
+    return false;
   }
   return gzclose(gz) == Z_OK;
 }

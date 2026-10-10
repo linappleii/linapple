@@ -123,11 +123,11 @@ TEST_CASE("BasicLiveSync: Positional Line Mode") {
   constexpr int pad_second_end = 20;
 
   for (int i = 1; i < pad_first; ++i) {
-    source += "\n";
+    source += '\n';
   }
   source += "HOME\n";
   for (int i = pad_second_start; i < pad_second_end; ++i) {
-    source += "\n";
+    source += '\n';
   }
   source += "PRINT \"APPLE II\"\n";
 
@@ -224,7 +224,7 @@ TEST_CASE("BasicLiveSync: Line Length Truncation") {
   constexpr size_t extra_chars = 300;
   std::string huge_line = "10 REM ";
   huge_line.append(extra_chars, 'A');
-  huge_line += "\n";
+  huge_line += '\n';
 
   bool ok = basic_sync_import_from_string(huge_line, basic_line_mode_explicit);
   CHECK(ok);

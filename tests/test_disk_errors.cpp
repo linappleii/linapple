@@ -7,13 +7,13 @@
 #include <cstdio>
 #include <cstring>
 
+#include "apple2/peripherals/Peripheral.h"
+#include "apple2/peripherals/Peripheral_Internal.h"
 #include "apple2/peripherals/disk/DiskCommands.h"
 #include "apple2/peripherals/disk/DiskError.h"
 #include "apple2/peripherals/disk/DiskFormatDriver.h"
 #include "apple2/peripherals/disk/DiskLoader.h"
 #include "core/LinAppleCore.h"
-#include "apple2/peripherals/Peripheral.h"
-#include "apple2/peripherals/Peripheral_Internal.h"
 #include "core/Util_Text.h"
 #include "doctest.h"
 #include "test_fixtures.h"
@@ -23,11 +23,8 @@ namespace {
 // peripheral_register_internal supply a printer, a Super Serial Card and a
 // Mockingboard beside the Disk II, none of which these cases touch.
 using TestConfig_t = TestFixtures::ScopedTestConfig_t;
-}  // namespace
-
-namespace {
 constexpr int SL6 = 6;
-}
+}  // namespace
 
 TEST_CASE("DiskErrors: [ERR-01] Propagate File Not Found") {
   TestConfig_t machine(TestConfig_t::disk_ii_only());
@@ -132,6 +129,5 @@ TEST_CASE("DiskErrors: [ERR-04] The loader answers a bad argument as one") {
 
   CHECK(disk_loader_open("/tmp", nullptr, &instance) ==
         disk_err_invalid_argument);
-  CHECK(disk_loader_create(nullptr, "DOS Order") ==
-        disk_err_invalid_argument);
+  CHECK(disk_loader_create(nullptr, "DOS Order") == disk_err_invalid_argument);
 }
