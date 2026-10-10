@@ -46,7 +46,6 @@ auto init_sdl() -> int;
 auto frame_create_window() -> int;
 auto frame_destroy_window() -> void;
 auto frame_refresh() -> void;
-auto frame_refresh_status(int drawflags) -> void;
 // Once a frame: repaints the status lamps when the hard disk reported
 // activity since the last poll, or when a lit lamp's hold has run out.
 auto frame_poll_activity() -> void;

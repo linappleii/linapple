@@ -43,7 +43,6 @@
 
 auto ds_init() -> bool { return true; }
 auto ds_shutdown() -> void {}
-extern DiskChooseState g_disk_choose_state;
 
 TEST_CASE("SDL1 Frontend Initialization") {
   // Test that SDL 1.2 initialization completes successfully with dummy video

@@ -11,8 +11,6 @@
 #include "core/BasicLiveSync.h"
 #include "doctest.h"
 
-extern Apple2Type current_apple2_type;
-
 namespace {
 
 constexpr size_t test_mem_size = 65536;

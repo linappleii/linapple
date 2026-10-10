@@ -47,8 +47,6 @@
 
 auto ds_init() -> bool { return true; }
 auto ds_shutdown() -> void {}
-extern void sdl_handle_event(SDL_Event* e);
-extern DiskChooseState g_disk_choose_state;
 
 extern "C" const char* __lsan_default_suppressions() {
   return "leak:libSDL2\n";

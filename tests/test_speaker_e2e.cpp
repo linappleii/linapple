@@ -16,9 +16,6 @@
 #include "frontends/common/AudioMixer.h"
 #include "test_fixtures_core.h"
 
-auto io_map_dispatch(uint16_t pc, uint16_t addr, uint8_t write, uint8_t val,
-                     uint32_t cycles) -> uint8_t;
-
 namespace {
 
 using TestConfig_t = TestFixtures::ScopedTestConfig_t;

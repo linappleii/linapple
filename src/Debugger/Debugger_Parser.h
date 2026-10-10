@@ -151,8 +151,6 @@ extern int g_arg_raw_count;
 extern Arg_t g_arg_raw[MAX_ARGS];  // pre-processing
 extern Arg_t g_args[MAX_ARGS];     // post-processing
 
-extern const char* g_console_first_arg;  // points to first arg
-
 extern const TokenTable_t g_tokens[NUM_TOKENS];
 
 extern std::vector<int> g_potential_commands;

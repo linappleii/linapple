@@ -8,10 +8,6 @@
 #include "apple2/peripherals/super_serial_card/SuperSerial.h"
 #include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
 
-/* Declared, never called: in a plugin build it lives inside the shared
- * object. */
-struct Peripheral_t* super_serial_get_descriptor(void);
-
 /* C99 has no static_assert; an array of negative size fails the same way. */
 typedef char superserial_frame_is_56_bytes[sizeof(SuperSerialSaveState_t) == 56
                                                ? 1

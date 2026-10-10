@@ -47,8 +47,6 @@
 
 auto ds_init() -> bool { return true; }
 auto ds_shutdown() -> void {}
-extern void sdl_handle_event(SDL_Event* e);
-extern DiskChooseState g_disk_choose_state;
 
 TEST_CASE("SDL3 Frontend In-Window Session Restart") {
   SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");

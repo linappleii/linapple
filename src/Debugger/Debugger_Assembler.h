@@ -186,10 +186,6 @@ auto AssemblerOff() -> void;
 auto debugger_get_file_size(FILE* file) -> size_t;
 auto CmdAssemble(uint16_t address, int iArg, int nArgs) -> Update_t;
 
-auto CmdAssemble(int nArgs) -> Update_t;
-auto CmdSource(int nArgs) -> Update_t;
-auto CmdUnassemble(int nArgs) -> Update_t;
-
 extern bool g_source_level_debugging;
 extern bool g_source_add_symbols;
 extern bool g_source_add_memory;
