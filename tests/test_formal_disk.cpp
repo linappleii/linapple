@@ -9,7 +9,7 @@
 namespace {
 
 // Standard Apple II 6-and-2 GCR encoding table
-const std::array<uint8_t, 64> kGcrEncodeTable = {
+const std::array<uint8_t, 64> gcr_encode_table = {
     {
         0x96, 0x97, 0x9A, 0x9B, 0x9D, 0x9E, 0x9F, 0xA6, 0xA7, 0xAB, 0xAC,
         0xAD, 0xAE, 0xAF, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB9, 0xBA,
@@ -32,7 +32,7 @@ TEST_CASE("SMT Formal Verification: GCR Physical Encoding Invariants") {
 
   // Array of 64 table values encoded as Z3 AST
   z3::expr_vector table_exprs(ctx);
-  for (uint8_t entry : kGcrEncodeTable) {
+  for (uint8_t entry : gcr_encode_table) {
     table_exprs.push_back(ctx.bv_val(entry, 8));
   }
 

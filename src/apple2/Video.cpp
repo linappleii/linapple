@@ -74,14 +74,14 @@ static inline auto soft_stretch_mono(VideoSurface* src, int src_x, int src_y,
 }
 
 // video scanner constants
-int const kHClock0State = 0x18;  // H[543210] = 011000
-int const kHClocks = 65;         // clocks per horizontal scan (including HBL)
-int const kHPEClock = 40;  // clock when HPE (horizontal preset enable) goes low
-int const kHPresetClock = 41;    // clock when H state presets
-int const kNTSCScanLines = 262;  // total scan lines including VBL (NTSC)
-int const kPALScanLines = 312;   // total scan lines including VBL (PAL)
-int const kVLine0State = 0x100;  // V[543210CBA] = 100000000
-int const kVPresetLine = 256;    // line when V state presets
+int const h_clock_0_state = 0x18;  // H[543210] = 011000
+int const h_clocks = 65;          // clocks per horizontal scan (including HBL)
+int const h_pe_clock = 40;  // clock when HPE (horizontal preset enable) goes low
+int const h_preset_clock = 41;    // clock when H state presets
+int const ntsc_scan_lines = 262;  // total scan lines including VBL (NTSC)
+int const pal_scan_lines = 312;   // total scan lines including VBL (PAL)
+int const v_line_0_state = 0x100;  // V[543210CBA] = 100000000
+int const v_preset_line = 256;     // line when V state presets
 
 using UpdateFunc_t = bool (*)(int, int, int, int, int);
 
@@ -486,7 +486,7 @@ enum ColorMapping : uint8_t {
   NUM_COLOR_MAPPING,
 };
 
-const uint8_t aColorIndex[NUM_COLOR_MAPPING] = {
+const uint8_t color_index[NUM_COLOR_MAPPING] = {
     HGR_MAGENTA, HGR_BLUE, HGR_GREEN, HGR_RED, HGR_BLACK, HGR_WHITE,
 };
 
@@ -497,17 +497,17 @@ auto draw_hires_source_half_shift_dim() -> void {
     int coloffs = column << 5;
 
     for (unsigned byte = 0; byte < 256; byte++) {
-      bool aPixels[11] = {};
+      bool pixels[11] = {};
 
-      aPixels[0] = (column & 4) != 0;
-      aPixels[1] = (column & 8) != 0;
-      aPixels[9] = (column & 1) != 0;
-      aPixels[10] = (column & 2) != 0;
+      pixels[0] = (column & 4) != 0;
+      pixels[1] = (column & 8) != 0;
+      pixels[9] = (column & 1) != 0;
+      pixels[10] = (column & 2) != 0;
 
       int bit_mask = 1;
       int pixel = 0;
       for (pixel = 2; pixel < 9; pixel++) {
-        aPixels[pixel] = ((byte & bit_mask) != 0);
+        pixels[pixel] = ((byte & bit_mask) != 0);
         bit_mask <<= 1;
       }
 
@@ -521,14 +521,14 @@ auto draw_hires_source_half_shift_dim() -> void {
 
         for (pixel = 2; pixel < 9; pixel++) {
           int color = CM_Black;
-          if (aPixels[pixel]) {
-            if (aPixels[pixel - 1] || aPixels[pixel + 1]) {
+          if (pixels[pixel]) {
+            if (pixels[pixel - 1] || pixels[pixel + 1]) {
               color = CM_White;
             } else {
               color = ((odd ^ (pixel & 1)) << 1) | hibit;
             }
-          } else if ((aPixels[pixel - 1] && aPixels[pixel + 1]) &&
-                     (!(aPixels[pixel - 2] && aPixels[pixel + 2])))
+          } else if ((pixels[pixel - 1] && pixels[pixel + 1]) &&
+                     (!(pixels[pixel - 2] && pixels[pixel + 2])))
           // Activate for fringe reduction on white hgr text -
           // drawback: loss of color mix patterns in hgr mode.
           // select g_videotype by index exclusion
@@ -644,17 +644,17 @@ auto draw_hires_source() -> void {
     int coloffs = column << 5;
 
     for (unsigned byte = 0; byte < 256; byte++) {
-      bool aPixels[11] = {};
+      bool pixels[11] = {};
 
-      aPixels[0] = (column & 4) != 0;
-      aPixels[1] = (column & 8) != 0;
-      aPixels[9] = (column & 1) != 0;
-      aPixels[10] = (column & 2) != 0;
+      pixels[0] = (column & 4) != 0;
+      pixels[1] = (column & 8) != 0;
+      pixels[9] = (column & 1) != 0;
+      pixels[10] = (column & 2) != 0;
 
       int bit_mask = 1;
       int pixel = 0;
       for (pixel = 2; pixel < 9; pixel++) {
-        aPixels[pixel] = ((byte & bit_mask) != 0);
+        pixels[pixel] = ((byte & bit_mask) != 0);
         bit_mask <<= 1;
       }
 
@@ -668,34 +668,34 @@ auto draw_hires_source() -> void {
 
         for (pixel = 2; pixel < 9; pixel++) {
           int color = CM_Black;
-          if (aPixels[pixel]) {
-            if (aPixels[pixel - 1] || aPixels[pixel + 1]) {
+          if (pixels[pixel]) {
+            if (pixels[pixel - 1] || pixels[pixel + 1]) {
               color = CM_White;
             } else {
               color = ((odd ^ (pixel & 1)) << 1) | hibit;
             }
-          } else if ((aPixels[pixel - 1] && aPixels[pixel + 1]) &&
+          } else if ((pixels[pixel - 1] && pixels[pixel + 1]) &&
                      ((g_videotype == VT_COLOR_STANDARD) ||
                       (g_videotype == VT_COLOR_TVEMU) ||
-                      !(aPixels[pixel - 2] && aPixels[pixel + 2]))) {
+                      !(pixels[pixel - 2] && pixels[pixel + 2]))) {
             color = ((odd ^ ((pixel & 1) == 0 ? 1 : 0)) << 1) | hibit;
           }
 
           set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y,
-                           aColorIndex[color]);
+                           color_index[color]);
           set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 1, y,
-                           aColorIndex[color]);
+                           color_index[color]);
 
           if (VT_COLOR_TVEMU > g_videotype) {
             set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
-                             aColorIndex[color]);
+                             color_index[color]);
             set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1,
-                             aColorIndex[color]);
+                             color_index[color]);
           } else {
             set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
-                             aColorIndex[0]);
+                             color_index[0]);
             set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1,
-                             aColorIndex[0]);
+                             color_index[0]);
           }
 
           x += 2;
@@ -937,12 +937,12 @@ static auto update_40col_cell(int x, int y, int xpixel, int ypixel, int offset)
   return false;
 }
 
-static inline auto update_80column_cell(uint8_t c, const int xPixel,
-                                        const int yPixel, bool char_flashing)
+static inline auto update_80column_cell(uint8_t c, const int pixel_x,
+                                        const int pixel_y, bool char_flashing)
     -> bool {
   bool invert = char_flashing ? g_text_flash_state : false;
   copy_source(
-      xPixel, yPixel, (APPLE_FONT_WIDTH / 2), APPLE_FONT_HEIGHT,
+      pixel_x, pixel_y, (APPLE_FONT_WIDTH / 2), APPLE_FONT_HEIGHT,
       SRCOFFS_80COL + ((c & 15) << 3),
       ((c >> 4) << 4) + g_alt_char_set_offset + (invert ? 0x40 : 0x00) +
           ((language_rocker_switch && multi_language_charset) ? 512 : 0));
@@ -1060,40 +1060,40 @@ auto video_create_color_mix_map() -> void {
   int t = 0;
   int m = 0;
   int b = 0;
-  uint8_t cTop = 0;
-  uint8_t cMid = 0;
-  uint8_t cBot = 0;
-  uint16_t mixTop = 0;
-  uint16_t mixBot = 0;
+  uint8_t color_top = 0;
+  uint8_t color_mid = 0;
+  uint8_t color_bot = 0;
+  uint16_t mix_top = 0;
+  uint16_t mix_bot = 0;
 
   for (t = 0; t < 6; t++) {
     for (m = 0; m < 6; m++) {
       for (b = 0; b < 6; b++) {
-        cTop = t | 0x10;
-        cMid = m | 0x10;
-        cBot = b | 0x10;
-        if (cMid < HGR_BLUE) {
-          mixTop = mixBot = cMid;
+        color_top = t | 0x10;
+        color_mid = m | 0x10;
+        color_bot = b | 0x10;
+        if (color_mid < HGR_BLUE) {
+          mix_top = mix_bot = color_mid;
         } else {
-          if (cTop < HGR_BLUE) {
-            mixTop = 0x00;
+          if (color_top < HGR_BLUE) {
+            mix_top = 0x00;
           } else {
-            mixTop = mix_colors(cMid, cTop);
+            mix_top = mix_colors(color_mid, color_top);
           }
-          if (cBot < HGR_BLUE) {
-            mixBot = 0x00;
+          if (color_bot < HGR_BLUE) {
+            mix_bot = 0x00;
           } else {
-            mixBot = mix_colors(cMid, cBot);
+            mix_bot = mix_colors(color_mid, color_bot);
           }
-          if (mixTop == 0x00 && mixBot != 0x00) {
-            mixTop = mixBot;
-          } else if (mixBot == 0x00 && mixTop != 0x00) {
-            mixBot = mixTop;
-          } else if (mixBot == 0x00 && mixTop == 0x00) {
-            mixBot = mixTop = cMid;
+          if (mix_top == 0x00 && mix_bot != 0x00) {
+            mix_top = mix_bot;
+          } else if (mix_bot == 0x00 && mix_top != 0x00) {
+            mix_bot = mix_top;
+          } else if (mix_bot == 0x00 && mix_top == 0x00) {
+            mix_bot = mix_top = color_mid;
           }
         }
-        colormixmap[t][m][b] = (mixTop << 8) | mixBot;
+        colormixmap[t][m][b] = (mix_top << 8) | mix_bot;
       }
     }
   }
@@ -2054,13 +2054,13 @@ auto video_get_scanner_address(bool* vbl_bar_out,
 
   // calculate video parameters according to display standard
   int scan_lines =
-      system_state.video_scanner_ntsc ? kNTSCScanLines : kPALScanLines;
+      system_state.video_scanner_ntsc ? ntsc_scan_lines : pal_scan_lines;
 
   // calculate horizontal scanning state
   int h_clock =
-      (cycles + kHPEClock) % kHClocks;    // which horizontal scanning clock
-  int h_state = kHClock0State + h_clock;  // H state bits
-  if (h_clock >= kHPresetClock) {         // check for horizontal preset
+      (cycles + h_pe_clock) % h_clocks;    // which horizontal scanning clock
+  int h_state = h_clock_0_state + h_clock;  // H state bits
+  if (h_clock >= h_preset_clock) {         // check for horizontal preset
     h_state -= 1;  // correct for state preset (two 0 states)
   }
   int h_0 = (h_state >> 0) & 1;
@@ -2071,9 +2071,9 @@ auto video_get_scanner_address(bool* vbl_bar_out,
   int h_5 = (h_state >> 5) & 1;
 
   // calculate vertical scanning state
-  int v_line = cycles / kHClocks;       // which vertical scanning line
-  int v_state = kVLine0State + v_line;  // V state bits
-  if ((v_line >= kVPresetLine)) {  // check for previous vertical state preset
+  int v_line = cycles / h_clocks;       // which vertical scanning line
+  int v_state = v_line_0_state + v_line;  // V state bits
+  if ((v_line >= v_preset_line)) {  // check for previous vertical state preset
     v_state -= scan_lines;         // compensate for preset
   }
   int v_A = (v_state >> 0) & 1;
@@ -2115,9 +2115,9 @@ auto video_get_scanner_address(bool* vbl_bar_out,
     address |= (page2 & (1 ^ n80Store)) << 14;        // a14
   } else {
     // N: text, so no higher address bits unless Apple ][, not Apple //e
-    if (is_apple2() &&             // Apple ][?
-        (kHPEClock <= h_clock) &&  // Y: HBL?
-        (h_clock <= (kHClocks - 1))) {
+    if (is_apple2() &&            // Apple ][?
+        (h_pe_clock <= h_clock) &&  // Y: HBL?
+        (h_clock <= (h_clocks - 1))) {
       address |= 1 << 12;  // Y: a12 (add $1000 to address!)
     }
   }

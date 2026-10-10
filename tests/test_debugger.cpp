@@ -310,8 +310,8 @@ TEST_CASE("Debugger Console: Viewport Display Sizing and Bounding (TASK-5)") {
   static_assert(sizeof(g_console_display) == 7680,
                 "g_console_display must be right-sized to 48 x 80 x 2 bytes");
 
-  constexpr conchar_t kInputCanary = static_cast<conchar_t>(0x55AA);
-  g_console_display[0][0] = kInputCanary;
+  constexpr conchar_t input_canary = static_cast<conchar_t>(0x55AA);
+  g_console_display[0][0] = input_canary;
 
   conchar_t line[CONSOLE_WIDTH] = {0};
   for (int i = 0; i < 100; ++i) {
@@ -320,7 +320,7 @@ TEST_CASE("Debugger Console: Viewport Display Sizing and Bounding (TASK-5)") {
   }
 
   CHECK(g_console_display_total == 47);
-  CHECK(g_console_display[0][0] == kInputCanary);
+  CHECK(g_console_display[0][0] == input_canary);
   CHECK(g_console_display[CONSOLE_FIRST_LINE][0] ==
         static_cast<conchar_t>('9'));
   CHECK(g_console_display[CONSOLE_DISPLAY_HEIGHT - 1][0] ==

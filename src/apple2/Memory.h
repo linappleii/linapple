@@ -153,7 +153,6 @@ using SoftSwitch_e = SoftSwitch;
 
 enum MemoryInitPattern : uint8_t { MIP_ZERO, MIP_FF_FF_00_00, NUM_MIP };
 using MemoryInitPattern_t = MemoryInitPattern;
-using MemoryInitPattern_e = MemoryInitPattern;
 extern MemoryInitPattern g_memory_init_pattern;
 
 enum ExpansionRomType : uint8_t {
@@ -162,10 +161,6 @@ enum ExpansionRomType : uint8_t {
   EXP_ROM_PERIPHERAL,
 };
 using ExpansionRomType_t = ExpansionRomType;
-using eExpansionRomType = ExpansionRomType;
-constexpr ExpansionRomType eExpRomNull = EXP_ROM_NULL;
-constexpr ExpansionRomType eExpRomInternal = EXP_ROM_INTERNAL;
-constexpr ExpansionRomType eExpRomPeripheral = EXP_ROM_PERIPHERAL;
 
 struct MemoryInstance {
   std::vector<uint8_t> buf_memmain;
