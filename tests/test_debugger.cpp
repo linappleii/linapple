@@ -156,15 +156,15 @@ TEST_CASE("Debugger Parser: Command Line and Arguments Parsing") {
 
   SUBCASE("Parse simple memory examine command") {
     char input[64] = "300";
-    int nArgs = ParseInput(input, true);
-    CHECK(nArgs == 0);
+    int arg_count = ParseInput(input, true);
+    CHECK(arg_count == 0);
     CHECK(strcmp(g_args[0].sArg, "300") == 0);
   }
 
   SUBCASE("Parse command with quoted filename and arguments") {
     char input[128] = "BLOAD \"MYFILE.BIN\", 2000";
-    int nArgs = ParseInput(input, true);
-    CHECK(nArgs == 3);
+    int arg_count = ParseInput(input, true);
+    CHECK(arg_count == 3);
     CHECK(strcmp(g_args[0].sArg, "BLOAD") == 0);
     CHECK(strcmp(g_args[1].sArg, "MYFILE.BIN") == 0);
     CHECK(g_args[2].eToken == TOKEN_COMMA);
@@ -173,8 +173,8 @@ TEST_CASE("Debugger Parser: Command Line and Arguments Parsing") {
 
   SUBCASE("Parse memory range with colon") {
     char input[64] = "M 300:310";
-    int nArgs = ParseInput(input, true);
-    CHECK(nArgs == 3);
+    int arg_count = ParseInput(input, true);
+    CHECK(arg_count == 3);
     CHECK(strcmp(g_args[0].sArg, "M") == 0);
     CHECK(strcmp(g_args[1].sArg, "300") == 0);
     CHECK(g_args[2].eToken == TOKEN_COLON);
