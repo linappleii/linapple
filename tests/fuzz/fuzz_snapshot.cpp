@@ -35,10 +35,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     return 0;
   }
 
-  static bool s_initialized = false;
-  if (!s_initialized) {
+  static bool initialized = false;
+  if (!initialized) {
     linapple_init();
-    s_initialized = true;
+    initialized = true;
   }
 
   auto snapshot = std::unique_ptr<Snapshot_t>(new Snapshot_t());

@@ -279,7 +279,7 @@ struct MockSink_t {
 class MockHost_t {
  public:
   MockHost_t() {
-    s_active_host = this;
+    active_host = this;
     REQUIRE(printer_descriptor() != nullptr);
     host_.Log = mock_log;
     host_.AssertIrq = mock_assert_irq;
@@ -302,7 +302,7 @@ class MockHost_t {
       }
     }
     instances_.clear();
-    s_active_host = nullptr;
+    active_host = nullptr;
   }
 
   MockHost_t(const MockHost_t&) = delete;
@@ -425,13 +425,13 @@ class MockHost_t {
   std::map<int, size_t> activity_counts_;
   std::array<MockSink_t, 8> sinks_{};
 
-  static MockHost_t* s_active_host;
+  static MockHost_t* active_host;
 
   static auto sink_from_token(void* token) -> MockSink_t* {
-    if (s_active_host == nullptr || token == nullptr) {
+    if (active_host == nullptr || token == nullptr) {
       return nullptr;
     }
-    for (MockSink_t& record : s_active_host->sinks_) {
+    for (MockSink_t& record : active_host->sinks_) {
       if (&record == token) {
         return &record;
       }
@@ -441,8 +441,8 @@ class MockHost_t {
 
   static auto mock_notify_activity_changed(int slot, bool active) -> void {
     (void)active;
-    if (s_active_host != nullptr) {
-      s_active_host->activity_counts_[slot]++;
+    if (active_host != nullptr) {
+      active_host->activity_counts_[slot]++;
     }
   }
 
@@ -452,7 +452,7 @@ class MockHost_t {
                        const char* fmt, ...) -> void {
     (void)instance;
     (void)level;
-    if (s_active_host == nullptr) {
+    if (active_host == nullptr) {
       return;
     }
     std::array<char, 256> text{};
@@ -460,7 +460,7 @@ class MockHost_t {
     va_start(args, fmt);
     vsnprintf(text.data(), text.size(), fmt, args);
     va_end(args);
-    s_active_host->log_messages_.emplace_back(text.data());
+    active_host->log_messages_.emplace_back(text.data());
   }
   // NOLINTEND(cert-dcl50-cpp, cppcoreguidelines-pro-type-vararg)
 
@@ -471,10 +471,10 @@ class MockHost_t {
   static auto mock_sink_open(void* instance, int slot,
                              PeripheralSinkKind_t kind) -> void* {
     (void)instance;
-    if (s_active_host == nullptr || slot < 1 || slot > 7) {
+    if (active_host == nullptr || slot < 1 || slot > 7) {
       return nullptr;
     }
-    MockSink_t& record = s_active_host->sinks_.at(static_cast<size_t>(slot));
+    MockSink_t& record = active_host->sinks_.at(static_cast<size_t>(slot));
     record.kind = kind;
     return &record;
   }
@@ -520,10 +520,10 @@ class MockHost_t {
                                PeripheralIOHandler write_cx) -> void {
     (void)read_cx;
     (void)write_cx;
-    if (s_active_host != nullptr &&
+    if (active_host != nullptr &&
         (read_c0 != nullptr || write_c0 != nullptr)) {
       for (uint8_t i = 0; i < registers_per_slot; ++i) {
-        s_active_host->handlers_[card_address(slot, i)] = {nullptr, read_c0,
+        active_host->handlers_[card_address(slot, i)] = {nullptr, read_c0,
                                                            write_c0};
       }
     }
@@ -531,11 +531,11 @@ class MockHost_t {
   // NOLINTEND(bugprone-easily-swappable-parameters)
 
   static auto mock_register_cx_rom(int slot, const uint8_t* rom_ptr) -> void {
-    if (s_active_host != nullptr && rom_ptr != nullptr) {
+    if (active_host != nullptr && rom_ptr != nullptr) {
       std::vector<uint8_t> rom_data(slot_rom_size);
       std::copy_n(rom_ptr, slot_rom_size, rom_data.begin());
-      s_active_host->roms_[slot] = std::move(rom_data);
-      s_active_host->rom_history_[slot].push_back(rom_ptr);
+      active_host->roms_[slot] = std::move(rom_data);
+      active_host->rom_history_[slot].push_back(rom_ptr);
     }
   }
 
@@ -548,13 +548,13 @@ class MockHost_t {
   static auto mock_register_direct_io(void* instance, uint16_t addr,
                                       PeripheralIOHandler read,
                                       PeripheralIOHandler write) -> void {
-    if (s_active_host != nullptr) {
-      s_active_host->handlers_[addr] = {instance, read, write};
+    if (active_host != nullptr) {
+      active_host->handlers_[addr] = {instance, read, write};
     }
   }
 };
 
-MockHost_t* MockHost_t::s_active_host = nullptr;
+MockHost_t* MockHost_t::active_host = nullptr;
 
 auto save_frame(void* instance) -> Frame_t {
   Frame_t frame{};

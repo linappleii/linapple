@@ -69,7 +69,7 @@ class BenchHost_t {
     host_.NotifyStatusChanged = bench_notify_status_changed;
     host_.NotifyActivityChanged = bench_notify_activity_changed;
     host_.ReadFloatingBus = bench_read_floating_bus;
-    s_active = this;
+    active = this;
   }
   ~BenchHost_t() noexcept {
     Peripheral_t* descriptor = peripheral_find_internal(harddisk_id);
@@ -78,8 +78,8 @@ class BenchHost_t {
         descriptor->shutdown(instance);
       }
     }
-    if (s_active == this) {
-      s_active = nullptr;
+    if (active == this) {
+      active = nullptr;
     }
   }
   BenchHost_t(const BenchHost_t&) = delete;
@@ -123,7 +123,7 @@ class BenchHost_t {
   PeripheralIOHandler read_c0_ = nullptr;
   PeripheralIOHandler write_c0_ = nullptr;
 
-  static BenchHost_t* s_active;
+  static BenchHost_t* active;
 
   // NOLINTBEGIN(cppcoreguidelines-pro-type-vararg)
   // Justification: Log is variadic in the HostInterface_t ABI.
@@ -131,7 +131,7 @@ class BenchHost_t {
                         const char* fmt, ...) -> void {
     (void)instance;
     (void)level;
-    if (s_active == nullptr) {
+    if (active == nullptr) {
       return;
     }
     char line[256] = {};
@@ -139,7 +139,7 @@ class BenchHost_t {
     va_start(args, fmt);
     vsnprintf(line, sizeof(line), fmt, args);
     va_end(args);
-    s_active->last_log_ = line;
+    active->last_log_ = line;
   }
   // NOLINTEND(cppcoreguidelines-pro-type-vararg)
 
@@ -147,9 +147,9 @@ class BenchHost_t {
                                 PeripheralIOHandler write_c0,
                                 PeripheralIOHandler /*unused*/,
                                 PeripheralIOHandler /*unused*/) -> void {
-    if (s_active != nullptr) {
-      s_active->read_c0_ = read_c0;
-      s_active->write_c0_ = write_c0;
+    if (active != nullptr) {
+      active->read_c0_ = read_c0;
+      active->write_c0_ = write_c0;
     }
   }
   static auto bench_register_cx_rom(int /*unused*/, const uint8_t* /*unused*/)
@@ -160,13 +160,13 @@ class BenchHost_t {
   }
   static auto bench_set_config(const char* /*unused*/, const char* /*unused*/,
                                const char* /*unused*/) -> void {
-    if (s_active != nullptr) {
-      ++s_active->config_writes_;
+    if (active != nullptr) {
+      ++active->config_writes_;
     }
   }
   static auto bench_notify_status_changed(int /*unused*/) -> void {
-    if (s_active != nullptr) {
-      ++s_active->status_notifications_;
+    if (active != nullptr) {
+      ++active->status_notifications_;
     }
   }
   static auto bench_notify_activity_changed(int /*unused*/, bool /*unused*/)
@@ -176,7 +176,7 @@ class BenchHost_t {
   }
 };
 
-BenchHost_t* BenchHost_t::s_active = nullptr;
+BenchHost_t* BenchHost_t::active = nullptr;
 
 }  // namespace
 

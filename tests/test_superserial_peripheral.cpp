@@ -100,15 +100,16 @@ class BenchHost_t {
     host_.SinkSetLine = bench_sink_set_line;
     host_.SinkGetLines = bench_sink_get_lines;
     host_.ScheduleEvent = bench_schedule_event;
-    s_last_log.clear();
-    s_read_c0 = nullptr;
+    last_log_message.clear();
+    read_c0_handler = nullptr;
   }
 
   auto host() -> HostInterface_t* { return &host_; }
-  static auto last_log() -> const std::string& { return s_last_log; }
+  static auto last_log() -> const std::string& { return last_log_message; }
   static auto read_c0(void* instance, uint8_t offset) -> uint8_t {
-    REQUIRE(s_read_c0 != nullptr);
-    return s_read_c0(instance, 0, card_address(test_slot, offset), 0, 0, 0);
+    REQUIRE(read_c0_handler != nullptr);
+    return read_c0_handler(instance, 0, card_address(test_slot, offset), 0, 0,
+                           0);
   }
 
  private:
@@ -121,7 +122,7 @@ class BenchHost_t {
     va_start(args, fmt);
     vsnprintf(line.data(), line.size(), fmt, args);
     va_end(args);
-    s_last_log = line.data();
+    last_log_message = line.data();
   }
   static auto bench_assert_irq(int slot, bool assert) -> void {
     (void)slot;
@@ -135,7 +136,7 @@ class BenchHost_t {
     (void)write_c0;
     (void)read_cx;
     (void)write_cx;
-    s_read_c0 = read_c0;
+    read_c0_handler = read_c0;
   }
   static auto bench_register_cx_rom(int slot, const uint8_t* rom) -> void {
     (void)slot;
@@ -157,7 +158,7 @@ class BenchHost_t {
     (void)instance;
     (void)slot;
     (void)kind;
-    return &s_token;
+    return &token;
   }
   static auto bench_sink_write(void* sink, uint8_t byte) -> void {
     (void)sink;
@@ -184,15 +185,15 @@ class BenchHost_t {
     (void)at_cycle;
   }
 
-  static int s_token;
-  static std::string s_last_log;
-  static PeripheralIOHandler s_read_c0;
+  static int token;
+  static std::string last_log_message;
+  static PeripheralIOHandler read_c0_handler;
   HostInterface_t host_{};
 };
 
-int BenchHost_t::s_token = 0;
-std::string BenchHost_t::s_last_log;
-PeripheralIOHandler BenchHost_t::s_read_c0 = nullptr;
+int BenchHost_t::token = 0;
+std::string BenchHost_t::last_log_message;
+PeripheralIOHandler BenchHost_t::read_c0_handler = nullptr;
 
 class BenchCard_t {
  public:

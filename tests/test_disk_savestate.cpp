@@ -47,8 +47,8 @@ TEST_CASE("DiskSaveState: [SS-01] Round-trip fidelity") {
   peripheral_manager_think(0);
 
   DiskStatus_t status{};
-  size_t s_size = sizeof(status);
-  peripheral_query(slot_6, disk_query_status, &status, &s_size);
+  size_t size = sizeof(status);
+  peripheral_query(slot_6, disk_query_status, &status, &size);
   REQUIRE(status.drive0_loaded == 1);
 
   // Save State
@@ -65,13 +65,13 @@ TEST_CASE("DiskSaveState: [SS-01] Round-trip fidelity") {
   eject_cmd.drive = disk_drive_0;
   peripheral_command(slot_6, disk_cmd_eject, &eject_cmd, sizeof(eject_cmd));
   peripheral_manager_think(0);
-  peripheral_query(slot_6, disk_query_status, &status, &s_size);
+  peripheral_query(slot_6, disk_query_status, &status, &size);
   CHECK(status.drive0_loaded == 0);
 
   // Restore State
   peripheral_load_state(slot_6, buffer.data(), state_size);
 
-  peripheral_query(slot_6, disk_query_status, &status, &s_size);
+  peripheral_query(slot_6, disk_query_status, &status, &size);
   CHECK(status.drive0_loaded == 1);
   CHECK(status.drive0_last_error == disk_err_none);
   CHECK(status.drive0_full_path == fixture.path());
@@ -114,8 +114,8 @@ TEST_CASE("DiskSaveState: [SS-02] Missing image on restore") {
   peripheral_load_state(slot_6, buffer.data(), state_size);
 
   DiskStatus_t status{};
-  size_t s_size = sizeof(status);
-  peripheral_query(slot_6, disk_query_status, &status, &s_size);
+  size_t size = sizeof(status);
+  peripheral_query(slot_6, disk_query_status, &status, &size);
 
   // Should handle gracefully: not loaded, but reported error
   CHECK(status.drive0_loaded == 0);
@@ -159,8 +159,8 @@ TEST_CASE(
   peripheral_load_state(slot_6, buffer.data(), state_size);
 
   DiskStatus_t status{};
-  size_t s_size = sizeof(status);
-  peripheral_query(slot_6, disk_query_status, &status, &s_size);
+  size_t size = sizeof(status);
+  peripheral_query(slot_6, disk_query_status, &status, &size);
   CHECK(status.drive0_loaded == 1);
   CHECK(status.drive0_last_error == disk_err_none);
 
@@ -213,8 +213,8 @@ TEST_CASE(
   peripheral_load_state(slot_6, buffer.data(), state_size);
 
   DiskStatus_t status{};
-  size_t s_size = sizeof(status);
-  peripheral_query(slot_6, disk_query_status, &status, &s_size);
+  size_t size = sizeof(status);
+  peripheral_query(slot_6, disk_query_status, &status, &size);
   CHECK(status.drive0_loaded == 1);
   CHECK(status.drive0_last_error == disk_err_none);
 
@@ -260,8 +260,8 @@ TEST_CASE(
   peripheral_load_state(slot_6, blob.data(), blob.size());
 
   DiskStatus_t status{};
-  size_t s_size = sizeof(status);
-  peripheral_query(slot_6, disk_query_status, &status, &s_size);
+  size_t size = sizeof(status);
+  peripheral_query(slot_6, disk_query_status, &status, &size);
   CHECK(status.drive0_loaded == 1);
   CHECK(status.drive0_last_error == disk_err_none);
 
@@ -306,29 +306,29 @@ TEST_CASE("DiskSaveState: [SNAP-4] A save state of the wrong size is refused") {
                    sizeof(state->drives[0].full_path));
 
   DiskStatus_t status{};
-  size_t s_size = sizeof(status);
+  size_t size = sizeof(status);
 
   // A header that disagrees with the layout it claims is a file this build
   // cannot read, whatever the buffer beside it measures.
   state->header.size = sizeof(DiskSavedState_t) - 1;
   peripheral_load_state(slot_6, buffer.data(), buffer.size());
-  peripheral_query(slot_6, disk_query_status, &status, &s_size);
+  peripheral_query(slot_6, disk_query_status, &status, &size);
   CHECK(status.drive0_full_path == first.path());
 
   state->header.size = 0;
   peripheral_load_state(slot_6, buffer.data(), buffer.size());
-  peripheral_query(slot_6, disk_query_status, &status, &s_size);
+  peripheral_query(slot_6, disk_query_status, &status, &size);
   CHECK(status.drive0_full_path == first.path());
 
   state->header.size = sizeof(DiskSavedState_t);
   state->header.version = disk_state_version + 1;
   peripheral_load_state(slot_6, buffer.data(), buffer.size());
-  peripheral_query(slot_6, disk_query_status, &status, &s_size);
+  peripheral_query(slot_6, disk_query_status, &status, &size);
   CHECK(status.drive0_full_path == first.path());
 
   state->header.version = disk_state_version;
   peripheral_load_state(slot_6, buffer.data(), buffer.size());
-  peripheral_query(slot_6, disk_query_status, &status, &s_size);
+  peripheral_query(slot_6, disk_query_status, &status, &size);
   CHECK(status.drive0_full_path == second.path());
 
   linapple_shutdown();
@@ -396,8 +396,8 @@ TEST_CASE("DiskSaveState: [SNAP-6] An unterminated path opens nothing") {
   peripheral_load_state(slot_6, buffer.data(), buffer.size());
 
   DiskStatus_t status{};
-  size_t s_size = sizeof(status);
-  peripheral_query(slot_6, disk_query_status, &status, &s_size);
+  size_t size = sizeof(status);
+  peripheral_query(slot_6, disk_query_status, &status, &size);
   CHECK(status.drive0_loaded == 0);
   CHECK(status.drive0_last_error == disk_err_file_not_found);
   CHECK(status.drive0_full_path[0] == '\0');

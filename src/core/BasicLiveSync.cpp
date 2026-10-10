@@ -155,25 +155,25 @@ auto get_ram_byte_ptr(uint16_t addr) -> uint8_t* {
 }
 
 auto read_zero_page_16(uint16_t addr, uint16_t fallback) -> uint16_t {
-  uint8_t* m = get_ram_byte_ptr(addr);
-  if (m == nullptr) {
+  uint8_t* low_ptr = get_ram_byte_ptr(addr);
+  if (low_ptr == nullptr) {
     return fallback;
   }
-  uint8_t* m_high = get_ram_byte_ptr(static_cast<uint16_t>(addr + 1));
-  if (m_high == nullptr) {
+  uint8_t* high_ptr = get_ram_byte_ptr(static_cast<uint16_t>(addr + 1));
+  if (high_ptr == nullptr) {
     return fallback;
   }
-  return static_cast<uint16_t>(*m | (*m_high << byte_shift));
+  return static_cast<uint16_t>(*low_ptr | (*high_ptr << byte_shift));
 }
 
 auto write_zero_page_16(uint16_t addr, uint16_t val) -> void {
-  uint8_t* m = get_ram_byte_ptr(addr);
-  uint8_t* m_high = get_ram_byte_ptr(static_cast<uint16_t>(addr + 1));
-  if (m == nullptr || m_high == nullptr) {
+  uint8_t* low_ptr = get_ram_byte_ptr(addr);
+  uint8_t* high_ptr = get_ram_byte_ptr(static_cast<uint16_t>(addr + 1));
+  if (low_ptr == nullptr || high_ptr == nullptr) {
     return;
   }
-  *m = static_cast<uint8_t>(val & byte_mask);
-  *m_high = static_cast<uint8_t>((val >> byte_shift) & byte_mask);
+  *low_ptr = static_cast<uint8_t>(val & byte_mask);
+  *high_ptr = static_cast<uint8_t>((val >> byte_shift) & byte_mask);
 }
 
 auto compute_string_hash(const std::string& str) -> uint32_t {

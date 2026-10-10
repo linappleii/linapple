@@ -197,19 +197,19 @@ TEST_CASE("Exhaustive: [MEM-EX-03] Auxiliary Memory 64-State Routing Matrix") {
   // 6 binary switches:
   // 80STORE (C000/C001), RAMRD (C002/C003), RAMWRT (C004/C005),
   // ALTZP (C008/C009), PAGE2 (C054/C055), HIRES (C056/C057)
-  for (int s_80store = 0; s_80store < 2; ++s_80store) {
-    for (int s_ramrd = 0; s_ramrd < 2; ++s_ramrd) {
-      for (int s_ramwrt = 0; s_ramwrt < 2; ++s_ramwrt) {
-        for (int s_altzp = 0; s_altzp < 2; ++s_altzp) {
-          for (int s_page2 = 0; s_page2 < 2; ++s_page2) {
-            for (int s_hires = 0; s_hires < 2; ++s_hires) {
+  for (int store_80 = 0; store_80 < 2; ++store_80) {
+    for (int ramrd = 0; ramrd < 2; ++ramrd) {
+      for (int ramwrt = 0; ramwrt < 2; ++ramwrt) {
+        for (int altzp = 0; altzp < 2; ++altzp) {
+          for (int page2 = 0; page2 < 2; ++page2) {
+            for (int hires = 0; hires < 2; ++hires) {
               // Apply switch states via mem_set_paging
-              mem_set_paging(0, s_80store ? 0xC001 : 0xC000, 1, 0, 0);
-              mem_set_paging(0, s_ramrd ? 0xC003 : 0xC002, 1, 0, 0);
-              mem_set_paging(0, s_ramwrt ? 0xC005 : 0xC004, 1, 0, 0);
-              mem_set_paging(0, s_altzp ? 0xC009 : 0xC008, 1, 0, 0);
-              mem_set_paging(0, s_page2 ? 0xC055 : 0xC054, 0, 0, 0);
-              mem_set_paging(0, s_hires ? 0xC057 : 0xC056, 0, 0, 0);
+              mem_set_paging(0, store_80 ? 0xC001 : 0xC000, 1, 0, 0);
+              mem_set_paging(0, ramrd ? 0xC003 : 0xC002, 1, 0, 0);
+              mem_set_paging(0, ramwrt ? 0xC005 : 0xC004, 1, 0, 0);
+              mem_set_paging(0, altzp ? 0xC009 : 0xC008, 1, 0, 0);
+              mem_set_paging(0, page2 ? 0xC055 : 0xC054, 0, 0, 0);
+              mem_set_paging(0, hires ? 0xC057 : 0xC056, 0, 0, 0);
 
               // Invariant: Verify base RAM pages have valid non-null page table
               // pointers
@@ -219,12 +219,12 @@ TEST_CASE("Exhaustive: [MEM-EX-03] Auxiliary Memory 64-State Routing Matrix") {
 
               // Verify mode flags reflect switches
               uint32_t mode = get_mem_mode();
-              CHECK(((mode & MF_80STORE) != 0) == (s_80store != 0));
-              CHECK(((mode & MF_AUXREAD) != 0) == (s_ramrd != 0));
-              CHECK(((mode & MF_AUXWRITE) != 0) == (s_ramwrt != 0));
-              CHECK(((mode & MF_ALTZP) != 0) == (s_altzp != 0));
-              CHECK(((mode & MF_PAGE2) != 0) == (s_page2 != 0));
-              CHECK(((mode & MF_HIRES) != 0) == (s_hires != 0));
+              CHECK(((mode & MF_80STORE) != 0) == (store_80 != 0));
+              CHECK(((mode & MF_AUXREAD) != 0) == (ramrd != 0));
+              CHECK(((mode & MF_AUXWRITE) != 0) == (ramwrt != 0));
+              CHECK(((mode & MF_ALTZP) != 0) == (altzp != 0));
+              CHECK(((mode & MF_PAGE2) != 0) == (page2 != 0));
+              CHECK(((mode & MF_HIRES) != 0) == (hires != 0));
             }
           }
         }

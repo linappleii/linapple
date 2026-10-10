@@ -161,16 +161,16 @@ auto ConfigSave_BufferToDisk(const char* pFileName, ConfigSave_t eConfigSave)
   std::string sFileName = system_state.current_dir.data();
   sFileName += pFileName;  // TODO: g_debug_dir
 
-  FilePtr h_file{fopen(pFileName, pMode), fclose};
+  FilePtr file{fopen(pFileName, pMode), fclose};
 
-  if (h_file) {
+  if (file) {
     char* text = nullptr;
-    int n_line = g_config_state.GetNumLines();
+    int num_lines = g_config_state.GetNumLines();
 
-    for (int i_line = 0; i_line < n_line; i_line++) {
-      text = g_config_state.GetLine(i_line);
+    for (int line_idx = 0; line_idx < num_lines; line_idx++) {
+      text = g_config_state.GetLine(line_idx);
       if (text != nullptr) {
-        fputs(text, h_file.get());
+        fputs(text, file.get());
       }
     }
     bStatus = true;

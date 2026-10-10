@@ -280,7 +280,7 @@ struct BenchHandler_t {
 class BenchHost_t {
  public:
   BenchHost_t() {
-    s_active = this;
+    active = this;
     host_.Log = bench_log;
     host_.AssertIrq = bench_assert_irq;
     host_.RegisterIO = bench_register_io;
@@ -296,7 +296,7 @@ class BenchHost_t {
     for (void* instance : instances_) {
       game_port()->shutdown(instance);
     }
-    s_active = nullptr;
+    active = nullptr;
   }
 
   BenchHost_t(const BenchHost_t&) = delete;
@@ -339,7 +339,7 @@ class BenchHost_t {
   uint64_t cycles_ = 0;
   uint8_t marker_ = marker_low;
 
-  static BenchHost_t* s_active;
+  static BenchHost_t* active;
 
   // NOLINTBEGIN(cppcoreguidelines-pro-type-vararg)
   // Justification: Log is variadic in the HostInterface_t ABI.
@@ -347,7 +347,7 @@ class BenchHost_t {
                         const char* fmt, ...) -> void {
     (void)instance;
     (void)level;
-    if (s_active == nullptr) {
+    if (active == nullptr) {
       return;
     }
     std::array<char, 256> line{};
@@ -355,7 +355,7 @@ class BenchHost_t {
     va_start(args, fmt);
     vsnprintf(line.data(), line.size(), fmt, args);
     va_end(args);
-    s_active->lines_.emplace_back(line.data());
+    active->lines_.emplace_back(line.data());
   }
   // NOLINTEND(cppcoreguidelines-pro-type-vararg)
 
@@ -389,8 +389,8 @@ class BenchHost_t {
   static auto bench_register_direct_io(void* instance, uint16_t addr,
                                        PeripheralIOHandler read,
                                        PeripheralIOHandler write) -> void {
-    if (s_active != nullptr) {
-      s_active->handlers_[addr] =
+    if (active != nullptr) {
+      active->handlers_[addr] =
           BenchHandler_t{instance, read, write, nullptr};
     }
   }
@@ -398,23 +398,23 @@ class BenchHost_t {
   static auto bench_register_direct_io_strobe(void* instance, uint16_t addr,
                                               PeripheralStrobeHandler_t strobe)
       -> void {
-    if (s_active != nullptr) {
-      s_active->handlers_[addr] =
+    if (active != nullptr) {
+      active->handlers_[addr] =
           BenchHandler_t{instance, nullptr, nullptr, strobe};
     }
   }
 
   static auto bench_get_cycles() -> uint64_t {
-    return s_active != nullptr ? s_active->cycles_ : 0;
+    return active != nullptr ? active->cycles_ : 0;
   }
 
   static auto bench_read_floating_bus(uint32_t executed_cycles) -> uint8_t {
     (void)executed_cycles;
-    return s_active != nullptr ? s_active->marker_ : marker_low;
+    return active != nullptr ? active->marker_ : marker_low;
   }
 };
 
-BenchHost_t* BenchHost_t::s_active = nullptr;
+BenchHost_t* BenchHost_t::active = nullptr;
 
 auto save_frame(void* instance) -> Frame_t {
   Frame_t frame{};

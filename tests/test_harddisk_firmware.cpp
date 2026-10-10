@@ -437,27 +437,27 @@ auto run_frames_until_prompt(uint32_t cap) -> bool {
 // --- The listing, typed in ---------------------------------------------
 
 enum Mnemonic_e : uint8_t {
-  m_lda,
-  m_sta,
-  m_ldx,
-  m_ldy,
-  m_tax,
-  m_pha,
-  m_iny,
-  m_inc,
-  m_dec,
-  m_and,
-  m_ora,
-  m_cmp,
-  m_asl,
-  m_lsr,
-  m_beq,
-  m_bne,
-  m_bcs,
-  m_jmp,
-  m_clc,
-  m_sec,
-  m_rts,
+  op_lda,
+  op_sta,
+  op_ldx,
+  op_ldy,
+  op_tax,
+  op_pha,
+  op_iny,
+  op_inc,
+  op_dec,
+  op_and,
+  op_ora,
+  op_cmp,
+  op_asl,
+  op_lsr,
+  op_beq,
+  op_bne,
+  op_bcs,
+  op_jmp,
+  op_clc,
+  op_sec,
+  op_rts,
 };
 
 enum Mode_e : uint8_t {
@@ -480,66 +480,66 @@ struct Opcode_t {
 // The 28 (mnemonic, mode) pairs the listing uses, from the 6502 opcode map.
 constexpr std::array<Opcode_t, 28> opcodes = {
     {
-        {m_lda, mode_immediate, 0xA9},   {m_lda, mode_zero_page, 0xA5},
-        {m_lda, mode_absolute, 0xAD},    {m_lda, mode_absolute_x, 0xBD},
-        {m_lda, mode_indirect_y, 0xB1},  {m_sta, mode_zero_page, 0x85},
-        {m_sta, mode_absolute_x, 0x9D},  {m_sta, mode_indirect_y, 0x91},
-        {m_ldx, mode_zero_page, 0xA6},   {m_ldy, mode_immediate, 0xA0},
-        {m_ldy, mode_absolute_x, 0xBC},  {m_tax, mode_implied, 0xAA},
-        {m_pha, mode_implied, 0x48},     {m_iny, mode_implied, 0xC8},
-        {m_inc, mode_zero_page, 0xE6},   {m_dec, mode_zero_page, 0xC6},
-        {m_and, mode_immediate, 0x29},   {m_ora, mode_immediate, 0x09},
-        {m_cmp, mode_immediate, 0xC9},   {m_asl, mode_accumulator, 0x0A},
-        {m_lsr, mode_accumulator, 0x4A}, {m_beq, mode_relative, 0xF0},
-        {m_bne, mode_relative, 0xD0},    {m_bcs, mode_relative, 0xB0},
-        {m_jmp, mode_absolute, 0x4C},    {m_clc, mode_implied, 0x18},
-        {m_sec, mode_implied, 0x38},     {m_rts, mode_implied, 0x60},
+        {op_lda, mode_immediate, 0xA9},   {op_lda, mode_zero_page, 0xA5},
+        {op_lda, mode_absolute, 0xAD},    {op_lda, mode_absolute_x, 0xBD},
+        {op_lda, mode_indirect_y, 0xB1},  {op_sta, mode_zero_page, 0x85},
+        {op_sta, mode_absolute_x, 0x9D},  {op_sta, mode_indirect_y, 0x91},
+        {op_ldx, mode_zero_page, 0xA6},   {op_ldy, mode_immediate, 0xA0},
+        {op_ldy, mode_absolute_x, 0xBC},  {op_tax, mode_implied, 0xAA},
+        {op_pha, mode_implied, 0x48},     {op_iny, mode_implied, 0xC8},
+        {op_inc, mode_zero_page, 0xE6},   {op_dec, mode_zero_page, 0xC6},
+        {op_and, mode_immediate, 0x29},   {op_ora, mode_immediate, 0x09},
+        {op_cmp, mode_immediate, 0xC9},   {op_asl, mode_accumulator, 0x0A},
+        {op_lsr, mode_accumulator, 0x4A}, {op_beq, mode_relative, 0xF0},
+        {op_bne, mode_relative, 0xD0},    {op_bcs, mode_relative, 0xB0},
+        {op_jmp, mode_absolute, 0x4C},    {op_clc, mode_implied, 0x18},
+        {op_sec, mode_implied, 0x38},     {op_rts, mode_implied, 0x60},
     },
 };
 
 auto mnemonic_name(Mnemonic_e mnemonic) -> const char* {
   switch (mnemonic) {
-    case m_lda:
+    case op_lda:
       return "LDA";
-    case m_sta:
+    case op_sta:
       return "STA";
-    case m_ldx:
+    case op_ldx:
       return "LDX";
-    case m_ldy:
+    case op_ldy:
       return "LDY";
-    case m_tax:
+    case op_tax:
       return "TAX";
-    case m_pha:
+    case op_pha:
       return "PHA";
-    case m_iny:
+    case op_iny:
       return "INY";
-    case m_inc:
+    case op_inc:
       return "INC";
-    case m_dec:
+    case op_dec:
       return "DEC";
-    case m_and:
+    case op_and:
       return "AND";
-    case m_ora:
+    case op_ora:
       return "ORA";
-    case m_cmp:
+    case op_cmp:
       return "CMP";
-    case m_asl:
+    case op_asl:
       return "ASL";
-    case m_lsr:
+    case op_lsr:
       return "LSR";
-    case m_beq:
+    case op_beq:
       return "BEQ";
-    case m_bne:
+    case op_bne:
       return "BNE";
-    case m_bcs:
+    case op_bcs:
       return "BCS";
-    case m_jmp:
+    case op_jmp:
       return "JMP";
-    case m_clc:
+    case op_clc:
       return "CLC";
-    case m_sec:
+    case op_sec:
       return "SEC";
-    case m_rts:
+    case op_rts:
       return "RTS";
   }
   return "???";
@@ -570,109 +570,109 @@ struct Row_t {
 // Labels: RET1 $1E, RET2 $38, FAILJ $3F, DRIVER $46, W1 $62, W2 $6C, EXEC
 // $78, R1 $8A, R2 $94, DONE $9E, STATUS $A2, ERROR $AD, FAIL $AF, MONITOR $C7.
 const Row_t listing[] = {
-    {0x00, m_lda, mode_immediate, 0x20},
-    {0x02, m_lda, mode_immediate, 0x00},
-    {0x04, m_lda, mode_immediate, 0x03},
-    {0x06, m_lda, mode_immediate, 0x3C},
-    {0x08, m_lda, mode_immediate, 0xC0},
-    {0x0A, m_sta, mode_zero_page, 0x47},
-    {0x0C, m_asl, mode_accumulator, 0},
-    {0x0D, m_asl, mode_accumulator, 0},
-    {0x0E, m_asl, mode_accumulator, 0},
-    {0x0F, m_asl, mode_accumulator, 0},
-    {0x10, m_sta, mode_zero_page, 0x43},
-    {0x12, m_lda, mode_zero_page, 0x47},
-    {0x14, m_pha, mode_implied, 0},
-    {0x15, m_lda, mode_immediate, 0x1D},
-    {0x17, m_pha, mode_implied, 0},
-    {0x18, m_lda, mode_immediate, 0x00},
-    {0x1A, m_sta, mode_zero_page, 0x42},
-    {0x1C, m_beq, mode_relative, 0x46},
-    {0x1E, m_bcs, mode_relative, 0x3F},
-    {0x20, m_lda, mode_zero_page, 0x47},
-    {0x22, m_pha, mode_implied, 0},
-    {0x23, m_lda, mode_immediate, 0x37},
-    {0x25, m_pha, mode_implied, 0},
-    {0x26, m_lda, mode_immediate, 0x00},
-    {0x28, m_sta, mode_zero_page, 0x44},
-    {0x2A, m_sta, mode_zero_page, 0x46},
-    {0x2C, m_sta, mode_zero_page, 0x47},
-    {0x2E, m_lda, mode_immediate, 0x08},
-    {0x30, m_sta, mode_zero_page, 0x45},
-    {0x32, m_lda, mode_immediate, 0x01},
-    {0x34, m_sta, mode_zero_page, 0x42},
-    {0x36, m_bne, mode_relative, 0x46},
-    {0x38, m_bcs, mode_relative, 0x3F},
-    {0x3A, m_ldx, mode_zero_page, 0x43},
-    {0x3C, m_jmp, mode_absolute, 0x0801},
-    {0x3F, m_bcs, mode_relative, 0xAF},
-    {0x46, m_lda, mode_zero_page, 0x43},
-    {0x48, m_and, mode_immediate, 0x70},
-    {0x4A, m_tax, mode_implied, 0},
-    {0x4B, m_lda, mode_zero_page, 0x43},
-    {0x4D, m_sta, mode_absolute_x, 0xC081},
-    {0x50, m_lda, mode_zero_page, 0x46},
-    {0x52, m_sta, mode_absolute_x, 0xC082},
-    {0x55, m_lda, mode_zero_page, 0x47},
-    {0x57, m_sta, mode_absolute_x, 0xC083},
-    {0x5A, m_lda, mode_zero_page, 0x42},
-    {0x5C, m_cmp, mode_immediate, 0x02},
-    {0x5E, m_bne, mode_relative, 0x78},
-    {0x60, m_ldy, mode_immediate, 0x00},
-    {0x62, m_lda, mode_indirect_y, 0x44},
-    {0x64, m_sta, mode_absolute_x, 0xC084},
-    {0x67, m_iny, mode_implied, 0},
-    {0x68, m_bne, mode_relative, 0x62},
-    {0x6A, m_inc, mode_zero_page, 0x45},
-    {0x6C, m_lda, mode_indirect_y, 0x44},
-    {0x6E, m_sta, mode_absolute_x, 0xC084},
-    {0x71, m_iny, mode_implied, 0},
-    {0x72, m_bne, mode_relative, 0x6C},
-    {0x74, m_dec, mode_zero_page, 0x45},
-    {0x76, m_lda, mode_zero_page, 0x42},
-    {0x78, m_sta, mode_absolute_x, 0xC080},
-    {0x7B, m_lda, mode_absolute_x, 0xC080},
-    {0x7E, m_bne, mode_relative, 0xAD},
-    {0x80, m_lda, mode_zero_page, 0x42},
-    {0x82, m_beq, mode_relative, 0xA2},
-    {0x84, m_cmp, mode_immediate, 0x01},
-    {0x86, m_bne, mode_relative, 0x9E},
-    {0x88, m_ldy, mode_immediate, 0x00},
-    {0x8A, m_lda, mode_absolute_x, 0xC084},
-    {0x8D, m_sta, mode_indirect_y, 0x44},
-    {0x8F, m_iny, mode_implied, 0},
-    {0x90, m_bne, mode_relative, 0x8A},
-    {0x92, m_inc, mode_zero_page, 0x45},
-    {0x94, m_lda, mode_absolute_x, 0xC084},
-    {0x97, m_sta, mode_indirect_y, 0x44},
-    {0x99, m_iny, mode_implied, 0},
-    {0x9A, m_bne, mode_relative, 0x94},
-    {0x9C, m_dec, mode_zero_page, 0x45},
-    {0x9E, m_lda, mode_immediate, 0x00},
-    {0xA0, m_clc, mode_implied, 0},
-    {0xA1, m_rts, mode_implied, 0},
-    {0xA2, m_ldy, mode_absolute_x, 0xC086},
-    {0xA5, m_lda, mode_absolute_x, 0xC085},
-    {0xA8, m_tax, mode_implied, 0},
-    {0xA9, m_lda, mode_immediate, 0x00},
-    {0xAB, m_clc, mode_implied, 0},
-    {0xAC, m_rts, mode_implied, 0},
-    {0xAD, m_sec, mode_implied, 0},
-    {0xAE, m_rts, mode_implied, 0},
-    {0xAF, m_lda, mode_absolute, 0xFBB3},
-    {0xB2, m_cmp, mode_immediate, 0x38},
-    {0xB4, m_beq, mode_relative, 0xC7},
-    {0xB6, m_lda, mode_zero_page, 0x43},
-    {0xB8, m_lsr, mode_accumulator, 0},
-    {0xB9, m_lsr, mode_accumulator, 0},
-    {0xBA, m_lsr, mode_accumulator, 0},
-    {0xBB, m_lsr, mode_accumulator, 0},
-    {0xBC, m_ora, mode_immediate, 0xC0},
-    {0xBE, m_sta, mode_zero_page, 0x01},
-    {0xC0, m_lda, mode_immediate, 0x00},
-    {0xC2, m_sta, mode_zero_page, 0x00},
-    {0xC4, m_jmp, mode_absolute, 0xFABA},
-    {0xC7, m_jmp, mode_absolute, 0xFF59},
+    {0x00, op_lda, mode_immediate, 0x20},
+    {0x02, op_lda, mode_immediate, 0x00},
+    {0x04, op_lda, mode_immediate, 0x03},
+    {0x06, op_lda, mode_immediate, 0x3C},
+    {0x08, op_lda, mode_immediate, 0xC0},
+    {0x0A, op_sta, mode_zero_page, 0x47},
+    {0x0C, op_asl, mode_accumulator, 0},
+    {0x0D, op_asl, mode_accumulator, 0},
+    {0x0E, op_asl, mode_accumulator, 0},
+    {0x0F, op_asl, mode_accumulator, 0},
+    {0x10, op_sta, mode_zero_page, 0x43},
+    {0x12, op_lda, mode_zero_page, 0x47},
+    {0x14, op_pha, mode_implied, 0},
+    {0x15, op_lda, mode_immediate, 0x1D},
+    {0x17, op_pha, mode_implied, 0},
+    {0x18, op_lda, mode_immediate, 0x00},
+    {0x1A, op_sta, mode_zero_page, 0x42},
+    {0x1C, op_beq, mode_relative, 0x46},
+    {0x1E, op_bcs, mode_relative, 0x3F},
+    {0x20, op_lda, mode_zero_page, 0x47},
+    {0x22, op_pha, mode_implied, 0},
+    {0x23, op_lda, mode_immediate, 0x37},
+    {0x25, op_pha, mode_implied, 0},
+    {0x26, op_lda, mode_immediate, 0x00},
+    {0x28, op_sta, mode_zero_page, 0x44},
+    {0x2A, op_sta, mode_zero_page, 0x46},
+    {0x2C, op_sta, mode_zero_page, 0x47},
+    {0x2E, op_lda, mode_immediate, 0x08},
+    {0x30, op_sta, mode_zero_page, 0x45},
+    {0x32, op_lda, mode_immediate, 0x01},
+    {0x34, op_sta, mode_zero_page, 0x42},
+    {0x36, op_bne, mode_relative, 0x46},
+    {0x38, op_bcs, mode_relative, 0x3F},
+    {0x3A, op_ldx, mode_zero_page, 0x43},
+    {0x3C, op_jmp, mode_absolute, 0x0801},
+    {0x3F, op_bcs, mode_relative, 0xAF},
+    {0x46, op_lda, mode_zero_page, 0x43},
+    {0x48, op_and, mode_immediate, 0x70},
+    {0x4A, op_tax, mode_implied, 0},
+    {0x4B, op_lda, mode_zero_page, 0x43},
+    {0x4D, op_sta, mode_absolute_x, 0xC081},
+    {0x50, op_lda, mode_zero_page, 0x46},
+    {0x52, op_sta, mode_absolute_x, 0xC082},
+    {0x55, op_lda, mode_zero_page, 0x47},
+    {0x57, op_sta, mode_absolute_x, 0xC083},
+    {0x5A, op_lda, mode_zero_page, 0x42},
+    {0x5C, op_cmp, mode_immediate, 0x02},
+    {0x5E, op_bne, mode_relative, 0x78},
+    {0x60, op_ldy, mode_immediate, 0x00},
+    {0x62, op_lda, mode_indirect_y, 0x44},
+    {0x64, op_sta, mode_absolute_x, 0xC084},
+    {0x67, op_iny, mode_implied, 0},
+    {0x68, op_bne, mode_relative, 0x62},
+    {0x6A, op_inc, mode_zero_page, 0x45},
+    {0x6C, op_lda, mode_indirect_y, 0x44},
+    {0x6E, op_sta, mode_absolute_x, 0xC084},
+    {0x71, op_iny, mode_implied, 0},
+    {0x72, op_bne, mode_relative, 0x6C},
+    {0x74, op_dec, mode_zero_page, 0x45},
+    {0x76, op_lda, mode_zero_page, 0x42},
+    {0x78, op_sta, mode_absolute_x, 0xC080},
+    {0x7B, op_lda, mode_absolute_x, 0xC080},
+    {0x7E, op_bne, mode_relative, 0xAD},
+    {0x80, op_lda, mode_zero_page, 0x42},
+    {0x82, op_beq, mode_relative, 0xA2},
+    {0x84, op_cmp, mode_immediate, 0x01},
+    {0x86, op_bne, mode_relative, 0x9E},
+    {0x88, op_ldy, mode_immediate, 0x00},
+    {0x8A, op_lda, mode_absolute_x, 0xC084},
+    {0x8D, op_sta, mode_indirect_y, 0x44},
+    {0x8F, op_iny, mode_implied, 0},
+    {0x90, op_bne, mode_relative, 0x8A},
+    {0x92, op_inc, mode_zero_page, 0x45},
+    {0x94, op_lda, mode_absolute_x, 0xC084},
+    {0x97, op_sta, mode_indirect_y, 0x44},
+    {0x99, op_iny, mode_implied, 0},
+    {0x9A, op_bne, mode_relative, 0x94},
+    {0x9C, op_dec, mode_zero_page, 0x45},
+    {0x9E, op_lda, mode_immediate, 0x00},
+    {0xA0, op_clc, mode_implied, 0},
+    {0xA1, op_rts, mode_implied, 0},
+    {0xA2, op_ldy, mode_absolute_x, 0xC086},
+    {0xA5, op_lda, mode_absolute_x, 0xC085},
+    {0xA8, op_tax, mode_implied, 0},
+    {0xA9, op_lda, mode_immediate, 0x00},
+    {0xAB, op_clc, mode_implied, 0},
+    {0xAC, op_rts, mode_implied, 0},
+    {0xAD, op_sec, mode_implied, 0},
+    {0xAE, op_rts, mode_implied, 0},
+    {0xAF, op_lda, mode_absolute, 0xFBB3},
+    {0xB2, op_cmp, mode_immediate, 0x38},
+    {0xB4, op_beq, mode_relative, 0xC7},
+    {0xB6, op_lda, mode_zero_page, 0x43},
+    {0xB8, op_lsr, mode_accumulator, 0},
+    {0xB9, op_lsr, mode_accumulator, 0},
+    {0xBA, op_lsr, mode_accumulator, 0},
+    {0xBB, op_lsr, mode_accumulator, 0},
+    {0xBC, op_ora, mode_immediate, 0xC0},
+    {0xBE, op_sta, mode_zero_page, 0x01},
+    {0xC0, op_lda, mode_immediate, 0x00},
+    {0xC2, op_sta, mode_zero_page, 0x00},
+    {0xC4, op_jmp, mode_absolute, 0xFABA},
+    {0xC7, op_jmp, mode_absolute, 0xFF59},
 };
 
 // The five unused bytes after the trampoline and the run from $CA to $FB.

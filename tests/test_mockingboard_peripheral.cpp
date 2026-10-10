@@ -64,7 +64,7 @@ constexpr uint32_t DC_TAU_TICKS = 1000;
 class MockingboardHarness {
  public:
   MockingboardHarness() {
-    s_active_harness = this;
+    active_harness = this;
     REQUIRE(mockingboard_descriptor() != nullptr);
     host_.AssertIrq = Mock_AssertIrq;
     host_.RegisterIO = Mock_RegisterIO;
@@ -79,7 +79,7 @@ class MockingboardHarness {
     }
     instances_.clear();
     primary_instance_ = nullptr;
-    s_active_harness = nullptr;
+    active_harness = nullptr;
   }
 
   MockingboardHarness(const MockingboardHarness&) = delete;
@@ -198,27 +198,27 @@ class MockingboardHarness {
   }
 
   static auto Mock_AssertIrq(int slot, bool assert_irq) -> void {
-    if (s_active_harness == nullptr) {
+    if (active_harness == nullptr) {
       return;
     }
-    s_active_harness->irq_asserted_ = assert_irq;
-    s_active_harness->irq_slot_ = slot;
-    s_active_harness->irq_log_.push_back(assert_irq);
+    active_harness->irq_asserted_ = assert_irq;
+    active_harness->irq_slot_ = slot;
+    active_harness->irq_log_.push_back(assert_irq);
   }
 
   static auto Mock_RegisterIO(int slot, PeripheralIOHandler read_c0,
                               PeripheralIOHandler write_c0,
                               PeripheralIOHandler read_cx,
                               PeripheralIOHandler write_cx) -> void {
-    if (s_active_harness == nullptr) {
+    if (active_harness == nullptr) {
       return;
     }
-    s_active_harness->register_io_calls_++;
-    s_active_harness->last_registered_slot_ = slot;
-    s_active_harness->read_c0_handler_ = read_c0;
-    s_active_harness->write_c0_handler_ = write_c0;
-    s_active_harness->read_cx_handler_ = read_cx;
-    s_active_harness->write_cx_handler_ = write_cx;
+    active_harness->register_io_calls_++;
+    active_harness->last_registered_slot_ = slot;
+    active_harness->read_c0_handler_ = read_c0;
+    active_harness->write_c0_handler_ = write_c0;
+    active_harness->read_cx_handler_ = read_cx;
+    active_harness->write_cx_handler_ = write_cx;
   }
 
   static auto Mock_AudioPushChannels(void* instance,
@@ -226,28 +226,28 @@ class MockingboardHarness {
                                      size_t num_channels, size_t num_samples)
       -> void {
     (void)instance;
-    if (s_active_harness == nullptr || channels == nullptr ||
+    if (active_harness == nullptr || channels == nullptr ||
         num_channels == 0 || num_samples == 0) {
       return;
     }
-    s_active_harness->channel_count_ = num_channels;
-    if (s_active_harness->channels_.size() < num_channels) {
-      s_active_harness->channels_.resize(num_channels);
+    active_harness->channel_count_ = num_channels;
+    if (active_harness->channels_.size() < num_channels) {
+      active_harness->channels_.resize(num_channels);
     }
     for (size_t c = 0; c < num_channels; ++c) {
       if (channels[c] == nullptr) {
         continue;
       }
       for (size_t i = 0; i < num_samples; ++i) {
-        s_active_harness->channels_[c].push_back(channels[c][i]);
+        active_harness->channels_[c].push_back(channels[c][i]);
       }
     }
-    s_active_harness->last_push_samples_ = num_samples;
-    s_active_harness->total_pushed_samples_ += num_samples;
-    s_active_harness->push_count_++;
+    active_harness->last_push_samples_ = num_samples;
+    active_harness->total_pushed_samples_ += num_samples;
+    active_harness->push_count_++;
   }
 
-  static MockingboardHarness* s_active_harness;
+  static MockingboardHarness* active_harness;
 
   HostInterface_t host_{};
   bool irq_asserted_{false};
@@ -271,7 +271,7 @@ class MockingboardHarness {
   void* primary_instance_{nullptr};
 };
 
-MockingboardHarness* MockingboardHarness::s_active_harness = nullptr;
+MockingboardHarness* MockingboardHarness::active_harness = nullptr;
 
 // Drives the AY control bus the way software does: park the register number
 // on port A, strobe latch, park the value, strobe write.

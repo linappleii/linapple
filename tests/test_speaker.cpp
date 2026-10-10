@@ -73,8 +73,8 @@ struct MockStrobeHandler_t {
 
 struct SpeakerHarness_t {
   SpeakerHarness_t() {
-    assert(s_active_harness == nullptr);
-    s_active_harness = this;
+    assert(active_harness == nullptr);
+    active_harness = this;
     REQUIRE(speaker_descriptor() != nullptr);
     host_.Log = mock_log;
     host_.AssertIrq = mock_assert_irq;
@@ -99,7 +99,7 @@ struct SpeakerHarness_t {
     strobes_.clear();
     captured_samples_.clear();
     captured_channels_ = 0;
-    s_active_harness = nullptr;
+    active_harness = nullptr;
   }
 
   SpeakerHarness_t(const SpeakerHarness_t&) = delete;
@@ -213,7 +213,7 @@ struct SpeakerHarness_t {
   size_t captured_channels_ = 0;
   uint32_t audio_push_count_ = 0;
 
-  static SpeakerHarness_t* s_active_harness;
+  static SpeakerHarness_t* active_harness;
 
   static auto mock_log(void* instance, PeripheralLogLevel_t level,
                        const char* fmt, ...) -> void {
@@ -230,8 +230,8 @@ struct SpeakerHarness_t {
   static auto mock_register_direct_io(void* instance, uint16_t addr,
                                       PeripheralIOHandler read,
                                       PeripheralIOHandler write) -> void {
-    if (s_active_harness != nullptr) {
-      s_active_harness->handlers_[addr] =
+    if (active_harness != nullptr) {
+      active_harness->handlers_[addr] =
           MockDirectIOHandler_t(instance, read, write);
     }
   }
@@ -239,8 +239,8 @@ struct SpeakerHarness_t {
   static auto mock_register_direct_io_strobe(
       void* instance, uint16_t addr, PeripheralStrobeHandler_t on_strobe)
       -> void {
-    if (s_active_harness != nullptr) {
-      s_active_harness->strobes_[addr] =
+    if (active_harness != nullptr) {
+      active_harness->strobes_[addr] =
           MockStrobeHandler_t(instance, on_strobe);
     }
   }
@@ -250,27 +250,27 @@ struct SpeakerHarness_t {
                                        size_t num_channels, size_t num_samples)
       -> void {
     (void)instance;
-    if (s_active_harness != nullptr && channel_buffers != nullptr &&
+    if (active_harness != nullptr && channel_buffers != nullptr &&
         num_channels > 0 && num_samples > 0) {
-      s_active_harness->captured_channels_ = num_channels;
+      active_harness->captured_channels_ = num_channels;
       if (channel_buffers[0] != nullptr) {
-        s_active_harness->captured_samples_.insert(
-            s_active_harness->captured_samples_.end(), channel_buffers[0],
+        active_harness->captured_samples_.insert(
+            active_harness->captured_samples_.end(), channel_buffers[0],
             channel_buffers[0] + num_samples);
       }
-      s_active_harness->audio_push_count_++;
+      active_harness->audio_push_count_++;
     }
   }
 
   static auto mock_get_cycles() -> uint64_t {
-    if (s_active_harness != nullptr) {
-      return s_active_harness->cycles_;
+    if (active_harness != nullptr) {
+      return active_harness->cycles_;
     }
     return 0;
   }
 };
 
-SpeakerHarness_t* SpeakerHarness_t::s_active_harness = nullptr;
+SpeakerHarness_t* SpeakerHarness_t::active_harness = nullptr;
 
 }  // namespace
 

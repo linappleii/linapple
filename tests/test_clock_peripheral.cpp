@@ -201,7 +201,7 @@ struct MockHandler_t {
 class ClockHarness_t {
  public:
   ClockHarness_t() {
-    s_active_harness = this;
+    active_harness = this;
     REQUIRE(clock_descriptor() != nullptr);
     host_.Log = mock_log;
     host_.AssertIrq = mock_assert_irq;
@@ -221,7 +221,7 @@ class ClockHarness_t {
       }
     }
     instances_.clear();
-    s_active_harness = nullptr;
+    active_harness = nullptr;
   }
 
   ClockHarness_t(const ClockHarness_t&) = delete;
@@ -334,7 +334,7 @@ class ClockHarness_t {
   std::map<int, const uint8_t*> rom_pointers_;
   std::map<int, void*> instances_;
 
-  static ClockHarness_t* s_active_harness;
+  static ClockHarness_t* active_harness;
 
   // NOLINTBEGIN(cert-dcl50-cpp, cppcoreguidelines-pro-type-vararg)
   // Justification: Log is variadic in the HostInterface_t ABI.
@@ -342,7 +342,7 @@ class ClockHarness_t {
                        const char* fmt, ...) -> void {
     (void)instance;
     (void)level;
-    if (s_active_harness == nullptr) {
+    if (active_harness == nullptr) {
       return;
     }
     std::array<char, 256> text{};
@@ -350,7 +350,7 @@ class ClockHarness_t {
     va_start(args, fmt);
     vsnprintf(text.data(), text.size(), fmt, args);
     va_end(args);
-    s_active_harness->log_messages_.emplace_back(text.data());
+    active_harness->log_messages_.emplace_back(text.data());
   }
   // NOLINTEND(cert-dcl50-cpp, cppcoreguidelines-pro-type-vararg)
 
@@ -359,14 +359,14 @@ class ClockHarness_t {
   }
 
   static auto mock_host_clock(HostLocalTime_t* out) -> bool {
-    if (s_active_harness == nullptr || out == nullptr) {
+    if (active_harness == nullptr || out == nullptr) {
       return false;
     }
-    ++s_active_harness->time_calls_;
-    if (!s_active_harness->has_time_) {
+    ++active_harness->time_calls_;
+    if (!active_harness->has_time_) {
       return false;
     }
-    *out = s_active_harness->time_;
+    *out = active_harness->time_;
     return true;
   }
 
@@ -383,22 +383,22 @@ class ClockHarness_t {
                                PeripheralIOHandler write_cx) -> void {
     (void)read_cx;
     (void)write_cx;
-    if (s_active_harness != nullptr &&
+    if (active_harness != nullptr &&
         (read_c0 != nullptr || write_c0 != nullptr)) {
       const uint16_t base = io_base_address + (slot << io_slot_shift);
       for (uint16_t i = 0; i < registers_per_slot; ++i) {
-        s_active_harness->handlers_[base + i] = {nullptr, read_c0, write_c0};
+        active_harness->handlers_[base + i] = {nullptr, read_c0, write_c0};
       }
     }
   }
   // NOLINTEND(bugprone-easily-swappable-parameters)
 
   static auto mock_register_cx_rom(int slot, const uint8_t* rom_ptr) -> void {
-    if (s_active_harness != nullptr && rom_ptr != nullptr) {
+    if (active_harness != nullptr && rom_ptr != nullptr) {
       std::vector<uint8_t> rom_data(slot_rom_size);
       std::copy_n(rom_ptr, slot_rom_size, rom_data.begin());
-      s_active_harness->roms_[slot] = std::move(rom_data);
-      s_active_harness->rom_pointers_[slot] = rom_ptr;
+      active_harness->roms_[slot] = std::move(rom_data);
+      active_harness->rom_pointers_[slot] = rom_ptr;
     }
   }
 
@@ -411,13 +411,13 @@ class ClockHarness_t {
   static auto mock_register_direct_io(void* instance, uint16_t addr,
                                       PeripheralIOHandler read,
                                       PeripheralIOHandler write) -> void {
-    if (s_active_harness != nullptr) {
-      s_active_harness->handlers_[addr] = {instance, read, write};
+    if (active_harness != nullptr) {
+      active_harness->handlers_[addr] = {instance, read, write};
     }
   }
 };
 
-ClockHarness_t* ClockHarness_t::s_active_harness = nullptr;
+ClockHarness_t* ClockHarness_t::active_harness = nullptr;
 
 struct CalendarRow_t {
   const char* name;

@@ -23,7 +23,7 @@
 
 namespace {
 
-HeadlessHarness_t* s_active_harness = nullptr;
+HeadlessHarness_t* active_harness = nullptr;
 
 auto on_audio(const char* peripheral_id, int slot, const float* const* channels,
               size_t num_channels, size_t num_samples) -> void {
@@ -31,8 +31,8 @@ auto on_audio(const char* peripheral_id, int slot, const float* const* channels,
   (void)slot;
   (void)channels;
   (void)num_channels;
-  if (s_active_harness != nullptr) {
-    s_active_harness->handle_audio(nullptr, num_samples);
+  if (active_harness != nullptr) {
+    active_harness->handle_audio(nullptr, num_samples);
   }
 }
 
@@ -60,7 +60,7 @@ HeadlessHarness_t::HeadlessHarness_t(
 auto HeadlessHarness_t::start(
     const TestFixtures::ScopedTestConfig_t& test_config, AppConfig* config)
     -> void {
-  s_active_harness = this;
+  active_harness = this;
 
   util_safe_strcpy(config->config_path.data(), test_config.c_str(),
                    path_max_len);
@@ -81,8 +81,8 @@ HeadlessHarness_t::~HeadlessHarness_t() {
     app_controller_shutdown();
     is_initialized = false;
   }
-  if (s_active_harness == this) {
-    s_active_harness = nullptr;
+  if (active_harness == this) {
+    active_harness = nullptr;
   }
 }
 

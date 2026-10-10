@@ -213,9 +213,9 @@ struct BenchHandler_t {
 class BenchHost_t {
  public:
   explicit BenchHost_t(
-      PeripheralMachine_t machine = peripheral_machine_apple2e) {
-    s_active = this;
-    s_machine = machine;
+      PeripheralMachine_t target_machine = peripheral_machine_apple2e) {
+    active = this;
+    machine = target_machine;
     host_.Log = bench_log;
     host_.RegisterDirectIO = bench_register_direct_io;
     host_.ReadFloatingBus = bench_read_floating_bus;
@@ -230,7 +230,7 @@ class BenchHost_t {
     if (instance_ != nullptr) {
       keyboard_card()->shutdown(instance_);
     }
-    s_active = nullptr;
+    active = nullptr;
   }
 
   BenchHost_t(const BenchHost_t&) = delete;
@@ -297,14 +297,14 @@ class BenchHost_t {
   void* instance_ = nullptr;
   std::string last_log_;
 
-  static BenchHost_t* s_active;
-  static PeripheralMachine_t s_machine;
+  static BenchHost_t* active;
+  static PeripheralMachine_t machine;
 
   static auto bench_log(void* instance, PeripheralLogLevel_t level,
                         const char* fmt, ...) -> void {
     (void)instance;
     (void)level;
-    if (s_active == nullptr || fmt == nullptr) {
+    if (active == nullptr || fmt == nullptr) {
       return;
     }
     std::array<char, 256> line{};
@@ -312,14 +312,14 @@ class BenchHost_t {
     va_start(args, fmt);
     vsnprintf(line.data(), line.size(), fmt, args);
     va_end(args);
-    s_active->last_log_ = line.data();
+    active->last_log_ = line.data();
   }
 
   static auto bench_register_direct_io(void* instance, uint16_t addr,
                                        PeripheralIOHandler read,
                                        PeripheralIOHandler write) -> void {
-    if (s_active != nullptr) {
-      s_active->handlers_[addr] = BenchHandler_t{instance, read, write};
+    if (active != nullptr) {
+      active->handlers_[addr] = BenchHandler_t{instance, read, write};
     }
   }
 
@@ -337,13 +337,13 @@ class BenchHost_t {
     (void)at_cycle;
   }
 
-  static auto bench_get_machine() -> PeripheralMachine_t { return s_machine; }
+  static auto bench_get_machine() -> PeripheralMachine_t { return machine; }
 
   static auto bench_get_frame_cycles() -> uint32_t { return ntsc_frame_cycles; }
 };
 
-BenchHost_t* BenchHost_t::s_active = nullptr;
-PeripheralMachine_t BenchHost_t::s_machine = peripheral_machine_apple2e;
+BenchHost_t* BenchHost_t::active = nullptr;
+PeripheralMachine_t BenchHost_t::machine = peripheral_machine_apple2e;
 
 // A think drains the command queue, as a running machine does once a frame.
 auto settle() -> void { peripheral_manager_think(0); }

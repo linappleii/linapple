@@ -60,11 +60,11 @@ class BenchHost_t {
     host_.GetClockHz = bench_get_clock_hz;
     host_.ReadFloatingBus = bench_read_floating_bus;
     host_.ScheduleEvent = bench_schedule_event;
-    s_active = this;
+    active = this;
   }
   ~BenchHost_t() {
-    if (s_active == this) {
-      s_active = nullptr;
+    if (active == this) {
+      active = nullptr;
     }
   }
   BenchHost_t(const BenchHost_t&) = delete;
@@ -97,7 +97,7 @@ class BenchHost_t {
                         const char* fmt, ...) -> void {
     (void)instance;
     (void)level;
-    if (s_active == nullptr) {
+    if (active == nullptr) {
       return;
     }
     std::array<char, 256> line{};
@@ -105,11 +105,11 @@ class BenchHost_t {
     va_start(args, fmt);
     vsnprintf(line.data(), line.size(), fmt, args);
     va_end(args);
-    s_active->last_log_ = line.data();
+    active->last_log_ = line.data();
   }
   static auto bench_assert_irq(int slot, bool assert) -> void {
-    if (s_active != nullptr) {
-      s_active->irq_calls_.push_back({slot, assert});
+    if (active != nullptr) {
+      active->irq_calls_.push_back({slot, assert});
     }
   }
   static auto bench_register_io(int slot, PeripheralIOHandler read_c0,
@@ -118,17 +118,17 @@ class BenchHost_t {
                                 PeripheralIOHandler write_cx) -> void {
     (void)read_cx;
     (void)write_cx;
-    if (s_active != nullptr) {
-      s_active->io_slot_ = slot;
-      s_active->read_c0_ = read_c0;
-      s_active->write_c0_ = write_c0;
+    if (active != nullptr) {
+      active->io_slot_ = slot;
+      active->read_c0_ = read_c0;
+      active->write_c0_ = write_c0;
     }
   }
   static auto bench_register_cx_rom(int slot, const uint8_t* rom) -> void {
     (void)slot;
-    if (s_active != nullptr) {
-      ++s_active->rom_registrations_;
-      s_active->last_rom_ = rom;
+    if (active != nullptr) {
+      ++active->rom_registrations_;
+      active->last_rom_ = rom;
     }
   }
   static auto bench_register_expansion_rom(int slot, const uint8_t* rom)
@@ -137,7 +137,7 @@ class BenchHost_t {
     (void)rom;
   }
   static auto bench_get_cycles() -> uint64_t {
-    return s_active != nullptr ? s_active->cycles_ : 0;
+    return active != nullptr ? active->cycles_ : 0;
   }
   static auto bench_get_clock_hz() -> double { return 1020484.45; }
   static auto bench_read_floating_bus(uint32_t executed_cycles) -> uint8_t {
@@ -149,7 +149,7 @@ class BenchHost_t {
     (void)at_cycle;
   }
 
-  static BenchHost_t* s_active;
+  static BenchHost_t* active;
   HostInterface_t host_{};
   std::string last_log_;
   std::vector<IrqCall_t> irq_calls_;
@@ -161,7 +161,7 @@ class BenchHost_t {
   PeripheralIOHandler write_c0_ = nullptr;
 };
 
-BenchHost_t* BenchHost_t::s_active = nullptr;
+BenchHost_t* BenchHost_t::active = nullptr;
 
 class BenchCard_t {
  public:
