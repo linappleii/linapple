@@ -31,7 +31,6 @@ bool g_config_disasm_opcode_spaces = true;
 int g_config_disasm_targets = DISASM_TARGET_BOTH;
 int g_config_disasm_branch_type = DISASM_BRANCH_FANCY;
 int g_config_disasm_immediate_char = DISASM_IMMED_BOTH;
-static int g_config_disasm_scroll = 3;  // favor 3 byte opcodes
 bool g_config_info_target_pointer = false;
 
 MemoryTextFile_t g_config_state;
