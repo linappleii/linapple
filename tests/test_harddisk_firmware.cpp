@@ -401,7 +401,7 @@ auto check_protected(int slot, int drive) -> void {
 }
 
 // The boots that end at a DOS prompt need the Disk II, as their cases do.
-#if defined(ENABLE_PERIPHERAL_DISK)
+#ifdef ENABLE_PERIPHERAL_DISK
 auto text_row_begins_with(char first) -> bool {
   static const std::array<uint16_t, 24> row_offsets = {
       0x000, 0x080, 0x100, 0x180, 0x200, 0x280, 0x300, 0x380,
@@ -886,7 +886,7 @@ TEST_CASE(
   }
 }
 
-#if defined(ENABLE_PERIPHERAL_DISK)
+#ifdef ENABLE_PERIPHERAL_DISK
 TEST_CASE(
     "Harddisk firmware: with no image and a Disk II below, the fallback scan "
     "reaches $C600 and that disk boots to the prompt") {
@@ -914,7 +914,7 @@ TEST_CASE(
   CHECK(run_frames_until_prompt(boot_frame_cap));
 }
 
-#if defined(ENABLE_PERIPHERAL_KEYBOARD)
+#ifdef ENABLE_PERIPHERAL_KEYBOARD
 TEST_CASE(
     "Harddisk firmware: a card below a booting Disk II is entered by PR#n "
     "from the prompt and boots its block 0") {

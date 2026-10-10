@@ -47,7 +47,7 @@ TEST_CASE("Mouse frontend: with no card the probe caches no slot") {
   peripheral_manager_think(0);
 }
 
-#if defined(ENABLE_PERIPHERAL_MOUSE)
+#ifdef ENABLE_PERIPHERAL_MOUSE
 
 namespace {
 

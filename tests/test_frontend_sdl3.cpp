@@ -835,7 +835,7 @@ namespace {
 
 constexpr uint16_t mouse_program_start = 0x0300;
 
-#if defined(ENABLE_PERIPHERAL_JOYSTICK)
+#ifdef ENABLE_PERIPHERAL_JOYSTICK
 constexpr uint16_t rom_pread = 0xFB1E;
 constexpr uint32_t pread_cycle_cap = 4000;
 
@@ -958,7 +958,7 @@ TEST_CASE(
   CHECK_FALSE(mouse_input_is_captured());
 }
 
-#if defined(ENABLE_PERIPHERAL_MOUSE)
+#ifdef ENABLE_PERIPHERAL_MOUSE
 
 namespace {
 
@@ -1121,7 +1121,7 @@ TEST_CASE(
 }
 #endif
 
-#if defined(ENABLE_PERIPHERAL_JOYSTICK)
+#ifdef ENABLE_PERIPHERAL_JOYSTICK
 TEST_CASE(
     "SDL3 mouse motion: the joystick-as-mouse path maps the picture, not the "
     "window, so the picture's centre reads 128 in a letterbox and at any "
@@ -1147,7 +1147,7 @@ TEST_CASE(
 }
 #endif
 
-#if defined(ENABLE_PERIPHERAL_KEYBOARD)
+#ifdef ENABLE_PERIPHERAL_KEYBOARD
 
 namespace {
 
@@ -1481,7 +1481,7 @@ TEST_CASE(
 
 #endif
 
-#if defined(ENABLE_PERIPHERAL_HARDDISK)
+#ifdef ENABLE_PERIPHERAL_HARDDISK
 
 namespace {
 

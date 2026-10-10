@@ -1757,7 +1757,7 @@ TEST_CASE(
 }
 
 // The sessions type at the Applesoft prompt, which needs the keyboard card.
-#if defined(ENABLE_PERIPHERAL_KEYBOARD)
+#ifdef ENABLE_PERIPHERAL_KEYBOARD
 namespace {
 
 constexpr uint8_t high_cr = 0x8D;

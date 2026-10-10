@@ -165,7 +165,7 @@ TEST_CASE(
   }
 }
 
-#if !defined(ENABLE_PERIPHERAL_KEYBOARD)
+#ifndef ENABLE_PERIPHERAL_KEYBOARD
 TEST_CASE(
     "Switch inputs: keyboard unplugged, inferred from the open 74LS257 "
     "inputs: a II Plus reads $C000 as $7F, $C010-$C01F as the undriven bus, "
@@ -221,7 +221,7 @@ TEST_CASE(
   }
 }
 
-#if defined(ENABLE_PERIPHERAL_KEYBOARD)
+#ifdef ENABLE_PERIPHERAL_KEYBOARD
 TEST_CASE(
     "Switch inputs: with no controller configured a //e with its keyboard "
     "reads PB0 and PB1 low through the keyboard's 470 ohm resistors") {
@@ -307,7 +307,7 @@ TEST_CASE(
   CHECK(line_level(2) == 1);
 }
 
-#if !defined(ENABLE_PERIPHERAL_JOYSTICK)
+#ifndef ENABLE_PERIPHERAL_JOYSTICK
 TEST_CASE(
     "Switch inputs: with no game port card every paddle reads high at every "
     "scanner position and PREAD returns 255") {
@@ -491,7 +491,7 @@ TEST_CASE(
   hold_shift(false);
   CHECK(high_at(addr_switch2, 0));
 
-#if defined(ENABLE_PERIPHERAL_JOYSTICK)
+#ifdef ENABLE_PERIPHERAL_JOYSTICK
   std::array<uint8_t, 56> frame{};
   size_t size = frame.size();
   peripheral_save_state_by_name(0, "Joystick", frame.data(), &size);

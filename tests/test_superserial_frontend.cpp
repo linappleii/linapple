@@ -627,7 +627,7 @@ TEST_CASE(
 namespace {
 
 // The sessions type at the Applesoft prompt, which needs the keyboard card.
-#if defined(ENABLE_PERIPHERAL_KEYBOARD)
+#ifdef ENABLE_PERIPHERAL_KEYBOARD
 constexpr uint32_t prompt_frame_cap = 300;
 constexpr uint32_t session_frame_cap = 60;
 
@@ -688,7 +688,7 @@ auto open_peer(const ScopedLogCapture_t& log) -> std::string {
 
 }  // namespace
 
-#if defined(ENABLE_PERIPHERAL_KEYBOARD)
+#ifdef ENABLE_PERIPHERAL_KEYBOARD
 // The firmware ORs $80 into each received byte for GETLN, which stores it at
 // $0200 with no echo to the line.
 TEST_CASE(

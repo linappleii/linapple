@@ -248,7 +248,7 @@ TEST_CASE(
   disk_loader_reset();
 }
 
-#if defined(ENABLE_PERIPHERAL_KEYBOARD)
+#ifdef ENABLE_PERIPHERAL_KEYBOARD
 TEST_CASE("DiskSmoke: [SMK-07] SAVE and CATALOG in DOS 3.3") {
   TestConfig_t config(TestConfig_t::disk_ii_only());
   HeadlessHarness_t harness(config);

@@ -27,19 +27,19 @@
 #include "apple2/peripherals/Peripheral_Internal.h"
 #include "apple2/peripherals/Peripheral_Types.h"
 #include "apple2/peripherals/mouse/MouseCommands.h"
-#if defined(ENABLE_PERIPHERAL_HARDDISK)
+#ifdef ENABLE_PERIPHERAL_HARDDISK
 #include "apple2/peripherals/harddisk/HarddiskCommands.h"
 #endif
-#if defined(ENABLE_PERIPHERAL_CLOCK)
+#ifdef ENABLE_PERIPHERAL_CLOCK
 #include "apple2/peripherals/clock/ClockCardCommands.h"
 #endif
-#if defined(ENABLE_PERIPHERAL_PRINTER)
+#ifdef ENABLE_PERIPHERAL_PRINTER
 #include "apple2/peripherals/printer/PrinterCommands.h"
 #endif
-#if defined(ENABLE_PERIPHERAL_SUPER_SERIAL)
+#ifdef ENABLE_PERIPHERAL_SUPER_SERIAL
 #include "apple2/peripherals/super_serial_card/SuperSerialCommands.h"
 #endif
-#if defined(ENABLE_PERIPHERAL_MOCKINGBOARD)
+#ifdef ENABLE_PERIPHERAL_MOCKINGBOARD
 #include "apple2/peripherals/mockingboard/MockingboardCommands.h"
 #endif
 #include "core/LinAppleCore.h"
@@ -541,10 +541,10 @@ TEST_CASE("Snapshot: A manifest naming any slot-0 device is the same machine") {
   // Only a device the build has in slot 0 can be named there.
   const std::initializer_list<const char*> slot0_devices = {
       "Speaker",
-#if defined(ENABLE_PERIPHERAL_KEYBOARD)
+#ifdef ENABLE_PERIPHERAL_KEYBOARD
       "Keyboard",
 #endif
-#if defined(ENABLE_PERIPHERAL_JOYSTICK)
+#ifdef ENABLE_PERIPHERAL_JOYSTICK
       "Joystick",
 #endif
   };
@@ -559,7 +559,7 @@ TEST_CASE("Snapshot: A manifest naming any slot-0 device is the same machine") {
   CHECK(peripheral_verify_manifest(&manifest) == false);
 }
 
-#if defined(ENABLE_PERIPHERAL_KEYBOARD)
+#ifdef ENABLE_PERIPHERAL_KEYBOARD
 
 namespace {
 
@@ -742,7 +742,7 @@ TEST_CASE("Snapshot: The game port's eight bytes are written as zeros") {
   CHECK(field == std::array<char, sizeof(SsIoJoystick_t)>{});
 }
 
-#if defined(ENABLE_PERIPHERAL_JOYSTICK)
+#ifdef ENABLE_PERIPHERAL_JOYSTICK
 TEST_CASE("Snapshot: A loaded file starts with every paddle timer expired") {
   constexpr uint8_t bit7 = 0x80;
   TestFixtures::ScopedTempFile_t file(".aws");
@@ -774,7 +774,7 @@ TEST_CASE("Snapshot: A loaded file starts with every paddle timer expired") {
 }
 #endif
 
-#if defined(ENABLE_PERIPHERAL_SUPER_SERIAL)
+#ifdef ENABLE_PERIPHERAL_SUPER_SERIAL
 namespace {
 
 constexpr size_t ssc_frame_size = 56;
@@ -874,7 +874,7 @@ TEST_CASE(
 }
 #endif
 
-#if defined(ENABLE_PERIPHERAL_MOUSE)
+#ifdef ENABLE_PERIPHERAL_MOUSE
 
 // The key's fixture was written with the shipped Disk II and Harddisk in
 // slots 6 and 7; a build without both cards refuses it at the manifest before
@@ -1657,35 +1657,35 @@ TEST_CASE(
 // or save_slot_to_trailer writes nothing and the card is silently at reset
 // on every load.
 TEST_CASE("Snapshot: every frame that rides the slot trailer fits its entry") {
-#if defined(ENABLE_PERIPHERAL_HARDDISK)
+#ifdef ENABLE_PERIPHERAL_HARDDISK
   static_assert(sizeof(HarddiskSaveState_t) <= snapshot_slot_state_capacity,
                 "the hard disk's frame rides the trailer");
   CHECK(sizeof(HarddiskSaveState_t) == 20);
 #endif
-#if defined(ENABLE_PERIPHERAL_MOUSE)
+#ifdef ENABLE_PERIPHERAL_MOUSE
   static_assert(sizeof(MouseSaveState_t) <= snapshot_slot_state_capacity,
                 "the mouse's frame rides the trailer");
 #endif
-#if defined(ENABLE_PERIPHERAL_CLOCK)
+#ifdef ENABLE_PERIPHERAL_CLOCK
   static_assert(sizeof(ClockCardSaveState_t) <= snapshot_slot_state_capacity,
                 "the clock's frame rides the trailer");
 #endif
-#if defined(ENABLE_PERIPHERAL_PRINTER)
+#ifdef ENABLE_PERIPHERAL_PRINTER
   static_assert(sizeof(PrinterSaveState_t) <= snapshot_slot_state_capacity,
                 "the printer's frame rides the trailer");
 #endif
-#if defined(ENABLE_PERIPHERAL_SUPER_SERIAL)
+#ifdef ENABLE_PERIPHERAL_SUPER_SERIAL
   static_assert(sizeof(SuperSerialSaveState_t) <= snapshot_slot_state_capacity,
                 "the serial card's frame rides the trailer");
 #endif
-#if defined(ENABLE_PERIPHERAL_MOCKINGBOARD)
+#ifdef ENABLE_PERIPHERAL_MOCKINGBOARD
   static_assert(sizeof(MockingboardSaveState_t) <= snapshot_slot_state_capacity,
                 "the Mockingboard's frame rides the trailer");
 #endif
   CHECK(snapshot_slot_state_capacity == 256);
 }
 
-#if defined(ENABLE_PERIPHERAL_HARDDISK)
+#ifdef ENABLE_PERIPHERAL_HARDDISK
 TEST_CASE(
     "Snapshot: An .aws carries the hard disk's registers in the slot-7 "
     "trailer entry and gives them back, with no warning about its size") {

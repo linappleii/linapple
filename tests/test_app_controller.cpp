@@ -19,7 +19,7 @@
 #include "frontends/common/AppController.h"
 #include "frontends/common/AppEnvironment.h"
 #include "test_fixtures.h"
-#if !defined(ENABLE_PERIPHERAL_HARDDISK)
+#ifndef ENABLE_PERIPHERAL_HARDDISK
 #include "test_fixtures_core.h"
 #endif
 
@@ -274,7 +274,7 @@ TEST_CASE("AppController: FTP Configuration Defaults and Preferences") {
   CHECK(is_valid_directory(system_state.ftp_local_dir.data()));
 }
 
-#if !defined(ENABLE_PERIPHERAL_HARDDISK)
+#ifndef ENABLE_PERIPHERAL_HARDDISK
 TEST_CASE(
     "AppController: --hd1 in a build without the hard disk says so once and "
     "the machine runs on") {

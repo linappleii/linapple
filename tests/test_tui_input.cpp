@@ -302,7 +302,7 @@ TEST_CASE(
         std::string::npos);
 }
 
-#if defined(ENABLE_PERIPHERAL_MOUSE)
+#ifdef ENABLE_PERIPHERAL_MOUSE
 
 namespace {
 
@@ -698,7 +698,7 @@ TEST_CASE(
 }
 #endif
 
-#if defined(ENABLE_PERIPHERAL_KEYBOARD)
+#ifdef ENABLE_PERIPHERAL_KEYBOARD
 
 namespace {
 

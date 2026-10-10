@@ -2383,7 +2383,7 @@ TEST_CASE(
 }
 
 // The session types at the Applesoft prompt, which needs the keyboard card.
-#if defined(ENABLE_PERIPHERAL_KEYBOARD)
+#ifdef ENABLE_PERIPHERAL_KEYBOARD
 namespace {
 
 constexpr uint32_t prompt_frame_cap = 300;

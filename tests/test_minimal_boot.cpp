@@ -237,7 +237,7 @@ TEST_CASE(
   }
 }
 
-#if !defined(ENABLE_PERIPHERAL_KEYBOARD)
+#ifndef ENABLE_PERIPHERAL_KEYBOARD
 
 namespace {
 
