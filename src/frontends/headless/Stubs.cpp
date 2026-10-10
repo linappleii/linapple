@@ -2,7 +2,11 @@
 #include <cstdint>
 
 #include "Apple2Types.h"
+#if ENABLE_DEBUGGER
 #include "Debugger_Display.h"
+#else
+auto stretch_blt_mem_to_frame_dc() -> void;
+#endif
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
 #include "apple2/Video.h"

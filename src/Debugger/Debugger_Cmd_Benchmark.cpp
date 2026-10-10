@@ -5,7 +5,6 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <string>
 #include <vector>
 
 #include "Debug.h"
@@ -15,7 +14,6 @@
 #include "Debugger_Types.h"
 #include "apple2/CPU.h"
 #include "core/Util_Path.h"
-#include "frontends/common/Frontend.h"
 
 // Globals originally from Debug.cpp
 bool g_benchmarking = false;

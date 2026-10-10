@@ -15,7 +15,6 @@
 #include "Debugger_Cmd_CPU.h"
 #include "Debugger_Cmd_Window.h"
 #include "Debugger_Display.h"
-#include "Debugger_Parser.h"
 #include "Debugger_Types.h"
 #include "apple2/Video.h"
 #include "core/LinAppleCore.h"
