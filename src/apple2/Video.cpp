@@ -101,7 +101,7 @@ static uint8_t* g_hires_bank0;
 
 VideoSurface* g_logo_bitmap = nullptr;
 static VideoSurface* charset40 = nullptr;
-static int multi_language_charset = false;
+static bool multi_language_charset = false;
 
 VideoSurface* g_status_surface = nullptr;
 int g_status_cycle = 0;
@@ -149,7 +149,7 @@ uint32_t g_video_mode = VF_TEXT;
 static uint32_t g_debug_video_mode = VF_TEXT;
 static uint32_t vidmode_latched = VF_TEXT;
 uint32_t g_videotype = VT_COLOR_STANDARD;
-uint32_t g_singlethreaded = 1;
+bool g_singlethreaded = true;
 std::atomic<bool> g_frame_ready(false);
 
 static inline auto sw_80col() -> bool { return (g_video_mode & VF_80COL) != 0; }
@@ -209,8 +209,8 @@ static auto copy_source(int destx, int desty, int xsize, int ysize, int sourcex,
                         int sourcey) -> void {
   uint8_t* currdestptr = frameoffsettable[desty] + destx;
   uint8_t* currsourceptr = g_source_start_of_line[sourcey] + sourcex;
-  while (ysize--) {
-    if (ysize & 1 || VT_COLOR_TVEMU > g_videotype) {
+  while ((ysize--) != 0) {
+    if (((ysize & 1) != 0) || VT_COLOR_TVEMU > g_videotype) {
       memcpy(currdestptr, currsourceptr, xsize);
     } else {
       memset(currdestptr, 0, xsize);
@@ -423,25 +423,25 @@ auto draw_dhires_source() -> void {
           (static_cast<uint16_t>(static_cast<uint8_t>(column))) << 8));
       int pixel = 0;
       for (pixel = 1; pixel < 15; pixel++) {
-        if (pattern & (1 << pixel)) {
+        if ((pattern & (1u << pixel)) != 0u) {
           int pixelcolor = 1 << ((pixel - OFFSET) & 3);
           if ((pixel >= OFFSET + 2) && (pixel < SIZE + OFFSET + 2) &&
-              (pattern & (0x7 << (pixel - 4)))) {
+              ((pattern & (0x7u << (pixel - 4))) != 0u)) {
             color[pixel - (OFFSET + 2)] |= pixelcolor;
           }
           if ((pixel >= OFFSET + 1) && (pixel < SIZE + OFFSET + 1) &&
-              (pattern & (0xF << (pixel - 4)))) {
+              ((pattern & (0xFu << (pixel - 4))) != 0u)) {
             color[pixel - (OFFSET + 1)] |= pixelcolor;
           }
           if ((pixel >= OFFSET + 0) && (pixel < SIZE + OFFSET + 0)) {
             color[pixel - (OFFSET + 0)] |= pixelcolor;
           }
           if ((pixel >= OFFSET - 1) && (pixel < SIZE + OFFSET - 1) &&
-              (pattern & (0xF << (pixel + 1)))) {
+              ((pattern & (0xFu << (pixel + 1))) != 0u)) {
             color[pixel - (OFFSET - 1)] |= pixelcolor;
           }
           if ((pixel >= OFFSET - 2) && (pixel < SIZE + OFFSET - 2) &&
-              (pattern & (0x7 << (pixel + 2)))) {
+              ((pattern & (0x7u << (pixel + 2))) != 0u)) {
             color[pixel - (OFFSET - 2)] |= pixelcolor;
           }
         }
@@ -497,12 +497,12 @@ auto draw_hires_source_half_shift_dim() -> void {
     int coloffs = column << 5;
 
     for (unsigned byte = 0; byte < 256; byte++) {
-      int aPixels[11] = {};
+      bool aPixels[11] = {};
 
-      aPixels[0] = column & 4;
-      aPixels[1] = column & 8;
-      aPixels[9] = column & 1;
-      aPixels[10] = column & 2;
+      aPixels[0] = (column & 4) != 0;
+      aPixels[1] = (column & 8) != 0;
+      aPixels[9] = (column & 1) != 0;
+      aPixels[10] = (column & 2) != 0;
 
       int bit_mask = 1;
       int pixel = 0;
@@ -511,13 +511,13 @@ auto draw_hires_source_half_shift_dim() -> void {
         bit_mask <<= 1;
       }
 
-      int hibit = ((byte & 0x80) != 0);
+      int hibit = ((byte & 0x80) != 0) ? 1 : 0;
       int x = 0;
       int y = byte << 1;
 
       while (x < 28) {
-        int adj = (x >= 14) << 1;
-        int odd = (x >= 14);
+        int adj = (x >= 14) ? 2 : 0;
+        int odd = (x >= 14) ? 1 : 0;
 
         for (pixel = 2; pixel < 9; pixel++) {
           int color = CM_Black;
@@ -533,7 +533,7 @@ auto draw_hires_source_half_shift_dim() -> void {
           // drawback: loss of color mix patterns in hgr mode.
           // select g_videotype by index exclusion
           {
-            color = ((odd ^ !(pixel & 1)) << 1) | hibit;
+            color = ((odd ^ ((pixel & 1) == 0 ? 1 : 0)) << 1) | hibit;
           }
 
           /*
@@ -570,7 +570,7 @@ auto draw_hires_source_half_shift_dim() -> void {
                                HGR_BLUE);
               set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 2, y + 1,
                                DARK_BLUE);
-              if (hibit && (pixel <= 2)) {
+              if ((hibit != 0) && (pixel <= 2)) {
                 set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y,
                                  DARK_BLUE);
                 set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
@@ -595,7 +595,7 @@ auto draw_hires_source_half_shift_dim() -> void {
                                HGR_RED);
               set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 2, y + 1,
                                BROWN);
-              if (hibit && (pixel <= 2)) {
+              if ((hibit != 0) && (pixel <= 2)) {
                 set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y, BROWN);
                 set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
                                  BROWN);
@@ -621,7 +621,7 @@ auto draw_hires_source_half_shift_dim() -> void {
                                HGR_WHITE);
               set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj + 1, y + 1,
                                HGR_WHITE);
-              if (hibit && (pixel <= 2)) {
+              if ((hibit != 0) && (pixel <= 2)) {
                 set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y,
                                  HGR_WHITE);
                 set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y + 1,
@@ -644,12 +644,12 @@ auto draw_hires_source() -> void {
     int coloffs = column << 5;
 
     for (unsigned byte = 0; byte < 256; byte++) {
-      int aPixels[11] = {};
+      bool aPixels[11] = {};
 
-      aPixels[0] = column & 4;
-      aPixels[1] = column & 8;
-      aPixels[9] = column & 1;
-      aPixels[10] = column & 2;
+      aPixels[0] = (column & 4) != 0;
+      aPixels[1] = (column & 8) != 0;
+      aPixels[9] = (column & 1) != 0;
+      aPixels[10] = (column & 2) != 0;
 
       int bit_mask = 1;
       int pixel = 0;
@@ -658,13 +658,13 @@ auto draw_hires_source() -> void {
         bit_mask <<= 1;
       }
 
-      int hibit = ((byte & 0x80) != 0);
+      int hibit = ((byte & 0x80) != 0) ? 1 : 0;
       int x = 0;
       int y = byte << 1;
 
       while (x < 28) {
-        int adj = (x >= 14) << 1;
-        int odd = (x >= 14);
+        int adj = (x >= 14) ? 2 : 0;
+        int odd = (x >= 14) ? 1 : 0;
 
         for (pixel = 2; pixel < 9; pixel++) {
           int color = CM_Black;
@@ -678,7 +678,7 @@ auto draw_hires_source() -> void {
                      ((g_videotype == VT_COLOR_STANDARD) ||
                       (g_videotype == VT_COLOR_TVEMU) ||
                       !(aPixels[pixel - 2] && aPixels[pixel + 2]))) {
-            color = ((odd ^ !(pixel & 1)) << 1) | hibit;
+            color = ((odd ^ ((pixel & 1) == 0 ? 1 : 0)) << 1) | hibit;
           }
 
           set_source_pixel(SRCOFFS_HIRES + coloffs + x + adj, y,
@@ -752,7 +752,8 @@ auto draw_mono_dhires_source() -> void {
           (static_cast<uint16_t>(static_cast<uint8_t>(column))) << 8));
       int y = byteval << 1;
       for (int x = 0; x < 10; x++) {
-        uint8_t colorval = pattern & (1 << (x + 3)) ? iMonochrome : BLACK;
+        uint8_t colorval =
+            ((pattern & (1u << (x + 3))) != 0u) ? iMonochrome : BLACK;
 
         set_source_pixel(SRCOFFS_DHIRES + coloffs + x, y, colorval);
         set_source_pixel(SRCOFFS_DHIRES + coloffs + x, y + 1, colorval);
@@ -768,7 +769,7 @@ auto draw_mono_hires_source() -> void {
     for (int y = 0; y < 512; y += 2) {
       unsigned val = (y >> 1);
       for (int x = 0; x < 16; x += 2) {
-        uint8_t colorval = (val & 1) ? iMonochrome : BLACK;
+        uint8_t colorval = ((val & 1u) != 0u) ? iMonochrome : BLACK;
         val >>= 1;
         set_source_pixel(SRCOFFS_HIRES + column + x, y, colorval);
         set_source_pixel(SRCOFFS_HIRES + column + x + 1, y, colorval);
@@ -784,7 +785,8 @@ auto draw_mono_lores_source() -> void {
   for (int color = 0; color < 16; color++) {
     for (int x = 0; x < 16; x++) {
       for (int y = 0; y < 16; y++) {
-        uint8_t colorval = (color >> (x & 3) & 1) ? iMonochrome : BLACK;
+        uint8_t colorval =
+            (((color >> (x & 3)) & 1) != 0) ? iMonochrome : BLACK;
         set_source_pixel(SRCOFFS_LORES + x, (color << 4) + y, colorval);
       }
     }
@@ -1156,11 +1158,11 @@ static auto copy_mixed_source(int x, int y, int sourcex, int sourcey) -> void {
     hgrpixelmatrix[matx + count][maty] = *(currsourceptr + bufxoffset);
     mix_colors_vertical(matx + count, maty);
     currptr = currdestptr + bufxoffset;
-    if (hgrlinesabove) {
+    if (hgrlinesabove != 0) {
       currptr -= framebufferpitch << 1;
     }
     for (i = istart; i <= iend; currptr += framebufferpitch, i++) {
-      if (~i & 1) {
+      if ((~i & 1) != 0) {
         *currptr = *(currptr + 1) = colormixbuffer[i];
       } else {
         *currptr = 0;
@@ -1299,11 +1301,12 @@ auto video_apparently_dirty() noexcept -> bool {
   if (sw_mixed() || redrawfull || video_worker_active_) {
     return true;
   }
-  uint32_t address = (sw_hires() && !sw_text()) ? (0x20 << displaypage2)
-                                                : (0x4 << displaypage2);
+  uint32_t address = (sw_hires() && !sw_text())
+                         ? (0x20u << (displaypage2 ? 1 : 0))
+                         : (0x4u << (displaypage2 ? 1 : 0));
   uint32_t length = (sw_hires() && !sw_text()) ? 0x20 : 0x4;
-  while (length--) {
-    if (*(memdirty + (address++)) & 2) {
+  while ((length--) != 0u) {
+    if ((*(memdirty + (address++)) & 2) != 0) {
       return true;
     }
   }
@@ -1312,7 +1315,7 @@ auto video_apparently_dirty() noexcept -> bool {
 
   // Scan visible text page for any flashing chars
   if ((sw_text() || sw_mixed()) && (g_alt_char_set_offset == 0)) {
-    uint8_t* pnMemText = mem_get_main_ptr(0x400 << displaypage2);
+    uint8_t* pnMemText = mem_get_main_ptr(0x400 << (displaypage2 ? 1 : 0));
 
     // Scan 8 long-lines of 120 chars (at 128 char offsets):
     // . Skip 8-char holes in TEXT
@@ -1340,11 +1343,11 @@ auto video_benchmark() -> void {
   auto* mem32 = reinterpret_cast<uint32_t*>(mem);
   for (loop = 4096; loop < 6144; loop++) {
     *(mem32 + loop) =
-        ((loop & 1) ^ ((loop & 0x40) >> 6)) ? 0x14141414 : 0xAAAAAAAA;
+        (((loop & 1) ^ ((loop & 0x40) >> 6)) != 0) ? 0x14141414 : 0xAAAAAAAA;
   }
   for (loop = 6144; loop < 8192; loop++) {
     *(mem32 + loop) =
-        ((loop & 1) ^ ((loop & 0x40) >> 6)) ? 0xAAAAAAAA : 0x14141414;
+        (((loop & 1) ^ ((loop & 0x40) >> 6)) != 0) ? 0xAAAAAAAA : 0x14141414;
   }
 
   uint32_t totaltextfps = 0;
@@ -1358,10 +1361,10 @@ auto video_benchmark() -> void {
   milliseconds = get_tick_count_ms();
   uint32_t cycle = 0;
   do {
-    if (cycle & 1) {
+    if ((cycle & 1) != 0) {
       memset(mem + 0x400, 0x14, 0x400);
     } else {
-      memcpy(mem + 0x400, mem + ((cycle & 2) ? 0x4000 : 0x6000), 0x400);
+      memcpy(mem + 0x400, mem + (((cycle & 2) != 0) ? 0x4000 : 0x6000), 0x400);
     }
     video_refresh_screen();
     if (cycle++ >= 3) {
@@ -1381,10 +1384,11 @@ auto video_benchmark() -> void {
   milliseconds = get_tick_count_ms();
   cycle = 0;
   do {
-    if (cycle & 1) {
+    if ((cycle & 1) != 0) {
       memset(mem + 0x2000, 0x14, 0x2000);
     } else {
-      memcpy(mem + 0x2000, mem + ((cycle & 2) ? 0x4000 : 0x6000), 0x2000);
+      memcpy(mem + 0x2000, mem + (((cycle & 2) != 0) ? 0x4000 : 0x6000),
+             0x2000);
     }
     video_refresh_screen();
     if (cycle++ >= 3) {
@@ -1458,10 +1462,11 @@ auto video_benchmark() -> void {
         video_update_vbl(0);
       }
     }
-    if (cycle & 1) {
+    if ((cycle & 1) != 0) {
       memset(mem + 0x2000, 0xAA, 0x2000);
     } else {
-      memcpy(mem + 0x2000, mem + ((cycle & 2) ? 0x4000 : 0x6000), 0x2000);
+      memcpy(mem + 0x2000, mem + (((cycle & 2) != 0) ? 0x4000 : 0x6000),
+             0x2000);
     }
     video_refresh_screen();
     if (cycle++ >= 3) {
@@ -1480,7 +1485,7 @@ auto video_check_mode(uint16_t /*unused*/, uint16_t address, uint8_t /*unused*/,
                       uint8_t /*unused*/, uint32_t executed_cycles) -> uint8_t {
   address &= 0xFF;
   if (address == 0x7F) {
-    return mem_read_floating_bus(sw_dhires(), executed_cycles);
+    return mem_read_floating_bus(sw_dhires() ? 1 : 0, executed_cycles);
   }
 
   bool result = false;
@@ -1735,7 +1740,7 @@ auto video_perform_refresh() -> void {
   vidmode_latched = g_video_mode;
 
   if (system_state.mode == app_mode_debug) {
-    if (redrawfull == 0) {
+    if (!redrawfull) {
       return;
     }
     if (g_debug_video_mode > 0) {
@@ -1749,22 +1754,22 @@ auto video_perform_refresh() -> void {
   int pitch = SCREEN_WIDTH;
   create_frame_offset_table(addr, pitch);
 
+  const int page2_shift = displaypage2_latched ? 1 : 0;
   if (g_singlethreaded) {
-    g_hires_bank1 = mem_get_aux_ptr(0x2000 << displaypage2_latched);
-    g_hires_bank0 = mem_get_main_ptr(0x2000 << displaypage2_latched);
-    g_text_bank1 = mem_get_aux_ptr(0x0400 << displaypage2_latched);
-    g_text_bank0 = mem_get_main_ptr(0x0400 << displaypage2_latched);
+    g_hires_bank1 = mem_get_aux_ptr(0x2000 << page2_shift);
+    g_hires_bank0 = mem_get_main_ptr(0x2000 << page2_shift);
+    g_text_bank1 = mem_get_aux_ptr(0x0400 << page2_shift);
+    g_text_bank0 = mem_get_main_ptr(0x0400 << page2_shift);
   } else {
     // One-level pipelining to allow CPU emulation to run concurrently without
     // display glitches.
-    memcpy(display_pipeline_, mem_get_aux_ptr(0x2000 << displaypage2_latched),
+    memcpy(display_pipeline_, mem_get_aux_ptr(0x2000 << page2_shift), 0x2000);
+    memcpy(display_pipeline_ + 0x2000, mem_get_main_ptr(0x2000 << page2_shift),
            0x2000);
-    memcpy(display_pipeline_ + 0x2000,
-           mem_get_main_ptr(0x2000 << displaypage2_latched), 0x2000);
-    memcpy(display_pipeline_ + 0x4000,
-           mem_get_aux_ptr(0x0400 << displaypage2_latched), 0x0400);
-    memcpy(display_pipeline_ + 0x4400,
-           mem_get_main_ptr(0x0400 << displaypage2_latched), 0x0400);
+    memcpy(display_pipeline_ + 0x4000, mem_get_aux_ptr(0x0400 << page2_shift),
+           0x0400);
+    memcpy(display_pipeline_ + 0x4400, mem_get_main_ptr(0x0400 << page2_shift),
+           0x0400);
 
     g_hires_bank1 = reinterpret_cast<uint8_t*>(display_pipeline_);
     g_hires_bank0 = reinterpret_cast<uint8_t*>(display_pipeline_) + 0x2000;
@@ -1783,7 +1788,7 @@ auto video_perform_refresh() -> void {
         (swl_dhires() && swl_80col()) ? update_dlores_cell : update_lores_cell;
   }
 
-  bool anydirty = redrawfull | g_text_flash_flag;
+  bool anydirty = redrawfull || g_text_flash_flag;
 
   int y = 0;
   int ypixel = 0;
@@ -1792,7 +1797,9 @@ auto video_perform_refresh() -> void {
     int x = 0;
     int xpixel = 0;
     while (x < 40) {
-      anydirty |= celldirty[x][y] = update(x, y, xpixel, ypixel, offset + x);
+      bool updated = update(x, y, xpixel, ypixel, offset + x);
+      celldirty[x][y] = updated ? 1 : 0;
+      anydirty = anydirty || updated;
       ++x;
       xpixel += 14;
     }
@@ -1809,7 +1816,9 @@ auto video_perform_refresh() -> void {
     int x = 0;
     int xpixel = 0;
     while (x < 40) {
-      anydirty |= celldirty[x][y] = update(x, y, xpixel, ypixel, offset + x);
+      bool updated = update(x, y, xpixel, ypixel, offset + x);
+      celldirty[x][y] = updated ? 1 : 0;
+      anydirty = anydirty || updated;
       ++x;
       xpixel += 14;
     }
@@ -2077,7 +2086,7 @@ auto video_get_scanner_address(bool* vbl_bar_out,
   int v_4 = (v_state >> 7) & 1;
 
   // calculate scanning memory address
-  if (sw_hires() && sw_mixed() && (v_4 & v_2)) {
+  if (sw_hires() && sw_mixed() && ((v_4 & v_2) != 0)) {
     // The softswitch for this is $c053 for mixed, $c052 for fill (no text on
     // bottom).
     hires = 0;  // (address is in text memory)
@@ -2089,16 +2098,17 @@ auto video_get_scanner_address(bool* vbl_bar_out,
   int sum = (addend0 + addend1 + addend2) & (0x0F << 3);
 
   int address = 0;
-  address |= h_0 << 0;                                              // a0
-  address |= h_1 << 1;                                              // a1
-  address |= h_2 << 2;                                              // a2
-  address |= sum;                                                   // a3 - aa6
-  address |= v_0 << 7;                                              // a7
-  address |= v_1 << 8;                                              // a8
-  address |= v_2 << 9;                                              // a9
-  address |= (hires ? v_A : (1 ^ (page2 & (1 ^ n80Store)))) << 10;  // a10
-  address |= (hires ? v_B : (page2 & (1 ^ n80Store))) << 11;        // a11
-  if (hires) {                                                      // hires?
+  address |= h_0 << 0;  // a0
+  address |= h_1 << 1;  // a1
+  address |= h_2 << 2;  // a2
+  address |= sum;       // a3 - aa6
+  address |= v_0 << 7;  // a7
+  address |= v_1 << 8;  // a8
+  address |= v_2 << 9;  // a9
+  address |= ((hires != 0) ? v_A : (1 ^ (page2 & (1 ^ n80Store))))
+             << 10;                                                  // a10
+  address |= ((hires != 0) ? v_B : (page2 & (1 ^ n80Store))) << 11;  // a11
+  if (hires != 0) {                                                  // hires?
     // Y: insert hires only address bits
     address |= v_C << 12;                             // a12
     address |= (1 ^ (page2 & (1 ^ n80Store))) << 13;  // a13

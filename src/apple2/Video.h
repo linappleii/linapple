@@ -159,7 +159,7 @@ extern bool graphicsmode;
 extern uint32_t monochrome;
 extern uint32_t g_videotype;
 extern uint32_t g_video_mode;
-extern uint32_t g_singlethreaded;
+extern bool g_singlethreaded;
 extern std::recursive_mutex g_video_draw_mutex;
 extern std::atomic<bool> g_frame_ready;
 
