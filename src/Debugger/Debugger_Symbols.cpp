@@ -440,7 +440,7 @@ auto CmdSymbolsListTables(int nArgs, int bSymbolTables) -> Update_t {
           console_print(sText);
         }
       }
-    } else if (address != 0u) {  // Have address, do symbol lookup first
+    } else if (address != 0U) {  // Have address, do symbol lookup first
       if ((!CmdSymbolList_Symbol2Address(pSymbol, bSymbolTables)) &&
           (!CmdSymbolList_Address2Symbol(address, bSymbolTables)))
       // nope, ok, try as address

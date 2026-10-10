@@ -423,25 +423,25 @@ auto draw_dhires_source() -> void {
           (static_cast<uint16_t>(static_cast<uint8_t>(column))) << 8));
       int pixel = 0;
       for (pixel = 1; pixel < 15; pixel++) {
-        if ((pattern & (1u << pixel)) != 0u) {
+        if ((pattern & (1U << pixel)) != 0U) {
           int pixelcolor = 1 << ((pixel - OFFSET) & 3);
           if ((pixel >= OFFSET + 2) && (pixel < SIZE + OFFSET + 2) &&
-              ((pattern & (0x7u << (pixel - 4))) != 0u)) {
+              ((pattern & (0x7U << (pixel - 4))) != 0U)) {
             color[pixel - (OFFSET + 2)] |= pixelcolor;
           }
           if ((pixel >= OFFSET + 1) && (pixel < SIZE + OFFSET + 1) &&
-              ((pattern & (0xFu << (pixel - 4))) != 0u)) {
+              ((pattern & (0xFU << (pixel - 4))) != 0U)) {
             color[pixel - (OFFSET + 1)] |= pixelcolor;
           }
           if ((pixel >= OFFSET + 0) && (pixel < SIZE + OFFSET + 0)) {
             color[pixel - (OFFSET + 0)] |= pixelcolor;
           }
           if ((pixel >= OFFSET - 1) && (pixel < SIZE + OFFSET - 1) &&
-              ((pattern & (0xFu << (pixel + 1))) != 0u)) {
+              ((pattern & (0xFU << (pixel + 1))) != 0U)) {
             color[pixel - (OFFSET - 1)] |= pixelcolor;
           }
           if ((pixel >= OFFSET - 2) && (pixel < SIZE + OFFSET - 2) &&
-              ((pattern & (0x7u << (pixel + 2))) != 0u)) {
+              ((pattern & (0x7U << (pixel + 2))) != 0U)) {
             color[pixel - (OFFSET - 2)] |= pixelcolor;
           }
         }
@@ -753,7 +753,7 @@ auto draw_mono_dhires_source() -> void {
       int y = byteval << 1;
       for (int x = 0; x < 10; x++) {
         uint8_t colorval =
-            ((pattern & (1u << (x + 3))) != 0u) ? iMonochrome : BLACK;
+            ((pattern & (1U << (x + 3))) != 0U) ? iMonochrome : BLACK;
 
         set_source_pixel(SRCOFFS_DHIRES + coloffs + x, y, colorval);
         set_source_pixel(SRCOFFS_DHIRES + coloffs + x, y + 1, colorval);
@@ -769,7 +769,7 @@ auto draw_mono_hires_source() -> void {
     for (int y = 0; y < 512; y += 2) {
       unsigned val = (y >> 1);
       for (int x = 0; x < 16; x += 2) {
-        uint8_t colorval = ((val & 1u) != 0u) ? iMonochrome : BLACK;
+        uint8_t colorval = ((val & 1U) != 0U) ? iMonochrome : BLACK;
         val >>= 1;
         set_source_pixel(SRCOFFS_HIRES + column + x, y, colorval);
         set_source_pixel(SRCOFFS_HIRES + column + x + 1, y, colorval);
@@ -1302,10 +1302,10 @@ auto video_apparently_dirty() noexcept -> bool {
     return true;
   }
   uint32_t address = (sw_hires() && !sw_text())
-                         ? (0x20u << (displaypage2 ? 1 : 0))
-                         : (0x4u << (displaypage2 ? 1 : 0));
+                         ? (0x20U << (displaypage2 ? 1 : 0))
+                         : (0x4U << (displaypage2 ? 1 : 0));
   uint32_t length = (sw_hires() && !sw_text()) ? 0x20 : 0x4;
-  while ((length--) != 0u) {
+  while ((length--) != 0U) {
     if ((*(memdirty + (address++)) & 2) != 0) {
       return true;
     }

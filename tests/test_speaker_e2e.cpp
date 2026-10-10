@@ -264,13 +264,13 @@ TEST_CASE("Speaker End To End: A 1 kHz Tone Through The Whole Chain") {
   // above full scale and which only the mixer brings down.
   REQUIRE(g_tap_calls > 0);
   const auto onset = std::find_if(g_tapped.begin(), g_tapped.end(),
-                                  [](float v) -> bool { return v != 0.0f; });
+                                  [](float v) -> bool { return v != 0.0F; });
   REQUIRE(onset != g_tapped.end());
-  CHECK(*onset == doctest::Approx(2.0f));
+  CHECK(*onset == doctest::Approx(2.0F));
 
-  float loudest = 0.0f;
+  float loudest = 0.0F;
   for (float sample : g_tapped) {
     loudest = std::max(loudest, std::fabs(sample));
   }
-  CHECK(loudest == doctest::Approx(2.0f));
+  CHECK(loudest == doctest::Approx(2.0F));
 }

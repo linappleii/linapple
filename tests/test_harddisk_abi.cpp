@@ -226,17 +226,17 @@ TEST_CASE("Harddisk ABI: the C99 view of the headers agrees with the C++ one") {
   CHECK(harddisk_abi_c_status_size() == 1104);
 
   // High 16 bits the subsystem, low 16 the index.
-  CHECK(harddisk_abi_c_insert_id() == 0x00050001u);
-  CHECK(harddisk_abi_c_eject_id() == 0x00050002u);
-  CHECK(harddisk_abi_c_set_protect_id() == 0x00050004u);
-  CHECK(harddisk_abi_c_status_query_id() == 0x00050001u);
-  CHECK(harddisk_abi_c_extensions_query_id() == 0x00050002u);
+  CHECK(harddisk_abi_c_insert_id() == 0x00050001U);
+  CHECK(harddisk_abi_c_eject_id() == 0x00050002U);
+  CHECK(harddisk_abi_c_set_protect_id() == 0x00050004U);
+  CHECK(harddisk_abi_c_status_query_id() == 0x00050001U);
+  CHECK(harddisk_abi_c_extensions_query_id() == 0x00050002U);
   CHECK(harddisk_abi_c_error_none() == 0);
   CHECK(harddisk_abi_c_error_not_block_image() == harddisk_err_not_block_image);
   CHECK(harddisk_abi_c_error_not_block_image() == 5);
   // $27, $28 and $2B packed high to low (ProDOS 8 Technical Reference Manual,
   // 6.3.2).
-  CHECK(harddisk_abi_c_prodos_codes() == 0x27282Bu);
+  CHECK(harddisk_abi_c_prodos_codes() == 0x27282BU);
 }
 
 TEST_CASE(
@@ -305,9 +305,9 @@ TEST_CASE(
 
   // The ids retired from this subsystem are never reused, so a sender built
   // against them hears incompatible, never a silent success.
-  for (const uint32_t retired : {PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0005u,
-                                 PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0006u,
-                                 PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0007u}) {
+  for (const uint32_t retired : {PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0005U,
+                                 PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0006U,
+                                 PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0007U}) {
     CAPTURE(retired);
     CHECK(descriptor->command(instance, retired, nullptr, 0) ==
           peripheral_incompatible);

@@ -35,7 +35,7 @@ constexpr uint32_t NTSC_FRAME_CYCLES = 17030;
 constexpr double EDGE = 2.0;
 constexpr double TAU_CYCLES = 23000.0;
 constexpr double FILTER_A = 1.0 - (1.0 / TAU_CYCLES);
-constexpr float SILENCE_EPSILON = 0.001f;
+constexpr float SILENCE_EPSILON = 0.001F;
 
 // ln(EDGE / epsilon) / -ln(a) is 174,817 cycles from an edge down to the
 // silence epsilon: ten NTSC frames and part of an eleventh, so eleven frames
@@ -48,8 +48,8 @@ constexpr size_t SPEAKER_MAX_EVENTS_PER_UPDATE = 8192;
 
 // Every edge is a step of exactly 2.0 through the DC blocker, emitted as
 // normalized float with nothing in the peripheral limiting it.
-constexpr float EDGE_POSITIVE = 2.0f;
-constexpr float EDGE_NEGATIVE = -2.0f;
+constexpr float EDGE_POSITIVE = 2.0F;
+constexpr float EDGE_NEGATIVE = -2.0F;
 
 struct MockDirectIOHandler_t {
   void* instance = nullptr;
@@ -534,7 +534,7 @@ TEST_CASE(
   }
 
   CHECK(samples[0] == EDGE_POSITIVE);
-  CHECK(samples[0] > 1.0f);
+  CHECK(samples[0] > 1.0F);
 
   CHECK(samples[500] ==
         doctest::Approx(EDGE * std::pow(FILTER_A, 500)).epsilon(1e-4));
@@ -609,7 +609,7 @@ TEST_CASE("Speaker Peripheral: Cone Decay Reaches Silence And Stops") {
   CHECK(tail[0] == EDGE_POSITIVE);
 
   const size_t first_silent = static_cast<size_t>(
-      std::find(tail.begin(), tail.end(), 0.0f) - tail.begin());
+      std::find(tail.begin(), tail.end(), 0.0F) - tail.begin());
   REQUIRE(first_silent < tail.size());
 
   // The DC blocker is the whole decay: with nothing driving the cone the
@@ -636,7 +636,7 @@ TEST_CASE("Speaker Peripheral: Cone Decay Reaches Silence And Stops") {
 
   // Everything after the snap is true zero, and nothing follows the push.
   for (size_t k = first_silent; k < tail.size(); ++k) {
-    CHECK(tail[k] == 0.0f);
+    CHECK(tail[k] == 0.0F);
   }
 
   harness.advance_cycles(NTSC_FRAME_CYCLES);
@@ -800,7 +800,7 @@ TEST_CASE("Speaker Peripheral: Anti-DC Pop Observable Output Verification") {
   SsIoSpeaker_t pop_state{};
   pop_state.state = 1;
   pop_state.last_sample_state = 1;
-  pop_state.filter_state = 0.0f;
+  pop_state.filter_state = 0.0F;
   const PeripheralStatus_t status =
       speaker_descriptor()->load_state(instance, &pop_state, sizeof(pop_state));
   CHECK(status == peripheral_ok);
@@ -867,7 +867,7 @@ TEST_CASE("Speaker Peripheral: Queue Overflow Keeps The Final Polarity") {
   REQUIRE(harness.audio_push_count() == 1);
   CHECK(harness.captured_samples().size() == 1000);
   for (float s : harness.captured_samples()) {
-    CHECK(s == 0.0f);
+    CHECK(s == 0.0F);
   }
 }
 
@@ -959,7 +959,7 @@ TEST_CASE("Speaker Peripheral: A Refused Load Leaves The Instance Untouched") {
   SsIoSpeaker_t driven{};
   driven.state = 1;
   driven.last_sample_state = 1;
-  driven.filter_state = 1.5f;
+  driven.filter_state = 1.5F;
   driven.next_sample_cycle = 1000.0;
 
   CHECK(descriptor->load_state(refused, &driven, sizeof(SsIoSpeaker_t) - 1) ==
@@ -1006,7 +1006,7 @@ TEST_CASE("Speaker Peripheral: Save-State Byte Format Pin") {
   restored.state = 1;
   restored.next_sample_cycle = 4660.0;
   restored.last_sample_state = 1;
-  restored.filter_state = 0.5f;
+  restored.filter_state = 0.5F;
   REQUIRE(descriptor->load_state(instance, &restored, sizeof(restored)) ==
           peripheral_ok);
 
@@ -1108,7 +1108,7 @@ TEST_CASE("Speaker Peripheral: Multiple Strobes in Identical Cycle") {
   // Output still flows: the slice carried events.
   REQUIRE(harness.audio_push_count() == 1);
   CHECK(harness.captured_samples().size() == 50);
-  CHECK(harness.captured_samples()[0] == 0.0f);
+  CHECK(harness.captured_samples()[0] == 0.0F);
 }
 
 TEST_CASE("Speaker Peripheral: Immediate Silence on Active Reset") {
@@ -1167,11 +1167,11 @@ TEST_CASE("Speaker Peripheral: Audio Information Query ABI Contract") {
   // The speaker is CPU-clocked at one sample per cycle and knows no rate in Hz
   CHECK(info.time_base == peripheral_audio_cpu_clocked);
   CHECK(info.cycle_divisor == 1);
-  CHECK(info.peak_magnitude == doctest::Approx(2.0f));
+  CHECK(info.peak_magnitude == doctest::Approx(2.0F));
   CHECK(info.num_channels == 1);
   CHECK(std::strcmp(info.channels[0].name, "Speaker") == 0);
-  CHECK(info.channels[0].default_pan_left == doctest::Approx(1.0f));
-  CHECK(info.channels[0].default_pan_right == doctest::Approx(1.0f));
+  CHECK(info.channels[0].default_pan_left == doctest::Approx(1.0F));
+  CHECK(info.channels[0].default_pan_right == doctest::Approx(1.0F));
 }
 
 // =============================================================================

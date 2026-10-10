@@ -52,8 +52,8 @@ TEST_CASE("DiskABI: [DISK-03] Enum values match ABI specification") {
   CHECK(disk_drive_0 == 0);
   CHECK(disk_drive_1 == 1);
   // Command ID format: high 16 bits = subsystem, low 16 bits = index.
-  CHECK(disk_cmd_insert == 0x00040001u);
-  CHECK(disk_cmd_eject == 0x00040002u);
+  CHECK(disk_cmd_insert == 0x00040001U);
+  CHECK(disk_cmd_eject == 0x00040002U);
   CHECK(disk_state_version == 1);
 }
 

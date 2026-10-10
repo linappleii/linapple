@@ -532,7 +532,7 @@ auto ArgsCook(const int nArgs) -> int {
           if (!ArgsGetImmediateValue(pNext, &nAddressRHS)) {
             ArgsGetRegisterValue(pNext, &nAddressRHS);
           }
-          if (nAddressRHS == 0u) {
+          if (nAddressRHS == 0U) {
             nAddressRHS = 1;  // divide by zero bug
           }
           pPrev->nValue /= nAddressRHS;

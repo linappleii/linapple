@@ -46,8 +46,8 @@ auto absolute_info(uint32_t rate_hz, uint32_t num_channels, float peak)
   info.num_channels = num_channels;
   info.peak_magnitude = peak;
   for (uint32_t c = 0; c < num_channels; ++c) {
-    info.channels[c].default_pan_left = 1.0f;
-    info.channels[c].default_pan_right = 1.0f;
+    info.channels[c].default_pan_left = 1.0F;
+    info.channels[c].default_pan_right = 1.0F;
   }
   return info;
 }
@@ -60,8 +60,8 @@ auto cpu_clocked_info(uint32_t divisor, uint32_t num_channels, float peak)
   info.num_channels = num_channels;
   info.peak_magnitude = peak;
   for (uint32_t c = 0; c < num_channels; ++c) {
-    info.channels[c].default_pan_left = 1.0f;
-    info.channels[c].default_pan_right = 1.0f;
+    info.channels[c].default_pan_left = 1.0F;
+    info.channels[c].default_pan_right = 1.0F;
   }
   return info;
 }
@@ -73,14 +73,14 @@ auto split_pan_info(uint32_t rate_hz, uint32_t num_channels, float peak)
   PeripheralAudioInfo_t info = absolute_info(rate_hz, num_channels, peak);
   for (uint32_t c = 0; c < num_channels; ++c) {
     const bool on_the_left = c < (num_channels / 2);
-    info.channels[c].default_pan_left = on_the_left ? 1.0f : 0.0f;
-    info.channels[c].default_pan_right = on_the_left ? 0.0f : 1.0f;
+    info.channels[c].default_pan_left = on_the_left ? 1.0F : 0.0F;
+    info.channels[c].default_pan_right = on_the_left ? 0.0F : 1.0F;
   }
   return info;
 }
 
 auto square_wave(double rate_hz, double tone_hz, size_t count,
-                 float amplitude = 1.0f) -> std::vector<float> {
+                 float amplitude = 1.0F) -> std::vector<float> {
   const double half_period = rate_hz / (2.0 * tone_hz);
   std::vector<float> wave(count);
   for (size_t i = 0; i < count; ++i) {
@@ -167,7 +167,7 @@ class MixerFixture_t {
                        size_t num_channels = 1) -> size_t {
     const size_t chunk_in = chunk_for(source_rate_hz);
     const std::vector<std::vector<float>> planes(
-        num_channels, std::vector<float>(chunk_in, 1.0f));
+        num_channels, std::vector<float>(chunk_in, 1.0F));
 
     size_t produced = 0;
     size_t uploaded = 0;
@@ -292,9 +292,9 @@ TEST_CASE("Audio Mixer: Both Time Bases Resolve To The Same Second") {
   constexpr double clock_hz = 1000000.0;
   MixerFixture_t mixer(output_rate, clock_hz);
 
-  const PeripheralAudioInfo_t cpu_one = cpu_clocked_info(1, 1, 1.0f);
-  const PeripheralAudioInfo_t cpu_sixteen = cpu_clocked_info(16, 1, 1.0f);
-  const PeripheralAudioInfo_t absolute = absolute_info(44100, 1, 1.0f);
+  const PeripheralAudioInfo_t cpu_one = cpu_clocked_info(1, 1, 1.0F);
+  const PeripheralAudioInfo_t cpu_sixteen = cpu_clocked_info(16, 1, 1.0F);
+  const PeripheralAudioInfo_t absolute = absolute_info(44100, 1, 1.0F);
   PeripheralAudioInfo_t zeroed{};
   std::memset(&zeroed, 0, sizeof(zeroed));
 
@@ -315,7 +315,7 @@ TEST_CASE("Audio Mixer: Both Time Bases Resolve To The Same Second") {
   // A source that cannot say what its samples mean in time was never
   // registered, so its upload has nowhere to go.
   mixer.settle();
-  const std::vector<float> ones(4096, 1.0f);
+  const std::vector<float> ones(4096, 1.0F);
   mixer.upload_mono(3, ones.data(), ones.size());
   const std::vector<int16_t> silence = mixer.drain(2048);
   for (int16_t sample : silence) {
@@ -330,10 +330,10 @@ TEST_CASE("Audio Mixer: A CPU-Clocked Source Follows The Video Standard") {
   constexpr uint32_t output_rate = 48000;
   MixerFixture_t mixer(output_rate, clock_6502_ntsc);
 
-  const PeripheralAudioInfo_t info = cpu_clocked_info(1, 1, 1.0f);
+  const PeripheralAudioInfo_t info = cpu_clocked_info(1, 1, 1.0F);
   audio_mixer_register_source(0, SOURCE_ID, &info);
 
-  const std::vector<float> frame(NTSC_FRAME_CYCLES, 1.0f);
+  const std::vector<float> frame(NTSC_FRAME_CYCLES, 1.0F);
   mixer.upload_mono(0, frame.data(), frame.size());
   std::vector<int16_t> out = mixer.drain(2048);
   size_t produced = 0;
@@ -376,7 +376,7 @@ TEST_CASE("Audio Mixer: A Divisor Of Eight At The NTSC Clock") {
   const double source_rate = clock_6502_ntsc / divisor;
 
   MixerFixture_t mixer(output_rate, clock_6502_ntsc);
-  const PeripheralAudioInfo_t info = cpu_clocked_info(divisor, voices, 1.0f);
+  const PeripheralAudioInfo_t info = cpu_clocked_info(divisor, voices, 1.0F);
 
   // One slot per measurement, because a resampler carries its fractional
   // phase across calls and each count has to start where the last one did.
@@ -409,8 +409,8 @@ TEST_CASE("Audio Mixer: A 1 kHz Tone Keeps Its Pitch At Every Device Rate") {
       const double source_rate =
           (source_is_cpu_clocked != 0) ? clock_6502_ntsc : 44100.0;
       const PeripheralAudioInfo_t info = (source_is_cpu_clocked != 0)
-                                             ? cpu_clocked_info(1, 1, 1.0f)
-                                             : absolute_info(44100, 1, 1.0f);
+                                             ? cpu_clocked_info(1, 1, 1.0F)
+                                             : absolute_info(44100, 1, 1.0F);
       audio_mixer_register_source(0, SOURCE_ID, &info);
 
       // A tenth over one second, so that the counted window of exactly
@@ -447,13 +447,13 @@ TEST_CASE("Audio Mixer: A Source At The Device Rate Passes Through Untouched") {
   constexpr uint32_t output_rate = 48000;
   MixerFixture_t mixer(output_rate, clock_6502_ntsc);
 
-  const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0f);
+  const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0F);
   audio_mixer_register_source(0, SOURCE_ID, &info);
 
   constexpr size_t count = 4096;
   std::vector<float> source(count);
   for (size_t i = 0; i < count; ++i) {
-    source[i] = (static_cast<float>(i % 2001) / 1000.0f) - 1.0f;
+    source[i] = (static_cast<float>(i % 2001) / 1000.0F) - 1.0F;
   }
 
   mixer.upload_mono(0, source.data(), count);
@@ -461,7 +461,7 @@ TEST_CASE("Audio Mixer: A Source At The Device Rate Passes Through Untouched") {
 
   for (size_t i = 0; i < count; ++i) {
     const auto expected =
-        static_cast<int16_t>(std::lroundf(source[i] * 32767.0f));
+        static_cast<int16_t>(std::lroundf(source[i] * 32767.0F));
     CHECK(out[i * 2] == expected);
     CHECK(out[(i * 2) + 1] == expected);
   }
@@ -476,8 +476,8 @@ TEST_CASE("Audio Mixer: Frame Counts Follow The Ratio In Both Directions") {
       const double source_rate =
           (source_is_cpu_clocked != 0) ? clock_6502_ntsc : 44100.0;
       const PeripheralAudioInfo_t info = (source_is_cpu_clocked != 0)
-                                             ? cpu_clocked_info(1, 1, 1.0f)
-                                             : absolute_info(44100, 1, 1.0f);
+                                             ? cpu_clocked_info(1, 1, 1.0F)
+                                             : absolute_info(44100, 1, 1.0F);
       audio_mixer_register_source(0, SOURCE_ID, &info);
 
       const auto source_samples = static_cast<size_t>(source_rate / 10.0);
@@ -504,21 +504,21 @@ TEST_CASE("Audio Mixer: Every Channel Of A Source Advances Together") {
   constexpr uint32_t output_rate = 48000;
   MixerFixture_t mixer(output_rate, clock_6502_ntsc);
 
-  const PeripheralAudioInfo_t six = absolute_info(44100, 6, 1.0f);
-  const PeripheralAudioInfo_t one = absolute_info(44100, 1, 1.0f);
+  const PeripheralAudioInfo_t six = absolute_info(44100, 6, 1.0F);
+  const PeripheralAudioInfo_t one = absolute_info(44100, 1, 1.0F);
   audio_mixer_register_source(1, SOURCE_ID, &six);
   audio_mixer_register_source(2, SOURCE_ID, &one);
 
   // Counting frames means recognizing full scale, so the six-channel source's
   // fan-in attenuation is overridden away: what is under measurement here is
   // which channels advance, not how loud they are.
-  audio_mixer_set_source_gain(1, 1.0f);
+  audio_mixer_set_source_gain(1, 1.0F);
 
   // Only channel 0 reaches an output, so the count is that channel's alone.
   for (size_t c = 0; c < 6; ++c) {
-    audio_mixer_set_channel_pan(1, c, (c == 0) ? 1.0f : 0.0f, 0.0f);
+    audio_mixer_set_channel_pan(1, c, (c == 0) ? 1.0F : 0.0F, 0.0F);
   }
-  audio_mixer_set_channel_pan(2, 0, 1.0f, 0.0f);
+  audio_mixer_set_channel_pan(2, 0, 1.0F, 0.0F);
 
   mixer.settle();
   const size_t six_channel = mixer.produced_frames(1, 44100.0, 4410, 6);
@@ -531,8 +531,8 @@ TEST_CASE("Audio Mixer: Every Channel Of A Source Advances Together") {
   audio_mixer_unregister_source(2);
   audio_mixer_register_source(1, SOURCE_ID, &six);
   for (size_t c = 0; c < 3; ++c) {
-    audio_mixer_set_channel_pan(1, c, 1.0f / 3.0f, 0.0f);
-    audio_mixer_set_channel_pan(1, c + 3, 0.0f, 1.0f / 3.0f);
+    audio_mixer_set_channel_pan(1, c, 1.0F / 3.0F, 0.0F);
+    audio_mixer_set_channel_pan(1, c + 3, 0.0F, 1.0F / 3.0F);
   }
   mixer.settle();
 
@@ -557,18 +557,18 @@ TEST_CASE("Audio Mixer: One Clip, At The Very End") {
   MixerFixture_t mixer(output_rate, clock_6502_ntsc);
   ScopedTap_t tap;
 
-  const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0f);
+  const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0F);
   audio_mixer_register_source(0, SOURCE_ID, &info);
   audio_mixer_register_source(1, SOURCE_ID, &info);
 
   // The tap sits ahead of gain, pan, resampling and the clip on purpose: it
   // reports what the peripheral emitted, not what came out.
-  audio_mixer_set_channel_pan(0, 0, 0.5f, 0.5f);
-  const std::vector<float> hot(64, 1.6f);
+  audio_mixer_set_channel_pan(0, 0, 0.5F, 0.5F);
+  const std::vector<float> hot(64, 1.6F);
   mixer.upload_mono(0, hot.data(), hot.size());
   REQUIRE(tap.calls() == 1);
   REQUIRE(tap.samples().size() == hot.size());
-  CHECK(tap.samples()[0] == 1.6f);
+  CHECK(tap.samples()[0] == 1.6F);
 
   std::vector<int16_t> out = mixer.drain(32);
   // lroundf(1.6 * 0.5 * 32767). A clip applied before the pan would have
@@ -588,17 +588,17 @@ TEST_CASE("Audio Mixer: One Clip, At The Very End") {
   audio_mixer_reset_channel_pan(0);
 
   // Two sources summing past full scale clip once, at the rails.
-  CHECK(drain_first(0.75f, 0.75f).first == 32767);
+  CHECK(drain_first(0.75F, 0.75F).first == 32767);
   mixer.settle();
-  CHECK(drain_first(-0.75f, -0.75f).first == -32767);
+  CHECK(drain_first(-0.75F, -0.75F).first == -32767);
 
   // And the pinned conversions, with the second source silent.
   mixer.settle();
-  CHECK(drain_first(0.5f, 0.0f).first == 16384);
+  CHECK(drain_first(0.5F, 0.0F).first == 16384);
   mixer.settle();
-  CHECK(drain_first(1.0f, 0.0f).first == 32767);
+  CHECK(drain_first(1.0F, 0.0F).first == 32767);
   mixer.settle();
-  CHECK(drain_first(-1.0f, 0.0f).first == -32767);
+  CHECK(drain_first(-1.0F, 0.0F).first == -32767);
 }
 
 TEST_CASE("Audio Mixer: A Source's Peak Sets Its Default Gain") {
@@ -609,16 +609,16 @@ TEST_CASE("Audio Mixer: A Source's Peak Sets Its Default Gain") {
   MixerFixture_t mixer(output_rate, clock_6502_ntsc);
   ScopedTap_t tap;
 
-  const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 2.0f);
+  const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 2.0F);
   audio_mixer_register_source(0, SOURCE_ID, &info);
 
-  const std::vector<float> edge(64, 2.0f);
+  const std::vector<float> edge(64, 2.0F);
   mixer.upload_mono(0, edge.data(), edge.size());
   CHECK(mixer.drain(32)[0] == 32767);
 
   // The steady plateau of a 1 kHz tone, 2 / (1 + a^510).
   mixer.settle();
-  const std::vector<float> plateau(64, 1.01109f);
+  const std::vector<float> plateau(64, 1.01109F);
   mixer.upload_mono(0, plateau.data(), plateau.size());
   const int16_t at_plateau = mixer.drain(32)[0];
   CHECK(at_plateau >= 16564);
@@ -627,10 +627,10 @@ TEST_CASE("Audio Mixer: A Source's Peak Sets Its Default Gain") {
   // Overriding the gain is what makes the clip engage, and the tap still
   // reports the unclipped 2.0 the peripheral emitted.
   mixer.settle();
-  audio_mixer_set_source_gain(0, 1.0f);
+  audio_mixer_set_source_gain(0, 1.0F);
   mixer.upload_mono(0, edge.data(), edge.size());
   CHECK(mixer.drain(32)[0] == 32767);
-  CHECK(tap.samples().back() == 2.0f);
+  CHECK(tap.samples().back() == 2.0F);
 }
 
 TEST_CASE("Audio Mixer: A Source's Fan-In Sets Its Default Gain Too") {
@@ -640,12 +640,12 @@ TEST_CASE("Audio Mixer: A Source's Fan-In Sets Its Default Gain Too") {
   constexpr uint32_t output_rate = 48000;
   MixerFixture_t mixer(output_rate, clock_6502_ntsc);
 
-  const PeripheralAudioInfo_t six = split_pan_info(output_rate, 6, 1.0f);
+  const PeripheralAudioInfo_t six = split_pan_info(output_rate, 6, 1.0F);
   audio_mixer_register_source(0, SOURCE_ID, &six);
 
   constexpr size_t samples = 64;
   const std::vector<std::vector<float>> planes(
-      6, std::vector<float>(samples, 0.5f));
+      6, std::vector<float>(samples, 0.5F));
   mixer.upload_planar(0, planes, 0, samples);
 
   const std::vector<int16_t> out = mixer.drain(32);
@@ -662,12 +662,12 @@ TEST_CASE("Audio Mixer: A Part-Panned Lone Channel Is Not Amplified") {
   constexpr uint32_t output_rate = 48000;
   MixerFixture_t mixer(output_rate, clock_6502_ntsc);
 
-  PeripheralAudioInfo_t one = absolute_info(output_rate, 1, 1.0f);
-  one.channels[0].default_pan_left = 0.5f;
-  one.channels[0].default_pan_right = 0.5f;
+  PeripheralAudioInfo_t one = absolute_info(output_rate, 1, 1.0F);
+  one.channels[0].default_pan_left = 0.5F;
+  one.channels[0].default_pan_right = 0.5F;
   audio_mixer_register_source(0, SOURCE_ID, &one);
 
-  const std::vector<float> half(64, 0.5f);
+  const std::vector<float> half(64, 0.5F);
   mixer.upload_mono(0, half.data(), half.size());
 
   const std::vector<int16_t> out = mixer.drain(32);
@@ -683,21 +683,21 @@ TEST_CASE("Audio Mixer: An Unchanged Re-Announcement Changes Nothing") {
   constexpr uint32_t output_rate = 48000;
   MixerFixture_t mixer(output_rate, clock_6502_ntsc);
 
-  const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0f);
+  const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0F);
   audio_mixer_register_source(1, SOURCE_ID, &info);
-  audio_mixer_set_channel_pan(1, 0, 0.3f, 0.7f);
+  audio_mixer_set_channel_pan(1, 0, 0.3F, 0.7F);
 
   constexpr size_t frames = 256;
-  const std::vector<float> payload(frames, 0.5f);
+  const std::vector<float> payload(frames, 0.5F);
   mixer.upload_mono(1, payload.data(), payload.size());
 
   audio_mixer_register_source(1, SOURCE_ID, &info);
 
-  float left = 0.0f;
-  float right = 0.0f;
+  float left = 0.0F;
+  float right = 0.0F;
   audio_mixer_get_channel_pan(1, 0, &left, &right);
-  CHECK(left == 0.3f);
-  CHECK(right == 0.7f);
+  CHECK(left == 0.3F);
+  CHECK(right == 0.7F);
 
   // The payload survived, so the ring was neither reinitialized nor flushed,
   // and the pan override survived, so the defaults were not re-applied.
@@ -712,12 +712,12 @@ TEST_CASE("Audio Mixer: An Unchanged Re-Announcement Changes Nothing") {
   // resampled for a layout that no longer exists.
   mixer.settle();
   mixer.upload_mono(1, payload.data(), payload.size());
-  const PeripheralAudioInfo_t wider = absolute_info(output_rate, 2, 1.0f);
+  const PeripheralAudioInfo_t wider = absolute_info(output_rate, 2, 1.0F);
   audio_mixer_register_source(1, SOURCE_ID, &wider);
 
   audio_mixer_get_channel_pan(1, 0, &left, &right);
-  CHECK(left == 1.0f);
-  CHECK(right == 1.0f);
+  CHECK(left == 1.0F);
+  CHECK(right == 1.0F);
 
   const std::vector<int16_t> after = mixer.drain(512);
   for (size_t i = 0; i < frames; ++i) {
@@ -738,7 +738,7 @@ TEST_CASE("Audio Mixer: The Backlog Skip Is Measured In Milliseconds") {
   constexpr size_t upload_ms = 150;
   for (uint32_t rate : {48000U, 96000U}) {
     MixerFixture_t mixer(rate, clock_6502_ntsc);
-    const PeripheralAudioInfo_t info = absolute_info(rate, 1, 1.0f);
+    const PeripheralAudioInfo_t info = absolute_info(rate, 1, 1.0F);
     audio_mixer_register_source(0, SOURCE_ID, &info);
 
     const size_t upload_frames = rate * upload_ms / 1000;
@@ -747,7 +747,7 @@ TEST_CASE("Audio Mixer: The Backlog Skip Is Measured In Milliseconds") {
 
     std::vector<float> ramp(upload_frames);
     for (size_t i = 0; i < upload_frames; ++i) {
-      ramp[i] = static_cast<float>(i) / 32767.0f;
+      ramp[i] = static_cast<float>(i) / 32767.0F;
     }
     mixer.upload_mono(0, ramp.data(), ramp.size());
 
@@ -776,12 +776,12 @@ TEST_CASE("Audio Mixer: The Ring's Capacity Is Measured In Milliseconds Too") {
   // low bit, so at 44100 it is 16316 samples and not 16317.
   for (uint32_t rate : {44100U, 48000U}) {
     MixerFixture_t mixer(rate, clock_6502_ntsc);
-    const PeripheralAudioInfo_t info = absolute_info(rate, 1, 1.0f);
+    const PeripheralAudioInfo_t info = absolute_info(rate, 1, 1.0F);
     audio_mixer_register_source(0, SOURCE_ID, &info);
 
     std::vector<float> ramp(rate);
     for (size_t i = 0; i < ramp.size(); ++i) {
-      ramp[i] = static_cast<float>(i) / 32767.0f;
+      ramp[i] = static_cast<float>(i) / 32767.0F;
     }
     mixer.upload_mono(0, ramp.data(), ramp.size());
 
@@ -809,10 +809,10 @@ TEST_CASE("Audio Mixer: An Underrun Fades Rather Than Repeating") {
   constexpr uint32_t output_rate = 48000;
   MixerFixture_t mixer(output_rate, clock_6502_ntsc);
 
-  const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0f);
+  const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0F);
   audio_mixer_register_source(0, SOURCE_ID, &info);
 
-  const std::vector<float> payload(10, 1.0f);
+  const std::vector<float> payload(10, 1.0F);
   mixer.upload_mono(0, payload.data(), payload.size());
 
   const std::vector<int16_t> out = mixer.drain(20);
@@ -839,7 +839,7 @@ TEST_CASE("Audio Mixer: More Than The Ring Holds Is Dropped At The Write End") {
   // something a single-producer single-consumer ring can do safely.
   constexpr uint32_t output_rate = 48000;
   MixerFixture_t mixer(output_rate, clock_6502_ntsc);
-  const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0f);
+  const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0F);
   audio_mixer_register_source(0, SOURCE_ID, &info);
 
   const size_t capacity_samples = capacity_samples_for(output_rate);
@@ -847,7 +847,7 @@ TEST_CASE("Audio Mixer: More Than The Ring Holds Is Dropped At The Write End") {
 
   std::vector<float> ramp(overflowing_frames);
   for (size_t i = 0; i < overflowing_frames; ++i) {
-    ramp[i] = static_cast<float>(i % 1000) / 1000.0f;
+    ramp[i] = static_cast<float>(i % 1000) / 1000.0F;
   }
   mixer.upload_mono(0, ramp.data(), ramp.size());
 
@@ -858,14 +858,14 @@ TEST_CASE("Audio Mixer: More Than The Ring Holds Is Dropped At The Write End") {
 
   for (size_t i = 0; i < retained; ++i) {
     const auto expected =
-        static_cast<int16_t>(std::lroundf(ramp[i] * 32767.0f));
+        static_cast<int16_t>(std::lroundf(ramp[i] * 32767.0F));
     CHECK(out[i * 2] == expected);
   }
 
   // The frame after the retained prefix is the underrun fade, not the next
   // ramp value: the newest frames were dropped, not the oldest.
   const auto dropped =
-      static_cast<int16_t>(std::lroundf(ramp[retained] * 32767.0f));
+      static_cast<int16_t>(std::lroundf(ramp[retained] * 32767.0F));
   CHECK(out[retained * 2] != dropped);
 
   for (int16_t sample : out) {
@@ -877,10 +877,10 @@ TEST_CASE("Audio Mixer: More Than The Ring Holds Is Dropped At The Write End") {
 TEST_CASE("Audio Mixer: Malformed Uploads Are Refused") {
   constexpr uint32_t output_rate = 48000;
   MixerFixture_t mixer(output_rate, clock_6502_ntsc);
-  const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0f);
+  const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0F);
   audio_mixer_register_source(0, SOURCE_ID, &info);
 
-  const std::vector<float> payload(64, 1.0f);
+  const std::vector<float> payload(64, 1.0F);
   const float* one[1] = {payload.data()};
   const float* null_inside[2] = {payload.data(), nullptr};
 
@@ -906,7 +906,7 @@ TEST_CASE("Audio Mixer: Malformed Uploads Are Refused") {
 TEST_CASE("Audio Mixer: Slots Outside The Range Are Refused") {
   constexpr uint32_t output_rate = 48000;
   MixerFixture_t mixer(output_rate, clock_6502_ntsc);
-  const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0f);
+  const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0F);
 
   audio_mixer_register_source(-1, SOURCE_ID, &info);
   audio_mixer_register_source(8, SOURCE_ID, &info);
@@ -914,23 +914,23 @@ TEST_CASE("Audio Mixer: Slots Outside The Range Are Refused") {
   audio_mixer_unregister_source(-1);
   audio_mixer_unregister_source(8);
 
-  const std::vector<float> payload(64, 1.0f);
+  const std::vector<float> payload(64, 1.0F);
   mixer.upload_mono(-1, payload.data(), payload.size());
   mixer.upload_mono(8, payload.data(), payload.size());
 
-  audio_mixer_set_channel_pan(-1, 0, 1.0f, 1.0f);
-  audio_mixer_set_channel_pan(8, 0, 1.0f, 1.0f);
-  audio_mixer_set_channel_pan(0, 16, 1.0f, 1.0f);
-  audio_mixer_set_source_gain(-1, 1.0f);
-  audio_mixer_set_source_gain(8, 1.0f);
+  audio_mixer_set_channel_pan(-1, 0, 1.0F, 1.0F);
+  audio_mixer_set_channel_pan(8, 0, 1.0F, 1.0F);
+  audio_mixer_set_channel_pan(0, 16, 1.0F, 1.0F);
+  audio_mixer_set_source_gain(-1, 1.0F);
+  audio_mixer_set_source_gain(8, 1.0F);
   audio_mixer_reset_channel_pan(-1);
   audio_mixer_reset_channel_pan(8);
 
-  float left = -1.0f;
-  float right = -1.0f;
+  float left = -1.0F;
+  float right = -1.0F;
   audio_mixer_get_channel_pan(-1, 0, &left, &right);
-  CHECK(left == -1.0f);
-  CHECK(right == -1.0f);
+  CHECK(left == -1.0F);
+  CHECK(right == -1.0F);
   audio_mixer_get_channel_pan(0, 0, nullptr, nullptr);
 
   const std::vector<int16_t> out = mixer.drain(64);
@@ -945,17 +945,17 @@ TEST_CASE("Audio Mixer: An Out-Of-Range Pan Is Stored, Not Clamped") {
   // wants a bounded control has to bound it itself.
   constexpr uint32_t output_rate = 48000;
   MixerFixture_t mixer(output_rate, clock_6502_ntsc);
-  const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0f);
+  const PeripheralAudioInfo_t info = absolute_info(output_rate, 1, 1.0F);
   audio_mixer_register_source(0, SOURCE_ID, &info);
 
-  audio_mixer_set_channel_pan(0, 0, -1.0f, 2.0f);
-  float left = 0.0f;
-  float right = 0.0f;
+  audio_mixer_set_channel_pan(0, 0, -1.0F, 2.0F);
+  float left = 0.0F;
+  float right = 0.0F;
   audio_mixer_get_channel_pan(0, 0, &left, &right);
-  CHECK(left == -1.0f);
-  CHECK(right == 2.0f);
+  CHECK(left == -1.0F);
+  CHECK(right == 2.0F);
 
-  const std::vector<float> payload(64, 0.5f);
+  const std::vector<float> payload(64, 0.5F);
   mixer.upload_mono(0, payload.data(), payload.size());
   const std::vector<int16_t> out = mixer.drain(32);
   CHECK(out[0] == -16384);
@@ -985,10 +985,10 @@ TEST_CASE("Audio Mixer: A Zero Output Rate Produces No Output") {
   // A device that reports no rate at all cannot be resampled to, so the
   // mixer keeps nothing and plays nothing rather than dividing by it.
   MixerFixture_t mixer(0, clock_6502_ntsc);
-  const PeripheralAudioInfo_t info = absolute_info(48000, 1, 1.0f);
+  const PeripheralAudioInfo_t info = absolute_info(48000, 1, 1.0F);
   audio_mixer_register_source(0, SOURCE_ID, &info);
 
-  const std::vector<float> payload(64, 1.0f);
+  const std::vector<float> payload(64, 1.0F);
   mixer.upload_mono(0, payload.data(), payload.size());
 
   std::vector<int16_t> out(128, 0x5A5A);
@@ -1018,7 +1018,7 @@ constexpr int64_t NTSC_FRAME_PERIOD_NS = 16688152;
 // serves in full is exactly one value: a box average of a constant is that
 // constant, whatever the resample ratio. Anything else in the output is a gap
 // or the underrun fade.
-constexpr float DRIVE_LEVEL = 0.5f;
+constexpr float DRIVE_LEVEL = 0.5F;
 constexpr int16_t SERVED_PCM = 16384;
 
 /**
@@ -1125,7 +1125,7 @@ class TwoClockRun_t {
 };
 
 auto register_cpu_clocked_source(int slot) -> void {
-  const PeripheralAudioInfo_t info = cpu_clocked_info(1, 1, 1.0f);
+  const PeripheralAudioInfo_t info = cpu_clocked_info(1, 1, 1.0F);
   audio_mixer_register_source(slot, SOURCE_ID, &info);
 }
 

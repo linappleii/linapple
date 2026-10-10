@@ -24,7 +24,7 @@ using TestConfig_t = TestFixtures::ScopedTestConfig_t;
 constexpr uint16_t ADDR_SPEAKER = 0xC030;
 constexpr uint32_t NTSC_FRAME_CYCLES = 17030;
 constexpr uint32_t DEVICE_RATE_HZ = 48000;
-constexpr float EDGE_POSITIVE = 2.0f;
+constexpr float EDGE_POSITIVE = 2.0F;
 
 // One emulated frame is 17030 / (1020484 / 48000) = 801.03 output frames, so
 // 800 is what a drain can take without outrunning production.
@@ -142,7 +142,7 @@ TEST_CASE("Frontend Init Order: A Late Subscriber Hears The Speaker") {
   CHECK(g_announcements[0].info.time_base == peripheral_audio_cpu_clocked);
   CHECK(g_announcements[0].info.cycle_divisor == 1);
   CHECK(g_announcements[0].info.num_channels == 1);
-  CHECK(g_announcements[0].info.peak_magnitude == doctest::Approx(2.0f));
+  CHECK(g_announcements[0].info.peak_magnitude == doctest::Approx(2.0F));
 }
 
 TEST_CASE("Frontend Init Order: A Strobe And A Frame Reach The Device") {

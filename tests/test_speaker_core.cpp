@@ -23,7 +23,7 @@ constexpr uint16_t ADDR_SPEAKER = 0xC030;
 // only be the mock's.
 constexpr uint16_t ADDR_MOCK_STROBE = 0xC0F0;
 constexpr uint32_t NTSC_FRAME_CYCLES = 17030;
-constexpr float EDGE_POSITIVE = 2.0f;
+constexpr float EDGE_POSITIVE = 2.0F;
 
 struct MockState_t {
   HostInterface_t* host = nullptr;
@@ -123,10 +123,10 @@ class ScopedMock_t {
     g_mock.info.time_base = peripheral_audio_absolute;
     g_mock.info.sample_rate = rate_hz;
     g_mock.info.num_channels = num_channels;
-    g_mock.info.peak_magnitude = 1.0f;
+    g_mock.info.peak_magnitude = 1.0F;
     for (uint32_t c = 0; c < num_channels; ++c) {
-      g_mock.info.channels[c].default_pan_left = 1.0f;
-      g_mock.info.channels[c].default_pan_right = 1.0f;
+      g_mock.info.channels[c].default_pan_left = 1.0F;
+      g_mock.info.channels[c].default_pan_right = 1.0F;
     }
   }
 };
@@ -388,7 +388,7 @@ TEST_CASE("Speaker Core Seam: Registering The Speaker Announces It Once") {
   CHECK(recorder.at(0).info.time_base == peripheral_audio_cpu_clocked);
   CHECK(recorder.at(0).info.cycle_divisor == 1);
   CHECK(recorder.at(0).info.num_channels == 1);
-  CHECK(recorder.at(0).info.peak_magnitude == doctest::Approx(2.0f));
+  CHECK(recorder.at(0).info.peak_magnitude == doctest::Approx(2.0F));
 }
 
 // =============================================================================
@@ -457,7 +457,7 @@ TEST_CASE(
 
   // Nothing drives the cone before the first strobe at cycle 1000, and
   // previous_input equals the drive level, so those samples are true silence.
-  CHECK(mono[999] == 0.0f);
+  CHECK(mono[999] == 0.0F);
 
   // The first edge is a step of exactly 2.0, emitted unclipped: the only
   // conversion to an integer format happens in the mixer.
@@ -469,8 +469,8 @@ TEST_CASE(
   // frame's count. A frame that collapsed into sample zero would give none.
   size_t zero_crossings = 0;
   for (size_t i = 0; i + 1 < mono.size(); ++i) {
-    const bool was_negative = mono[i] < 0.0f;
-    const bool is_negative = mono[i + 1] < 0.0f;
+    const bool was_negative = mono[i] < 0.0F;
+    const bool is_negative = mono[i + 1] < 0.0F;
     zero_crossings += static_cast<size_t>(was_negative != is_negative);
   }
   CHECK(zero_crossings == 15);
@@ -558,7 +558,7 @@ TEST_CASE("Speaker Core Seam: A Late Subscriber Learns What Is Already There") {
   CHECK(recorder.at(0).info.time_base == peripheral_audio_cpu_clocked);
   CHECK(recorder.at(0).info.cycle_divisor == 1);
   CHECK(recorder.at(0).info.num_channels == 1);
-  CHECK(recorder.at(0).info.peak_magnitude == doctest::Approx(2.0f));
+  CHECK(recorder.at(0).info.peak_magnitude == doctest::Approx(2.0F));
 }
 
 TEST_CASE("Speaker Core Seam: Subscribing Late Sounds The Same As Early") {

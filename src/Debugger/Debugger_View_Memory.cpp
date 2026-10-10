@@ -270,7 +270,7 @@ static auto DrawTriStateSoftSwitch(Rect_t& rect, int address,
     DrawSoftSwitch(rect, address, bSet, nullptr, sOn, sOff, " ", bg_default);
   } else {
     Rect_t temp = rect;
-    int iBank = ((get_mem_mode() & MF_HRAM_BANK2) != 0u) ? 2 : 1;
+    int iBank = ((get_mem_mode() & MF_HRAM_BANK2) != 0U) ? 2 : 1;
     bool bDisabled = ((iActive == 0) && (iBank == iBankDisplay));
 
     DrawSoftSwitchAddress(temp, address, bg_default);
@@ -308,7 +308,7 @@ static auto DrawSoftSwitchLanguageCardBank(Rect_t& rect, const int iBankDisplay,
   bool bBankWritable = (get_mem_mode() & MF_HRAM_WRITE) != 0;
   int iBankActive = 0;
   if ((get_mem_mode() & MF_HIGHRAM) != 0) {
-    iBankActive = ((get_mem_mode() & MF_HRAM_BANK2) != 0u) ? 2 : 1;
+    iBankActive = ((get_mem_mode() & MF_HRAM_BANK2) != 0U) ? 2 : 1;
   }
 
   char sOn[4] = "B#";
@@ -328,7 +328,7 @@ static auto DrawSoftSwitchLanguageCardBank(Rect_t& rect, const int iBankDisplay,
 
     DebuggerSetColorFG(DebuggerGetColor(FG_DISASM_BP_S_X));
     DebuggerSetColorBG(DebuggerGetColor(bg_default));
-    PrintTextCursorX(((get_mem_mode() & MF_ALTZP) != 0u) ? "x" : " ", rect);
+    PrintTextCursorX(((get_mem_mode() & MF_ALTZP) != 0U) ? "x" : " ", rect);
 
     const char* pOn = "R";
     const char* pOff = "W";

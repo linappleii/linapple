@@ -43,7 +43,7 @@ unsigned harddisk_abi_c_frame_offset(int field) {
     case 9:
       return (unsigned)offsetof(HarddiskSaveState_t, reserved);
     default:
-      return 0xFFFFu;
+      return 0xFFFFU;
   }
 }
 

@@ -267,11 +267,11 @@ TEST_CASE("Debugger Assembler: Mnemonic Hashing and Opcode Identification") {
     uint32_t hash_rts = AssemblerHashMnemonic("RTS");
     uint32_t hash_nop = AssemblerHashMnemonic("NOP");
 
-    CHECK(hash_lda == 113889u);
-    CHECK(hash_sta == 121569u);
-    CHECK(hash_jmp == 112144u);
-    CHECK(hash_rts == 120563u);
-    CHECK(hash_nop == 116304u);
+    CHECK(hash_lda == 113889U);
+    CHECK(hash_sta == 121569U);
+    CHECK(hash_jmp == 112144U);
+    CHECK(hash_rts == 120563U);
+    CHECK(hash_nop == 116304U);
     CHECK(AssemblerHashMnemonic("lda") == hash_lda);
     CHECK(AssemblerHashMnemonic("sta") == hash_sta);
     CHECK(hash_lda != hash_sta);

@@ -94,14 +94,14 @@ auto CmdMemoryCompare(int nArgs) -> Update_t {
   uint16_t nSrcSymAddr = 0;
   uint16_t nDstSymAddr = 0;
 
-  if (nSrcAddr == 0u) {
+  if (nSrcAddr == 0U) {
     nSrcSymAddr = GetAddressFromSymbol(g_args[1].sArg);
     if (nSrcAddr != nSrcSymAddr) {
       nSrcAddr = nSrcSymAddr;
     }
   }
 
-  if (nDstAddr == 0u) {
+  if (nDstAddr == 0U) {
     nDstSymAddr = GetAddressFromSymbol(g_args[3].sArg);
     if (nDstAddr != nDstSymAddr) {
       nDstAddr = nDstSymAddr;
@@ -213,7 +213,7 @@ auto CmdMemoryEdit(int nArgs) -> Update_t {
 auto CmdMemoryEnterByte(int nArgs) -> Update_t {
   if ((nArgs < 2) ||
       ((g_args[2].sArg[0] != '0') &&
-       (g_args[2].nValue == 0u)))  // arg2 not numeric or not specified
+       (g_args[2].nValue == 0U)))  // arg2 not numeric or not specified
   {
     Help_Arg_1(CMD_MEMORY_ENTER_WORD);
   }
@@ -239,7 +239,7 @@ auto CmdMemoryEnterByte(int nArgs) -> Update_t {
 auto CmdMemoryEnterWord(int nArgs) -> Update_t {
   if ((nArgs < 2) ||
       ((g_args[2].sArg[0] != '0') &&
-       (g_args[2].nValue == 0u)))  // arg2 not numeric or not specified
+       (g_args[2].nValue == 0U)))  // arg2 not numeric or not specified
   {
     Help_Arg_1(CMD_MEMORY_ENTER_WORD);
   }
