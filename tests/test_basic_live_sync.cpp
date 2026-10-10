@@ -34,7 +34,7 @@ constexpr uint8_t val_txttab_h = 0x08;
 constexpr uint8_t val_himem_l = 0x00;
 constexpr uint8_t val_himem_h = 0x96;
 
-static std::array<uint8_t, test_mem_size> mock_ram{};
+std::array<uint8_t, test_mem_size> mock_ram{};
 
 struct ScopedMemoryContext_t {
   uint8_t* original_mem{mem};
@@ -54,7 +54,7 @@ struct ScopedMemoryContext_t {
   auto operator=(ScopedMemoryContext_t&&) -> ScopedMemoryContext_t& = delete;
 };
 
-static auto setup_mock_memory() -> void {
+auto setup_mock_memory() -> void {
   mock_ram.fill(0);
   mem = mock_ram.data();
 

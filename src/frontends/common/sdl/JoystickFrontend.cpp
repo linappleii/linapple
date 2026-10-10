@@ -48,12 +48,12 @@ constexpr int pdl_central = 127;
 constexpr int pdl_min = 0;
 constexpr int pdl_max = 255;
 
-static std::array<bool, jk_max> key_down = {false};
+std::array<bool, jk_max> key_down = {false};
 constexpr int pdl_smax = 127;
 constexpr int pdl_scentral = 0;
 constexpr int pdl_smin = -127;
 
-static const std::array<JoyCoord, 9> key_value = {
+const std::array<JoyCoord, 9> key_value = {
     {
         {pdl_smin, pdl_smax},
         {pdl_scentral, pdl_smax},
@@ -67,14 +67,14 @@ static const std::array<JoyCoord, 9> key_value = {
     },
 };
 
-static std::array<int, 2> joy_shr_x = {8, 8};
-static std::array<int, 2> joy_shr_y = {8, 8};
-static std::array<int, 2> joy_sub_x = {0, 0};
-static std::array<int, 2> joy_sub_y = {0, 0};
+std::array<int, 2> joy_shr_x = {8, 8};
+std::array<int, 2> joy_shr_y = {8, 8};
+std::array<int, 2> joy_sub_x = {0, 0};
+std::array<int, 2> joy_sub_y = {0, 0};
 
 // NOLINTBEGIN(misc-include-cleaner): SdlJoystickPtr is provided across SDL1/2/3 backends via SdlBackend.h
-static SdlJoystickPtr joy1;
-static SdlJoystickPtr joy2;
+SdlJoystickPtr joy1;
+SdlJoystickPtr joy2;
 // NOLINTEND(misc-include-cleaner)
 
 // Trim is host calibration: one offset per axis, seeded from the two PDL
@@ -82,8 +82,8 @@ static SdlJoystickPtr joy2;
 // of every device before it reaches the port.
 constexpr int trim_min = -128;
 constexpr int trim_max = 127;
-static int trim_x = 0;
-static int trim_y = 0;
+int trim_x = 0;
+int trim_y = 0;
 
 // Which host device feeds each Apple joystick and which of its axes and
 // buttons. Host input mapping is the frontend's alone; the card only ever
@@ -96,7 +96,7 @@ struct JoystickHostConfig {
   std::array<std::array<uint32_t, 2>, 2> joy_axis{};
 };
 
-static JoystickHostConfig joy_config;
+JoystickHostConfig joy_config;
 
 constexpr uint8_t switch_line_count = 3;
 
@@ -117,22 +117,22 @@ struct SwitchQueue {
   bool sent_since_slice = false;
 };
 
-static std::array<SwitchQueue, switch_line_count> switch_queues;
+std::array<SwitchQueue, switch_line_count> switch_queues;
 
-static auto device_of(size_t joy_num) -> JoystickDevice {
+auto device_of(size_t joy_num) -> JoystickDevice {
   return joystick_config_device(joy_config.joy_type.at(joy_num));
 }
 
-static auto device_button_lines(size_t joy_num, int button) -> uint8_t {
+auto device_button_lines(size_t joy_num, int button) -> uint8_t {
   return joystick_config_button_lines(joy_num, button, joy_config.joy_type[0],
                                       joy_config.joy_type[1]);
 }
 
-static auto send_connector_switch(uint8_t line, bool down) -> void {
+auto send_connector_switch(uint8_t line, bool down) -> void {
   linapple_set_game_switch(line, down);
 }
 
-static auto send_connector_lines(uint8_t lines, bool down) -> void {
+auto send_connector_lines(uint8_t lines, bool down) -> void {
   for (uint8_t line = 0; line < switch_line_count; ++line) {
     if ((lines & (1U << line)) != 0) {
       send_connector_switch(line, down);
@@ -140,7 +140,7 @@ static auto send_connector_lines(uint8_t lines, bool down) -> void {
   }
 }
 
-static auto queue_push(SwitchQueue& queue, bool down) -> void {
+auto queue_push(SwitchQueue& queue, bool down) -> void {
   if (queue.count == switch_queue_capacity) {
     // Queued levels alternate, so dropping the two oldest keeps every later
     // edge in order and the final level intact.
@@ -151,14 +151,14 @@ static auto queue_push(SwitchQueue& queue, bool down) -> void {
   ++queue.count;
 }
 
-static auto queue_pop(SwitchQueue& queue) -> bool {
+auto queue_pop(SwitchQueue& queue) -> bool {
   const bool down = queue.levels.at(queue.head);
   queue.head = (queue.head + 1) % switch_queue_capacity;
   --queue.count;
   return down;
 }
 
-static auto queue_connector_switch(uint8_t line, bool down) -> void {
+auto queue_connector_switch(uint8_t line, bool down) -> void {
   SwitchQueue& queue = switch_queues.at(line);
   if (down == queue.tail_level) {
     return;
@@ -172,7 +172,7 @@ static auto queue_connector_switch(uint8_t line, bool down) -> void {
   queue_push(queue, down);
 }
 
-static auto queue_connector_lines(uint8_t lines, bool down) -> void {
+auto queue_connector_lines(uint8_t lines, bool down) -> void {
   for (uint8_t line = 0; line < switch_line_count; ++line) {
     if ((lines & (1U << line)) != 0) {
       queue_connector_switch(line, down);
@@ -181,7 +181,7 @@ static auto queue_connector_lines(uint8_t lines, bool down) -> void {
 }
 
 // One slice has run since the last call, so each line may send one edge.
-static auto drain_switch_queues() -> void {
+auto drain_switch_queues() -> void {
   for (uint8_t line = 0; line < switch_line_count; ++line) {
     SwitchQueue& queue = switch_queues.at(line);
     if (!queue.sent_since_slice && queue.count > 0) {
@@ -191,7 +191,7 @@ static auto drain_switch_queues() -> void {
   }
 }
 
-static auto flush_switch_queues() -> void {
+auto flush_switch_queues() -> void {
   for (uint8_t line = 0; line < switch_line_count; ++line) {
     SwitchQueue& queue = switch_queues.at(line);
     if (queue.count > 0) {
@@ -201,7 +201,7 @@ static auto flush_switch_queues() -> void {
   }
 }
 
-static auto send_axis(uint8_t joy_num, uint8_t axis, int position) -> void {
+auto send_axis(uint8_t joy_num, uint8_t axis, int position) -> void {
   const int trimmed =
       clamp_val(position + (axis == 0 ? trim_x : trim_y), pdl_min, pdl_max);
   const JoystickAxisPayload_t payload = {
@@ -213,7 +213,7 @@ static auto send_axis(uint8_t joy_num, uint8_t axis, int position) -> void {
   peripheral_command(0, JOYSTICK_CMD_SET_AXIS, &payload, sizeof(payload));
 }
 
-static auto keypad_joystick() -> int {
+auto keypad_joystick() -> int {
   if (device_of(0) == joystick_device_keyboard) {
     return 0;
   }
@@ -225,7 +225,7 @@ static auto keypad_joystick() -> int {
 
 // The keypad's position is the mean of the directions held, with a pair of
 // adjacent edges read as their corner, so that "up" plus "left" is "up-left".
-static auto send_keypad_axes(size_t joy_num) -> void {
+auto send_keypad_axes(size_t joy_num) -> void {
   int xsum = 0;
   int ysum = 0;
   int keydown_count = 0;
@@ -261,18 +261,16 @@ static auto send_keypad_axes(size_t joy_num) -> void {
   send_axis(static_cast<uint8_t>(joy_num), 1, y);
 }
 
-static auto refresh_keypad_axes() -> void {
+auto refresh_keypad_axes() -> void {
   const int joy_num = keypad_joystick();
   if (joy_num >= 0) {
     send_keypad_axes(static_cast<size_t>(joy_num));
   }
 }
 
-static auto clamp_trim(int trim) -> int {
-  return clamp_val(trim, trim_min, trim_max);
-}
+auto clamp_trim(int trim) -> int { return clamp_val(trim, trim_min, trim_max); }
 
-static auto load_trim(const char* key) -> int {
+auto load_trim(const char* key) -> int {
   uint32_t raw = 0;
   if (!load(key, &raw)) {
     return 0;

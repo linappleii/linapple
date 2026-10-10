@@ -23,7 +23,7 @@
 
 namespace {
 
-static HeadlessHarness_t* s_active_harness = nullptr;
+HeadlessHarness_t* s_active_harness = nullptr;
 
 auto on_audio(const char* peripheral_id, int slot, const float* const* channels,
               size_t num_channels, size_t num_samples) -> void {
@@ -88,8 +88,7 @@ HeadlessHarness_t::~HeadlessHarness_t() {
 
 auto HeadlessHarness_t::mount_disk(int slot, int drive, const std::string& path)
     -> void {
-  const char* reg_key =
-      (drive == 0) ? cfg_disk_image1 : cfg_disk_image2;
+  const char* reg_key = (drive == 0) ? cfg_disk_image1 : cfg_disk_image2;
   Configuration::instance().set_string("Slots", reg_key, path);
 
   DiskInsertCmd_t cmd{};

@@ -24,7 +24,7 @@ struct LogCapture_t {
   }
 };
 
-static LogCapture_t test_capture;
+LogCapture_t test_capture;
 
 auto global_test_callback(LogLevel level, const char* message) -> void {
   test_capture.levels.push_back(level);
