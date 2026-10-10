@@ -639,7 +639,7 @@ using HarddiskIoHandler_t = auto (*)(void* instance, uint16_t program_counter,
                                      uint8_t data_value,
                                      uint32_t executed_cycles) -> uint8_t;
 
-constexpr std::array<HarddiskIoHandler_t, regs::count> k_harddisk_io_handlers =
+constexpr std::array<HarddiskIoHandler_t, regs::count> harddisk_io_handlers =
     {
         harddisk_io_command,    harddisk_io_unit,     harddisk_io_block_low,
         harddisk_io_block_high, harddisk_io_data,     harddisk_io_count_low,
@@ -662,7 +662,7 @@ auto harddisk_io_read(void* instance, uint16_t program_counter,
                              executed_cycles);
   }
   const size_t handler_index = memory_address & regs::addr_mask;
-  return k_harddisk_io_handlers.at(handler_index)(
+  return harddisk_io_handlers.at(handler_index)(
       instance, program_counter, memory_address, 0, 0, executed_cycles);
 }
 
@@ -674,7 +674,7 @@ auto harddisk_io_write(void* instance, uint16_t program_counter,
     return 0;
   }
   const size_t handler_index = memory_address & regs::addr_mask;
-  return k_harddisk_io_handlers.at(handler_index)(instance, program_counter,
+  return harddisk_io_handlers.at(handler_index)(instance, program_counter,
                                                   memory_address, 1, data_value,
                                                   executed_cycles);
 }

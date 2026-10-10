@@ -966,7 +966,7 @@ using DiskIoHandler_t = auto (*)(void* instance, uint16_t program_counter,
                                  uint8_t data_value, uint32_t executed_cycles)
     -> uint8_t;
 
-constexpr std::array<DiskIoHandler_t, 16> k_disk_io_handlers = {
+constexpr std::array<DiskIoHandler_t, 16> disk_io_handlers = {
     disk_io_control_stepper,  // 0x0: Phase 0 Off
     disk_io_control_stepper,  // 0x1: Phase 0 On
     disk_io_control_stepper,  // 0x2: Phase 1 Off
@@ -999,7 +999,7 @@ auto disk_io_read(void* instance, uint16_t program_counter,
 
   const uint16_t addr = memory_address & regs::addr_hi_mask;
   const size_t handler_index = addr & regs::addr_mask;
-  k_disk_io_handlers[handler_index](instance, program_counter, addr, 0, 0,
+  disk_io_handlers[handler_index](instance, program_counter, addr, 0, 0,
                                     executed_cycles);
 
   if ((addr & 1) != 0) {
@@ -1018,7 +1018,7 @@ auto disk_io_write(void* instance, uint16_t program_counter,
                           executed_cycles);
   const uint16_t addr = memory_address & regs::addr_hi_mask;
   const size_t handler_index = addr & regs::addr_mask;
-  return k_disk_io_handlers[handler_index](instance, program_counter, addr, 1,
+  return disk_io_handlers[handler_index](instance, program_counter, addr, 1,
                                            data_value, executed_cycles);
 }
 

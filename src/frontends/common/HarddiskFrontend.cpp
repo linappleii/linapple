@@ -16,7 +16,7 @@
 
 namespace {
 
-constexpr const char* k_harddisk_id = "linapple.harddisk";
+constexpr const char* harddisk_id = "linapple.harddisk";
 
 int g_card_slot = harddisk_frontend_no_card;
 
@@ -95,7 +95,7 @@ auto insert(int drive, const char* path, bool write_protected, bool record)
 }  // namespace
 
 auto harddisk_frontend_initialize() -> void {
-  g_card_slot = peripheral_slot_of(k_harddisk_id);
+  g_card_slot = peripheral_slot_of(harddisk_id);
 }
 
 auto harddisk_frontend_slot() -> int { return g_card_slot; }

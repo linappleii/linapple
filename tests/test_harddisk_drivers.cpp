@@ -65,7 +65,7 @@ constexpr uint16_t reg_count_high = io_base + 6;
 
 // Block k of a track is the pair of DOS 3.3 sectors Fig. 3.14 of Beneath
 // Apple ProDOS gives, first-named first.
-constexpr std::array<std::array<uint8_t, 2>, 8> k_fig_3_14 = {
+constexpr std::array<std::array<uint8_t, 2>, 8> fig_3_14 = {
     {
         {{0x0, 0xE}},
         {{0xD, 0xC}},
@@ -785,10 +785,10 @@ TEST_CASE(
           opened.read((track * 8) + k);
       CAPTURE(track);
       CAPTURE(k);
-      CHECK(block.at(0) == k_fig_3_14.at(k).at(0));
-      CHECK(block.at(half_block - 1) == k_fig_3_14.at(k).at(0));
-      CHECK(block.at(half_block) == k_fig_3_14.at(k).at(1));
-      CHECK(block.at(block_size - 1) == k_fig_3_14.at(k).at(1));
+      CHECK(block.at(0) == fig_3_14.at(k).at(0));
+      CHECK(block.at(half_block - 1) == fig_3_14.at(k).at(0));
+      CHECK(block.at(half_block) == fig_3_14.at(k).at(1));
+      CHECK(block.at(block_size - 1) == fig_3_14.at(k).at(1));
     }
   }
 

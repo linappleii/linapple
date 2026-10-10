@@ -144,13 +144,13 @@ auto parse_mode_sequences(const std::string& text,
   return true;
 }
 
-constexpr const char* k_tracking_request =
+constexpr const char* tracking_request =
     "\x1b[?1003h\x1b[?1006h\x1b[?1016$p\x1b[16t";
-constexpr const char* k_tracking_release = "\x1b[?1016l\x1b[?1006l\x1b[?1003l";
-constexpr const char* k_pixel_mode_set = "\x1b[?1016h";
-constexpr const char* k_pixel_mode_reset_reply = "\x1b[?1016;2$y";
-constexpr const char* k_pixel_mode_set_reply = "\x1b[?1016;1$y";
-constexpr const char* k_cell_size_reply = "\x1b[6;16;8t";
+constexpr const char* tracking_release = "\x1b[?1016l\x1b[?1006l\x1b[?1003l";
+constexpr const char* pixel_mode_set = "\x1b[?1016h";
+constexpr const char* pixel_mode_reset_reply = "\x1b[?1016;2$y";
+constexpr const char* pixel_mode_set_reply = "\x1b[?1016;1$y";
+constexpr const char* cell_size_reply = "\x1b[6;16;8t";
 
 struct TuiMachine_t {
   TestFixtures::ScopedTestConfig_t config;
@@ -423,9 +423,9 @@ TEST_CASE(
   ScopedStdoutPipe_t out;
   ScopedTuiSession_t tui;
   tui_input_initialize();
-  CHECK(out.take() == k_tracking_request);
+  CHECK(out.take() == tracking_request);
   tui_input_shutdown();
-  CHECK(out.take() == k_tracking_release);
+  CHECK(out.take() == tracking_release);
 }
 
 TEST_CASE(
@@ -453,47 +453,47 @@ TEST_CASE(
   ScopedStdinPipe_t in;
   ScopedTuiSession_t tui;
   tui_input_initialize();
-  REQUIRE(out.take() == k_tracking_request);
+  REQUIRE(out.take() == tracking_request);
 
   SUBCASE("a reply of 2 with the cell size sets the mode") {
-    in.feed(k_pixel_mode_reset_reply);
+    in.feed(pixel_mode_reset_reply);
     CHECK(out.take().empty());
-    in.feed(k_cell_size_reply);
-    CHECK(out.take() == k_pixel_mode_set);
+    in.feed(cell_size_reply);
+    CHECK(out.take() == pixel_mode_set);
   }
 
   SUBCASE("the cell size first, then the reply of 2, sets the mode") {
-    in.feed(k_cell_size_reply);
+    in.feed(cell_size_reply);
     CHECK(out.take().empty());
-    in.feed(k_pixel_mode_reset_reply);
-    CHECK(out.take() == k_pixel_mode_set);
+    in.feed(pixel_mode_reset_reply);
+    CHECK(out.take() == pixel_mode_set);
   }
 
   SUBCASE("a reply of 0, an unknown mode, leaves cells") {
     in.feed("\x1b[?1016;0$y");
-    in.feed(k_cell_size_reply);
+    in.feed(cell_size_reply);
     CHECK(out.take().empty());
   }
 
   SUBCASE("a reply of 4, permanently reset, leaves cells") {
     in.feed("\x1b[?1016;4$y");
-    in.feed(k_cell_size_reply);
+    in.feed(cell_size_reply);
     CHECK(out.take().empty());
   }
 
   SUBCASE("no reply leaves cells") {
-    in.feed(k_cell_size_reply);
+    in.feed(cell_size_reply);
     CHECK(out.take().empty());
   }
 
   SUBCASE("a reply of 1 with no cell size turns the mode off") {
-    in.feed(k_pixel_mode_set_reply);
+    in.feed(pixel_mode_set_reply);
     CHECK(out.take() == "\x1b[?1016l");
   }
 
   SUBCASE("a reply of 1 with a cell size writes nothing and takes pixels") {
-    in.feed(k_cell_size_reply);
-    in.feed(k_pixel_mode_set_reply);
+    in.feed(cell_size_reply);
+    in.feed(pixel_mode_set_reply);
     CHECK(out.take().empty());
   }
 }
@@ -568,9 +568,9 @@ TEST_CASE(
   TuiMachine_t::show_text_80();
   require_text_box_fills_terminal();
 
-  in.feed(k_pixel_mode_reset_reply);
-  in.feed(k_cell_size_reply);
-  REQUIRE(out.take().find(k_pixel_mode_set) != std::string::npos);
+  in.feed(pixel_mode_reset_reply);
+  in.feed(cell_size_reply);
+  REQUIRE(out.take().find(pixel_mode_set) != std::string::npos);
 
   // In 8 by 16 pixel cells the box is 640 by 384. One cell is 3.5 counts;
   // pixel 3 is offset 2 of 639: 2 * 279 / 639 = 0.87, so 1; pixel 5 is 1.75,
@@ -664,7 +664,7 @@ TEST_CASE(
   tui_video_initialize();
   (void)out.take();
   tui_input_initialize();
-  REQUIRE(out.take() == k_tracking_request);
+  REQUIRE(out.take() == tracking_request);
   call_firmware(mouse_slot, entry_set_mouse, 0x01);
   TuiMachine_t::show_text_80();
   require_text_box_fills_terminal();

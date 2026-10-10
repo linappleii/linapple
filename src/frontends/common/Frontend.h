@@ -31,5 +31,5 @@ auto keyboard_press_caps_lock(uint32_t mod) -> void;
 // On focus loss the releases of whatever was held never arrive.
 auto keyboard_release_host_modifiers() -> void;
 
-constexpr int k_window_width = SCREEN_WIDTH;
-constexpr int k_window_height = SCREEN_HEIGHT;
+constexpr int window_width = SCREEN_WIDTH;
+constexpr int window_height = SCREEN_HEIGHT;

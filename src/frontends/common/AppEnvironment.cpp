@@ -10,7 +10,7 @@
 #include "core/Util_Path.h"
 #include "core/Util_Text.h"
 
-constexpr const char* k_config_file_name = "linapple.conf";
+constexpr const char* config_file_name = "linapple.conf";
 
 auto app_env_resolve_paths(AppConfig* config) -> void {
   if (config == nullptr) {
@@ -24,9 +24,9 @@ auto app_env_resolve_paths(AppConfig* config) -> void {
     search_paths.emplace_back(config->config_path.data());
   }
 
-  search_paths.emplace_back(Path::join(user_config_dir, k_config_file_name));
-  search_paths.emplace_back(k_config_file_name);
-  search_paths.emplace_back(Path::find_data_file(k_config_file_name));
+  search_paths.emplace_back(Path::join(user_config_dir, config_file_name));
+  search_paths.emplace_back(config_file_name);
+  search_paths.emplace_back(Path::find_data_file(config_file_name));
 
   std::string final_path;
   for (const auto& path : search_paths) {
@@ -41,7 +41,7 @@ auto app_env_resolve_paths(AppConfig* config) -> void {
 
   if (final_path.empty()) {
     Path::ensure_dir_exists(user_config_dir);
-    final_path = Path::join(user_config_dir, k_config_file_name);
+    final_path = Path::join(user_config_dir, config_file_name);
     config->set_path(final_path);
     util_safe_strcpy(config->config_path.data(), final_path.c_str(),
                      path_max_len);

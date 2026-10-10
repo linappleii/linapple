@@ -12,14 +12,14 @@
 
 namespace {
 
-constexpr int k_slot_count = 7;
+constexpr int slot_count = 7;
 
-std::array<PeripheralSinkKind_t, k_slot_count> g_kinds{};
+std::array<PeripheralSinkKind_t, slot_count> g_kinds{};
 
 auto slot_index(int slot) -> size_t { return static_cast<size_t>(slot - 1); }
 
 auto slot_is_valid(int slot) -> bool {
-  return slot >= 1 && slot <= k_slot_count;
+  return slot >= 1 && slot <= slot_count;
 }
 
 auto sink_for(int slot) -> const ByteSink_t* {

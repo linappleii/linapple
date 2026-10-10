@@ -502,14 +502,14 @@ auto font_print(int x, int y, const char* text, VideoSurfaceView surface,
       c = '?';
     }
 
-    row = c / k_chars_in_row;
+    row = c / chars_in_row;
 
-    s.x = ((c - (row * k_chars_in_row)) * (k_font_size_x + 1)) + 1;
-    s.y = (row * (k_font_size_y + 1)) + 1;
-    s.h = k_font_size_y;
-    s.w = k_font_size_x;
+    s.x = ((c - (row * chars_in_row)) * (font_size_x + 1)) + 1;
+    s.y = (row * (font_size_y + 1)) + 1;
+    s.h = font_size_y;
+    s.w = font_size_x;
 
-    d.x = static_cast<int>(x + (i * k_font_size_x * kx));
+    d.x = static_cast<int>(x + (i * font_size_x * kx));
     d.y = y;
     d.w = static_cast<int>(s.w * kx);
     d.h = static_cast<int>(s.h * ky);
@@ -529,7 +529,7 @@ auto font_print_right(int x, int y, const char* text, VideoSurfaceView surface,
   if (text == nullptr) {
     return;
   }
-  const auto offset = static_cast<int>(strlen(text) * k_font_size_x * kx);
+  const auto offset = static_cast<int>(strlen(text) * font_size_x * kx);
   font_print(x - offset, y, text, surface, kx, ky);
 }
 
@@ -539,7 +539,7 @@ auto font_print_centered(int x, int y, const char* text,
   if (text == nullptr) {
     return;
   }
-  const auto offset = static_cast<int>(strlen(text) * k_font_size_x * kx / 2.0);
+  const auto offset = static_cast<int>(strlen(text) * font_size_x * kx / 2.0);
   font_print(x - offset, y, text, surface, kx, ky);
 }
 

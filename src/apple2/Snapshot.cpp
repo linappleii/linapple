@@ -65,12 +65,12 @@ auto fixed_slot_desc(int slot) noexcept -> const SlotRegionDesc* {
 }
 
 // Disk II persists state to mounted image; omitted from snapshot trailer.
-constexpr int k_skipped_slot = 6;
+constexpr int skipped_slot = 6;
 
 auto trailer_entry(Snapshot_t* snapshot, int slot) noexcept -> SsSlotState_t* {
   if (snapshot == nullptr || slot < 1 ||
       slot > static_cast<int>(snapshot_trailer_slots) ||
-      slot == k_skipped_slot) {
+      slot == skipped_slot) {
     return nullptr;
   }
   return &snapshot->slot_trailer.slots[slot - 1];
@@ -80,7 +80,7 @@ auto trailer_entry(const Snapshot_t* snapshot, int slot) noexcept
     -> const SsSlotState_t* {
   if (snapshot == nullptr || slot < 1 ||
       slot > static_cast<int>(snapshot_trailer_slots) ||
-      slot == k_skipped_slot) {
+      slot == skipped_slot) {
     return nullptr;
   }
   return &snapshot->slot_trailer.slots[slot - 1];

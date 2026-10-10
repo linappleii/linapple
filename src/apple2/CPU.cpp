@@ -25,13 +25,13 @@ constexpr uint8_t AF_INTERRUPT = 0x04;
 constexpr uint8_t AF_ZERO = 0x02;
 constexpr uint8_t AF_CARRY = 0x01;
 
-constexpr uint8_t k_short_opcodes = 22;
+constexpr uint8_t short_opcodes = 22;
 static constexpr uint8_t bench_opcodes[] = {
     0x06, 0x16, 0x24, 0x45, 0x48, 0x65, 0x68, 0x76, 0x84, 0x85, 0x86,
     0x91, 0x94, 0xA4, 0xA5, 0xA6, 0xB1, 0xB4, 0xC0, 0xC4, 0xC5, 0xE6,
     0x19, 0x6D, 0x8D, 0x99, 0x9D, 0xAD, 0xB9, 0xBD, 0xDD, 0xED, 0xEE,
 };
-constexpr uint8_t k_bench_opcodes = sizeof(bench_opcodes);
+constexpr uint8_t bench_opcodes_count = sizeof(bench_opcodes);
 
 static CpuInstance g_cpu_context{};
 static CpuInstance* g_active_cpu = &g_cpu_context;
@@ -3877,12 +3877,12 @@ auto cpu_setup_benchmark() -> void {
       *(mem + addr++) = bench_opcodes[opcode];
       *(mem + addr++) = bench_opcodes[opcode];
 
-      if (opcode >= k_short_opcodes) {
+      if (opcode >= short_opcodes) {
         *(mem + addr++) = 0;
       }
 
-      if ((++opcode >= k_bench_opcodes) || ((addr & 0x0F) >= 0x0B)) {
-        uint8_t jump_low = (opcode >= k_bench_opcodes)
+      if ((++opcode >= bench_opcodes_count) || ((addr & 0x0F) >= 0x0B)) {
+        uint8_t jump_low = (opcode >= bench_opcodes_count)
                                ? 0x00
                                : static_cast<uint8_t>(((addr >> 4) + 1) << 4);
         *(mem + addr++) = 0x4C;
@@ -3892,7 +3892,7 @@ auto cpu_setup_benchmark() -> void {
           ++addr;
         }
       }
-    } while (opcode < k_bench_opcodes);
+    } while (opcode < bench_opcodes_count);
   }
 }
 

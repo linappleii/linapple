@@ -42,38 +42,38 @@ namespace {
 int g_joy_fd = -1;
 std::vector<uint8_t> g_input_queue;
 
-constexpr uint8_t k_a2_key_up = 0x0B;
-constexpr uint8_t k_a2_key_down = 0x0A;
-constexpr uint8_t k_a2_key_left = 0x08;
-constexpr uint8_t k_a2_key_right = 0x15;
-constexpr uint8_t k_a2_key_esc = 0x1B;
-constexpr uint8_t k_a2_key_enter = 0x0D;
-constexpr uint8_t k_a2_key_backspace = 0x08;
-constexpr uint8_t k_a2_key_delete = 0x7F;
-constexpr uint8_t k_eighth_bit = 0x80;
-constexpr uint8_t k_seven_bits = 0x7F;
+constexpr uint8_t a2_key_up = 0x0B;
+constexpr uint8_t a2_key_down = 0x0A;
+constexpr uint8_t a2_key_left = 0x08;
+constexpr uint8_t a2_key_right = 0x15;
+constexpr uint8_t a2_key_esc = 0x1B;
+constexpr uint8_t a2_key_enter = 0x0D;
+constexpr uint8_t a2_key_backspace = 0x08;
+constexpr uint8_t a2_key_delete = 0x7F;
+constexpr uint8_t eighth_bit = 0x80;
+constexpr uint8_t seven_bits = 0x7F;
 
-constexpr int k_f1_vt_code = 11;
-constexpr int k_f2_vt_code = 12;
-constexpr int k_f3_vt_code = 13;
-constexpr int k_f4_vt_code = 14;
-constexpr int k_f5_vt_code = 15;
-constexpr int k_f6_vt_code = 17;
-constexpr int k_f7_vt_code = 18;
-constexpr int k_f8_vt_code = 19;
-constexpr int k_f9_vt_code = 20;
-constexpr int k_f10_vt_code = 21;
-constexpr int k_f11_vt_code = 23;
-constexpr int k_f12_code = 24;
-constexpr size_t k_disk_select_page_size = 14;
+constexpr int f1_vt_code = 11;
+constexpr int f2_vt_code = 12;
+constexpr int f3_vt_code = 13;
+constexpr int f4_vt_code = 14;
+constexpr int f5_vt_code = 15;
+constexpr int f6_vt_code = 17;
+constexpr int f7_vt_code = 18;
+constexpr int f8_vt_code = 19;
+constexpr int f9_vt_code = 20;
+constexpr int f10_vt_code = 21;
+constexpr int f11_vt_code = 23;
+constexpr int f12_code = 24;
+constexpr size_t disk_select_page_size = 14;
 
-constexpr uint8_t k_ansi_final_byte_min = 0x40;
-constexpr uint8_t k_ansi_final_byte_max = 0x7E;
-constexpr uint8_t k_ascii_printable_min = 32;
-constexpr uint8_t k_ascii_printable_max = 127;
-constexpr size_t k_input_buffer_size = 256;
-constexpr size_t k_max_escape_length = 32;
-constexpr int k_esc_poll_timeout_ms = 3;
+constexpr uint8_t ansi_final_byte_min = 0x40;
+constexpr uint8_t ansi_final_byte_max = 0x7E;
+constexpr uint8_t ascii_printable_min = 32;
+constexpr uint8_t ascii_printable_max = 127;
+constexpr size_t input_buffer_size = 256;
+constexpr size_t max_escape_length = 32;
+constexpr int esc_poll_timeout_ms = 3;
 
 // A terminal has no key-up, so the release is deferred one poll, long enough
 // for a program polling $C010 to see the key for a frame. Alt+key is Open
@@ -114,7 +114,7 @@ auto map_key(uint8_t a2_code, bool open_apple = false) -> void {
 // 0x7F is what most terminals send for Backspace, the Apple's left arrow;
 // every other seven-bit byte is its own code.
 auto terminal_byte_to_apple(uint8_t byte) -> uint8_t {
-  return byte == k_a2_key_delete ? k_a2_key_backspace : byte;
+  return byte == a2_key_delete ? a2_key_backspace : byte;
 }
 
 // One keystroke can be split across reads; a few milliseconds tells its tail
@@ -123,11 +123,11 @@ auto read_more_input() -> void {
   struct pollfd pfd{};
   pfd.fd = STDIN_FILENO;
   pfd.events = POLLIN;
-  const int pr = poll(&pfd, 1, k_esc_poll_timeout_ms);
+  const int pr = poll(&pfd, 1, esc_poll_timeout_ms);
   if (pr <= 0 || (pfd.revents & POLLIN) == 0) {
     return;
   }
-  std::array<uint8_t, k_input_buffer_size> extra_buf{};
+  std::array<uint8_t, input_buffer_size> extra_buf{};
   const ssize_t extra_n =
       read(STDIN_FILENO, extra_buf.data(), extra_buf.size());
   for (ssize_t j = 0; j < extra_n; ++j) {
@@ -135,24 +135,24 @@ auto read_more_input() -> void {
   }
 }
 
-constexpr uint8_t k_utf8_lead2_min = 0xC2;
-constexpr uint8_t k_utf8_lead2_max = 0xDF;
-constexpr uint8_t k_utf8_lead3_max = 0xEF;
-constexpr uint8_t k_utf8_lead4_max = 0xF4;
-constexpr uint8_t k_utf8_continuation_min = 0x80;
-constexpr uint8_t k_utf8_continuation_max = 0xBF;
+constexpr uint8_t utf8_lead2_min = 0xC2;
+constexpr uint8_t utf8_lead2_max = 0xDF;
+constexpr uint8_t utf8_lead3_max = 0xEF;
+constexpr uint8_t utf8_lead4_max = 0xF4;
+constexpr uint8_t utf8_continuation_min = 0x80;
+constexpr uint8_t utf8_continuation_max = 0xBF;
 
 auto utf8_continuation_count(uint8_t lead) -> size_t {
-  if (lead < k_utf8_lead2_min) {
+  if (lead < utf8_lead2_min) {
     return 0;
   }
-  if (lead <= k_utf8_lead2_max) {
+  if (lead <= utf8_lead2_max) {
     return 1;
   }
-  if (lead <= k_utf8_lead3_max) {
+  if (lead <= utf8_lead3_max) {
     return 2;
   }
-  if (lead <= k_utf8_lead4_max) {
+  if (lead <= utf8_lead4_max) {
     return 3;
   }
   return 0;
@@ -164,7 +164,7 @@ auto utf8_sequence_at(size_t i, size_t continuation) -> bool {
   }
   for (size_t k = 1; k <= continuation; ++k) {
     const uint8_t byte = g_input_queue.at(i + k);
-    if (byte < k_utf8_continuation_min || byte > k_utf8_continuation_max) {
+    if (byte < utf8_continuation_min || byte > utf8_continuation_max) {
       return false;
     }
   }
@@ -274,11 +274,11 @@ int g_cell_width_px = 0;
 int g_cell_height_px = 0;
 bool g_left_held = false;
 
-constexpr int k_sgr_left_button = 0;
-constexpr int k_pixel_report_mode = 1016;
-constexpr int k_mode_set = 1;
-constexpr int k_mode_reset = 2;
-constexpr int k_mode_set_permanently = 3;
+constexpr int sgr_left_button = 0;
+constexpr int pixel_report_mode = 1016;
+constexpr int mode_set = 1;
+constexpr int mode_reset = 2;
+constexpr int mode_set_permanently = 3;
 
 auto write_terminal(const char* seq) -> void {
   fputs(seq, stdout);
@@ -312,20 +312,20 @@ auto decide_report_unit() -> void {
     return;
   }
   if (cell_size_known()) {
-    if (g_pixel_mode_setting == k_mode_reset) {
+    if (g_pixel_mode_setting == mode_reset) {
       write_terminal("\x1b[?1016h");
       g_pixel_reports = true;
-    } else if (g_pixel_mode_setting == k_mode_set ||
-               g_pixel_mode_setting == k_mode_set_permanently) {
+    } else if (g_pixel_mode_setting == mode_set ||
+               g_pixel_mode_setting == mode_set_permanently) {
       g_pixel_reports = true;
     }
     return;
   }
-  if (g_pixel_mode_setting == k_mode_set ||
-      g_pixel_mode_setting == k_mode_set_permanently) {
+  if (g_pixel_mode_setting == mode_set ||
+      g_pixel_mode_setting == mode_set_permanently) {
     // Another program left pixel reporting on.
     write_terminal("\x1b[?1016l");
-    g_pixel_mode_setting = k_mode_reset;
+    g_pixel_mode_setting = mode_reset;
   }
 }
 
@@ -388,7 +388,7 @@ auto picture_in_report_units() -> MousePictureRect {
 auto handle_mouse_report(const MouseSgrEvent& event) -> void {
   if (event.motion) {
     mouse_frontend_follow(event.x - 1, event.y - 1, picture_in_report_units());
-  } else if (event.button == k_sgr_left_button) {
+  } else if (event.button == sgr_left_button) {
     if (event.pressed && !g_left_held) {
       g_left_held = true;
       mouse_frontend_button(true);
@@ -403,7 +403,7 @@ auto handle_terminal_reply(const uint8_t* seq, size_t len) -> void {
   int mode = 0;
   int setting = 0;
   if (mouse_frontend_decode_mode_report(seq, len, &mode, &setting)) {
-    if (mode == k_pixel_report_mode) {
+    if (mode == pixel_report_mode) {
       g_pixel_mode_setting = setting;
       decide_report_unit();
     }
@@ -422,7 +422,7 @@ auto handle_terminal_reply(const uint8_t* seq, size_t len) -> void {
 auto process_sequences() -> void {
   size_t i = 0;
   while (i < g_input_queue.size()) {
-    if (g_input_queue.at(i) == k_a2_key_esc) {
+    if (g_input_queue.at(i) == a2_key_esc) {
       if (i + 1 >= g_input_queue.size()) {
         read_more_input();
       }
@@ -433,7 +433,7 @@ auto process_sequences() -> void {
         } else if (tui_video_is_help_visible()) {
           tui_video_close_help();
         } else {
-          map_key(k_a2_key_esc);
+          map_key(a2_key_esc);
         }
         i++;
         continue;
@@ -466,7 +466,7 @@ auto process_sequences() -> void {
           cycle_video_mode();
         } else if (ss3_cmd == 'A') {  // Cursor Up (SS3)
           if (tui_disk_select_is_active()) {
-            tui_disk_select_move(-1, k_disk_select_page_size);
+            tui_disk_select_move(-1, disk_select_page_size);
           } else if (tui_video_is_help_visible()) {
             tui_video_close_help();
 #if ENABLE_DEBUGGER
@@ -474,11 +474,11 @@ auto process_sequences() -> void {
             debugger_process_key(linapple_key_up);
 #endif
           } else {
-            map_key(k_a2_key_up);
+            map_key(a2_key_up);
           }
         } else if (ss3_cmd == 'B') {  // Cursor Down (SS3)
           if (tui_disk_select_is_active()) {
-            tui_disk_select_move(1, k_disk_select_page_size);
+            tui_disk_select_move(1, disk_select_page_size);
           } else if (tui_video_is_help_visible()) {
             tui_video_close_help();
 #if ENABLE_DEBUGGER
@@ -486,11 +486,11 @@ auto process_sequences() -> void {
             debugger_process_key(linapple_key_down);
 #endif
           } else {
-            map_key(k_a2_key_down);
+            map_key(a2_key_down);
           }
         } else if (ss3_cmd == 'C') {  // Cursor Right (SS3)
           if (tui_disk_select_is_active()) {
-            tui_disk_select_move(1, k_disk_select_page_size);
+            tui_disk_select_move(1, disk_select_page_size);
           } else if (tui_video_is_help_visible()) {
             tui_video_close_help();
 #if ENABLE_DEBUGGER
@@ -498,11 +498,11 @@ auto process_sequences() -> void {
             debugger_process_key(linapple_key_right);
 #endif
           } else {
-            map_key(k_a2_key_right);
+            map_key(a2_key_right);
           }
         } else if (ss3_cmd == 'D') {  // Cursor Left (SS3)
           if (tui_disk_select_is_active()) {
-            tui_disk_select_move(-1, k_disk_select_page_size);
+            tui_disk_select_move(-1, disk_select_page_size);
           } else if (tui_video_is_help_visible()) {
             tui_video_close_help();
 #if ENABLE_DEBUGGER
@@ -510,7 +510,7 @@ auto process_sequences() -> void {
             debugger_process_key(linapple_key_left);
 #endif
           } else {
-            map_key(k_a2_key_left);
+            map_key(a2_key_left);
           }
         } else if (ss3_cmd == 'H') {  // Home
           if (tui_disk_select_is_active()) {
@@ -518,7 +518,7 @@ auto process_sequences() -> void {
           }
         } else if (ss3_cmd == 'F') {  // End
           if (tui_disk_select_is_active()) {
-            tui_disk_select_end(k_disk_select_page_size);
+            tui_disk_select_end(disk_select_page_size);
           }
         } else if (tui_video_is_help_visible()) {
           tui_video_close_help();
@@ -566,15 +566,15 @@ auto process_sequences() -> void {
         }
 
         size_t end = i + 2;
-        while (end < g_input_queue.size() && (end - i) < k_max_escape_length &&
-               (g_input_queue.at(end) < k_ansi_final_byte_min ||
-                g_input_queue.at(end) > k_ansi_final_byte_max)) {
+        while (end < g_input_queue.size() && (end - i) < max_escape_length &&
+               (g_input_queue.at(end) < ansi_final_byte_min ||
+                g_input_queue.at(end) > ansi_final_byte_max)) {
           end++;
         }
 
         if (end < g_input_queue.size() &&
-            g_input_queue.at(end) >= k_ansi_final_byte_min &&
-            g_input_queue.at(end) <= k_ansi_final_byte_max) {
+            g_input_queue.at(end) >= ansi_final_byte_min &&
+            g_input_queue.at(end) <= ansi_final_byte_max) {
           uint8_t cmd = g_input_queue.at(end);
 
           if (g_input_queue.at(i + 2) == '<') {
@@ -642,7 +642,7 @@ auto process_sequences() -> void {
             }
           } else if (cmd == 'F') {  // End (\x1b[F)
             if (tui_disk_select_is_active()) {
-              tui_disk_select_end(k_disk_select_page_size);
+              tui_disk_select_end(disk_select_page_size);
             }
           } else if (cmd == '^') {  // rxvt Ctrl modifier
             const std::string token(
@@ -706,15 +706,15 @@ auto process_sequences() -> void {
                   debugger_process_key(linapple_key_delete);
 #endif
                 } else {
-                  map_key(k_a2_key_delete);
+                  map_key(a2_key_delete);
                 }
               } else if (token == "5") {  // Page Up (\x1b[5~)
                 if (tui_disk_select_is_active()) {
-                  tui_disk_select_page(-1, k_disk_select_page_size);
+                  tui_disk_select_page(-1, disk_select_page_size);
                 }
               } else if (token == "6") {  // Page Down (\x1b[6~)
                 if (tui_disk_select_is_active()) {
-                  tui_disk_select_page(1, k_disk_select_page_size);
+                  tui_disk_select_page(1, disk_select_page_size);
                 }
               } else if (token == "1" || token == "7") {  // Home (\x1b[1~)
                 if (tui_disk_select_is_active()) {
@@ -722,37 +722,37 @@ auto process_sequences() -> void {
                 }
               } else if (token == "4" || token == "8") {  // End (\x1b[4~)
                 if (tui_disk_select_is_active()) {
-                  tui_disk_select_end(k_disk_select_page_size);
+                  tui_disk_select_end(disk_select_page_size);
                 }
               } else if (token.find(';') != std::string::npos) {
               } else {
                 try {
                   int val = std::stoi(token);
-                  if (val == k_f1_vt_code) {
+                  if (val == f1_vt_code) {
                     tui_video_toggle_help();
-                  } else if (val == k_f2_vt_code) {
+                  } else if (val == f2_vt_code) {
                     reset_machine();
-                  } else if (val == k_f3_vt_code) {
+                  } else if (val == f3_vt_code) {
                     tui_video_close_help();
                     tui_disk_select_open(6, 0);
-                  } else if (val == k_f4_vt_code) {
+                  } else if (val == f4_vt_code) {
                     tui_video_close_help();
                     tui_disk_select_open(6, 1);
-                  } else if (val == k_f5_vt_code) {
+                  } else if (val == f5_vt_code) {
                     swap_drives();
-                  } else if (val == k_f6_vt_code) {
+                  } else if (val == f6_vt_code) {
                     tui_video_toggle_fullscreen();
-                  } else if (val == k_f7_vt_code) {
+                  } else if (val == f7_vt_code) {
                     toggle_debugger();
-                  } else if (val == k_f8_vt_code) {
+                  } else if (val == f8_vt_code) {
                     tui_video_save_screenshot();
-                  } else if (val == k_f9_vt_code) {
+                  } else if (val == f9_vt_code) {
                     cycle_video_mode();
-                  } else if (val == k_f10_vt_code) {
+                  } else if (val == f10_vt_code) {
                     load_state();
-                  } else if (val == k_f11_vt_code) {
+                  } else if (val == f11_vt_code) {
                     save_state_save();
-                  } else if (val == k_f12_code) {
+                  } else if (val == f12_code) {
                     raise(SIGINT);
                   } else if (tui_video_is_help_visible()) {
                     tui_video_close_help();
@@ -764,7 +764,7 @@ auto process_sequences() -> void {
             }
           } else if (cmd == 'A') {
             if (tui_disk_select_is_active()) {
-              tui_disk_select_move(-1, k_disk_select_page_size);
+              tui_disk_select_move(-1, disk_select_page_size);
             } else if (tui_video_is_help_visible()) {
               tui_video_close_help();
 #if ENABLE_DEBUGGER
@@ -772,11 +772,11 @@ auto process_sequences() -> void {
               debugger_process_key(linapple_key_up);
 #endif
             } else {
-              map_key(k_a2_key_up);
+              map_key(a2_key_up);
             }
           } else if (cmd == 'B') {
             if (tui_disk_select_is_active()) {
-              tui_disk_select_move(1, k_disk_select_page_size);
+              tui_disk_select_move(1, disk_select_page_size);
             } else if (tui_video_is_help_visible()) {
               tui_video_close_help();
 #if ENABLE_DEBUGGER
@@ -784,11 +784,11 @@ auto process_sequences() -> void {
               debugger_process_key(linapple_key_down);
 #endif
             } else {
-              map_key(k_a2_key_down);
+              map_key(a2_key_down);
             }
           } else if (cmd == 'D') {
             if (tui_disk_select_is_active()) {
-              tui_disk_select_move(-1, k_disk_select_page_size);
+              tui_disk_select_move(-1, disk_select_page_size);
             } else if (tui_video_is_help_visible()) {
               tui_video_close_help();
 #if ENABLE_DEBUGGER
@@ -796,11 +796,11 @@ auto process_sequences() -> void {
               debugger_process_key(linapple_key_left);
 #endif
             } else {
-              map_key(k_a2_key_left);
+              map_key(a2_key_left);
             }
           } else if (cmd == 'C') {
             if (tui_disk_select_is_active()) {
-              tui_disk_select_move(1, k_disk_select_page_size);
+              tui_disk_select_move(1, disk_select_page_size);
             } else if (tui_video_is_help_visible()) {
               tui_video_close_help();
 #if ENABLE_DEBUGGER
@@ -808,7 +808,7 @@ auto process_sequences() -> void {
               debugger_process_key(linapple_key_right);
 #endif
             } else {
-              map_key(k_a2_key_right);
+              map_key(a2_key_right);
             }
           }
 
@@ -816,7 +816,7 @@ auto process_sequences() -> void {
           continue;
         }
 
-        if (end - i >= k_max_escape_length) {
+        if (end - i >= max_escape_length) {
           i++;
           continue;
         }
@@ -828,7 +828,7 @@ auto process_sequences() -> void {
       // Open Apple with that key. A second ESC or an eighth-bit byte leaves
       // this ESC a key of its own.
       const uint8_t after_esc = g_input_queue.at(i + 1);
-      if (after_esc != k_a2_key_esc && after_esc < k_eighth_bit) {
+      if (after_esc != a2_key_esc && after_esc < eighth_bit) {
         if (!tui_disk_select_is_active() && !tui_video_is_help_visible() &&
             system_state.mode != app_mode_debug) {
           map_key(terminal_byte_to_apple(after_esc), true);
@@ -846,7 +846,7 @@ auto process_sequences() -> void {
         debugger_process_key(linapple_key_escape);
 #endif
       } else {
-        map_key(k_a2_key_esc);
+        map_key(a2_key_esc);
       }
       i++;
       continue;
@@ -869,31 +869,31 @@ auto process_sequences() -> void {
     }
 
     if (tui_disk_select_is_active()) {
-      if (b == k_a2_key_enter || b == '\n') {
+      if (b == a2_key_enter || b == '\n') {
         (void)tui_disk_select_confirm();
-      } else if (b == k_a2_key_esc) {
+      } else if (b == a2_key_esc) {
         tui_disk_select_close();
-      } else if (b >= k_ascii_printable_min && b < k_ascii_printable_max) {
+      } else if (b >= ascii_printable_min && b < ascii_printable_max) {
         tui_disk_select_jump_char(static_cast<char>(b),
-                                  k_disk_select_page_size);
+                                  disk_select_page_size);
       }
     } else if (tui_video_is_help_visible()) {
       tui_video_close_help();
 #if ENABLE_DEBUGGER
     } else if (system_state.mode == app_mode_debug) {
-      if (b == k_a2_key_enter || b == '\n') {
+      if (b == a2_key_enter || b == '\n') {
         debugger_process_key(linapple_key_return);
-      } else if (b == k_a2_key_backspace || b == k_a2_key_delete) {
+      } else if (b == a2_key_backspace || b == a2_key_delete) {
         debugger_process_key(linapple_key_backspace);
-      } else if (b == k_a2_key_esc) {
+      } else if (b == a2_key_esc) {
         debugger_process_key(linapple_key_escape);
-      } else if (b >= k_ascii_printable_min && b < k_ascii_printable_max) {
+      } else if (b >= ascii_printable_min && b < ascii_printable_max) {
         debugger_process_key(static_cast<int>(b));
       }
 #endif
-    } else if (b >= k_eighth_bit) {
+    } else if (b >= eighth_bit) {
       // Stock xterm outside UTF-8 sends Alt+key with the eighth bit set.
-      map_key(terminal_byte_to_apple(b & k_seven_bits), true);
+      map_key(terminal_byte_to_apple(b & seven_bits), true);
     } else {
       // Every control byte reaches the Apple, Ctrl-C included, so Applesoft's
       // break and DOS's Ctrl-D work from a terminal; F12 is the way out.
@@ -949,7 +949,7 @@ auto tui_input_shutdown() -> void {
 
 auto tui_input_poll() -> void {
   release_held_keys();
-  std::array<uint8_t, k_input_buffer_size> buf{};
+  std::array<uint8_t, input_buffer_size> buf{};
   ssize_t n = read(STDIN_FILENO, buf.data(), buf.size());
   if (n > 0) {
     for (ssize_t j = 0; j < n; ++j) {

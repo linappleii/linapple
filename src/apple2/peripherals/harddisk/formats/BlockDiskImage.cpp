@@ -58,7 +58,7 @@ constexpr uint32_t blocks_per_track = 8;
 // Apple ProDOS gives (pp. 3-16 to 3-18 by the printed footers), first-named
 // sector first: 0&E, D&C, B&A, 9&8, 7&6, 5&4, 3&2, 1&F.
 constexpr std::array<std::array<uint8_t, 2>, blocks_per_track>
-    k_dos_sectors_of_block = {
+    dos_sectors_of_block = {
         {
             {{0x0, 0xE}},
             {{0xD, 0xC}},
@@ -76,7 +76,7 @@ constexpr std::array<std::array<uint8_t, 2>, blocks_per_track>
 auto dos_block_half_offset(uint32_t block, uint32_t half) -> uint64_t {
   const uint32_t track = block / blocks_per_track;
   const uint32_t sector =
-      k_dos_sectors_of_block.at(block % blocks_per_track).at(half);
+      dos_sectors_of_block.at(block % blocks_per_track).at(half);
   return (static_cast<uint64_t>(track) * track_bytes) +
          (static_cast<uint64_t>(sector) * sector_size);
 }
@@ -92,7 +92,7 @@ auto dos_sector_offset(BlockDiskOrder_e order, uint32_t track, uint32_t sector)
   }
   for (uint32_t k = 0; k < blocks_per_track; ++k) {
     for (uint32_t half = 0; half < 2; ++half) {
-      if (k_dos_sectors_of_block.at(k).at(half) == sector) {
+      if (dos_sectors_of_block.at(k).at(half) == sector) {
         return (static_cast<uint64_t>(track) * track_bytes) +
                (static_cast<uint64_t>(k) * block_size) +
                (static_cast<uint64_t>(half) * half_block);

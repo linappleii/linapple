@@ -17,11 +17,11 @@ std::atomic<bool> g_resized(false);
 std::atomic<bool> g_interrupted(false);
 bool s_atexit_registered = false;
 
-constexpr const char* k_enter_alt_screen_hide_cursor = "\x1b[?1049h\x1b[?25l";
+constexpr const char* enter_alt_screen_hide_cursor = "\x1b[?1049h\x1b[?25l";
 // Mouse tracking is turned off whether or not it was turned on: a crash inside
 // the emulation would otherwise leave the shell typing a report at every
 // pointer movement until `reset`.
-constexpr char k_restore_terminal[] =
+constexpr char restore_terminal[] =
     "\x1b[?1016l\x1b[?1006l\x1b[?1003l\x1b[?25h\x1b[?1049l";
 
 auto signal_handler(int sig) -> void {
@@ -45,7 +45,7 @@ auto restore_terminal_signal_safe() -> void {
     return;
   }
   ssize_t n =
-      write(STDOUT_FILENO, k_restore_terminal, sizeof(k_restore_terminal) - 1);
+      write(STDOUT_FILENO, restore_terminal, sizeof(restore_terminal) - 1);
   (void)n;
   tcsetattr(STDIN_FILENO, TCSAFLUSH, &g_orig_termios);
   g_terminal_initialized = 0;
@@ -89,7 +89,7 @@ auto tui_terminal_initialize() -> int {
     return 1;
   }
 
-  fputs(k_enter_alt_screen_hide_cursor, stdout);
+  fputs(enter_alt_screen_hide_cursor, stdout);
   fflush(stdout);
 
   struct sigaction sa{};
@@ -126,7 +126,7 @@ auto tui_terminal_shutdown() -> void {
     return;
   }
 
-  fputs(k_restore_terminal, stdout);
+  fputs(restore_terminal, stdout);
   fflush(stdout);
 
   tcsetattr(STDIN_FILENO, TCSAFLUSH, &g_orig_termios);

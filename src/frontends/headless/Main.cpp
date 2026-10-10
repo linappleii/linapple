@@ -43,12 +43,12 @@ auto main(int argc, char** argv) -> int {
 
   app_controller_load_initial_media(&config);
 
-  constexpr int k_headless_frames = 60;
-  constexpr int k_apple2_frame_cycles = 17030;
+  constexpr int headless_frames = 60;
+  constexpr int apple2_frame_cycles = 17030;
 
-  for (int i = 0; i < k_headless_frames && system_state.mode != app_mode_exit;
+  for (int i = 0; i < headless_frames && system_state.mode != app_mode_exit;
        ++i) {
-    linapple_run_frame(k_apple2_frame_cycles);
+    linapple_run_frame(apple2_frame_cycles);
   }
 
   linapple_set_audio_channel_callback(nullptr);

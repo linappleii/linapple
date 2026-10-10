@@ -57,8 +57,8 @@ auto ds_init() -> bool {
   // Opening the device at its own rate is what removes the OS-side resample:
   // the mixer's is then the only one in the chain. 44100 is the fallback for a
   // failed query, not a target.
-  constexpr int k_fallback_rate_hz = 44100;
-  int requested_rate = k_fallback_rate_hz;
+  constexpr int fallback_rate_hz = 44100;
+  int requested_rate = fallback_rate_hz;
 #if SDL_VERSION_ATLEAST(2, 0, 15)
   SDL_AudioSpec native;
   SDL_zero(native);

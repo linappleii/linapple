@@ -478,7 +478,7 @@ struct Opcode_t {
 };
 
 // The 28 (mnemonic, mode) pairs the listing uses, from the 6502 opcode map.
-constexpr std::array<Opcode_t, 28> k_opcodes = {
+constexpr std::array<Opcode_t, 28> opcodes = {
     {
         {m_lda, mode_immediate, 0xA9},   {m_lda, mode_zero_page, 0xA5},
         {m_lda, mode_absolute, 0xAD},    {m_lda, mode_absolute_x, 0xBD},
@@ -569,7 +569,7 @@ struct Row_t {
 
 // Labels: RET1 $1E, RET2 $38, FAILJ $3F, DRIVER $46, W1 $62, W2 $6C, EXEC
 // $78, R1 $8A, R2 $94, DONE $9E, STATUS $A2, ERROR $AD, FAIL $AF, MONITOR $C7.
-const Row_t k_listing[] = {
+const Row_t listing[] = {
     {0x00, m_lda, mode_immediate, 0x20},
     {0x02, m_lda, mode_immediate, 0x00},
     {0x04, m_lda, mode_immediate, 0x03},
@@ -684,7 +684,7 @@ constexpr uint8_t tail_entry = 0xFF;
 constexpr uint8_t status_byte = 0xDF;
 
 auto opcode_for(Mnemonic_e mnemonic, Mode_e mode) -> uint8_t {
-  for (const Opcode_t& entry : k_opcodes) {
+  for (const Opcode_t& entry : opcodes) {
     if (entry.mnemonic == mnemonic && entry.mode == mode) {
       return entry.opcode;
     }
@@ -699,7 +699,7 @@ auto opcode_for(Mnemonic_e mnemonic, Mode_e mode) -> uint8_t {
 auto assemble_listing() -> std::array<uint8_t, page_size> {
   std::array<uint8_t, page_size> page{};
   uint16_t expected_offset = 0;
-  for (const Row_t& row : k_listing) {
+  for (const Row_t& row : listing) {
     if (row.offset == driver_offset) {
       CHECK(expected_offset == unused_after_trampoline);
     } else {
@@ -758,7 +758,7 @@ TEST_CASE(
 #if ENABLE_DEBUGGER
   // A second opinion on every opcode byte: the debugger's own 6502 table
   // must read each row back as the mnemonic and mode the listing names.
-  for (const Row_t& row : k_listing) {
+  for (const Row_t& row : listing) {
     CAPTURE(row.offset);
     const Opcodes_t& opcode = g_opcodes6502[page.at(row.offset)];
     CHECK(std::string(opcode.sMnemonic) == mnemonic_name(row.mnemonic));

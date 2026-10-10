@@ -312,7 +312,7 @@ auto disk_choose_draw() -> void {
         const int ry = item_y - 1;
         const auto display_len = std::min(file_name.size(), max_filename);
         const int rw = static_cast<int>(
-            static_cast<double>(display_len * k_font_size_x) * facx_f);
+            static_cast<double>(display_len * font_size_x) * facx_f);
         const int rh = static_cast<int>(9.0 * facy);
         fill_rectangle(lock_screen.view(), rx, ry, rw, rh, sel_color);
       }

@@ -36,12 +36,12 @@ TEST_CASE("Util_Hash: Consistency") {
 }
 
 TEST_CASE("Util_Hash: Concurrency and Thread Safety") {
-  constexpr size_t k_num_threads = 8;
+  constexpr size_t num_threads = 8;
   std::vector<std::thread> threads;
-  threads.reserve(k_num_threads);
-  std::vector<std::string> results(k_num_threads);
+  threads.reserve(num_threads);
+  std::vector<std::string> results(num_threads);
 
-  for (size_t t = 0; t < k_num_threads; ++t) {
+  for (size_t t = 0; t < num_threads; ++t) {
     threads.emplace_back([t, &results]() -> void {
       results.at(t) = md5str(t % 2 == 0 ? "linapple" : "consistency check");
     });
@@ -49,7 +49,7 @@ TEST_CASE("Util_Hash: Concurrency and Thread Safety") {
   for (auto& th : threads) {
     th.join();
   }
-  for (size_t t = 0; t < k_num_threads; ++t) {
+  for (size_t t = 0; t < num_threads; ++t) {
     if (t % 2 == 0) {
       CHECK(results.at(t) == "F3973CACD44E7688756F4956C2F591D2");
     } else {

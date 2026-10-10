@@ -127,7 +127,7 @@ constexpr const char* catalog_footer = "BLOCKS FREE:";
 // Block k of a track is the pair of DOS 3.3 sectors Fig. 3.14 of Beneath
 // Apple ProDOS (pp. 3-16 to 3-18) gives, first-named first; typed in here so
 // the order the card serves is checked against a second copy of the figure.
-constexpr std::array<std::array<uint8_t, 2>, 8> k_fig_3_14 = {{{{0x0, 0xE}},
+constexpr std::array<std::array<uint8_t, 2>, 8> fig_3_14 = {{{{0x0, 0xE}},
                                                                {{0xD, 0xC}},
                                                                {{0xB, 0xA}},
                                                                {{0x9, 0x8}},
@@ -160,7 +160,7 @@ auto prodos_order_of(const std::vector<uint8_t>& dos) -> std::vector<uint8_t> {
   std::vector<uint8_t> prodos(dos_image_size, 0);
   for (uint32_t block = 0; block < dos_image_blocks; ++block) {
     const size_t track = block >> 3;
-    const std::array<uint8_t, 2>& sectors = k_fig_3_14.at(block & 7);
+    const std::array<uint8_t, 2>& sectors = fig_3_14.at(block & 7);
     for (size_t half = 0; half < 2; ++half) {
       const size_t from =
           (track * track_size) + (sectors.at(half) * sector_size);

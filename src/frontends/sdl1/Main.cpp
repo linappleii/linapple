@@ -57,16 +57,16 @@ auto ds_init() -> bool {
   // SDL1 has no native-format query, so 44100 is the request and obtained.freq
   // is the answer. SDL1 may hand back something else entirely, and that is the
   // rate the mixer and the dumper have to work in.
-  constexpr uint32_t k_fallback_rate_hz = 44100;
+  constexpr uint32_t fallback_rate_hz = 44100;
 
   SDL_AudioSpec desired;
   SDL_AudioSpec obtained;
   SDL_memset(&desired, 0, sizeof(desired));
-  desired.freq = static_cast<int>(k_fallback_rate_hz);
+  desired.freq = static_cast<int>(fallback_rate_hz);
   desired.channels = 2;
   desired.format = AUDIO_S16SYS;
   desired.samples =
-      static_cast<Uint16>(audio_device_buffer_samples(k_fallback_rate_hz));
+      static_cast<Uint16>(audio_device_buffer_samples(fallback_rate_hz));
   desired.callback = sdl1_audio_callback;
   desired.userdata = nullptr;
 

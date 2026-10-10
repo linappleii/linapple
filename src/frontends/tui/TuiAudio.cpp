@@ -31,21 +31,21 @@ static AudioDriver_t g_driver = AudioDriver_t::none;
 static std::atomic<bool> g_audio_running(false);
 static std::thread g_audio_thread;
 
-static constexpr size_t k_chunk_frames = 512;
-static constexpr size_t k_channels = 2;
-static constexpr int k_pace_sleep_ms = 10;
-static constexpr int k_buffer_ms = 40;
-static constexpr int k_req_ms = 10;
-static constexpr uint32_t k_usec_per_msec = 1000;
+static constexpr size_t chunk_frames = 512;
+static constexpr size_t channels = 2;
+static constexpr int pace_sleep_ms = 10;
+static constexpr int buffer_ms = 40;
+static constexpr int req_ms = 10;
+static constexpr uint32_t usec_per_msec = 1000;
 
 // Neither backend here offers a native-format query the way SDL2 and SDL3 do:
 // pa_simple has none and resamples server side, so this is the request rather
 // than a target. ALSA may configure something else, and that comes back
 // through snd_pcm_hw_params_current.
-static constexpr unsigned int k_fallback_rate_hz = 44100;
+static constexpr unsigned int fallback_rate_hz = 44100;
 
 static auto audio_thread_func() -> void {
-  std::array<int16_t, k_chunk_frames * k_channels> stereo_buffer{};
+  std::array<int16_t, chunk_frames * channels> stereo_buffer{};
 
   while (g_audio_running) {
     audio_mixer_get_samples(stereo_buffer.data(), stereo_buffer.size());
@@ -60,13 +60,13 @@ static auto audio_thread_func() -> void {
     } else if (g_driver == AudioDriver_t::alsa) {
 #ifdef HAVE_ALSA
       snd_pcm_sframes_t frames =
-          snd_pcm_writei(g_alsa_handle, stereo_buffer.data(), k_chunk_frames);
+          snd_pcm_writei(g_alsa_handle, stereo_buffer.data(), chunk_frames);
       if (frames < 0) {
         snd_pcm_recover(g_alsa_handle, static_cast<int>(frames), 1);
       }
 #endif
     } else {
-      std::this_thread::sleep_for(std::chrono::milliseconds(k_pace_sleep_ms));
+      std::this_thread::sleep_for(std::chrono::milliseconds(pace_sleep_ms));
     }
   }
 }
@@ -78,21 +78,21 @@ auto tui_audio_initialize() -> void {
     return;
   }
 
-  unsigned int device_rate_hz = k_fallback_rate_hz;
+  unsigned int device_rate_hz = fallback_rate_hz;
 
 #ifdef HAVE_PULSE_SIMPLE
   pa_sample_spec ss;
   ss.format = PA_SAMPLE_S16LE;
-  ss.channels = k_channels;
-  ss.rate = k_fallback_rate_hz;
+  ss.channels = channels;
+  ss.rate = fallback_rate_hz;
 
   pa_buffer_attr attr;
   attr.maxlength = static_cast<uint32_t>(-1);
   attr.tlength = static_cast<uint32_t>(pa_usec_to_bytes(
-      static_cast<pa_usec_t>(k_buffer_ms) * k_usec_per_msec, &ss));
+      static_cast<pa_usec_t>(buffer_ms) * usec_per_msec, &ss));
   attr.prebuf = static_cast<uint32_t>(-1);
   attr.minreq = static_cast<uint32_t>(pa_usec_to_bytes(
-      static_cast<pa_usec_t>(k_req_ms) * k_usec_per_msec, &ss));
+      static_cast<pa_usec_t>(req_ms) * usec_per_msec, &ss));
   attr.fragsize = static_cast<uint32_t>(-1);
 
   int error = 0;
@@ -109,8 +109,8 @@ auto tui_audio_initialize() -> void {
     if (snd_pcm_open(&g_alsa_handle, "default", SND_PCM_STREAM_PLAYBACK, 0) >=
         0) {
       snd_pcm_set_params(g_alsa_handle, SND_PCM_FORMAT_S16_LE,
-                         SND_PCM_ACCESS_RW_INTERLEAVED, k_channels,
-                         k_fallback_rate_hz, 1, k_buffer_ms * k_usec_per_msec);
+                         SND_PCM_ACCESS_RW_INTERLEAVED, channels,
+                         fallback_rate_hz, 1, buffer_ms * usec_per_msec);
 
       snd_pcm_hw_params_t* hw_params = nullptr;
       if (snd_pcm_hw_params_malloc(&hw_params) >= 0) {

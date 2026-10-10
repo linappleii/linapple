@@ -10,30 +10,30 @@
 
 namespace {
 
-constexpr int k_cell_w = 14;
-constexpr int k_cell_h = 16;
-constexpr int k_fb_w = 560;
-constexpr int k_fb_h = 384;
-constexpr int k_pitch = k_fb_w * 4;
-constexpr uint8_t k_white = 255;
-constexpr int k_font_dim = 8;
-constexpr int k_utf8_prefix_len = 3;
+constexpr int cell_w = 14;
+constexpr int cell_h = 16;
+constexpr int fb_w = 560;
+constexpr int fb_h = 384;
+constexpr int pitch = fb_w * 4;
+constexpr uint8_t white = 255;
+constexpr int font_dim = 8;
+constexpr int utf8_prefix_len = 3;
 
-constexpr int k_h_line_y0 = 6;
-constexpr int k_h_line_y1 = 9;
-constexpr int k_v_line_x0 = 5;
-constexpr int k_v_line_x1 = 8;
-constexpr int k_mid_x = 9;
+constexpr int h_line_y0 = 6;
+constexpr int h_line_y1 = 9;
+constexpr int v_line_x0 = 5;
+constexpr int v_line_x1 = 8;
+constexpr int mid_x = 9;
 
 auto make_framebuffer() -> std::vector<uint32_t> {
-  return std::vector<uint32_t>(static_cast<size_t>(k_fb_w * k_fb_h), 0);
+  return std::vector<uint32_t>(static_cast<size_t>(fb_w * fb_h), 0);
 }
 
 auto set_pixel_rgb(std::vector<uint32_t>& fb, int x, int y, uint8_t r,
                    uint8_t g, uint8_t b) -> void {
-  if (x >= 0 && x < k_fb_w && y >= 0 && y < k_fb_h) {
+  if (x >= 0 && x < fb_w && y >= 0 && y < fb_h) {
     const size_t index =
-        (static_cast<size_t>(y) * static_cast<size_t>(k_fb_w)) +
+        (static_cast<size_t>(y) * static_cast<size_t>(fb_w)) +
         static_cast<size_t>(x);
     fb.at(index) = (static_cast<uint32_t>(r)) |
                    (static_cast<uint32_t>(g) << 8) |
@@ -44,48 +44,48 @@ auto set_pixel_rgb(std::vector<uint32_t>& fb, int x, int y, uint8_t r,
 auto draw_grid_line(std::vector<uint32_t>& fb, bool top, bool bottom, bool left,
                     bool right) -> void {
   if (left) {
-    for (int y = k_h_line_y0; y <= k_h_line_y1; ++y) {
-      for (int x = 0; x < k_mid_x; ++x) {
-        set_pixel_rgb(fb, x, y, k_white, k_white, k_white);
+    for (int y = h_line_y0; y <= h_line_y1; ++y) {
+      for (int x = 0; x < mid_x; ++x) {
+        set_pixel_rgb(fb, x, y, white, white, white);
       }
     }
   }
   if (right) {
-    for (int y = k_h_line_y0; y <= k_h_line_y1; ++y) {
-      for (int x = k_v_line_x0; x < k_cell_w; ++x) {
-        set_pixel_rgb(fb, x, y, k_white, k_white, k_white);
+    for (int y = h_line_y0; y <= h_line_y1; ++y) {
+      for (int x = v_line_x0; x < cell_w; ++x) {
+        set_pixel_rgb(fb, x, y, white, white, white);
       }
     }
   }
   if (top) {
-    for (int y = 0; y <= k_h_line_y1; ++y) {
-      for (int x = k_v_line_x0; x <= k_v_line_x1; ++x) {
-        set_pixel_rgb(fb, x, y, k_white, k_white, k_white);
+    for (int y = 0; y <= h_line_y1; ++y) {
+      for (int x = v_line_x0; x <= v_line_x1; ++x) {
+        set_pixel_rgb(fb, x, y, white, white, white);
       }
     }
   }
   if (bottom) {
-    for (int y = k_h_line_y0; y < k_cell_h; ++y) {
-      for (int x = k_v_line_x0; x <= k_v_line_x1; ++x) {
-        set_pixel_rgb(fb, x, y, k_white, k_white, k_white);
+    for (int y = h_line_y0; y < cell_h; ++y) {
+      for (int x = v_line_x0; x <= v_line_x1; ++x) {
+        set_pixel_rgb(fb, x, y, white, white, white);
       }
     }
   }
 }
 
 auto draw_font_char(std::vector<uint32_t>& fb,
-                    const std::array<uint8_t, k_font_dim>& rows,
-                    uint8_t r = k_white, uint8_t g = k_white,
-                    uint8_t b = k_white) -> void {
-  for (int v = 0; v < k_font_dim; ++v) {
-    for (int u = 0; u < k_font_dim; ++u) {
+                    const std::array<uint8_t, font_dim>& rows,
+                    uint8_t r = white, uint8_t g = white,
+                    uint8_t b = white) -> void {
+  for (int v = 0; v < font_dim; ++v) {
+    for (int u = 0; u < font_dim; ++u) {
       bool is_on = (rows.at(static_cast<size_t>(v)) &
-                    (1 << ((k_font_dim - 1) - u))) != 0;
+                    (1 << ((font_dim - 1) - u))) != 0;
       if (is_on) {
-        int x0 = u * k_cell_w / k_font_dim;
-        int x1 = (u + 1) * k_cell_w / k_font_dim;
-        int y0 = v * k_cell_h / k_font_dim;
-        int y1 = (v + 1) * k_cell_h / k_font_dim;
+        int x0 = u * cell_w / font_dim;
+        int x1 = (u + 1) * cell_w / font_dim;
+        int y0 = v * cell_h / font_dim;
+        int y1 = (v + 1) * cell_h / font_dim;
         for (int py = y0; py < y1; ++py) {
           for (int px = x0; px < x1; ++px) {
             set_pixel_rgb(fb, px, py, r, g, b);
@@ -103,17 +103,17 @@ TEST_CASE("TuiShapeDetector: Uniform Cells") {
   TuiState cell{};
 
   // Case 1: All black
-  tui_shape_detect_cell(fb.data(), k_pitch, 0, 0, k_cell_w, k_cell_h, &cell);
+  tui_shape_detect_cell(fb.data(), pitch, 0, 0, cell_w, cell_h, &cell);
   CHECK(cell.glyph.at(0) == ' ');
 
   // Case 2: All white
-  for (int y = 0; y < k_cell_h; ++y) {
-    for (int x = 0; x < k_cell_w; ++x) {
-      set_pixel_rgb(fb, x, y, k_white, k_white, k_white);
+  for (int y = 0; y < cell_h; ++y) {
+    for (int x = 0; x < cell_w; ++x) {
+      set_pixel_rgb(fb, x, y, white, white, white);
     }
   }
-  tui_shape_detect_cell(fb.data(), k_pitch, 0, 0, k_cell_w, k_cell_h, &cell);
-  CHECK(std::memcmp(cell.glyph.data(), "\xe2\x96\x88", k_utf8_prefix_len) == 0);
+  tui_shape_detect_cell(fb.data(), pitch, 0, 0, cell_w, cell_h, &cell);
+  CHECK(std::memcmp(cell.glyph.data(), "\xe2\x96\x88", utf8_prefix_len) == 0);
 }
 
 TEST_CASE("TuiShapeDetector: All 11 Box Drawing Shapes") {
@@ -145,16 +145,16 @@ TEST_CASE("TuiShapeDetector: All 11 Box Drawing Shapes") {
     auto fb = make_framebuffer();
     TuiState cell{};
     draw_grid_line(fb, tc.top, tc.bottom, tc.left, tc.right);
-    tui_shape_detect_cell(fb.data(), k_pitch, 0, 0, k_cell_w, k_cell_h, &cell);
-    CHECK(std::memcmp(cell.glyph.data(), tc.expected, k_utf8_prefix_len) == 0);
+    tui_shape_detect_cell(fb.data(), pitch, 0, 0, cell_w, cell_h, &cell);
+    CHECK(std::memcmp(cell.glyph.data(), tc.expected, utf8_prefix_len) == 0);
   }
 }
 
 TEST_CASE("TuiShapeDetector: Apple II Font OCR Matching") {
-  constexpr std::array<uint8_t, k_font_dim> font_5 = {
+  constexpr std::array<uint8_t, font_dim> font_5 = {
       0x7E, 0x60, 0x7C, 0x06, 0x06, 0x66, 0x3C, 0x00,
   };
-  constexpr std::array<uint8_t, k_font_dim> font_a = {
+  constexpr std::array<uint8_t, font_dim> font_a = {
       0x18, 0x3C, 0x66, 0x66, 0x7E, 0x66, 0x66, 0x00,
   };
 
@@ -162,24 +162,24 @@ TEST_CASE("TuiShapeDetector: Apple II Font OCR Matching") {
   auto fb = make_framebuffer();
   TuiState cell{};
   draw_font_char(fb, font_5);
-  tui_shape_detect_cell(fb.data(), k_pitch, 0, 0, k_cell_w, k_cell_h, &cell);
+  tui_shape_detect_cell(fb.data(), pitch, 0, 0, cell_w, cell_h, &cell);
   CHECK(cell.glyph.at(0) == '5');
 
   // Test 'A'
   fb = make_framebuffer();
   draw_font_char(fb, font_a);
-  tui_shape_detect_cell(fb.data(), k_pitch, 0, 0, k_cell_w, k_cell_h, &cell);
+  tui_shape_detect_cell(fb.data(), pitch, 0, 0, cell_w, cell_h, &cell);
   CHECK(cell.glyph.at(0) == 'A');
 
   // Test Inverted '5' (white background, black text)
   fb = make_framebuffer();
-  for (int y = 0; y < k_cell_h; ++y) {
-    for (int x = 0; x < k_cell_w; ++x) {
-      set_pixel_rgb(fb, x, y, k_white, k_white, k_white);
+  for (int y = 0; y < cell_h; ++y) {
+    for (int x = 0; x < cell_w; ++x) {
+      set_pixel_rgb(fb, x, y, white, white, white);
     }
   }
   draw_font_char(fb, font_5, 0, 0, 0);
-  tui_shape_detect_cell(fb.data(), k_pitch, 0, 0, k_cell_w, k_cell_h, &cell);
+  tui_shape_detect_cell(fb.data(), pitch, 0, 0, cell_w, cell_h, &cell);
   CHECK(cell.glyph.at(0) == '5');
 }
 
@@ -193,23 +193,23 @@ TEST_CASE(
   constexpr uint8_t b_col = 50;
 
   // Fill only Top-Left quadrant (x in [0, 7), y in [0, 8))
-  for (int y = 0; y < k_cell_h / 2; ++y) {
-    for (int x = 0; x < k_cell_w / 2; ++x) {
+  for (int y = 0; y < cell_h / 2; ++y) {
+    for (int x = 0; x < cell_w / 2; ++x) {
       set_pixel_rgb(fb, x, y, r_col, g_col, b_col);
     }
   }
 
-  tui_shape_detect_cell(fb.data(), k_pitch, 0, 0, k_cell_w, k_cell_h, &cell);
+  tui_shape_detect_cell(fb.data(), pitch, 0, 0, cell_w, cell_h, &cell);
   // Quadrant TL only is \xe2\x96\x98 (▘)
-  CHECK(std::memcmp(cell.glyph.data(), "\xe2\x96\x98", k_utf8_prefix_len) == 0);
+  CHECK(std::memcmp(cell.glyph.data(), "\xe2\x96\x98", utf8_prefix_len) == 0);
 
   // Fill Top-Half (Upper half block \xe2\x96\x80 ▀)
   fb = make_framebuffer();
-  for (int y = 0; y < k_cell_h / 2; ++y) {
-    for (int x = 0; x < k_cell_w; ++x) {
+  for (int y = 0; y < cell_h / 2; ++y) {
+    for (int x = 0; x < cell_w; ++x) {
       set_pixel_rgb(fb, x, y, g_col, r_col, g_col);
     }
   }
-  tui_shape_detect_cell(fb.data(), k_pitch, 0, 0, k_cell_w, k_cell_h, &cell);
-  CHECK(std::memcmp(cell.glyph.data(), "\xe2\x96\x80", k_utf8_prefix_len) == 0);
+  tui_shape_detect_cell(fb.data(), pitch, 0, 0, cell_w, cell_h, &cell);
+  CHECK(std::memcmp(cell.glyph.data(), "\xe2\x96\x80", utf8_prefix_len) == 0);
 }

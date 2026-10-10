@@ -40,20 +40,20 @@ std::vector<TuiState> g_next_buffer;
 std::vector<char> g_output_buffer;
 uint32_t g_frame_count = 0;
 
-constexpr int k_default_term_width = 80;
-constexpr int k_default_term_height = 24;
-constexpr int k_output_reserve_factor = 64;
-constexpr int k_flash_divisor = 15;
-constexpr int k_a2_page1_addr = 0x400;
-constexpr int k_a2_page2_offset = 0x400;
-constexpr int k_a2_cursor_x_addr = 0x24;
-constexpr int k_a2_cursor_y_addr = 0x25;
-constexpr int k_a2_cols_80 = 80;
-constexpr int k_a2_cols_40 = 40;
-constexpr int k_min_term_height_status = 24;
-constexpr int k_a2_text_rows = 24;
-constexpr int k_mixed_mode_text_start = 20;
-constexpr int k_refresh_full_divisor = 60;
+constexpr int default_term_width = 80;
+constexpr int default_term_height = 24;
+constexpr int output_reserve_factor = 64;
+constexpr int flash_divisor = 15;
+constexpr int a2_page1_addr = 0x400;
+constexpr int a2_page2_offset = 0x400;
+constexpr int a2_cursor_x_addr = 0x24;
+constexpr int a2_cursor_y_addr = 0x25;
+constexpr int a2_cols_80 = 80;
+constexpr int a2_cols_40 = 40;
+constexpr int min_term_height_status = 24;
+constexpr int a2_text_rows = 24;
+constexpr int mixed_mode_text_start = 20;
+constexpr int refresh_full_divisor = 60;
 
 TuiRenderMode g_render_mode = TUI_RENDER_SMART;
 bool g_show_help = false;
@@ -632,8 +632,8 @@ auto tui_video_on_resize() -> void {
     g_term_width = w.ws_col;
     g_term_height = w.ws_row;
   } else {
-    g_term_width = k_default_term_width;
-    g_term_height = k_default_term_height;
+    g_term_width = default_term_width;
+    g_term_height = default_term_height;
   }
   TuiState empty_cell{};
   empty_cell.glyph.fill(0);
@@ -649,11 +649,11 @@ auto tui_video_on_resize() -> void {
       empty_cell);
   g_output_buffer.reserve(static_cast<size_t>(g_term_width) *
                           static_cast<size_t>(g_term_height) *
-                          k_output_reserve_factor);
+                          output_reserve_factor);
 }
 
 static auto get_text_addr(int row, int col) -> uint16_t {
-  static const std::array<uint16_t, k_a2_text_rows> row_offsets = {
+  static const std::array<uint16_t, a2_text_rows> row_offsets = {
       0x000, 0x080, 0x100, 0x180, 0x200, 0x280, 0x300, 0x380,
       0x028, 0x0A8, 0x128, 0x1A8, 0x228, 0x2A8, 0x328, 0x3A8,
       0x050, 0x0D0, 0x150, 0x1D0, 0x250, 0x2D0, 0x350, 0x3D0,
@@ -703,14 +703,14 @@ static auto render_text_cell(int r, int c, bool is_80col, uint16_t page_offset,
   if (is_80col) {
     if (c % 2 == 0) {
       code = *mem_get_aux_ptr(static_cast<uint16_t>(
-          k_a2_page1_addr + page_offset + get_text_addr(r, c / 2)));
+          a2_page1_addr + page_offset + get_text_addr(r, c / 2)));
     } else {
       code = *mem_get_main_ptr(static_cast<uint16_t>(
-          k_a2_page1_addr + page_offset + get_text_addr(r, c / 2)));
+          a2_page1_addr + page_offset + get_text_addr(r, c / 2)));
     }
   } else {
     code = *mem_get_main_ptr(static_cast<uint16_t>(
-        k_a2_page1_addr + page_offset + get_text_addr(r, c)));
+        a2_page1_addr + page_offset + get_text_addr(r, c)));
   }
 
   uint8_t ascii = 0;
@@ -795,7 +795,7 @@ static auto render_debugger_text_screen() -> void {
   constexpr int prompt_row = 39;
 
   int avail_rows = g_term_height;
-  if (avail_rows > k_min_term_height_status && !g_fullscreen) {
+  if (avail_rows > min_term_height_status && !g_fullscreen) {
     avail_rows = g_term_height - 1;
   }
 
@@ -878,7 +878,7 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
     return;
   }
   g_frame_count++;
-  bool flash_on = (g_frame_count / k_flash_divisor) % 2 == 0;
+  bool flash_on = (g_frame_count / flash_divisor) % 2 == 0;
 
   bool is_debug_mode = (system_state.mode == app_mode_debug);
   bool is_text_mode = !is_debug_mode && video_get_sw_text();
@@ -887,15 +887,15 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
   bool is_page2 = video_get_sw_page2();
   bool alt_charset = video_get_sw_alt_charset();
   const bool text_page2 = is_page2 && !video_get_sw_80store();
-  uint16_t page_offset = text_page2 ? k_a2_page2_offset : 0x000;
+  uint16_t page_offset = text_page2 ? a2_page2_offset : 0x000;
 
-  int hw_cursor_x = *mem_get_main_ptr(k_a2_cursor_x_addr);
-  int hw_cursor_y = *mem_get_main_ptr(k_a2_cursor_y_addr);
+  int hw_cursor_x = *mem_get_main_ptr(a2_cursor_x_addr);
+  int hw_cursor_y = *mem_get_main_ptr(a2_cursor_y_addr);
 
-  int a2_w_cols = is_80col ? k_a2_cols_80 : k_a2_cols_40;
+  int a2_w_cols = is_80col ? a2_cols_80 : a2_cols_40;
   int avail_rows = g_term_height;
   bool show_status =
-      (g_term_height > k_min_term_height_status && !g_fullscreen);
+      (g_term_height > min_term_height_status && !g_fullscreen);
   if (show_status) {
     avail_rows = g_term_height - 1;
   }
@@ -914,7 +914,7 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
     render_debugger_text_screen();
 #endif
   } else if (is_text_mode) {
-    int display_h = k_a2_text_rows;
+    int display_h = a2_text_rows;
     int display_w = a2_w_cols;
     int off_x = (g_term_width - display_w) / 2;
     int off_y = (avail_rows - display_h) / 2;
@@ -980,7 +980,7 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
     }
 
     for (int i = 0; i < mixed_text_lines; ++i) {
-      int r = k_mixed_mode_text_start + i;
+      int r = mixed_mode_text_start + i;
       int ty = off_y + gfx_h + i;
       if (ty >= avail_rows) {
         break;
@@ -1065,7 +1065,7 @@ auto tui_video_render_frame(const uint32_t* pixels, int width, int height,
       TuiState& next = g_next_buffer.at(buffer_cell_index(x, y));
       TuiState& prev = g_back_buffer.at(buffer_cell_index(x, y));
 
-      if (next != prev || g_frame_count % k_refresh_full_divisor == 0) {
+      if (next != prev || g_frame_count % refresh_full_divisor == 0) {
         prev = next;
 
         if (cursor_x != x) {
@@ -1130,7 +1130,7 @@ auto tui_video_save_screenshot() -> void {
   }
 
   bool show_status =
-      (g_term_height > k_min_term_height_status && !g_fullscreen);
+      (g_term_height > min_term_height_status && !g_fullscreen);
 
   struct stat st{};
   static int seq = 1;
