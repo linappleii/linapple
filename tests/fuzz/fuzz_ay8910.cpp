@@ -42,14 +42,14 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     // Wider than the scratch so the chip's own clamp is part of the search.
     const size_t ticks =
         static_cast<size_t>(record[2]) | (static_cast<size_t>(record[3]) << 8);
-    for (auto& voice : g_scratch) {
+    for (auto& voice : scratch_buffer) {
       voice.fill(-1.0F);
     }
     ay8910_step(&psg, ticks, voices.data(), max_ticks_per_step);
 
     const size_t rendered = (ticks < max_ticks_per_step) ? ticks
                                                          : max_ticks_per_step;
-    for (const auto& voice : g_scratch) {
+    for (const auto& voice : scratch_buffer) {
       for (size_t i = 0; i < rendered; ++i) {
         // The bare chip is unipolar: it swings from ground to Vmax and the AC
         // coupling that centres it belongs to the card, not here.
