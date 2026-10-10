@@ -18,18 +18,18 @@
 namespace {
 
 auto probe_no(const uint8_t* /*unused*/, size_t /*unused*/, uint32_t /*unused*/,
-              const char* /*unused*/) -> DiskProbe_e {
+              const char* /*unused*/) -> DiskProbe {
   return disk_probe_no;
 }
 
 auto probe_possible(const uint8_t* /*unused*/, size_t /*unused*/,
                     uint32_t /*unused*/, const char* /*unused*/)
-    -> DiskProbe_e {
+    -> DiskProbe {
   return disk_probe_possible;
 }
 
 auto fake_open(const char* /*unused*/, uint32_t /*unused*/, bool /*unused*/,
-               void** out_instance) -> DiskError_e {
+               void** out_instance) -> DiskError {
   static char fake_instance = 0;
   *out_instance = &fake_instance;
   return disk_err_none;
@@ -42,13 +42,13 @@ auto fake_is_write_protected(void* /*unused*/) -> bool { return true; }
 auto fake_read_track_bits(void* /*unused*/, uint32_t /*unused*/,
                           uint8_t* /*unused*/, uint32_t /*unused*/,
                           uint32_t* out_bit_count, uint8_t* out_bit_timing)
-    -> DiskError_e {
+    -> DiskError {
   *out_bit_count = 0;
   *out_bit_timing = disk_default_bit_timing;
   return disk_err_none;
 }
 
-auto make_fake(const char* name, DiskProbe_e (*probe)(const uint8_t*, size_t,
+auto make_fake(const char* name, DiskProbe (*probe)(const uint8_t*, size_t,
                                                       uint32_t, const char*))
     -> DiskFormatDriver_t {
   DiskFormatDriver_t driver{};
@@ -225,7 +225,7 @@ TEST_CASE("DiskRegistry: the create bit and the create entry must agree") {
 
   DiskFormatDriver_t creates_unclaimed =
       make_fake("Fake Hidden Create", probe_no);
-  creates_unclaimed.create = [](const char*) -> DiskError_e {
+  creates_unclaimed.create = [](const char*) -> DiskError {
     return disk_err_none;
   };
   disk_loader_register(&creates_unclaimed);

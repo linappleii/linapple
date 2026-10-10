@@ -64,7 +64,7 @@ extern "C" auto nibble_disk_image_probe(const uint8_t* header_data,
                                         size_t header_size, uint32_t file_size,
                                         const char* ext_hint,
                                         uint32_t image_bytes, const char* ext)
-    -> DiskProbe_e {
+    -> DiskProbe {
   if (header_data == nullptr) {
     return disk_probe_no;
   }
@@ -84,7 +84,7 @@ extern "C" auto nibble_disk_image_probe(const uint8_t* header_data,
 
 extern "C" auto nibble_disk_image_open(const char* path, uint32_t file_offset,
                                        uint32_t track_nibbles, bool read_only,
-                                       void** out_instance) -> DiskError_e {
+                                       void** out_instance) -> DiskError {
   if (out_instance == nullptr) {
     return disk_err_invalid_argument;
   }
@@ -157,7 +157,7 @@ extern "C" auto nibble_disk_image_is_write_protected(void* instance) -> bool {
 
 extern "C" auto nibble_disk_image_read_track_bits(
     void* instance, uint32_t quarter_track, uint8_t* bits, uint32_t max_bits,
-    uint32_t* out_bit_count, uint8_t* out_bit_timing) -> DiskError_e {
+    uint32_t* out_bit_count, uint8_t* out_bit_timing) -> DiskError {
   auto* image_ptr = static_cast<NibbleDiskImage_t*>(instance);
   if (image_ptr == nullptr || bits == nullptr || out_bit_count == nullptr ||
       out_bit_timing == nullptr) {
@@ -202,7 +202,7 @@ extern "C" auto nibble_disk_image_write_track_bits(void* instance,
                                                    uint32_t quarter_track,
                                                    const uint8_t* bits,
                                                    uint32_t bit_count)
-    -> DiskError_e {
+    -> DiskError {
   auto* image_ptr = static_cast<NibbleDiskImage_t*>(instance);
   if (image_ptr == nullptr || bits == nullptr) {
     return disk_err_invalid_argument;
@@ -219,7 +219,7 @@ extern "C" auto nibble_disk_image_write_track_bits(void* instance,
   }
 
   uint32_t nibble_count = 0;
-  const DiskError_e decoded =
+  const DiskError decoded =
       disk_encoding_bits_to_nibbles(bits, bit_count, image_ptr->nibbles.data(),
                                     image_ptr->track_size + 1, &nibble_count);
   if (decoded != disk_err_none) {
@@ -255,7 +255,7 @@ extern "C" auto nibble_disk_image_write_track_bits(void* instance,
 
 extern "C" auto nibble_disk_image_create(const char* path,
                                          uint32_t track_nibbles)
-    -> DiskError_e {
+    -> DiskError {
   if (path == nullptr) {
     return disk_err_invalid_argument;
   }
@@ -289,7 +289,7 @@ extern "C" auto nibble_disk_image_create(const char* path,
   std::array<uint8_t, nibbles_per_track> slot{};
   for (uint32_t track = 0; track < nibble_image_tracks; ++track) {
     uint32_t nibble_count = 0;
-    DiskError_e err = disk_encoding_nibblize_track(
+    DiskError err = disk_encoding_nibblize_track(
         disk_encoding_sector_order(disk_sector_order_dos), track,
         sectors.data(), slot.data(), nullptr, &nibble_count, scratch.data());
     if (err == disk_err_none && nibble_count > track_nibbles) {

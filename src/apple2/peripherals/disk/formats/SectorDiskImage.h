@@ -39,7 +39,7 @@ enum { sector_image_track_bytes = 4096 };
    first 143,360 bytes are the image: bytes after them are never read or
    written, and bytes the last track lacks read as zero until that track is
    written back, which completes it. */
-DiskError_e sector_disk_image_open(const char* path, uint32_t file_offset,
+DiskError sector_disk_image_open(const char* path, uint32_t file_offset,
                                    bool is_dos_order, bool read_only,
                                    void** out_instance);
 
@@ -50,20 +50,20 @@ void sector_disk_image_close(void* instance);
 
 bool sector_disk_image_is_write_protected(void* instance);
 
-DiskError_e sector_disk_image_read_track_bits(void* instance,
+DiskError sector_disk_image_read_track_bits(void* instance,
                                               uint32_t quarter_track,
                                               uint8_t* bits, uint32_t max_bits,
                                               uint32_t* out_bit_count,
                                               uint8_t* out_bit_timing);
 
-DiskError_e sector_disk_image_write_track_bits(void* instance,
+DiskError sector_disk_image_write_track_bits(void* instance,
                                                uint32_t quarter_track,
                                                const uint8_t* bits,
                                                uint32_t bit_count);
 
-DiskError_e sector_disk_image_create(const char* path);
+DiskError sector_disk_image_create(const char* path);
 
-DiskProbe_e sector_disk_image_probe_signature(const uint8_t* header_data,
+DiskProbe sector_disk_image_probe_signature(const uint8_t* header_data,
                                               size_t header_size,
                                               uint32_t file_size,
                                               bool is_dos_order);

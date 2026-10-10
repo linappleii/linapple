@@ -58,7 +58,7 @@ auto chunk_is_placed(uint64_t data_end, uint64_t file_size, uint32_t offset,
 
 auto two_img_probe(const uint8_t* header_data, size_t header_size,
                    uint64_t /*unused*/, const char* /*unused*/)
-    -> HarddiskProbe_e {
+    -> HarddiskProbe {
   if (header_data == nullptr || header_size < magic_size) {
     return harddisk_probe_no;
   }
@@ -69,7 +69,7 @@ auto two_img_probe(const uint8_t* header_data, size_t header_size,
 }
 
 auto two_img_open(const char* path, uint32_t file_offset, bool read_only,
-                  void** out_instance) -> HarddiskError_e {
+                  void** out_instance) -> HarddiskError {
   if (out_instance == nullptr) {
     return harddisk_err_io;
   }
@@ -103,14 +103,14 @@ auto two_img_open(const char* path, uint32_t file_offset, bool read_only,
   file.reset();
 
   TwoImgHeader_t parsed{};
-  const HarddiskError_e parse_error = two_img_parse(
+  const HarddiskError parse_error = two_img_parse(
       header.data(), static_cast<uint64_t>(total_file_size) - file_offset,
       &parsed);
   if (parse_error != harddisk_err_none) {
     return parse_error;
   }
 
-  const BlockDiskOrder_e order = (parsed.image_format == two_img_format_dos)
+  const BlockDiskOrder order = (parsed.image_format == two_img_format_dos)
                                      ? block_disk_order_dos
                                      : block_disk_order_prodos;
   return block_disk_image_open(path, file_offset + parsed.data_offset, order,
@@ -123,7 +123,7 @@ const char* const two_img_supported_exts[] = {"2mg", "2img", "2meg", nullptr};
 }  // namespace
 
 auto two_img_parse(const uint8_t* header, uint64_t file_size,
-                   TwoImgHeader_t* out) -> HarddiskError_e {
+                   TwoImgHeader_t* out) -> HarddiskError {
   if (header == nullptr || out == nullptr) {
     return harddisk_err_io;
   }

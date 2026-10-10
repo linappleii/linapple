@@ -34,7 +34,7 @@ enum {
    image_bytes is disk_probe_no, a matching ext_hint disk_probe_definite, and
    the length alone disk_probe_possible. A null header_data is disk_probe_no
    for a direct caller; the loader never passes one. */
-DiskProbe_e nibble_disk_image_probe(const uint8_t* header_data,
+DiskProbe nibble_disk_image_probe(const uint8_t* header_data,
                                     size_t header_size, uint32_t file_size,
                                     const char* ext_hint, uint32_t image_bytes,
                                     const char* ext);
@@ -47,7 +47,7 @@ DiskProbe_e nibble_disk_image_probe(const uint8_t* header_data,
    disk_err_io; a file shorter than file_offset, or with nothing recorded past
    it, disk_err_corrupt; one with more than nibble_image_max_bytes past it
    disk_err_unsupported. */
-DiskError_e nibble_disk_image_open(const char* path, uint32_t file_offset,
+DiskError nibble_disk_image_open(const char* path, uint32_t file_offset,
                                    uint32_t track_nibbles, bool read_only,
                                    void** out_instance);
 
@@ -59,13 +59,13 @@ void nibble_disk_image_close(void* instance);
 
 bool nibble_disk_image_is_write_protected(void* instance);
 
-DiskError_e nibble_disk_image_read_track_bits(void* instance,
+DiskError nibble_disk_image_read_track_bits(void* instance,
                                               uint32_t quarter_track,
                                               uint8_t* bits, uint32_t max_bits,
                                               uint32_t* out_bit_count,
                                               uint8_t* out_bit_timing);
 
-DiskError_e nibble_disk_image_write_track_bits(void* instance,
+DiskError nibble_disk_image_write_track_bits(void* instance,
                                                uint32_t quarter_track,
                                                const uint8_t* bits,
                                                uint32_t bit_count);
@@ -76,7 +76,7 @@ DiskError_e nibble_disk_image_write_track_bits(void* instance,
    above nibbles_per_track is disk_err_invalid_argument, and one too short for
    the sixteen sectors disk_err_unsupported. A file the call could not finish
    is removed. */
-DiskError_e nibble_disk_image_create(const char* path, uint32_t track_nibbles);
+DiskError nibble_disk_image_create(const char* path, uint32_t track_nibbles);
 
 #ifdef __cplusplus
 }

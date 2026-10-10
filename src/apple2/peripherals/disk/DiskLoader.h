@@ -39,7 +39,7 @@ typedef void (*DiskDriverRejectionFn_t)(void* context, const char* driver_name,
    holds refusals until a caller with somewhere to put them asks. */
 void disk_loader_drain_rejections(DiskDriverRejectionFn_t sink, void* context);
 
-DiskError_e disk_loader_open(const char* image_path,
+DiskError disk_loader_open(const char* image_path,
                              const DiskFormatDriver_t** out_driver,
                              void** out_instance);
 
@@ -59,7 +59,7 @@ const DiskFormatDriver_t* disk_loader_driver_at(uint32_t index);
 /* Make a blank image at path in the named driver's format. Refuses a path that
    already exists with disk_err_io, and removes a file it created if the driver
    fails part way. */
-DiskError_e disk_loader_create(const char* path, const char* driver_name);
+DiskError disk_loader_create(const char* path, const char* driver_name);
 
 // NOLINTEND(modernize-use-using, modernize-use-trailing-return-type, readability-identifier-naming)
 

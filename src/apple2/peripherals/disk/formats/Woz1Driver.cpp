@@ -67,7 +67,7 @@ struct Woz1Instance_t {
 
 static auto woz1_probe(const uint8_t* header_data, size_t header_size,
                        uint32_t file_size, const char* ext_hint)
-    -> DiskProbe_e {
+    -> DiskProbe {
   (void)ext_hint;
 
   if (header_data == nullptr || header_size < woz::signature_len ||
@@ -83,7 +83,7 @@ static auto woz1_probe(const uint8_t* header_data, size_t header_size,
 }
 
 static auto woz1_open(const char* path, uint32_t file_offset, bool read_only,
-                      void** out_instance) -> DiskError_e {
+                      void** out_instance) -> DiskError {
   if (out_instance == nullptr) {
     return disk_err_invalid_argument;
   }
@@ -137,7 +137,7 @@ static auto woz1_open(const char* path, uint32_t file_offset, bool read_only,
       (info_data[woz::info_write_protect_offset] != 0);
   wi_ptr->trks_record_count = trks_size / woz1::trks_record_size;
 
-  const DiskError_e crc_err =
+  const DiskError crc_err =
       woz_verify_crc32(wi_ptr->file.get(), wi_ptr->base_offset,
                        read_u32_le(wi_ptr->header.data() + woz::crc32_offset));
   if (crc_err != disk_err_none) {
@@ -166,7 +166,7 @@ static auto woz1_is_write_protected(void* instance) -> bool {
 static auto woz1_read_track_bits(void* instance_handle, uint32_t quarter_track,
                                  uint8_t* bits, uint32_t max_bits,
                                  uint32_t* out_bit_count,
-                                 uint8_t* out_bit_timing) -> DiskError_e {
+                                 uint8_t* out_bit_timing) -> DiskError {
   if (instance_handle == nullptr || bits == nullptr ||
       out_bit_count == nullptr || out_bit_timing == nullptr) {
     return disk_err_invalid_argument;

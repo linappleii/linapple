@@ -55,7 +55,7 @@ typedef enum {
   disk_status_read = 0x01,
   disk_status_write = 0x02,
   disk_status_prot = 0x04,
-} DiskStatus_e;
+} DiskStatus;
 
 typedef enum {
   disk_cmd_insert = PERIPHERAL_SUBSYSTEM_DISK | 0x0001,
@@ -89,7 +89,7 @@ typedef struct {
 
 // The query ABI has no input buffer, so the index the caller wants travels in
 // the same struct the name comes back in. capabilities carries the driver's
-// DiskDriverCap_e bits, so a "new image" menu can offer only the formats
+// DiskDriverCap bits, so a "new image" menu can offer only the formats
 // whose create the loader has verified is really there.
 typedef struct {
   uint32_t index;

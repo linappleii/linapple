@@ -67,7 +67,7 @@ constexpr const char* appledouble_prefix = "._";
 constexpr const char* temp_template_suffix = "/linapple_XXXXXX";
 
 auto copy_whole(char* dest, const char* src, size_t size) noexcept
-    -> ImageContainerError_e {
+    -> ImageContainerError {
   if (dest == nullptr || src == nullptr || size == 0) {
     return image_container_invalid_argument;
   }
@@ -109,7 +109,7 @@ constexpr auto output_exceeds_bound(size_t total_written,
           total_written > compressed_size * image_container_ratio_limit);
 }
 
-auto map_zip_error_code(int zip_err) noexcept -> ImageContainerError_e {
+auto map_zip_error_code(int zip_err) noexcept -> ImageContainerError {
   switch (zip_err) {
     case ZIP_ER_NOENT:
       return image_container_not_found;
@@ -124,7 +124,7 @@ auto map_zip_error_code(int zip_err) noexcept -> ImageContainerError_e {
   }
 }
 
-auto map_zip_error(const zip_error_t* error) noexcept -> ImageContainerError_e {
+auto map_zip_error(const zip_error_t* error) noexcept -> ImageContainerError {
   if (error == nullptr) {
     return image_container_io;
   }
@@ -132,7 +132,7 @@ auto map_zip_error(const zip_error_t* error) noexcept -> ImageContainerError_e {
 }
 
 auto open_zip(const char* path, zip** out_archive) noexcept
-    -> ImageContainerError_e {
+    -> ImageContainerError {
   if (path == nullptr || out_archive == nullptr) {
     return image_container_invalid_argument;
   }
@@ -148,7 +148,7 @@ auto open_zip(const char* path, zip** out_archive) noexcept
 
 auto decompress_gzip(const char* compressed_path, FILE* output_file,
                      size_t uncompressed_threshold) noexcept
-    -> ImageContainerError_e {
+    -> ImageContainerError {
   if (compressed_path == nullptr || output_file == nullptr) {
     return image_container_invalid_argument;
   }
@@ -219,12 +219,12 @@ auto first_payload_entry(zip* archive) noexcept -> int64_t {
 
 auto decompress_zip(const char* compressed_path, FILE* output_file,
                     size_t uncompressed_threshold) noexcept
-    -> ImageContainerError_e {
+    -> ImageContainerError {
   if (compressed_path == nullptr || output_file == nullptr) {
     return image_container_invalid_argument;
   }
   zip* zip_archive = nullptr;
-  const ImageContainerError_e opened = open_zip(compressed_path, &zip_archive);
+  const ImageContainerError opened = open_zip(compressed_path, &zip_archive);
   if (opened != image_container_ok) {
     return opened;
   }
@@ -277,9 +277,9 @@ auto decompress_zip(const char* compressed_path, FILE* output_file,
 
 auto payload_name_from_zip(const char* image_path, char* out_name,
                            size_t max_name_len) noexcept
-    -> ImageContainerError_e {
+    -> ImageContainerError {
   zip* archive = nullptr;
-  const ImageContainerError_e opened = open_zip(image_path, &archive);
+  const ImageContainerError opened = open_zip(image_path, &archive);
   if (opened != image_container_ok) {
     return opened;
   }
@@ -301,7 +301,7 @@ auto payload_name_from_zip(const char* image_path, char* out_name,
 
 auto payload_name_from_gzip(const char* basename, char* out_name,
                             size_t max_name_len) noexcept
-    -> ImageContainerError_e {
+    -> ImageContainerError {
   const size_t suffix_len = strlen(gzip_extension) + 1;
   const size_t stripped_len = strlen(basename) - suffix_len;
   if (stripped_len >= max_name_len) {
@@ -362,7 +362,7 @@ extern "C" auto image_container_detect_macbinary(const uint8_t* header_data,
 extern "C" auto image_container_payload_name(const char* image_path,
                                              char* out_name,
                                              size_t max_name_len)
-    -> ImageContainerError_e {
+    -> ImageContainerError {
   if (image_path == nullptr || out_name == nullptr || max_name_len == 0) {
     return image_container_invalid_argument;
   }
@@ -385,7 +385,7 @@ extern "C" auto image_container_payload_name(const char* image_path,
 extern "C" auto image_container_prepare_compressed_path(
     const char* image_path, char* out_load_path, size_t max_path_len,
     size_t uncompressed_threshold, bool* out_is_temporary)
-    -> ImageContainerError_e {
+    -> ImageContainerError {
   if (image_path == nullptr || out_load_path == nullptr ||
       out_is_temporary == nullptr) {
     return image_container_invalid_argument;
@@ -428,7 +428,7 @@ extern "C" auto image_container_prepare_compressed_path(
     return image_container_io;
   }
 
-  ImageContainerError_e result =
+  ImageContainerError result =
       is_gz ? decompress_gzip(image_path, temp_stream.get(),
                               uncompressed_threshold)
             : decompress_zip(image_path, temp_stream.get(),

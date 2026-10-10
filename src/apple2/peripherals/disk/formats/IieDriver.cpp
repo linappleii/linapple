@@ -105,7 +105,7 @@ auto iie_convert_sector_order(const uint8_t* source_order,
 }
 
 auto iie_probe(const uint8_t* header_data, size_t header_size,
-               uint32_t file_size, const char* ext_hint) -> DiskProbe_e {
+               uint32_t file_size, const char* ext_hint) -> DiskProbe {
   if (header_data == nullptr) {
     return disk_probe_no;
   }
@@ -128,7 +128,7 @@ auto iie_probe(const uint8_t* header_data, size_t header_size,
 // starts where the one before ends, so a bad count anywhere shifts every later
 // track, and such an image is refused here rather than misread on a seek.
 auto iie_open(const char* path, uint32_t file_offset, bool read_only,
-              void** out_instance) -> DiskError_e {
+              void** out_instance) -> DiskError {
   if (out_instance == nullptr) {
     return disk_err_invalid_argument;
   }
@@ -227,7 +227,7 @@ auto iie_is_write_protected(void* instance_handle) -> bool {
 auto iie_read_track_bits(void* instance_handle, uint32_t quarter_track,
                          uint8_t* bits, uint32_t max_bits,
                          uint32_t* out_bit_count, uint8_t* out_bit_timing)
-    -> DiskError_e {
+    -> DiskError {
   if (instance_handle == nullptr || bits == nullptr ||
       out_bit_count == nullptr || out_bit_timing == nullptr) {
     return disk_err_invalid_argument;
@@ -257,7 +257,7 @@ auto iie_read_track_bits(void* instance_handle, uint32_t quarter_track,
       return disk_err_io;
     }
     uint32_t nibbles_read = 0;
-    const DiskError_e synthesised = disk_encoding_nibblize_track(
+    const DiskError synthesised = disk_encoding_nibblize_track(
         ii_ptr->sector_order.data(), track, ii_ptr->sectors.data(),
         ii_ptr->nibbles.data(), ii_ptr->sync_mask.data(), &nibbles_read,
         ii_ptr->scratch.data());

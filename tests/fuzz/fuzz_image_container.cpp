@@ -75,7 +75,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   std::array<char, path_len> load_path{};
   bool is_temporary = false;
-  const ImageContainerError_e prepared =
+  const ImageContainerError prepared =
       image_container_prepare_compressed_path(
           input_path.data(), load_path.data(), load_path.size(), fuzz_threshold,
           &is_temporary);

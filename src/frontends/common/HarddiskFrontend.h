@@ -6,7 +6,7 @@
 // reported. The card itself reads and writes no key; what the drive holds
 // after a command is what the configuration records.
 
-// Told of an insert or eject the card refused: the drive, the HarddiskError_e
+// Told of an insert or eject the card refused: the drive, the HarddiskError
 // code and the text harddisk_frontend_error_message gives for it. Every
 // refusal is logged whatever the reporter; a windowed frontend installs one
 // to show it in a dialog as well, and nullptr removes it.
@@ -23,7 +23,7 @@ auto harddisk_frontend_slot() -> int;
 
 // Each queues its command, lets the card take it, records what the drive then
 // holds under Preferences/Harddisk Image n for the next save to write, and
-// returns the drive's error code: 0 for success, a HarddiskError_e for a
+// returns the drive's error code: 0 for success, a HarddiskError for a
 // refusal, which is also handed to the reporter, or harddisk_frontend_no_card
 // with a log line and nothing done.
 auto harddisk_frontend_insert(int drive, const char* path, bool write_protected)

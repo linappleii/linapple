@@ -717,7 +717,7 @@ TEST_CASE("DiskDrivers: [IIE-14] IIE Driver invalid variant rejection") {
   fclose(f);
 
   void* instance = nullptr;
-  DiskError_e err = g_iie_driver.open(tmp_iie.c_str(), 0, false, &instance);
+  DiskError err = g_iie_driver.open(tmp_iie.c_str(), 0, false, &instance);
   CHECK(err == disk_err_unsupported_format);
   CHECK(instance == nullptr);
 }

@@ -276,7 +276,7 @@ auto decode_sector_62(uint8_t* scratch, uint8_t* image_ptr) -> bool {
 auto disk_encoding_denibblize_track(const uint8_t* sector_order, uint32_t track,
                                     const uint8_t* nibbles_in, uint32_t count,
                                     uint8_t* sectors_out, uint8_t* scratch)
-    -> DiskError_e {
+    -> DiskError {
   if (sector_order == nullptr || nibbles_in == nullptr ||
       sectors_out == nullptr || scratch == nullptr || count == 0) {
     return disk_err_invalid_argument;
@@ -380,7 +380,7 @@ auto disk_encoding_denibblize_track(const uint8_t* sector_order, uint32_t track,
   return disk_err_none;
 }
 
-auto disk_encoding_sector_order(DiskSectorOrder_e order) -> const uint8_t* {
+auto disk_encoding_sector_order(DiskSectorOrder order) -> const uint8_t* {
   const size_t row = (order == disk_sector_order_dos) ? 1 : 0;
   return disk_encoding_sector_interleave_table.at(row).data();
 }
@@ -389,7 +389,7 @@ auto disk_encoding_nibblize_track(const uint8_t* sector_order, uint32_t track,
                                   const uint8_t* sectors_in,
                                   uint8_t* nibbles_out, uint8_t* sync_mask_out,
                                   uint32_t* out_count, uint8_t* scratch)
-    -> DiskError_e {
+    -> DiskError {
   if (sector_order == nullptr || sectors_in == nullptr ||
       nibbles_out == nullptr || out_count == nullptr || scratch == nullptr) {
     return disk_err_invalid_argument;
@@ -483,7 +483,7 @@ auto disk_encoding_nibblize_track(const uint8_t* sector_order, uint32_t track,
 auto disk_encoding_nibbles_to_bits(const uint8_t* nibbles, uint32_t count,
                                    const uint8_t* sync_mask, uint8_t* bits,
                                    uint32_t max_bits, uint32_t* out_bit_count)
-    -> DiskError_e {
+    -> DiskError {
   if (nibbles == nullptr || bits == nullptr || out_bit_count == nullptr) {
     return disk_err_invalid_argument;
   }
@@ -525,7 +525,7 @@ auto disk_encoding_nibbles_to_bits(const uint8_t* nibbles, uint32_t count,
 
 auto disk_encoding_bits_to_nibbles(const uint8_t* bits, uint32_t bit_count,
                                    uint8_t* nibbles, uint32_t max_nibbles,
-                                   uint32_t* out_count) -> DiskError_e {
+                                   uint32_t* out_count) -> DiskError {
   if (bits == nullptr || nibbles == nullptr || out_count == nullptr) {
     return disk_err_invalid_argument;
   }

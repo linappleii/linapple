@@ -71,12 +71,12 @@ auto build_medium() -> void {
 }
 
 auto medium_probe(const uint8_t*, size_t, uint32_t, const char*)
-    -> DiskProbe_e {
+    -> DiskProbe {
   return disk_probe_definite;
 }
 
 auto medium_open(const char*, uint32_t, bool, void** out_instance)
-    -> DiskError_e {
+    -> DiskError {
   *out_instance = &g_medium_cells;
   return disk_err_none;
 }
@@ -87,7 +87,7 @@ auto medium_is_write_protected(void*) -> bool { return false; }
 
 auto medium_read(void*, uint32_t quarter_track, uint8_t* bits,
                  uint32_t max_bits, uint32_t* out_bit_count,
-                 uint8_t* out_bit_timing) -> DiskError_e {
+                 uint8_t* out_bit_timing) -> DiskError {
   *out_bit_count = 0;
   *out_bit_timing = disk_default_bit_timing;
   if (quarter_track >= 160 || medium_cell_count > max_bits) {
@@ -101,7 +101,7 @@ auto medium_read(void*, uint32_t quarter_track, uint8_t* bits,
 // The card writes a whole track back through this, and the cells it hands
 // over must still be the length the drive was given.
 auto medium_write(void*, uint32_t, const uint8_t* bits, uint32_t bit_count)
-    -> DiskError_e {
+    -> DiskError {
   if (bits == nullptr) {
     g_host_saw_null = true;
     return disk_err_invalid_argument;

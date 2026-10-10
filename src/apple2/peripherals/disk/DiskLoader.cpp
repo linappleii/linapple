@@ -147,7 +147,7 @@ constexpr size_t extension_hint_size = 16;
 constexpr size_t floppy_decompression_threshold =
     static_cast<size_t>(4) * 1024 * 1024;
 
-auto container_error_to_disk_error(ImageContainerError_e error) -> DiskError_e {
+auto container_error_to_disk_error(ImageContainerError error) -> DiskError {
   switch (error) {
     case image_container_ok:
       return disk_err_none;
@@ -201,7 +201,7 @@ auto find_best_driver(const uint8_t* header_ptr, size_t header_size,
 
   const DiskFormatDriver_t* possible_driver = nullptr;
   for (const auto* driver : registry()) {
-    const DiskProbe_e result =
+    const DiskProbe result =
         driver->probe(header_ptr, header_size, file_size, ext_hint);
     if (result == disk_probe_definite) {
       return driver;
@@ -263,7 +263,7 @@ auto disk_loader_drain_rejections(DiskDriverRejectionFn_t sink, void* context)
 
 auto disk_loader_open(const char* image_path,
                       const DiskFormatDriver_t** out_driver,
-                      void** out_instance) -> DiskError_e {
+                      void** out_instance) -> DiskError {
   if (out_driver != nullptr) {
     *out_driver = nullptr;
   }
@@ -277,7 +277,7 @@ auto disk_loader_open(const char* image_path,
 
   char load_path[path_max_len] = {0};
   bool is_temporary = false;
-  const ImageContainerError_e prepared =
+  const ImageContainerError prepared =
       image_container_prepare_compressed_path(
           image_path, load_path, sizeof(load_path),
           floppy_decompression_threshold, &is_temporary);
@@ -352,7 +352,7 @@ auto disk_loader_driver_at(uint32_t index) -> const DiskFormatDriver_t* {
 }
 
 auto disk_loader_create(const char* path, const char* driver_name)
-    -> DiskError_e {
+    -> DiskError {
   if (path == nullptr || driver_name == nullptr || path[0] == '\0') {
     return disk_err_invalid_argument;
   }
@@ -387,7 +387,7 @@ auto disk_loader_create(const char* path, const char* driver_name)
     return disk_err_unsupported;
   }
 
-  const DiskError_e error = driver->create(path);
+  const DiskError error = driver->create(path);
   if (error != disk_err_none) {
     unlink(path);
   }

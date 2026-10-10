@@ -48,7 +48,7 @@ auto patch(const std::string& path, int64_t offset, const uint8_t* bytes,
 auto read_quarter_track(const DiskFormatDriver_t& driver, void* instance,
                         uint32_t quarter_track, std::vector<uint8_t>* bits,
                         uint32_t* bit_count, uint8_t* bit_timing)
-    -> DiskError_e {
+    -> DiskError {
   bits->assign(max_track_bits / 8, 0xEE);
   *bit_count = 0;
   *bit_timing = 0;
@@ -353,12 +353,12 @@ namespace {
 
 constexpr int64_t info_version_offset = 20;
 
-auto open_patched_v1_image(int64_t offset, uint8_t value) -> DiskError_e {
+auto open_patched_v1_image(int64_t offset, uint8_t value) -> DiskError {
   auto image = TestFixtures::create_ephemeral("minimal-v1.woz");
   patch(image.path(), offset, &value, 1);
 
   void* instance = nullptr;
-  const DiskError_e err =
+  const DiskError err =
       g_woz1_driver.open(image.c_str(), 0, false, &instance);
   if (instance != nullptr) {
     g_woz1_driver.close(instance);

@@ -10,7 +10,7 @@
 #include "apple2/peripherals/disk/DiskError.h"
 
 auto disk_ui_get_error_message(int error_code) noexcept -> const char* {
-  switch (static_cast<DiskError_e>(error_code)) {
+  switch (static_cast<DiskError>(error_code)) {
     case disk_err_none:
       return "Success";
     case disk_err_file_not_found:

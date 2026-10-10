@@ -293,7 +293,7 @@ auto write_block_1_lands_in_dos_order(const std::string& path) -> bool {
 struct OpenImage_t {
   const HarddiskFormatDriver_t* driver = nullptr;
   void* instance = nullptr;
-  HarddiskError_e error = harddisk_err_none;
+  HarddiskError error = harddisk_err_none;
 
   OpenImage_t() = default;
   explicit OpenImage_t(const std::string& path)
@@ -793,7 +793,7 @@ TEST_CASE(
   }
 
   const auto probe = [](const char* fixture,
-                        BlockDiskOrder_e order) -> HarddiskProbe_e {
+                        BlockDiskOrder order) -> HarddiskProbe {
     const std::vector<uint8_t> bytes =
         read_file(TestFixtures::get_fixture_path(fixture));
     return block_disk_image_probe_signature(bytes.data(), bytes.size(),
@@ -832,7 +832,7 @@ TEST_CASE(
   // The loader reads this much ahead before it asks a driver.
   constexpr size_t probe_window = static_cast<size_t>(80) * 1024;
   const auto probe = [](const char* fixture, size_t header_size,
-                        BlockDiskOrder_e order) -> HarddiskProbe_e {
+                        BlockDiskOrder order) -> HarddiskProbe {
     const std::vector<uint8_t> bytes =
         read_file(TestFixtures::get_fixture_path(fixture));
     REQUIRE(bytes.size() >= header_size);

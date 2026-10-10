@@ -42,7 +42,7 @@ typedef struct {
    that does not lie whole between the data and the end of the file, each
    with harddisk_err_invalid_format; a nibble image with
    harddisk_err_not_block_image. The version field is read and ignored. */
-HarddiskError_e two_img_parse(const uint8_t* header, uint64_t file_size,
+HarddiskError two_img_parse(const uint8_t* header, uint64_t file_size,
                               TwoImgHeader_t* out);
 
 extern const HarddiskFormatDriver_t g_two_img_driver;

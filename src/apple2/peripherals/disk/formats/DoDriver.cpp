@@ -19,7 +19,7 @@
 namespace {
 
 auto do_probe(const uint8_t* header_data, size_t header_size,
-              uint32_t file_size, const char* ext_hint) -> DiskProbe_e {
+              uint32_t file_size, const char* ext_hint) -> DiskProbe {
   const auto sig_probe = sector_disk_image_probe_signature(
       header_data, header_size, file_size, true);
 
@@ -40,7 +40,7 @@ auto do_probe(const uint8_t* header_data, size_t header_size,
 }
 
 auto do_open(const char* path, uint32_t file_offset, bool read_only,
-             void** out_instance) -> DiskError_e {
+             void** out_instance) -> DiskError {
   return sector_disk_image_open(path, file_offset, true, read_only,
                                 out_instance);
 }

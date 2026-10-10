@@ -54,7 +54,7 @@ void harddisk_loader_note(const char* subject, const char* text);
    driver that claimed it and the instance it opened. Both outputs are nulled
    first. A file no driver claims is harddisk_err_invalid_format; a file that
    does not exist harddisk_err_not_found. */
-HarddiskError_e harddisk_loader_open(const char* image_path,
+HarddiskError harddisk_loader_open(const char* image_path,
                                      const HarddiskFormatDriver_t** out_driver,
                                      void** out_instance);
 

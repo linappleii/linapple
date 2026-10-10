@@ -32,8 +32,8 @@ auto is_two_img_name(const char* ext_hint) -> bool {
 // claim definite or hand the file to the DOS-order driver.
 auto po_block_probe(const uint8_t* header_data, size_t header_size,
                     uint64_t file_size, const char* ext_hint)
-    -> HarddiskProbe_e {
-  const HarddiskProbe_e sig_probe = block_disk_image_probe_signature(
+    -> HarddiskProbe {
+  const HarddiskProbe sig_probe = block_disk_image_probe_signature(
       header_data, header_size, file_size, block_disk_order_prodos);
 
   if (sig_probe == harddisk_probe_definite) {
@@ -53,7 +53,7 @@ auto po_block_probe(const uint8_t* header_data, size_t header_size,
 }
 
 auto po_block_open(const char* path, uint32_t file_offset, bool read_only,
-                   void** out_instance) -> HarddiskError_e {
+                   void** out_instance) -> HarddiskError {
   return block_disk_image_open(path, file_offset, block_disk_order_prodos, 0,
                                read_only, out_instance);
 }

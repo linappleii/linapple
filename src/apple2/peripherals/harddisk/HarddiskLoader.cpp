@@ -140,8 +140,8 @@ constexpr size_t extension_hint_size = 16;
 constexpr size_t harddisk_decompression_threshold =
     static_cast<size_t>(32) * 1024 * 1024;
 
-auto container_error_to_harddisk_error(ImageContainerError_e error)
-    -> HarddiskError_e {
+auto container_error_to_harddisk_error(ImageContainerError error)
+    -> HarddiskError {
   switch (error) {
     case image_container_ok:
       return harddisk_err_none;
@@ -200,7 +200,7 @@ auto find_best_driver(const uint8_t* header_ptr, size_t header_size,
     -> const HarddiskFormatDriver_t* {
   const HarddiskFormatDriver_t* possible_driver = nullptr;
   for (const auto* driver : registry()) {
-    const HarddiskProbe_e result =
+    const HarddiskProbe result =
         driver->probe(header_ptr, header_size, file_size, ext_hint);
     if (result == harddisk_probe_definite) {
       return driver;
@@ -300,7 +300,7 @@ auto harddisk_loader_note(const char* subject, const char* text) -> void {
 
 auto harddisk_loader_open(const char* image_path,
                           const HarddiskFormatDriver_t** out_driver,
-                          void** out_instance) -> HarddiskError_e {
+                          void** out_instance) -> HarddiskError {
   if (out_driver != nullptr) {
     *out_driver = nullptr;
   }
@@ -314,7 +314,7 @@ auto harddisk_loader_open(const char* image_path,
 
   char load_path[path_max_len] = {0};
   bool is_temporary = false;
-  const ImageContainerError_e prepared =
+  const ImageContainerError prepared =
       image_container_prepare_compressed_path(
           image_path, load_path, sizeof(load_path),
           harddisk_decompression_threshold, &is_temporary);
@@ -374,7 +374,7 @@ auto harddisk_loader_open(const char* image_path,
 
   // A decompressed temporary is unlinked the moment this call returns, so
   // anything written to it would be thrown away with it.
-  const HarddiskError_e opened =
+  const HarddiskError opened =
       (*out_driver)->open(load_path, file_offset, is_temporary, out_instance);
   if (opened == harddisk_err_none) {
     note_name_overridden(*out_driver, payload_name, ext_hint);

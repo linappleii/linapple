@@ -117,7 +117,7 @@ TEST_CASE("DiskWOZ: [WOZ-3] All-zero bitstream does not infinite loop") {
   write_all_zero_woz2(temp_woz.c_str());
 
   void* instance = nullptr;
-  DiskError_e err = g_woz2_driver.open(temp_woz.c_str(), 0, false, &instance);
+  DiskError err = g_woz2_driver.open(temp_woz.c_str(), 0, false, &instance);
   REQUIRE(err == disk_err_none);
   REQUIRE(instance != nullptr);
 
@@ -159,7 +159,7 @@ TEST_CASE(
   }
 
   void* instance = nullptr;
-  DiskError_e err =
+  DiskError err =
       g_woz2_driver.open(corrupted_file.c_str(), 0, false, &instance);
   CHECK(err == disk_err_corrupt);
   CHECK(instance == nullptr);
@@ -190,7 +190,7 @@ auto read_file(const std::string& path) -> std::vector<uint8_t> {
 auto read_quarter_track(const DiskFormatDriver_t& driver, void* instance,
                         uint32_t quarter_track, std::vector<uint8_t>* bits,
                         uint32_t* bit_count, uint8_t* bit_timing)
-    -> DiskError_e {
+    -> DiskError {
   bits->assign(max_track_bits / 8, 0xEE);
   *bit_count = 0;
   *bit_timing = 0;
@@ -299,12 +299,12 @@ auto patch(const std::string& path, int64_t offset, const uint8_t* bytes,
   REQUIRE(fwrite(bytes, 1, len, f.get()) == len);
 }
 
-auto open_patched_track_image(int64_t offset, uint8_t value) -> DiskError_e {
+auto open_patched_track_image(int64_t offset, uint8_t value) -> DiskError {
   auto image = TestFixtures::create_ephemeral("minimal-track.woz");
   patch(image.path(), offset, &value, 1);
 
   void* instance = nullptr;
-  const DiskError_e err =
+  const DiskError err =
       g_woz2_driver.open(image.c_str(), 0, false, &instance);
   if (err != disk_err_none) {
     CHECK(instance == nullptr);
@@ -456,9 +456,9 @@ constexpr int64_t crc32_field_offset = 8;
 constexpr int64_t track_first_cell_offset = 1536;
 constexpr size_t macbinary_pad_bytes = 80;
 
-auto open_v2(const std::string& path, uint32_t base_offset) -> DiskError_e {
+auto open_v2(const std::string& path, uint32_t base_offset) -> DiskError {
   void* instance = nullptr;
-  const DiskError_e err =
+  const DiskError err =
       g_woz2_driver.open(path.c_str(), base_offset, false, &instance);
   if (instance != nullptr) {
     g_woz2_driver.close(instance);
@@ -529,14 +529,14 @@ constexpr size_t cells_kept_after_cut = 256;
 auto read_qt0_of_patched_track_image(int64_t offset, const uint8_t* bytes,
                                      size_t len, std::vector<uint8_t>* bits,
                                      uint32_t* bit_count, uint8_t* bit_timing)
-    -> DiskError_e {
+    -> DiskError {
   auto image = TestFixtures::create_ephemeral("minimal-track.woz");
   patch(image.path(), offset, bytes, len);
 
   void* instance = nullptr;
   REQUIRE(g_woz2_driver.open(image.c_str(), 0, false, &instance) ==
           disk_err_none);
-  const DiskError_e err = read_quarter_track(g_woz2_driver, instance, 0, bits,
+  const DiskError err = read_quarter_track(g_woz2_driver, instance, 0, bits,
                                              bit_count, bit_timing);
   g_woz2_driver.close(instance);
   return err;

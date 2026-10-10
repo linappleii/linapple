@@ -24,7 +24,7 @@ extern "C" {
 typedef enum {
   block_disk_order_prodos = 0,
   block_disk_order_dos = 1,
-} BlockDiskOrder_e;
+} BlockDiskOrder;
 
 /* The one size a DOS-order image has: 35 tracks of sixteen 256-byte sectors,
    which is 280 blocks. */
@@ -38,8 +38,8 @@ enum { block_disk_image_dos_size = 143360, block_disk_image_dos_blocks = 280 };
    image that is not 280 blocks, or an image of no block at all
    harddisk_err_invalid_format. read_only is folded into the protection
    answer with the host's own refusal to open the file for writing. */
-HarddiskError_e block_disk_image_open(const char* path, uint32_t file_offset,
-                                      BlockDiskOrder_e order,
+HarddiskError block_disk_image_open(const char* path, uint32_t file_offset,
+                                      BlockDiskOrder order,
                                       uint32_t block_count, bool read_only,
                                       void** out_instance);
 
@@ -51,10 +51,10 @@ void block_disk_image_close(void* instance);
 
 bool block_disk_image_is_write_protected(void* instance);
 
-HarddiskError_e block_disk_image_read_block(void* instance, uint32_t block_num,
+HarddiskError block_disk_image_read_block(void* instance, uint32_t block_num,
                                             uint8_t* buffer);
 
-HarddiskError_e block_disk_image_write_block(void* instance, uint32_t block_num,
+HarddiskError block_disk_image_write_block(void* instance, uint32_t block_num,
                                              const uint8_t* buffer);
 
 uint32_t block_disk_image_get_total_blocks(void* instance);
@@ -64,10 +64,10 @@ uint32_t block_disk_image_get_total_blocks(void* instance);
    possible for any other file of the DOS-order size, no for every other
    size. header_size bounds every read, so a short header answers possible
    rather than reading past it. */
-HarddiskProbe_e block_disk_image_probe_signature(const uint8_t* header_data,
+HarddiskProbe block_disk_image_probe_signature(const uint8_t* header_data,
                                                  size_t header_size,
                                                  uint64_t file_size,
-                                                 BlockDiskOrder_e order);
+                                                 BlockDiskOrder order);
 
 #ifdef __cplusplus
 }

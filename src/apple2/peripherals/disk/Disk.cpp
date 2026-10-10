@@ -94,7 +94,7 @@ struct Disk_t {
   std::vector<uint8_t> track_bits;
   const DiskFormatDriver_t* driver = nullptr;
   void* driver_instance = nullptr;
-  DiskError_e last_error = disk_err_none;
+  DiskError last_error = disk_err_none;
 
   Disk_t() = default;
   ~Disk_t() = default;
@@ -299,7 +299,7 @@ auto write_track_to_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
       disk_ptr->driver->write_track_bits != nullptr) {
     // A driver that refuses the track leaves the buffer dirty, because the
     // changes it holds are still not in the image.
-    const DiskError_e error = disk_ptr->driver->write_track_bits(
+    const DiskError error = disk_ptr->driver->write_track_bits(
         disk_ptr->driver_instance, disk_ptr->quarter_track,
         disk_ptr->track_bits.data(), disk_ptr->bit_count);
     disk_ptr->is_dirty = (error != disk_err_none);
@@ -360,7 +360,7 @@ auto read_track_from_driver(DiskPeripheral_t* disk_peripheral, int drive_index)
   if (disk_ptr->driver != nullptr) {
     uint32_t loaded_bits = 0;
     uint8_t loaded_timing = disk_default_bit_timing;
-    const DiskError_e error = disk_ptr->driver->read_track_bits(
+    const DiskError error = disk_ptr->driver->read_track_bits(
         disk_ptr->driver_instance, disk_ptr->quarter_track,
         disk_ptr->track_bits.data(), max_track_bits, &loaded_bits,
         &loaded_timing);
@@ -435,7 +435,7 @@ auto sync_drive_motor_state(DiskPeripheral_t* disk_peripheral) -> void {
 
 auto insert_disk_into_drive(DiskPeripheral_t* disk_peripheral, int drive_index,
                             const char* image_path, bool write_protected)
-    -> DiskError_e {
+    -> DiskError {
   if (disk_peripheral == nullptr || image_path == nullptr ||
       !is_drive_valid(drive_index)) {
     return disk_err_io;
@@ -448,7 +448,7 @@ auto insert_disk_into_drive(DiskPeripheral_t* disk_peripheral, int drive_index,
   drive = Disk_t();
 
   drive.is_user_write_protected = write_protected;
-  const DiskError_e error =
+  const DiskError error =
       disk_loader_open(image_path, &drive.driver, &drive.driver_instance);
 
   drive.last_error = error;
@@ -1032,7 +1032,7 @@ auto cmd_handle_insert(DiskPeripheral_t* dp, const void* data, size_t size)
       memchr(c->path, '\0', sizeof(c->path)) == nullptr) {
     return peripheral_error;
   }
-  const DiskError_e error =
+  const DiskError error =
       insert_disk_into_drive(dp, c->drive, c->path, c->write_protected != 0);
   return (error == disk_err_none) ? peripheral_ok : peripheral_error;
 }
@@ -1385,7 +1385,7 @@ auto disk_state_v1_read(DiskPeripheral_t* dp, const void* buffer, size_t size)
     const std::string safe_path(ds.full_path,
                                 static_cast<size_t>(end_it - ds.full_path));
 
-    const DiskError_e insert_err = insert_disk_into_drive(
+    const DiskError insert_err = insert_disk_into_drive(
         dp, i, safe_path.c_str(), ds.user_write_protected != 0);
     if (insert_err != disk_err_none) {
       continue;

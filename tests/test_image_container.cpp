@@ -81,7 +81,7 @@ struct ScopedExtractedFile_t {
   auto operator=(ScopedExtractedFile_t&&) -> ScopedExtractedFile_t& = delete;
 
   auto prepare(const std::string& archive,
-               size_t threshold = generous_threshold) -> ImageContainerError_e {
+               size_t threshold = generous_threshold) -> ImageContainerError {
     return image_container_prepare_compressed_path(
         archive.c_str(), path.data(), path.size(), threshold, &is_temporary);
   }

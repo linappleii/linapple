@@ -23,12 +23,12 @@ constexpr const char* harddisk_id = "linapple.harddisk";
 constexpr int card_slot = 7;
 
 auto probe_no(const uint8_t* /*unused*/, size_t /*unused*/, uint64_t /*unused*/,
-              const char* /*unused*/) -> HarddiskProbe_e {
+              const char* /*unused*/) -> HarddiskProbe {
   return harddisk_probe_no;
 }
 
 auto fake_open(const char* /*unused*/, uint32_t /*unused*/, bool /*unused*/,
-               void** out_instance) -> HarddiskError_e {
+               void** out_instance) -> HarddiskError {
   static char fake_instance = 0;
   *out_instance = &fake_instance;
   return harddisk_err_none;
@@ -39,12 +39,12 @@ auto fake_close(void* /*unused*/) -> void {}
 auto fake_is_write_protected(void* /*unused*/) -> bool { return true; }
 
 auto fake_read_block(void* /*unused*/, uint32_t /*unused*/, uint8_t* /*unused*/)
-    -> HarddiskError_e {
+    -> HarddiskError {
   return harddisk_err_io;
 }
 
 auto fake_write_block(void* /*unused*/, uint32_t /*unused*/,
-                      const uint8_t* /*unused*/) -> HarddiskError_e {
+                      const uint8_t* /*unused*/) -> HarddiskError {
   return harddisk_err_io;
 }
 

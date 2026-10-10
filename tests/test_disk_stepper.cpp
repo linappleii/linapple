@@ -593,12 +593,12 @@ TrackRecorder_t g_recorder;
 
 auto recorder_probe(const uint8_t* /*unused*/, size_t /*unused*/,
                     uint32_t /*unused*/, const char* /*unused*/)
-    -> DiskProbe_e {
+    -> DiskProbe {
   return disk_probe_definite;
 }
 
 auto recorder_open(const char* /*unused*/, uint32_t /*unused*/, bool /*unused*/,
-                   void** out_instance) -> DiskError_e {
+                   void** out_instance) -> DiskError {
   *out_instance = &g_recorder;
   return disk_err_none;
 }
@@ -609,7 +609,7 @@ auto recorder_is_write_protected(void* /*unused*/) -> bool { return false; }
 
 auto recorder_read(void* /*unused*/, uint32_t quarter_track, uint8_t* bits,
                    uint32_t max_bits, uint32_t* out_bit_count,
-                   uint8_t* out_bit_timing) -> DiskError_e {
+                   uint8_t* out_bit_timing) -> DiskError {
   if (recorder_cell_count > max_bits) {
     return disk_err_unsupported;
   }
@@ -623,7 +623,7 @@ auto recorder_read(void* /*unused*/, uint32_t quarter_track, uint8_t* bits,
 }
 
 auto recorder_write(void* /*unused*/, uint32_t quarter_track,
-                    const uint8_t* bits, uint32_t bit_count) -> DiskError_e {
+                    const uint8_t* bits, uint32_t bit_count) -> DiskError {
   if (bit_count != recorder_cell_count) {
     return disk_err_unsupported;
   }

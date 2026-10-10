@@ -63,7 +63,7 @@ typedef enum {
   harddisk_status_read = 0x01,
   harddisk_status_write = 0x02,
   harddisk_status_prot = 0x04,
-} HarddiskStatus_e;
+} HarddiskStatus;
 
 // Widest members first and natural alignment, so the layout is the same in
 // every consumer without a packing directive.

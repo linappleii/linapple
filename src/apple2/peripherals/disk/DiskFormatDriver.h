@@ -35,13 +35,13 @@ enum { disk_default_bit_timing = 32 };
 typedef enum {
   disk_driver_cap_write = 0x01,
   disk_driver_cap_create = 0x02,
-} DiskDriverCap_e;
+} DiskDriverCap;
 
 typedef enum {
   disk_probe_no = 0,
   disk_probe_possible = 1,
   disk_probe_definite = 2,
-} DiskProbe_e;
+} DiskProbe;
 
 /* The unit of exchange is the medium as the head sees it: cells packed eight
    to a byte, the first cell in the most significant bit of byte zero. How
@@ -60,14 +60,14 @@ typedef struct DiskFormatDriver_t {
      and header_size says how much of the image it holds. ext_hint is the
      lowercase extension with its leading dot (".dsk"), or "" when the name
      has none, so a driver compares it with strcmp. */
-  DiskProbe_e (*probe)(const uint8_t* header_data, size_t header_size,
+  DiskProbe (*probe)(const uint8_t* header_data, size_t header_size,
                        uint32_t file_size, const char* ext_hint);
 
   /* read_only is the drive's answer before the medium is even read: a file
      the host will not let us write, or one the loader made and will delete.
      The driver folds it into is_write_protected rather than handing the same
      fact back a second way. */
-  DiskError_e (*open)(const char* path, uint32_t file_offset, bool read_only,
+  DiskError (*open)(const char* path, uint32_t file_offset, bool read_only,
                       void** out_instance);
 
   void (*close)(void* instance);
@@ -81,7 +81,7 @@ typedef struct DiskFormatDriver_t {
      disk_err_none with a zero cell count, because an unrecorded surface is
      noise to the read amplifier rather than a refusal. A track longer than
      max_bits is refused with disk_err_unsupported and never truncated. */
-  DiskError_e (*read_track_bits)(void* instance, uint32_t quarter_track,
+  DiskError (*read_track_bits)(void* instance, uint32_t quarter_track,
                                  uint8_t* bits, uint32_t max_bits,
                                  uint32_t* out_bit_count,
                                  uint8_t* out_bit_timing);
@@ -92,10 +92,10 @@ typedef struct DiskFormatDriver_t {
      that will not decode leaves the file untouched; a track that reaches the
      file is complete. There is no temp-and-rename, so a crash between the
      write and the flush can leave one slot torn and never more. */
-  DiskError_e (*write_track_bits)(void* instance, uint32_t quarter_track,
+  DiskError (*write_track_bits)(void* instance, uint32_t quarter_track,
                                   const uint8_t* bits, uint32_t bit_count);
 
-  DiskError_e (*create)(const char* path);
+  DiskError (*create)(const char* path);
 } DiskFormatDriver_t;
 
 #ifdef __cplusplus

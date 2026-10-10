@@ -89,7 +89,7 @@ auto decode_track_with(const TrackBits_t& track, uint32_t cylinder,
 }
 
 auto decode_track(const TrackBits_t& track, uint32_t cylinder,
-                  DiskSectorOrder_e order) -> std::vector<uint8_t> {
+                  DiskSectorOrder order) -> std::vector<uint8_t> {
   return decode_track_with(track, cylinder, disk_encoding_sector_order(order));
 }
 
@@ -329,7 +329,7 @@ struct SynthesisedTrack_t {
   TrackBits_t track;
 };
 
-auto synthesise_sectors(uint32_t cylinder, DiskSectorOrder_e order,
+auto synthesise_sectors(uint32_t cylinder, DiskSectorOrder order,
                         const std::vector<uint8_t>& sectors)
     -> SynthesisedTrack_t {
   REQUIRE(sectors.size() == track_size);
@@ -352,7 +352,7 @@ auto synthesise_sectors(uint32_t cylinder, DiskSectorOrder_e order,
   return out;
 }
 
-auto synthesise_track(uint32_t cylinder, DiskSectorOrder_e order)
+auto synthesise_track(uint32_t cylinder, DiskSectorOrder order)
     -> SynthesisedTrack_t {
   std::vector<uint8_t> sectors(track_size, 0);
   for (size_t i = 0; i < track_size; ++i) {
@@ -818,7 +818,7 @@ auto numbered_sectors() -> std::vector<uint8_t> {
 
 struct SectorWriter_t {
   const DiskFormatDriver_t* driver;
-  DiskSectorOrder_e order;
+  DiskSectorOrder order;
   const std::array<uint8_t, sectors_per_track>* slots;
   const char* fixture;
   const char* extension;

@@ -434,15 +434,15 @@ TEST_CASE("DiskABI: [REG-15] DiskLoader registration validation") {
 
   DiskFormatDriver_t usable{};
   usable.probe = [](const uint8_t*, size_t, uint32_t,
-                    const char*) -> DiskProbe_e { return disk_probe_no; };
-  usable.open = [](const char*, uint32_t, bool, void**) -> DiskError_e {
+                    const char*) -> DiskProbe { return disk_probe_no; };
+  usable.open = [](const char*, uint32_t, bool, void**) -> DiskError {
     return disk_err_none;
   };
   usable.close = [](void*) -> void {};
   usable.is_write_protected = [](void*) -> bool { return true; };
   usable.read_track_bits = [](void*, uint32_t, uint8_t*, uint32_t,
                               uint32_t* out_bit_count,
-                              uint8_t* out_bit_timing) -> DiskError_e {
+                              uint8_t* out_bit_timing) -> DiskError {
     *out_bit_count = 0;
     *out_bit_timing = static_cast<uint8_t>(disk_default_bit_timing);
     return disk_err_none;

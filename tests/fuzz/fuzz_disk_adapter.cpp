@@ -73,7 +73,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   std::vector<uint8_t> bits(max_track_bits / 8, 0);
   uint32_t bit_count = 0;
-  const DiskError_e laid =
+  const DiskError laid =
       disk_encoding_nibbles_to_bits(nibbles.data(), count, sync_mask.data(),
                                     bits.data(), max_track_bits, &bit_count);
   if (laid != disk_err_none) {

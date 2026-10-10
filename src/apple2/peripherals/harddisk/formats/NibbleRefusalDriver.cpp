@@ -24,7 +24,7 @@ constexpr size_t woz_magic_size = 4;
 
 auto nibble_refusal_probe(const uint8_t* header_data, size_t header_size,
                           uint64_t /*unused*/, const char* ext_hint)
-    -> HarddiskProbe_e {
+    -> HarddiskProbe {
   if (ext_hint != nullptr &&
       (strcmp(ext_hint, ".nib") == 0 || strcmp(ext_hint, ".nb2") == 0 ||
        strcmp(ext_hint, ".woz") == 0)) {
@@ -40,7 +40,7 @@ auto nibble_refusal_probe(const uint8_t* header_data, size_t header_size,
 
 auto nibble_refusal_open(const char* /*unused*/, uint32_t /*unused*/,
                          bool /*unused*/, void** out_instance)
-    -> HarddiskError_e {
+    -> HarddiskError {
   if (out_instance != nullptr) {
     *out_instance = nullptr;
   }
@@ -57,12 +57,12 @@ auto nibble_refusal_is_write_protected(void* /*unused*/) -> bool {
 }
 
 auto nibble_refusal_read_block(void* /*unused*/, uint32_t /*unused*/,
-                               uint8_t* /*unused*/) -> HarddiskError_e {
+                               uint8_t* /*unused*/) -> HarddiskError {
   return harddisk_err_not_block_image;
 }
 
 auto nibble_refusal_write_block(void* /*unused*/, uint32_t /*unused*/,
-                                const uint8_t* /*unused*/) -> HarddiskError_e {
+                                const uint8_t* /*unused*/) -> HarddiskError {
   return harddisk_err_not_block_image;
 }
 

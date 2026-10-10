@@ -18,18 +18,18 @@
 
 namespace {
 auto nib_probe(const uint8_t* header_data, size_t header_size,
-               uint32_t file_size, const char* ext_hint) -> DiskProbe_e {
+               uint32_t file_size, const char* ext_hint) -> DiskProbe {
   return nibble_disk_image_probe(header_data, header_size, file_size, ext_hint,
                                  nibble_image_max_bytes, ".nib");
 }
 
 auto nib_open(const char* path, uint32_t file_offset, bool read_only,
-              void** out_instance) -> DiskError_e {
+              void** out_instance) -> DiskError {
   return nibble_disk_image_open(path, file_offset, nibbles_per_track, read_only,
                                 out_instance);
 }
 
-auto nib_create(const char* path) -> DiskError_e {
+auto nib_create(const char* path) -> DiskError {
   return nibble_disk_image_create(path, nibbles_per_track);
 }
 

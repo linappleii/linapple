@@ -10,7 +10,7 @@
 #include "apple2/peripherals/disk/DiskLoader.h"
 
 void disk_abi_c_smoke(void) {
-  ImageContainerError_e container_error = image_container_ok;
+  ImageContainerError container_error = image_container_ok;
   uint32_t wrapper_len = image_container_macbinary_header_len;
   (void)container_error;
   (void)wrapper_len;

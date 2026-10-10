@@ -22,7 +22,7 @@ typedef enum {
   image_container_corrupt = 3,
   image_container_too_large = 4,
   image_container_not_found = 5
-} ImageContainerError_e;
+} ImageContainerError;
 
 enum {
   image_container_macbinary_header_len = 128,
@@ -33,11 +33,11 @@ uint32_t image_container_detect_macbinary(const uint8_t* header_data,
                                           size_t header_len,
                                           uint32_t file_size);
 
-ImageContainerError_e image_container_prepare_compressed_path(
+ImageContainerError image_container_prepare_compressed_path(
     const char* image_path, char* out_load_path, size_t max_path_len,
     size_t uncompressed_threshold, bool* out_is_temporary);
 
-ImageContainerError_e image_container_payload_name(const char* image_path,
+ImageContainerError image_container_payload_name(const char* image_path,
                                                    char* out_name,
                                                    size_t max_name_len);
 

@@ -31,7 +31,7 @@ TEST_CASE("DiskUI: error Message Mapping") {
 }
 
 TEST_CASE("DiskUI: every disk error has a message of its own") {
-  constexpr DiskError_e every_error[] = {
+  constexpr DiskError every_error[] = {
       disk_err_none,    disk_err_file_not_found,   disk_err_unsupported_format,
       disk_err_corrupt, disk_err_write_protected,  disk_err_out_of_memory,
       disk_err_io,      disk_err_invalid_argument, disk_err_unsupported,

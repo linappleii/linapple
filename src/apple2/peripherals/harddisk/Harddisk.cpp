@@ -281,7 +281,7 @@ struct Harddisk_t {
   const HarddiskFormatDriver_t* driver = nullptr;
   void* driver_instance = nullptr;
   bool user_write_protected = false;
-  HarddiskError_e last_error = harddisk_err_none;
+  HarddiskError last_error = harddisk_err_none;
 };
 
 // One register set, not one per drive: a controller has one command
@@ -421,7 +421,7 @@ auto eject_harddisk_from_drive(HarddiskPeripheral_t* card, int drive_index)
 
 auto insert_harddisk_into_drive(HarddiskPeripheral_t* card, int drive_index,
                                 const char* path, bool write_protected)
-    -> HarddiskError_e {
+    -> HarddiskError {
   if (card == nullptr || !is_drive_valid(drive_index) || path == nullptr) {
     return harddisk_err_io;
   }
@@ -432,7 +432,7 @@ auto insert_harddisk_into_drive(HarddiskPeripheral_t* card, int drive_index,
   }
 
   drive.user_write_protected = write_protected;
-  const HarddiskError_e error =
+  const HarddiskError error =
       harddisk_loader_open(path, &drive.driver, &drive.driver_instance);
   harddisk_loader_drain_rejections(report_loader_note, card);
 

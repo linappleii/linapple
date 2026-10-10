@@ -36,7 +36,7 @@ struct BlockDiskImage_t {
   uint64_t data_offset = 0;
   uint32_t total_blocks = 0;
   bool host_read_only = false;
-  BlockDiskOrder_e order = block_disk_order_prodos;
+  BlockDiskOrder order = block_disk_order_prodos;
 
   BlockDiskImage_t() = default;
   ~BlockDiskImage_t() = default;
@@ -84,7 +84,7 @@ auto dos_block_half_offset(uint32_t block, uint32_t half) -> uint64_t {
 // Where DOS 3.3 sector s of track t lies in a file of either order: in a
 // DOS-order file at its own index; in a ProDOS-order file inside the half of
 // the block the table pairs it with.
-auto dos_sector_offset(BlockDiskOrder_e order, uint32_t track, uint32_t sector)
+auto dos_sector_offset(BlockDiskOrder order, uint32_t track, uint32_t sector)
     -> uint64_t {
   if (order == block_disk_order_dos) {
     return (static_cast<uint64_t>(track) * track_bytes) +
@@ -102,7 +102,7 @@ auto dos_sector_offset(BlockDiskOrder_e order, uint32_t track, uint32_t sector)
   return 0;
 }
 
-auto block_offset(BlockDiskOrder_e order, uint32_t block, uint32_t half)
+auto block_offset(BlockDiskOrder order, uint32_t block, uint32_t half)
     -> uint64_t {
   if (order == block_disk_order_dos) {
     return dos_block_half_offset(block, half);
@@ -127,7 +127,7 @@ constexpr uint32_t max_blocks_140k = block_disk_image_dos_blocks;
 // The catalog on track 17 is a chain from sector 15 down to sector 1, each
 // sector's link naming the one below it (Beneath Apple DOS ch. 4).
 auto has_dos_catalog(const uint8_t* header_data, size_t header_size,
-                     BlockDiskOrder_e order) -> bool {
+                     BlockDiskOrder order) -> bool {
   for (uint32_t sector = dos::catalog_last_sector;
        sector <= dos::catalog_first_sector; ++sector) {
     const uint64_t offset =
@@ -145,7 +145,7 @@ auto has_dos_catalog(const uint8_t* header_data, size_t header_size,
 // previous and next links, the key block's previous being 0 and the last
 // block's next being 0 (ProDOS 8 Technical Reference, B.2.2).
 auto has_prodos_directory(const uint8_t* header_data, size_t header_size,
-                          BlockDiskOrder_e order) -> bool {
+                          BlockDiskOrder order) -> bool {
   uint32_t previous = 0;
   uint32_t block = prodos::directory_key_block;
   for (uint32_t visited = 0; visited < prodos::max_blocks_140k; ++visited) {
@@ -182,9 +182,9 @@ auto seek_to(BlockDiskImage_t* image_ptr, uint64_t offset) -> bool {
 }  // namespace
 
 auto block_disk_image_open(const char* path, uint32_t file_offset,
-                           BlockDiskOrder_e order, uint32_t block_count,
+                           BlockDiskOrder order, uint32_t block_count,
                            bool read_only, void** out_instance)
-    -> HarddiskError_e {
+    -> HarddiskError {
   if (out_instance == nullptr) {
     return harddisk_err_io;
   }
@@ -270,7 +270,7 @@ auto block_disk_image_is_write_protected(void* instance) -> bool {
 }
 
 auto block_disk_image_read_block(void* instance, uint32_t block_num,
-                                 uint8_t* buffer) -> HarddiskError_e {
+                                 uint8_t* buffer) -> HarddiskError {
   BlockDiskImage_t* image_ptr = image(instance);
   if (image_ptr == nullptr || buffer == nullptr ||
       block_num >= image_ptr->total_blocks) {
@@ -297,7 +297,7 @@ auto block_disk_image_read_block(void* instance, uint32_t block_num,
 }
 
 auto block_disk_image_write_block(void* instance, uint32_t block_num,
-                                  const uint8_t* buffer) -> HarddiskError_e {
+                                  const uint8_t* buffer) -> HarddiskError {
   BlockDiskImage_t* image_ptr = image(instance);
   if (image_ptr == nullptr || buffer == nullptr) {
     return harddisk_err_io;
@@ -342,8 +342,8 @@ auto block_disk_image_get_total_blocks(void* instance) -> uint32_t {
 
 auto block_disk_image_probe_signature(const uint8_t* header_data,
                                       size_t header_size, uint64_t file_size,
-                                      BlockDiskOrder_e order)
-    -> HarddiskProbe_e {
+                                      BlockDiskOrder order)
+    -> HarddiskProbe {
   if (header_data == nullptr) {
     return harddisk_probe_no;
   }

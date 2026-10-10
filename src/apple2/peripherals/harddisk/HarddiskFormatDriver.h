@@ -21,13 +21,13 @@ enum { harddisk_format_abi_version = 0 };
 typedef enum {
   harddisk_driver_cap_none = 0x00,
   harddisk_driver_cap_write = 0x01,
-} HarddiskDriverCap_e;
+} HarddiskDriverCap;
 
 typedef enum {
   harddisk_probe_no = 0,
   harddisk_probe_possible = 1,
   harddisk_probe_definite = 2,
-} HarddiskProbe_e;
+} HarddiskProbe;
 
 /* The unit of exchange is the 512-byte block ProDOS addresses: how the file
    serializes it is the driver's business and nobody else's. */
@@ -44,14 +44,14 @@ typedef struct HarddiskFormatDriver_t {
      and header_size says how much of the image it holds. ext_hint is the
      lowercase extension with its leading dot (".hdv"), or "" when the name
      has none, so a driver compares it with strcmp. */
-  HarddiskProbe_e (*probe)(const uint8_t* header_data, size_t header_size,
+  HarddiskProbe (*probe)(const uint8_t* header_data, size_t header_size,
                            uint64_t file_size, const char* ext_hint);
 
   /* read_only is known before the medium is read: the loader sets it for a
      temporary it made and will delete. The driver folds it into
      is_write_protected with what it finds itself, such as a file it cannot
      open for writing, rather than handing the same fact back a second way. */
-  HarddiskError_e (*open)(const char* path, uint32_t file_offset,
+  HarddiskError (*open)(const char* path, uint32_t file_offset,
                           bool read_only, void** out_instance);
 
   void (*close)(void* instance);
@@ -62,13 +62,13 @@ typedef struct HarddiskFormatDriver_t {
 
   /* buffer holds 512 bytes, the caller's promise. A block past the end is
      harddisk_err_io, as a seek past the medium would be. */
-  HarddiskError_e (*read_block)(void* instance, uint32_t block_num,
+  HarddiskError (*read_block)(void* instance, uint32_t block_num,
                                 uint8_t* buffer);
 
   /* The block reaches the kernel before the call returns: the bytes are
      written and the stream flushed, and a failure of either is
      harddisk_err_io. A protected medium answers harddisk_err_read_only. */
-  HarddiskError_e (*write_block)(void* instance, uint32_t block_num,
+  HarddiskError (*write_block)(void* instance, uint32_t block_num,
                                  const uint8_t* buffer);
 
   uint32_t (*get_total_blocks)(void* instance);

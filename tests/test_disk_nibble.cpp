@@ -212,7 +212,7 @@ namespace {
 
 auto write_nibbles(const DiskFormatDriver_t& driver, void* instance,
                    uint32_t quarter_track, const std::vector<uint8_t>& nibbles)
-    -> DiskError_e {
+    -> DiskError {
   std::vector<uint8_t> bits(max_track_bits / 8, 0);
   uint32_t bit_count = 0;
   REQUIRE(disk_encoding_nibbles_to_bits(
@@ -356,7 +356,7 @@ auto woz_padded_to(size_t size) -> std::vector<uint8_t> {
 
 struct LoaderChoice_t {
   std::string driver_name;
-  DiskError_e error = disk_err_none;
+  DiskError error = disk_err_none;
 };
 
 auto loader_choice(const std::string& path) -> LoaderChoice_t {

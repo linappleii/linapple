@@ -1284,14 +1284,14 @@ constexpr uint32_t boundless_blocks = 4;
 
 auto boundless_probe(const uint8_t* /*unused*/, size_t /*unused*/,
                      uint64_t /*unused*/, const char* ext_hint)
-    -> HarddiskProbe_e {
+    -> HarddiskProbe {
   return (ext_hint != nullptr && std::strcmp(ext_hint, ".boundless") == 0)
              ? harddisk_probe_definite
              : harddisk_probe_no;
 }
 
 auto boundless_open(const char* /*unused*/, uint32_t /*unused*/,
-                    bool /*unused*/, void** out_instance) -> HarddiskError_e {
+                    bool /*unused*/, void** out_instance) -> HarddiskError {
   static int instance = 0;
   *out_instance = &instance;
   return harddisk_err_none;
@@ -1302,13 +1302,13 @@ auto boundless_close(void* /*unused*/) -> void {}
 auto boundless_is_write_protected(void* /*unused*/) -> bool { return false; }
 
 auto boundless_read_block(void* /*unused*/, uint32_t block, uint8_t* buffer)
-    -> HarddiskError_e {
+    -> HarddiskError {
   std::memset(buffer, static_cast<int>(block & 0xFF), block_size);
   return harddisk_err_none;
 }
 
 auto boundless_write_block(void* /*unused*/, uint32_t /*unused*/,
-                           const uint8_t* /*unused*/) -> HarddiskError_e {
+                           const uint8_t* /*unused*/) -> HarddiskError {
   return harddisk_err_none;
 }
 

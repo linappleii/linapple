@@ -87,7 +87,7 @@ TEST_CASE("DiskCompression: [ZIP-1] Normal Floppy ZIP within 4MB is allowed") {
                           floppy_data.size()));
 
   ScopedExtractedFile_t out_file;
-  const ImageContainerError_e result = image_container_prepare_compressed_path(
+  const ImageContainerError result = image_container_prepare_compressed_path(
       test_zip.c_str(), out_file.path, sizeof(out_file.path), floppy_threshold,
       &out_file.is_temporary);
 
@@ -106,7 +106,7 @@ TEST_CASE(
                           zeros.size()));
 
   ScopedExtractedFile_t out_file;
-  const ImageContainerError_e result = image_container_prepare_compressed_path(
+  const ImageContainerError result = image_container_prepare_compressed_path(
       test_zip.c_str(), out_file.path, sizeof(out_file.path), floppy_threshold,
       &out_file.is_temporary);
 
@@ -124,7 +124,7 @@ TEST_CASE(
                           zeros.size()));
 
   ScopedExtractedFile_t out_file;
-  const ImageContainerError_e result = image_container_prepare_compressed_path(
+  const ImageContainerError result = image_container_prepare_compressed_path(
       test_zip.c_str(), out_file.path, sizeof(out_file.path),
       harddisk_threshold, &out_file.is_temporary);
 
@@ -143,7 +143,7 @@ TEST_CASE(
                           zeros.size()));
 
   ScopedExtractedFile_t out_file;
-  const ImageContainerError_e result = image_container_prepare_compressed_path(
+  const ImageContainerError result = image_container_prepare_compressed_path(
       test_zip.c_str(), out_file.path, sizeof(out_file.path), floppy_threshold,
       &out_file.is_temporary);
 
@@ -160,7 +160,7 @@ TEST_CASE(
                           zeros.size()));
 
   ScopedExtractedFile_t out_file;
-  const ImageContainerError_e result = image_container_prepare_compressed_path(
+  const ImageContainerError result = image_container_prepare_compressed_path(
       test_zip.c_str(), out_file.path, sizeof(out_file.path),
       harddisk_threshold, &out_file.is_temporary);
 
@@ -179,7 +179,7 @@ TEST_CASE(
   // Floppy gate: 4MB -> blocked
   {
     ScopedExtractedFile_t floppy_out;
-    const ImageContainerError_e floppy_result =
+    const ImageContainerError floppy_result =
         image_container_prepare_compressed_path(
             test_gz.c_str(), floppy_out.path, sizeof(floppy_out.path),
             floppy_threshold, &floppy_out.is_temporary);
@@ -189,7 +189,7 @@ TEST_CASE(
   // Harddisk gate: 32MB -> allowed
   {
     ScopedExtractedFile_t hd_out;
-    const ImageContainerError_e hd_result =
+    const ImageContainerError hd_result =
         image_container_prepare_compressed_path(
             test_gz.c_str(), hd_out.path, sizeof(hd_out.path),
             harddisk_threshold, &hd_out.is_temporary);

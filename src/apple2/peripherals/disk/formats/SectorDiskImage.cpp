@@ -34,7 +34,7 @@ struct SectorDiskImage_t {
   uint32_t data_offset = 0;
   uint32_t track_count = 0;
   bool host_read_only = false;
-  DiskSectorOrder_e order = disk_sector_order_prodos;
+  DiskSectorOrder order = disk_sector_order_prodos;
   std::array<uint8_t, disk_encoding_scratch_size> scratch{};
   std::array<uint8_t, nibbles_per_track> nibbles{};
   std::array<uint8_t, nibbles_per_track> sync_mask{};
@@ -109,7 +109,7 @@ auto quarter_track_to_cylinder(uint32_t quarter_track) -> uint32_t {
 
 auto sector_disk_image_open(const char* path, uint32_t file_offset,
                             bool is_dos_order, bool read_only,
-                            void** out_instance) -> DiskError_e {
+                            void** out_instance) -> DiskError {
   if (out_instance == nullptr) {
     return disk_err_invalid_argument;
   }
@@ -177,7 +177,7 @@ auto sector_disk_image_is_write_protected(void* instance) -> bool {
 auto sector_disk_image_read_track_bits(void* instance, uint32_t quarter_track,
                                        uint8_t* bits, uint32_t max_bits,
                                        uint32_t* out_bit_count,
-                                       uint8_t* out_bit_timing) -> DiskError_e {
+                                       uint8_t* out_bit_timing) -> DiskError {
   auto* image_ptr = static_cast<SectorDiskImage_t*>(instance);
   if (image_ptr == nullptr || bits == nullptr || out_bit_count == nullptr ||
       out_bit_timing == nullptr) {
@@ -215,7 +215,7 @@ auto sector_disk_image_read_track_bits(void* instance, uint32_t quarter_track,
   }
 
   uint32_t nibble_count = 0;
-  const DiskError_e synthesised = disk_encoding_nibblize_track(
+  const DiskError synthesised = disk_encoding_nibblize_track(
       disk_encoding_sector_order(image_ptr->order), track,
       image_ptr->sectors.data(), image_ptr->nibbles.data(),
       image_ptr->sync_mask.data(), &nibble_count, image_ptr->scratch.data());
@@ -230,7 +230,7 @@ auto sector_disk_image_read_track_bits(void* instance, uint32_t quarter_track,
 
 auto sector_disk_image_write_track_bits(void* instance, uint32_t quarter_track,
                                         const uint8_t* bits, uint32_t bit_count)
-    -> DiskError_e {
+    -> DiskError {
   auto* image_ptr = static_cast<SectorDiskImage_t*>(instance);
   if (image_ptr == nullptr || bits == nullptr) {
     return disk_err_invalid_argument;
@@ -247,7 +247,7 @@ auto sector_disk_image_write_track_bits(void* instance, uint32_t quarter_track,
   }
 
   uint32_t nibble_count = 0;
-  const DiskError_e decoded =
+  const DiskError decoded =
       disk_encoding_bits_to_nibbles(bits, bit_count, image_ptr->nibbles.data(),
                                     nibbles_per_track, &nibble_count);
   if (decoded != disk_err_none) {
@@ -256,7 +256,7 @@ auto sector_disk_image_write_track_bits(void* instance, uint32_t quarter_track,
 
   // Nothing reaches the file unless all sixteen sectors came back, so a
   // track the head only half-read cannot cost the image the other half.
-  const DiskError_e decoded_track = disk_encoding_denibblize_track(
+  const DiskError decoded_track = disk_encoding_denibblize_track(
       disk_encoding_sector_order(image_ptr->order), track,
       image_ptr->nibbles.data(), nibble_count, image_ptr->sectors.data(),
       image_ptr->scratch.data());
@@ -280,7 +280,7 @@ auto sector_disk_image_write_track_bits(void* instance, uint32_t quarter_track,
   return disk_err_none;
 }
 
-auto sector_disk_image_create(const char* path) -> DiskError_e {
+auto sector_disk_image_create(const char* path) -> DiskError {
   if (path == nullptr) {
     return disk_err_invalid_argument;
   }
@@ -402,7 +402,7 @@ auto has_prodos_directory(const uint8_t* header_data, size_t header_size,
 
 auto sector_disk_image_probe_signature(const uint8_t* header_data,
                                        size_t header_size, uint32_t file_size,
-                                       bool is_dos_order) -> DiskProbe_e {
+                                       bool is_dos_order) -> DiskProbe {
   if (header_data == nullptr) {
     return disk_probe_no;
   }

@@ -22,18 +22,18 @@ constexpr uint32_t disk_size = nibble_image_tracks * track_size;
 }  // namespace nb2
 
 auto nb2_probe(const uint8_t* header_data, size_t header_size,
-               uint32_t file_size, const char* ext_hint) -> DiskProbe_e {
+               uint32_t file_size, const char* ext_hint) -> DiskProbe {
   return nibble_disk_image_probe(header_data, header_size, file_size, ext_hint,
                                  nb2::disk_size, ".nb2");
 }
 
 auto nb2_open(const char* path, uint32_t file_offset, bool read_only,
-              void** out_instance) -> DiskError_e {
+              void** out_instance) -> DiskError {
   return nibble_disk_image_open(path, file_offset, nb2::track_size, read_only,
                                 out_instance);
 }
 
-auto nb2_create(const char* path) -> DiskError_e {
+auto nb2_create(const char* path) -> DiskError {
   return nibble_disk_image_create(path, nb2::track_size);
 }
 

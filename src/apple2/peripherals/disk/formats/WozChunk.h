@@ -115,7 +115,7 @@ inline auto woz_chunks_end(FILE* file, uint32_t base_offset, uint64_t file_size)
 // container whose padding or resource fork follows the last chunk, so the
 // range ends at the last chunk rather than at the end of the file.
 inline auto woz_verify_crc32(FILE* file, uint32_t base_offset,
-                             uint32_t stored_crc) -> DiskError_e {
+                             uint32_t stored_crc) -> DiskError {
   if (file == nullptr) {
     return disk_err_invalid_argument;
   }
