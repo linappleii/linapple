@@ -69,7 +69,7 @@ static Peripheral_t g_mock_peripheral = {
     nullptr,  // save_state
     nullptr,  // load_state
     nullptr,  // command
-    nullptr   // query
+    nullptr,  // query
 };
 
 TEST_CASE("Peripheral Manager: Direct IO handlers are cleared during re-init") {
@@ -173,7 +173,8 @@ TEST_CASE("Peripheral Manager: host_get_config lifetime") {
       nullptr,
       nullptr,
       nullptr,
-      nullptr};
+      nullptr,
+  };
 
   // Set some config values
   config_save_string("Peripheral", "TestKey1", "Value1");
@@ -244,7 +245,8 @@ TEST_CASE("Peripheral Manager: Command payload capacity") {
         }
         return peripheral_ok;
       },
-      nullptr};
+      nullptr,
+  };
 
   peripheral_register(&test_api, 1);
 
@@ -438,23 +440,25 @@ TEST_CASE(
 TEST_CASE(
     "Peripheral Manager: Plugin loader ABI verification and error handling") {
   SUBCASE("ABI mismatch rejection") {
-    Peripheral_t mismatched_api = {LINAPPLE_ABI_VERSION + 99,
-                                   "test.mismatched_abi",
-                                   "MismatchedABITest",
-                                   "Desc",
-                                   "Author",
-                                   "1.0.0",
-                                   0xFF,
-                                   -1,
-                                   nullptr,
-                                   nullptr,
-                                   nullptr,
-                                   nullptr,
-                                   nullptr,
-                                   nullptr,
-                                   nullptr,
-                                   nullptr,
-                                   nullptr};
+    Peripheral_t mismatched_api = {
+        LINAPPLE_ABI_VERSION + 99,
+        "test.mismatched_abi",
+        "MismatchedABITest",
+        "Desc",
+        "Author",
+        "1.0.0",
+        0xFF,
+        -1,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+    };
 
     CHECK(mismatched_api.abi_version != LINAPPLE_ABI_VERSION);
   }
@@ -608,23 +612,25 @@ auto page_card_init(int slot, HostInterface_t* host) -> void* {
 
 auto page_card_shutdown(void* instance) -> void { (void)instance; }
 
-Peripheral_t g_page_card = {.abi_version = LINAPPLE_ABI_VERSION,
-                            .id = "test.page_card",
-                            .name = "Page Card",
-                            .description = "Registers a $Cn00 page",
-                            .author = "LinApple Contributors",
-                            .version = "1.0.0",
-                            .compatible_slots = PERIPHERAL_MASK_EXPANSION,
-                            .default_slot = -1,
-                            .init = page_card_init,
-                            .reset = nullptr,
-                            .shutdown = page_card_shutdown,
-                            .think = nullptr,
-                            .on_vblank = nullptr,
-                            .save_state = nullptr,
-                            .load_state = nullptr,
-                            .command = nullptr,
-                            .query = nullptr};
+Peripheral_t g_page_card = {
+    .abi_version = LINAPPLE_ABI_VERSION,
+    .id = "test.page_card",
+    .name = "Page Card",
+    .description = "Registers a $Cn00 page",
+    .author = "LinApple Contributors",
+    .version = "1.0.0",
+    .compatible_slots = PERIPHERAL_MASK_EXPANSION,
+    .default_slot = -1,
+    .init = page_card_init,
+    .reset = nullptr,
+    .shutdown = page_card_shutdown,
+    .think = nullptr,
+    .on_vblank = nullptr,
+    .save_state = nullptr,
+    .load_state = nullptr,
+    .command = nullptr,
+    .query = nullptr,
+};
 
 }  // namespace
 
@@ -664,23 +670,25 @@ auto activity_card_init(int slot, HostInterface_t* host) -> void* {
   return &g_activity_card_host;
 }
 
-Peripheral_t g_activity_card = {.abi_version = LINAPPLE_ABI_VERSION,
-                                .id = "test.activity_card",
-                                .name = "Activity Card",
-                                .description = "Reports activity on request",
-                                .author = "LinApple Contributors",
-                                .version = "1.0.0",
-                                .compatible_slots = PERIPHERAL_MASK_EXPANSION,
-                                .default_slot = -1,
-                                .init = activity_card_init,
-                                .reset = nullptr,
-                                .shutdown = page_card_shutdown,
-                                .think = nullptr,
-                                .on_vblank = nullptr,
-                                .save_state = nullptr,
-                                .load_state = nullptr,
-                                .command = nullptr,
-                                .query = nullptr};
+Peripheral_t g_activity_card = {
+    .abi_version = LINAPPLE_ABI_VERSION,
+    .id = "test.activity_card",
+    .name = "Activity Card",
+    .description = "Reports activity on request",
+    .author = "LinApple Contributors",
+    .version = "1.0.0",
+    .compatible_slots = PERIPHERAL_MASK_EXPANSION,
+    .default_slot = -1,
+    .init = activity_card_init,
+    .reset = nullptr,
+    .shutdown = page_card_shutdown,
+    .think = nullptr,
+    .on_vblank = nullptr,
+    .save_state = nullptr,
+    .load_state = nullptr,
+    .command = nullptr,
+    .query = nullptr,
+};
 
 constexpr const char* run_request_line = "for this run";
 
@@ -1013,12 +1021,16 @@ TEST_CASE(
     bool installed;
   };
   // An empty value leaves the key out of that section.
-  const std::array<Row_t, 6> rows = {{{"1", "", true},
-                                      {"", "1", true},
-                                      {"1", "0", true},
-                                      {"0", "1", false},
-                                      {"", "0", false},
-                                      {"", "", false}}};
+  const std::array<Row_t, 6> rows = {
+      {
+          {"1", "", true},
+          {"", "1", true},
+          {"1", "0", true},
+          {"0", "1", false},
+          {"", "0", false},
+          {"", "", false},
+      },
+  };
   for (const Row_t& row : rows) {
     CAPTURE(row.preferences);
     CAPTURE(row.configuration);
@@ -1076,11 +1088,21 @@ TEST_CASE(
     int expected_slot;
   };
   const std::array<Model_t, 3> models = {
-      {{TestFixtures::ScopedTestConfig_t::machine_apple2e_enhanced,
-        A2TYPE_APPLE2EENHANCED, 2},
-       {TestFixtures::ScopedTestConfig_t::machine_apple2e, A2TYPE_APPLE2E, 2},
-       {TestFixtures::ScopedTestConfig_t::machine_apple2_plus,
-        A2TYPE_APPLE2PLUS, 3}}};
+      {
+          {
+              TestFixtures::ScopedTestConfig_t::machine_apple2e_enhanced,
+              A2TYPE_APPLE2EENHANCED,
+              2,
+          },
+          {TestFixtures::ScopedTestConfig_t::machine_apple2e, A2TYPE_APPLE2E,
+           2},
+          {
+              TestFixtures::ScopedTestConfig_t::machine_apple2_plus,
+              A2TYPE_APPLE2PLUS,
+              3,
+          },
+      },
+  };
   for (const Model_t& model : models) {
     CAPTURE(model.config_type);
     TestFixtures::ScopedTestConfig_t::Description_t description;

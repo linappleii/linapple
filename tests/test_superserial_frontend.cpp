@@ -201,41 +201,45 @@ auto probe_shutdown(void* instance) -> void {
   probe->host->SinkClose(probe->token);
 }
 
-Peripheral_t g_serial_probe_card = {LINAPPLE_ABI_VERSION,
-                                    "test.serial_token_probe",
-                                    "SerialTokenProbe",
-                                    "Opens a serial token at init",
-                                    "LinApple Contributors",
-                                    "1.0.0",
-                                    PERIPHERAL_MASK_EXPANSION,
-                                    -1,
-                                    serial_probe_init,
-                                    nullptr,
-                                    probe_shutdown,
-                                    nullptr,
-                                    nullptr,
-                                    nullptr,
-                                    nullptr,
-                                    nullptr,
-                                    nullptr};
+Peripheral_t g_serial_probe_card = {
+    LINAPPLE_ABI_VERSION,
+    "test.serial_token_probe",
+    "SerialTokenProbe",
+    "Opens a serial token at init",
+    "LinApple Contributors",
+    "1.0.0",
+    PERIPHERAL_MASK_EXPANSION,
+    -1,
+    serial_probe_init,
+    nullptr,
+    probe_shutdown,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+};
 
-Peripheral_t g_printer_probe_card = {LINAPPLE_ABI_VERSION,
-                                     "test.printer_token_probe",
-                                     "PrinterTokenProbe",
-                                     "Opens a printer token at init",
-                                     "LinApple Contributors",
-                                     "1.0.0",
-                                     PERIPHERAL_MASK_EXPANSION,
-                                     -1,
-                                     printer_probe_init,
-                                     nullptr,
-                                     probe_shutdown,
-                                     nullptr,
-                                     nullptr,
-                                     nullptr,
-                                     nullptr,
-                                     nullptr,
-                                     nullptr};
+Peripheral_t g_printer_probe_card = {
+    LINAPPLE_ABI_VERSION,
+    "test.printer_token_probe",
+    "PrinterTokenProbe",
+    "Opens a printer token at init",
+    "LinApple Contributors",
+    "1.0.0",
+    PERIPHERAL_MASK_EXPANSION,
+    -1,
+    printer_probe_init,
+    nullptr,
+    probe_shutdown,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+};
 
 constexpr int serial_probe_slot = 3;
 constexpr int printer_probe_slot = 5;
@@ -499,7 +503,8 @@ TEST_CASE(
   REQUIRE_MESSAGE(peer.fd() >= 0, peer.error_text());
 
   PeripheralSerialLine_t line = {
-      9600, 8, peripheral_serial_parity_none, 2, 1, 1, 0, {0, 0}};
+      9600, 8, peripheral_serial_parity_none, 2, 1, 1, 0, {0, 0},
+  };
   sink().set_line(nullptr, card_slot, &line);
   termios settings{};
   REQUIRE(tcgetattr(peer.fd(), &settings) == 0);
@@ -544,8 +549,10 @@ TEST_CASE(
     "in either case reaches the card") {
   SUBCASE("a malformed first row and an empty second row") {
     ScopedTestConfig_t config(serial_in_slot_2(
-        "", {{"Configuration", "Serial Switches 1", "ON ON MAYBE"},
-             {"Configuration", "Serial Switches 2", ""}}));
+        "", {
+                {"Configuration", "Serial Switches 1", "ON ON MAYBE"},
+                {"Configuration", "Serial Switches 2", ""},
+            }));
     ScopedLogCapture_t log;
     HeadlessHarness_t harness(config);
     CHECK(read_switch_register(card_slot, 1) == 0xEC);
@@ -556,8 +563,10 @@ TEST_CASE(
   SUBCASE("six tokens and eight tokens are both malformed") {
     ScopedTestConfig_t config(serial_in_slot_2(
         "",
-        {{"Configuration", "Serial Switches 1", "ON ON ON ON ON ON"},
-         {"Configuration", "Serial Switches 2", "ON ON ON ON ON ON ON ON"}}));
+        {
+            {"Configuration", "Serial Switches 1", "ON ON ON ON ON ON"},
+            {"Configuration", "Serial Switches 2", "ON ON ON ON ON ON ON ON"},
+        }));
     ScopedLogCapture_t log;
     HeadlessHarness_t harness(config);
     CHECK(read_switch_register(card_slot, 1) == 0xEC);
@@ -567,9 +576,15 @@ TEST_CASE(
   }
   SUBCASE("the manual's printer-mode rows, in any case and with commas") {
     ScopedTestConfig_t config(serial_in_slot_2(
-        "", {{"Configuration", "Serial Switches 1", "off off off on off on on"},
-             {"Configuration", "Serial Switches 2",
-              "ON, ON, OFF, ON, OFF, OFF, OFF"}}));
+        "",
+        {
+            {"Configuration", "Serial Switches 1", "off off off on off on on"},
+            {
+                "Configuration",
+                "Serial Switches 2",
+                "ON, ON, OFF, ON, OFF, OFF, OFF",
+            },
+        }));
     ScopedLogCapture_t log;
     HeadlessHarness_t harness(config);
     CHECK(read_switch_register(card_slot, 1) == 0xEE);
@@ -757,7 +772,8 @@ TEST_CASE(
   const std::vector<uint8_t> applesoft_session_stream = {
       0x8D, 0xDD, 0xD0, 0xD2, 0xC9, 0xCE, 0xD4, 0xA0, 0xA2, 0xC8,
       0xC5, 0xCC, 0xCC, 0xCF, 0xA2, 0x8D, 0xC8, 0xC5, 0xCC, 0xCC,
-      0xCF, 0x8D, 0x8D, 0xDD, 0xD0, 0xD2, 0xA3, 0xB0, 0x8D};
+      0xCF, 0x8D, 0x8D, 0xDD, 0xD0, 0xD2, 0xA3, 0xB0, 0x8D,
+  };
   CHECK(hex(peer.read_bytes(applesoft_session_stream.size())) ==
         hex(applesoft_session_stream));
   CHECK(peer.has_byte() == false);
@@ -771,8 +787,10 @@ TEST_CASE(
     "reads $5A with no think between") {
   ScopedTestConfig_t config(serial_in_slot_2(
       "pty",
-      {{"Configuration", "Serial Switches 1", "OFF OFF OFF ON OFF ON ON"},
-       {"Configuration", "Serial Switches 2", "ON ON OFF ON OFF OFF OFF"}}));
+      {
+          {"Configuration", "Serial Switches 1", "OFF OFF OFF ON OFF ON ON"},
+          {"Configuration", "Serial Switches 2", "ON ON OFF ON OFF OFF OFF"},
+      }));
   ScopedLogCapture_t log;
   HeadlessHarness_t harness(config);
   open_peer(log);

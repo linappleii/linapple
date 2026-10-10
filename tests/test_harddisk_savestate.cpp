@@ -165,7 +165,8 @@ auto call_driver(int slot, uint8_t command, uint8_t unit, uint16_t buffer,
       static_cast<uint8_t>(results_at >> 8),
       0x4C,
       static_cast<uint8_t>((program_start + 35) & 0xFF),
-      static_cast<uint8_t>((program_start + 35) >> 8)};
+      static_cast<uint8_t>((program_start + 35) >> 8),
+  };
   const uint16_t sentinel = program_start + 35;
   TestFixtures::ScopedCore_t::poke(program_start, program);
   TestFixtures::enter_at({program_start, 0, 0, 0});
@@ -202,9 +203,12 @@ auto boot_write_ramp_and_start_reading(int slot, const std::string& image)
 }
 
 auto expected_frame(int slot, uint8_t phase) -> Frame_t {
-  Frame_t frame = {{0x01, 0x00, 0x00, 0x00, 0x14, 0x00, 0x00,
-                    0x00, 0x70, 0x01, 0x00, 0x01, 0x03, 0x00,
-                    0x64, 0x00, 0x10, 0x00, 0x00, 0x00}};
+  Frame_t frame = {
+      {
+          0x01, 0x00, 0x00, 0x00, 0x14, 0x00, 0x00, 0x00, 0x70, 0x01,
+          0x00, 0x01, 0x03, 0x00, 0x64, 0x00, 0x10, 0x00, 0x00, 0x00,
+      },
+  };
   frame.at(8) = unit_for(slot, 0);
   frame.at(11) = phase;
   return frame;

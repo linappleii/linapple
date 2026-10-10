@@ -309,8 +309,10 @@ struct Program_t {
 };
 
 auto poke_irq_vector(uint16_t handler) -> void {
-  const std::array<uint8_t, 2> vector = {static_cast<uint8_t>(handler & 0xFF),
-                                         static_cast<uint8_t>(handler >> 8)};
+  const std::array<uint8_t, 2> vector = {
+      static_cast<uint8_t>(handler & 0xFF),
+      static_cast<uint8_t>(handler >> 8),
+  };
   TestFixtures::ScopedCore_t::poke(IRQ_VECTOR_ADDR, vector);
 }
 
@@ -594,24 +596,32 @@ struct RequiredMember_t {
   void (*clear)(HostInterface_t*);
 };
 
-const std::array<RequiredMember_t, 14> required_members = {{
-    {"AssertIrq", [](HostInterface_t* h) { h->AssertIrq = nullptr; }},
-    {"RegisterIO", [](HostInterface_t* h) { h->RegisterIO = nullptr; }},
-    {"RegisterCxROM", [](HostInterface_t* h) { h->RegisterCxROM = nullptr; }},
-    {"RegisterExpansionROM",
-     [](HostInterface_t* h) { h->RegisterExpansionROM = nullptr; }},
-    {"GetCycles", [](HostInterface_t* h) { h->GetCycles = nullptr; }},
-    {"GetClockHz", [](HostInterface_t* h) { h->GetClockHz = nullptr; }},
-    {"ReadFloatingBus",
-     [](HostInterface_t* h) { h->ReadFloatingBus = nullptr; }},
-    {"SinkOpen", [](HostInterface_t* h) { h->SinkOpen = nullptr; }},
-    {"SinkWrite", [](HostInterface_t* h) { h->SinkWrite = nullptr; }},
-    {"SinkClose", [](HostInterface_t* h) { h->SinkClose = nullptr; }},
-    {"SinkRead", [](HostInterface_t* h) { h->SinkRead = nullptr; }},
-    {"SinkSetLine", [](HostInterface_t* h) { h->SinkSetLine = nullptr; }},
-    {"SinkGetLines", [](HostInterface_t* h) { h->SinkGetLines = nullptr; }},
-    {"ScheduleEvent", [](HostInterface_t* h) { h->ScheduleEvent = nullptr; }},
-}};
+const std::array<RequiredMember_t, 14> required_members = {
+    {
+        {"AssertIrq", [](HostInterface_t* h) { h->AssertIrq = nullptr; }},
+        {"RegisterIO", [](HostInterface_t* h) { h->RegisterIO = nullptr; }},
+        {"RegisterCxROM",
+         [](HostInterface_t* h) { h->RegisterCxROM = nullptr; }},
+        {
+            "RegisterExpansionROM",
+            [](HostInterface_t* h) { h->RegisterExpansionROM = nullptr; },
+        },
+        {"GetCycles", [](HostInterface_t* h) { h->GetCycles = nullptr; }},
+        {"GetClockHz", [](HostInterface_t* h) { h->GetClockHz = nullptr; }},
+        {
+            "ReadFloatingBus",
+            [](HostInterface_t* h) { h->ReadFloatingBus = nullptr; },
+        },
+        {"SinkOpen", [](HostInterface_t* h) { h->SinkOpen = nullptr; }},
+        {"SinkWrite", [](HostInterface_t* h) { h->SinkWrite = nullptr; }},
+        {"SinkClose", [](HostInterface_t* h) { h->SinkClose = nullptr; }},
+        {"SinkRead", [](HostInterface_t* h) { h->SinkRead = nullptr; }},
+        {"SinkSetLine", [](HostInterface_t* h) { h->SinkSetLine = nullptr; }},
+        {"SinkGetLines", [](HostInterface_t* h) { h->SinkGetLines = nullptr; }},
+        {"ScheduleEvent",
+         [](HostInterface_t* h) { h->ScheduleEvent = nullptr; }},
+    },
+};
 
 }  // namespace
 
@@ -747,7 +757,7 @@ auto poke_rom_copier(int slot) -> uint16_t {
       0xA5, 0x07,                   // LDA $07
       0xC9, 0xCF,                   // CMP #$CF
       0xD0, 0xEF,                   // BNE $031D
-      0x4C, 0x2E, 0x03              // JMP $032E
+      0x4C, 0x2E, 0x03,             // JMP $032E
   };
   TestFixtures::ScopedCore_t::poke(program_start, program);
   return 0x032E;
@@ -844,8 +854,9 @@ TEST_CASE(
     "switches at $C0n1-$C0n2, and the floating bus at every other offset") {
   SerialMachine_t machine;
   const uint16_t scanner = video_get_scanner_address(nullptr, 0);
-  const std::vector<uint8_t> undecoded = {0x0, 0x3, 0x4, 0x5, 0x6,
-                                          0x7, 0xC, 0xD, 0xE, 0xF};
+  const std::vector<uint8_t> undecoded = {
+      0x0, 0x3, 0x4, 0x5, 0x6, 0x7, 0xC, 0xD, 0xE, 0xF,
+  };
   Program_t program;
   program.read_card_into(machine.slot, register_status, 0x10);
   program.read_card_into(machine.slot, register_control, 0x11);
@@ -1768,9 +1779,12 @@ constexpr uint8_t high_prompt = 0xDD;
 // Return. In communications mode the firmware sends each COUT byte with bit 7
 // intact and no line feed (SW2-5 OFF).
 constexpr std::array<uint8_t, 29> applesoft_session_stream = {
-    {0x8D, 0xDD, 0xD0, 0xD2, 0xC9, 0xCE, 0xD4, 0xA0, 0xA2, 0xC8,
-     0xC5, 0xCC, 0xCC, 0xCF, 0xA2, 0x8D, 0xC8, 0xC5, 0xCC, 0xCC,
-     0xCF, 0x8D, 0x8D, 0xDD, 0xD0, 0xD2, 0xA3, 0xB0, 0x8D}};
+    {
+        0x8D, 0xDD, 0xD0, 0xD2, 0xC9, 0xCE, 0xD4, 0xA0, 0xA2, 0xC8,
+        0xC5, 0xCC, 0xCC, 0xCF, 0xA2, 0x8D, 0xC8, 0xC5, 0xCC, 0xCC,
+        0xCF, 0x8D, 0x8D, 0xDD, 0xD0, 0xD2, 0xA3, 0xB0, 0x8D,
+    },
+};
 
 }  // namespace
 

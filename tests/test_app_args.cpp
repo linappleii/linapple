@@ -8,8 +8,12 @@
 #include "frontends/common/AppConfig.h"
 
 TEST_CASE("AppArgs: Basic Parsing") {
-  char* argv[] = {(char*)"linapple", (char*)"--d1", (char*)"disk1.dsk",
-                  (char*)"--boot"};
+  char* argv[] = {
+      (char*)"linapple",
+      (char*)"--d1",
+      (char*)"disk1.dsk",
+      (char*)"--boot",
+  };
   int argc = 4;
   AppConfig config = {};
   int res = app_args_parse(argc, argv, &config);
@@ -34,8 +38,12 @@ TEST_CASE("AppArgs: Diagnostic Intent") {
 TEST_CASE("AppArgs: Frontend Pass-through") {
   // getopt_long might reorder argv, so we use a copy to be safe if we were to
   // reuse it
-  char* argv[] = {(char*)"linapple", (char*)"--boot", (char*)"--wayland",
-                  (char*)"pos1"};
+  char* argv[] = {
+      (char*)"linapple",
+      (char*)"--boot",
+      (char*)"--wayland",
+      (char*)"pos1",
+  };
   int argc = 4;
   AppConfig config = {};
   int res = app_args_parse(argc, argv, &config);

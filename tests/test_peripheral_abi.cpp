@@ -52,23 +52,25 @@ auto log_probe_init(int slot, HostInterface_t* host) -> void* {
   return &g_captured_host;
 }
 
-Peripheral_t g_log_probe_peripheral = {LINAPPLE_ABI_VERSION,
-                                       "test.log_probe",
-                                       "LogProbe",
-                                       "Captures the host interface",
-                                       "LinApple Contributors",
-                                       "1.0.0",
-                                       PERIPHERAL_MASK_EXPANSION,
-                                       -1,
-                                       log_probe_init,
-                                       nullptr,
-                                       nullptr,
-                                       nullptr,
-                                       nullptr,
-                                       nullptr,
-                                       nullptr,
-                                       nullptr,
-                                       nullptr};
+Peripheral_t g_log_probe_peripheral = {
+    LINAPPLE_ABI_VERSION,
+    "test.log_probe",
+    "LogProbe",
+    "Captures the host interface",
+    "LinApple Contributors",
+    "1.0.0",
+    PERIPHERAL_MASK_EXPANSION,
+    -1,
+    log_probe_init,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+};
 
 std::string g_last_logged_message;
 
@@ -113,8 +115,9 @@ static_assert(sizeof(HostLocalTime_t) == 24,
 //   TZ=America/New_York date -d @1773340200 -> 2026-03-12 14:30:00 -0400 Thu
 // The UTC instant beside local fields is what tells a pass-through from a
 // card that re-applied the zone.
-constexpr HostLocalTime_t frozen_thursday = {1773340200, -14400, 2026, 3, 12,
-                                             4,          14,     30,   0};
+constexpr HostLocalTime_t frozen_thursday = {
+    1773340200, -14400, 2026, 3, 12, 4, 14, 30, 0,
+};
 
 }  // namespace
 
@@ -328,23 +331,25 @@ auto sink_probe_command(void* instance, uint32_t cmd_id, const void* data,
   return peripheral_ok;
 }
 
-Peripheral_t g_sink_probe_peripheral = {LINAPPLE_ABI_VERSION,
-                                        "test.sink_probe",
-                                        "SinkProbe",
-                                        "Opens a byte sink at init",
-                                        "LinApple Contributors",
-                                        "1.0.0",
-                                        PERIPHERAL_MASK_EXPANSION,
-                                        -1,
-                                        sink_probe_init,
-                                        nullptr,
-                                        sink_probe_shutdown,
-                                        sink_probe_think,
-                                        nullptr,
-                                        nullptr,
-                                        nullptr,
-                                        sink_probe_command,
-                                        nullptr};
+Peripheral_t g_sink_probe_peripheral = {
+    LINAPPLE_ABI_VERSION,
+    "test.sink_probe",
+    "SinkProbe",
+    "Opens a byte sink at init",
+    "LinApple Contributors",
+    "1.0.0",
+    PERIPHERAL_MASK_EXPANSION,
+    -1,
+    sink_probe_init,
+    nullptr,
+    sink_probe_shutdown,
+    sink_probe_think,
+    nullptr,
+    nullptr,
+    nullptr,
+    sink_probe_command,
+    nullptr,
+};
 
 constexpr int probe_slot = 2;
 
@@ -414,15 +419,23 @@ TEST_CASE(
 
   current_apple2_type = A2TYPE_APPLE2;
   CHECK(g_captured_host->GetMachine() == peripheral_machine_apple2);
-  for (Apple2Type plus :
-       {A2TYPE_APPLE2PLUS, A2TYPE_APPLE2JPLUS, A2TYPE_CLONE_PRAVETS82,
-        A2TYPE_CLONE_PRAVETS8M, A2TYPE_CLONE_BASE64A}) {
+  for (Apple2Type plus : {
+           A2TYPE_APPLE2PLUS,
+           A2TYPE_APPLE2JPLUS,
+           A2TYPE_CLONE_PRAVETS82,
+           A2TYPE_CLONE_PRAVETS8M,
+           A2TYPE_CLONE_BASE64A,
+       }) {
     CAPTURE(static_cast<int>(plus));
     current_apple2_type = plus;
     CHECK(g_captured_host->GetMachine() == peripheral_machine_apple2_plus);
   }
-  for (Apple2Type iie : {A2TYPE_APPLE2E, A2TYPE_APPLE2EENHANCED,
-                         A2TYPE_CLONE_PRAVETS8C, A2TYPE_CLONE_TK3000E}) {
+  for (Apple2Type iie : {
+           A2TYPE_APPLE2E,
+           A2TYPE_APPLE2EENHANCED,
+           A2TYPE_CLONE_PRAVETS8C,
+           A2TYPE_CLONE_TK3000E,
+       }) {
     CAPTURE(static_cast<int>(iie));
     current_apple2_type = iie;
     CHECK(g_captured_host->GetMachine() == peripheral_machine_apple2e);
@@ -717,7 +730,8 @@ TEST_CASE("Peripheral ABI: A sink without a tick is left alone") {
       nullptr, [](void*, int, uint8_t) -> void { ++writes_seen; },
       nullptr, nullptr,
       nullptr, nullptr,
-      nullptr, nullptr};
+      nullptr, nullptr,
+  };
   const ByteSinkBinding_t previous = linapple_set_byte_sink(&tickless, nullptr);
 
   peripheral_manager_think(0);
@@ -744,28 +758,32 @@ auto serial_probe_init(int slot, HostInterface_t* host) -> void* {
   return &g_sink_probe;
 }
 
-Peripheral_t g_serial_probe_peripheral = {LINAPPLE_ABI_VERSION,
-                                          "test.serial_probe",
-                                          "SerialProbe",
-                                          "Opens a serial sink at init",
-                                          "LinApple Contributors",
-                                          "1.0.0",
-                                          PERIPHERAL_MASK_EXPANSION,
-                                          -1,
-                                          serial_probe_init,
-                                          nullptr,
-                                          sink_probe_shutdown,
-                                          nullptr,
-                                          nullptr,
-                                          nullptr,
-                                          nullptr,
-                                          nullptr,
-                                          nullptr};
+Peripheral_t g_serial_probe_peripheral = {
+    LINAPPLE_ABI_VERSION,
+    "test.serial_probe",
+    "SerialProbe",
+    "Opens a serial sink at init",
+    "LinApple Contributors",
+    "1.0.0",
+    PERIPHERAL_MASK_EXPANSION,
+    -1,
+    serial_probe_init,
+    nullptr,
+    sink_probe_shutdown,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+};
 
 constexpr PeripheralSerialLine_t line_9600_8n1 = {
-    9600, 8, peripheral_serial_parity_none, 2, 1, 1, 0, {0, 0}};
+    9600, 8, peripheral_serial_parity_none, 2, 1, 1, 0, {0, 0},
+};
 constexpr PeripheralSerialLine_t line_300_7e2 = {
-    300, 7, peripheral_serial_parity_even, 4, 1, 0, 0, {0, 0}};
+    300, 7, peripheral_serial_parity_even, 4, 1, 0, 0, {0, 0},
+};
 
 auto same_line(const PeripheralSerialLine_t& a, const PeripheralSerialLine_t& b)
     -> bool {
@@ -848,8 +866,9 @@ TEST_CASE(
   CHECK(host->SinkGetLines(token, nullptr) == false);
 
   {
-    static const ByteSink_t lineless = {nullptr, nullptr, nullptr, nullptr,
-                                        nullptr, nullptr, nullptr, nullptr};
+    static const ByteSink_t lineless = {
+        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+    };
     const ByteSinkBinding_t previous =
         linapple_set_byte_sink(&lineless, nullptr);
     CHECK(host->SinkGetLines(token, &lines) == false);
@@ -974,23 +993,25 @@ auto cx_probe_init(int slot, HostInterface_t* host) -> void* {
   return &g_cx_probe;
 }
 
-Peripheral_t g_cx_probe_peripheral = {LINAPPLE_ABI_VERSION,
-                                      "test.cx_probe",
-                                      "CxProbe",
-                                      "Swaps its Cx ROM page at run time",
-                                      "LinApple Contributors",
-                                      "1.0.0",
-                                      PERIPHERAL_MASK_EXPANSION,
-                                      -1,
-                                      cx_probe_init,
-                                      nullptr,
-                                      nullptr,
-                                      nullptr,
-                                      nullptr,
-                                      nullptr,
-                                      nullptr,
-                                      nullptr,
-                                      nullptr};
+Peripheral_t g_cx_probe_peripheral = {
+    LINAPPLE_ABI_VERSION,
+    "test.cx_probe",
+    "CxProbe",
+    "Swaps its Cx ROM page at run time",
+    "LinApple Contributors",
+    "1.0.0",
+    PERIPHERAL_MASK_EXPANSION,
+    -1,
+    cx_probe_init,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+};
 
 auto cx_page_base(int slot) -> uint16_t {
   return static_cast<uint16_t>(0xC000 + (slot << 8));
@@ -1012,8 +1033,11 @@ auto branch_from_page(int slot) -> uint16_t {
 constexpr uint16_t scratch_program = 0x0300;
 
 auto read_page_tail(int slot) -> uint8_t {
-  const std::array<uint8_t, 3> lda = {opcode_lda_abs, 0xFF,
-                                      static_cast<uint8_t>(0xC0 + slot)};
+  const std::array<uint8_t, 3> lda = {
+      opcode_lda_abs,
+      0xFF,
+      static_cast<uint8_t>(0xC0 + slot),
+  };
   TestFixtures::ScopedCore_t::poke(scratch_program, lda);
   CpuRegisters_t* regs = cpu_get_registers();
   regs->pc = scratch_program;

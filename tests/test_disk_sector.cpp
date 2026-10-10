@@ -690,7 +690,8 @@ TEST_CASE(
   // and slot 13 file sector 1 (Beneath Apple DOS ch. 3).
   const std::array<uint8_t, sectors_per_track> map = {
       0x00, 0x0D, 0x0B, 0x09, 0x07, 0x05, 0x03, 0x01,
-      0x0E, 0x0C, 0x0A, 0x08, 0x06, 0x04, 0x02, 0x0F};
+      0x0E, 0x0C, 0x0A, 0x08, 0x06, 0x04, 0x02, 0x0F,
+  };
   CHECK(std::vector<uint8_t>(bytes.begin() + 14, bytes.begin() + 30) ==
         std::vector<uint8_t>(map.begin(), map.end()));
 
@@ -799,10 +800,12 @@ namespace {
 // slots, so these are the goldens rather than the encoder's own copies.
 constexpr std::array<uint8_t, sectors_per_track> prodos_slots = {
     0x00, 0x08, 0x01, 0x09, 0x02, 0x0A, 0x03, 0x0B,
-    0x04, 0x0C, 0x05, 0x0D, 0x06, 0x0E, 0x07, 0x0F};
+    0x04, 0x0C, 0x05, 0x0D, 0x06, 0x0E, 0x07, 0x0F,
+};
 constexpr std::array<uint8_t, sectors_per_track> dos_slots = {
     0x00, 0x07, 0x0E, 0x06, 0x0D, 0x05, 0x0C, 0x04,
-    0x0B, 0x03, 0x0A, 0x02, 0x09, 0x01, 0x08, 0x0F};
+    0x0B, 0x03, 0x0A, 0x02, 0x09, 0x01, 0x08, 0x0F,
+};
 
 // Sector s filled with s, so every byte names the sector it belongs to.
 auto numbered_sectors() -> std::vector<uint8_t> {
@@ -822,10 +825,21 @@ struct SectorWriter_t {
 };
 
 const std::array<SectorWriter_t, 2> sector_writers = {
-    SectorWriter_t{&g_po_driver, disk_sector_order_prodos, &prodos_slots,
-                   "minimal.po", ".po"},
-    SectorWriter_t{&g_do_driver, disk_sector_order_dos, &dos_slots,
-                   "minimal.dsk", ".do"}};
+    SectorWriter_t{
+        &g_po_driver,
+        disk_sector_order_prodos,
+        &prodos_slots,
+        "minimal.po",
+        ".po",
+    },
+    SectorWriter_t{
+        &g_do_driver,
+        disk_sector_order_dos,
+        &dos_slots,
+        "minimal.dsk",
+        ".do",
+    },
+};
 
 }  // namespace
 

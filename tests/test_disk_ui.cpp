@@ -34,7 +34,8 @@ TEST_CASE("DiskUI: every disk error has a message of its own") {
   constexpr DiskError_e every_error[] = {
       disk_err_none,    disk_err_file_not_found,   disk_err_unsupported_format,
       disk_err_corrupt, disk_err_write_protected,  disk_err_out_of_memory,
-      disk_err_io,      disk_err_invalid_argument, disk_err_unsupported};
+      disk_err_io,      disk_err_invalid_argument, disk_err_unsupported,
+  };
   constexpr size_t error_count = sizeof(every_error) / sizeof(every_error[0]);
   // The enum has no count sentinel, so the list is pinned to it from the
   // other end: its last entry is the enum's last value and the values before

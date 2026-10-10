@@ -918,8 +918,9 @@ TEST_CASE(
     "DiskDrivers: [RET-3] Creating over an existing file leaves it as it "
     "was") {
   ScopedTempFile_t occupied(".dsk");
-  const std::vector<uint8_t> contents = {'n', 'o', 't', ' ', 'a',
-                                         ' ', 'd', 'i', 's', 'k'};
+  const std::vector<uint8_t> contents = {
+      'n', 'o', 't', ' ', 'a', ' ', 'd', 'i', 's', 'k',
+  };
   {
     FILE* f = fopen(occupied.c_str(), "wb");
     REQUIRE(f != nullptr);

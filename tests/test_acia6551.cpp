@@ -151,9 +151,11 @@ TEST_CASE(
     uint8_t control;
     uint64_t character;
   };
-  const Row_t rows[] = {{control_9600_8n1, char_9600_8n1},
-                        {control_50_8n1, char_50_8n1},
-                        {control_9600_5n15, char_9600_5n15}};
+  const Row_t rows[] = {
+      {control_9600_8n1, char_9600_8n1},
+      {control_50_8n1, char_50_8n1},
+      {control_9600_5n15, char_9600_5n15},
+  };
   for (const Row_t& row : rows) {
     CAPTURE(row.character);
     Bench_t bench;
@@ -385,8 +387,10 @@ TEST_CASE(
     uint64_t rdrf;
     uint64_t free;
   };
-  const Row_t rows[] = {{control_9600_8n1, rdrf_9600_8n1, char_9600_8n1},
-                        {control_50_8n1, rdrf_50_8n1, char_50_8n1}};
+  const Row_t rows[] = {
+      {control_9600_8n1, rdrf_9600_8n1, char_9600_8n1},
+      {control_50_8n1, rdrf_50_8n1, char_50_8n1},
+  };
   for (const Row_t& row : rows) {
     CAPTURE(row.free);
     Bench_t bench;

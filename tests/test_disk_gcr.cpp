@@ -82,7 +82,8 @@ auto populate_test_track(std::array<uint8_t, track_data_size>& track) -> void {
 
   // Sector 10: 6-bit boundary patterns
   const std::array<uint8_t, 8> boundary_pattern = {
-      {0x00, 0x3F, 0x40, 0x7F, 0x80, 0xBF, 0xC0, 0xFF}};
+      {0x00, 0x3F, 0x40, 0x7F, 0x80, 0xBF, 0xC0, 0xFF},
+  };
   for (size_t i = 0; i < sector_size; ++i) {
     track[(10 * sector_size) + i] =
         boundary_pattern[i % boundary_pattern.size()];
@@ -193,8 +194,25 @@ TEST_CASE("DiskGCR: [GCR-03] ProDOS Sector Order Bit-for-Bit Round-Trip") {
 TEST_CASE("DiskGCR: [GCR-04] Custom Sector Order Round-Trip") {
   SUBCASE("Explicit DOS 3.3 sector order round-trip") {
     const std::array<uint8_t, sectors_per_track> custom_dos_order = {
-        {0x00, 0x07, 0x0E, 0x06, 0x0D, 0x05, 0x0C, 0x04, 0x0B, 0x03, 0x0A, 0x02,
-         0x09, 0x01, 0x08, 0x0F}};
+        {
+            0x00,
+            0x07,
+            0x0E,
+            0x06,
+            0x0D,
+            0x05,
+            0x0C,
+            0x04,
+            0x0B,
+            0x03,
+            0x0A,
+            0x02,
+            0x09,
+            0x01,
+            0x08,
+            0x0F,
+        },
+    };
 
     std::array<uint8_t, track_data_size> original_track{};
     populate_test_track(original_track);
@@ -216,8 +234,25 @@ TEST_CASE("DiskGCR: [GCR-04] Custom Sector Order Round-Trip") {
 
   SUBCASE("Explicit ProDOS sector order round-trip") {
     const std::array<uint8_t, sectors_per_track> custom_prodos_order = {
-        {0x00, 0x08, 0x01, 0x09, 0x02, 0x0A, 0x03, 0x0B, 0x04, 0x0C, 0x05, 0x0D,
-         0x06, 0x0E, 0x07, 0x0F}};
+        {
+            0x00,
+            0x08,
+            0x01,
+            0x09,
+            0x02,
+            0x0A,
+            0x03,
+            0x0B,
+            0x04,
+            0x0C,
+            0x05,
+            0x0D,
+            0x06,
+            0x0E,
+            0x07,
+            0x0F,
+        },
+    };
 
     std::array<uint8_t, track_data_size> original_track{};
     populate_test_track(original_track);
@@ -239,10 +274,28 @@ TEST_CASE("DiskGCR: [GCR-04] Custom Sector Order Round-Trip") {
 
   SUBCASE("Custom inverted sector order maps deterministically") {
     const std::array<uint8_t, sectors_per_track> custom_rev_order = {
-        {15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0}};
+        {15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0},
+    };
     const std::array<uint8_t, sectors_per_track> standard_dos_order = {
-        {0x00, 0x07, 0x0E, 0x06, 0x0D, 0x05, 0x0C, 0x04, 0x0B, 0x03, 0x0A, 0x02,
-         0x09, 0x01, 0x08, 0x0F}};
+        {
+            0x00,
+            0x07,
+            0x0E,
+            0x06,
+            0x0D,
+            0x05,
+            0x0C,
+            0x04,
+            0x0B,
+            0x03,
+            0x0A,
+            0x02,
+            0x09,
+            0x01,
+            0x08,
+            0x0F,
+        },
+    };
 
     std::array<uint8_t, track_data_size> original_track{};
     populate_test_track(original_track);
@@ -424,7 +477,8 @@ TEST_CASE("DiskGCR: [ADP-02] A nibble image's 0xFF run is sync before D5") {
   uint32_t recovered_count = 0;
 
   const std::array<uint8_t, 5> gap_then_prologue = {
-      {0xFF, 0xFF, 0xFF, 0xD5, 0x96}};
+      {0xFF, 0xFF, 0xFF, 0xD5, 0x96},
+  };
   REQUIRE(disk_encoding_nibbles_to_bits(
               gap_then_prologue.data(), gap_then_prologue.size(), nullptr,
               bits.data(), 128, &bit_count) == disk_err_none);
@@ -437,7 +491,8 @@ TEST_CASE("DiskGCR: [ADP-02] A nibble image's 0xFF run is sync before D5") {
                    recovered.begin()));
 
   const std::array<uint8_t, 5> ones_inside_data = {
-      {0xFF, 0xFF, 0x96, 0xD5, 0xAA}};
+      {0xFF, 0xFF, 0x96, 0xD5, 0xAA},
+  };
   REQUIRE(disk_encoding_nibbles_to_bits(
               ones_inside_data.data(), ones_inside_data.size(), nullptr,
               bits.data(), 128, &bit_count) == disk_err_none);

@@ -25,7 +25,8 @@ constexpr uint32_t first_prologue_cell = 480;
 // Four self-sync nibbles are forty cells, which is five whole bytes, so the
 // packed gap is this five-byte figure twelve times over.
 constexpr std::array<uint8_t, 5> self_sync_pattern = {
-    {0xFF, 0x3F, 0xCF, 0xF3, 0xFC}};
+    {0xFF, 0x3F, 0xCF, 0xF3, 0xFC},
+};
 
 using SectorImage_t = std::array<uint8_t, track_data_size>;
 using NibbleTrack_t = std::array<uint8_t, nibbles_per_track>;
@@ -168,7 +169,8 @@ TEST_CASE("DiskAdapter: [ADAPT-05] A gap across the index hole is still sync") {
   // the 0xD5 at its start: three data nibbles at eight cells and two
   // self-sync ones at ten.
   const std::array<uint8_t, 5> wraps_onto_a_prologue = {
-      {0xD5, 0xAA, 0x96, 0xFF, 0xFF}};
+      {0xD5, 0xAA, 0x96, 0xFF, 0xFF},
+  };
   REQUIRE(disk_encoding_nibbles_to_bits(
               wraps_onto_a_prologue.data(), wraps_onto_a_prologue.size(),
               nullptr, cells.data(), 64, &cell_count) == disk_err_none);
@@ -176,7 +178,8 @@ TEST_CASE("DiskAdapter: [ADAPT-05] A gap across the index hole is still sync") {
 
   // The same run with no prologue waiting for it is five data nibbles.
   const std::array<uint8_t, 5> wraps_onto_data = {
-      {0xAA, 0xAA, 0x96, 0xFF, 0xFF}};
+      {0xAA, 0xAA, 0x96, 0xFF, 0xFF},
+  };
   REQUIRE(disk_encoding_nibbles_to_bits(
               wraps_onto_data.data(), wraps_onto_data.size(), nullptr,
               cells.data(), 64, &cell_count) == disk_err_none);

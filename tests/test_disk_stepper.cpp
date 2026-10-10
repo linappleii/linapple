@@ -633,17 +633,19 @@ auto recorder_write(void* /*unused*/, uint32_t quarter_track,
 }
 
 auto recorder_driver() -> const DiskFormatDriver_t* {
-  static const DiskFormatDriver_t driver = {disk_format_abi_version,
-                                            disk_driver_cap_write,
-                                            "AAA Quarter Track Recorder",
-                                            nullptr,
-                                            recorder_probe,
-                                            recorder_open,
-                                            recorder_close,
-                                            recorder_is_write_protected,
-                                            recorder_read,
-                                            recorder_write,
-                                            nullptr};
+  static const DiskFormatDriver_t driver = {
+      disk_format_abi_version,
+      disk_driver_cap_write,
+      "AAA Quarter Track Recorder",
+      nullptr,
+      recorder_probe,
+      recorder_open,
+      recorder_close,
+      recorder_is_write_protected,
+      recorder_read,
+      recorder_write,
+      nullptr,
+  };
   return &driver;
 }
 
@@ -814,8 +816,9 @@ TEST_CASE(
     "DiskStepper: [STEP-10] A seek hands the written track to the driver") {
   QuarterTrackHarness_t harness;
 
-  const std::vector<uint8_t> payload = {0xFF, 0xFF, 0xFF, 0xD5,
-                                        0xAA, 0x96, 0xFF, 0xFE};
+  const std::vector<uint8_t> payload = {
+      0xFF, 0xFF, 0xFF, 0xD5, 0xAA, 0x96, 0xFF, 0xFE,
+  };
   uint32_t cycle = 1;
   harness.set_write_mode(cycle);
   for (const uint8_t nibble : payload) {

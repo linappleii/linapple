@@ -59,23 +59,25 @@ auto mock_init(int slot, HostInterface_t* host) -> void* {
 
 auto mock_shutdown(void* instance) -> void { (void)instance; }
 
-Peripheral_t g_mock_descriptor = {LINAPPLE_ABI_VERSION,
-                                  "test.mock.slot",
-                                  "MockSlotCard",
-                                  "Records the cycle count at handler entry",
-                                  "LinApple Contributors",
-                                  "1.0.0",
-                                  PERIPHERAL_MASK_EXPANSION,
-                                  -1,
-                                  mock_init,
-                                  nullptr,
-                                  mock_shutdown,
-                                  nullptr,
-                                  nullptr,
-                                  nullptr,
-                                  nullptr,
-                                  nullptr,
-                                  nullptr};
+Peripheral_t g_mock_descriptor = {
+    LINAPPLE_ABI_VERSION,
+    "test.mock.slot",
+    "MockSlotCard",
+    "Records the cycle count at handler entry",
+    "LinApple Contributors",
+    "1.0.0",
+    PERIPHERAL_MASK_EXPANSION,
+    -1,
+    mock_init,
+    nullptr,
+    mock_shutdown,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+};
 
 /**
  * @brief RAII owner of the mock's recording.
@@ -167,8 +169,11 @@ TEST_CASE("Mockingboard Core Seam: A Timer Interrupt Reaches The 6502") {
   ScopedCore_t::poke(HANDLER_ADDR, irq_handler);
   ScopedCore_t::poke(PROGRAM_ADDR, spin_program);
   const std::array<uint8_t, 2> vector = {
-      {static_cast<uint8_t>(HANDLER_ADDR & 0xFF),
-       static_cast<uint8_t>(HANDLER_ADDR >> 8)}};
+      {
+          static_cast<uint8_t>(HANDLER_ADDR & 0xFF),
+          static_cast<uint8_t>(HANDLER_ADDR >> 8),
+      },
+  };
   ScopedCore_t::poke(IRQ_VECTOR_ADDR, vector);
 
   io_map_dispatch(0, VIA_A_ORB, 1, 0x04, 0);

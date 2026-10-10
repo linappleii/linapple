@@ -107,8 +107,12 @@ TEST_CASE(
     "the nibble refusal among them") {
   harddisk_loader_reset();
   CHECK(harddisk_loader_driver_count() == HARDDISK_FORMAT_DRIVER_COUNT);
-  const std::vector<std::string> expected = {"2MG", "DOS Order", "Nibble image",
-                                             "ProDOS Order"};
+  const std::vector<std::string> expected = {
+      "2MG",
+      "DOS Order",
+      "Nibble image",
+      "ProDOS Order",
+  };
   CHECK(registered_names() == expected);
   CHECK(harddisk_loader_driver_at(harddisk_loader_driver_count()) == nullptr);
   CHECK(drain_names().empty());
@@ -204,7 +208,8 @@ TEST_CASE(
   CHECK(harddisk_loader_driver_count() == baseline);
   const std::vector<std::string> expected = {
       "Fake Future",    "Fake Unreadable", "Fake Uncounted",
-      "Fake Write Bit", "Fake Write Fn",   "DOS Order"};
+      "Fake Write Bit", "Fake Write Fn",   "DOS Order",
+  };
   CHECK(drain_names() == expected);
   CHECK(drain_names().empty());
 
@@ -225,8 +230,12 @@ TEST_CASE(
   harddisk_loader_reset();
   CHECK(harddisk_loader_driver_count() == baseline);
   CHECK(drain_names().empty());
-  const std::vector<std::string> expected = {"2MG", "DOS Order", "Nibble image",
-                                             "ProDOS Order"};
+  const std::vector<std::string> expected = {
+      "2MG",
+      "DOS Order",
+      "Nibble image",
+      "ProDOS Order",
+  };
   CHECK(registered_names() == expected);
 }
 

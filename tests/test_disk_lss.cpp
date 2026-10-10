@@ -137,17 +137,19 @@ auto synthetic_write(void* /*unused*/, uint32_t /*unused*/, const uint8_t* bits,
 }
 
 auto synthetic_driver() -> const DiskFormatDriver_t* {
-  static const DiskFormatDriver_t driver = {disk_format_abi_version,
-                                            disk_driver_cap_write,
-                                            "AAA Synthetic Bit Stream",
-                                            nullptr,
-                                            synthetic_probe,
-                                            synthetic_open,
-                                            synthetic_close,
-                                            synthetic_is_write_protected,
-                                            synthetic_read,
-                                            synthetic_write,
-                                            nullptr};
+  static const DiskFormatDriver_t driver = {
+      disk_format_abi_version,
+      disk_driver_cap_write,
+      "AAA Synthetic Bit Stream",
+      nullptr,
+      synthetic_probe,
+      synthetic_open,
+      synthetic_close,
+      synthetic_is_write_protected,
+      synthetic_read,
+      synthetic_write,
+      nullptr,
+  };
   return &driver;
 }
 
@@ -320,8 +322,9 @@ TEST_CASE("DiskLSS: [LSS-03] Shift-write lays the register down cell by cell") {
   peripheral_load_state(slot_6, &state, sizeof(state));
   io_map_dispatch(0, io_motor_on, 0, 0, 0);
 
-  const uint8_t payload[] = {0xFF,         0xFF,          0xFF,
-                             first_nibble, second_nibble, third_nibble};
+  const uint8_t payload[] = {
+      0xFF, 0xFF, 0xFF, first_nibble, second_nibble, third_nibble,
+  };
   uint32_t cycle = 1;
   harness.read_at(io_q7_set, cycle);
   for (const uint8_t byte : payload) {

@@ -240,7 +240,8 @@ auto read_slot_page(int slot) -> std::array<uint8_t, page_size> {
       0xD0,
       0xF7,
       0x4C,
-      0x0B};
+      0x0B,
+  };
   std::array<uint8_t, 14> with_spin{};
   std::copy(program.begin(), program.end(), with_spin.begin());
   with_spin.at(13) = static_cast<uint8_t>(program_start >> 8);
@@ -320,14 +321,19 @@ auto call_driver(uint16_t entry, const Call_t& call) -> CallResult_t {
       static_cast<uint8_t>(results_at >> 8),
       0x4C,
       static_cast<uint8_t>((program_start + 41) & 0xFF),
-      static_cast<uint8_t>((program_start + 41) >> 8)};
+      static_cast<uint8_t>((program_start + 41) >> 8),
+  };
   const uint16_t sentinel = program_start + 41;
   TestFixtures::ScopedCore_t::poke(program_start, program);
   TestFixtures::enter_at({program_start, 0, 0, 0});
   TestFixtures::step_until_pc(sentinel, call_cycle_cap);
   REQUIRE(cpu_get_registers()->pc == sentinel);
-  return CallResult_t{mem[results_at], mem[results_at + 1], mem[results_at + 2],
-                      mem[results_at + 3]};
+  return CallResult_t{
+      mem[results_at],
+      mem[results_at + 1],
+      mem[results_at + 2],
+      mem[results_at + 3],
+  };
 }
 
 auto call_card(int slot, const Call_t& call) -> CallResult_t {
@@ -406,7 +412,8 @@ auto text_row_begins_with(char first) -> bool {
   static const std::array<uint16_t, 24> row_offsets = {
       0x000, 0x080, 0x100, 0x180, 0x200, 0x280, 0x300, 0x380,
       0x028, 0x0A8, 0x128, 0x1A8, 0x228, 0x2A8, 0x328, 0x3A8,
-      0x050, 0x0D0, 0x150, 0x1D0, 0x250, 0x2D0, 0x350, 0x3D0};
+      0x050, 0x0D0, 0x150, 0x1D0, 0x250, 0x2D0, 0x350, 0x3D0,
+  };
   for (const uint16_t offset : row_offsets) {
     if (static_cast<char>(mem[0x0400 + offset] & 0x7F) == first) {
       return true;
@@ -450,7 +457,7 @@ enum Mnemonic_e : uint8_t {
   m_jmp,
   m_clc,
   m_sec,
-  m_rts
+  m_rts,
 };
 
 enum Mode_e : uint8_t {
@@ -461,7 +468,7 @@ enum Mode_e : uint8_t {
   mode_absolute,
   mode_absolute_x,
   mode_indirect_y,
-  mode_relative
+  mode_relative,
 };
 
 struct Opcode_t {
@@ -471,22 +478,24 @@ struct Opcode_t {
 };
 
 // The 28 (mnemonic, mode) pairs the listing uses, from the 6502 opcode map.
-constexpr std::array<Opcode_t, 28> k_opcodes = {{
-    {m_lda, mode_immediate, 0xA9},   {m_lda, mode_zero_page, 0xA5},
-    {m_lda, mode_absolute, 0xAD},    {m_lda, mode_absolute_x, 0xBD},
-    {m_lda, mode_indirect_y, 0xB1},  {m_sta, mode_zero_page, 0x85},
-    {m_sta, mode_absolute_x, 0x9D},  {m_sta, mode_indirect_y, 0x91},
-    {m_ldx, mode_zero_page, 0xA6},   {m_ldy, mode_immediate, 0xA0},
-    {m_ldy, mode_absolute_x, 0xBC},  {m_tax, mode_implied, 0xAA},
-    {m_pha, mode_implied, 0x48},     {m_iny, mode_implied, 0xC8},
-    {m_inc, mode_zero_page, 0xE6},   {m_dec, mode_zero_page, 0xC6},
-    {m_and, mode_immediate, 0x29},   {m_ora, mode_immediate, 0x09},
-    {m_cmp, mode_immediate, 0xC9},   {m_asl, mode_accumulator, 0x0A},
-    {m_lsr, mode_accumulator, 0x4A}, {m_beq, mode_relative, 0xF0},
-    {m_bne, mode_relative, 0xD0},    {m_bcs, mode_relative, 0xB0},
-    {m_jmp, mode_absolute, 0x4C},    {m_clc, mode_implied, 0x18},
-    {m_sec, mode_implied, 0x38},     {m_rts, mode_implied, 0x60},
-}};
+constexpr std::array<Opcode_t, 28> k_opcodes = {
+    {
+        {m_lda, mode_immediate, 0xA9},   {m_lda, mode_zero_page, 0xA5},
+        {m_lda, mode_absolute, 0xAD},    {m_lda, mode_absolute_x, 0xBD},
+        {m_lda, mode_indirect_y, 0xB1},  {m_sta, mode_zero_page, 0x85},
+        {m_sta, mode_absolute_x, 0x9D},  {m_sta, mode_indirect_y, 0x91},
+        {m_ldx, mode_zero_page, 0xA6},   {m_ldy, mode_immediate, 0xA0},
+        {m_ldy, mode_absolute_x, 0xBC},  {m_tax, mode_implied, 0xAA},
+        {m_pha, mode_implied, 0x48},     {m_iny, mode_implied, 0xC8},
+        {m_inc, mode_zero_page, 0xE6},   {m_dec, mode_zero_page, 0xC6},
+        {m_and, mode_immediate, 0x29},   {m_ora, mode_immediate, 0x09},
+        {m_cmp, mode_immediate, 0xC9},   {m_asl, mode_accumulator, 0x0A},
+        {m_lsr, mode_accumulator, 0x4A}, {m_beq, mode_relative, 0xF0},
+        {m_bne, mode_relative, 0xD0},    {m_bcs, mode_relative, 0xB0},
+        {m_jmp, mode_absolute, 0x4C},    {m_clc, mode_implied, 0x18},
+        {m_sec, mode_implied, 0x38},     {m_rts, mode_implied, 0x60},
+    },
+};
 
 auto mnemonic_name(Mnemonic_e mnemonic) -> const char* {
   switch (mnemonic) {
@@ -1320,7 +1329,8 @@ const HarddiskFormatDriver_t g_boundless_driver = {
     .is_write_protected = boundless_is_write_protected,
     .read_block = boundless_read_block,
     .write_block = boundless_write_block,
-    .get_total_blocks = boundless_get_total_blocks};
+    .get_total_blocks = boundless_get_total_blocks,
+};
 
 // Forgets the driver above whatever happens, so the registry the next case
 // sees is the built-in one.
@@ -1363,8 +1373,12 @@ TEST_CASE(
   // The last block is served, the one past it is beyond the volume ProDOS
   // was told about: $27 (ProDOS 8 Technical Reference Manual, 6.3.2).
   fill(read_buffer, block_size, 0xEE);
-  result = call_card(slot, {prodos_read, unit_for(slot, 0), read_buffer,
-                            boundless_blocks - 1});
+  result = call_card(slot, {
+                               prodos_read,
+                               unit_for(slot, 0),
+                               read_buffer,
+                               boundless_blocks - 1,
+                           });
   CHECK_FALSE(result.carry());
   CHECK(result.a == prodos_ok);
   CHECK(buffer_all(read_buffer, boundless_blocks - 1));
@@ -1376,8 +1390,12 @@ TEST_CASE(
   CHECK(result.a == prodos_io_error);
   CHECK(buffer_all(read_buffer, 0xEE));
 
-  result = call_card(slot, {prodos_write, unit_for(slot, 0), write_buffer,
-                            boundless_blocks - 1});
+  result = call_card(slot, {
+                               prodos_write,
+                               unit_for(slot, 0),
+                               write_buffer,
+                               boundless_blocks - 1,
+                           });
   CHECK_FALSE(result.carry());
   CHECK(result.a == prodos_ok);
 

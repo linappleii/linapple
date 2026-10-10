@@ -82,7 +82,7 @@ Peripheral_t g_test_c_peripheral = {
     NULL,  // save_state
     NULL,  // load_state
     NULL,  // command
-    NULL   // query
+    NULL,  // query
 };
 
 /* The sink members follow GetLocalTime, so a plugin built against a header

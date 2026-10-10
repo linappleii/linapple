@@ -49,8 +49,10 @@ struct Model_t {
   int config_machine;
 };
 
-constexpr Model_t enhanced_2e = {A2TYPE_APPLE2EENHANCED,
-                                 Config_t::machine_apple2e_enhanced};
+constexpr Model_t enhanced_2e = {
+    A2TYPE_APPLE2EENHANCED,
+    Config_t::machine_apple2e_enhanced,
+};
 constexpr Model_t ii_plus = {A2TYPE_APPLE2PLUS, Config_t::machine_apple2_plus};
 constexpr std::array<Model_t, 2> both_models = {{enhanced_2e, ii_plus}};
 

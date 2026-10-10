@@ -173,7 +173,11 @@ auto send(uint32_t cmd_id, const void* data, size_t size) -> void {
 auto key_event(uint32_t host_key, uint8_t code, bool down)
     -> KeyboardKeyEvent_t {
   return KeyboardKeyEvent_t{
-      host_key, code, static_cast<uint8_t>(down ? 1 : 0), {0, 0, 0, 0, 0, 0}};
+      host_key,
+      code,
+      static_cast<uint8_t>(down ? 1 : 0),
+      {0, 0, 0, 0, 0, 0},
+  };
 }
 
 auto press_key(uint32_t host_key, uint8_t code) -> void {
@@ -255,8 +259,10 @@ auto move_axis(uint8_t joystick, uint8_t axis, uint8_t value) -> void {
   send(JOYSTICK_CMD_SET_AXIS, &payload, sizeof(payload));
 }
 
-const std::initializer_list<Order_t> both_orders = {Order_t::keyboard_first,
-                                                    Order_t::joystick_first};
+const std::initializer_list<Order_t> both_orders = {
+    Order_t::keyboard_first,
+    Order_t::joystick_first,
+};
 
 // Allocate oversized buffer to test payload bounds handling safely.
 template <typename T>
@@ -447,8 +453,10 @@ TEST_CASE("Slot 0: a dispatcher says peripheral_error to the wrong size") {
 
   const uint8_t byte = 1;
   const OneByteLong_t<uint8_t> two_bytes{1, 0};
-  const OneByteLong_t<KeyboardKeyEvent_t> key{key_event(host_key_a, 'A', true),
-                                              0};
+  const OneByteLong_t<KeyboardKeyEvent_t> key{
+      key_event(host_key_a, 'A', true),
+      0,
+  };
   constexpr size_t key_size = sizeof(KeyboardKeyEvent_t);
   CHECK(keyboard->command(kbd, keyboard_cmd_key, &key, key_size) ==
         peripheral_ok);

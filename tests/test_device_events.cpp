@@ -145,23 +145,25 @@ auto bench_think(void* instance, uint32_t cycles) -> void {
   }
 }
 
-Peripheral_t g_bench_card = {LINAPPLE_ABI_VERSION,
-                             "test.event_bench",
-                             "EventBench",
-                             "Asks to be woken at a cycle of its choosing",
-                             "LinApple Contributors",
-                             "1.0.0",
-                             PERIPHERAL_MASK_EXPANSION,
-                             -1,
-                             bench_init,
-                             bench_reset,
-                             bench_shutdown,
-                             bench_think,
-                             nullptr,
-                             nullptr,
-                             nullptr,
-                             nullptr,
-                             nullptr};
+Peripheral_t g_bench_card = {
+    LINAPPLE_ABI_VERSION,
+    "test.event_bench",
+    "EventBench",
+    "Asks to be woken at a cycle of its choosing",
+    "LinApple Contributors",
+    "1.0.0",
+    PERIPHERAL_MASK_EXPANSION,
+    -1,
+    bench_init,
+    bench_reset,
+    bench_shutdown,
+    bench_think,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+};
 
 auto register_bench(int slot) -> Bench_t& {
   REQUIRE(peripheral_register(&g_bench_card, slot) == 0);
@@ -184,7 +186,7 @@ auto poke_two_reads_then_spin(int slot) -> void {
       0xE8,              // INX
       0xD0, 0xFD,        // BNE INX
       0xAD, c0,   0xC0,  // LDA $C0n0
-      0x4C, 0x0B, 0x03   // JMP spin
+      0x4C, 0x0B, 0x03,  // JMP spin
   };
   ScopedCore_t::poke(program_start, program);
 }
@@ -602,7 +604,7 @@ auto poke_t1_sampler() -> void {
       0x9D, 0x00, 0x06,  // STA $0600,X
       0xE8,              // INX
       0xD0, 0xF2,        // BNE loop
-      0x4C, 0x1D, 0x03   // JMP self (table full)
+      0x4C, 0x1D, 0x03,  // JMP self (table full)
   };
   ScopedCore_t::poke(program_start, program);
 }

@@ -65,14 +65,18 @@ constexpr uint16_t reg_count_high = io_base + 6;
 
 // Block k of a track is the pair of DOS 3.3 sectors Fig. 3.14 of Beneath
 // Apple ProDOS gives, first-named first.
-constexpr std::array<std::array<uint8_t, 2>, 8> k_fig_3_14 = {{{{0x0, 0xE}},
-                                                               {{0xD, 0xC}},
-                                                               {{0xB, 0xA}},
-                                                               {{0x9, 0x8}},
-                                                               {{0x7, 0x6}},
-                                                               {{0x5, 0x4}},
-                                                               {{0x3, 0x2}},
-                                                               {{0x1, 0xF}}}};
+constexpr std::array<std::array<uint8_t, 2>, 8> k_fig_3_14 = {
+    {
+        {{0x0, 0xE}},
+        {{0xD, 0xC}},
+        {{0xB, 0xA}},
+        {{0x9, 0x8}},
+        {{0x7, 0x6}},
+        {{0x5, 0x4}},
+        {{0x3, 0x2}},
+        {{0x1, 0xF}},
+    },
+};
 
 auto harddisk_in_slot_7() -> TestConfig_t::Description_t {
   TestConfig_t::Description_t description;
@@ -548,9 +552,11 @@ TEST_CASE(
   SUBCASE(
       "a short header, a disagreeing length and a lost magic are "
       "refused") {
-    for (const char* name :
-         {"minimal-block-short-header.2mg", "minimal-block-disagree.2mg",
-          "minimal-block-nomagic.2mg"}) {
+    for (const char* name : {
+             "minimal-block-short-header.2mg",
+             "minimal-block-disagree.2mg",
+             "minimal-block-nomagic.2mg",
+         }) {
       CAPTURE(name);
       insert(0, TestFixtures::get_fixture_path(name));
       CHECK(status().drive0_loaded == 0);

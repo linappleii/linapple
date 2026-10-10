@@ -609,7 +609,7 @@ auto poke_page_copier(int slot) -> uint16_t {
       0x9D, 0x00, 0x20,       // STA $2000,X
       0xE8,                   // INX
       0xD0, 0xF7,             // BNE $0302
-      0x4C, 0x0B, 0x03        // JMP $030B
+      0x4C, 0x0B, 0x03,       // JMP $030B
   };
   TestFixtures::ScopedCore_t::poke(program_start, program);
   return 0x030B;
@@ -683,9 +683,10 @@ TEST_CASE(
   const uint16_t sentinel = poke_page_copier(machine.slot);
   machine.run_until(program_start, sentinel);
 
-  const std::array<uint8_t, 16> signature = {0x2C, 0x58, 0xFF, 0x70, 0x1B, 0x38,
-                                             0x90, 0x18, 0xB8, 0x50, 0x15, 0x01,
-                                             0x20, 0xF4, 0xF4, 0xF4};
+  const std::array<uint8_t, 16> signature = {
+      0x2C, 0x58, 0xFF, 0x70, 0x1B, 0x38, 0x90, 0x18,
+      0xB8, 0x50, 0x15, 0x01, 0x20, 0xF4, 0xF4, 0xF4,
+  };
   for (size_t i = 0; i < signature.size(); ++i) {
     CHECK(mem[page_copy + i] == signature.at(i));
   }
@@ -709,9 +710,10 @@ TEST_CASE(
   const uint16_t sentinel = poke_page_copier(machine.slot);
   machine.run_until(program_start, sentinel);
 
-  const std::array<uint8_t, 14> table = {0xB3, 0xC4, 0x9B, 0xA4, 0xC0,
-                                         0x8A, 0xDD, 0xBC, 0x48, 0xF0,
-                                         0x53, 0xE1, 0xE6, 0xEC};
+  const std::array<uint8_t, 14> table = {
+      0xB3, 0xC4, 0x9B, 0xA4, 0xC0, 0x8A, 0xDD,
+      0xBC, 0x48, 0xF0, 0x53, 0xE1, 0xE6, 0xEC,
+  };
   for (size_t i = 0; i < table.size(); ++i) {
     CAPTURE(i);
     CHECK(mem[page_copy + 0x12 + i] == table.at(i));
@@ -795,7 +797,7 @@ enum FirmwareEntry_t : uint8_t {
   entry_init_mouse = 7,
   entry_peek_poke = 8,
   entry_time_data = 10,
-  entry_data_byte = 11
+  entry_data_byte = 11,
 };
 
 struct Call_t {
@@ -812,24 +814,26 @@ auto emit_firmware_call(std::vector<uint8_t>& program, int slot, int entry,
   const auto table = static_cast<uint16_t>((page << 8) + 0x12 + entry);
   const uint8_t x = x_y_zero ? 0 : page;
   const uint8_t y = x_y_zero ? 0 : static_cast<uint8_t>(slot << 4);
-  const std::vector<uint8_t> call = {0xAD,
-                                     static_cast<uint8_t>(table & 0xFF),
-                                     static_cast<uint8_t>(table >> 8),
-                                     0x85,
-                                     0x07,
-                                     0xA9,
-                                     page,
-                                     0x85,
-                                     0x08,
-                                     0xA9,
-                                     a,
-                                     0xA2,
-                                     x,
-                                     0xA0,
-                                     y,
-                                     0x20,
-                                     static_cast<uint8_t>(indirect_jump & 0xFF),
-                                     static_cast<uint8_t>(indirect_jump >> 8)};
+  const std::vector<uint8_t> call = {
+      0xAD,
+      static_cast<uint8_t>(table & 0xFF),
+      static_cast<uint8_t>(table >> 8),
+      0x85,
+      0x07,
+      0xA9,
+      page,
+      0x85,
+      0x08,
+      0xA9,
+      a,
+      0xA2,
+      x,
+      0xA0,
+      y,
+      0x20,
+      static_cast<uint8_t>(indirect_jump & 0xFF),
+      static_cast<uint8_t>(indirect_jump >> 8),
+  };
   program.insert(program.end(), call.begin(), call.end());
 }
 
@@ -864,8 +868,11 @@ auto step_firmware(int slot, int entry, uint8_t a) -> StepResult_t {
   const uint16_t spin = poke_calls(slot, {{entry, a}});
   TestFixtures::enter_at({program_start, 0, 0, 0});
   const uint32_t cycles = TestFixtures::step_until_pc(spin, firmware_cycle_cap);
-  return {cpu_get_registers()->pc == spin,
-          (cpu_get_registers()->ps & 0x01) != 0, cycles};
+  return {
+      cpu_get_registers()->pc == spin,
+      (cpu_get_registers()->ps & 0x01) != 0,
+      cycles,
+  };
 }
 
 auto call_firmware(int slot, int entry, uint8_t a) -> bool {
@@ -882,11 +889,11 @@ auto call_firmware(int slot, int entry, uint8_t a) -> bool {
 // $0C4-$0CC), so the counter survives the call.
 auto poke_meter(int slot, bool serve = true, bool x_y_zero = false) -> void {
   const std::vector<uint8_t> loop = {
-      0x58,                   // CLI
-      0xE6, meter_low,        // INC $06
-      0xD0, 0xFC,             // BNE $03E1
-      0xE6, meter_high,       // INC $09
-      0x4C, 0xE1,       0x03  // JMP $03E1
+      0x58,                    // CLI
+      0xE6, meter_low,         // INC $06
+      0xD0, 0xFC,              // BNE $03E1
+      0xE6, meter_high,        // INC $09
+      0x4C, 0xE1,       0x03,  // JMP $03E1
   };
   TestFixtures::ScopedCore_t::poke(meter_loop, loop.data(), loop.size());
 
@@ -921,7 +928,7 @@ auto poke_meter(int slot, bool serve = true, bool x_y_zero = false) -> void {
         static_cast<uint8_t>(meter_return_table & 0xFF),
         static_cast<uint8_t>(meter_return_table >> 8),  // STA $2400,Y
         0xE6,
-        meter_index  // INC $0A
+        meter_index,  // INC $0A
     };
     emit_firmware_call(handler, slot, entry_serve_mouse, 0, x_y_zero);
     const std::vector<uint8_t> tail = {
@@ -933,7 +940,7 @@ auto poke_meter(int slot, bool serve = true, bool x_y_zero = false) -> void {
         0x9D,
         static_cast<uint8_t>(meter_flags_table & 0xFF),
         static_cast<uint8_t>(meter_flags_table >> 8),  // STA $2300,X
-        0x40                                           // RTI
+        0x40,                                          // RTI
     };
     handler.insert(handler.end(), tail.begin(), tail.end());
   } else {
@@ -941,7 +948,7 @@ auto poke_meter(int slot, bool serve = true, bool x_y_zero = false) -> void {
         0xE6, storm_low,   // INC $0B
         0xD0, 0x02,        // BNE +2
         0xE6, storm_high,  // INC $0C
-        0x40               // RTI
+        0x40,              // RTI
     };
   }
   REQUIRE(handler_start + handler.size() <= meter_loop);
@@ -951,7 +958,8 @@ auto poke_meter(int slot, bool serve = true, bool x_y_zero = false) -> void {
 
   const std::array<uint8_t, 2> vector = {
       static_cast<uint8_t>(handler_start & 0xFF),
-      static_cast<uint8_t>(handler_start >> 8)};
+      static_cast<uint8_t>(handler_start >> 8),
+  };
   TestFixtures::ScopedCore_t::poke(IRQ_VECTOR_ADDR, vector);
 
   const std::array<uint8_t, 1> zero = {0};
@@ -1121,7 +1129,10 @@ auto measured_handler_cycles(const MouseSession_t& session, size_t entries)
 
 auto press_button(int slot, bool down, uint8_t button = 0) -> void {
   MouseButtonPayload_t payload{
-      button, static_cast<uint8_t>(down ? 1 : 0), {0, 0}};
+      button,
+      static_cast<uint8_t>(down ? 1 : 0),
+      {0, 0},
+  };
   REQUIRE(peripheral_command(slot, mouse_cmd_set_button, &payload,
                              sizeof(payload)) == peripheral_ok);
   peripheral_manager_think(0);
@@ -1734,11 +1745,15 @@ TEST_CASE(
     const auto page = static_cast<uint16_t>(0xC000 + (slot << 8));
     const auto base = static_cast<uint16_t>(0xC080 + (slot << 4));
     const std::vector<uint8_t> values =
-        read_addresses(machine, {page, static_cast<uint16_t>(page + 1),
-                                 static_cast<uint16_t>(page + 0xFB), base,
-                                 static_cast<uint16_t>(base + 1),
-                                 static_cast<uint16_t>(base + 2),
-                                 static_cast<uint16_t>(base + 3)});
+        read_addresses(machine, {
+                                    page,
+                                    static_cast<uint16_t>(page + 1),
+                                    static_cast<uint16_t>(page + 0xFB),
+                                    base,
+                                    static_cast<uint16_t>(base + 1),
+                                    static_cast<uint16_t>(base + 2),
+                                    static_cast<uint16_t>(base + 3),
+                                });
     CHECK(values.at(0) == 0x2C);
     CHECK(values.at(1) == 0x58);
     CHECK(values.at(2) == 0xD6);
@@ -1784,8 +1799,10 @@ TEST_CASE(
       handler.push_back(static_cast<uint8_t>(handler_start >> 8));
       const auto front = static_cast<uint16_t>(handler_start - handler.size());
       TestFixtures::ScopedCore_t::poke(front, handler.data(), handler.size());
-      const std::array<uint8_t, 2> vector = {static_cast<uint8_t>(front & 0xFF),
-                                             static_cast<uint8_t>(front >> 8)};
+      const std::array<uint8_t, 2> vector = {
+          static_cast<uint8_t>(front & 0xFF),
+          static_cast<uint8_t>(front >> 8),
+      };
       TestFixtures::ScopedCore_t::poke(IRQ_VECTOR_ADDR, vector);
       const std::vector<uint64_t> entries = session.run_metered_frames(3);
       CHECK(entries.size() >= 3);
@@ -1825,8 +1842,9 @@ TEST_CASE(
   poke_slot0_holes(0x2C, 0x90, 0x01, 0x01);
   REQUIRE_FALSE(call_firmware(machine.slot, entry_clamp_mouse, 1));
 
-  const std::array<uint8_t, 8> expected = {0x90, 0xC8, 0x01, 0x00,
-                                           0x2C, 0x64, 0x01, 0x00};
+  const std::array<uint8_t, 8> expected = {
+      0x90, 0xC8, 0x01, 0x00, 0x2C, 0x64, 0x01, 0x00,
+  };
   for (size_t i = 0; i < expected.size(); ++i) {
     poke_slot0_holes(static_cast<uint8_t>(0x4E - i), 0x00, 0x00, 0x00);
     REQUIRE_FALSE(call_firmware(machine.slot, entry_peek_poke, 0));
@@ -1915,10 +1933,13 @@ TEST_CASE(
     CHECK((values.at(1) & 0x0E) == 0x06);
 
     linapple_reset_hard();
-    values =
-        read_addresses(machine, {page, base, static_cast<uint16_t>(base + 1),
-                                 static_cast<uint16_t>(base + 2),
-                                 static_cast<uint16_t>(base + 3)});
+    values = read_addresses(machine, {
+                                         page,
+                                         base,
+                                         static_cast<uint16_t>(base + 1),
+                                         static_cast<uint16_t>(base + 2),
+                                         static_cast<uint16_t>(base + 3),
+                                     });
     CHECK(values.at(0) == 0x2C);
     CHECK(values.at(1) == 0x00);
     CHECK(values.at(2) == 0x00);
@@ -2054,7 +2075,8 @@ constexpr Frame_t frame_after_tick = {
     0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0F, 0x40, 0xFF, 0x3E,
     0x04, 0x04, 0xFF, 0x40, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x0F, 0x40, 0x0F, 0x00, 0x2E, 0x00, 0x00, 0x01, 0x00, 0x0F, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+};
 
 // The slot-4 trailer entry of tests/fixtures/mouse-slot4-0aad3663.aws, written
 // by an earlier card after SETMOUSE $0B, a host position of (123, 456), the
@@ -2069,7 +2091,8 @@ constexpr Frame_t legacy_frame = {
     0x00, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0xA0, 0x40, 0x00, 0x3E,
     0x04, 0x04, 0xA0, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x10, 0x40, 0x0B, 0x00, 0x80, 0x01, 0x00, 0x01, 0x00, 0x10, 0x7B, 0x00,
-    0xC8, 0x01, 0xA0, 0x00, 0x00, 0x00, 0x00, 0x00};
+    0xC8, 0x01, 0xA0, 0x00, 0x00, 0x00, 0x00, 0x00,
+};
 
 }  // namespace
 
@@ -2421,8 +2444,10 @@ struct BasicSession_t {
   // The Enhanced //e reaches its prompt with the internal $Cn00 ROM switched
   // in (IIe Technical Reference, SETSLOTCXROM at $C006).
   static auto select_slot_roms() -> void {
-    const std::array<uint8_t, 6> program = {0x8D, 0x06, 0xC0,   // STA $C006
-                                            0x4C, 0x03, 0x03};  // JMP $0303
+    const std::array<uint8_t, 6> program = {
+        0x8D, 0x06, 0xC0,  // STA $C006
+        0x4C, 0x03, 0x03,
+    };  // JMP $0303
     TestFixtures::ScopedCore_t::poke(program_start, program);
     TestFixtures::enter_at({program_start, 0, 0, 0});
     TestFixtures::step_until_pc(program_start + 3, cycle_cap);
@@ -2500,8 +2525,9 @@ TEST_CASE(
   ScopedLogCapture_t log;
 
   SUBCASE("replies that do not answer their strobes are refused") {
-    const std::array<uint8_t, 7> shadows = {0x7F, 0xFF, 0x50, 0x20,
-                                            0x80, 0x01, 0x00};
+    const std::array<uint8_t, 7> shadows = {
+        0x7F, 0xFF, 0x50, 0x20, 0x80, 0x01, 0x00,
+    };
     size_t refusals = 0;
     for (uint8_t shadow : shadows) {
       Frame_t frame = before;

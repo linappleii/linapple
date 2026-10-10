@@ -996,7 +996,8 @@ auto call_mouse_firmware(int slot, int entry, uint8_t a) -> void {
       static_cast<uint8_t>(slot << 4),
       0x20,
       static_cast<uint8_t>(mouse_indirect_jump & 0xFF),
-      static_cast<uint8_t>(mouse_indirect_jump >> 8)};
+      static_cast<uint8_t>(mouse_indirect_jump >> 8),
+  };
   const auto spin = static_cast<uint16_t>(mouse_program_start + program.size());
   program.push_back(0x4C);
   program.push_back(static_cast<uint8_t>(spin & 0xFF));

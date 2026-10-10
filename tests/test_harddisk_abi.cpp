@@ -305,9 +305,11 @@ TEST_CASE(
 
   // The ids retired from this subsystem are never reused, so a sender built
   // against them hears incompatible, never a silent success.
-  for (const uint32_t retired : {PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0005U,
-                                 PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0006U,
-                                 PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0007U}) {
+  for (const uint32_t retired : {
+           PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0005U,
+           PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0006U,
+           PERIPHERAL_SUBSYSTEM_HARDDISK | 0x0007U,
+       }) {
     CAPTURE(retired);
     CHECK(descriptor->command(instance, retired, nullptr, 0) ==
           peripheral_incompatible);
@@ -362,16 +364,25 @@ TEST_CASE(
     const char* name;
     void (*clear)(HostInterface_t*);
   };
-  const std::array<Member_t, 5> members = {{
-      {"RegisterIO", [](HostInterface_t* h) { h->RegisterIO = nullptr; }},
-      {"RegisterCxROM", [](HostInterface_t* h) { h->RegisterCxROM = nullptr; }},
-      {"ReadFloatingBus",
-       [](HostInterface_t* h) { h->ReadFloatingBus = nullptr; }},
-      {"NotifyActivityChanged",
-       [](HostInterface_t* h) { h->NotifyActivityChanged = nullptr; }},
-      {"NotifyStatusChanged",
-       [](HostInterface_t* h) { h->NotifyStatusChanged = nullptr; }},
-  }};
+  const std::array<Member_t, 5> members = {
+      {
+          {"RegisterIO", [](HostInterface_t* h) { h->RegisterIO = nullptr; }},
+          {"RegisterCxROM",
+           [](HostInterface_t* h) { h->RegisterCxROM = nullptr; }},
+          {
+              "ReadFloatingBus",
+              [](HostInterface_t* h) { h->ReadFloatingBus = nullptr; },
+          },
+          {
+              "NotifyActivityChanged",
+              [](HostInterface_t* h) { h->NotifyActivityChanged = nullptr; },
+          },
+          {
+              "NotifyStatusChanged",
+              [](HostInterface_t* h) { h->NotifyStatusChanged = nullptr; },
+          },
+      },
+  };
   for (const Member_t& member : members) {
     CAPTURE(member.name);
     BenchHost_t bench;

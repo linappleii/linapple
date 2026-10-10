@@ -383,8 +383,10 @@ TEST_CASE(
     uint32_t bytes;
     const char* ext;
   };
-  const Case_t cases[] = {{&g_nib_driver, nib_bytes, ".nib"},
-                          {&g_nb2_driver, nb2_bytes, ".nb2"}};
+  const Case_t cases[] = {
+      {&g_nib_driver, nib_bytes, ".nib"},
+      {&g_nb2_driver, nb2_bytes, ".nb2"},
+  };
   for (const Case_t& c : cases) {
     CAPTURE(c.ext);
     const std::vector<uint8_t> woz = woz_padded_to(c.bytes);
@@ -425,7 +427,8 @@ TEST_CASE(
   };
   const Case_t cases[] = {
       {&g_nib_driver, "minimal.nib", nib_bytes, ".nib", "NIB (6656-nibble)"},
-      {&g_nb2_driver, "minimal.nb2", nb2_bytes, ".nb2", "NB2 (6384-nibble)"}};
+      {&g_nb2_driver, "minimal.nb2", nb2_bytes, ".nb2", "NB2 (6384-nibble)"},
+  };
   for (const Case_t& c : cases) {
     CAPTURE(c.ext);
     const std::vector<uint8_t> image =
@@ -493,8 +496,10 @@ TEST_CASE("DiskNibble: [NIB-C1] a created image is a formatted blank") {
     const char* file;
     uint32_t track_nibbles;
   };
-  const Case_t cases[] = {{&g_nib_driver, "minimal.nib", "blank.nib", 6656},
-                          {&g_nb2_driver, "minimal.nb2", "blank.nb2", 6384}};
+  const Case_t cases[] = {
+      {&g_nib_driver, "minimal.nib", "blank.nib", 6656},
+      {&g_nb2_driver, "minimal.nb2", "blank.nb2", 6384},
+  };
   for (const Case_t& c : cases) {
     CAPTURE(c.fixture);
     const std::vector<uint8_t> golden =
@@ -551,8 +556,10 @@ struct NibbleCase_t {
   uint32_t track_nibbles;
 };
 
-constexpr NibbleCase_t nibble_cases[] = {{&g_nib_driver, "minimal.nib", 6656},
-                                         {&g_nb2_driver, "minimal.nb2", 6384}};
+constexpr NibbleCase_t nibble_cases[] = {
+    {&g_nib_driver, "minimal.nib", 6656},
+    {&g_nb2_driver, "minimal.nb2", 6384},
+};
 
 // Every byte carries bit 7 and none is 0xFF, so the stream has no run the
 // sync inference could stretch and the slot's bytes are the stream's.
@@ -804,8 +811,9 @@ TEST_CASE(
     const SynthesisedTrack_t beyond = synthesise_track(36);
     // Tracks 36..39 are within the drive's reach and 40 onward only a
     // caller's; neither may grow the file.
-    const uint32_t quarter_tracks[] = {36 * 4, 39 * 4, (39 * 4) + 3, 40 * 4,
-                                       UINT32_MAX};
+    const uint32_t quarter_tracks[] = {
+        36 * 4, 39 * 4, (39 * 4) + 3, 40 * 4, UINT32_MAX,
+    };
     for (const uint32_t quarter_track : quarter_tracks) {
       CAPTURE(quarter_track);
       std::vector<uint8_t> bits(max_track_bits / 8, 0xEE);

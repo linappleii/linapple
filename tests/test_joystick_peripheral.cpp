@@ -86,15 +86,17 @@ using Frame_t = std::array<uint8_t, sizeof(JoystickSaveState_t)>;
 // Header: version 1, struct_size 56 ($38). A cold start has every timer
 // expired, so one strobe at cycle 1,000,000 ($0F4240) triggers all four; the
 // rest goes out as zeros, little-endian.
-constexpr Frame_t frame_after_one_strobe = {{
-    0x01, 0x00, 0x00, 0x00, 0x38, 0x00, 0x00, 0x00,  //
-    0x40, 0x42, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00,  //
-    0x40, 0x42, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00,  //
-    0x40, 0x42, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00,  //
-    0x40, 0x42, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00,  //
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  //
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  //
-}};
+constexpr Frame_t frame_after_one_strobe = {
+    {
+        0x01, 0x00, 0x00, 0x00, 0x38, 0x00, 0x00, 0x00,  //
+        0x40, 0x42, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00,  //
+        0x40, 0x42, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00,  //
+        0x40, 0x42, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00,  //
+        0x40, 0x42, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00,  //
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  //
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  //
+    },
+};
 
 // Positions 0, 10, 100 and 255 are pulses of 10, 120, 1,110 and 2,815 cycles.
 // Strobes at 1,000,000, 1,001,200, 1,001,400 and 1,001,450: the second finds
@@ -103,15 +105,17 @@ constexpr Frame_t frame_after_one_strobe = {{
 // the fourth only channel 0 (50 is past 10, short of 120). So the triggers are
 // 1,001,450 ($0F47EA), 1,001,400 ($0F47B8), 1,001,200 ($0F46F0) and 1,000,000
 // ($0F4240).
-constexpr Frame_t frame_after_four_strobes = {{
-    0x01, 0x00, 0x00, 0x00, 0x38, 0x00, 0x00, 0x00,  //
-    0xEA, 0x47, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00,  //
-    0xB8, 0x47, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00,  //
-    0xF0, 0x46, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00,  //
-    0x40, 0x42, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00,  //
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  //
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  //
-}};
+constexpr Frame_t frame_after_four_strobes = {
+    {
+        0x01, 0x00, 0x00, 0x00, 0x38, 0x00, 0x00, 0x00,  //
+        0xEA, 0x47, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00,  //
+        0xB8, 0x47, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00,  //
+        0xF0, 0x46, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00,  //
+        0x40, 0x42, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00,  //
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  //
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  //
+    },
+};
 
 auto axis_payload(uint8_t paddle, uint8_t position) -> JoystickAxisPayload_t {
   JoystickAxisPayload_t payload{};
@@ -172,8 +176,11 @@ struct GamePortMachine_t {
   // when the instruction starts, and the instruction's four cycles follow.
   auto read(uint16_t addr) const -> uint8_t {
     place_bus_marker();
-    const std::array<uint8_t, 3> lda = {0xAD, static_cast<uint8_t>(addr & 0xFF),
-                                        static_cast<uint8_t>(addr >> 8)};
+    const std::array<uint8_t, 3> lda = {
+        0xAD,
+        static_cast<uint8_t>(addr & 0xFF),
+        static_cast<uint8_t>(addr >> 8),
+    };
     TestFixtures::ScopedCore_t::poke(probe_base, lda);
     TestFixtures::enter_at({probe_base, 0, 0, 0});
     static_cast<void>(cpu_execute(0));
@@ -194,8 +201,11 @@ struct GamePortMachine_t {
   // One STA abs from RAM.
   static auto write_at(uint16_t addr, uint64_t counter) -> void {
     g_cumulative_cycles = counter;
-    const std::array<uint8_t, 3> sta = {0x8D, static_cast<uint8_t>(addr & 0xFF),
-                                        static_cast<uint8_t>(addr >> 8)};
+    const std::array<uint8_t, 3> sta = {
+        0x8D,
+        static_cast<uint8_t>(addr & 0xFF),
+        static_cast<uint8_t>(addr >> 8),
+    };
     TestFixtures::ScopedCore_t::poke(probe_base, sta);
     TestFixtures::enter_at({probe_base, 0, 0, 0});
     static_cast<void>(cpu_execute(0));
@@ -232,8 +242,9 @@ struct GamePortMachine_t {
   // the cycles are counted from the fetch at $FB1E to the landing on the NOP,
   // so the figure excludes the JSR's six and is PREAD's own.
   auto pread(uint8_t paddle) const -> Pread_t {
-    const std::array<uint8_t, 6> caller = {0xA2, paddle, 0x20,
-                                           0x1E, 0xFB,   0xEA};
+    const std::array<uint8_t, 6> caller = {
+        0xA2, paddle, 0x20, 0x1E, 0xFB, 0xEA,
+    };
     constexpr uint16_t sentinel = program_base + 5;
     constexpr uint32_t ldx_and_jsr_cycles = 8;
     const uint32_t entry_cycles = run(caller, rom_pread, 0, ldx_and_jsr_cycles);
@@ -241,8 +252,11 @@ struct GamePortMachine_t {
     REQUIRE(cpu_get_registers()->pc == rom_pread);
     const uint32_t cycles =
         TestFixtures::step_until_pc(sentinel, pread_cycle_cap);
-    return {cpu_get_registers()->y, cycles,
-            cpu_get_registers()->pc == sentinel};
+    return {
+        cpu_get_registers()->y,
+        cycles,
+        cpu_get_registers()->pc == sentinel,
+    };
   }
 
   static auto frame() -> Frame_t {
@@ -452,15 +466,23 @@ TEST_CASE(
     const char* name;
     void (*strip)(HostInterface_t*);
   };
-  const std::array<Missing_t, 4> members = {{
-      {"RegisterDirectIO",
-       [](HostInterface_t* h) { h->RegisterDirectIO = nullptr; }},
-      {"RegisterDirectIOStrobe",
-       [](HostInterface_t* h) { h->RegisterDirectIOStrobe = nullptr; }},
-      {"GetCycles", [](HostInterface_t* h) { h->GetCycles = nullptr; }},
-      {"ReadFloatingBus",
-       [](HostInterface_t* h) { h->ReadFloatingBus = nullptr; }},
-  }};
+  const std::array<Missing_t, 4> members = {
+      {
+          {
+              "RegisterDirectIO",
+              [](HostInterface_t* h) { h->RegisterDirectIO = nullptr; },
+          },
+          {
+              "RegisterDirectIOStrobe",
+              [](HostInterface_t* h) { h->RegisterDirectIOStrobe = nullptr; },
+          },
+          {"GetCycles", [](HostInterface_t* h) { h->GetCycles = nullptr; }},
+          {
+              "ReadFloatingBus",
+              [](HostInterface_t* h) { h->ReadFloatingBus = nullptr; },
+          },
+      },
+  };
   for (const Missing_t& member : members) {
     CAPTURE(member.name);
     HostInterface_t partial = *bench.host();
@@ -500,13 +522,15 @@ TEST_CASE(
     uint8_t position;
     uint32_t cycles;
   };
-  const std::array<Golden_t, 5> goldens = {{
-      {0, 23},
-      {1, 34},
-      {127, 1420},
-      {254, 2817},
-      {255, 2828},
-  }};
+  const std::array<Golden_t, 5> goldens = {
+      {
+          {0, 23},
+          {1, 34},
+          {127, 1420},
+          {254, 2817},
+          {255, 2828},
+      },
+  };
   for (uint8_t paddle = 0; paddle < 4; ++paddle) {
     for (const Golden_t& golden : goldens) {
       CAPTURE(paddle);
@@ -536,8 +560,9 @@ TEST_CASE(
   // sample is at 10 and the first low one is k = ceil((2674 - 10) / 11) =
   // 243. Y is read by stopping at the PC after each JSR: a STY to capture it
   // would widen the gap to 144 and give 242.
-  const std::array<uint8_t, 11> stream = {0xA2, 0x00, 0x20, 0x1E, 0xFB, 0xA2,
-                                          0x01, 0x20, 0x1E, 0xFB, 0xEA};
+  const std::array<uint8_t, 11> stream = {
+      0xA2, 0x00, 0x20, 0x1E, 0xFB, 0xA2, 0x01, 0x20, 0x1E, 0xFB, 0xEA,
+  };
   constexpr uint16_t after_first_jsr = program_base + 5;
   constexpr uint16_t after_second_jsr = program_base + 10;
   static_cast<void>(machine.run(stream, after_first_jsr, 0, pread_cycle_cap));
@@ -564,14 +589,18 @@ TEST_CASE(
   // with LDA $C064,X (X = 0) and again with LDA $C064, so the two addressing
   // modes are charged alike. A later charge of the sample would read the
   // first low, an earlier one the second high.
-  const std::array<uint8_t, 10> nine_indexed = {0xAD, 0x70, 0xC0, 0xA5, 0x00,
-                                                0xEA, 0xBD, 0x64, 0xC0, 0xEA};
-  const std::array<uint8_t, 10> nine_absolute = {0xAD, 0x70, 0xC0, 0xA5, 0x00,
-                                                 0xEA, 0xAD, 0x64, 0xC0, 0xEA};
-  const std::array<uint8_t, 10> ten_indexed = {0xAD, 0x70, 0xC0, 0xEA, 0xEA,
-                                               0xEA, 0xBD, 0x64, 0xC0, 0xEA};
-  const std::array<uint8_t, 10> ten_absolute = {0xAD, 0x70, 0xC0, 0xEA, 0xEA,
-                                                0xEA, 0xAD, 0x64, 0xC0, 0xEA};
+  const std::array<uint8_t, 10> nine_indexed = {
+      0xAD, 0x70, 0xC0, 0xA5, 0x00, 0xEA, 0xBD, 0x64, 0xC0, 0xEA,
+  };
+  const std::array<uint8_t, 10> nine_absolute = {
+      0xAD, 0x70, 0xC0, 0xA5, 0x00, 0xEA, 0xAD, 0x64, 0xC0, 0xEA,
+  };
+  const std::array<uint8_t, 10> ten_indexed = {
+      0xAD, 0x70, 0xC0, 0xEA, 0xEA, 0xEA, 0xBD, 0x64, 0xC0, 0xEA,
+  };
+  const std::array<uint8_t, 10> ten_absolute = {
+      0xAD, 0x70, 0xC0, 0xEA, 0xEA, 0xEA, 0xAD, 0x64, 0xC0, 0xEA,
+  };
   constexpr uint16_t after_sample = program_base + 9;
   constexpr uint32_t probe_cycles = 13;
 
@@ -702,11 +731,13 @@ TEST_CASE(
     uint8_t position;
     uint32_t cycles;
   };
-  const std::array<Golden_t, 3> goldens = {{
-      {1, 34},
-      {127, 1420},
-      {254, 2817},
-  }};
+  const std::array<Golden_t, 3> goldens = {
+      {
+          {1, 34},
+          {127, 1420},
+          {254, 2817},
+      },
+  };
   for (const Golden_t& golden : goldens) {
     CAPTURE(golden.position);
     GamePortMachine_t::set_paddle(0, golden.position);

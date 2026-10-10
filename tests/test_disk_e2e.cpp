@@ -105,17 +105,19 @@ auto medium_read(void* /*unused*/, uint32_t /*unused*/, uint8_t* bits,
 }
 
 auto medium_driver() -> const DiskFormatDriver_t* {
-  static const DiskFormatDriver_t driver = {disk_format_abi_version,
-                                            0,
-                                            "AAA Synthetic Medium",
-                                            nullptr,
-                                            medium_probe,
-                                            medium_open,
-                                            medium_close,
-                                            medium_is_write_protected,
-                                            medium_read,
-                                            nullptr,
-                                            nullptr};
+  static const DiskFormatDriver_t driver = {
+      disk_format_abi_version,
+      0,
+      "AAA Synthetic Medium",
+      nullptr,
+      medium_probe,
+      medium_open,
+      medium_close,
+      medium_is_write_protected,
+      medium_read,
+      nullptr,
+      nullptr,
+  };
   return &driver;
 }
 

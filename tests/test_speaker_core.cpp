@@ -74,23 +74,25 @@ auto mock_query(void* instance, uint32_t cmd_id, void* out, size_t* out_size)
   return peripheral_ok;
 }
 
-Peripheral_t g_mock_descriptor = {LINAPPLE_ABI_VERSION,
-                                  "test.mock.audio",
-                                  "MockAudio",
-                                  "Configurable audio mock",
-                                  "LinApple Contributors",
-                                  "1.0.0",
-                                  0xFF,
-                                  -1,
-                                  mock_init,
-                                  nullptr,
-                                  mock_shutdown,
-                                  nullptr,
-                                  nullptr,
-                                  nullptr,
-                                  nullptr,
-                                  nullptr,
-                                  mock_query};
+Peripheral_t g_mock_descriptor = {
+    LINAPPLE_ABI_VERSION,
+    "test.mock.audio",
+    "MockAudio",
+    "Configurable audio mock",
+    "LinApple Contributors",
+    "1.0.0",
+    0xFF,
+    -1,
+    mock_init,
+    nullptr,
+    mock_shutdown,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    mock_query,
+};
 
 /**
  * @brief RAII owner of the mock's configuration.

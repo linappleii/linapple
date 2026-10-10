@@ -29,9 +29,10 @@ constexpr uint32_t dsk_track_bit_count = 50464;
 // field starts at nibble 48: prologue, then volume 254, track 0, sector 0 and
 // their checksum in 4-and-4, then the epilogue (Beneath Apple DOS, ch. 3).
 constexpr size_t first_address_field_at = 48;
-const uint8_t track0_sector0_address_field[] = {0xD5, 0xAA, 0x96, 0xFF, 0xFE,
-                                                0xAA, 0xAA, 0xAA, 0xAA, 0xFF,
-                                                0xFE, 0xDE, 0xAA, 0xEB};
+const uint8_t track0_sector0_address_field[] = {
+    0xD5, 0xAA, 0x96, 0xFF, 0xFE, 0xAA, 0xAA,
+    0xAA, 0xAA, 0xFF, 0xFE, 0xDE, 0xAA, 0xEB,
+};
 // Gap 2 is six sync nibbles, then the data prologue and 343 nibbles of
 // six-and-two, which for an all-zero sector are 343 x 0x96.
 constexpr size_t first_data_field_at = first_address_field_at + 14 + 6;

@@ -175,8 +175,9 @@ constexpr uint32_t last_quarter_track = 159;
 
 // The first cells of minimal-track.woz's only record; a shifted read lands in
 // the TRKS chunk padding instead and sees zeros.
-const uint8_t track_fixture_pattern[] = {0x01, 0x08, 0x0F, 0x16,
-                                         0x1D, 0x24, 0x2B, 0x32};
+const uint8_t track_fixture_pattern[] = {
+    0x01, 0x08, 0x0F, 0x16, 0x1D, 0x24, 0x2B, 0x32,
+};
 
 auto read_file(const std::string& path) -> std::vector<uint8_t> {
   FilePtr f(fopen(path.c_str(), "rb"), fclose);
@@ -702,10 +703,12 @@ constexpr size_t relocated_trks_entry_0_offset =
 auto append_chunk_header(std::vector<uint8_t>* out, const char* id,
                          uint32_t size) -> void {
   out->insert(out->end(), id, id + chunk_id_size);
-  const uint8_t size_le[] = {static_cast<uint8_t>(size & 0xFF),
-                             static_cast<uint8_t>((size >> 8) & 0xFF),
-                             static_cast<uint8_t>((size >> 16) & 0xFF),
-                             static_cast<uint8_t>(size >> 24)};
+  const uint8_t size_le[] = {
+      static_cast<uint8_t>(size & 0xFF),
+      static_cast<uint8_t>((size >> 8) & 0xFF),
+      static_cast<uint8_t>((size >> 16) & 0xFF),
+      static_cast<uint8_t>(size >> 24),
+  };
   out->insert(out->end(), size_le, size_le + sizeof(size_le));
 }
 

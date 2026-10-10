@@ -220,23 +220,25 @@ auto fake_load_state(void* instance, const void* buffer, size_t size)
   return peripheral_ok;
 }
 
-Peripheral_t g_fake_card = {LINAPPLE_ABI_VERSION,
-                            "test.fake_card",
-                            "Fake Card",
-                            "Thirty-two bytes of state",
-                            "LinApple Contributors",
-                            "1.0.0",
-                            PERIPHERAL_MASK_EXPANSION,
-                            -1,
-                            fake_init,
-                            nullptr,
-                            fake_shutdown,
-                            nullptr,
-                            nullptr,
-                            fake_save_state,
-                            fake_load_state,
-                            nullptr,
-                            nullptr};
+Peripheral_t g_fake_card = {
+    LINAPPLE_ABI_VERSION,
+    "test.fake_card",
+    "Fake Card",
+    "Thirty-two bytes of state",
+    "LinApple Contributors",
+    "1.0.0",
+    PERIPHERAL_MASK_EXPANSION,
+    -1,
+    fake_init,
+    nullptr,
+    fake_shutdown,
+    nullptr,
+    nullptr,
+    fake_save_state,
+    fake_load_state,
+    nullptr,
+    nullptr,
+};
 
 auto pattern_for(int slot) -> std::array<uint8_t, fake_state_size> {
   std::array<uint8_t, fake_state_size> pattern{};
@@ -848,9 +850,11 @@ auto ssc_survives_the_file(int slot) -> void {
   const std::array<uint8_t, 2> vector = {0x80, 0x03};
   TestFixtures::ScopedCore_t::poke(0xFFFE, vector);
   // $C0n1 advances the card without touching the ACIA.
-  const std::array<uint8_t, 7> main_loop = {0x58,            // CLI
-                                            0xAD, 0x81, hi,  // LDA $C0n1
-                                            0x4C, 0x01, 0x03};
+  const std::array<uint8_t, 7> main_loop = {
+      0x58,            // CLI
+      0xAD, 0x81, hi,  // LDA $C0n1
+      0x4C, 0x01, 0x03,
+  };
   TestFixtures::ScopedCore_t::poke(0x0300, main_loop);
   mem[0x06] = 0;
   CpuRegisters_t* regs = cpu_get_registers();
@@ -1206,7 +1210,7 @@ enum MouseEntry_t : uint8_t {
   mouse_entry_serve = 1,
   mouse_entry_read = 2,
   mouse_entry_pos = 4,
-  mouse_entry_clamp = 5
+  mouse_entry_clamp = 5,
 };
 
 using MouseFrame_t = std::array<uint8_t, mouse_frame_size>;
@@ -1236,7 +1240,8 @@ auto emit_mouse_call(std::vector<uint8_t>& program, int slot, int entry,
       static_cast<uint8_t>(slot << 4),
       0x20,
       static_cast<uint8_t>(mouse_indirect_jump & 0xFF),
-      static_cast<uint8_t>(mouse_indirect_jump >> 8)};
+      static_cast<uint8_t>(mouse_indirect_jump >> 8),
+  };
   program.insert(program.end(), call.begin(), call.end());
   const std::array<uint8_t, 3> jump = {0x6C, 0x07, 0x00};
   TestFixtures::ScopedCore_t::poke(mouse_indirect_jump, jump);
@@ -1329,7 +1334,8 @@ auto enter_mouse_cli_loop(int slot) -> void {
                                    handler.size());
   const std::array<uint8_t, 2> vector = {
       static_cast<uint8_t>(mouse_handler & 0xFF),
-      static_cast<uint8_t>(mouse_handler >> 8)};
+      static_cast<uint8_t>(mouse_handler >> 8),
+  };
   TestFixtures::ScopedCore_t::poke(IRQ_VECTOR_ADDR, vector);
   poke_mouse_byte(mouse_entry_count, 0);
   const std::array<uint8_t, 4> loop = {0x58, 0x4C, 0x01, 0x03};

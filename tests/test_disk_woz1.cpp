@@ -212,8 +212,10 @@ TEST_CASE("DiskWOZ1: a TMAP entry past the last record is corrupt") {
 TEST_CASE("DiskWOZ1: a bit count past the record's cells is corrupt") {
   auto image = TestFixtures::create_ephemeral("minimal-v1.woz");
   const uint32_t too_many = woz1_max_bit_count + 1;
-  const uint8_t bit_count_le[] = {static_cast<uint8_t>(too_many & 0xFF),
-                                  static_cast<uint8_t>(too_many >> 8)};
+  const uint8_t bit_count_le[] = {
+      static_cast<uint8_t>(too_many & 0xFF),
+      static_cast<uint8_t>(too_many >> 8),
+  };
   patch(image.c_str(), track0_bit_count_offset, bit_count_le, 2);
 
   void* instance = nullptr;
@@ -428,8 +430,9 @@ auto append_meta_with_crc(const std::string& path) -> void {
   std::vector<uint8_t> out = read_file(path);
   REQUIRE(out.size() == v1_fixture_bytes);
 
-  const uint8_t meta_header[] = {'M', 'E', 'T', 'A', meta_chunk_data_size,
-                                 0,   0,   0};
+  const uint8_t meta_header[] = {
+      'M', 'E', 'T', 'A', meta_chunk_data_size, 0, 0, 0,
+  };
   out.insert(out.end(), meta_header, meta_header + sizeof(meta_header));
   const char meta_text[] = "title\tminimal v1\n";
   std::vector<uint8_t> meta(meta_chunk_data_size, ' ');

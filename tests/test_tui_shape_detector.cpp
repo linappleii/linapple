@@ -125,19 +125,21 @@ TEST_CASE("TuiShapeDetector: All 11 Box Drawing Shapes") {
     bool right;
   };
 
-  const std::array<BoxTestCase_t, 11> test_cases = {{
-      {"\xe2\x94\x80", false, false, true, true},  // ─
-      {"\xe2\x94\x82", true, true, false, false},  // │
-      {"\xe2\x94\x8c", false, true, false, true},  // ┌
-      {"\xe2\x94\x90", false, true, true, false},  // ┐
-      {"\xe2\x94\x94", true, false, false, true},  // └
-      {"\xe2\x94\x98", true, false, true, false},  // ┘
-      {"\xe2\x94\x9c", true, true, false, true},   // ├
-      {"\xe2\x94\xa4", true, true, true, false},   // ┤
-      {"\xe2\x94\xac", false, true, true, true},   // ┬
-      {"\xe2\x94\xb4", true, false, true, true},   // ┴
-      {"\xe2\x94\xbc", true, true, true, true},    // ┼
-  }};
+  const std::array<BoxTestCase_t, 11> test_cases = {
+      {
+          {"\xe2\x94\x80", false, false, true, true},  // ─
+          {"\xe2\x94\x82", true, true, false, false},  // │
+          {"\xe2\x94\x8c", false, true, false, true},  // ┌
+          {"\xe2\x94\x90", false, true, true, false},  // ┐
+          {"\xe2\x94\x94", true, false, false, true},  // └
+          {"\xe2\x94\x98", true, false, true, false},  // ┘
+          {"\xe2\x94\x9c", true, true, false, true},   // ├
+          {"\xe2\x94\xa4", true, true, true, false},   // ┤
+          {"\xe2\x94\xac", false, true, true, true},   // ┬
+          {"\xe2\x94\xb4", true, false, true, true},   // ┴
+          {"\xe2\x94\xbc", true, true, true, true},    // ┼
+      },
+  };
 
   for (const auto& tc : test_cases) {
     auto fb = make_framebuffer();
@@ -149,10 +151,12 @@ TEST_CASE("TuiShapeDetector: All 11 Box Drawing Shapes") {
 }
 
 TEST_CASE("TuiShapeDetector: Apple II Font OCR Matching") {
-  constexpr std::array<uint8_t, k_font_dim> font_5 = {0x7E, 0x60, 0x7C, 0x06,
-                                                      0x06, 0x66, 0x3C, 0x00};
-  constexpr std::array<uint8_t, k_font_dim> font_a = {0x18, 0x3C, 0x66, 0x66,
-                                                      0x7E, 0x66, 0x66, 0x00};
+  constexpr std::array<uint8_t, k_font_dim> font_5 = {
+      0x7E, 0x60, 0x7C, 0x06, 0x06, 0x66, 0x3C, 0x00,
+  };
+  constexpr std::array<uint8_t, k_font_dim> font_a = {
+      0x18, 0x3C, 0x66, 0x66, 0x7E, 0x66, 0x66, 0x00,
+  };
 
   // Test '5'
   auto fb = make_framebuffer();

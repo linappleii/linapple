@@ -139,12 +139,14 @@ auto peek(uint16_t addr) -> uint8_t {
   constexpr uint16_t probe_base = 0x0200;
   constexpr uint16_t probe_store = 0x0010;
   const CpuRegisters_t saved = *cpu_get_registers();
-  const std::array<uint8_t, 6> probe = {0xAD,
-                                        static_cast<uint8_t>(addr & 0xFF),
-                                        static_cast<uint8_t>(addr >> 8),
-                                        0x85,
-                                        probe_store,
-                                        0xEA};
+  const std::array<uint8_t, 6> probe = {
+      0xAD,
+      static_cast<uint8_t>(addr & 0xFF),
+      static_cast<uint8_t>(addr >> 8),
+      0x85,
+      probe_store,
+      0xEA,
+  };
   TestFixtures::ScopedCore_t::poke(probe_base, probe);
   TestFixtures::enter_at({probe_base, 0, 0, 0});
   TestFixtures::step_until_pc(probe_base + 5, program_cycle_cap);
@@ -401,7 +403,8 @@ struct StrobeObserver_t {
         0xE6, 0x08, 0xD0, 0x06, 0xE6, 0x09, 0xD0, 0x02, 0xE6, 0x0A, 0xAD,
         0x00, 0xC0, 0x10, 0xF1, 0x2C, 0x10, 0xC0, 0xA6, 0x06, 0xA5, 0x08,
         0x9D, 0x80, 0x03, 0xA5, 0x09, 0x9D, 0xC0, 0x03, 0xA5, 0x0A, 0x9D,
-        0x40, 0x03, 0xE8, 0x86, 0x06, 0x4C, 0x00, 0x03};
+        0x40, 0x03, 0xE8, 0x86, 0x06, 0x4C, 0x00, 0x03,
+    };
     TestFixtures::ScopedCore_t::poke(program_base, loop);
     const std::array<uint8_t, 5> zero_page{};
     TestFixtures::ScopedCore_t::poke(strobe_count, zero_page);
@@ -514,7 +517,8 @@ auto frame_after_z_held() -> Frame_t {
       0x01, 0x00, 0x00, 0x00, 0x28, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x5A, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  };
   std::memcpy(frame.data(), head.data(), head.size());
   return frame;
 }
@@ -527,7 +531,8 @@ auto frame_from_earlier_card() -> Frame_t {
   const std::array<uint8_t, 36> head = {
       0x01, 0x00, 0x00, 0x00, 0x28, 0x02, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
       0x5A, 0x00, 0x00, 0x00, 0x5A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-      0x5A, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01, 0x00};
+      0x5A, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01, 0x00,
+  };
   std::memcpy(frame.data(), head.data(), head.size());
   frame.at(40) = 0x58;
   frame.at(168) = 0x59;
@@ -597,17 +602,25 @@ TEST_CASE(
     "member, and a host without a log is refused silently") {
   const std::vector<std::pair<const char*, void (*)(HostInterface_t*)>>
       members = {
-          {"RegisterDirectIO",
-           [](HostInterface_t* h) { h->RegisterDirectIO = nullptr; }},
-          {"ReadFloatingBus",
-           [](HostInterface_t* h) { h->ReadFloatingBus = nullptr; }},
+          {
+              "RegisterDirectIO",
+              [](HostInterface_t* h) { h->RegisterDirectIO = nullptr; },
+          },
+          {
+              "ReadFloatingBus",
+              [](HostInterface_t* h) { h->ReadFloatingBus = nullptr; },
+          },
           {"GetCycles", [](HostInterface_t* h) { h->GetCycles = nullptr; }},
-          {"ScheduleEvent",
-           [](HostInterface_t* h) { h->ScheduleEvent = nullptr; }},
+          {
+              "ScheduleEvent",
+              [](HostInterface_t* h) { h->ScheduleEvent = nullptr; },
+          },
           {"GetClockHz", [](HostInterface_t* h) { h->GetClockHz = nullptr; }},
           {"GetMachine", [](HostInterface_t* h) { h->GetMachine = nullptr; }},
-          {"GetFrameCycles",
-           [](HostInterface_t* h) { h->GetFrameCycles = nullptr; }},
+          {
+              "GetFrameCycles",
+              [](HostInterface_t* h) { h->GetFrameCycles = nullptr; },
+          },
   };
   for (const auto& member : members) {
     CAPTURE(member.first);
@@ -853,18 +866,21 @@ TEST_CASE(
   // Technical Reference p. 13; Sather IIe 7-4).
   const std::array<uint8_t, 19> read_twice_then_clear = {
       0xAD, 0x00, 0xC0, 0x85, 0x10, 0xAD, 0x00, 0xC0, 0x85, 0x11,
-      0x2C, 0x10, 0xC0, 0xAD, 0x00, 0xC0, 0x85, 0x12, 0xEA};
+      0x2C, 0x10, 0xC0, 0xAD, 0x00, 0xC0, 0x85, 0x12, 0xEA,
+  };
   run_program(read_twice_then_clear);
   CHECK(*mem_get_main_ptr(0x10) == 0xE1);
   CHECK(*mem_get_main_ptr(0x11) == 0xE1);
   CHECK(*mem_get_main_ptr(0x12) == 0x61);
 
   // STA $C010, STA $C01F and LDA $C010 each clear it as well.
-  const std::array<std::array<uint8_t, 3>, 3> clearers = {{
-      {0x8D, 0x10, 0xC0},
-      {0x8D, 0x1F, 0xC0},
-      {0xAD, 0x10, 0xC0},
-  }};
+  const std::array<std::array<uint8_t, 3>, 3> clearers = {
+      {
+          {0x8D, 0x10, 0xC0},
+          {0x8D, 0x1F, 0xC0},
+          {0xAD, 0x10, 0xC0},
+      },
+  };
   for (const auto& clearer : clearers) {
     CAPTURE(static_cast<int>(clearer[0]));
     CAPTURE(static_cast<int>(clearer[1]));
@@ -873,7 +889,8 @@ TEST_CASE(
     // LDA $C000 / STA $13 / <clearer> / LDA $C000 / STA $14 / NOP
     const std::array<uint8_t, 14> program = {
         0xAD,       0x00, 0xC0, 0x85, 0x13, clearer[0], clearer[1],
-        clearer[2], 0xAD, 0x00, 0xC0, 0x85, 0x14,       0xEA};
+        clearer[2], 0xAD, 0x00, 0xC0, 0x85, 0x14,       0xEA,
+    };
     run_program(program);
     CHECK(*mem_get_main_ptr(0x13) == 0xE1);
     CHECK(*mem_get_main_ptr(0x14) == 0x61);
@@ -971,7 +988,8 @@ TEST_CASE(
     uint64_t delay_frames;
   };
   const std::array<Phase_t, 5> phases = {
-      {{0, 32}, {5, 43}, {15, 33}, {16, 32}, {31, 33}}};
+      {{0, 32}, {5, 43}, {15, 33}, {16, 32}, {31, 33}},
+  };
   for (const Phase_t& phase : phases) {
     CAPTURE(phase.press_frame);
     const uint64_t press_frame =
@@ -1204,7 +1222,8 @@ TEST_CASE(
   // LDA $C010 / STA $13 / NOP
   const std::array<uint8_t, 21> program = {
       0xAD, 0x00, 0xC0, 0x85, 0x10, 0xAD, 0x11, 0xC0, 0x85, 0x11, 0xAD,
-      0x00, 0xC0, 0x85, 0x12, 0xAD, 0x10, 0xC0, 0x85, 0x13, 0xEA};
+      0x00, 0xC0, 0x85, 0x12, 0xAD, 0x10, 0xC0, 0x85, 0x13, 0xEA,
+  };
   run_program(program);
   CHECK(*mem_get_main_ptr(0x10) == ('A' | strobe_bit));
   CHECK(*mem_get_main_ptr(0x11) == 0xA0);
@@ -1226,7 +1245,8 @@ TEST_CASE(
   const std::array<uint8_t, 27> program = {
       0xAD, 0x83, 0xC0, 0xAD, 0x11, 0xC0, 0x85, 0x10, 0xAD,
       0x00, 0xC0, 0x85, 0x11, 0xAD, 0x8B, 0xC0, 0xAD, 0x11,
-      0xC0, 0x85, 0x12, 0xAD, 0x00, 0xC0, 0x85, 0x13, 0xEA};
+      0xC0, 0x85, 0x12, 0xAD, 0x00, 0xC0, 0x85, 0x13, 0xEA,
+  };
   run_program(program);
   CHECK((*mem_get_main_ptr(0x10) & strobe_bit) != 0);
   CHECK(*mem_get_main_ptr(0x11) == ('A' | strobe_bit));
@@ -1300,12 +1320,20 @@ TEST_CASE(
     uint16_t poll;
     uint16_t clear;
   };
-  const std::array<Rom_t, 2> roms = {{
-      {TestConfig_t::machine_apple2e_enhanced, rom_2e_keyin_poll,
-       rom_2e_keyin_clear},
-      {TestConfig_t::machine_apple2e, rom_2e_un_keyin_poll,
-       rom_2e_un_keyin_clear},
-  }};
+  const std::array<Rom_t, 2> roms = {
+      {
+          {
+              TestConfig_t::machine_apple2e_enhanced,
+              rom_2e_keyin_poll,
+              rom_2e_keyin_clear,
+          },
+          {
+              TestConfig_t::machine_apple2e,
+              rom_2e_un_keyin_poll,
+              rom_2e_un_keyin_clear,
+          },
+      },
+  };
   for (const Rom_t& rom : roms) {
     CAPTURE(rom.model);
     TestConfig_t config(describe(rom.model));

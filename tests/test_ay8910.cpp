@@ -260,7 +260,8 @@ TEST_CASE("AY-3-8910: The Sixteen Envelope Shapes Match The Data Sheet") {
       {0x0, 15, 0, 0},  {0x1, 15, 0, 0},  {0x2, 15, 0, 0},  {0x3, 15, 0, 0},
       {0x4, 0, 15, 0},  {0x5, 0, 15, 0},  {0x6, 0, 15, 0},  {0x7, 0, 15, 0},
       {0x8, 15, 0, 15}, {0x9, 15, 0, 0},  {0xA, 15, 0, 15}, {0xB, 15, 0, 15},
-      {0xC, 0, 15, 0},  {0xD, 0, 15, 15}, {0xE, 0, 15, 0},  {0xF, 0, 15, 0}};
+      {0xC, 0, 15, 0},  {0xD, 0, 15, 15}, {0xE, 0, 15, 0},  {0xF, 0, 15, 0},
+  };
 
   for (const auto& e : expectations) {
     Renderer r;
@@ -413,7 +414,8 @@ TEST_CASE("AY-3-8910: Step Never Writes Past The Buffer It Was Given") {
 
   std::array<std::array<float, 8>, ay8910_num_voices> small{};
   std::array<float*, ay8910_num_voices> pointers = {
-      {small[0].data(), small[1].data(), small[2].data()}};
+      {small[0].data(), small[1].data(), small[2].data()},
+  };
   ay8910_step(&chip, 1000, pointers.data(), 4);
 
   CHECK(small[0][3] == 1.0F);
@@ -439,15 +441,21 @@ TEST_CASE("AY-3-8910: Null Instance And Null Buffers Are Inert") {
   std::array<float, 8> buf_c{};
   buf_b.fill(42.0F);
   buf_c.fill(42.0F);
-  float* bad_pointers[ay8910_num_voices] = {nullptr, buf_b.data(),
-                                            buf_c.data()};
+  float* bad_pointers[ay8910_num_voices] = {
+      nullptr,
+      buf_b.data(),
+      buf_c.data(),
+  };
   ay8910_step(&chip, 4, bad_pointers, 8);
   CHECK(buf_b[0] == 42.0F);
   CHECK(buf_c[0] == 42.0F);
 
   // Zero count or zero max leaves buffers untouched
-  float* valid_pointers[ay8910_num_voices] = {buf_b.data(), buf_b.data(),
-                                              buf_c.data()};
+  float* valid_pointers[ay8910_num_voices] = {
+      buf_b.data(),
+      buf_b.data(),
+      buf_c.data(),
+  };
   ay8910_step(&chip, 0, valid_pointers, 8);
   ay8910_step(&chip, 4, valid_pointers, 0);
   CHECK(buf_b[0] == 42.0F);

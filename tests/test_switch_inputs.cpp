@@ -127,7 +127,9 @@ auto hold_shift(bool shift) -> void {
 }
 
 const std::initializer_list<TestConfig_t::MachineType_t> both_models = {
-    TestConfig_t::machine_apple2e_enhanced, TestConfig_t::machine_apple2_plus};
+    TestConfig_t::machine_apple2e_enhanced,
+    TestConfig_t::machine_apple2_plus,
+};
 
 }  // namespace
 

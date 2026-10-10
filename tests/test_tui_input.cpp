@@ -322,24 +322,26 @@ constexpr uint32_t firmware_cycle_cap = 200000;
 auto call_firmware(int slot, int entry, uint8_t a) -> void {
   const auto page = static_cast<uint8_t>(0xC0 + slot);
   const auto table = static_cast<uint16_t>((page << 8) + entry_table + entry);
-  std::vector<uint8_t> program = {0xAD,
-                                  static_cast<uint8_t>(table & 0xFF),
-                                  static_cast<uint8_t>(table >> 8),
-                                  0x85,
-                                  0x07,
-                                  0xA9,
-                                  page,
-                                  0x85,
-                                  0x08,
-                                  0xA9,
-                                  a,
-                                  0xA2,
-                                  page,
-                                  0xA0,
-                                  static_cast<uint8_t>(slot << 4),
-                                  0x20,
-                                  static_cast<uint8_t>(indirect_jump & 0xFF),
-                                  static_cast<uint8_t>(indirect_jump >> 8)};
+  std::vector<uint8_t> program = {
+      0xAD,
+      static_cast<uint8_t>(table & 0xFF),
+      static_cast<uint8_t>(table >> 8),
+      0x85,
+      0x07,
+      0xA9,
+      page,
+      0x85,
+      0x08,
+      0xA9,
+      a,
+      0xA2,
+      page,
+      0xA0,
+      static_cast<uint8_t>(slot << 4),
+      0x20,
+      static_cast<uint8_t>(indirect_jump & 0xFF),
+      static_cast<uint8_t>(indirect_jump >> 8),
+  };
   const auto spin = static_cast<uint16_t>(program_start + program.size());
   program.push_back(0x4C);
   program.push_back(static_cast<uint8_t>(spin & 0xFF));

@@ -383,17 +383,20 @@ TEST_CASE("DiskABI: [ABI-18] The card lists the formats it can make") {
   CHECK(size == sizeof(uint32_t));
   // Alphabetical, because the probe's fallback picks the first driver that
   // calls an image possible and that must not depend on link order.
-  const char* const expected_order[] = {"DOS Order",
-                                        "IIE",
-                                        "NB2 (6384-nibble)",
-                                        "NIB (6656-nibble)",
-                                        "ProDOS Order",
-                                        "WOZ 1",
-                                        "WOZ 2"};
+  const char* const expected_order[] = {
+      "DOS Order",
+      "IIE",
+      "NB2 (6384-nibble)",
+      "NIB (6656-nibble)",
+      "ProDOS Order",
+      "WOZ 1",
+      "WOZ 2",
+  };
   // Only the sector and nibble formats can make a blank; the WOZ and IIE
   // drivers read what they are given.
-  const bool expected_creatable[] = {true, false, true, true,
-                                     true, false, false};
+  const bool expected_creatable[] = {
+      true, false, true, true, true, false, false,
+  };
   REQUIRE(count == sizeof(expected_order) / sizeof(expected_order[0]));
   for (uint32_t i = 0; i < count; ++i) {
     DiskFormatNameQuery_t name_query{};

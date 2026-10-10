@@ -1018,19 +1018,53 @@ TEST_CASE("Speaker Peripheral: Save-State Byte Format Pin") {
 
   const std::array<uint8_t, 40> golden = {
       // g_spkr_last_cycle = 0x1234
-      0x34, 0x12, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x34,
+      0x12,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
       // quiet_cycle_count, a dead field written as zero
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
       // recently_active, a dead field written as zero
-      0x00, 0x00, 0x00, 0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
       // state = 1
-      0x01, 0x00, 0x00, 0x00,
+      0x01,
+      0x00,
+      0x00,
+      0x00,
       // next_sample_cycle = 4660.0
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x34, 0xB2, 0x40,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x34,
+      0xB2,
+      0x40,
       // last_sample_state = 1
-      0x01, 0x00, 0x00, 0x00,
+      0x01,
+      0x00,
+      0x00,
+      0x00,
       // filter_state = 0.5f
-      0x00, 0x00, 0x00, 0x3F};
+      0x00,
+      0x00,
+      0x00,
+      0x3F,
+  };
   CHECK(std::memcmp(written.data(), golden.data(), golden.size()) == 0);
 }
 
@@ -1185,12 +1219,14 @@ TEST_CASE("Speaker Peripheral: Every Slice Length At The Boundaries") {
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
 
-  const std::vector<uint32_t> slices = {0,
-                                        1,
-                                        SPEAKER_MAX_SAMPLES_PER_UPDATE - 1,
-                                        SPEAKER_MAX_SAMPLES_PER_UPDATE,
-                                        SPEAKER_MAX_SAMPLES_PER_UPDATE + 1,
-                                        UINT32_MAX};
+  const std::vector<uint32_t> slices = {
+      0,
+      1,
+      SPEAKER_MAX_SAMPLES_PER_UPDATE - 1,
+      SPEAKER_MAX_SAMPLES_PER_UPDATE,
+      SPEAKER_MAX_SAMPLES_PER_UPDATE + 1,
+      UINT32_MAX,
+  };
 
   for (uint32_t elapsed : slices) {
     // A cone at rest is silent, so the slice has to be driven for its length
@@ -1221,8 +1257,9 @@ TEST_CASE("Speaker Peripheral: A Hostile Clock Resynchronizes") {
   void* instance = harness.create_speaker(TEST_SLOT);
   REQUIRE(instance != nullptr);
 
-  const std::vector<uint64_t> hostile = {1000, 999, 1000 + (1ULL << 63),
-                                         UINT64_MAX, 0};
+  const std::vector<uint64_t> hostile = {
+      1000, 999, 1000 + (1ULL << 63), UINT64_MAX, 0,
+  };
 
   for (uint64_t cycle : hostile) {
     harness.set_cycles(cycle);
@@ -1256,7 +1293,8 @@ TEST_CASE("Speaker Peripheral: Every Save-State Field Poisoned In Turn") {
   REQUIRE(instance != nullptr);
 
   const std::vector<double> poison = {
-      NAN, INFINITY, -INFINITY, -1.0, 1e300, -1e300, 1e-42, 0.0, 4.9e-324};
+      NAN, INFINITY, -INFINITY, -1.0, 1e300, -1e300, 1e-42, 0.0, 4.9e-324,
+  };
 
   for (double value : poison) {
     const auto as_u64 =

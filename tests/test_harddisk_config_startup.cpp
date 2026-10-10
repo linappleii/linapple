@@ -465,7 +465,8 @@ TEST_CASE(
   const std::vector<Model_t> models = {
       {TestConfig_t::machine_apple2e_enhanced, 2},
       {TestConfig_t::machine_apple2e, 2},
-      {TestConfig_t::machine_apple2_plus, 3}};
+      {TestConfig_t::machine_apple2_plus, 3},
+  };
   const auto image = TestFixtures::create_ephemeral("minimal-block.hdv");
   for (const Model_t& model : models) {
     CAPTURE(model.config_type);

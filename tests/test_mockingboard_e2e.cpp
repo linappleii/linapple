@@ -115,36 +115,40 @@ constexpr uint16_t WRITE_AY_ADDR = 0x0340;
  * write strobes. Ends in a branch to itself so the frame count, and nothing
  * else, decides how long it runs.
  */
-constexpr std::array<uint8_t, 44> program = {{
-    0xA9, 0xFF,              // LDA #$FF
-    0x8D, 0x02, 0xC4,        // STA $C402   DDRB
-    0x8D, 0x03, 0xC4,        // STA $C403   DDRA
-    0xA9, 0x04,              // LDA #$04
-    0x8D, 0x00, 0xC4,        // STA $C400   bus inactive
-    0xA2, 0x00, 0xA0, 0xFE,  // LDX #$00  LDY #$FE
-    0x20, 0x40, 0x03,        // JSR $0340
-    0xA2, 0x01, 0xA0, 0x00,  // LDX #$01  LDY #$00
-    0x20, 0x40, 0x03,        // JSR $0340
-    0xA2, 0x07, 0xA0, 0x3E,  // LDX #$07  LDY #$3E
-    0x20, 0x40, 0x03,        // JSR $0340
-    0xA2, 0x08, 0xA0, 0x0F,  // LDX #$08  LDY #$0F
-    0x20, 0x40, 0x03,        // JSR $0340
-    0x4C, 0x29, 0x03         // JMP $0329
-}};
+constexpr std::array<uint8_t, 44> program = {
+    {
+        0xA9, 0xFF,              // LDA #$FF
+        0x8D, 0x02, 0xC4,        // STA $C402   DDRB
+        0x8D, 0x03, 0xC4,        // STA $C403   DDRA
+        0xA9, 0x04,              // LDA #$04
+        0x8D, 0x00, 0xC4,        // STA $C400   bus inactive
+        0xA2, 0x00, 0xA0, 0xFE,  // LDX #$00  LDY #$FE
+        0x20, 0x40, 0x03,        // JSR $0340
+        0xA2, 0x01, 0xA0, 0x00,  // LDX #$01  LDY #$00
+        0x20, 0x40, 0x03,        // JSR $0340
+        0xA2, 0x07, 0xA0, 0x3E,  // LDX #$07  LDY #$3E
+        0x20, 0x40, 0x03,        // JSR $0340
+        0xA2, 0x08, 0xA0, 0x0F,  // LDX #$08  LDY #$0F
+        0x20, 0x40, 0x03,        // JSR $0340
+        0x4C, 0x29, 0x03,        // JMP $0329
+    },
+};
 
-constexpr std::array<uint8_t, 27> write_ay_routine = {{
-    0x8E, 0x01, 0xC4,  // STX $C401   register number on port A
-    0xA9, 0x07,        // LDA #$07
-    0x8D, 0x00, 0xC4,  // STA $C400   latch
-    0xA9, 0x04,        // LDA #$04
-    0x8D, 0x00, 0xC4,  // STA $C400   inactive
-    0x8C, 0x01, 0xC4,  // STY $C401   value on port A
-    0xA9, 0x06,        // LDA #$06
-    0x8D, 0x00, 0xC4,  // STA $C400   write
-    0xA9, 0x04,        // LDA #$04
-    0x8D, 0x00, 0xC4,  // STA $C400   inactive
-    0x60               // RTS
-}};
+constexpr std::array<uint8_t, 27> write_ay_routine = {
+    {
+        0x8E, 0x01, 0xC4,  // STX $C401   register number on port A
+        0xA9, 0x07,        // LDA #$07
+        0x8D, 0x00, 0xC4,  // STA $C400   latch
+        0xA9, 0x04,        // LDA #$04
+        0x8D, 0x00, 0xC4,  // STA $C400   inactive
+        0x8C, 0x01, 0xC4,  // STY $C401   value on port A
+        0xA9, 0x06,        // LDA #$06
+        0x8D, 0x00, 0xC4,  // STA $C400   write
+        0xA9, 0x04,        // LDA #$04
+        0x8D, 0x00, 0xC4,  // STA $C400   inactive
+        0x60,              // RTS
+    },
+};
 
 PeripheralAudioInfo_t g_announced;
 int g_announce_calls = 0;

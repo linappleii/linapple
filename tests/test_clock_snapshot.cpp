@@ -29,13 +29,15 @@ using Latches_t = std::array<uint8_t, latch_count>;
 // date -u -d @1773325800 -> Thu Mar 12 14:30:00 UTC 2026, handed over already
 // local: month 03, weekday 04 (Sunday = 0), day 12, hour 14, minute 30, one
 // BCD digit per latch.
-constexpr HostLocalTime_t frozen_thursday = {1773325800, 0,  2026, 3, 12,
-                                             4,          14, 30,   0};
+constexpr HostLocalTime_t frozen_thursday = {
+    1773325800, 0, 2026, 3, 12, 4, 14, 30, 0,
+};
 constexpr Latches_t thursday_latches = {0, 3, 0, 4, 1, 2, 1, 4, 3, 0};
 
 // date -u -d @1795910340 -> Sat Nov 28 23:59:00 UTC 2026
-constexpr HostLocalTime_t frozen_saturday = {1795910340, 0,  2026, 11, 28,
-                                             6,          23, 59,   0};
+constexpr HostLocalTime_t frozen_saturday = {
+    1795910340, 0, 2026, 11, 28, 6, 23, 59, 0,
+};
 constexpr Latches_t saturday_latches = {1, 1, 0, 6, 2, 8, 2, 3, 5, 9};
 
 // Slot n's sixteen I/O registers start at $C080 + n * $10; the ten latches

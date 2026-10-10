@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#include "fixture_plugin_slot0.h"
+
 #include <stddef.h>
 #include <stdint.h>
 
 #include <memory>
 
 #include "apple2/peripherals/Peripheral.h"
-#include "fixture_plugin_slot0.h"
 
 // A motherboard-internal device that exists only as a shared object. The
 // loader's slot-0 path can be reached no other way: a builtin never travels
@@ -30,8 +31,8 @@ auto fixture_shutdown(void* instance) -> void {
       static_cast<Slot0Fixture_t*>(instance));
 }
 
-auto fixture_query(void* instance, uint32_t cmd_id, void* out,
-                   size_t* out_size) -> PeripheralStatus_t {
+auto fixture_query(void* instance, uint32_t cmd_id, void* out, size_t* out_size)
+    -> PeripheralStatus_t {
   if (cmd_id != slot0_fixture_query_slot) {
     return peripheral_incompatible;
   }
@@ -68,7 +69,8 @@ const Peripheral_t g_slot0_fixture_peripheral = {
     nullptr,
     nullptr,
     nullptr,
-    fixture_query};
+    fixture_query,
+};
 
 }  // namespace
 

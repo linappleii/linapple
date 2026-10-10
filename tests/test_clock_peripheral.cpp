@@ -80,17 +80,20 @@ using Frame_t = std::array<uint8_t, frame_size>;
 constexpr Latches_t frozen_latches = {0, 3, 0, 4, 1, 2, 1, 4, 3, 0};
 
 // Host provides pre-offset local time; card ignores unix_seconds.
-constexpr HostLocalTime_t frozen_thursday = {1773325800, 0,  2026, 3, 12,
-                                             4,          14, 30,   0};
+constexpr HostLocalTime_t frozen_thursday = {
+    1773325800, 0, 2026, 3, 12, 4, 14, 30, 0,
+};
 
 // date -u -d @1795910340 -> Sat Nov 28 23:59:00 UTC 2026
-constexpr HostLocalTime_t frozen_saturday = {1795910340, 0,  2026, 11, 28,
-                                             6,          23, 59,   0};
+constexpr HostLocalTime_t frozen_saturday = {
+    1795910340, 0, 2026, 11, 28, 6, 23, 59, 0,
+};
 constexpr Latches_t saturday_latches = {1, 1, 0, 6, 2, 8, 2, 3, 5, 9};
 
 // date -u -d @1709164800 -> Thu Feb 29 00:00:00 UTC 2024, a leap day
-constexpr HostLocalTime_t frozen_leap_day = {1709164800, 0, 2024, 2, 29,
-                                             4,          0, 0,    0};
+constexpr HostLocalTime_t frozen_leap_day = {
+    1709164800, 0, 2024, 2, 29, 4, 0, 0, 0,
+};
 constexpr Latches_t leap_day_latches = {0, 2, 0, 4, 2, 9, 0, 0, 0, 0};
 
 // Sentinel bus value distinct from any valid latch register byte.
@@ -112,11 +115,13 @@ constexpr uint8_t oracle_hole_marker = 0x3C;
 constexpr Frame_t frozen_frame = {
     0x01, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x04, 0x01, 0x02,
-    0x01, 0x04, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    0x01, 0x04, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+};
 
 // Pinned fixture clock-frame-v1.bin includes legacy epoch pin fields.
 constexpr std::array<uint8_t, 12> frame_v1_prefix = {
-    0x01, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0xE8, 0xCD, 0xB2, 0x69};
+    0x01, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0xE8, 0xCD, 0xB2, 0x69,
+};
 
 // Golden disassembly test vector for ProDOS 8 ThunderClock firmware as slot 4
 // sees it; another slot's image differs only in the LDY operand at $0D.
@@ -128,7 +133,8 @@ constexpr std::array<uint8_t, slot_rom_size> firmware_rom = {
     0xC8, 0x09, 0xB0, 0x9D, 0x00, 0x02, 0xE8, 0xB9, 0x80, 0xC0, 0xC8, 0x09,
     0xB0, 0x9D, 0x00, 0x02, 0xE8, 0xA9, 0xAC, 0x9D, 0x00, 0x02, 0xE8, 0x98,
     0x29, 0x0F, 0xC9, 0x0A, 0x90, 0xDF, 0xA9, 0x80, 0x9D, 0xFF, 0x01, 0x60,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xB0, 0xCC};
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xB0, 0xCC,
+};
 
 constexpr size_t rom_write_entry = 0x0B;
 constexpr size_t rom_slot_operand = 0x0D;
@@ -166,7 +172,8 @@ using InputPage_t = std::array<uint8_t, 256>;
 // High-ASCII date format ("03,04,12,14,30") terminated by $80.
 constexpr std::array<uint8_t, 15> frozen_input_line = {
     0xB0, 0xB3, 0xAC, 0xB0, 0xB4, 0xAC, 0xB1, 0xB2,
-    0xAC, 0xB1, 0xB4, 0xAC, 0xB3, 0xB0, 0x80};
+    0xAC, 0xB1, 0xB4, 0xAC, 0xB3, 0xB0, 0x80,
+};
 
 // Return sentinel PC and cycle execution limit.
 constexpr uint16_t return_sentinel = 0x0300;
@@ -430,38 +437,56 @@ struct CalendarRow_t {
 //   date -u -d @2147483647 -> Tue Jan 19 03:14:07 UTC 2038
 //   date -u -d @2147483700 -> Tue Jan 19 03:15:00 UTC 2038
 //   date -u -d @1773576000 -> Sun Mar 15 12:00:00 UTC 2026
-constexpr std::array<CalendarRow_t, 7> calendar_edges = {{
-    {"the epoch",
-     {0, 0, 1970, 1, 1, 4, 0, 0, 0},
-     {0, 1, 0, 4, 0, 1, 0, 0, 0, 0}},
-    {"the last minute of 1999",
-     {946684740, 0, 1999, 12, 31, 5, 23, 59, 0},
-     {1, 2, 0, 5, 3, 1, 2, 3, 5, 9}},
-    {"the first minute of 2000",
-     {946684800, 0, 2000, 1, 1, 6, 0, 0, 0},
-     {0, 1, 0, 6, 0, 1, 0, 0, 0, 0}},
-    {"the leap day of 2000",
-     {951782400, 0, 2000, 2, 29, 2, 0, 0, 0},
-     {0, 2, 0, 2, 2, 9, 0, 0, 0, 0}},
-    {"the last second of 32-bit time",
-     {2147483647, 0, 2038, 1, 19, 2, 3, 14, 7},
-     {0, 1, 0, 2, 1, 9, 0, 3, 1, 4}},
-    {"the minute after 32-bit time",
-     {2147483700, 0, 2038, 1, 19, 2, 3, 15, 0},
-     {0, 1, 0, 2, 1, 9, 0, 3, 1, 5}},
-    {"a Sunday at noon",
-     {1773576000, 0, 2026, 3, 15, 0, 12, 0, 0},
-     {0, 3, 0, 0, 1, 5, 1, 2, 0, 0}},
-}};
+constexpr std::array<CalendarRow_t, 7> calendar_edges = {
+    {
+        {
+            "the epoch",
+            {0, 0, 1970, 1, 1, 4, 0, 0, 0},
+            {0, 1, 0, 4, 0, 1, 0, 0, 0, 0},
+        },
+        {
+            "the last minute of 1999",
+            {946684740, 0, 1999, 12, 31, 5, 23, 59, 0},
+            {1, 2, 0, 5, 3, 1, 2, 3, 5, 9},
+        },
+        {
+            "the first minute of 2000",
+            {946684800, 0, 2000, 1, 1, 6, 0, 0, 0},
+            {0, 1, 0, 6, 0, 1, 0, 0, 0, 0},
+        },
+        {
+            "the leap day of 2000",
+            {951782400, 0, 2000, 2, 29, 2, 0, 0, 0},
+            {0, 2, 0, 2, 2, 9, 0, 0, 0, 0},
+        },
+        {
+            "the last second of 32-bit time",
+            {2147483647, 0, 2038, 1, 19, 2, 3, 14, 7},
+            {0, 1, 0, 2, 1, 9, 0, 3, 1, 4},
+        },
+        {
+            "the minute after 32-bit time",
+            {2147483700, 0, 2038, 1, 19, 2, 3, 15, 0},
+            {0, 1, 0, 2, 1, 9, 0, 3, 1, 5},
+        },
+        {
+            "a Sunday at noon",
+            {1773576000, 0, 2026, 3, 15, 0, 12, 0, 0},
+            {0, 3, 0, 0, 1, 5, 1, 2, 0, 0},
+        },
+    },
+};
 
 // Verify time mapping under UTC+9 (JST) and UTC-4 (EDT).
 constexpr int32_t jst_offset = 32400;
 constexpr int32_t edt_offset = -14400;
-constexpr HostLocalTime_t tokyo_sunday = {1795910340, jst_offset, 2026, 11, 29,
-                                          0,          8,          59,   0};
+constexpr HostLocalTime_t tokyo_sunday = {
+    1795910340, jst_offset, 2026, 11, 29, 0, 8, 59, 0,
+};
 constexpr Latches_t tokyo_sunday_latches = {1, 1, 0, 0, 2, 9, 0, 8, 5, 9};
 constexpr HostLocalTime_t new_york_thursday = {
-    1773325800, edt_offset, 2026, 3, 12, 4, 10, 30, 0};
+    1773325800, edt_offset, 2026, 3, 12, 4, 10, 30, 0,
+};
 constexpr Latches_t new_york_thursday_latches = {0, 3, 0, 4, 1, 2, 1, 0, 3, 0};
 
 // Hard reset copies slot ROM into address space ($C4xx).
@@ -530,7 +555,9 @@ auto read_input_page() -> InputPage_t {
 auto call_subroutine(uint16_t entry, uint8_t accumulator) -> uint32_t {
   const uint16_t pushed = return_sentinel - 1;
   const std::array<uint8_t, 2> return_address = {
-      static_cast<uint8_t>(pushed & 0xFF), static_cast<uint8_t>(pushed >> 8)};
+      static_cast<uint8_t>(pushed & 0xFF),
+      static_cast<uint8_t>(pushed >> 8),
+  };
   TestFixtures::ScopedCore_t::poke(stack_top - 1, return_address);
 
   CpuRegisters_t* regs = cpu_get_registers();
@@ -919,13 +946,19 @@ TEST_CASE(
     const char* name;
     void (*strip)(HostInterface_t*);
   };
-  const std::array<Missing_t, 4> members = {{
-      {"RegisterIO", [](HostInterface_t* h) { h->RegisterIO = nullptr; }},
-      {"RegisterCxROM", [](HostInterface_t* h) { h->RegisterCxROM = nullptr; }},
-      {"GetLocalTime", [](HostInterface_t* h) { h->GetLocalTime = nullptr; }},
-      {"ReadFloatingBus",
-       [](HostInterface_t* h) { h->ReadFloatingBus = nullptr; }},
-  }};
+  const std::array<Missing_t, 4> members = {
+      {
+          {"RegisterIO", [](HostInterface_t* h) { h->RegisterIO = nullptr; }},
+          {"RegisterCxROM",
+           [](HostInterface_t* h) { h->RegisterCxROM = nullptr; }},
+          {"GetLocalTime",
+           [](HostInterface_t* h) { h->GetLocalTime = nullptr; }},
+          {
+              "ReadFloatingBus",
+              [](HostInterface_t* h) { h->ReadFloatingBus = nullptr; },
+          },
+      },
+  };
 
   for (const Missing_t& member : members) {
     CAPTURE(member.name);

@@ -98,15 +98,20 @@ struct Probe_t {
   const char* where;
 };
 
-constexpr std::array<Probe_t, 6> probes = {{
-    {0, 0, "first cycle of the first visible line"},
-    {96, 0, "middle of the visible area"},
-    {visible_lines - 1, cycles_per_line - 1,
-     "last cycle of the last visible line"},
-    {visible_lines, 0, "first cycle of blanking"},
-    {227, 0, "middle of blanking"},
-    {lines_per_frame - 1, cycles_per_line - 1, "last cycle of the frame"},
-}};
+constexpr std::array<Probe_t, 6> probes = {
+    {
+        {0, 0, "first cycle of the first visible line"},
+        {96, 0, "middle of the visible area"},
+        {
+            visible_lines - 1,
+            cycles_per_line - 1,
+            "last cycle of the last visible line",
+        },
+        {visible_lines, 0, "first cycle of blanking"},
+        {227, 0, "middle of blanking"},
+        {lines_per_frame - 1, cycles_per_line - 1, "last cycle of the frame"},
+    },
+};
 
 }  // namespace
 
