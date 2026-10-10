@@ -135,6 +135,8 @@ struct ScopedMediumFile_t {
 
   ScopedMediumFile_t(const ScopedMediumFile_t&) = delete;
   auto operator=(const ScopedMediumFile_t&) -> ScopedMediumFile_t& = delete;
+  ScopedMediumFile_t(ScopedMediumFile_t&&) = delete;
+  auto operator=(ScopedMediumFile_t&&) -> ScopedMediumFile_t& = delete;
 };
 
 class CardHarness_t {
@@ -171,6 +173,8 @@ class CardHarness_t {
 
   CardHarness_t(const CardHarness_t&) = delete;
   auto operator=(const CardHarness_t&) -> CardHarness_t& = delete;
+  CardHarness_t(CardHarness_t&&) = delete;
+  auto operator=(CardHarness_t&&) -> CardHarness_t& = delete;
 
   auto poll(uint32_t cycle) -> uint8_t {
     return io_map_dispatch(0, io_q6_clear, 0, 0, cycle);

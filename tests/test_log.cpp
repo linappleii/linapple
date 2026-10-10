@@ -31,8 +31,8 @@ auto global_test_callback(LogLevel level, const char* message) -> void {
   test_capture.messages.emplace_back(message != nullptr ? message : "");
 }
 
-auto context_test_callback(LogLevel level, const char* message,
-                           void* user_data) -> void {
+auto context_test_callback(LogLevel level, const char* message, void* user_data)
+    -> void {
   auto* cap = static_cast<LogCapture_t*>(user_data);
   if (cap != nullptr) {
     cap->levels.push_back(level);
@@ -67,6 +67,11 @@ struct ScopedLoggerReset_t {
     Logger::enable_file_logging(orig_file_logging);
     test_capture.clear();
   }
+
+  ScopedLoggerReset_t(const ScopedLoggerReset_t&) = delete;
+  auto operator=(const ScopedLoggerReset_t&) -> ScopedLoggerReset_t& = delete;
+  ScopedLoggerReset_t(ScopedLoggerReset_t&&) = delete;
+  auto operator=(ScopedLoggerReset_t&&) -> ScopedLoggerReset_t& = delete;
 };
 
 }  // namespace
@@ -82,16 +87,14 @@ TEST_CASE("Logger: [LOG-01] Enum Values and String Conversion") {
   CHECK(static_cast<uint8_t>(LogLevel::perf) == 4);
   CHECK(static_cast<uint8_t>(LogLevel::debug) == 5);
 
-  CHECK(std::strcmp(Logger::log_level_to_string(LogLevel::silent),
-                    "SILENT") == 0);
+  CHECK(std::strcmp(Logger::log_level_to_string(LogLevel::silent), "SILENT") ==
+        0);
   CHECK(std::strcmp(Logger::log_level_to_string(LogLevel::error), "ERROR") ==
         0);
   CHECK(std::strcmp(Logger::log_level_to_string(LogLevel::warning), "WARN") ==
         0);
-  CHECK(std::strcmp(Logger::log_level_to_string(LogLevel::info), "INFO") ==
-        0);
-  CHECK(std::strcmp(Logger::log_level_to_string(LogLevel::perf), "PERF") ==
-        0);
+  CHECK(std::strcmp(Logger::log_level_to_string(LogLevel::info), "INFO") == 0);
+  CHECK(std::strcmp(Logger::log_level_to_string(LogLevel::perf), "PERF") == 0);
   CHECK(std::strcmp(Logger::log_level_to_string(LogLevel::debug), "DEBUG") ==
         0);
   CHECK(std::strcmp(Logger::log_level_to_string(static_cast<LogLevel>(99)),

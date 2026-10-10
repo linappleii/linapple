@@ -61,34 +61,34 @@ class DiskStepperHarness_t {
   DiskStepperHarness_t(DiskStepperHarness_t&&) = delete;
   auto operator=(DiskStepperHarness_t&&) -> DiskStepperHarness_t& = delete;
 
-  auto step_phase(int phase, bool on) -> void {
+  auto step_phase(int phase, bool on) const -> void {
     const uint16_t addr = static_cast<uint16_t>(
         stepper_base + ((phase & 0x03) * 2) + (on ? 1 : 0));
     io_map_dispatch(0, addr, 0, 0, slice_cycle_);
     peripheral_manager_think(0);
   }
 
-  auto release_all_phases() -> void {
+  auto release_all_phases() const -> void {
     for (int p = 0; p < 4; ++p) {
       step_phase(p, false);
     }
   }
 
-  auto step_forward_phase() -> void {
+  auto step_forward_phase() const -> void {
     const int32_t cur = get_phase();
     const int next_magnet = (cur + 1) & 0x03;
     release_all_phases();
     step_phase(next_magnet, true);
   }
 
-  auto step_backward_phase() -> void {
+  auto step_backward_phase() const -> void {
     const int32_t cur = get_phase();
     const int prev_magnet = (cur + 3) & 0x03;
     release_all_phases();
     step_phase(prev_magnet, true);
   }
 
-  auto step_to_track(int target_track) -> void {
+  auto step_to_track(int target_track) const -> void {
     const int target_phase = target_track * phases_per_track;
     int safety_limit = max_disk_phases * 2;
     while (get_phase() < target_phase && safety_limit-- > 0) {
@@ -139,11 +139,11 @@ class DiskStepperHarness_t {
     }
   }
 
-  auto set_read_mode() -> void {
+  auto set_read_mode() const -> void {
     io_map_dispatch(0, read_mode_switch, 0, 0, slice_cycle_);
   }
 
-  auto power_motor_on() -> void {
+  auto power_motor_on() const -> void {
     io_map_dispatch(0, motor_on_switch, 0, 0, slice_cycle_);
   }
 
@@ -157,7 +157,7 @@ class DiskStepperHarness_t {
     peripheral_manager_think(cycles);
   }
 
-  auto set_write_mode() -> void {
+  auto set_write_mode() const -> void {
     io_map_dispatch(0, write_mode_switch, 0, 0, slice_cycle_);
   }
 
@@ -679,6 +679,8 @@ class QuarterTrackHarness_t {
   QuarterTrackHarness_t(const QuarterTrackHarness_t&) = delete;
   auto operator=(const QuarterTrackHarness_t&)
       -> QuarterTrackHarness_t& = delete;
+  QuarterTrackHarness_t(QuarterTrackHarness_t&&) = delete;
+  auto operator=(QuarterTrackHarness_t&&) -> QuarterTrackHarness_t& = delete;
 
   auto strobe(int phase, bool on, uint32_t hold_cycles) -> void {
     const auto address =

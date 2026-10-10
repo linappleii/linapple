@@ -15,21 +15,16 @@ namespace {
 struct ScopedDebuggerState_t {
   Arg_t saved_args[MAX_ARGS]{};
   Arg_t saved_arg_raw[MAX_ARGS]{};
-  int saved_arg_raw_count{0};
-  int saved_display_total{0};
-  int saved_display_start{0};
-  int saved_display_lines{0};
-  int saved_display_width{0};
+  int saved_arg_raw_count{g_arg_raw_count};
+  int saved_display_total{g_console_display_total};
+  int saved_display_start{g_console_display_start};
+  int saved_display_lines{g_console_display_lines};
+  int saved_display_width{g_console_display_width};
   conchar_t saved_display[CONSOLE_DISPLAY_HEIGHT][CONSOLE_WIDTH]{};
 
   ScopedDebuggerState_t() {
     std::memcpy(saved_args, g_args, sizeof(saved_args));
     std::memcpy(saved_arg_raw, g_arg_raw, sizeof(saved_arg_raw));
-    saved_arg_raw_count = g_arg_raw_count;
-    saved_display_total = g_console_display_total;
-    saved_display_start = g_console_display_start;
-    saved_display_lines = g_console_display_lines;
-    saved_display_width = g_console_display_width;
     std::memcpy(saved_display, g_console_display, sizeof(saved_display));
 
     ArgsClear();

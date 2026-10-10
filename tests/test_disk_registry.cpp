@@ -76,6 +76,8 @@ struct ScopedRandomFile_t {
 
   ScopedRandomFile_t(const ScopedRandomFile_t&) = delete;
   auto operator=(const ScopedRandomFile_t&) -> ScopedRandomFile_t& = delete;
+  ScopedRandomFile_t(ScopedRandomFile_t&&) = delete;
+  auto operator=(ScopedRandomFile_t&&) -> ScopedRandomFile_t& = delete;
 };
 
 auto count_rejections(std::vector<std::string>* names) -> void {

@@ -140,7 +140,7 @@ struct GamePortMachine_t {
 
   // A strobe charged at cumulative cycle 0 would be recorded as cycle 1, so
   // the first instruction a fresh core runs is one that touches no I/O.
-  auto move_off_cycle_zero() -> void {
+  auto move_off_cycle_zero() const -> void {
     constexpr uint8_t nop = 0xEA;
     TestFixtures::ScopedCore_t::poke(probe_base, &nop, 1);
     TestFixtures::enter_at({probe_base, 0, 0, 0});
@@ -170,7 +170,7 @@ struct GamePortMachine_t {
 
   // One LDA abs from RAM; the bridge hands the card the counter as it stands
   // when the instruction starts, and the instruction's four cycles follow.
-  auto read(uint16_t addr) -> uint8_t {
+  auto read(uint16_t addr) const -> uint8_t {
     place_bus_marker();
     const std::array<uint8_t, 3> lda = {0xAD, static_cast<uint8_t>(addr & 0xFF),
                                         static_cast<uint8_t>(addr >> 8)};
@@ -182,17 +182,17 @@ struct GamePortMachine_t {
     return cpu_get_registers()->a;
   }
 
-  auto read_at(uint16_t addr, uint64_t counter) -> uint8_t {
+  auto read_at(uint16_t addr, uint64_t counter) const -> uint8_t {
     g_cumulative_cycles = counter;
     return read(addr);
   }
 
-  auto high_at(uint16_t addr, uint64_t counter) -> bool {
+  auto high_at(uint16_t addr, uint64_t counter) const -> bool {
     return (read_at(addr, counter) & bit7) != 0;
   }
 
   // One STA abs from RAM.
-  auto write_at(uint16_t addr, uint64_t counter) -> void {
+  auto write_at(uint16_t addr, uint64_t counter) const -> void {
     g_cumulative_cycles = counter;
     const std::array<uint8_t, 3> sta = {0x8D, static_cast<uint8_t>(addr & 0xFF),
                                         static_cast<uint8_t>(addr >> 8)};
@@ -203,7 +203,7 @@ struct GamePortMachine_t {
             static_cast<uint16_t>(probe_base + sta.size()));
   }
 
-  auto strobe_at(uint64_t counter) -> void {
+  auto strobe_at(uint64_t counter) const -> void {
     static_cast<void>(read_at(addr_trigger_first, counter));
   }
 
@@ -215,7 +215,7 @@ struct GamePortMachine_t {
   // the cap is spent; returns the cycles spent.
   template <size_t N>
   auto run(const std::array<uint8_t, N>& program, uint16_t stop_pc, uint8_t x,
-           uint32_t cap) -> uint32_t {
+           uint32_t cap) const -> uint32_t {
     place_bus_marker();
     TestFixtures::ScopedCore_t::poke(program_base, program);
     TestFixtures::enter_at({program_base, 0, x, 0});
@@ -231,7 +231,7 @@ struct GamePortMachine_t {
   // LDX #paddle; JSR $FB1E; NOP at $0300: the LDX and the JSR run first, then
   // the cycles are counted from the fetch at $FB1E to the landing on the NOP,
   // so the figure excludes the JSR's six and is PREAD's own.
-  auto pread(uint8_t paddle) -> Pread_t {
+  auto pread(uint8_t paddle) const -> Pread_t {
     const std::array<uint8_t, 6> caller = {0xA2, paddle, 0x20,
                                            0x1E, 0xFB,   0xEA};
     constexpr uint16_t sentinel = program_base + 5;

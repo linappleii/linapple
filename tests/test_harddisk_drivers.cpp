@@ -292,9 +292,8 @@ struct OpenImage_t {
   HarddiskError_e error = harddisk_err_none;
 
   OpenImage_t() = default;
-  explicit OpenImage_t(const std::string& path) {
-    error = harddisk_loader_open(path.c_str(), &driver, &instance);
-  }
+  explicit OpenImage_t(const std::string& path)
+      : error(harddisk_loader_open(path.c_str(), &driver, &instance)) {}
   ~OpenImage_t() {
     if (driver != nullptr && instance != nullptr) {
       driver->close(instance);

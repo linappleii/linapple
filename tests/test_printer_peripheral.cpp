@@ -586,7 +586,7 @@ struct PrinterHarness_t {
   // holes DEFAULT never writes (MODE, MSTRT, COL) are cleared as a fresh
   // PR#1 finds them after a boot; PWDTH, ESCHAR and FLAGS are left for
   // DEFAULT to write.
-  auto preset_monitor_state() -> void {
+  auto preset_monitor_state() const -> void {
     poke(zp_wndlft, 0);
     poke(zp_wndwdth, text_columns);
     poke(zp_wndtop, 0);
@@ -603,7 +603,7 @@ struct PrinterHarness_t {
 
   // What DEFAULT and then Ctrl-I N would leave: 40 columns, Ctrl-I, video
   // off with CRLF on.
-  auto preset_video_off() -> void {
+  auto preset_video_off() const -> void {
     poke(hole(hole_operand_pwdth, slot), default_width);
     poke(hole(hole_operand_eschar, slot), default_eschar);
     poke(hole(hole_operand_flags, slot), default_flags & 0x7F);

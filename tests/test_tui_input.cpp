@@ -165,6 +165,7 @@ struct TuiMachine_t {
     mouse_frontend_initialize();
   }
 
+  ~TuiMachine_t() = default;
   TuiMachine_t(const TuiMachine_t&) = delete;
   auto operator=(const TuiMachine_t&) -> TuiMachine_t& = delete;
   TuiMachine_t(TuiMachine_t&&) = delete;

@@ -122,26 +122,28 @@ auto bare_get_machine() -> PeripheralMachine_t {
 }
 auto bare_get_frame_cycles() -> uint32_t { return 17030; }
 
-struct BareHost_t {
+auto make_bare_host() -> HostInterface_t {
   HostInterface_t host{};
+  host.Log = bare_log;
+  host.RegisterDirectIO = bare_register_direct_io;
+  host.RegisterDirectIOStrobe = bare_register_direct_io_strobe;
+  host.ScheduleEvent = bare_schedule_event;
+  host.GetCycles = bare_get_cycles;
+  host.GetClockHz = bare_get_clock_hz;
+  host.ReadFloatingBus = bare_read_floating_bus;
+  host.GetMachine = bare_get_machine;
+  host.GetFrameCycles = bare_get_frame_cycles;
+  return host;
+}
+
+struct BareHost_t {
+  HostInterface_t host{make_bare_host()};
   Peripheral_t* keyboard{keyboard_descriptor()};
   Peripheral_t* joystick{joystick_descriptor()};
-  void* kbd{nullptr};
-  void* joy{nullptr};
+  void* kbd{keyboard != nullptr ? keyboard->init(0, &host) : nullptr};
+  void* joy{joystick != nullptr ? joystick->init(0, &host) : nullptr};
 
-  BareHost_t() {
-    host.Log = bare_log;
-    host.RegisterDirectIO = bare_register_direct_io;
-    host.RegisterDirectIOStrobe = bare_register_direct_io_strobe;
-    host.ScheduleEvent = bare_schedule_event;
-    host.GetCycles = bare_get_cycles;
-    host.GetClockHz = bare_get_clock_hz;
-    host.ReadFloatingBus = bare_read_floating_bus;
-    host.GetMachine = bare_get_machine;
-    host.GetFrameCycles = bare_get_frame_cycles;
-    kbd = keyboard->init(0, &host);
-    joy = joystick->init(0, &host);
-  }
+  BareHost_t() = default;
 
   ~BareHost_t() {
     if (kbd != nullptr) {

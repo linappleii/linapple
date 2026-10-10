@@ -254,12 +254,12 @@ class ClockHarness_t {
     return (it != instances_.end()) ? it->second : nullptr;
   }
 
-  auto load_frame(int slot, const void* frame, size_t size)
+  auto load_frame(int slot, const void* frame, size_t size) const
       -> PeripheralStatus_t {
     return clock_descriptor()->load_state(get_instance(slot), frame, size);
   }
 
-  auto save_frame(int slot) -> Frame_t {
+  auto save_frame(int slot) const -> Frame_t {
     Frame_t frame{};
     size_t size = frame.size();
     REQUIRE(clock_descriptor()->save_state(get_instance(slot), frame.data(),

@@ -80,17 +80,14 @@ auto record_channel(const char* peripheral_id, int slot,
  */
 class ScopedFrontend_t {
  public:
-  explicit ScopedFrontend_t(const TestConfig_t& config) {
+  explicit ScopedFrontend_t(const TestConfig_t& config)
+      : app_config_(make_config(config.c_str())),
+        initialized_(app_controller_initialize(&app_config_) == 0) {
     g_announcements.clear();
     g_channel_calls = 0;
     g_channel_slot = -1;
     g_channel_id.clear();
     g_channel_samples.clear();
-
-    app_config_default(&app_config_);
-    util_safe_strcpy(app_config_.config_path.data(), config.c_str(),
-                     path_max_len);
-    initialized_ = (app_controller_initialize(&app_config_) == 0);
 
     audio_mixer_initialize(DEVICE_RATE_HZ);
     linapple_set_audio_source_register_callback(record_announce);
@@ -115,9 +112,16 @@ class ScopedFrontend_t {
   auto initialized() const -> bool { return initialized_; }
 
  private:
-  TestFixtures::ScopedCpuContext_t cpu_;
+  static auto make_config(const char* config_path) -> AppConfig {
+    AppConfig cfg{};
+    app_config_default(&cfg);
+    util_safe_strcpy(cfg.config_path.data(), config_path, path_max_len);
+    return cfg;
+  }
+
+  TestFixtures::ScopedCpuContext_t cpu_{};
   AppConfig app_config_{};
-  bool initialized_ = false;
+  bool initialized_{false};
 };
 
 auto non_zero_frames(const std::vector<int16_t>& stereo) -> size_t {

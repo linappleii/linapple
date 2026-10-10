@@ -66,6 +66,8 @@ class ScopedFileSizeLimit_t {
   ScopedFileSizeLimit_t(const ScopedFileSizeLimit_t&) = delete;
   auto operator=(const ScopedFileSizeLimit_t&)
       -> ScopedFileSizeLimit_t& = delete;
+  ScopedFileSizeLimit_t(ScopedFileSizeLimit_t&&) = delete;
+  auto operator=(ScopedFileSizeLimit_t&&) -> ScopedFileSizeLimit_t& = delete;
 
  private:
   rlimit previous_{};
