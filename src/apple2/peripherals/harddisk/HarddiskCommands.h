@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, readability-identifier-naming)
+// NOLINTBEGIN(modernize-use-using)
 // Justification:
 // This header defines the C99-compatible public ABI for the Harddisk subsystem.
 // C-style return types and typedefs are required for cross-language
@@ -106,4 +106,4 @@ enum { harddisk_save_state_size = 20 };
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, readability-identifier-naming)
+// NOLINTEND(modernize-use-using)

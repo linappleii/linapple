@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-use-trailing-return-type, readability-identifier-naming)
-// Justification: C99-compatible public descriptor export.
 
 struct Peripheral;
 
@@ -16,4 +14,3 @@ struct Peripheral* printer_get_descriptor(void);
 }
 #endif
 
-// NOLINTEND(modernize-use-trailing-return-type, readability-identifier-naming)

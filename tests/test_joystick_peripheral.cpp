@@ -341,7 +341,7 @@ class BenchHost {
 
   static BenchHost* active;
 
-  // NOLINTBEGIN(cppcoreguidelines-pro-type-vararg)
+
   // Justification: Log is variadic in the HostInterface ABI.
   static auto bench_log(void* instance, PeripheralLogLevel level,
                         const char* fmt, ...) -> void {
@@ -357,7 +357,7 @@ class BenchHost {
     va_end(args);
     active->lines_.emplace_back(line.data());
   }
-  // NOLINTEND(cppcoreguidelines-pro-type-vararg)
+
 
   static auto bench_assert_irq(int slot, bool assert_irq) -> void {
     (void)slot;

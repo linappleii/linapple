@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type)
+// NOLINTBEGIN(modernize-use-using, modernize-use-trailing-return-type)
 // Justification:
 // This header defines a language-neutral C ABI for the GCR nibblization
 // engine. C system headers, typedefs, and traditional function return types
@@ -68,4 +68,4 @@ DiskError disk_encoding_bits_to_nibbles(const uint8_t* bits,
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type)
+// NOLINTEND(modernize-use-using, modernize-use-trailing-return-type)

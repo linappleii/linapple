@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+// NOLINTBEGIN(readability-magic-numbers)
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <algorithm>
 #include <array>
@@ -574,4 +574,4 @@ TEST_CASE("DiskGCR: [GCR-09] An address field for another track is refused") {
   }
 }
 
-// NOLINTEND(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+// NOLINTEND(readability-magic-numbers)

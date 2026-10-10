@@ -1,16 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// NOLINTBEGIN(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
-// cppcoreguidelines-avoid-non-const-global-variables,
-// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay)
 #include <cstdint>
 
 #include "apple2/Apple2Types.h"
 #include "apple2/CPU.h"
 #include "apple2/Memory.h"
-#include "core/LinAppleCore.h"
 #include "doctest.h"
 
 namespace {
@@ -113,7 +106,8 @@ TEST_CASE("Exhaustive: [CPU-EX-01] Binary Mode ADC Execution") {
         int sum = accum_in + operand + carry_in;
         uint8_t expected_a = static_cast<uint8_t>(sum & 0xFF);
         bool expected_c = (sum > 0xFF);
-        bool expected_v = (~(accum_in ^ operand) & (accum_in ^ expected_a) & 0x80) != 0;
+        bool expected_v =
+            (~(accum_in ^ operand) & (accum_in ^ expected_a) & 0x80) != 0;
         bool expected_z = (expected_a == 0);
         bool expected_n = (expected_a & 0x80) != 0;
 
@@ -197,7 +191,8 @@ TEST_CASE("Exhaustive: [CPU-EX-02] Binary Mode SBC Execution") {
         int diff = accum_in - operand - (1 - carry_in);
         uint8_t expected_a = static_cast<uint8_t>(diff & 0xFF);
         bool expected_c = (diff >= 0);
-        bool expected_v = ((accum_in ^ operand) & (accum_in ^ expected_a) & 0x80) != 0;
+        bool expected_v =
+            ((accum_in ^ operand) & (accum_in ^ expected_a) & 0x80) != 0;
         bool expected_z = (expected_a == 0);
         bool expected_n = (expected_a & 0x80) != 0;
 
@@ -369,9 +364,9 @@ TEST_CASE("Exhaustive: [CPU-EX-04] Logic (AND, ORA, EOR) Execution") {
   auto* regs = cpu_get_registers();
 
   // Helper lambda for named logic assertions
-  auto test_logic_named = [regs](uint8_t opcode, uint8_t accum_in, uint8_t operand,
-                                 uint8_t expected_a, bool expected_z,
-                                 bool expected_n) {
+  auto test_logic_named = [regs](uint8_t opcode, uint8_t accum_in,
+                                 uint8_t operand, uint8_t expected_a,
+                                 bool expected_z, bool expected_n) {
     mem[CODE_BASE_ADDR] = opcode;
     mem[CODE_BASE_ADDR + 1] = operand;
     regs->pc = CODE_BASE_ADDR;
@@ -502,9 +497,10 @@ TEST_CASE(
   auto* regs = cpu_get_registers();
 
   // Helper lambda for named shift/rotate assertions
-  auto test_shift_named = [regs](uint8_t opcode, uint8_t accum_in, bool carry_in,
-                                 uint8_t expected_a, bool expected_c,
-                                 bool expected_z, bool expected_n) {
+  auto test_shift_named = [regs](uint8_t opcode, uint8_t accum_in,
+                                 bool carry_in, uint8_t expected_a,
+                                 bool expected_c, bool expected_z,
+                                 bool expected_n) {
     mem[CODE_BASE_ADDR] = opcode;
     regs->pc = CODE_BASE_ADDR;
     regs->a = accum_in;
@@ -616,7 +612,8 @@ TEST_CASE(
 
         cpu_execute(0);
 
-        uint8_t expected_a = static_cast<uint8_t>(((val << 1) | carry_in) & 0xFF);
+        uint8_t expected_a =
+            static_cast<uint8_t>(((val << 1) | carry_in) & 0xFF);
         bool expected_c = (val & 0x80) != 0;
         bool expected_z = (expected_a == 0);
         bool expected_n = (expected_a & 0x80) != 0;
@@ -666,9 +663,3 @@ TEST_CASE(
     CHECK(ror_failures == 0);
   }
 }
-// NOLINTEND(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
-// cppcoreguidelines-avoid-non-const-global-variables,
-// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay)

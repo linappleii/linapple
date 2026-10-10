@@ -1,11 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// NOLINTBEGIN(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type,
-// cppcoreguidelines-avoid-non-const-global-variables,
-// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic)
 #include <cassert>
 #include <cmath>
 #include <cstddef>
@@ -148,6 +141,7 @@ auto read_carry(Peripheral* card, void* instance) -> uint32_t {
 
 }  // namespace
 
+// NOLINTNEXTLINE(modernize-use-trailing-return-type) - libFuzzer C entrypoint
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   Peripheral* card = mockingboard_get_descriptor();
 
@@ -220,10 +214,3 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   card->shutdown(instance);
   return 0;
 }
-// NOLINTEND(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type,
-// cppcoreguidelines-avoid-non-const-global-variables,
-// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic)

@@ -6,7 +6,7 @@
 #include "frontends/common/Frontend.h"
 #include "frontends/common/KeyboardTranslator.h"
 
-// NOLINTBEGIN(misc-include-cleaner): Keycodes (SDLK_*) are provided across SDL1/2/3 backends via SdlBackend.h
+// NOLINTBEGIN(misc-include-cleaner) : Keycodes (SDLK_*) are provided across SDL1/2/3 backends via SdlBackend.h
 auto frontend_to_core_key(int key, uint32_t mod) -> LinAppleKey {
   switch (key) {
     case SDLK_UP:
@@ -94,7 +94,7 @@ auto frontend_dispatch_key_event(uint32_t scancode, uint32_t keycode,
 // Left Alt or Left GUI is Open Apple and Right Alt or Right GUI is Solid
 // Apple. Alt is the key most desktops leave to applications; GUI (Super) is
 // usually the window manager's and may never arrive.
-// NOLINTBEGIN(misc-include-cleaner): Modifier keycodes (SDLK_*) are provided across SDL1/2/3 backends via SdlBackend.h
+// NOLINTBEGIN(misc-include-cleaner) : Modifier keycodes (SDLK_*) are provided across SDL1/2/3 backends via SdlBackend.h
 auto frontend_handle_key_event(SdlKeycode key, bool is_down) -> bool {
   switch (key) {
     case SDLK_LALT:
@@ -127,7 +127,7 @@ auto frontend_handle_event(SdlKeycode key, bool is_down) -> bool {
   return frontend_handle_key_event(key, is_down);
 }
 
-// NOLINTBEGIN(misc-include-cleaner): KMOD_CAPS comes from SdlBackend.h
+// NOLINTBEGIN(misc-include-cleaner) : KMOD_CAPS comes from SdlBackend.h
 auto keyboard_sync_host_caps(uint32_t mod) -> void {
   if (keyboard_get_caps_mode() == caps_mode_host) {
     keyboard_set_caps((mod & KMOD_CAPS) != 0);

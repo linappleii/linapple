@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // Justification: the probe window is walked by pointer, as the C99 driver
 // entry points take it, and the drivers' extension lists are C arrays.
-// NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+
 #include "apple2/peripherals/harddisk/HarddiskLoader.h"
 
 #include <unistd.h>
@@ -430,4 +430,4 @@ auto harddisk_loader_get_supported_extensions(char* out_buffer,
   return result.size();
 }
 
-// NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+

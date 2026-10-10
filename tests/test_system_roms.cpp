@@ -18,7 +18,7 @@ namespace {
 using TestConfig = TestFixtures::ScopedTestConfig;
 }  // namespace
 
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
+// NOLINTBEGIN(readability-magic-numbers)
 
 TEST_SUITE("System ROMs Architecture & Subsystems") {
   TEST_CASE("ROM Byte Sizes and Memory Layout") {
@@ -382,4 +382,4 @@ TEST_SUITE("System ROMs Architecture & Subsystems") {
   }
 }
 
-// NOLINTEND(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
+// NOLINTEND(readability-magic-numbers)

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, readability-identifier-naming)
+// NOLINTBEGIN(modernize-use-using)
 // Justification: C99-compatible public ABI of the AppleMouse II interface card.
 
 #include <stdint.h>
@@ -112,4 +112,4 @@ typedef struct {
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, readability-identifier-naming)
+// NOLINTEND(modernize-use-using)

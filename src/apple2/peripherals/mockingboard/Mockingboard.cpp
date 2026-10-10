@@ -18,8 +18,6 @@
 
 namespace {
 
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers) Justification: Hardware bus bit assignments and register widths
-
 // Version 1 fixed every one of these offsets, and a state written before this
 // card was rewritten still has to load. A field that moved would be read out of
 // a neighbour's bytes and no test would necessarily notice, so the layout is
@@ -310,7 +308,7 @@ auto ay_bus_cycle(Mockingboard* mb, size_t chip, uint8_t orb) -> void {
   }
 }
 
-// NOLINTBEGIN(bugprone-easily-swappable-parameters) Justification: The I/O handler signature is fixed by the peripheral ABI
+
 auto cx_read(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
              uint8_t val, uint32_t executed_cycles) -> uint8_t {
   (void)pc;
@@ -351,7 +349,7 @@ auto cx_write(void* instance, uint16_t pc, uint16_t addr, uint8_t write,
   update_irq(mb);
   return 0;
 }
-// NOLINTEND(bugprone-easily-swappable-parameters)
+
 
 auto mb_abi_init(int slot, HostInterface* host) -> void* {
   if (host == nullptr || host->RegisterIO == nullptr) {
@@ -649,8 +647,6 @@ Peripheral mockingboard_peripheral = {
     .command = nullptr,
     .query = mb_abi_query,
 };
-
-// NOLINTEND(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
 
 }  // namespace
 

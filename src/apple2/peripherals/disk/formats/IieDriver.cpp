@@ -17,13 +17,6 @@
 #include "core/Util_Endian.h"
 #include "core/Util_Path.h"
 
-// NOLINTBEGIN(google-runtime-int, cppcoreguidelines-owning-memory, bugprone-easily-swappable-parameters, modernize-make-unique)
-// Justification:
-// This module uses procedural patterns for C-compatibility. google-runtime-int
-// is required for fseek offsets. owning-memory and make-unique are suppressed
-// for C++11 compatibility and handle-based resource management.
-// easily-swappable-parameters is mandated by the Disk Driver ABI signatures.
-
 // A SimSystem //e image, read the way AppleWin's CIIeImage reads one, which
 // is the behaviour reference for this driver. The header is 88 bytes: the
 // signature, a variant byte at 13 and a per-track map from 14. A variant of
@@ -159,6 +152,7 @@ auto iie_open(const char* path, uint32_t file_offset, bool read_only,
     return disk_err_corrupt;
   }
 
+  // NOLINTNEXTLINE(google-runtime-int) - fseek takes long for file offset
   if (fseek(instance_ptr->file.get(), static_cast<long>(file_offset),
             SEEK_SET) != 0) {
     return disk_err_io;
@@ -247,6 +241,7 @@ auto iie_read_track_bits(void* instance_handle, uint32_t quarter_track,
   const uint32_t offset = ii_ptr->track_offsets[track];
   const uint16_t nib_count = ii_ptr->track_nibble_counts[track];
 
+  // NOLINTNEXTLINE(google-runtime-int) - fseek takes long for file offset
   if (fseek(ii_ptr->file.get(), static_cast<long>(offset), SEEK_SET) != 0) {
     return disk_err_io;
   }
@@ -296,5 +291,3 @@ extern "C" const DiskFormatDriver iie_driver = {
 };
 
 static const DiskFormatRegistration registration{&iie_driver};
-
-// NOLINTEND(google-runtime-int, cppcoreguidelines-owning-memory, bugprone-easily-swappable-parameters, modernize-make-unique)

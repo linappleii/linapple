@@ -12,7 +12,7 @@
 
 // Justification: a C-compatible driver descriptor; its entry points share the
 // ABI's signatures and its extension list is a C array.
-// NOLINTBEGIN(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
+
 
 namespace {
 
@@ -78,4 +78,4 @@ extern "C" const HarddiskFormatDriver do_block_driver = {
 
 static const HarddiskFormatRegistration registration{&do_block_driver};
 
-// NOLINTEND(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
+

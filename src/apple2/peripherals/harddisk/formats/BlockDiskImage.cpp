@@ -20,14 +20,6 @@
 #include "core/Util_Endian.h"
 #include "core/Util_Path.h"
 
-// NOLINTBEGIN(google-runtime-int, cppcoreguidelines-owning-memory, bugprone-easily-swappable-parameters, modernize-make-unique)
-// Justification:
-// This module uses procedural patterns for C-compatibility. google-runtime-int
-// is required for fseek offsets. owning-memory and make-unique are suppressed
-// for C++11 compatibility and handle-based resource management.
-// easily-swappable-parameters is mandated by the shared block image ABI
-// signatures.
-
 namespace {
 
 struct BlockDiskImage {
@@ -360,5 +352,3 @@ auto block_disk_image_probe_signature(const uint8_t* header_data,
 
   return harddisk_probe_possible;
 }
-
-// NOLINTEND(google-runtime-int, cppcoreguidelines-owning-memory, bugprone-easily-swappable-parameters, modernize-make-unique)

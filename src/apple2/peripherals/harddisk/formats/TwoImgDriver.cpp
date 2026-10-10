@@ -14,11 +14,6 @@
 #include "core/Util_Endian.h"
 #include "core/Util_Path.h"
 
-// Justification: a C-compatible driver descriptor; its entry points share the
-// ABI's signatures and its extension list is a C array; google-runtime-int
-// for fseek offsets.
-// NOLINTBEGIN(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, google-runtime-int)
-
 namespace {
 
 constexpr uint32_t block_size = 512;
@@ -92,6 +87,7 @@ auto two_img_open(const char* path, uint32_t file_offset, bool read_only,
     return harddisk_err_invalid_format;
   }
 
+  // NOLINTNEXTLINE(google-runtime-int) - fseek takes long for file offset
   if (fseek(file.get(), static_cast<long>(file_offset), SEEK_SET) != 0) {
     return harddisk_err_io;
   }
@@ -221,5 +217,3 @@ extern "C" const HarddiskFormatDriver two_img_driver = {
 };
 
 static const HarddiskFormatRegistration registration{&two_img_driver};
-
-// NOLINTEND(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays, google-runtime-int)

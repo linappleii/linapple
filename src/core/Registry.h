@@ -148,7 +148,6 @@ struct Configuration {
   auto sync_from_data() -> void;
   auto sync_to_data() -> void;
 
-  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) Justification: Section and key are distinct configuration coordinates
   auto get_string(const std::string& section, const std::string& key,
                   const std::string& default_value = "") const -> std::string;
   auto get_int(const std::string& section, const std::string& key,
@@ -158,7 +157,6 @@ struct Configuration {
   auto get_section(const std::string& section) const
       -> const std::map<std::string, std::string>*;
 
-  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) Justification: Section, key, and value are distinct configuration parameters
   auto set_string(const std::string& section, const std::string& key,
                   const std::string& value) -> void;
   auto set_int(const std::string& section, const std::string& key,
@@ -166,7 +164,6 @@ struct Configuration {
   auto set_bool(const std::string& section, const std::string& key, bool value)
       -> void;
 
-  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) Justification: Section and key are distinct configuration coordinates
   auto get_string(const char* section, const char* key,
                   const char* default_value = "") const -> std::string;
   auto get_int(const char* section, const char* key,
@@ -174,7 +171,6 @@ struct Configuration {
   auto get_bool(const char* section, const char* key,
                 bool default_value = false) const -> bool;
 
-  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters) Justification: Section, key, and value are distinct configuration parameters
   auto set_string(const char* section, const char* key, const char* value)
       -> void;
   auto set_int(const char* section, const char* key, uint32_t value) -> void;
@@ -190,7 +186,6 @@ auto config_load_defaults() -> void;
 auto config_set_path(const char* path) -> void;
 auto config_get_path() -> const std::string&;
 
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) Justification: Section and key are distinct configuration coordinates
 auto config_get_string(const char* section, const char* key,
                        const char* default_value = "") -> std::string;
 auto config_get_int(const char* section, const char* key,
@@ -198,7 +193,6 @@ auto config_get_int(const char* section, const char* key,
 auto config_get_bool(const char* section, const char* key,
                      bool default_value = false) -> bool;
 
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) Justification: Section, key, and value are distinct configuration parameters
 auto config_set_string(const char* section, const char* key, const char* value)
     -> void;
 auto config_set_int(const char* section, const char* key, uint32_t value)
@@ -214,7 +208,6 @@ auto config_load_string(const char* section, const char* key,
 auto config_save_int(const char* section, const char* key, uint32_t value)
     -> void;
 auto config_save_bool(const char* section, const char* key, bool value) -> void;
-// NOLINTNEXTLINE(bugprone-easily-swappable-parameters) Justification: Section, key, and value are distinct configuration parameters
 auto config_save_string(const char* section, const char* key, const char* value)
     -> void;
 

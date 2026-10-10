@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type)
+// NOLINTBEGIN(modernize-use-using, modernize-use-trailing-return-type)
 // Justification: a C99-compatible ABI for the block-image backend that the
 // DOS-order, ProDOS-order and 2MG drivers share.
 
@@ -73,4 +73,4 @@ HarddiskProbe block_disk_image_probe_signature(const uint8_t* header_data,
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type)
+// NOLINTEND(modernize-use-using, modernize-use-trailing-return-type)

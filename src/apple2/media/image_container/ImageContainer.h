@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-/* NOLINTBEGIN(modernize-deprecated-headers, modernize-use-trailing-return-type,
-   modernize-use-using) */
+/* NOLINTBEGIN(modernize-use-trailing-return-type, modernize-use-using) */
 /* Justification: C99 ABI shared across cards.
    Reentrancy: Stateless and thread-safe. Temporary files use prefix linapple_
    under $TMPDIR (or /tmp), mode 0600; caller unlinks them. */
@@ -47,5 +46,4 @@ const char* const* image_container_supported_extensions(void);
 }
 #endif
 
-/* NOLINTEND(modernize-deprecated-headers, modernize-use-trailing-return-type,
-   modernize-use-using) */
+/* NOLINTEND(modernize-use-trailing-return-type, modernize-use-using) */

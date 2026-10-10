@@ -23,7 +23,7 @@ class ScopedSurfaceLock {
   auto operator=(ScopedSurfaceLock&& other) noexcept -> ScopedSurfaceLock&;
 
   auto view() const noexcept -> VideoSurfaceView;
-  // NOLINTNEXTLINE(cppcoreguidelines-explicit-constructor,google-explicit-constructor,hicpp-explicit-conversions) Non-owning view conversion.
+  // NOLINTNEXTLINE(cppcoreguidelines-explicit-constructor) Non-owning view conversion.
   operator VideoSurfaceView() const noexcept { return view(); }
   auto surface() const noexcept -> SDL_Surface* { return surface_; }
   auto is_valid() const noexcept -> bool {

@@ -125,7 +125,7 @@ class BenchHost {
 
   static BenchHost* active;
 
-  // NOLINTBEGIN(cppcoreguidelines-pro-type-vararg)
+
   // Justification: Log is variadic in the HostInterface ABI.
   static auto bench_log(void* instance, PeripheralLogLevel level,
                         const char* fmt, ...) -> void {
@@ -141,7 +141,7 @@ class BenchHost {
     va_end(args);
     active->last_log_ = line;
   }
-  // NOLINTEND(cppcoreguidelines-pro-type-vararg)
+
 
   static auto bench_register_io(int /*unused*/, PeripheralIOHandler read_c0,
                                 PeripheralIOHandler write_c0,

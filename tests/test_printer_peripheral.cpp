@@ -446,7 +446,7 @@ class MockHost {
     }
   }
 
-  // NOLINTBEGIN(cert-dcl50-cpp, cppcoreguidelines-pro-type-vararg)
+
   // Justification: Log is variadic in the HostInterface ABI.
   static auto mock_log(void* instance, PeripheralLogLevel level,
                        const char* fmt, ...) -> void {
@@ -462,7 +462,7 @@ class MockHost {
     va_end(args);
     active_host->log_messages_.emplace_back(text.data());
   }
-  // NOLINTEND(cert-dcl50-cpp, cppcoreguidelines-pro-type-vararg)
+
 
   static auto mock_read_floating_bus(uint32_t executed_cycles) -> uint8_t {
     return floating_bus_marker(executed_cycles);
@@ -512,7 +512,7 @@ class MockHost {
     (void)assert_irq;
   }
 
-  // NOLINTBEGIN(bugprone-easily-swappable-parameters)
+
   // Justification: Signature is required by HostInterface ABI.
   static auto mock_register_io(int slot, PeripheralIOHandler read_c0,
                                PeripheralIOHandler write_c0,
@@ -528,7 +528,7 @@ class MockHost {
       }
     }
   }
-  // NOLINTEND(bugprone-easily-swappable-parameters)
+
 
   static auto mock_register_cx_rom(int slot, const uint8_t* rom_ptr) -> void {
     if (active_host != nullptr && rom_ptr != nullptr) {

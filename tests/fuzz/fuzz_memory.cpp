@@ -1,10 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// NOLINTBEGIN(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
-// cppcoreguidelines-avoid-non-const-global-variables,
-// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay)
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -17,6 +11,7 @@
 
 extern "C" const char* __asan_default_options() { return "detect_leaks=1"; }
 
+// NOLINTNEXTLINE(modernize-use-trailing-return-type) - libFuzzer C entrypoint
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static bool initialized = false;
   if (!initialized) {
@@ -47,9 +42,3 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   return 0;
 }
-// NOLINTEND(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
-// cppcoreguidelines-avoid-non-const-global-variables,
-// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay)

@@ -34,13 +34,6 @@ auto has_woz_magic(const uint8_t* header_data, size_t header_size) -> bool {
 }
 }  // namespace
 
-// NOLINTBEGIN(google-runtime-int, cppcoreguidelines-owning-memory, bugprone-easily-swappable-parameters, modernize-make-unique)
-// Justification:
-// This module uses procedural patterns for C-compatibility. google-runtime-int
-// is required for fseek offsets. owning-memory and make-unique are suppressed
-// for C++11 compatibility and handle-based resource management.
-// easily-swappable-parameters is mandated by the Disk Driver ABI signatures.
-
 struct NibbleDiskImage {
   FilePtr file{nullptr, fclose};
   uint32_t data_offset = 0;
@@ -178,6 +171,7 @@ extern "C" auto nibble_disk_image_read_track_bits(
                       (static_cast<int64_t>(track) *
                        static_cast<int64_t>(image_ptr->track_size));
 
+  // NOLINTNEXTLINE(google-runtime-int) - fseek takes long for file offset
   if (fseek(image_ptr->file.get(), static_cast<long>(offset), SEEK_SET) != 0) {
     return disk_err_io;
   }
@@ -240,6 +234,7 @@ extern "C" auto nibble_disk_image_write_track_bits(void* instance,
                       (static_cast<int64_t>(track) *
                        static_cast<int64_t>(image_ptr->track_size));
 
+  // NOLINTNEXTLINE(google-runtime-int) - fseek takes long for file offset
   if (fseek(image_ptr->file.get(), static_cast<long>(offset), SEEK_SET) != 0) {
     return disk_err_io;
   }
@@ -317,5 +312,3 @@ extern "C" auto nibble_disk_image_create(const char* path,
 
   return disk_err_none;
 }
-
-// NOLINTEND(google-runtime-int, cppcoreguidelines-owning-memory, bugprone-easily-swappable-parameters, modernize-make-unique)

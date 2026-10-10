@@ -14,7 +14,7 @@
 #include "core/Util_Endian.h"
 
 // Unavoidable hardware architectural constraints for low-level 6502 CPU core
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-pro-bounds-pointer-arithmetic, bugprone-easily-swappable-parameters, google-readability-function-size)
+
 
 constexpr uint8_t AF_SIGN = 0x80;
 constexpr uint8_t AF_OVERFLOW = 0x40;
@@ -3980,6 +3980,6 @@ auto cpu_set_snapshot(const SsCpu6502* snapshot) noexcept -> uint32_t {
   return 0;
 }
 
-// NOLINTEND(cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-pro-bounds-pointer-arithmetic, bugprone-easily-swappable-parameters, google-readability-function-size)
+
 
 auto cpu_step() -> void { static_cast<void>(cpu_execute(0)); }

@@ -14,7 +14,7 @@
 // and standardized probing signatures mandated by the Disk subsystem ABI.
 // Array-to-pointer decay and C-style arrays are required for driver descriptor
 // registration.
-// NOLINTBEGIN(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
+
 
 namespace {
 
@@ -65,4 +65,4 @@ extern "C" const DiskFormatDriver po_driver = {
 
 static const DiskFormatRegistration registration{&po_driver};
 
-// NOLINTEND(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
+

@@ -21,14 +21,6 @@
 #include "core/Util_Endian.h"
 #include "core/Util_Path.h"
 
-// NOLINTBEGIN(google-runtime-int, cppcoreguidelines-owning-memory, bugprone-easily-swappable-parameters, modernize-make-unique)
-// Justification:
-// This module uses procedural patterns for C-compatibility. google-runtime-int
-// is required for fseek offsets. owning-memory and make-unique are suppressed
-// for C++11 compatibility and handle-based resource management.
-// easily-swappable-parameters is mandated by the shared sector image ABI
-// signatures.
-
 struct SectorDiskImage {
   FilePtr file{nullptr, fclose};
   uint32_t data_offset = 0;
@@ -196,6 +188,7 @@ auto sector_disk_image_read_track_bits(void* instance, uint32_t quarter_track,
   const auto offset = static_cast<int64_t>(image_ptr->data_offset) +
                       (static_cast<int64_t>(track) * sector_image_track_bytes);
 
+  // NOLINTNEXTLINE(google-runtime-int) - fseek takes long for file offset
   if (fseek(image_ptr->file.get(), static_cast<long>(offset), SEEK_SET) != 0) {
     return disk_err_io;
   }
@@ -266,6 +259,7 @@ auto sector_disk_image_write_track_bits(void* instance, uint32_t quarter_track,
 
   const auto offset = static_cast<int64_t>(image_ptr->data_offset) +
                       (static_cast<int64_t>(track) * sector_image_track_bytes);
+  // NOLINTNEXTLINE(google-runtime-int) - fseek takes long for file offset
   if (fseek(image_ptr->file.get(), static_cast<long>(offset), SEEK_SET) != 0) {
     return disk_err_io;
   }
@@ -419,5 +413,3 @@ auto sector_disk_image_probe_signature(const uint8_t* header_data,
 
   return disk_probe_possible;
 }
-
-// NOLINTEND(google-runtime-int, cppcoreguidelines-owning-memory, bugprone-easily-swappable-parameters, modernize-make-unique)

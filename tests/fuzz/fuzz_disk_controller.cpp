@@ -1,11 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// NOLINTBEGIN(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type,
-// cppcoreguidelines-avoid-non-const-global-variables,
-// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic)
 #include <unistd.h>
 
 #include <array>
@@ -201,6 +194,7 @@ auto check_position(const DiskSavedState& state) -> void {
 
 }  // namespace
 
+// NOLINTNEXTLINE(modernize-use-trailing-return-type) - libFuzzer C entrypoint
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static MediumFile medium_file;
   static const bool medium_ready = [] {
@@ -284,10 +278,3 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   card->shutdown(instance);
   return 0;
 }
-// NOLINTEND(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type,
-// cppcoreguidelines-avoid-non-const-global-variables,
-// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic)

@@ -7,7 +7,7 @@
 
 #include "apple2/peripherals/Peripheral_Types.h"
 
-// NOLINTBEGIN(modernize-use-using, cppcoreguidelines-use-enum-class, cppcoreguidelines-macro-usage, modernize-use-trailing-return-type, modernize-redundant-void-arg, readability-identifier-naming, readability-redundant-declaration)
+// NOLINTBEGIN(modernize-use-using, cppcoreguidelines-macro-usage, modernize-use-trailing-return-type, readability-identifier-naming, readability-redundant-declaration)
 
 #ifdef __cplusplus
 extern "C" {
@@ -242,4 +242,4 @@ bool peripheral_verify_manifest(const void* manifest);
 }
 #endif
 
-// NOLINTEND(modernize-use-using, cppcoreguidelines-use-enum-class, cppcoreguidelines-macro-usage, modernize-use-trailing-return-type, modernize-redundant-void-arg, readability-identifier-naming, readability-redundant-declaration)
+// NOLINTEND(modernize-use-using, cppcoreguidelines-macro-usage, modernize-use-trailing-return-type, readability-identifier-naming, readability-redundant-declaration)

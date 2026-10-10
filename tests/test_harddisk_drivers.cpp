@@ -346,11 +346,11 @@ class ScopedFileMode {
 
 // A host with every member the card asks for and nothing behind any of them,
 // for a case that needs the card's answer and not a machine.
-// NOLINTBEGIN(cppcoreguidelines-pro-type-vararg)
+
 // Justification: Log is variadic in the HostInterface ABI.
 auto silent_log(void* /*unused*/, PeripheralLogLevel /*unused*/,
                 const char* /*unused*/, ...) -> void {}
-// NOLINTEND(cppcoreguidelines-pro-type-vararg)
+
 auto silent_register_io(int /*unused*/, PeripheralIOHandler /*unused*/,
                         PeripheralIOHandler /*unused*/,
                         PeripheralIOHandler /*unused*/,

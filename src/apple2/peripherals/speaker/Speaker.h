@@ -3,7 +3,6 @@
 
 #include <cstdint>
 
-// NOLINTBEGIN(readability-identifier-naming)
 // Justification: Legacy fields must match the stable .aws save-state format.
 struct Peripheral;
 
@@ -17,6 +16,5 @@ struct SsIoSpeaker {
   uint32_t last_sample_state = 0;
   float filter_state = 0.0F;
 };
-// NOLINTEND(readability-identifier-naming)
 
 auto speaker_get_descriptor() -> Peripheral*;

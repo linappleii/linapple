@@ -11,7 +11,7 @@
 
 // Justification: a C-compatible driver descriptor; its entry points share the
 // ABI's signatures and its extension list is a C array.
-// NOLINTBEGIN(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
+
 
 // A nibble or flux image records the surface of a floppy, not its blocks, so
 // a block device has nothing to serve from it. This driver exists to claim
@@ -94,4 +94,4 @@ extern "C" const HarddiskFormatDriver nibble_refusal_driver = {
 static const HarddiskFormatRegistration registration{
     &nibble_refusal_driver};
 
-// NOLINTEND(bugprone-easily-swappable-parameters, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
+

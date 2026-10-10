@@ -1,10 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// NOLINTBEGIN(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
-// cppcoreguidelines-avoid-non-const-global-variables,
-// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay)
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -80,6 +74,7 @@ auto drain_and_check(size_t frames) -> void {
 
 }  // namespace
 
+// NOLINTNEXTLINE(modernize-use-trailing-return-type) - libFuzzer C entrypoint
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   ByteReader reader(data, size);
 
@@ -141,9 +136,3 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   audio_mixer_destroy();
   return 0;
 }
-// NOLINTEND(bugprone-easily-swappable-parameters,
-// modernize-use-trailing-return-type, cppcoreguidelines-owning-memory,
-// cppcoreguidelines-avoid-non-const-global-variables,
-// cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-avoid-c-arrays,
-// modernize-avoid-c-arrays,
-// cppcoreguidelines-pro-bounds-array-to-pointer-decay)

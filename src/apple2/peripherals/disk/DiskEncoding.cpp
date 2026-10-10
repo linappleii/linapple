@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-type-member-init)
 #include "apple2/peripherals/disk/DiskEncoding.h"
 
 #include <algorithm>
@@ -561,5 +560,3 @@ auto disk_encoding_bits_to_nibbles(const uint8_t* bits, uint32_t bit_count,
   *out_count = written;
   return disk_err_none;
 }
-
-// NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-pro-type-member-init)

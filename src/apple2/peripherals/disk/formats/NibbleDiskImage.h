@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type)
+// NOLINTBEGIN(modernize-use-using, modernize-use-trailing-return-type)
 // Justification: a C99-compatible ABI for the nibble-image backends (NIB,
 // NB2), so they share the track I/O and differ only in their slot size.
 
@@ -82,4 +82,4 @@ DiskError nibble_disk_image_create(const char* path, uint32_t track_nibbles);
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type)
+// NOLINTEND(modernize-use-using, modernize-use-trailing-return-type)

@@ -2,7 +2,7 @@
 #include "apple2/peripherals/Peripheral_Internal.h"
 
 // Dynamic peripheral plugin loading and internal registry inspection
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-pro-type-vararg, cppcoreguidelines-pro-type-reinterpret-cast, misc-include-cleaner, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-init-variables)
+// NOLINTBEGIN(misc-include-cleaner)
 #include <dirent.h>
 #include <dlfcn.h>
 
@@ -25,7 +25,6 @@ struct LoadedPlugin {
   std::string path;
 };
 
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 std::vector<LoadedPlugin> loaded_plugins;
 bool plugins_initialized = false;
 
@@ -447,4 +446,4 @@ auto peripheral_plugins_shutdown() -> void {
   plugins_initialized = false;
 }
 
-// NOLINTEND(cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-pro-type-vararg, cppcoreguidelines-pro-type-reinterpret-cast, misc-include-cleaner, cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-init-variables)
+// NOLINTEND(misc-include-cleaner)

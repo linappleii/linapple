@@ -295,7 +295,7 @@ auto Configuration::load(const std::string& config_path) -> bool {
   return true;
 }
 
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers) Justification: Default configuration register values and slot assignments
+// NOLINTBEGIN(readability-magic-numbers) Justification: Default configuration register values and slot assignments
 auto Configuration::load_defaults() -> void {
   std::string saved_path = path;
   std::array<char, path_max_len> saved_config_path = config_path;
@@ -349,7 +349,7 @@ auto Configuration::load_defaults() -> void {
              "anonymous:my-mail@mail.com");
   sync_from_data();
 }
-// NOLINTEND(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
+// NOLINTEND(readability-magic-numbers)
 
 auto Configuration::save() -> bool {
   if (path.empty()) {
@@ -423,7 +423,7 @@ auto find_alias(const std::string& key) -> const char* {
 }
 }  // namespace
 
-// NOLINTBEGIN(bugprone-easily-swappable-parameters) Justification: Section, key, and default value are distinct configuration query arguments
+
 auto Configuration::get_string(const std::string& section,
                                const std::string& key,
                                const std::string& default_value) const
@@ -461,7 +461,7 @@ auto Configuration::get_string(const std::string& section,
 
   return default_value;
 }
-// NOLINTEND(bugprone-easily-swappable-parameters)
+
 
 auto Configuration::get_int(const std::string& section, const std::string& key,
                             uint32_t default_value) const -> uint32_t {
@@ -493,7 +493,7 @@ auto Configuration::get_bool(const std::string& section, const std::string& key,
   return default_value;
 }
 
-// NOLINTBEGIN(bugprone-easily-swappable-parameters) Justification: Section, key, and default value are distinct configuration query arguments
+
 auto Configuration::get_string(const char* section, const char* key,
                                const char* default_value) const -> std::string {
   if (section == nullptr || key == nullptr) {
@@ -502,7 +502,7 @@ auto Configuration::get_string(const char* section, const char* key,
   return get_string(std::string(section), std::string(key),
                     default_value != nullptr ? default_value : "");
 }
-// NOLINTEND(bugprone-easily-swappable-parameters)
+
 
 auto Configuration::get_int(const char* section, const char* key,
                             uint32_t default_value) const -> uint32_t {
@@ -529,7 +529,7 @@ auto Configuration::get_section(const std::string& section) const
   return nullptr;
 }
 
-// NOLINTBEGIN(bugprone-easily-swappable-parameters) Justification: Section, key, and value are distinct configuration parameters
+
 auto Configuration::set_string(const std::string& section,
                                const std::string& key, const std::string& value)
     -> void {
@@ -624,7 +624,7 @@ auto Configuration::set_bool(const char* section, const char* key, bool value)
   }
   set_bool(std::string(section), std::string(key), value);
 }
-// NOLINTEND(bugprone-easily-swappable-parameters)
+
 
 auto config_instance() -> Configuration& { return Configuration::instance(); }
 

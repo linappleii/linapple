@@ -72,7 +72,7 @@ std::array<int, 2> joy_shr_y = {8, 8};
 std::array<int, 2> joy_sub_x = {0, 0};
 std::array<int, 2> joy_sub_y = {0, 0};
 
-// NOLINTBEGIN(misc-include-cleaner): SdlJoystickPtr is provided across SDL1/2/3 backends via SdlBackend.h
+// NOLINTBEGIN(misc-include-cleaner) : SdlJoystickPtr is provided across SDL1/2/3 backends via SdlBackend.h
 SdlJoystickPtr joy1;
 SdlJoystickPtr joy2;
 // NOLINTEND(misc-include-cleaner)
@@ -464,7 +464,7 @@ auto joy_frontend_update() -> void {
   poll_if_due(1, joy2, last_check2);
 }
 
-// NOLINTBEGIN(misc-include-cleaner): Keycodes (SDLK_*) are provided across SDL1/2/3 backends via SdlBackend.h
+// NOLINTBEGIN(misc-include-cleaner) : Keycodes (SDLK_*) are provided across SDL1/2/3 backends via SdlBackend.h
 auto joy_frontend_update_trim_via_key(uint32_t virtkey) -> void {
   switch (virtkey) {
     case SDLK_DOWN:

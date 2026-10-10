@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-// NOLINTBEGIN(modernize-use-using, modernize-deprecated-headers, modernize-use-trailing-return-type, readability-identifier-naming)
+// NOLINTBEGIN(modernize-use-using, modernize-use-trailing-return-type)
 // Justification: This header defines a language-neutral C ABI for the hard
 // disk image loader.
 
@@ -71,7 +71,7 @@ size_t harddisk_loader_get_supported_extensions(char* out_buffer,
 uint32_t harddisk_loader_driver_count(void);
 const HarddiskFormatDriver* harddisk_loader_driver_at(uint32_t index);
 
-// NOLINTEND(modernize-use-using, modernize-deprecated-headers, modernize-use-trailing-return-type, readability-identifier-naming)
+// NOLINTEND(modernize-use-using, modernize-use-trailing-return-type)
 
 #ifdef __cplusplus
 }

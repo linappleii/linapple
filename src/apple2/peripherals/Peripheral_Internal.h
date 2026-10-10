@@ -36,7 +36,7 @@ auto peripheral_request_card_for_run(const char* id) -> void;
 // nothing was requested, no slot was free or the build has no such card.
 auto peripheral_requested_slot() -> int;
 
-// NOLINTBEGIN(modernize-use-using, cppcoreguidelines-use-enum-class, readability-identifier-naming)
+// NOLINTBEGIN(modernize-use-using)
 
 // Test hook: inject frozen host clock provider.
 typedef bool (*LocalTimeProvider)(void* ctx, HostLocalTime* out);
@@ -81,7 +81,7 @@ typedef struct {
 auto linapple_set_byte_sink(const ByteSink* vtable, void* ctx)
     -> ByteSinkBinding;
 
-// NOLINTEND(modernize-use-using, cppcoreguidelines-use-enum-class, readability-identifier-naming)
+// NOLINTEND(modernize-use-using)
 
 #ifdef __cplusplus
 }

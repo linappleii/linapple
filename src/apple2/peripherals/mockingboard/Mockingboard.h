@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-use-trailing-return-type, readability-identifier-naming)
-// Justification: C99-compatible public descriptor export.
 
 #ifdef __cplusplus
 extern "C" {
@@ -16,4 +14,3 @@ auto mockingboard_get_descriptor() -> struct Peripheral*;
 }
 #endif
 
-// NOLINTEND(modernize-use-trailing-return-type, readability-identifier-naming)

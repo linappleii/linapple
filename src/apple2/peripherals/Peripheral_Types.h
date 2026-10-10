@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, readability-identifier-naming)
+// NOLINTBEGIN(modernize-use-using)
 
 typedef enum {
   peripheral_ok = 0,
@@ -80,4 +80,4 @@ enum IrqSrc {
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class, readability-identifier-naming)
+// NOLINTEND(modernize-use-using)

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class)
+// NOLINTBEGIN(modernize-use-using)
 // Justification: a C99 header shared by the frontends' C and C++ compilation
 // units; stdint.h, typedefs and plain enums are what C has.
 
@@ -137,4 +137,4 @@ extern const Apple2KeyboardMap map_jp_kana;
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using, cppcoreguidelines-use-enum-class)
+// NOLINTEND(modernize-use-using)

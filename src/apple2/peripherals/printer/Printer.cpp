@@ -264,7 +264,6 @@ auto printer_abi_command(void* instance, uint32_t command_id,
   return peripheral_incompatible;
 }
 
-// NOLINTBEGIN(readability-non-const-parameter) - signature defined by PeripheralQueryFn ABI
 auto printer_abi_query(void* instance, uint32_t query_id, void* output,
                        size_t* output_size) -> PeripheralStatus {
   (void)instance;
@@ -275,7 +274,6 @@ auto printer_abi_query(void* instance, uint32_t query_id, void* output,
   }
   return peripheral_incompatible;
 }
-// NOLINTEND(readability-non-const-parameter)
 
 static_assert(sizeof(PrinterSaveState) == 24,
               "the printer card's state frame is part of the plugin ABI");

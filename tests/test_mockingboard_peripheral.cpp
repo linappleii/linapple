@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers) Justification: Hardware register addresses, bus bit patterns and cycle-count goldens
+// NOLINTBEGIN(readability-magic-numbers) Justification: Hardware register addresses, bus bit patterns and cycle-count goldens
 #include <array>
 #include <chrono>
 #include <cstddef>
@@ -1382,4 +1382,4 @@ TEST_CASE("Mockingboard Peripheral: MB-33 One Emulated Minute Of Rendering") {
   CHECK(harness.push_count() == 0);
   CHECK(harness.irq_asserted());
 }
-// NOLINTEND(cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers)
+// NOLINTEND(readability-magic-numbers)

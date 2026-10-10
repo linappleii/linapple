@@ -1,7 +1,4 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// NOLINTBEGIN(modernize-use-trailing-return-type,
-// cppcoreguidelines-avoid-magic-numbers,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic)
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -22,6 +19,7 @@ auto bus_visible_irq(Via6522* v) -> bool {
 
 }  // namespace
 
+// NOLINTNEXTLINE(modernize-use-trailing-return-type) - libFuzzer C entrypoint
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   Via6522 via;
   via_reset(&via);
@@ -62,6 +60,3 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   return 0;
 }
-// NOLINTEND(modernize-use-trailing-return-type,
-// cppcoreguidelines-avoid-magic-numbers,
-// cppcoreguidelines-pro-bounds-pointer-arithmetic)

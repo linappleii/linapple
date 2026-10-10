@@ -24,7 +24,7 @@
 
 // Unavoidable hardware architectural constraints for Apple II memory management
 // unit and page table multiplexer
-// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-no-malloc, cppcoreguidelines-owning-memory, cppcoreguidelines-pro-type-reinterpret-cast, bugprone-easily-swappable-parameters, bugprone-branch-clone, cppcoreguidelines-macro-usage, modernize-use-auto, cppcoreguidelines-init-variables, cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
+// NOLINTBEGIN(bugprone-branch-clone)
 static inline auto sw_80store(const MemoryInstance* ctx) noexcept -> bool {
   return (ctx->mem_mode & MF_80STORE) != 0;
 }
@@ -1419,4 +1419,4 @@ auto mem_set_snapshot(const SsBaseMemory* snapshot) -> uint32_t {
   return 0;
 }
 
-// NOLINTEND(cppcoreguidelines-avoid-magic-numbers, cppcoreguidelines-pro-bounds-pointer-arithmetic, cppcoreguidelines-no-malloc, cppcoreguidelines-owning-memory, cppcoreguidelines-pro-type-reinterpret-cast, bugprone-easily-swappable-parameters, bugprone-branch-clone, cppcoreguidelines-macro-usage, modernize-use-auto, cppcoreguidelines-init-variables, cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
+// NOLINTEND(bugprone-branch-clone)

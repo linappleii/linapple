@@ -15,13 +15,6 @@
 #include "core/Util_Endian.h"
 #include "core/Util_Path.h"
 
-// NOLINTBEGIN(google-runtime-int, cppcoreguidelines-owning-memory, bugprone-easily-swappable-parameters, modernize-make-unique)
-// Justification:
-// This module uses procedural patterns for C-compatibility. google-runtime-int
-// is required for fseek offsets. owning-memory and make-unique are suppressed
-// for C++11 compatibility and handle-based resource management.
-// easily-swappable-parameters is mandated by the Disk Driver ABI signatures.
-
 namespace {
 namespace woz1 {
 constexpr char signature[] = "WOZ1\xFF\n\r\n";
@@ -102,6 +95,7 @@ static auto woz1_open(const char* path, uint32_t file_offset, bool read_only,
     return (errno == ENOENT) ? disk_err_file_not_found : disk_err_io;
   }
 
+  // NOLINTNEXTLINE(google-runtime-int) - fseek takes long for file offset
   if (fseek(wi_ptr->file.get(), static_cast<long>(file_offset), SEEK_SET) !=
       0) {
     return disk_err_io;
@@ -215,6 +209,7 @@ static auto woz1_read_track_bits(void* instance_handle, uint32_t quarter_track,
   // The record's bit count sits after its cells rather than in an index, so
   // it takes a second seek to learn how much of the record is medium.
   std::array<uint8_t, woz1::trks_bit_count_size> bit_count_bytes{};
+  // NOLINTNEXTLINE(google-runtime-int) - fseek takes long for file offset
   if (fseek(wi_ptr->file.get(),
             static_cast<long>(record_offset + woz1::trks_bit_count_offset),
             SEEK_SET) != 0 ||
@@ -234,6 +229,7 @@ static auto woz1_read_track_bits(void* instance_handle, uint32_t quarter_track,
     return disk_err_unsupported;
   }
 
+  // NOLINTNEXTLINE(google-runtime-int) - fseek takes long for file offset
   if (fseek(wi_ptr->file.get(), static_cast<long>(record_offset), SEEK_SET) !=
       0) {
     return disk_err_io;
@@ -267,5 +263,3 @@ extern "C" const DiskFormatDriver woz1_driver = {
 };
 
 static const DiskFormatRegistration registration{&woz1_driver};
-
-// NOLINTEND(google-runtime-int, cppcoreguidelines-owning-memory, bugprone-easily-swappable-parameters, modernize-make-unique)

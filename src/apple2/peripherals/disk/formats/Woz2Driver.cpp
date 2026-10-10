@@ -15,13 +15,6 @@
 #include "core/Util_Endian.h"
 #include "core/Util_Path.h"
 
-// NOLINTBEGIN(google-runtime-int, cppcoreguidelines-owning-memory, bugprone-easily-swappable-parameters, modernize-make-unique)
-// Justification:
-// This module uses procedural patterns for C-compatibility. google-runtime-int
-// is required for fseek offsets. owning-memory and make-unique are suppressed
-// for C++11 compatibility and handle-based resource management.
-// easily-swappable-parameters is mandated by the Disk Driver ABI signatures.
-
 namespace {
 namespace woz2 {
 constexpr char signature[] = "WOZ2\xFF\n\r\n";
@@ -112,6 +105,7 @@ static auto woz2_open(const char* path, uint32_t file_offset, bool read_only,
     return (errno == ENOENT) ? disk_err_file_not_found : disk_err_io;
   }
 
+  // NOLINTNEXTLINE(google-runtime-int) - fseek takes long for file offset
   if (fseek(wi_ptr->file.get(), static_cast<long>(file_offset), SEEK_SET) !=
       0) {
     return disk_err_io;
@@ -261,6 +255,7 @@ static auto woz2_read_track_bits(void* instance_handle, uint32_t quarter_track,
     return disk_err_corrupt;
   }
 
+  // NOLINTNEXTLINE(google-runtime-int) - fseek takes long for file offset
   if (fseek(wi_ptr->file.get(), static_cast<long>(record_offset), SEEK_SET) !=
       0) {
     return disk_err_io;
@@ -294,5 +289,3 @@ extern "C" const DiskFormatDriver woz2_driver = {
 };
 
 static const DiskFormatRegistration registration{&woz2_driver};
-
-// NOLINTEND(google-runtime-int, cppcoreguidelines-owning-memory, bugprone-easily-swappable-parameters, modernize-make-unique)

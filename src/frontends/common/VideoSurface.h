@@ -42,13 +42,13 @@ struct VideoSurfaceView {
         pitch(pt),
         bpp(bytes_per_pixel),
         palette(pal) {}
-  // NOLINTBEGIN(cppcoreguidelines-explicit-constructor,google-explicit-constructor,hicpp-explicit-conversions)
+  // NOLINTBEGIN(cppcoreguidelines-explicit-constructor)
   // Non-owning view type designed for implicit conversion from underlying
   // surface instances and nullptr.
   VideoSurfaceView(std::nullptr_t) noexcept {}
   VideoSurfaceView(const VideoSurface* s) noexcept;
   VideoSurfaceView(const VideoSurface& s) noexcept;
-  // NOLINTEND(cppcoreguidelines-explicit-constructor,google-explicit-constructor,hicpp-explicit-conversions)
+  // NOLINTEND(cppcoreguidelines-explicit-constructor)
   explicit VideoSurfaceView(const VideoSurfaceView* v) noexcept {
     if (v != nullptr) {
       *this = *v;

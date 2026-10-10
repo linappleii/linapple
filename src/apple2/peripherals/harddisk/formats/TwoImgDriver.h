@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #pragma once
 
-// NOLINTBEGIN(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type)
+// NOLINTBEGIN(modernize-use-using, modernize-use-trailing-return-type)
 // Justification: a C99-compatible ABI for the 2IMG header parser, shaped so it
 // can serve another card unchanged.
 
@@ -51,4 +51,4 @@ extern const HarddiskFormatDriver two_img_driver;
 }
 #endif
 
-// NOLINTEND(modernize-deprecated-headers, modernize-use-using, modernize-use-trailing-return-type)
+// NOLINTEND(modernize-use-using, modernize-use-trailing-return-type)
