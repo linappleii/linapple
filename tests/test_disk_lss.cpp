@@ -95,24 +95,25 @@ auto build_medium(uint8_t bit_timing) -> void {
   }
 }
 
-auto synthetic_probe(const uint8_t*, size_t, uint32_t, const char*)
+auto synthetic_probe(const uint8_t* /*unused*/, size_t /*unused*/,
+                     uint32_t /*unused*/, const char* /*unused*/)
     -> DiskProbe_e {
   return disk_probe_definite;
 }
 
-auto synthetic_open(const char*, uint32_t, bool, void** out_instance)
-    -> DiskError_e {
+auto synthetic_open(const char* /*unused*/, uint32_t /*unused*/,
+                    bool /*unused*/, void** out_instance) -> DiskError_e {
   *out_instance = &g_medium;
   return disk_err_none;
 }
 
-auto synthetic_close(void*) -> void {}
+auto synthetic_close(void* /*unused*/) -> void {}
 
-auto synthetic_is_write_protected(void*) -> bool { return false; }
+auto synthetic_is_write_protected(void* /*unused*/) -> bool { return false; }
 
-auto synthetic_read(void*, uint32_t, uint8_t* bits, uint32_t max_bits,
-                    uint32_t* out_bit_count, uint8_t* out_bit_timing)
-    -> DiskError_e {
+auto synthetic_read(void* /*unused*/, uint32_t /*unused*/, uint8_t* bits,
+                    uint32_t max_bits, uint32_t* out_bit_count,
+                    uint8_t* out_bit_timing) -> DiskError_e {
   if (synthetic_cell_count > max_bits) {
     return disk_err_unsupported;
   }
@@ -124,8 +125,8 @@ auto synthetic_read(void*, uint32_t, uint8_t* bits, uint32_t max_bits,
   return disk_err_none;
 }
 
-auto synthetic_write(void*, uint32_t, const uint8_t* bits, uint32_t bit_count)
-    -> DiskError_e {
+auto synthetic_write(void* /*unused*/, uint32_t /*unused*/, const uint8_t* bits,
+                     uint32_t bit_count) -> DiskError_e {
   if (bit_count != synthetic_cell_count) {
     return disk_err_unsupported;
   }

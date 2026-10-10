@@ -75,24 +75,24 @@ auto set_cell(std::vector<uint8_t>* packed, uint32_t index, bool one) -> void {
   }
 }
 
-auto medium_probe(const uint8_t*, size_t, uint32_t, const char*)
-    -> DiskProbe_e {
+auto medium_probe(const uint8_t* /*unused*/, size_t /*unused*/,
+                  uint32_t /*unused*/, const char* /*unused*/) -> DiskProbe_e {
   return disk_probe_definite;
 }
 
-auto medium_open(const char*, uint32_t, bool, void** out_instance)
-    -> DiskError_e {
+auto medium_open(const char* /*unused*/, uint32_t /*unused*/, bool /*unused*/,
+                 void** out_instance) -> DiskError_e {
   *out_instance = &g_medium;
   return disk_err_none;
 }
 
-auto medium_close(void*) -> void {}
+auto medium_close(void* /*unused*/) -> void {}
 
-auto medium_is_write_protected(void*) -> bool { return true; }
+auto medium_is_write_protected(void* /*unused*/) -> bool { return true; }
 
-auto medium_read(void*, uint32_t, uint8_t* bits, uint32_t max_bits,
-                 uint32_t* out_bit_count, uint8_t* out_bit_timing)
-    -> DiskError_e {
+auto medium_read(void* /*unused*/, uint32_t /*unused*/, uint8_t* bits,
+                 uint32_t max_bits, uint32_t* out_bit_count,
+                 uint8_t* out_bit_timing) -> DiskError_e {
   if (g_medium.cell_count > max_bits) {
     return disk_err_unsupported;
   }

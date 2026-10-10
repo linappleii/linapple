@@ -143,32 +143,37 @@ class BenchHost_t {
   }
   // NOLINTEND(cppcoreguidelines-pro-type-vararg)
 
-  static auto bench_register_io(int, PeripheralIOHandler read_c0,
+  static auto bench_register_io(int /*unused*/, PeripheralIOHandler read_c0,
                                 PeripheralIOHandler write_c0,
-                                PeripheralIOHandler, PeripheralIOHandler)
-      -> void {
+                                PeripheralIOHandler /*unused*/,
+                                PeripheralIOHandler /*unused*/) -> void {
     if (s_active != nullptr) {
       s_active->read_c0_ = read_c0;
       s_active->write_c0_ = write_c0;
     }
   }
-  static auto bench_register_cx_rom(int, const uint8_t*) -> void {}
-  static auto bench_get_config(const char*, const char*, char*, size_t)
-      -> bool {
+  static auto bench_register_cx_rom(int /*unused*/, const uint8_t* /*unused*/)
+      -> void {}
+  static auto bench_get_config(const char* /*unused*/, const char* /*unused*/,
+                               char* /*unused*/, size_t /*unused*/) -> bool {
     return false;
   }
-  static auto bench_set_config(const char*, const char*, const char*) -> void {
+  static auto bench_set_config(const char* /*unused*/, const char* /*unused*/,
+                               const char* /*unused*/) -> void {
     if (s_active != nullptr) {
       ++s_active->config_writes_;
     }
   }
-  static auto bench_notify_status_changed(int) -> void {
+  static auto bench_notify_status_changed(int /*unused*/) -> void {
     if (s_active != nullptr) {
       ++s_active->status_notifications_;
     }
   }
-  static auto bench_notify_activity_changed(int, bool) -> void {}
-  static auto bench_read_floating_bus(uint32_t) -> uint8_t { return 0; }
+  static auto bench_notify_activity_changed(int /*unused*/, bool /*unused*/)
+      -> void {}
+  static auto bench_read_floating_bus(uint32_t /*unused*/) -> uint8_t {
+    return 0;
+  }
 };
 
 BenchHost_t* BenchHost_t::s_active = nullptr;

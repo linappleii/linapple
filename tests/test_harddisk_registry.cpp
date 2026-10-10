@@ -22,31 +22,33 @@ using TestConfig_t = TestFixtures::ScopedTestConfig_t;
 constexpr const char* harddisk_id = "linapple.harddisk";
 constexpr int card_slot = 7;
 
-auto probe_no(const uint8_t*, size_t, uint64_t, const char*)
-    -> HarddiskProbe_e {
+auto probe_no(const uint8_t* /*unused*/, size_t /*unused*/, uint64_t /*unused*/,
+              const char* /*unused*/) -> HarddiskProbe_e {
   return harddisk_probe_no;
 }
 
-auto fake_open(const char*, uint32_t, bool, void** out_instance)
-    -> HarddiskError_e {
+auto fake_open(const char* /*unused*/, uint32_t /*unused*/, bool /*unused*/,
+               void** out_instance) -> HarddiskError_e {
   static char fake_instance = 0;
   *out_instance = &fake_instance;
   return harddisk_err_none;
 }
 
-auto fake_close(void*) -> void {}
+auto fake_close(void* /*unused*/) -> void {}
 
-auto fake_is_write_protected(void*) -> bool { return true; }
+auto fake_is_write_protected(void* /*unused*/) -> bool { return true; }
 
-auto fake_read_block(void*, uint32_t, uint8_t*) -> HarddiskError_e {
+auto fake_read_block(void* /*unused*/, uint32_t /*unused*/, uint8_t* /*unused*/)
+    -> HarddiskError_e {
   return harddisk_err_io;
 }
 
-auto fake_write_block(void*, uint32_t, const uint8_t*) -> HarddiskError_e {
+auto fake_write_block(void* /*unused*/, uint32_t /*unused*/,
+                      const uint8_t* /*unused*/) -> HarddiskError_e {
   return harddisk_err_io;
 }
 
-auto fake_get_total_blocks(void*) -> uint32_t { return 0; }
+auto fake_get_total_blocks(void* /*unused*/) -> uint32_t { return 0; }
 
 auto make_fake(const char* name) -> HarddiskFormatDriver_t {
   HarddiskFormatDriver_t driver{};

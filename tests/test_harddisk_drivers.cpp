@@ -344,14 +344,18 @@ class ScopedFileMode_t {
 // for a case that needs the card's answer and not a machine.
 // NOLINTBEGIN(cppcoreguidelines-pro-type-vararg)
 // Justification: Log is variadic in the HostInterface_t ABI.
-auto silent_log(void*, PeripheralLogLevel_t, const char*, ...) -> void {}
+auto silent_log(void* /*unused*/, PeripheralLogLevel_t /*unused*/,
+                const char* /*unused*/, ...) -> void {}
 // NOLINTEND(cppcoreguidelines-pro-type-vararg)
-auto silent_register_io(int, PeripheralIOHandler, PeripheralIOHandler,
-                        PeripheralIOHandler, PeripheralIOHandler) -> void {}
-auto silent_register_cx_rom(int, const uint8_t*) -> void {}
-auto silent_notify_status(int) -> void {}
-auto silent_notify_activity(int, bool) -> void {}
-auto silent_floating_bus(uint32_t) -> uint8_t { return 0; }
+auto silent_register_io(int /*unused*/, PeripheralIOHandler /*unused*/,
+                        PeripheralIOHandler /*unused*/,
+                        PeripheralIOHandler /*unused*/,
+                        PeripheralIOHandler /*unused*/) -> void {}
+auto silent_register_cx_rom(int /*unused*/, const uint8_t* /*unused*/) -> void {
+}
+auto silent_notify_status(int /*unused*/) -> void {}
+auto silent_notify_activity(int /*unused*/, bool /*unused*/) -> void {}
+auto silent_floating_bus(uint32_t /*unused*/) -> uint8_t { return 0; }
 
 auto silent_host() -> HostInterface_t {
   HostInterface_t host{};

@@ -36,8 +36,9 @@ struct MockState_t {
 
 MockState_t g_mock;
 
-auto record_cycles(void* instance, uint16_t, uint16_t, uint8_t, uint8_t,
-                   uint32_t) -> uint8_t {
+auto record_cycles(void* instance, uint16_t /*unused*/, uint16_t /*unused*/,
+                   uint8_t /*unused*/, uint8_t /*unused*/, uint32_t /*unused*/)
+    -> uint8_t {
   auto* state = static_cast<MockState_t*>(instance);
   if (state != nullptr && state->host != nullptr &&
       state->host->GetCycles != nullptr) {

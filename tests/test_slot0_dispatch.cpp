@@ -108,15 +108,17 @@ struct Slot0_t {
   auto operator=(Slot0_t&&) -> Slot0_t& = delete;
 };
 
-void bare_log(void*, PeripheralLogLevel_t, const char*, ...) {}
-void bare_register_direct_io(void*, uint16_t, PeripheralIOHandler,
-                             PeripheralIOHandler) {}
-void bare_register_direct_io_strobe(void*, uint16_t,
-                                    PeripheralStrobeHandler_t) {}
-void bare_schedule_event(void*, uint64_t) {}
+void bare_log(void* /*unused*/, PeripheralLogLevel_t /*unused*/,
+              const char* /*unused*/, ...) {}
+void bare_register_direct_io(void* /*unused*/, uint16_t /*unused*/,
+                             PeripheralIOHandler /*unused*/,
+                             PeripheralIOHandler /*unused*/) {}
+void bare_register_direct_io_strobe(void* /*unused*/, uint16_t /*unused*/,
+                                    PeripheralStrobeHandler_t /*unused*/) {}
+void bare_schedule_event(void* /*unused*/, uint64_t /*unused*/) {}
 auto bare_get_cycles() -> uint64_t { return 0; }
 auto bare_get_clock_hz() -> double { return 1020484.0; }
-auto bare_read_floating_bus(uint32_t) -> uint8_t { return 0; }
+auto bare_read_floating_bus(uint32_t /*unused*/) -> uint8_t { return 0; }
 auto bare_get_machine() -> PeripheralMachine_t {
   return peripheral_machine_apple2e;
 }

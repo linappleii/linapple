@@ -1273,35 +1273,39 @@ namespace {
 // WRITE meets is the controller's own.
 constexpr uint32_t boundless_blocks = 4;
 
-auto boundless_probe(const uint8_t*, size_t, uint64_t, const char* ext_hint)
+auto boundless_probe(const uint8_t* /*unused*/, size_t /*unused*/,
+                     uint64_t /*unused*/, const char* ext_hint)
     -> HarddiskProbe_e {
   return (ext_hint != nullptr && std::strcmp(ext_hint, ".boundless") == 0)
              ? harddisk_probe_definite
              : harddisk_probe_no;
 }
 
-auto boundless_open(const char*, uint32_t, bool, void** out_instance)
-    -> HarddiskError_e {
+auto boundless_open(const char* /*unused*/, uint32_t /*unused*/,
+                    bool /*unused*/, void** out_instance) -> HarddiskError_e {
   static int instance = 0;
   *out_instance = &instance;
   return harddisk_err_none;
 }
 
-auto boundless_close(void*) -> void {}
+auto boundless_close(void* /*unused*/) -> void {}
 
-auto boundless_is_write_protected(void*) -> bool { return false; }
+auto boundless_is_write_protected(void* /*unused*/) -> bool { return false; }
 
-auto boundless_read_block(void*, uint32_t block, uint8_t* buffer)
+auto boundless_read_block(void* /*unused*/, uint32_t block, uint8_t* buffer)
     -> HarddiskError_e {
   std::memset(buffer, static_cast<int>(block & 0xFF), block_size);
   return harddisk_err_none;
 }
 
-auto boundless_write_block(void*, uint32_t, const uint8_t*) -> HarddiskError_e {
+auto boundless_write_block(void* /*unused*/, uint32_t /*unused*/,
+                           const uint8_t* /*unused*/) -> HarddiskError_e {
   return harddisk_err_none;
 }
 
-auto boundless_get_total_blocks(void*) -> uint32_t { return boundless_blocks; }
+auto boundless_get_total_blocks(void* /*unused*/) -> uint32_t {
+  return boundless_blocks;
+}
 
 const char* const boundless_exts[] = {"boundless", nullptr};
 
