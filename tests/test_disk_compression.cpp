@@ -20,8 +20,8 @@
 namespace {
 
 // The gates the disk and harddisk cards hand the container.
-constexpr size_t floppy_threshold = 4 * 1024 * 1024;
-constexpr size_t harddisk_threshold = 32 * 1024 * 1024;
+constexpr size_t floppy_threshold = static_cast<size_t>(4) * 1024 * 1024;
+constexpr size_t harddisk_threshold = static_cast<size_t>(32) * 1024 * 1024;
 
 struct ScopedExtractedFile_t {
   char path[512]{};
@@ -119,7 +119,7 @@ TEST_CASE(
     "allowed despite extreme compression ratio") {
   TestFixtures::ScopedTempFile_t test_zip(".po.zip");
   // 32 MB of zeros (standard ProDOS 32MB volume)
-  const std::vector<uint8_t> zeros(32 * 1024 * 1024, 0x00);
+  const std::vector<uint8_t> zeros(static_cast<size_t>(32) * 1024 * 1024, 0x00);
   REQUIRE(create_test_zip(test_zip.c_str(), "volume.po", zeros.data(),
                           zeros.size()));
 
@@ -138,7 +138,7 @@ TEST_CASE(
   TestFixtures::ScopedTempFile_t test_zip(".dsk.zip");
   // 5 MB of zeros compresses to ~5 KB, which exceeds the 4 MB floppy gate and
   // exceeds 100:1 ratio
-  const std::vector<uint8_t> zeros(5 * 1024 * 1024, 0x00);
+  const std::vector<uint8_t> zeros(static_cast<size_t>(5) * 1024 * 1024, 0x00);
   REQUIRE(create_test_zip(test_zip.c_str(), "bomb.dsk", zeros.data(),
                           zeros.size()));
 
@@ -155,7 +155,7 @@ TEST_CASE(
     "100:1 is blocked") {
   TestFixtures::ScopedTempFile_t test_zip(".po.zip");
   // 34 MB of zeros exceeds the 32 MB harddisk gate and exceeds 100:1 ratio
-  const std::vector<uint8_t> zeros(34 * 1024 * 1024, 0x00);
+  const std::vector<uint8_t> zeros(static_cast<size_t>(34) * 1024 * 1024, 0x00);
   REQUIRE(create_test_zip(test_zip.c_str(), "bomb_hd.po", zeros.data(),
                           zeros.size()));
 
@@ -173,7 +173,7 @@ TEST_CASE(
   TestFixtures::ScopedTempFile_t test_gz(".dsk.gz");
   // 5 MB of zeros: blocked for floppy (4 MB threshold), allowed for harddisk
   // (32 MB threshold)
-  const std::vector<uint8_t> zeros(5 * 1024 * 1024, 0x00);
+  const std::vector<uint8_t> zeros(static_cast<size_t>(5) * 1024 * 1024, 0x00);
   REQUIRE(create_test_gz(test_gz.c_str(), zeros.data(), zeros.size()));
 
   // Floppy gate: 4MB -> blocked
@@ -225,7 +225,7 @@ TEST_CASE(
     "DiskCompression: [LD-1] the loader refuses an over-ratio floppy archive "
     "as unsupported") {
   TestFixtures::ScopedTempFile_t test_zip(".dsk.zip");
-  const std::vector<uint8_t> zeros(5 * 1024 * 1024, 0x00);
+  const std::vector<uint8_t> zeros(static_cast<size_t>(5) * 1024 * 1024, 0x00);
   REQUIRE(create_test_zip(test_zip.c_str(), "bomb.dsk", zeros.data(),
                           zeros.size()));
 

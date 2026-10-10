@@ -78,11 +78,11 @@ TEST_CASE("FileBrowser: FileEntry Size Formatting") {
   file_entry_format_type_or_size(&f1, buf, sizeof(buf));
   CHECK(std::string(buf) == "500");
 
-  FileEntry f2 = create_entry("kb", FILE_ENTRY_FILE, 1024 * 5);
+  FileEntry f2 = create_entry("kb", FILE_ENTRY_FILE, 1024ULL * 5ULL);
   file_entry_format_type_or_size(&f2, buf, sizeof(buf));
   CHECK(std::string(buf) == "5K");
 
-  FileEntry f3 = create_entry("mb", FILE_ENTRY_FILE, 1024 * 1024 * 2);
+  FileEntry f3 = create_entry("mb", FILE_ENTRY_FILE, 1024ULL * 1024ULL * 2ULL);
   file_entry_format_type_or_size(&f3, buf, sizeof(buf));
   CHECK(std::string(buf) == "2M");
 

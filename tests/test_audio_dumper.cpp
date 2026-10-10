@@ -22,7 +22,7 @@ TEST_CASE("AudioDumper: [AUD-1] Explicit lifecycle generates valid WAV file") {
     REQUIRE(dumper.initialize(temp_wav.c_str(), 44100, 2) == true);
     CHECK(dumper.is_active() == true);
 
-    std::vector<int16_t> samples(1024 * 2, 0x1234);
+    std::vector<int16_t> samples(static_cast<size_t>(1024) * 2, 0x1234);
     REQUIRE(dumper.put_samples(samples.data(), samples.size()) == true);
     dumper.finalize();
     CHECK(dumper.is_active() == false);
@@ -47,14 +47,15 @@ TEST_CASE("AudioDumper: [AUD-1] Explicit lifecycle generates valid WAV file") {
 
   const uint32_t data_size = read_u32_le(header + 40);
   const uint32_t riff_size = read_u32_le(header + 4);
-  CHECK(data_size == 1024 * 2 * sizeof(int16_t));
+  CHECK(data_size == static_cast<size_t>(1024) * 2 * sizeof(int16_t));
   CHECK(riff_size == data_size + 36);
 
   // Verify sample payload
-  std::vector<int16_t> read_samples(1024 * 2);
+  std::vector<int16_t> read_samples(static_cast<size_t>(1024) * 2);
   REQUIRE(fread(read_samples.data(), sizeof(int16_t), read_samples.size(),
                 f.get()) == read_samples.size());
-  CHECK(read_samples == std::vector<int16_t>(1024 * 2, 0x1234));
+  CHECK(read_samples ==
+        std::vector<int16_t>(static_cast<size_t>(1024) * 2, 0x1234));
 }
 
 TEST_CASE(
@@ -65,7 +66,7 @@ TEST_CASE(
   {
     AudioDumper dumper;
     REQUIRE(dumper.initialize(temp_wav.c_str(), 44100, 2) == true);
-    std::vector<int16_t> samples(512 * 2, 0x0505);
+    std::vector<int16_t> samples(static_cast<size_t>(512) * 2, 0x0505);
     REQUIRE(dumper.put_samples(samples.data(), samples.size()) == true);
     // Destroy dumper without explicit finalize()
   }
@@ -89,13 +90,14 @@ TEST_CASE(
 
   const uint32_t data_size = read_u32_le(header + 40);
   const uint32_t riff_size = read_u32_le(header + 4);
-  CHECK(data_size == 512 * 2 * sizeof(int16_t));
+  CHECK(data_size == static_cast<size_t>(512) * 2 * sizeof(int16_t));
   CHECK(riff_size == data_size + 36);
 
-  std::vector<int16_t> read_samples(512 * 2);
+  std::vector<int16_t> read_samples(static_cast<size_t>(512) * 2);
   REQUIRE(fread(read_samples.data(), sizeof(int16_t), read_samples.size(),
                 f.get()) == read_samples.size());
-  CHECK(read_samples == std::vector<int16_t>(512 * 2, 0x0505));
+  CHECK(read_samples ==
+        std::vector<int16_t>(static_cast<size_t>(512) * 2, 0x0505));
 }
 
 TEST_CASE(
@@ -106,7 +108,7 @@ TEST_CASE(
   REQUIRE(dumper.initialize(temp_wav.c_str(), 44100, 2) == true);
 
   std::thread writer([&dumper]() {
-    std::vector<int16_t> samples(256 * 2, 0x0101);
+    std::vector<int16_t> samples(static_cast<size_t>(256) * 2, 0x0101);
     for (int i = 0; i < 100; ++i) {
       dumper.put_samples(samples.data(), samples.size());
       std::this_thread::yield();
@@ -209,7 +211,7 @@ TEST_CASE("AudioDumper: [AUD-6] Move semantics transfer active state") {
   AudioDumper dumper2(std::move(dumper1));
   CHECK(dumper2.is_active() == true);
 
-  std::vector<int16_t> samples(256 * 2, 0x0202);
+  std::vector<int16_t> samples(static_cast<size_t>(256) * 2, 0x0202);
   REQUIRE(dumper2.put_samples(samples.data(), samples.size()) == true);
 
   // Move assign
@@ -223,5 +225,6 @@ TEST_CASE("AudioDumper: [AUD-6] Move semantics transfer active state") {
   REQUIRE(f != nullptr);
   uint8_t header[44] = {0};
   REQUIRE(fread(header, 1, sizeof(header), f.get()) == 44);
-  CHECK(read_u32_le(header + 40) == 256 * 2 * sizeof(int16_t));
+  CHECK(read_u32_le(header + 40) ==
+        static_cast<size_t>(256) * 2 * sizeof(int16_t));
 }

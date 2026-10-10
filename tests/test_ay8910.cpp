@@ -106,14 +106,14 @@ TEST_CASE("AY-3-8910: Tone Output Toggles Every TP Ticks") {
   voice_a_tone(r, period, 0x0F);
 
   // A square wave of period 2 * TP ticks puts 200 edges in 100 periods.
-  CHECK(r.edges_a(2 * period * 100) == 200);
+  CHECK(r.edges_a(static_cast<size_t>(2) * period * 100) == 200);
 }
 
 TEST_CASE("AY-3-8910: A Short Tone Period Toggles On Schedule Too") {
   constexpr uint16_t period = 3;
   Renderer r;
   voice_a_tone(r, period, 0x0F);
-  CHECK(r.edges_a(2 * period * 100) == 200);
+  CHECK(r.edges_a(static_cast<size_t>(2) * period * 100) == 200);
 }
 
 TEST_CASE("AY-3-8910: Tone Period Zero Forces The Output High") {
@@ -158,7 +158,7 @@ TEST_CASE("AY-3-8910: Noise LFSR Advances Every Two NP Ticks") {
   for (int k = 1; k <= 6; ++k) {
     reference.rng = (reference.rng >> 1) |
                     (((reference.rng & 1) ^ ((reference.rng >> 3) & 1)) << 16);
-    r.step(2 * noise_period);
+    r.step(static_cast<size_t>(2) * noise_period);
     CHECK(r.chip()->rng == reference.rng);
   }
 
@@ -186,7 +186,7 @@ TEST_CASE("AY-3-8910: Noise Period Zero Behaves As One") {
 
 TEST_CASE("AY-3-8910: Envelope Steps Every Two EP Ticks") {
   constexpr uint16_t env_period = 7;
-  constexpr size_t step_ticks = 2 * env_period;
+  constexpr size_t step_ticks = static_cast<size_t>(2) * env_period;
   Renderer r;
   voice_a_tone(r, 0, 0x10);
   r.write(11, static_cast<uint8_t>(env_period));
@@ -232,7 +232,7 @@ TEST_CASE("AY-3-8910: A Register 13 Write Restarts The Envelope") {
   voice_a_tone(r, 0, 0x10);
   r.write(11, static_cast<uint8_t>(env_period));
   r.write(13, 0x00);
-  r.step(2 * env_period * 5);
+  r.step(static_cast<size_t>(2) * env_period * 5);
   REQUIRE(r.chip()->envelope_vol == 10);
 
   r.write(13, 0x00);
@@ -244,7 +244,7 @@ TEST_CASE("AY-3-8910: A Register 13 Write Restarts The Envelope") {
 
 TEST_CASE("AY-3-8910: The Sixteen Envelope Shapes Match The Data Sheet") {
   constexpr uint16_t env_period = 1;
-  constexpr size_t step_ticks = 2 * env_period;
+  constexpr size_t step_ticks = static_cast<size_t>(2) * env_period;
 
   // Per shape: the volume at the first step, the volume fifteen steps later
   // (the end of the first sweep), and the volume exactly two whole cycles in.
@@ -279,7 +279,7 @@ TEST_CASE("AY-3-8910: The Sixteen Envelope Shapes Match The Data Sheet") {
 
 TEST_CASE("AY-3-8910: Alternating Shapes Keep Alternating Across Steps") {
   constexpr uint16_t env_period = 1;
-  constexpr size_t cycle_ticks = 2 * env_period * 16;
+  constexpr size_t cycle_ticks = static_cast<size_t>(2) * env_period * 16;
   Renderer r;
   voice_a_tone(r, 0, 0x10);
   r.write(11, static_cast<uint8_t>(env_period));
@@ -304,7 +304,7 @@ TEST_CASE("AY-3-8910: Amplitude Bit 0x10 Selects The Envelope") {
   r.write(11, static_cast<uint8_t>(env_period));
   r.write(13, 0x00);
 
-  r.step(2 * env_period * 8);
+  r.step(static_cast<size_t>(2) * env_period * 8);
   const float fixed = r.level_a();
   REQUIRE(r.chip()->envelope_vol == 7);
 
@@ -326,7 +326,7 @@ TEST_CASE("AY-3-8910: Mixer Bits Gate Tone And Noise Per Voice") {
     r.write(8, 0x0F);
     r.write(9, 0x0F);
     r.write(7, 0x3F);
-    r.step(2 * period * 10);
+    r.step(static_cast<size_t>(2) * period * 10);
     CHECK(r.level_a() == 1.0F);
     CHECK(r.level_b() == 1.0F);
   }
@@ -338,7 +338,7 @@ TEST_CASE("AY-3-8910: Mixer Bits Gate Tone And Noise Per Voice") {
     r.write(8, 0x0F);
     r.write(9, 0x0F);
     r.write(7, 0x3E);
-    CHECK(r.edges_a(2 * period * 10) == 20);
+    CHECK(r.edges_a(static_cast<size_t>(2) * period * 10) == 20);
     CHECK(r.level_b() == 1.0F);
   }
 

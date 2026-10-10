@@ -427,7 +427,7 @@ TEST_CASE("Audio Mixer: A 1 kHz Tone Keeps Its Pitch At Every Device Rate") {
       // exactly: the source peaks at 1.0 and its gain is 1.0.
       int16_t highest = 0;
       int16_t lowest = 0;
-      for (size_t i = 0; i < rate * 2; i += 2) {
+      for (size_t i = 0; i < static_cast<size_t>(rate) * 2; i += 2) {
         highest = std::max(highest, out[i]);
         lowest = std::min(lowest, out[i]);
       }

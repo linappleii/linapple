@@ -23,8 +23,8 @@ auto get_pixel32(const VideoSurface* s, int x, int y) -> uint32_t {
   if (x < 0 || x >= s->w || y < 0 || y >= s->h) {
     return 0;
   }
-  const auto* row =
-      reinterpret_cast<const uint32_t*>(s->pixels + (y * s->pitch));
+  const auto* row = reinterpret_cast<const uint32_t*>(
+      s->pixels + (static_cast<std::ptrdiff_t>(y) * s->pitch));
   return row[x];
 }
 
@@ -32,7 +32,8 @@ auto set_pixel32(VideoSurface* s, int x, int y, uint32_t val) -> void {
   if (x < 0 || x >= s->w || y < 0 || y >= s->h) {
     return;
   }
-  auto* row = reinterpret_cast<uint32_t*>(s->pixels + (y * s->pitch));
+  auto* row = reinterpret_cast<uint32_t*>(
+      s->pixels + (static_cast<std::ptrdiff_t>(y) * s->pitch));
   row[x] = val;
 }
 
@@ -191,7 +192,8 @@ TEST_CASE("Video - Mode Switch Preserves Drawn Screen") {
   REQUIRE(buf != nullptr);
 
   const uint32_t crc_before =
-      crc32_compute(buf, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(uint32_t));
+      crc32_compute(buf, static_cast<size_t>(SCREEN_WIDTH) * SCREEN_HEIGHT *
+                             sizeof(uint32_t));
 
   constexpr uint32_t expected_crc = 0x16D61EDC;
   CHECK(crc_before == expected_crc);
@@ -202,7 +204,8 @@ TEST_CASE("Video - Mode Switch Preserves Drawn Screen") {
   video_refresh_screen();
 
   const uint32_t crc_after =
-      crc32_compute(buf, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(uint32_t));
+      crc32_compute(buf, static_cast<size_t>(SCREEN_WIDTH) * SCREEN_HEIGHT *
+                             sizeof(uint32_t));
 
   CHECK(crc_after == expected_crc);
 }

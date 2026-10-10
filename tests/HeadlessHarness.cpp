@@ -143,7 +143,7 @@ auto HeadlessHarness_t::get_frame_crc32() const -> uint32_t {
   if (pixels == nullptr) {
     return 0;
   }
-  const size_t pixel_count = 560 * 384;
+  const size_t pixel_count = static_cast<size_t>(560) * 384;
   return crc32_compute(pixels, pixel_count * sizeof(uint32_t));
 }
 

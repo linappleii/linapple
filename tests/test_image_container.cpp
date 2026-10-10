@@ -29,7 +29,7 @@ constexpr size_t dsk_image_size = 143360;
 constexpr size_t temp_path_len = 512;
 // Wide enough that any plausible image passes on size alone, so only the
 // ratio can refuse; the value is the caller's, not the library's.
-constexpr size_t generous_threshold = 4 * 1024 * 1024;
+constexpr size_t generous_threshold = static_cast<size_t>(4) * 1024 * 1024;
 
 // CRC-16 of the MacBinary II standard: polynomial 0x1021, initial value 0.
 auto macbinary_crc16(const uint8_t* data, size_t length) -> uint16_t {

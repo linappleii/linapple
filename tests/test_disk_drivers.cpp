@@ -660,7 +660,7 @@ TEST_CASE(
 TEST_CASE(
     "DiskDrivers: [DSK-2] DOS 3.3 VTOC signature probe within 80KB probe "
     "window") {
-  std::vector<uint8_t> buffer(80 * 1024, 0);
+  std::vector<uint8_t> buffer(static_cast<size_t>(80) * 1024, 0);
   // Construct valid DOS 3.3 catalog chain on Track 17 (0x11000)
   for (int loop = 1; loop <= 15; ++loop) {
     buffer[0x11000 + 2 + (loop * 0x100)] = static_cast<uint8_t>(loop - 1);
@@ -909,7 +909,8 @@ TEST_CASE("DiskDrivers: [DRV-19] Every driver answers a null argument as one") {
     }
 
     // The loader never hands a probe a null window, but a direct caller may.
-    CHECK(driver->probe(nullptr, 80 * 1024, 143360, "") == disk_probe_no);
+    CHECK(driver->probe(nullptr, static_cast<size_t>(80) * 1024, 143360, "") ==
+          disk_probe_no);
   }
 }
 

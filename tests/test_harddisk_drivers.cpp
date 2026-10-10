@@ -823,7 +823,7 @@ TEST_CASE(
     "Harddisk drivers: the content check reads nothing past the header it is "
     "given, whether that is the loader's window or a hundred bytes") {
   // The loader reads this much ahead before it asks a driver.
-  constexpr size_t probe_window = 80 * 1024;
+  constexpr size_t probe_window = static_cast<size_t>(80) * 1024;
   const auto probe = [](const char* fixture, size_t header_size,
                         BlockDiskOrder_e order) {
     const std::vector<uint8_t> bytes =

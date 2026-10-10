@@ -128,10 +128,11 @@ TEST_CASE("SDL3 Frontend draw_frame_window Scaled Stretching") {
   // Set distinct test pixels in video output buffer
   uint32_t* output = video_get_output_buffer();
   REQUIRE(output != nullptr);
-  output[0] = 0x00FF0000;                // Top-left: Red
-  output[559] = 0x0000FF00;              // Top-right: Green
-  output[383 * 560] = 0x000000FF;        // Bottom-left: Blue
-  output[383 * 560 + 559] = 0x00FFFFFF;  // Bottom-right: White
+  output[0] = 0x00FF0000;                               // Top-left: Red
+  output[559] = 0x0000FF00;                             // Top-right: Green
+  output[static_cast<size_t>(383) * 560] = 0x000000FF;  // Bottom-left: Blue
+  output[static_cast<size_t>(383) * 560 + 559] =
+      0x00FFFFFF;  // Bottom-right: White
 
   g_frame_ready = true;
   draw_frame_window();
@@ -143,8 +144,9 @@ TEST_CASE("SDL3 Frontend draw_frame_window Scaled Stretching") {
 
   CHECK(screen_pixels[0] == 0x00FF0000);
   CHECK(screen_pixels[1119] == 0x0000FF00);
-  CHECK(screen_pixels[767 * pitch_pixels] == 0x000000FF);
-  CHECK(screen_pixels[767 * pitch_pixels + 1119] == 0x00FFFFFF);
+  CHECK(screen_pixels[static_cast<size_t>(767) * pitch_pixels] == 0x000000FF);
+  CHECK(screen_pixels[static_cast<size_t>(767) * pitch_pixels + 1119] ==
+        0x00FFFFFF);
 
   frame_destroy_window();
   asset_quit();

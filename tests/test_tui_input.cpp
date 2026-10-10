@@ -173,7 +173,7 @@ struct TuiMachine_t {
 
   // On a pipe the terminal size falls back to 80 x 24 and nothing is written.
   static auto render_frame() -> void {
-    static std::vector<uint32_t> pixels(560 * 384, 0);
+    static std::vector<uint32_t> pixels(static_cast<size_t>(560) * 384, 0);
     tui_video_render_frame(pixels.data(), 560, 384, 560);
   }
 

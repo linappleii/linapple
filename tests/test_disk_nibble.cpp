@@ -125,7 +125,7 @@ struct SynthesisedTrack_t {
 };
 
 auto synthesise_track(uint32_t cylinder) -> SynthesisedTrack_t {
-  std::vector<uint8_t> sectors(16 * 256, 0);
+  std::vector<uint8_t> sectors(static_cast<size_t>(16) * 256, 0);
   for (size_t i = 0; i < sectors.size(); ++i) {
     sectors[i] = static_cast<uint8_t>(0xA0 + (i / 256));
   }
@@ -184,8 +184,9 @@ TEST_CASE(
 
   const std::vector<uint8_t> after = read_file(image.path());
   REQUIRE(after.size() == 232960);
-  CHECK(std::vector<uint8_t>(after.begin() + (34 * 6656),
-                             after.begin() + (34 * 6656) + 6208) ==
+  CHECK(std::vector<uint8_t>(
+            after.begin() + (static_cast<std::ptrdiff_t>(34) * 6656),
+            after.begin() + (static_cast<std::ptrdiff_t>(34) * 6656) + 6208) ==
         last.nibbles);
 
   REQUIRE(g_nib_driver.open(image.c_str(), 0, false, &instance) ==
@@ -238,8 +239,9 @@ TEST_CASE("DiskNibble: [NIB-W2] a shorter track rewrites the whole slot") {
   REQUIRE(write_nibbles(g_nib_driver, instance, 3 * 4, ramp) == disk_err_none);
   {
     const std::vector<uint8_t> file = read_file(image.path());
-    CHECK(std::vector<uint8_t>(file.begin() + (3 * 6656),
-                               file.begin() + (4 * 6656)) == ramp);
+    CHECK(std::vector<uint8_t>(
+              file.begin() + (static_cast<std::ptrdiff_t>(3) * 6656),
+              file.begin() + (static_cast<std::ptrdiff_t>(4) * 6656)) == ramp);
   }
 
   const SynthesisedTrack_t shorter = synthesise_track(3);
@@ -250,8 +252,9 @@ TEST_CASE("DiskNibble: [NIB-W2] a shorter track rewrites the whole slot") {
 
   const std::vector<uint8_t> file = read_file(image.path());
   REQUIRE(file.size() == 232960);
-  const std::vector<uint8_t> slot(file.begin() + (3 * 6656),
-                                  file.begin() + (4 * 6656));
+  const std::vector<uint8_t> slot(
+      file.begin() + (static_cast<std::ptrdiff_t>(3) * 6656),
+      file.begin() + (static_cast<std::ptrdiff_t>(4) * 6656));
   CHECK(std::vector<uint8_t>(slot.begin(), slot.begin() + 6208) ==
         shorter.nibbles);
   CHECK(std::vector<uint8_t>(slot.begin() + 6208, slot.end()) ==
@@ -329,7 +332,7 @@ TEST_CASE("DiskNibble: [NIB-O3] a file past the family ceiling is refused") {
 
 namespace {
 
-constexpr size_t probe_window = 80 * 1024;
+constexpr size_t probe_window = static_cast<size_t>(80) * 1024;
 constexpr uint32_t nib_bytes = 35 * 6656;
 constexpr uint32_t nb2_bytes = 35 * 6384;
 
@@ -471,14 +474,14 @@ namespace {
 // Sixteen zero sectors read back from one slot of a created image.
 auto slot_denibblizes_to_zero(const std::vector<uint8_t>& image, uint32_t track,
                               uint32_t track_nibbles) -> bool {
-  std::vector<uint8_t> sectors(16 * 256, 0xEE);
+  std::vector<uint8_t> sectors(static_cast<size_t>(16) * 256, 0xEE);
   std::vector<uint8_t> scratch(disk_encoding_scratch_size, 0);
   const size_t at = static_cast<size_t>(track) * track_nibbles;
   REQUIRE(disk_encoding_denibblize_track(
               disk_encoding_sector_order(disk_sector_order_dos), track,
               image.data() + at, track_nibbles, sectors.data(),
               scratch.data()) == disk_err_none);
-  return sectors == std::vector<uint8_t>(16 * 256, 0);
+  return sectors == std::vector<uint8_t>(static_cast<size_t>(16) * 256, 0);
 }
 
 }  // namespace
@@ -667,10 +670,18 @@ TEST_CASE("DiskNibble: [NIB-E1] a stream short of one nibble erases the slot") {
     const std::vector<uint8_t> after = read_file(image.path());
     REQUIRE(after.size() == 232960);
     CHECK(slot_of(after, 2, 6656) == erased);
-    CHECK(std::vector<uint8_t>(after.begin(), after.begin() + (2 * 6656)) ==
-          std::vector<uint8_t>(before.begin(), before.begin() + (2 * 6656)));
-    CHECK(std::vector<uint8_t>(after.begin() + (3 * 6656), after.end()) ==
-          std::vector<uint8_t>(before.begin() + (3 * 6656), before.end()));
+    CHECK(std::vector<uint8_t>(
+              after.begin(),
+              after.begin() + (static_cast<std::ptrdiff_t>(2) * 6656)) ==
+          std::vector<uint8_t>(
+              before.begin(),
+              before.begin() + (static_cast<std::ptrdiff_t>(2) * 6656)));
+    CHECK(std::vector<uint8_t>(
+              after.begin() + (static_cast<std::ptrdiff_t>(3) * 6656),
+              after.end()) ==
+          std::vector<uint8_t>(
+              before.begin() + (static_cast<std::ptrdiff_t>(3) * 6656),
+              before.end()));
 
     // A run of 0xFF with no prologue behind it is data to the inference, so
     // the erased slot reads as 6,656 eight-cell nibbles.

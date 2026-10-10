@@ -1552,7 +1552,7 @@ struct GermanCharacterRom_t {
 };
 
 auto frame_crc32() -> uint32_t {
-  constexpr size_t frame_pixels = 560 * 384;
+  constexpr size_t frame_pixels = static_cast<size_t>(560) * 384;
   video_redraw_screen();
   const uint32_t* pixels = video_get_output_buffer();
   REQUIRE(pixels != nullptr);
