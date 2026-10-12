@@ -742,7 +742,7 @@ if(PERIPHERAL_MODULES)
 endif()
 install(FILES "${RES_DIR}/Master.dsk" DESTINATION ${CMAKE_INSTALL_DATADIR}/linapple)
 install(FILES "${RES_DIR}/icon.bmp" DESTINATION ${CMAKE_INSTALL_DATADIR}/linapple)
-install(FILES "${RES_DIR}/linapple.conf" DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/linapple)
+install(FILES "${RES_DIR}/linapple.conf" DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/linapple)
 
 # --- Tests ---
 include(CTest)
