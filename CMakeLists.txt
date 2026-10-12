@@ -699,8 +699,8 @@ function(add_linapple_executable TARGET_NAME FE_NAME FE_SOURCES DBG_SOURCES EXTR
         target_include_directories(${TARGET_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/sdl3")
     endif()
     target_compile_definitions(${TARGET_NAME} PRIVATE
-        ASSET_DIR="${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/linapple"
-        SYSCONF_DIR="${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_SYSCONFDIR}/linapple"
+        ASSET_DIR="${CMAKE_INSTALL_FULL_DATADIR}/linapple"
+        SYSCONF_DIR="${CMAKE_INSTALL_FULL_SYSCONFDIR}/linapple"
         SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res"
         LINAPPLE_FRONTEND_NAME="${FE_NAME}"
         ${PERIPHERAL_DEFINITIONS}
