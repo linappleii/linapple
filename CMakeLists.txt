@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.12)
 project(linapple VERSION 3.0.0)
 
+include(GNUInstallDirs)
+
 if(POLICY CMP0074)
   cmake_policy(SET CMP0074 NEW)
 endif()
@@ -735,7 +737,6 @@ elseif(FRONTEND_LOWER STREQUAL "tui")
 endif()
 
 # --- Installation ---
-include(GNUInstallDirs)
 if(PERIPHERAL_MODULES)
     install(TARGETS ${PERIPHERAL_MODULES} DESTINATION ${CMAKE_INSTALL_LIBDIR}/linapple/plugins)
 endif()
