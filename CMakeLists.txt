@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.12)
 project(linapple VERSION 3.0.0)
 
+include(GNUInstallDirs)
+
 if(POLICY CMP0074)
   cmake_policy(SET CMP0074 NEW)
 endif()
@@ -697,8 +699,8 @@ function(add_linapple_executable TARGET_NAME FE_NAME FE_SOURCES DBG_SOURCES EXTR
         target_include_directories(${TARGET_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/sdl3")
     endif()
     target_compile_definitions(${TARGET_NAME} PRIVATE
-        ASSET_DIR="${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/linapple"
-        SYSCONF_DIR="${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_SYSCONFDIR}/linapple"
+        ASSET_DIR="${CMAKE_INSTALL_FULL_DATADIR}/linapple"
+        SYSCONF_DIR="${CMAKE_INSTALL_FULL_SYSCONFDIR}/linapple"
         SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res"
         LINAPPLE_FRONTEND_NAME="${FE_NAME}"
         ${PERIPHERAL_DEFINITIONS}
@@ -735,13 +737,12 @@ elseif(FRONTEND_LOWER STREQUAL "tui")
 endif()
 
 # --- Installation ---
-include(GNUInstallDirs)
 if(PERIPHERAL_MODULES)
     install(TARGETS ${PERIPHERAL_MODULES} DESTINATION ${CMAKE_INSTALL_LIBDIR}/linapple/plugins)
 endif()
 install(FILES "${RES_DIR}/Master.dsk" DESTINATION ${CMAKE_INSTALL_DATADIR}/linapple)
 install(FILES "${RES_DIR}/icon.bmp" DESTINATION ${CMAKE_INSTALL_DATADIR}/linapple)
-install(FILES "${RES_DIR}/linapple.conf" DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/linapple)
+install(FILES "${RES_DIR}/linapple.conf" DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/linapple)
 
 # --- Tests ---
 include(CTest)
