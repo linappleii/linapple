@@ -72,6 +72,17 @@ SDL_Rect new_rect;
 int buttondown = -1;
 bool window_resized = false;
 
+auto frame_clear_screen() -> void {
+  const std::lock_guard<std::recursive_mutex> lock(video_draw_mutex);
+  if (screen == nullptr) {
+    return;
+  }
+  SDL_FillSurfaceRect(
+      screen.get(), nullptr,
+      SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format),
+                 SDL_GetSurfacePalette(screen.get()), 0, 0, 0));
+}
+
 namespace {
 
 bool app_active = false;
@@ -470,14 +481,6 @@ auto draw_frame_window() -> void {
 
     const SDL_Rect r = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
 
-    // Clear the screen to prevent pillarbox artifacts when fullscreen.
-    if (window_resized) {
-      SDL_FillSurfaceRect(
-          screen.get(), nullptr,
-          SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format),
-                     SDL_GetSurfacePalette(screen.get()), 0, 0, 0));
-    }
-
     if (system_state.mode != app_mode_debug) {
       ScopedSurfaceLock lock_screen(screen.get());
       const VideoSurfaceView vs_output(output, SCREEN_WIDTH, SCREEN_HEIGHT,
@@ -787,12 +790,7 @@ auto frame_show_help_screen(int width, int height) -> void {
     }
   }
 
-  if (screen != nullptr) {
-    SDL_FillSurfaceRect(
-        screen.get(), nullptr,
-        SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format),
-                   SDL_GetSurfacePalette(screen.get()), 0, 0, 0));
-  }
+  frame_clear_screen();
   video_set_frame_ready(true);
   draw_frame_window();
 }
