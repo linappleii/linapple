@@ -72,6 +72,17 @@ SDL_Rect new_rect;
 int buttondown = -1;
 bool window_resized = false;
 
+auto frame_clear_screen() -> void {
+  const std::lock_guard<std::recursive_mutex> lock(video_draw_mutex);
+  if (screen == nullptr) {
+    return;
+  }
+  SDL_FillSurfaceRect(
+      screen.get(), nullptr,
+      SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format),
+                 SDL_GetSurfacePalette(screen.get()), 0, 0, 0));
+}
+
 namespace {
 
 bool app_active = false;
@@ -779,12 +790,7 @@ auto frame_show_help_screen(int width, int height) -> void {
     }
   }
 
-  if (screen != nullptr) {
-    SDL_FillSurfaceRect(
-        screen.get(), nullptr,
-        SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format),
-                   SDL_GetSurfacePalette(screen.get()), 0, 0, 0));
-  }
+  frame_clear_screen();
   video_set_frame_ready(true);
   draw_frame_window();
 }

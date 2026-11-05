@@ -57,6 +57,7 @@ auto disk_choose_cleanup() -> void {
     disk_choose_state.list_handle = nullptr;
   }
   disk_choose_state.index_file_out = nullptr;
+  frame_clear_screen();
 }
 
 auto wait_for_dismissal() -> void {
