@@ -332,6 +332,11 @@ auto draw_frame_window() -> void {
     }
     const SDL_Rect r = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
 
+    // Clear the screen to prevent letterbox artifacts when fullscreen.
+    if (window_resized) {
+      SDL_FillRect(screen.get(), nullptr, 0);
+    }
+
     if (system_state.mode != app_mode_debug) {
       ScopedSurfaceLock lock_screen(screen.get());
       const VideoSurfaceView vs_output(output, SCREEN_WIDTH, SCREEN_HEIGHT,
@@ -366,8 +371,7 @@ auto draw_frame_window() -> void {
   frame_refresh();
 }
 
-// The glyphs as last composed, so what the panel shows can be read back, and
-// an activity mark the poll took before the repaint it asked for.
+// Clear the screen to prevent letterbox artifacts.
 static std::array<char, 3> last_leds = {{1, 1, 1}};
 static bool harddisk_activity_seen = false;
 

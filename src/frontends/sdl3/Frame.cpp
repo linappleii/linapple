@@ -470,6 +470,14 @@ auto draw_frame_window() -> void {
 
     const SDL_Rect r = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
 
+    // Clear the screen to prevent letterbox artifacts when fullscreen.
+    if (window_resized) {
+      SDL_FillSurfaceRect(
+          screen.get(), nullptr,
+          SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format),
+                     SDL_GetSurfacePalette(screen.get()), 0, 0, 0));
+    }
+
     if (system_state.mode != app_mode_debug) {
       ScopedSurfaceLock lock_screen(screen.get());
       const VideoSurfaceView vs_output(output, SCREEN_WIDTH, SCREEN_HEIGHT,
