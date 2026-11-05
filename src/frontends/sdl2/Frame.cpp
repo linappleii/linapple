@@ -332,6 +332,11 @@ auto draw_frame_window() -> void {
     }
     const SDL_Rect r = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
 
+    // Clear the screen to prevent pillarbox artifacts when fullscreen.
+    if (window_resized) {
+      SDL_FillRect(screen.get(), nullptr, 0);
+    }
+
     if (system_state.mode != app_mode_debug) {
       ScopedSurfaceLock lock_screen(screen.get());
       const VideoSurfaceView vs_output(output, SCREEN_WIDTH, SCREEN_HEIGHT,
