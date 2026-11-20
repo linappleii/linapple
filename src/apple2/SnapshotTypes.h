@@ -41,7 +41,7 @@ struct SsCpu6502 {
   uint8_t p;
   uint8_t s;
   uint16_t pc;
-  uint64_t cumulative_cycles;
+  alignas(8) uint64_t cumulative_cycles;  // same layout on i386 as on x86_64
 };
 
 // The 32 bytes an AppleWin .aws spends on the serial card: layout only, kept
@@ -64,7 +64,7 @@ static_assert(sizeof(SsIoComms) == 32,
 // the game port lives in slot 0, which has no entry in the trailer and no
 // frame that fits here, so its state has no home in this format.
 struct SsIoJoystick {
-  uint64_t joy_cntr_reset_cycle;
+  alignas(8) uint64_t joy_cntr_reset_cycle;  // same layout on i386 as on x86_64
 };
 
 struct SsIoVideo {
