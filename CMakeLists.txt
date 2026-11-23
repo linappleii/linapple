@@ -509,6 +509,18 @@ set(SOURCES_FE_SDL3
     src/frontends/sdl3/Sdl3GuiStub.cpp
 )
 
+set(SOURCES_FE_COMMON_IMGUI
+    src/frontends/common/imgui/ImGuiApp.cpp
+    src/frontends/common/imgui/ImGuiLauncher.cpp
+    src/frontends/common/imgui/ImGuiPanels.cpp
+)
+
+set(SOURCES_FE_SDL3_IMGUI
+    ${SOURCES_FE_SDL3_BASE}
+    ${SOURCES_FE_COMMON_IMGUI}
+    src/frontends/sdl3/Sdl3GuiImGui.cpp
+)
+
 set(SOURCES_FE_SDL2
     ${SOURCES_FE_COMMON_SDL}
     src/frontends/sdl2/DiskChoose.cpp
@@ -778,6 +790,8 @@ if(FRONTEND_LOWER STREQUAL "all")
     add_linapple_executable(linapple-tui "tui" "${SOURCES_FE_TUI}" "${SOURCES_DBG_FULL}" "${PULSE_SIMPLE_LIBRARIES};${ALSA_LIBRARIES}" "" "${TUI_EXTRA_DEFS}")
 elseif(FRONTEND_LOWER STREQUAL "sdl3")
     add_linapple_executable(linapple "sdl3" "${SOURCES_FE_SDL3}" "${SOURCES_DBG}" "SDL3::SDL3;SDL3_image::SDL3_image;${FTP_LIBRARIES}" "" "")
+elseif(FRONTEND_LOWER STREQUAL "sdl3-imgui")
+    add_linapple_executable(linapple "sdl3-imgui" "${SOURCES_FE_SDL3_IMGUI}" "${SOURCES_DBG}" "SDL3::SDL3;${SDL3_IMGUI_LIBS};${FTP_LIBRARIES}" "" "")
 elseif(FRONTEND_LOWER STREQUAL "sdl2")
     add_linapple_executable(linapple "sdl2" "${SOURCES_FE_SDL2}" "${SOURCES_DBG}" "SDL2::SDL2;${FTP_LIBRARIES}" "" "")
 elseif(FRONTEND_LOWER STREQUAL "sdl1")
@@ -1484,6 +1498,24 @@ EOF
         endif()
         if(ENABLE_PERIPHERAL_KEYBOARD)
             target_compile_definitions(test-frontend-sdl3 PRIVATE ENABLE_PERIPHERAL_KEYBOARD)
+        endif()
+    endif()
+
+    if(FRONTEND_LOWER STREQUAL "sdl3-imgui")
+        set(TEST_SOURCES_FE_SDL3_IMGUI ${SOURCES_FE_SDL3_IMGUI})
+        list(REMOVE_ITEM TEST_SOURCES_FE_SDL3_IMGUI src/frontends/sdl3/Main.cpp)
+        add_executable(test-frontend-sdl3-imgui tests/test_main.cpp tests/test_frontend_sdl3.cpp tests/test_fixtures_core.cpp ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} ${TEST_SOURCES_FE_SDL3_IMGUI})
+        add_dependencies(test-frontend-sdl3-imgui generate_xpms generate_embedded_roms)
+        target_include_directories(test-frontend-sdl3-imgui PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} tests src "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/sdl3")
+        target_compile_definitions(test-frontend-sdl3-imgui PRIVATE ${PERIPHERAL_DEFINITIONS} LINAPPLE_HAS_IMGUI=1 ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
+        target_link_libraries(test-frontend-sdl3-imgui PRIVATE SDL3::SDL3 ${SDL3_IMGUI_LIBS} ${FTP_LIBRARIES} ${COMMON_LIBS} ${MEDIA_TARGETS})
+        add_test(NAME test-frontend-sdl3-imgui COMMAND test-frontend-sdl3-imgui)
+        linapple_test_home(test-frontend-sdl3-imgui frontend-sdl3-imgui)
+        if(ENABLE_PERIPHERAL_MOUSE)
+            target_compile_definitions(test-frontend-sdl3-imgui PRIVATE ENABLE_PERIPHERAL_MOUSE)
+        endif()
+        if(ENABLE_PERIPHERAL_KEYBOARD)
+            target_compile_definitions(test-frontend-sdl3-imgui PRIVATE ENABLE_PERIPHERAL_KEYBOARD)
         endif()
     endif()
 endif()
