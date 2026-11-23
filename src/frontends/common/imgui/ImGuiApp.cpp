@@ -34,12 +34,14 @@ namespace {
 
 constexpr const char* cfg_gui_keep_aspect = "GUI Keep Aspect";
 constexpr const char* cfg_gui_visible = "GUI Show Chrome";
+constexpr const char* cfg_gui_host_kbd = "GUI Host Keyboard Layout";
 constexpr const char* cfg_budget_video = "Budget Video";
 
 struct ImGuiAppState {
   bool initialized{false};
   bool visible{true};
   bool keep_aspect{true};
+  bool host_keyboard_layout{true};
   bool restore_disk_turbo{false};
   bool audio_muted{false};
   bool disk_turbo{true};
@@ -826,6 +828,10 @@ auto imgui_app_init(const ImGuiHostCallbacks& host, float dpi_scale) -> void {
   if (config_load_int(cfg_sec_preferences, cfg_gui_visible, &cfg_val)) {
     app_state.visible = (cfg_val != 0);
   }
+  cfg_val = 1;
+  if (config_load_int(cfg_sec_preferences, cfg_gui_host_kbd, &cfg_val)) {
+    app_state.host_keyboard_layout = (cfg_val != 0);
+  }
   cfg_val = 0;
   if (config_load_int(cfg_sec_configuration, cfg_budget_video, &cfg_val)) {
     set_budget_video(cfg_val != 0);
@@ -1016,6 +1022,14 @@ auto imgui_app_set_keep_aspect(bool keep_aspect) noexcept -> void {
   app_state.keep_aspect = keep_aspect;
 }
 
+auto imgui_app_get_host_keyboard_layout() noexcept -> bool {
+  return app_state.host_keyboard_layout;
+}
+
+auto imgui_app_set_host_keyboard_layout(bool enabled) noexcept -> void {
+  app_state.host_keyboard_layout = enabled;
+}
+
 auto imgui_app_wants_host_cursor(bool is_fullscreen) noexcept -> bool {
   if (!app_state.initialized) {
     return false;
@@ -1147,10 +1161,17 @@ auto imgui_app_save_configuration() -> bool {
                                     app_state.disk_turbo ? 1 : 0);
   Configuration::instance().set_int(cfg_sec_configuration, "Caps Lock Mode",
                                     keyboard_get_caps_mode());
+  Configuration::instance().set_int(cfg_sec_configuration, cfg_keyb_type,
+                                    static_cast<int>(keyboard_get_layout()));
+  Configuration::instance().set_int(cfg_sec_configuration,
+                                    cfg_keyb_charset_switch,
+                                    linapple_get_rocker_switch() ? 1 : 0);
   Configuration::instance().set_int(cfg_sec_preferences, cfg_gui_keep_aspect,
                                     app_state.keep_aspect ? 1 : 0);
   Configuration::instance().set_int(cfg_sec_preferences, cfg_gui_visible,
                                     app_state.visible ? 1 : 0);
+  Configuration::instance().set_int(cfg_sec_preferences, cfg_gui_host_kbd,
+                                    app_state.host_keyboard_layout ? 1 : 0);
   const bool ok = Configuration::instance().save();
   imgui_app_notify(ok ? "Configuration saved"
                       : "Failed to save configuration (read-only?)");

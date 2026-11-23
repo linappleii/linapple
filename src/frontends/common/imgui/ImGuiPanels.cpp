@@ -106,6 +106,12 @@ constexpr std::array<const char*, 2> mapping_mode_names = {
     "Positional",
 };
 
+constexpr std::array<const char*, 12> keyboard_layout_names = {
+    "US (Standard)", "UK (British)", "French",           "German",
+    "Spanish",       "Italian",      "Swedish",          "Danish",
+    "Swiss",         "Canadian",     "Japanese (Roman)", "Japanese (Kana)",
+};
+
 constexpr std::array<const char*, 4> quicksave_mode_names = {
     "Alt + 0..9",
     "Ctrl + 0..9",
@@ -758,6 +764,17 @@ auto imgui_draw_settings_panel(bool* open) -> void {
 
     if (ImGui::BeginTabItem("Input")) {
       ImGui::TextUnformatted("Keyboard");
+      bool host_kbd = imgui_app_get_host_keyboard_layout();
+      if (ImGui::Checkbox("Use Host OS Keyboard Layout (International Symbols)",
+                          &host_kbd)) {
+        imgui_app_set_host_keyboard_layout(host_kbd);
+      }
+      if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "Translate shifted punctuation (e.g. \", =, :, ;, (, ) on Italian "
+            "and other layouts) directly from your OS keyboard layout.");
+      }
+
       bool caps_on = keyboard_get_caps();
       if (ImGui::Checkbox("Apple II Uppercase (Caps Lock)", &caps_on)) {
         keyboard_set_caps_mode(caps_mode_emulated);
@@ -797,6 +814,31 @@ auto imgui_draw_settings_panel(bool* open) -> void {
           }
         }
         ImGui::EndCombo();
+      }
+
+      const uint8_t cur_layout = keyboard_get_layout();
+      const size_t layout_idx = (cur_layout < keyboard_layout_names.size())
+                                    ? static_cast<size_t>(cur_layout)
+                                    : 0;
+      ImGui::SetNextItemWidth(speed_slider_width);
+      if (ImGui::BeginCombo("National Keyboard Layout",
+                            keyboard_layout_names.at(layout_idx))) {
+        for (size_t i = 0; i < keyboard_layout_names.size(); ++i) {
+          const bool sel = (i == layout_idx);
+          if (ImGui::Selectable(keyboard_layout_names.at(i), sel)) {
+            keyboard_set_layout(static_cast<uint8_t>(i));
+          }
+          if (sel) {
+            ImGui::SetItemDefaultFocus();
+          }
+        }
+        ImGui::EndCombo();
+      }
+
+      bool rocker = linapple_get_rocker_switch();
+      if (ImGui::Checkbox("Keyboard Rocker Switch (Use National Layout)",
+                          &rocker)) {
+        linapple_set_rocker_switch(rocker);
       }
 
       bool hotkeys = keyboard_get_hotkeys_enabled();

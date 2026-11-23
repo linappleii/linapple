@@ -47,6 +47,8 @@ auto imgui_app_toggle_visible() noexcept -> void;
 
 auto imgui_app_get_keep_aspect() noexcept -> bool;
 auto imgui_app_set_keep_aspect(bool keep_aspect) noexcept -> void;
+auto imgui_app_get_host_keyboard_layout() noexcept -> bool;
+auto imgui_app_set_host_keyboard_layout(bool enabled) noexcept -> void;
 
 auto imgui_app_wants_host_cursor(bool is_fullscreen) noexcept -> bool;
 auto imgui_app_get_content_rect(int win_w, int win_h) noexcept
