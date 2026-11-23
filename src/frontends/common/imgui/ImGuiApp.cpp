@@ -293,6 +293,31 @@ auto set_video_mode(uint32_t mode) -> void {
   }
 }
 
+auto format_compact_name(const char* name, char* out, size_t out_size,
+                         size_t max_chars) -> const char* {
+  if (out == nullptr || out_size == 0) {
+    return "";
+  }
+  if (name == nullptr || name[0] == '\0') {
+    std::snprintf(out, out_size, "Empty");
+    return out;
+  }
+  const size_t len = std::strlen(name);
+  const size_t limit = std::min(max_chars, out_size - 1);
+  if (len <= limit) {
+    std::snprintf(out, out_size, "%s", name);
+    return out;
+  }
+  constexpr size_t ellipsis_len = 3;
+  if (limit <= ellipsis_len) {
+    std::snprintf(out, out_size, "%.*s", static_cast<int>(limit), name);
+    return out;
+  }
+  std::snprintf(out, out_size, "%.*s...",
+                static_cast<int>(limit - ellipsis_len), name);
+  return out;
+}
+
 auto draw_led_dot(ImVec4 color) -> void {
   ImDrawList* draw_list = ImGui::GetWindowDrawList();
   const ImVec2 pos = ImGui::GetCursorScreenPos();
@@ -592,10 +617,17 @@ auto draw_status_bar() -> void {
 
       draw_led_dot(d1_col);
       ImGui::SameLine(0.0F, 0.0F);
-      const char* d1_name =
-          (dstatus.drive0_loaded != 0 && dstatus.drive0_name[0] != '\0')
-              ? dstatus.drive0_name
-              : "Empty";
+      constexpr size_t compact_name_max = 14;
+      constexpr size_t narrow_name_max = 10;
+      constexpr size_t compact_buf_len = 24;
+      const float win_w = ImGui::GetWindowWidth();
+      constexpr float narrow_status_width = 680.0F;
+      const size_t max_drive_chars =
+          (win_w < narrow_status_width) ? narrow_name_max : compact_name_max;
+      std::array<char, compact_buf_len> d1_buf{};
+      const char* d1_name = format_compact_name(
+          dstatus.drive0_loaded != 0 ? dstatus.drive0_name : nullptr,
+          d1_buf.data(), d1_buf.size(), max_drive_chars);
       ImGui::Text("D1: %s", d1_name);
       if (ImGui::IsItemClicked()) {
         app_state.panels.show_drives = true;
@@ -621,10 +653,10 @@ auto draw_status_bar() -> void {
 
       draw_led_dot(d2_col);
       ImGui::SameLine(0.0F, 0.0F);
-      const char* d2_name =
-          (dstatus.drive1_loaded != 0 && dstatus.drive1_name[0] != '\0')
-              ? dstatus.drive1_name
-              : "Empty";
+      std::array<char, compact_buf_len> d2_buf{};
+      const char* d2_name = format_compact_name(
+          dstatus.drive1_loaded != 0 ? dstatus.drive1_name : nullptr,
+          d2_buf.data(), d2_buf.size(), max_drive_chars);
       ImGui::Text("D2: %s", d2_name);
       if (ImGui::IsItemClicked()) {
         app_state.panels.show_drives = true;
@@ -663,15 +695,24 @@ auto draw_status_bar() -> void {
     std::array<char, 128> right_info{};
     const double mhz = linapple_get_clock_hz() / hz_per_mhz;
     const float fps = ImGui::GetIO().Framerate;
-    std::snprintf(right_info.data(), right_info.size(),
-                  "%s  |  %s  |  %.2f MHz  |  %.0f FPS",
-                  apple2_short_name(linapple_get_apple2_type()),
-                  system_state.video_scanner_ntsc ? "NTSC" : "PAL", mhz,
-                  static_cast<double>(fps));
+    constexpr float compact_telemetry_width = 740.0F;
+    if (ImGui::GetWindowWidth() < compact_telemetry_width) {
+      std::snprintf(right_info.data(), right_info.size(), "%s | %.0f FPS",
+                    apple2_short_name(linapple_get_apple2_type()),
+                    static_cast<double>(fps));
+    } else {
+      std::snprintf(right_info.data(), right_info.size(),
+                    "%s  |  %s  |  %.2f MHz  |  %.0f FPS",
+                    apple2_short_name(linapple_get_apple2_type()),
+                    system_state.video_scanner_ntsc ? "NTSC" : "PAL", mhz,
+                    static_cast<double>(fps));
+    }
 
     const float text_w = ImGui::CalcTextSize(right_info.data()).x;
     const float target_x = ImGui::GetWindowWidth() - text_w - padding_frame_x;
-    if (target_x > ImGui::GetCursorPosX() + spacing_item_x) {
+    const float left_end_x =
+        ImGui::GetItemRectMax().x - ImGui::GetWindowPos().x;
+    if (target_x > left_end_x + spacing_item_x) {
       ImGui::SameLine(target_x);
       ImGui::TextDisabled("%s", right_info.data());
     }

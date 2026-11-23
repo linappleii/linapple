@@ -263,8 +263,14 @@ auto imgui_draw_launcher() -> void {
   if (ImGui::SmallButton("Refresh")) {
     launcher_state.catalog_dirty = true;
   }
-  ImGui::SameLine();
-  ImGui::SetNextItemWidth(filter_input_width);
+  constexpr float min_inline_filter_width = 140.0F;
+  if (ImGui::GetContentRegionAvail().x >= min_inline_filter_width) {
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(
+        std::min(filter_input_width, ImGui::GetContentRegionAvail().x));
+  } else {
+    ImGui::SetNextItemWidth(-1.0F);
+  }
   ImGui::InputTextWithHint("##DiskFilter", "Filter disks...",
                            launcher_state.filter_buf.data(),
                            launcher_state.filter_buf.size());
@@ -353,9 +359,17 @@ auto imgui_draw_launcher() -> void {
       break;
     }
   }
+  const float combo_avail = ImGui::GetContentRegionAvail().x;
+  constexpr float combo_labels_overhead = 120.0F;
+  constexpr float combo_min_width = 120.0F;
+  const float combo_w =
+      std::min(combo_width_compact,
+               std::max(combo_min_width,
+                        (combo_avail - combo_labels_overhead) * half_scale));
+
   ImGui::TextDisabled("Model:");
   ImGui::SameLine();
-  ImGui::SetNextItemWidth(combo_width_compact);
+  ImGui::SetNextItemWidth(combo_w);
   if (ImGui::BeginCombo("##LauncherModel", cur_model_label)) {
     for (size_t i = 0; i < model_count; ++i) {
       const bool sel = (models[i].type == cur_model);
@@ -374,7 +388,7 @@ auto imgui_draw_launcher() -> void {
   ImGui::TextDisabled("Video:");
   ImGui::SameLine();
   const uint32_t cur_vmode = (videotype < VT_NUM_MODES) ? videotype : 0;
-  ImGui::SetNextItemWidth(combo_width_compact);
+  ImGui::SetNextItemWidth(combo_w);
   if (ImGui::BeginCombo("##LauncherVideo",
                         launcher_video_modes.at(cur_vmode))) {
     for (uint32_t m = 0; m < VT_NUM_MODES; ++m) {
