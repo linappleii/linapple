@@ -42,6 +42,11 @@
 #include "frontends/common/sdl/MouseInput.h"
 #include "frontends/sdl3/DiskChoose.h"
 #include "frontends/sdl3/Frame.h"
+#ifdef LINAPPLE_HAS_IMGUI
+#include "frontends/common/KeyboardTranslator.h"
+#include "frontends/common/imgui/ImGuiApp.h"
+#include "frontends/sdl3/Sdl3GuiBridge.h"
+#endif
 #include "test_fixtures.h"
 #include "test_fixtures_core.h"
 
@@ -138,8 +143,7 @@ TEST_CASE("SDL3 Frontend draw_frame_window Scaled Stretching") {
   draw_frame_window();
 
   // Inspect scaled screen pixels (1120x768)
-  const auto* screen_pixels =
-      reinterpret_cast<const uint32_t*>(screen->pixels);
+  const auto* screen_pixels = reinterpret_cast<const uint32_t*>(screen->pixels);
   int pitch_pixels = screen->pitch / 4;
 
   CHECK(screen_pixels[0] == 0x00FF0000);
@@ -360,8 +364,7 @@ TEST_CASE("SDL3 Frontend Help Screen Scaling at High Screen Factors") {
 
   // Verify that after dismissal, screen is properly restored with the
   // emulator frame
-  const auto* screen_pixels =
-      reinterpret_cast<const uint32_t*>(screen->pixels);
+  const auto* screen_pixels = reinterpret_cast<const uint32_t*>(screen->pixels);
   CHECK(screen_pixels[0] == 0x00FF0000);
 
   // Teardown
@@ -402,8 +405,7 @@ TEST_CASE(
   frame_show_help_screen(static_cast<int>(system_state.screen_width),
                          static_cast<int>(system_state.screen_height));
 
-  const auto* screen_pixels =
-      reinterpret_cast<const uint32_t*>(screen->pixels);
+  const auto* screen_pixels = reinterpret_cast<const uint32_t*>(screen->pixels);
   int pitch_pixels = screen->pitch / 4;
 
   // Simulate next emulator frame rendering after help screen was dismissed
@@ -460,8 +462,7 @@ TEST_CASE("SDL3 Frontend Disk Chooser Modal Outline Borders Rendered") {
 
   disk_choose_draw();
 
-  const auto* screen_pixels =
-      reinterpret_cast<const uint32_t*>(screen->pixels);
+  const auto* screen_pixels = reinterpret_cast<const uint32_t*>(screen->pixels);
   int pitch_pixels = screen->pitch / 4;
 
   const int sx = 560;
@@ -932,8 +933,7 @@ auto mouse_as_joystick() -> TestFixtures::ScopedTestConfig::Description {
 TEST_CASE(
     "SDL3 mouse capture: with no mouse card and no mouse-emulated joystick "
     "neither a left nor a middle click takes the pointer") {
-  MouseInputMachine machine(
-      TestFixtures::ScopedTestConfig::enhanced_2e_only());
+  MouseInputMachine machine(TestFixtures::ScopedTestConfig::enhanced_2e_only());
   CHECK_FALSE(mouse_input_consumer_present());
 
   MouseInputMachine::click(SDL_BUTTON_LEFT, true);
@@ -1003,7 +1003,7 @@ auto call_mouse_firmware(int slot, int entry, uint8_t a) -> void {
   program.push_back(static_cast<uint8_t>(spin & 0xFF));
   program.push_back(static_cast<uint8_t>(spin >> 8));
   TestFixtures::ScopedCore::poke(mouse_program_start, program.data(),
-                                   program.size());
+                                 program.size());
   const std::array<uint8_t, 3> jump = {0x6C, 0x07, 0x00};
   TestFixtures::ScopedCore::poke(mouse_indirect_jump, jump);
   TestFixtures::enter_at({mouse_program_start, 0, 0, 0});
@@ -1081,8 +1081,7 @@ TEST_CASE(
 TEST_CASE(
     "SDL3 mouse capture: Mouse Capture = 0 refuses the left and the middle "
     "click even with a card present") {
-  TestFixtures::ScopedTestConfig::Description description =
-      mouse_in_slot_4();
+  TestFixtures::ScopedTestConfig::Description description = mouse_in_slot_4();
   description.extras.push_back({"Configuration", "Mouse Capture", "0"});
   MouseInputMachine machine(description);
   REQUIRE(mouse_frontend_card_present());
@@ -1377,8 +1376,7 @@ TEST_CASE(
   using TestConfig = TestFixtures::ScopedTestConfig;
 
   SUBCASE("Enhanced //e") {
-    KeyMachine machine(
-        custom_switches(TestConfig::machine_apple2e_enhanced));
+    KeyMachine machine(custom_switches(TestConfig::machine_apple2e_enhanced));
     KeyMachine::key(SDL_SCANCODE_A, SDLK_A, SDL_KMOD_NONE, true);
     REQUIRE(KeyMachine::latch() == 0xC1);
     KeyMachine::clear_strobe();
@@ -1399,7 +1397,7 @@ TEST_CASE(
 
   SUBCASE("II Plus") {
     KeyMachine machine(custom_switches(TestConfig::machine_apple2_plus),
-                         A2TYPE_APPLE2PLUS);
+                       A2TYPE_APPLE2PLUS);
     KeyMachine::key(SDL_SCANCODE_A, SDLK_A, SDL_KMOD_NONE, true);
     REQUIRE(KeyMachine::latch() == 0xC1);
     KeyMachine::clear_strobe();
@@ -1604,6 +1602,87 @@ TEST_CASE(
   status_cycle = 0;
   frame_refresh();
   CHECK(frame_status_led(lamp_harddisk) == lamp_base + harddisk_status_prot);
+}
+
+#endif
+
+#ifdef LINAPPLE_HAS_IMGUI
+
+TEST_CASE("SDL3 ImGui: content rect respects chrome insets and aspect ratio") {
+  // Wide window: pillarboxed inside available height between top/bottom bars.
+  const ImGuiViewportRect wide =
+      imgui_compute_content_rect(1280, 720, 24.0F, 26.0F, true);
+  CHECK(wide.y == doctest::Approx(24.0F));
+  CHECK(wide.h == doctest::Approx(670.0F));
+  const float expected_w = 670.0F * (static_cast<float>(SCREEN_WIDTH) /
+                                     static_cast<float>(SCREEN_HEIGHT));
+  CHECK(wide.w == doctest::Approx(expected_w));
+  CHECK(wide.x == doctest::Approx((1280.0F - expected_w) * 0.5F));
+
+  // Tall window: letterboxed inside available height.
+  const ImGuiViewportRect tall =
+      imgui_compute_content_rect(560, 800, 20.0F, 20.0F, true);
+  CHECK(tall.x == doctest::Approx(0.0F));
+  CHECK(tall.w == doctest::Approx(560.0F));
+  CHECK(tall.h == doctest::Approx(384.0F));
+  CHECK(tall.y == doctest::Approx(20.0F + ((760.0F - 384.0F) * 0.5F)));
+
+  // Stretch mode fills the entire region between bars.
+  const ImGuiViewportRect stretched =
+      imgui_compute_content_rect(1280, 720, 24.0F, 26.0F, false);
+  CHECK(stretched.x == doctest::Approx(0.0F));
+  CHECK(stretched.y == doctest::Approx(24.0F));
+  CHECK(stretched.w == doctest::Approx(1280.0F));
+  CHECK(stretched.h == doctest::Approx(670.0F));
+
+  // Degenerate zero-sized window returns an empty rect safely.
+  const ImGuiViewportRect empty =
+      imgui_compute_content_rect(0, 0, 24.0F, 26.0F, true);
+  CHECK(empty.w == doctest::Approx(0.0F));
+  CHECK(empty.h == doctest::Approx(0.0F));
+}
+
+TEST_CASE("SDL3 ImGui: Super+M toggles chrome while Alt+M passes through") {
+  REQUIRE(init_sdl() == 0);
+  system_state.screen_width = 560;
+  system_state.screen_height = 384;
+  REQUIRE(frame_create_window() == 0);
+
+  const bool initial = imgui_app_is_visible();
+  const bool initial_hotkeys = keyboard_get_hotkeys_enabled();
+  imgui_app_set_visible(true);
+  keyboard_set_hotkeys_enabled(true);
+
+  // Alt+M must not toggle chrome (Alt maps to Open/Solid Apple on //e).
+  SDL_Event alt_m{};
+  alt_m.type = SDL_EVENT_KEY_DOWN;
+  alt_m.key.key = SDLK_M;
+  alt_m.key.mod = SDL_KMOD_LALT;
+  alt_m.key.repeat = false;
+  sdl_handle_event(&alt_m);
+  CHECK(imgui_app_is_visible());
+
+  // Super+M toggles chrome when hotkeys are enabled.
+  SDL_Event super_m{};
+  super_m.type = SDL_EVENT_KEY_DOWN;
+  super_m.key.key = SDLK_M;
+  super_m.key.mod = SDL_KMOD_LGUI;
+  super_m.key.repeat = false;
+  sdl_handle_event(&super_m);
+  CHECK_FALSE(imgui_app_is_visible());
+
+  // Super+M is ignored when hotkeys are disabled.
+  keyboard_set_hotkeys_enabled(false);
+  sdl_handle_event(&super_m);
+  CHECK_FALSE(imgui_app_is_visible());
+
+  keyboard_set_hotkeys_enabled(true);
+  sdl_handle_event(&super_m);
+  CHECK(imgui_app_is_visible());
+
+  keyboard_set_hotkeys_enabled(initial_hotkeys);
+  imgui_app_set_visible(initial);
+  frame_destroy_window();
 }
 
 #endif
