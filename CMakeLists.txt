@@ -22,13 +22,15 @@ endif()
 
 # --- Options ---
 if(NOT FRONTEND)
-    set(FRONTEND "sdl3" CACHE STRING "Frontend to build (sdl3, sdl2, sdl1, tui, headless, or all)")
+    set(FRONTEND "sdl3" CACHE STRING "Frontend to build (sdl3, sdl3-imgui, sdl2, sdl1, tui, headless, or all)")
 endif()
 
 string(TOLOWER "${FRONTEND}" FRONTEND_LOWER)
-if(NOT FRONTEND_LOWER STREQUAL "sdl3" AND NOT FRONTEND_LOWER STREQUAL "sdl2" AND NOT FRONTEND_LOWER STREQUAL "sdl1" AND NOT FRONTEND_LOWER STREQUAL "tui" AND NOT FRONTEND_LOWER STREQUAL "headless" AND NOT FRONTEND_LOWER STREQUAL "all")
-    message(FATAL_ERROR "Invalid FRONTEND: ${FRONTEND}. Must be 'sdl3', 'sdl2', 'sdl1', 'tui', 'headless', or 'all'.")
+if(NOT FRONTEND_LOWER STREQUAL "sdl3" AND NOT FRONTEND_LOWER STREQUAL "sdl3-imgui" AND NOT FRONTEND_LOWER STREQUAL "sdl2" AND NOT FRONTEND_LOWER STREQUAL "sdl1" AND NOT FRONTEND_LOWER STREQUAL "tui" AND NOT FRONTEND_LOWER STREQUAL "headless" AND NOT FRONTEND_LOWER STREQUAL "all")
+    message(FATAL_ERROR "Invalid FRONTEND: ${FRONTEND}. Must be 'sdl3', 'sdl3-imgui', 'sdl2', 'sdl1', 'tui', 'headless', or 'all'.")
 endif()
+
+set(IMGUI_DIR "" CACHE PATH "Optional path to a local Dear ImGui source checkout (used by FRONTEND=sdl3-imgui)")
 
 if(FRONTEND_LOWER STREQUAL "tui" OR FRONTEND_LOWER STREQUAL "headless")
     set(DEFAULT_ENABLE_DEBUGGER OFF)
@@ -224,6 +226,51 @@ if(FRONTEND_LOWER STREQUAL "all")
 elseif(FRONTEND_LOWER STREQUAL "sdl3")
     find_package(SDL3 REQUIRED)
     find_package(SDL3_image REQUIRED)
+elseif(FRONTEND_LOWER STREQUAL "sdl3-imgui")
+    find_package(SDL3 REQUIRED)
+    set(SDL3_IMGUI_LIBS "")
+    if(IMGUI_DIR AND EXISTS "${IMGUI_DIR}/imgui.cpp")
+        set(LINAPPLE_IMGUI_DIR "${IMGUI_DIR}")
+    else()
+        find_package(imgui QUIET)
+        if(TARGET imgui::imgui)
+            set(SDL3_IMGUI_LIBS imgui::imgui)
+        else()
+            include(FetchContent)
+            FetchContent_Declare(
+                imgui
+                GIT_REPOSITORY https://github.com/ocornut/imgui.git
+                GIT_TAG v1.91.9
+                GIT_SHALLOW TRUE
+            )
+            FetchContent_MakeAvailable(imgui)
+            set(LINAPPLE_IMGUI_DIR "${imgui_SOURCE_DIR}")
+        endif()
+    endif()
+
+    if(DEFINED LINAPPLE_IMGUI_DIR)
+        add_library(linapple_imgui STATIC
+            "${LINAPPLE_IMGUI_DIR}/imgui.cpp"
+            "${LINAPPLE_IMGUI_DIR}/imgui_draw.cpp"
+            "${LINAPPLE_IMGUI_DIR}/imgui_tables.cpp"
+            "${LINAPPLE_IMGUI_DIR}/imgui_widgets.cpp"
+            "${LINAPPLE_IMGUI_DIR}/backends/imgui_impl_sdl3.cpp"
+            "${LINAPPLE_IMGUI_DIR}/backends/imgui_impl_sdlrenderer3.cpp"
+        )
+        target_include_directories(linapple_imgui SYSTEM PUBLIC
+            "${LINAPPLE_IMGUI_DIR}"
+            "${LINAPPLE_IMGUI_DIR}/backends"
+        )
+        target_link_libraries(linapple_imgui PUBLIC SDL3::SDL3)
+        target_compile_options(linapple_imgui PRIVATE -w)
+        set_target_properties(linapple_imgui PROPERTIES
+            CXX_CLANG_TIDY ""
+            C_CLANG_TIDY ""
+            CXX_VISIBILITY_PRESET hidden
+            VISIBILITY_INLINES_HIDDEN ON
+        )
+        set(SDL3_IMGUI_LIBS linapple_imgui)
+    endif()
 elseif(FRONTEND_LOWER STREQUAL "sdl2")
     find_package(SDL2 REQUIRED)
 elseif(FRONTEND_LOWER STREQUAL "sdl1")
@@ -447,7 +494,7 @@ set(SOURCES_FE_COMMON_SDL
     src/core/services/ftp/FtpClient.cpp
 )
 
-set(SOURCES_FE_SDL3
+set(SOURCES_FE_SDL3_BASE
     ${SOURCES_FE_COMMON_SDL}
     src/frontends/sdl3/DiskChoose.cpp
     src/frontends/sdl3/Frame.cpp
@@ -455,6 +502,11 @@ set(SOURCES_FE_SDL3
     src/frontends/sdl3/SDL_Asset.cpp
     src/frontends/sdl3/SDL_Input.cpp
     src/frontends/sdl3/SDL_Video.cpp
+)
+
+set(SOURCES_FE_SDL3
+    ${SOURCES_FE_SDL3_BASE}
+    src/frontends/sdl3/Sdl3GuiStub.cpp
 )
 
 set(SOURCES_FE_SDL2
@@ -695,7 +747,7 @@ function(add_linapple_executable TARGET_NAME FE_NAME FE_SOURCES DBG_SOURCES EXTR
         target_include_directories(${TARGET_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/sdl1")
     elseif(FE_NAME STREQUAL "sdl2")
         target_include_directories(${TARGET_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/sdl2")
-    elseif(FE_NAME STREQUAL "sdl3")
+    elseif(FE_NAME STREQUAL "sdl3" OR FE_NAME STREQUAL "sdl3-imgui")
         target_include_directories(${TARGET_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/sdl3")
     endif()
     target_compile_definitions(${TARGET_NAME} PRIVATE

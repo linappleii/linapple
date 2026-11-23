@@ -22,6 +22,7 @@
 #include "frontends/common/Frontend.h"
 #include "frontends/common/sdl/JoystickFrontend.h"
 #include "frontends/sdl3/Frame.h"
+#include "frontends/sdl3/Sdl3GuiBridge.h"
 #include "frontends/sdl3/SdlPtr.h"
 
 namespace {
@@ -164,7 +165,11 @@ auto enter_message_loop() -> void {
 
     uint32_t cycles = linapple_get_frame_cycles();
     linapple_run_frame(cycles);
+    const bool had_frame = video_is_frame_ready();
     draw_frame_window();
+    if (!had_frame && sdl3_gui_is_active()) {
+      frame_present_gui();
+    }
 
     if (!linapple_get_turbo()) {
       pacer.wait_for_next_frame();
