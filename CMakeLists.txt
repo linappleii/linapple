@@ -22,13 +22,15 @@ endif()
 
 # --- Options ---
 if(NOT FRONTEND)
-    set(FRONTEND "sdl3" CACHE STRING "Frontend to build (sdl3, sdl2, sdl1, tui, headless, or all)")
+    set(FRONTEND "sdl3" CACHE STRING "Frontend to build (sdl3, sdl3-imgui, sdl2, sdl1, tui, headless, or all)")
 endif()
 
 string(TOLOWER "${FRONTEND}" FRONTEND_LOWER)
-if(NOT FRONTEND_LOWER STREQUAL "sdl3" AND NOT FRONTEND_LOWER STREQUAL "sdl2" AND NOT FRONTEND_LOWER STREQUAL "sdl1" AND NOT FRONTEND_LOWER STREQUAL "tui" AND NOT FRONTEND_LOWER STREQUAL "headless" AND NOT FRONTEND_LOWER STREQUAL "all")
-    message(FATAL_ERROR "Invalid FRONTEND: ${FRONTEND}. Must be 'sdl3', 'sdl2', 'sdl1', 'tui', 'headless', or 'all'.")
+if(NOT FRONTEND_LOWER STREQUAL "sdl3" AND NOT FRONTEND_LOWER STREQUAL "sdl3-imgui" AND NOT FRONTEND_LOWER STREQUAL "sdl2" AND NOT FRONTEND_LOWER STREQUAL "sdl1" AND NOT FRONTEND_LOWER STREQUAL "tui" AND NOT FRONTEND_LOWER STREQUAL "headless" AND NOT FRONTEND_LOWER STREQUAL "all")
+    message(FATAL_ERROR "Invalid FRONTEND: ${FRONTEND}. Must be 'sdl3', 'sdl3-imgui', 'sdl2', 'sdl1', 'tui', 'headless', or 'all'.")
 endif()
+
+set(IMGUI_DIR "" CACHE PATH "Optional path to a local Dear ImGui source checkout (used by FRONTEND=sdl3-imgui)")
 
 if(FRONTEND_LOWER STREQUAL "tui" OR FRONTEND_LOWER STREQUAL "headless")
     set(DEFAULT_ENABLE_DEBUGGER OFF)
@@ -224,6 +226,51 @@ if(FRONTEND_LOWER STREQUAL "all")
 elseif(FRONTEND_LOWER STREQUAL "sdl3")
     find_package(SDL3 REQUIRED)
     find_package(SDL3_image REQUIRED)
+elseif(FRONTEND_LOWER STREQUAL "sdl3-imgui")
+    find_package(SDL3 REQUIRED)
+    set(SDL3_IMGUI_LIBS "")
+    if(IMGUI_DIR AND EXISTS "${IMGUI_DIR}/imgui.cpp")
+        set(LINAPPLE_IMGUI_DIR "${IMGUI_DIR}")
+    else()
+        find_package(imgui QUIET)
+        if(TARGET imgui::imgui)
+            set(SDL3_IMGUI_LIBS imgui::imgui)
+        else()
+            include(FetchContent)
+            FetchContent_Declare(
+                imgui
+                GIT_REPOSITORY https://github.com/ocornut/imgui.git
+                GIT_TAG v1.91.9
+                GIT_SHALLOW TRUE
+            )
+            FetchContent_MakeAvailable(imgui)
+            set(LINAPPLE_IMGUI_DIR "${imgui_SOURCE_DIR}")
+        endif()
+    endif()
+
+    if(DEFINED LINAPPLE_IMGUI_DIR)
+        add_library(linapple_imgui STATIC
+            "${LINAPPLE_IMGUI_DIR}/imgui.cpp"
+            "${LINAPPLE_IMGUI_DIR}/imgui_draw.cpp"
+            "${LINAPPLE_IMGUI_DIR}/imgui_tables.cpp"
+            "${LINAPPLE_IMGUI_DIR}/imgui_widgets.cpp"
+            "${LINAPPLE_IMGUI_DIR}/backends/imgui_impl_sdl3.cpp"
+            "${LINAPPLE_IMGUI_DIR}/backends/imgui_impl_sdlrenderer3.cpp"
+        )
+        target_include_directories(linapple_imgui SYSTEM PUBLIC
+            "${LINAPPLE_IMGUI_DIR}"
+            "${LINAPPLE_IMGUI_DIR}/backends"
+        )
+        target_link_libraries(linapple_imgui PUBLIC SDL3::SDL3)
+        target_compile_options(linapple_imgui PRIVATE -w)
+        set_target_properties(linapple_imgui PROPERTIES
+            CXX_CLANG_TIDY ""
+            C_CLANG_TIDY ""
+            CXX_VISIBILITY_PRESET hidden
+            VISIBILITY_INLINES_HIDDEN ON
+        )
+        set(SDL3_IMGUI_LIBS linapple_imgui)
+    endif()
 elseif(FRONTEND_LOWER STREQUAL "sdl2")
     find_package(SDL2 REQUIRED)
 elseif(FRONTEND_LOWER STREQUAL "sdl1")
@@ -447,7 +494,7 @@ set(SOURCES_FE_COMMON_SDL
     src/core/services/ftp/FtpClient.cpp
 )
 
-set(SOURCES_FE_SDL3
+set(SOURCES_FE_SDL3_BASE
     ${SOURCES_FE_COMMON_SDL}
     src/frontends/sdl3/DiskChoose.cpp
     src/frontends/sdl3/Frame.cpp
@@ -455,6 +502,23 @@ set(SOURCES_FE_SDL3
     src/frontends/sdl3/SDL_Asset.cpp
     src/frontends/sdl3/SDL_Input.cpp
     src/frontends/sdl3/SDL_Video.cpp
+)
+
+set(SOURCES_FE_SDL3
+    ${SOURCES_FE_SDL3_BASE}
+    src/frontends/sdl3/Sdl3GuiStub.cpp
+)
+
+set(SOURCES_FE_COMMON_IMGUI
+    src/frontends/common/imgui/ImGuiApp.cpp
+    src/frontends/common/imgui/ImGuiLauncher.cpp
+    src/frontends/common/imgui/ImGuiPanels.cpp
+)
+
+set(SOURCES_FE_SDL3_IMGUI
+    ${SOURCES_FE_SDL3_BASE}
+    ${SOURCES_FE_COMMON_IMGUI}
+    src/frontends/sdl3/Sdl3GuiImGui.cpp
 )
 
 set(SOURCES_FE_SDL2
@@ -695,7 +759,7 @@ function(add_linapple_executable TARGET_NAME FE_NAME FE_SOURCES DBG_SOURCES EXTR
         target_include_directories(${TARGET_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/sdl1")
     elseif(FE_NAME STREQUAL "sdl2")
         target_include_directories(${TARGET_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/sdl2")
-    elseif(FE_NAME STREQUAL "sdl3")
+    elseif(FE_NAME STREQUAL "sdl3" OR FE_NAME STREQUAL "sdl3-imgui")
         target_include_directories(${TARGET_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/sdl3")
     endif()
     target_compile_definitions(${TARGET_NAME} PRIVATE
@@ -726,6 +790,8 @@ if(FRONTEND_LOWER STREQUAL "all")
     add_linapple_executable(linapple-tui "tui" "${SOURCES_FE_TUI}" "${SOURCES_DBG_FULL}" "${PULSE_SIMPLE_LIBRARIES};${ALSA_LIBRARIES}" "" "${TUI_EXTRA_DEFS}")
 elseif(FRONTEND_LOWER STREQUAL "sdl3")
     add_linapple_executable(linapple "sdl3" "${SOURCES_FE_SDL3}" "${SOURCES_DBG}" "SDL3::SDL3;SDL3_image::SDL3_image;${FTP_LIBRARIES}" "" "")
+elseif(FRONTEND_LOWER STREQUAL "sdl3-imgui")
+    add_linapple_executable(linapple "sdl3-imgui" "${SOURCES_FE_SDL3_IMGUI}" "${SOURCES_DBG}" "SDL3::SDL3;${SDL3_IMGUI_LIBS};${FTP_LIBRARIES}" "" "")
 elseif(FRONTEND_LOWER STREQUAL "sdl2")
     add_linapple_executable(linapple "sdl2" "${SOURCES_FE_SDL2}" "${SOURCES_DBG}" "SDL2::SDL2;${FTP_LIBRARIES}" "" "")
 elseif(FRONTEND_LOWER STREQUAL "sdl1")
@@ -1432,6 +1498,24 @@ EOF
         endif()
         if(ENABLE_PERIPHERAL_KEYBOARD)
             target_compile_definitions(test-frontend-sdl3 PRIVATE ENABLE_PERIPHERAL_KEYBOARD)
+        endif()
+    endif()
+
+    if(FRONTEND_LOWER STREQUAL "sdl3-imgui")
+        set(TEST_SOURCES_FE_SDL3_IMGUI ${SOURCES_FE_SDL3_IMGUI})
+        list(REMOVE_ITEM TEST_SOURCES_FE_SDL3_IMGUI src/frontends/sdl3/Main.cpp)
+        add_executable(test-frontend-sdl3-imgui tests/test_main.cpp tests/test_frontend_sdl3.cpp tests/test_fixtures_core.cpp ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} ${TEST_SOURCES_FE_SDL3_IMGUI})
+        add_dependencies(test-frontend-sdl3-imgui generate_xpms generate_embedded_roms)
+        target_include_directories(test-frontend-sdl3-imgui PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} tests src "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/sdl3")
+        target_compile_definitions(test-frontend-sdl3-imgui PRIVATE ${PERIPHERAL_DEFINITIONS} LINAPPLE_HAS_IMGUI=1 ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
+        target_link_libraries(test-frontend-sdl3-imgui PRIVATE SDL3::SDL3 ${SDL3_IMGUI_LIBS} ${FTP_LIBRARIES} ${COMMON_LIBS} ${MEDIA_TARGETS})
+        add_test(NAME test-frontend-sdl3-imgui COMMAND test-frontend-sdl3-imgui)
+        linapple_test_home(test-frontend-sdl3-imgui frontend-sdl3-imgui)
+        if(ENABLE_PERIPHERAL_MOUSE)
+            target_compile_definitions(test-frontend-sdl3-imgui PRIVATE ENABLE_PERIPHERAL_MOUSE)
+        endif()
+        if(ENABLE_PERIPHERAL_KEYBOARD)
+            target_compile_definitions(test-frontend-sdl3-imgui PRIVATE ENABLE_PERIPHERAL_KEYBOARD)
         endif()
     endif()
 endif()

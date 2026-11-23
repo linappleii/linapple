@@ -128,6 +128,7 @@ implementations:
 | Target            | CMake Flag                    | Audio / Video Dependencies | Primary Use Case                                     |
 | :---------------- | :---------------------------- | :------------------------- | :--------------------------------------------------- |
 | **SDL3**          | `-DFRONTEND=sdl3` *(Default)* | SDL3, SDL3_image           | Modern Linux desktops (Wayland / X11 / KMSDRM)       |
+| **SDL3 + ImGui**  | `-DFRONTEND=sdl3-imgui`       | SDL3, Dear ImGui           | Desktop GUI with menu bar, launcher, and tool panels |
 | **Terminal TUI**  | `-DFRONTEND=tui`              | PulseAudio / ALSA (No GUI) | Terminal/SSH play with 24-bit Truecolor & Unicode    |
 | **Headless**      | `-DFRONTEND=headless`         | None (No video/audio)      | Automated CI testing and headless batch scripting    |
 | **SDL2**          | `-DFRONTEND=sdl2`             | SDL2                       | Legacy Linux distros without native SDL3             |
@@ -163,6 +164,7 @@ peripheral cards as dynamically loaded `.so` plugins installed to
 
 | Option               | Default              | Description                                                                         |
 | :------------------- | :------------------- | :---------------------------------------------------------------------------------- |
+| `IMGUI_DIR`          | *(auto)*             | Optional local Dear ImGui path for `FRONTEND=sdl3-imgui` (falls back to `find_package(imgui)` then `FetchContent`) |
 | `ENABLE_DEBUGGER`    | `ON` *(GUI)* / `OFF` | Builds the interactive assembly debugger, disassembly engine, and memory inspector  |
 | `REGISTRY_WRITEABLE` | `OFF`                | Allows emulator runtime settings to be saved directly back to `linapple.conf`       |
 | `PROFILING`          | `OFF`                | Enables compiler profiling flags (`-pg`)                                            |
