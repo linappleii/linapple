@@ -14,6 +14,7 @@
 #include "frontends/common/AudioMixer.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/common/KeyboardTranslator.h"
+#include "frontends/common/MouseFrontend.h"
 #include "frontends/common/sdl/JoystickFrontend.h"
 #include "frontends/common/sdl/MouseInput.h"
 #include "frontends/sdl3/Frame.h"
