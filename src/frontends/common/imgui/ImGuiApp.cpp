@@ -24,6 +24,7 @@
 #include "frontends/common/AudioMixer.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/common/HarddiskFrontend.h"
+#include "frontends/common/KeyboardTranslator.h"
 #include "frontends/common/SaveStateManager.h"
 #include "frontends/common/imgui/ImGuiBackend.h"
 #include "frontends/common/imgui/ImGuiLauncher.h"
@@ -40,6 +41,8 @@ struct ImGuiAppState {
   bool visible{true};
   bool keep_aspect{true};
   bool restore_disk_turbo{false};
+  bool audio_muted{false};
+  bool disk_turbo{true};
   float top_bar_height{0.0F};
   float bottom_bar_height{0.0F};
   ImGuiHostCallbacks host{};
@@ -456,6 +459,11 @@ auto draw_menu_bar() -> void {
     }
 
     ImGui::Separator();
+    bool caps_on = keyboard_get_caps();
+    if (ImGui::MenuItem("Uppercase Mode (Apple II Caps Lock)", nullptr,
+                        &caps_on)) {
+      imgui_app_toggle_uppercase_caps();
+    }
     bool turbo = linapple_get_turbo();
     if (ImGui::MenuItem("Turbo Mode", "ScrollLock", &turbo)) {
       linapple_set_turbo(turbo);
@@ -598,6 +606,21 @@ auto draw_status_bar() -> void {
     }
 
     ImGui::TextColored(mode_color, "%s", mode_text);
+    ImGui::SameLine();
+    ImGui::TextDisabled("|");
+    ImGui::SameLine();
+
+    const bool caps_active = keyboard_get_caps();
+    ImGui::TextColored(caps_active ? color_paused : color_idle, "CAPS");
+    if (ImGui::IsItemClicked()) {
+      imgui_app_toggle_uppercase_caps();
+    }
+    if (ImGui::IsItemHovered()) {
+      ImGui::SetTooltip(
+          "Apple II Uppercase (Caps Lock): %s\nClick to toggle (uses "
+          "independent emulated Caps Lock)",
+          caps_active ? "ON" : "OFF");
+    }
     ImGui::SameLine();
     ImGui::TextDisabled("|");
     ImGui::SameLine();
@@ -807,6 +830,13 @@ auto imgui_app_init(const ImGuiHostCallbacks& host, float dpi_scale) -> void {
   if (config_load_int(cfg_sec_configuration, cfg_budget_video, &cfg_val)) {
     set_budget_video(cfg_val != 0);
   }
+  cfg_val = 1;
+  if (config_load_int(cfg_sec_configuration, "Disk Turbo", &cfg_val)) {
+    app_state.disk_turbo = (cfg_val != 0);
+  } else {
+    app_state.disk_turbo = true;
+  }
+  app_state.audio_muted = false;
 
   apply_theme(dpi_scale);
   imgui_panels_invalidate_caches();
@@ -1054,9 +1084,49 @@ auto imgui_app_request_model_change(Apple2Type type) -> void {
                                     static_cast<int>(type));
   (void)Configuration::instance().save();
   linapple_set_apple2_type(type);
+  imgui_app_request_restart();
+}
+
+auto imgui_app_request_restart() -> void {
   if (app_state.host.request_restart != nullptr) {
     app_state.host.request_restart();
   }
+}
+
+auto imgui_app_reinit_joystick() -> void {
+  if (app_state.host.reinit_joystick != nullptr) {
+    app_state.host.reinit_joystick();
+  }
+}
+
+auto imgui_app_toggle_uppercase_caps() -> void {
+  const bool next = !keyboard_get_caps();
+  // Switch to independent emulated Caps Lock mode so toggling from the GUI
+  // persists regardless of the host keyboard's Caps Lock LED state.
+  keyboard_set_caps_mode(caps_mode_emulated);
+  keyboard_set_caps(next);
+  imgui_app_notify(next ? "Apple II Uppercase (CAPS LOCK): ON"
+                        : "Apple II Uppercase (CAPS LOCK): OFF");
+}
+
+auto imgui_app_is_audio_muted() noexcept -> bool {
+  return app_state.audio_muted;
+}
+
+auto imgui_app_set_audio_muted(bool muted) -> void {
+  app_state.audio_muted = muted;
+  audio_mixer_set_fade(muted ? fade_out : fade_in);
+  imgui_app_notify(muted ? "Audio muted" : "Audio unmuted");
+}
+
+auto imgui_app_get_disk_turbo() noexcept -> bool {
+  return app_state.disk_turbo;
+}
+
+auto imgui_app_set_disk_turbo(bool enabled) -> void {
+  app_state.disk_turbo = enabled;
+  app_state.restore_disk_turbo = false;
+  (void)linapple_set_disk_turbo(enabled);
 }
 
 auto imgui_app_save_configuration() -> bool {
@@ -1073,6 +1143,10 @@ auto imgui_app_save_configuration() -> bool {
                                     save_state_on_exit ? 1 : 0);
   Configuration::instance().set_int(cfg_sec_configuration, cfg_budget_video,
                                     get_budget_video() ? 1 : 0);
+  Configuration::instance().set_int(cfg_sec_configuration, "Disk Turbo",
+                                    app_state.disk_turbo ? 1 : 0);
+  Configuration::instance().set_int(cfg_sec_configuration, "Caps Lock Mode",
+                                    keyboard_get_caps_mode());
   Configuration::instance().set_int(cfg_sec_preferences, cfg_gui_keep_aspect,
                                     app_state.keep_aspect ? 1 : 0);
   Configuration::instance().set_int(cfg_sec_preferences, cfg_gui_visible,

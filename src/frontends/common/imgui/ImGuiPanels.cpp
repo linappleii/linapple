@@ -22,7 +22,12 @@
 #include "core/LinAppleCore.h"
 #include "core/Registry.h"
 #include "frontends/common/HarddiskFrontend.h"
+#include "frontends/common/JoystickConfig.h"
+#include "frontends/common/KeyboardTranslator.h"
+#include "frontends/common/MouseFrontend.h"
+#include "frontends/common/PrinterFrontend.h"
 #include "frontends/common/SaveStateManager.h"
+#include "frontends/common/SuperSerialFrontend.h"
 #include "frontends/common/imgui/ImGuiApp.h"
 #include "frontends/common/imgui/ImGuiBackend.h"
 
@@ -32,8 +37,8 @@ constexpr float drives_window_width = 560.0F;
 constexpr float drives_window_height = 460.0F;
 constexpr float states_window_width = 480.0F;
 constexpr float states_window_height = 420.0F;
-constexpr float settings_window_width = 500.0F;
-constexpr float settings_window_height = 380.0F;
+constexpr float settings_window_width = 560.0F;
+constexpr float settings_window_height = 430.0F;
 constexpr float shortcuts_window_width = 520.0F;
 constexpr float shortcuts_window_height = 430.0F;
 constexpr float about_window_width = 400.0F;
@@ -80,6 +85,51 @@ constexpr std::array<const char*, VT_NUM_MODES> settings_video_modes = {
     "Color (TV Emulation)", "Color (Half-Shift Dim)", "Monochrome (Amber)",
     "Monochrome (Green)",   "Monochrome (White)",
 };
+
+constexpr std::array<const char*, joystick_config_type_count> joystick_names = {
+    "None", "Gamepad / Joystick", "Numpad", "Numpad (Self-Centering)", "Mouse",
+};
+
+constexpr std::array<const char*, 3> soundcard_names = {
+    "None",
+    "Mockingboard",
+    "Phasor",
+};
+
+constexpr std::array<const char*, 2> caps_mode_names = {
+    "Host Caps Lock",
+    "Emulated (Independent)",
+};
+
+constexpr std::array<const char*, 2> mapping_mode_names = {
+    "Symbolic",
+    "Positional",
+};
+
+constexpr std::array<const char*, 4> quicksave_mode_names = {
+    "Alt + 0..9",
+    "Ctrl + 0..9",
+    "Alt + Ctrl + 0..9",
+    "Disabled",
+};
+
+struct LanguageOption {
+  Apple2Language lang;
+  const char* label;
+};
+
+constexpr std::array<LanguageOption, 6> language_options = {
+    {
+        {A2LANG_US, "US (Standard)"},
+        {A2LANG_UK, "UK (British)"},
+        {A2LANG_FR, "French"},
+        {A2LANG_DE, "German"},
+        {A2LANG_JP_ROMAN, "Japanese (Roman)"},
+        {A2LANG_JP_KANA, "Japanese (Katakana)"},
+    },
+};
+
+constexpr int max_volume_level = 15;
 
 struct ShortcutRow {
   const char* keys;
@@ -642,6 +692,262 @@ auto imgui_draw_settings_panel(bool* open) -> void {
       if (ImGui::Button(system_state.fullscreen ? "Exit Fullscreen (F6)"
                                                 : "Enter Fullscreen (F6)")) {
         imgui_app_toggle_fullscreen();
+      }
+
+      ImGui::EndTabItem();
+    }
+
+    if (ImGui::BeginTabItem("Audio")) {
+      bool muted = imgui_app_is_audio_muted();
+      if (ImGui::Checkbox("Mute All Audio", &muted)) {
+        imgui_app_set_audio_muted(muted);
+      }
+
+      ImGui::Spacing();
+      ImGui::Separator();
+
+      uint32_t spkr_vol = max_volume_level;
+      (void)config_load_int(cfg_sec_configuration, cfg_spkr_volume, &spkr_vol);
+      int spkr_slider = static_cast<int>(spkr_vol);
+      ImGui::SetNextItemWidth(speed_slider_width);
+      if (ImGui::SliderInt("Speaker Volume (on restart)", &spkr_slider, 0,
+                           max_volume_level)) {
+        Configuration::instance().set_int(cfg_sec_configuration,
+                                          cfg_spkr_volume, spkr_slider);
+      }
+
+      uint32_t mb_vol = max_volume_level;
+      (void)config_load_int(cfg_sec_configuration, cfg_mb_volume, &mb_vol);
+      int mb_slider = static_cast<int>(mb_vol);
+      ImGui::SetNextItemWidth(speed_slider_width);
+      if (ImGui::SliderInt("Mockingboard Volume (on restart)", &mb_slider, 0,
+                           max_volume_level)) {
+        Configuration::instance().set_int(cfg_sec_configuration, cfg_mb_volume,
+                                          mb_slider);
+      }
+
+      uint32_t sc_type = 1;
+      (void)config_load_int(cfg_sec_configuration, cfg_soundcard_type,
+                            &sc_type);
+      const size_t sc_idx =
+          (sc_type < soundcard_names.size()) ? static_cast<size_t>(sc_type) : 0;
+      ImGui::SetNextItemWidth(speed_slider_width);
+      if (ImGui::BeginCombo("Soundcard Type", soundcard_names.at(sc_idx))) {
+        for (size_t i = 0; i < soundcard_names.size(); ++i) {
+          const bool sel = (i == sc_idx);
+          if (ImGui::Selectable(soundcard_names.at(i), sel)) {
+            Configuration::instance().set_int(
+                cfg_sec_configuration, cfg_soundcard_type, static_cast<int>(i));
+          }
+          if (sel) {
+            ImGui::SetItemDefaultFocus();
+          }
+        }
+        ImGui::EndCombo();
+      }
+      ImGui::TextDisabled(
+          "Save configuration and restart to apply audio card "
+          "and volume changes.");
+      if (ImGui::Button("Save & Restart Audio")) {
+        (void)imgui_app_save_configuration();
+        imgui_app_request_restart();
+      }
+
+      ImGui::EndTabItem();
+    }
+
+    if (ImGui::BeginTabItem("Input")) {
+      ImGui::TextUnformatted("Keyboard");
+      bool caps_on = keyboard_get_caps();
+      if (ImGui::Checkbox("Apple II Uppercase (Caps Lock)", &caps_on)) {
+        keyboard_set_caps_mode(caps_mode_emulated);
+        keyboard_set_caps(caps_on);
+        imgui_app_notify(caps_on ? "Apple II Uppercase (CAPS LOCK): ON"
+                                 : "Apple II Uppercase (CAPS LOCK): OFF");
+      }
+
+      const int cur_caps_mode = keyboard_get_caps_mode();
+      const size_t caps_idx = (cur_caps_mode == caps_mode_emulated) ? 1 : 0;
+      ImGui::SetNextItemWidth(speed_slider_width);
+      if (ImGui::BeginCombo("Caps Lock Mode", caps_mode_names.at(caps_idx))) {
+        for (size_t i = 0; i < caps_mode_names.size(); ++i) {
+          const bool sel = (i == caps_idx);
+          if (ImGui::Selectable(caps_mode_names.at(i), sel)) {
+            keyboard_set_caps_mode(static_cast<int>(i));
+          }
+          if (sel) {
+            ImGui::SetItemDefaultFocus();
+          }
+        }
+        ImGui::EndCombo();
+      }
+
+      const KeyboardMappingMode cur_map = keyboard_get_mapping_mode();
+      const size_t map_idx = (cur_map == kbd_mode_positional) ? 1 : 0;
+      ImGui::SetNextItemWidth(speed_slider_width);
+      if (ImGui::BeginCombo("Key Mapping Mode",
+                            mapping_mode_names.at(map_idx))) {
+        for (size_t i = 0; i < mapping_mode_names.size(); ++i) {
+          const bool sel = (i == map_idx);
+          if (ImGui::Selectable(mapping_mode_names.at(i), sel)) {
+            keyboard_set_mapping_mode(static_cast<KeyboardMappingMode>(i));
+          }
+          if (sel) {
+            ImGui::SetItemDefaultFocus();
+          }
+        }
+        ImGui::EndCombo();
+      }
+
+      bool hotkeys = keyboard_get_hotkeys_enabled();
+      if (ImGui::Checkbox("Enable Function-Key Hotkeys (F1-F12)", &hotkeys)) {
+        keyboard_set_hotkeys_enabled(hotkeys);
+      }
+
+      const QuickSaveMode cur_qs = keyboard_get_quicksave_mode();
+      const size_t qs_idx =
+          (static_cast<size_t>(cur_qs) < quicksave_mode_names.size())
+              ? static_cast<size_t>(cur_qs)
+              : 0;
+      ImGui::SetNextItemWidth(speed_slider_width);
+      if (ImGui::BeginCombo("Quick Save Combo",
+                            quicksave_mode_names.at(qs_idx))) {
+        for (size_t i = 0; i < quicksave_mode_names.size(); ++i) {
+          const bool sel = (i == qs_idx);
+          if (ImGui::Selectable(quicksave_mode_names.at(i), sel)) {
+            keyboard_set_quicksave_mode(static_cast<QuickSaveMode>(i));
+          }
+          if (sel) {
+            ImGui::SetItemDefaultFocus();
+          }
+        }
+        ImGui::EndCombo();
+      }
+
+      ImGui::Spacing();
+      ImGui::Separator();
+      ImGui::TextUnformatted("Joysticks & Mouse");
+
+      uint32_t joy0 = 0;
+      (void)config_load_int(cfg_sec_configuration, cfg_joy_type1, &joy0);
+      const size_t j0_idx =
+          (joy0 < joystick_names.size()) ? static_cast<size_t>(joy0) : 0;
+      ImGui::SetNextItemWidth(speed_slider_width);
+      if (ImGui::BeginCombo("Joystick 0", joystick_names.at(j0_idx))) {
+        for (size_t i = 0; i < joystick_names.size(); ++i) {
+          const bool sel = (i == j0_idx);
+          if (ImGui::Selectable(joystick_names.at(i), sel)) {
+            Configuration::instance().set_int(
+                cfg_sec_configuration, cfg_joy_type1, static_cast<int>(i));
+            imgui_app_reinit_joystick();
+          }
+          if (sel) {
+            ImGui::SetItemDefaultFocus();
+          }
+        }
+        ImGui::EndCombo();
+      }
+
+      uint32_t joy1 = 0;
+      (void)config_load_int(cfg_sec_configuration, cfg_joy_type2, &joy1);
+      const size_t j1_idx =
+          (joy1 < joystick_names.size()) ? static_cast<size_t>(joy1) : 0;
+      ImGui::SetNextItemWidth(speed_slider_width);
+      if (ImGui::BeginCombo("Joystick 1", joystick_names.at(j1_idx))) {
+        for (size_t i = 0; i < joystick_names.size(); ++i) {
+          const bool sel = (i == j1_idx);
+          if (ImGui::Selectable(joystick_names.at(i), sel)) {
+            Configuration::instance().set_int(
+                cfg_sec_configuration, cfg_joy_type2, static_cast<int>(i));
+            imgui_app_reinit_joystick();
+          }
+          if (sel) {
+            ImGui::SetItemDefaultFocus();
+          }
+        }
+        ImGui::EndCombo();
+      }
+
+      if (mouse_frontend_card_present()) {
+        ImGui::TextDisabled("Apple Mouse Card: Slot %d (Capture: %s)",
+                            mouse_frontend_card_slot(),
+                            mouse_frontend_capture_enabled() ? "ON" : "OFF");
+      } else {
+        ImGui::TextDisabled("Apple Mouse Card: Not installed");
+      }
+
+      ImGui::EndTabItem();
+    }
+
+    if (ImGui::BeginTabItem("Hardware")) {
+      bool disk_turbo = imgui_app_get_disk_turbo();
+      if (ImGui::Checkbox("Disk Turbo (Fast Disk Loading)", &disk_turbo)) {
+        imgui_app_set_disk_turbo(disk_turbo);
+      }
+
+      uint32_t hdd_en = 0;
+      (void)config_load_int(cfg_sec_configuration, cfg_hdd_enabled, &hdd_en);
+      bool hdd_enabled = (hdd_en != 0);
+      if (ImGui::Checkbox("Enable Hard Disk Controller (on restart)",
+                          &hdd_enabled)) {
+        Configuration::instance().set_int(cfg_sec_configuration,
+                                          cfg_hdd_enabled, hdd_enabled ? 1 : 0);
+      }
+
+      uint32_t mouse_s4 = 0;
+      (void)config_load_int(cfg_sec_configuration, cfg_mouse_in_slot4,
+                            &mouse_s4);
+      bool mouse_slot4 = (mouse_s4 != 0);
+      if (ImGui::Checkbox("Enable Apple Mouse Card in Slot 4 (on restart)",
+                          &mouse_slot4)) {
+        Configuration::instance().set_int(
+            cfg_sec_configuration, cfg_mouse_in_slot4, mouse_slot4 ? 1 : 0);
+      }
+
+      const Apple2Language cur_lang = linapple_get_language();
+      const char* lang_label = "US (Standard)";
+      for (const LanguageOption& opt : language_options) {
+        if (opt.lang == cur_lang) {
+          lang_label = opt.label;
+          break;
+        }
+      }
+      ImGui::SetNextItemWidth(speed_slider_width);
+      if (ImGui::BeginCombo("Keyboard Language", lang_label)) {
+        for (const LanguageOption& opt : language_options) {
+          const bool sel = (opt.lang == cur_lang);
+          if (ImGui::Selectable(opt.label, sel)) {
+            linapple_set_language(opt.lang);
+          }
+          if (sel) {
+            ImGui::SetItemDefaultFocus();
+          }
+        }
+        ImGui::EndCombo();
+      }
+
+      ImGui::Spacing();
+      ImGui::Separator();
+      ImGui::TextUnformatted("Installed I/O Peripherals");
+      const std::string printer_path = printer_frontend_output_path(1);
+      ImGui::TextDisabled(
+          "Parallel Printer (Slot 1): %s",
+          printer_path.empty() ? "Inactive" : printer_path.c_str());
+
+      const int ssc_slot = super_serial_frontend_primary_slot();
+      if (ssc_slot > 0) {
+        const std::string ssc_dev = super_serial_frontend_device_path(ssc_slot);
+        ImGui::TextDisabled(
+            "Super Serial Card (Slot %d): %s", ssc_slot,
+            ssc_dev.empty() ? "Connected (loopback/idle)" : ssc_dev.c_str());
+      } else {
+        ImGui::TextDisabled("Super Serial Card: Not installed");
+      }
+
+      ImGui::Spacing();
+      if (ImGui::Button("Save & Restart Hardware")) {
+        (void)imgui_app_save_configuration();
+        imgui_app_request_restart();
       }
 
       ImGui::EndTabItem();

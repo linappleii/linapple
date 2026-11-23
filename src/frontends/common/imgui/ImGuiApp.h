@@ -60,7 +60,15 @@ auto imgui_app_open_dialog(ImGuiDialogAction action,
 auto imgui_app_model_options(size_t* out_count) noexcept
     -> const ImGuiModelOption*;
 auto imgui_app_request_model_change(Apple2Type type) -> void;
+auto imgui_app_request_restart() -> void;
+auto imgui_app_reinit_joystick() -> void;
 auto imgui_app_save_configuration() -> bool;
+
+auto imgui_app_toggle_uppercase_caps() -> void;
+auto imgui_app_is_audio_muted() noexcept -> bool;
+auto imgui_app_set_audio_muted(bool muted) -> void;
+auto imgui_app_get_disk_turbo() noexcept -> bool;
+auto imgui_app_set_disk_turbo(bool enabled) -> void;
 
 auto imgui_app_mount_disk(int drive, const char* path, bool write_protected)
     -> bool;

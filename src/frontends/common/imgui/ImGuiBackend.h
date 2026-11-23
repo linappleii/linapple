@@ -31,5 +31,6 @@ struct ImGuiHostCallbacks {
   auto (*quick_load_slot)(int slot) -> bool;
   auto (*refresh_status_leds)() -> void;
   auto (*release_mouse_capture)() -> void;
+  auto (*reinit_joystick)() -> void;
   auto (*get_ticks_ms)() -> uint64_t;
 };

@@ -29,6 +29,7 @@
 #include "frontends/common/SaveStateManager.h"
 #include "frontends/common/imgui/ImGuiApp.h"
 #include "frontends/common/imgui/ImGuiBackend.h"
+#include "frontends/common/sdl/JoystickFrontend.h"
 #include "frontends/common/sdl/MouseInput.h"
 #include "frontends/sdl3/Frame.h"
 #include "frontends/sdl3/Sdl3GuiBridge.h"
@@ -231,6 +232,8 @@ auto host_refresh_status_leds() -> void { frame_refresh_status(draw_leds); }
 
 auto host_release_mouse_capture() -> void { mouse_input_release(); }
 
+auto host_reinit_joystick() -> void { joy_frontend_initialize(); }
+
 auto host_get_ticks_ms() -> uint64_t { return SDL_GetTicks(); }
 
 auto drain_pending_dialogs() -> void {
@@ -292,7 +295,7 @@ auto sdl3_gui_init(SDL_Window* win, SDL_Renderer* ren) -> bool {
       host_boot_or_reset,       host_request_restart,
       host_quick_save_slot,     host_quick_load_slot,
       host_refresh_status_leds, host_release_mouse_capture,
-      host_get_ticks_ms,
+      host_reinit_joystick,     host_get_ticks_ms,
   };
   const float dpi_scale = std::max(1.0F, SDL_GetWindowDisplayScale(win));
   imgui_app_init(callbacks, dpi_scale);
