@@ -39,6 +39,7 @@ struct ImGuiAppState {
   bool initialized{false};
   bool visible{true};
   bool keep_aspect{true};
+  bool restore_disk_turbo{false};
   float top_bar_height{0.0F};
   float bottom_bar_height{0.0F};
   ImGuiHostCallbacks host{};
@@ -416,6 +417,9 @@ auto draw_menu_bar() -> void {
     if (ImGui::MenuItem("Soft Reset", "Ctrl+F10")) {
       peripheral_manager_reset();
       linapple_reset_soft();
+      if (peripheral_is_any_active() && linapple_set_disk_turbo(false)) {
+        app_state.restore_disk_turbo = true;
+      }
       if (app_state.host.refresh_status_leds != nullptr) {
         app_state.host.refresh_status_leds();
       }
@@ -1052,6 +1056,10 @@ auto imgui_app_mount_disk(int drive, const char* path, bool write_protected)
 
   if (peripheral_command(disk_default_slot, disk_cmd_insert, &cmd,
                          sizeof(cmd)) == peripheral_ok) {
+    if (app_state.restore_disk_turbo) {
+      linapple_set_disk_turbo(true);
+      app_state.restore_disk_turbo = false;
+    }
     app_controller_save_disk_config(drive);
     if (app_state.host.refresh_status_leds != nullptr) {
       app_state.host.refresh_status_leds();
@@ -1131,6 +1139,10 @@ auto imgui_app_eject_harddisk(int drive) -> void {
 }
 
 auto imgui_app_boot_machine() -> void {
+  if (app_state.restore_disk_turbo) {
+    linapple_set_disk_turbo(true);
+    app_state.restore_disk_turbo = false;
+  }
   if (app_state.host.boot_or_reset != nullptr) {
     app_state.host.boot_or_reset();
   }
@@ -1158,7 +1170,8 @@ auto imgui_app_boot_rom_basic() -> void {
   // issue a faithful hardware soft reset so the user can enter BASIC without
   // patching guest RAM behind the 6502's back.
   if (linapple_get_apple2_type() != A2TYPE_APPLE2) {
-    const bool prev_disk_turbo = linapple_set_disk_turbo(false);
+    const bool prev_disk_turbo =
+        linapple_set_disk_turbo(false) || app_state.restore_disk_turbo;
     constexpr int max_init_frames = 30;
     const uint32_t frame_cycles = linapple_get_frame_cycles();
     for (int i = 0; i < max_init_frames; ++i) {
@@ -1167,9 +1180,18 @@ auto imgui_app_boot_rom_basic() -> void {
         break;
       }
     }
-    linapple_set_disk_turbo(prev_disk_turbo);
     peripheral_manager_reset();
     linapple_reset_soft();
+    // If peripheral_is_any_active() remains set after reset (until core
+    // activity-clear on reset is merged), keep disk turbo disabled so BASIC
+    // runs at 1.023 MHz instead of 100x full-speed batches, and restore it as
+    // soon as a disk is mounted or booted.
+    if (!peripheral_is_any_active()) {
+      linapple_set_disk_turbo(prev_disk_turbo);
+      app_state.restore_disk_turbo = false;
+    } else {
+      app_state.restore_disk_turbo = prev_disk_turbo;
+    }
     linapple_run_frame(frame_cycles);
   }
 
