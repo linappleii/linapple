@@ -13,22 +13,22 @@ Choose your Linux distribution:
 
 ```bash
 # Debian 13+ / Ubuntu 24.10+ / Linux Mint / Pop!_OS / Raspberry Pi OS
-sudo apt-get update && sudo apt-get install -y git g++ cmake libzip-dev libcurl4-openssl-dev zlib1g-dev imagemagick libsdl3-dev libsdl3-image-dev
+sudo apt-get update && sudo apt-get install -y git g++ cmake libzip-dev libcurl4-openssl-dev zlib1g-dev imagemagick libsdl3-dev
 
 # Debian 12 / Ubuntu 24.04 / Linux Mint / Pop!_OS
 sudo apt-get update && sudo apt-get install -y git g++ cmake libzip-dev libcurl4-openssl-dev zlib1g-dev imagemagick libsdl2-dev libsdl2-image-dev
 
 # Arch Linux / Manjaro / EndeavourOS / CachyOS
-sudo pacman -Syu --needed base-devel git cmake libzip libcurl-gnutls zlib imagemagick sdl3 sdl3_image
+sudo pacman -Syu --needed base-devel git cmake libzip libcurl-gnutls zlib imagemagick sdl3
 
 # Fedora / RHEL / AlmaLinux / Rocky Linux
-sudo dnf install -y git gcc-c++ cmake libzip-devel libcurl-devel zlib-devel ImageMagick SDL3-devel SDL3_image-devel
+sudo dnf install -y git gcc-c++ cmake libzip-devel libcurl-devel zlib-devel ImageMagick SDL3-devel
 
 # openSUSE (Tumbleweed / Leap)
-sudo zypper install -y git gcc-c++ cmake libzip-devel libcurl-devel zlib-devel ImageMagick SDL3-devel SDL3_image-devel
+sudo zypper install -y git gcc-c++ cmake libzip-devel libcurl-devel zlib-devel ImageMagick SDL3-devel
 
 # Alpine Linux
-sudo apk add git g++ cmake make libzip-dev curl-dev zlib-dev imagemagick sdl3-dev sdl3_image-dev
+sudo apk add git g++ cmake make libzip-dev curl-dev zlib-dev imagemagick sdl3-dev
 ```
 
 *(For older distributions where SDL3 is not yet packaged, see the
@@ -127,7 +127,7 @@ implementations:
 
 | Target            | CMake Flag                    | Audio / Video Dependencies | Primary Use Case                                     |
 | :---------------- | :---------------------------- | :------------------------- | :--------------------------------------------------- |
-| **SDL3**          | `-DFRONTEND=sdl3` *(Default)* | SDL3, SDL3_image           | Modern Linux desktops (Wayland / X11 / KMSDRM)       |
+| **SDL3**          | `-DFRONTEND=sdl3` *(Default)* | SDL3                       | Modern Linux desktops (Wayland / X11 / KMSDRM)       |
 | **Terminal TUI**  | `-DFRONTEND=tui`              | PulseAudio / ALSA (No GUI) | Terminal/SSH play with 24-bit Truecolor & Unicode    |
 | **Headless**      | `-DFRONTEND=headless`         | None (No video/audio)      | Automated CI testing and headless batch scripting    |
 | **SDL2**          | `-DFRONTEND=sdl2`             | SDL2                       | Legacy Linux distros without native SDL3             |

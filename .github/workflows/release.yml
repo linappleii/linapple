@@ -255,7 +255,7 @@ jobs:
       - name: Install Dependencies
         run: |
           dnf install -y gcc-c++ cmake ninja-build ImageMagick libzip-devel \
-            SDL3-devel SDL3_image-devel libcurl-devel zlib-devel git rpm-build
+            SDL3-devel libcurl-devel zlib-devel git rpm-build
 
       - name: Configure CMake
         run: |
@@ -306,7 +306,7 @@ jobs:
         run: |
           pacman -Syu --noconfirm
           pacman -S --noconfirm base-devel cmake ninja imagemagick libzip \
-            sdl3 sdl3_image libcurl-gnutls zlib git zstd tar
+            sdl3 libcurl-gnutls zlib git zstd tar
 
       - name: Configure CMake
         run: |
@@ -338,7 +338,6 @@ jobs:
           arch = x86_64
           license = GPL2
           depend = sdl3
-          depend = sdl3_image
           depend = libzip
           depend = curl
           depend = zlib
