@@ -2,6 +2,7 @@
 
 #include "apple2/Video.h"
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -144,6 +145,8 @@ static uint32_t lastpageflip = 0;
 uint32_t monochrome =
     RGB(default_gray_component, default_gray_component, default_gray_component);
 static bool redrawfull = true;
+static constexpr int status_panel_margin = 5;
+static bool status_panel_was_visible = false;
 static std::unique_ptr<uint8_t[], void (*)(void*)> vidlastmem(nullptr, free);
 uint32_t video_mode = VF_TEXT;
 static uint32_t debug_video_mode = VF_TEXT;
@@ -1556,6 +1559,7 @@ auto video_destroy() -> void {
     video_destroy_surface(status_surface);
   }
   status_surface = nullptr;
+  status_panel_was_visible = false;
 
   if (source_bitmap) {
     video_destroy_surface(source_bitmap);
@@ -1704,8 +1708,7 @@ auto video_redraw_screen() -> void {
   video_refresh_screen(0, true);
 }
 
-static auto video_update_output_buffer() -> void {
-  VideoRect s = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
+static auto video_update_output_buffer(int y_start, int y_end) -> void {
   VideoSurface dst{};
   dst.pixels = reinterpret_cast<uint8_t*>(video_output);
   dst.w = SCREEN_WIDTH;
@@ -1717,15 +1720,20 @@ static auto video_update_output_buffer() -> void {
     return;
   }
 
-  // Convert internal INDEX8 bitmap to RGB32 output buffer
-  video_soft_stretch(device_bitmap, &s, &dst, &s);
+  const int clamped_start = std::max(0, y_start);
+  const int clamped_end = std::min(SCREEN_HEIGHT, y_end);
+  if (clamped_start < clamped_end) {
+    const VideoRect s = {0, clamped_start, SCREEN_WIDTH,
+                         clamped_end - clamped_start};
+    video_soft_stretch(device_bitmap, &s, &dst, &s);
+  }
 
   // If status panel is visible, overlay it
   if (status_cycle > 0 && show_leds && status_surface) {
-    VideoRect ss = {0, 0, STATUS_PANEL_W, STATUS_PANEL_H};
-    VideoRect ds = {
-        SCREEN_WIDTH - STATUS_PANEL_W - 5,
-        SCREEN_HEIGHT - STATUS_PANEL_H - 5,
+    const VideoRect ss = {0, 0, STATUS_PANEL_W, STATUS_PANEL_H};
+    const VideoRect ds = {
+        SCREEN_WIDTH - STATUS_PANEL_W - status_panel_margin,
+        SCREEN_HEIGHT - STATUS_PANEL_H - status_panel_margin,
         STATUS_PANEL_W,
         STATUS_PANEL_H,
     };
@@ -1789,6 +1797,15 @@ auto video_perform_refresh() -> void {
   }
 
   bool anydirty = redrawfull || text_flash_flag;
+  int dirty_y_min = redrawfull ? 0 : SCREEN_HEIGHT;
+  int dirty_y_max = redrawfull ? SCREEN_HEIGHT : 0;
+  constexpr int cell_row_height = 16;
+  // VT_COLOR_TVEMU hires vertical mixing writes 2 scanlines above and below
+  // each modified HGR scanline.
+  constexpr int tvemu_hires_bleed = 2;
+  const bool tvemu_hires_top =
+      (videotype == VT_COLOR_TVEMU && !swl_text() && swl_hires());
+  const int top_bleed = tvemu_hires_top ? tvemu_hires_bleed : 0;
 
   int y = 0;
   int ypixel = 0;
@@ -1796,34 +1813,49 @@ auto video_perform_refresh() -> void {
     int offset = ((y & 7) << 7) + ((y >> 3) * 40);
     int x = 0;
     int xpixel = 0;
+    bool row_dirty = false;
     while (x < 40) {
-      bool updated = update(x, y, xpixel, ypixel, offset + x);
+      const bool updated = update(x, y, xpixel, ypixel, offset + x);
       celldirty[x][y] = updated ? 1 : 0;
-      anydirty = anydirty || updated;
+      row_dirty = row_dirty || updated;
       ++x;
       xpixel += 14;
     }
+    if (row_dirty) {
+      anydirty = true;
+      dirty_y_min = std::min(dirty_y_min, ypixel - top_bleed);
+      dirty_y_max = std::max(dirty_y_max, ypixel + cell_row_height + top_bleed);
+    }
     ++y;
-    ypixel += 16;
+    ypixel += cell_row_height;
   }
 
   if (swl_mixed()) {
     update = swl_80col() ? update_80col_cell : update_40col_cell;
   }
+  const int bottom_bleed =
+      (tvemu_hires_top && !swl_mixed()) ? tvemu_hires_bleed : 0;
 
   while (y < 24) {
     int offset = ((y & 7) << 7) + ((y >> 3) * 40);
     int x = 0;
     int xpixel = 0;
+    bool row_dirty = false;
     while (x < 40) {
-      bool updated = update(x, y, xpixel, ypixel, offset + x);
+      const bool updated = update(x, y, xpixel, ypixel, offset + x);
       celldirty[x][y] = updated ? 1 : 0;
-      anydirty = anydirty || updated;
+      row_dirty = row_dirty || updated;
       ++x;
       xpixel += 14;
     }
+    if (row_dirty) {
+      anydirty = true;
+      dirty_y_min = std::min(dirty_y_min, ypixel - bottom_bleed);
+      dirty_y_max =
+          std::max(dirty_y_max, ypixel + cell_row_height + bottom_bleed);
+    }
     ++y;
-    ypixel += 16;
+    ypixel += cell_row_height;
   }
 
   if (anydirty) {
@@ -1834,8 +1866,22 @@ auto video_perform_refresh() -> void {
     status_cycle--;
   }
 
+  const bool status_now_visible =
+      (status_cycle > 0 && show_leds && status_surface != nullptr);
+  if (status_panel_was_visible && !status_now_visible) {
+    // Re-convert the rows under the status panel so erasing it restores
+    // the underlying Apple II picture.
+    const int panel_top =
+        std::max(0, SCREEN_HEIGHT - STATUS_PANEL_H - status_panel_margin);
+    const int panel_bottom =
+        std::min(SCREEN_HEIGHT, SCREEN_HEIGHT - status_panel_margin);
+    dirty_y_min = std::min(dirty_y_min, panel_top);
+    dirty_y_max = std::max(dirty_y_max, panel_bottom);
+  }
+  status_panel_was_visible = status_now_visible;
+
   // Update final output buffer
-  video_update_output_buffer();
+  video_update_output_buffer(dirty_y_min, dirty_y_max);
 
   frame_ready = true;
 
@@ -1880,6 +1926,7 @@ auto video_reset_state() -> void {
   text_flash_state = false;
   text_flash_flag = false;
   text_flash_cnt = 0;
+  status_panel_was_visible = false;
   redrawfull = true;
 }
 

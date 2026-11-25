@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
+#include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <memory>
 
 #include "apple2/Memory.h"
@@ -218,4 +220,72 @@ TEST_CASE("Video: Frame ready state transitions") {
   video_set_frame_ready(true);
   video_clear_frame_ready();
   CHECK(video_is_frame_ready() == false);
+}
+
+TEST_CASE("Video: Incremental dirty-row conversion matches full redraw") {
+  ScopedVideoFixture fixture;
+
+  const size_t output_bytes =
+      static_cast<size_t>(SCREEN_WIDTH) * SCREEN_HEIGHT * sizeof(uint32_t);
+  const uint32_t* buf = video_get_output_buffer();
+  REQUIRE(buf != nullptr);
+
+  // Initial full draw.
+  video_redraw_screen();
+  const uint32_t initial_crc = crc32_compute(buf, output_bytes);
+
+  // Quiet refresh with no memory changes keeps output identical.
+  video_refresh_screen();
+  CHECK(crc32_compute(buf, output_bytes) == initial_crc);
+
+  // Modify top row (row 0, col 0 -> $0400) and verify against golden CRC.
+  *mem_get_main_ptr(0x0400) = 0xC1;  // 'A'
+  video_refresh_screen();
+  constexpr uint32_t expected_a_crc = 0x16D61EDC;
+  CHECK(crc32_compute(buf, output_bytes) == expected_a_crc);
+
+  video_redraw_screen();
+  CHECK(crc32_compute(buf, output_bytes) == expected_a_crc);
+
+  // Dirty two non-adjacent rows spanning both the y<20 and y<24 loops in one
+  // refresh (row 1 col 0 -> $0480, row 22 col 39 -> $0777).
+  *mem_get_main_ptr(0x0480) = 0xC2;  // 'B'
+  *mem_get_main_ptr(0x0777) = 0xDA;  // 'Z'
+  video_refresh_screen();
+  const uint32_t multi_row_crc = crc32_compute(buf, output_bytes);
+  video_redraw_screen();
+  CHECK(crc32_compute(buf, output_bytes) == multi_row_crc);
+
+  // Status panel overlay followed by expiry must restore underlying pixels on
+  // a quiet refresh with no Apple II memory changes.
+  REQUIRE(status_surface != nullptr);
+  std::memset(status_surface->pixels, WHITE,
+              static_cast<size_t>(status_surface->pitch) * status_surface->h);
+  const bool prev_show_leds = show_leds;
+  show_leds = true;
+  status_cycle = 2;
+  video_refresh_screen();  // decrements to 1 -> panel visible
+  const uint32_t with_panel_crc = crc32_compute(buf, output_bytes);
+  CHECK(with_panel_crc != multi_row_crc);
+  video_refresh_screen();  // decrements to 0 -> panel erased
+  CHECK(crc32_compute(buf, output_bytes) == multi_row_crc);
+  show_leds = prev_show_leds;
+
+  // VT_COLOR_TVEMU hires vertical mixing writes 2 scanlines above and below
+  // each modified HGR scanline; incremental refresh must match full redraw.
+  videotype = VT_COLOR_TVEMU;
+  video_reinitialize();
+  video_set_mode(0, 0x50, 0, 0, 0);  // Graphics mode
+  video_set_mode(0, 0x52, 0, 0, 0);  // Full-screen (non-mixed)
+  video_set_mode(0, 0x57, 0, 0, 0);  // Hi-Res mode
+  video_redraw_screen();
+
+  // Modify top scanline (yoffset=0) of cell row 1 ($2080) and bottom scanline
+  // (yoffset=0x1C00) of cell row 1 ($3C80) so mixing spills into rows 0 & 2.
+  *mem_get_main_ptr(0x2080) = 0x7F;
+  *mem_get_main_ptr(0x3C80) = 0x7F;
+  video_refresh_screen();
+  const uint32_t tvemu_inc_crc = crc32_compute(buf, output_bytes);
+  video_redraw_screen();
+  CHECK(crc32_compute(buf, output_bytes) == tvemu_inc_crc);
 }
