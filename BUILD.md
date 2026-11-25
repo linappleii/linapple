@@ -70,18 +70,7 @@ You can run the compiled binary immediately directly from the build folder:
 LinApple fully complies with XDG Base Directory standards. You can install it
 either user-locally (without root) or system-wide:
 
-* **User-Local Install (Default / No Root):**
-
-  ```bash
-  cmake --install build
-  ```
-
-  Installs without `sudo` to:
-  * Binary: `~/.local/bin/linapple`
-  * Assets & Disk Images: `~/.local/share/linapple/`
-  * Default Config: `~/.config/linapple/linapple.conf`
-
-* **System-Wide Install (Root):**
+* **System-Wide Install (Default / Root):**
 
   ```bash
   sudo cmake --install build
@@ -89,13 +78,28 @@ either user-locally (without root) or system-wide:
 
   Installs to:
   * Binary: `/usr/local/bin/linapple`
-  * Assets: `/usr/local/share/linapple/`
-  * Config: `/usr/local/etc/linapple/linapple.conf`
+  * Assets & Disk Images: `/usr/local/share/linapple/`
+  * Default Config: `/usr/local/etc/linapple/linapple.conf`
+
+* **User-Local Install (No Root):**
+
+  ```bash
+  cmake -B build -DCMAKE_INSTALL_PREFIX="$HOME/.local"
+  cmake --build build -j$(nproc)
+  cmake --install build
+  ```
+
+  Installs without `sudo` to:
+  * Binary: `~/.local/bin/linapple`
+  * Assets & Disk Images: `~/.local/share/linapple/`
+  * Default Config: `~/.local/etc/linapple/linapple.conf` (user overrides are
+    read from `~/.config/linapple/linapple.conf`)
 
 * **Distribution Packaging Prefix:**
 
   ```bash
   cmake -B build -DCMAKE_INSTALL_PREFIX=/usr
+  cmake --build build -j$(nproc)
   sudo cmake --install build
   ```
 
