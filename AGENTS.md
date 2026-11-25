@@ -7,7 +7,7 @@ supporting multiple frontends.
 ## Project Overview
 
 - **Main Technologies:** C++11 (with a preference for procedural C-like
-  patterns), CMake, SDL3, SDL3_image, libcurl, libzip, zlib.
+  patterns), CMake, SDL3, libcurl, libzip, zlib.
 - **Architecture:** Decoupled tiered architecture:
   - **Tier 1: User (I/O)** ⇆ **Tier 2: Frontend (SDL3/Headless)** ⇆
     **Tier 3: Logic (Core Bridge)** ⇆ **Tier 4: Hardware
@@ -36,7 +36,7 @@ supporting multiple frontends.
 
 ### Prerequisites
 
-Requires `cmake`, `SDL3`, `SDL3_image`, `libcurl`, `libzip`, `zlib`, and
+Requires `cmake`, `SDL3`, `libcurl`, `libzip`, `zlib`, and
 `ImageMagick` (for asset conversion). `libzip` and `zlib` are needed only
 when the Disk II or Harddisk peripheral is enabled.
 

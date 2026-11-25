@@ -76,15 +76,15 @@ Choose your distribution family:
 ```bash
 # Debian / Ubuntu / Linux Mint / Pop!_OS / RetroPie
 sudo apt-get update && sudo apt-get install -y git g++ cmake libzip-dev \
-    libsdl3-dev libsdl3-image-dev libcurl4-openssl-dev zlib1g-dev imagemagick
+    libsdl3-dev libcurl4-openssl-dev zlib1g-dev imagemagick
 
 # Arch Linux / CachyOS / Manjaro / EndeavourOS
 sudo pacman -Syu --needed base-devel git cmake libzip libcurl-gnutls zlib \
-    imagemagick sdl3 sdl3_image
+    imagemagick sdl3
 
 # Fedora / RHEL / AlmaLinux / Rocky Linux
 sudo dnf install -y git gcc-c++ cmake libzip-devel libcurl-devel zlib-devel \
-    ImageMagick SDL3-devel SDL3_image-devel
+    ImageMagick SDL3-devel
 ```
 
 *(For openSUSE, Alpine, or older distributions without SDL3, see

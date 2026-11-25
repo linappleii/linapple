@@ -88,7 +88,7 @@ jobs:
             image: fedora:latest
             setup: |
               dnf install -y gcc-c++ cmake ninja-build ImageMagick libzip-devel \
-                SDL3-devel SDL3_image-devel libcurl-devel zlib-devel git z3-devel curl ccache nodejs \
+                SDL3-devel libcurl-devel zlib-devel git z3-devel curl ccache nodejs \
                 perl-IO-Compress
             frontend: sdl3
 
@@ -97,7 +97,7 @@ jobs:
             setup: |
               pacman -Syu --noconfirm
               pacman -S --noconfirm base-devel cmake ninja imagemagick libzip \
-                sdl3 sdl3_image libcurl-gnutls zlib git z3 curl ccache nodejs
+                sdl3 libcurl-gnutls zlib git z3 curl ccache nodejs
             frontend: sdl3
 
           - name: Debian 12 / Pi OS x86 (SDL2)
