@@ -16,7 +16,7 @@ Choose your Linux distribution:
 sudo apt-get update && sudo apt-get install -y git g++ cmake libzip-dev libcurl4-openssl-dev zlib1g-dev imagemagick libsdl3-dev
 
 # Debian 12 / Ubuntu 24.04 / Linux Mint / Pop!_OS
-sudo apt-get update && sudo apt-get install -y git g++ cmake libzip-dev libcurl4-openssl-dev zlib1g-dev imagemagick libsdl2-dev libsdl2-image-dev
+sudo apt-get update && sudo apt-get install -y git g++ cmake libzip-dev libcurl4-openssl-dev zlib1g-dev imagemagick libsdl2-dev
 
 # Arch Linux / Manjaro / EndeavourOS / CachyOS
 sudo pacman -Syu --needed base-devel git cmake libzip libcurl-gnutls zlib imagemagick sdl3
