@@ -921,6 +921,7 @@ auto initialize_peripheral(DiskPeripheral* disk_peripheral) -> void {
     drive.last_error = disk_err_none;
   }
 
+  notify_activity_changed(disk_peripheral, false);
   notify_status_changed(disk_peripheral);
 }
 

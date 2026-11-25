@@ -957,6 +957,7 @@ auto peripheral_manager_reset() -> void {
   // Before the cards' reset entries, so a reset that schedules keeps its
   // event.
   clear_all_events();
+  peripheral_activity_state.fill(false);
   peripheral_activity_seen.fill(false);
   for (size_t i = 0; i < num_slots; ++i) {
     for (auto& ap : active_peripherals.at(i)) {
