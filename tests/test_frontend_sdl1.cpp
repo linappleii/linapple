@@ -1404,3 +1404,41 @@ TEST_CASE(
 }
 
 #endif
+
+TEST_CASE("SDL1 Frontend Direct 16-bit RGB565 draw_frame_window") {
+  SDL_putenv(const_cast<char*>("SDL_VIDEODRIVER=dummy"));
+  REQUIRE(SDL_Init(SDL_INIT_VIDEO) == 0);
+  REQUIRE(asset_init());
+
+  system_state.screen_width = SCREEN_WIDTH;
+  system_state.screen_height = SCREEN_HEIGHT;
+  system_state.mode = app_mode_logo;
+  REQUIRE(frame_create_window() == 0);
+
+  // Switch the display surface to 16-bit RGB565 (as on embedded fbdev targets).
+  screen = SDL_SetVideoMode(SCREEN_WIDTH, SCREEN_HEIGHT, 16, SDL_SWSURFACE);
+  REQUIRE(screen != nullptr);
+  REQUIRE(screen->format != nullptr);
+  REQUIRE(screen->format->BitsPerPixel == 16);
+
+  uint32_t* output = video_get_output_buffer();
+  REQUIRE(output != nullptr);
+  output[0] = 0x00FF0000;
+  output[559] = 0x0000FF00;
+  output[static_cast<size_t>(383) * SCREEN_WIDTH] = 0x000000FF;
+  output[(static_cast<size_t>(383) * SCREEN_WIDTH) + 559] = 0x00FFFFFF;
+
+  frame_ready = true;
+  draw_frame_window();
+
+  const auto* pixels16 = reinterpret_cast<const uint16_t*>(screen->pixels);
+  const int pitch16 = screen->pitch / 2;
+  CHECK(pixels16[0] == 0xF800);
+  CHECK(pixels16[559] == 0x07E0);
+  CHECK(pixels16[static_cast<size_t>(383) * pitch16] == 0x001F);
+  CHECK(pixels16[(static_cast<size_t>(383) * pitch16) + 559] == 0xFFFF);
+
+  frame_destroy_window();
+  asset_quit();
+  SDL_Quit();
+}

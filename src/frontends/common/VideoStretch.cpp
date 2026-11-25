@@ -31,6 +31,38 @@ auto src_step_next(SrcStep& step) -> int {
   return cur;
 }
 
+constexpr uint32_t rgb565_red_mask = 0xF8U;
+constexpr uint32_t rgb565_green_mask = 0xFCU;
+constexpr uint32_t rgb565_byte_mask = 0xFFU;
+constexpr unsigned int rgb565_red_shift_in = 16U;
+constexpr unsigned int rgb565_green_shift_in = 8U;
+constexpr unsigned int rgb565_red_shift_out = 8U;
+constexpr unsigned int rgb565_green_shift_out = 3U;
+constexpr unsigned int rgb565_blue_shift_out = 3U;
+
+constexpr auto pack_rgb565(uint32_t rgb) noexcept -> uint16_t {
+  return static_cast<uint16_t>(
+      (((rgb >> rgb565_red_shift_in) & rgb565_red_mask)
+       << rgb565_red_shift_out) |
+      (((rgb >> rgb565_green_shift_in) & rgb565_green_mask)
+       << rgb565_green_shift_out) |
+      ((rgb & rgb565_byte_mask) >> rgb565_blue_shift_out));
+}
+
+auto unpack_rgb565(uint16_t pixel) noexcept -> uint32_t {
+  constexpr uint32_t r5_mask = 0x1FU;
+  constexpr uint32_t g6_mask = 0x3FU;
+  constexpr unsigned int r5_shift = 11U;
+  constexpr unsigned int g6_shift = 5U;
+  const uint32_t r5 = (static_cast<uint32_t>(pixel) >> r5_shift) & r5_mask;
+  const uint32_t g6 = (static_cast<uint32_t>(pixel) >> g6_shift) & g6_mask;
+  const uint32_t b5 = static_cast<uint32_t>(pixel) & r5_mask;
+  const uint32_t r8 = (r5 << 3U) | (r5 >> 2U);
+  const uint32_t g8 = (g6 << 2U) | (g6 >> 4U);
+  const uint32_t b8 = (b5 << 3U) | (b5 >> 2U);
+  return (r8 << rgb565_red_shift_in) | (g8 << rgb565_green_shift_in) | b8;
+}
+
 }  // namespace
 
 template <typename T>
@@ -131,6 +163,7 @@ static auto copy_row_or4(const uint32_t* src, int src_w, uint32_t* dst,
 }
 
 static uint32_t palette_lut[256] = {};
+static uint16_t palette_lut16[256] = {};
 static const VideoColor* last_palette = nullptr;
 
 static auto update_palette_lut(const VideoColor* palette) -> void {
@@ -142,10 +175,236 @@ static auto update_palette_lut(const VideoColor* palette) -> void {
   }
 
   for (int i = 0; i < 256; ++i) {
-    palette_lut[i] =
-        (palette[i].r << 16) | (palette[i].g << 8) | palette[i].b;
+    const uint32_t rgb =
+        (static_cast<uint32_t>(palette[i].r) << 16) |
+        (static_cast<uint32_t>(palette[i].g) << 8) |
+        static_cast<uint32_t>(palette[i].b);
+    palette_lut[i] = rgb;
+    palette_lut16[i] = pack_rgb565(rgb);
   }
   last_palette = palette;
+}
+
+static auto copy_row4to2(const uint32_t* src, int src_w, uint16_t* dst,
+                         int dst_x, int dst_w, int max_w) -> void {
+  if (dst_w <= 0 || src_w <= 0 || !src || !dst) {
+    return;
+  }
+  if (dst_x >= max_w || dst_x + dst_w <= 0) {
+    return;
+  }
+  if (src_w == dst_w) {
+    for (int i = 0; i < dst_w; ++i) {
+      const int cur_x = dst_x + i;
+      if (cur_x >= 0 && cur_x < max_w) {
+        dst[cur_x] = pack_rgb565(src[i]);
+      }
+    }
+    return;
+  }
+  if (dst_w == 2 * src_w && dst_x >= 0 && dst_x + dst_w <= max_w) {
+    uint16_t* out = dst + dst_x;
+    for (int i = 0; i < src_w; ++i) {
+      const uint16_t c = pack_rgb565(src[i]);
+      *out++ = c;
+      *out++ = c;
+    }
+    return;
+  }
+  SrcStep step{src_w, dst_w, 0, 0};
+  for (int i = 0; i < dst_w; ++i) {
+    int src_x = src_step_next(step);
+    if (src_x >= src_w) {
+      src_x = src_w - 1;
+    }
+    const int cur_x = dst_x + i;
+    if (cur_x >= 0 && cur_x < max_w) {
+      dst[cur_x] = pack_rgb565(src[src_x]);
+    }
+  }
+}
+
+static auto copy_row1to2(const uint8_t* src, int src_w, uint16_t* dst,
+                         int dst_x, int dst_w, int max_w,
+                         const VideoColor* palette) -> void {
+  if (dst_w <= 0 || src_w <= 0 || !src || !dst) {
+    return;
+  }
+  if (dst_x >= max_w || dst_x + dst_w <= 0) {
+    return;
+  }
+  update_palette_lut(palette);
+  if (src_w == dst_w) {
+    for (int i = 0; i < dst_w; ++i) {
+      const int cur_x = dst_x + i;
+      if (cur_x >= 0 && cur_x < max_w) {
+        dst[cur_x] = palette_lut16[src[i]];
+      }
+    }
+    return;
+  }
+  if (dst_w == 2 * src_w && dst_x >= 0 && dst_x + dst_w <= max_w) {
+    uint16_t* out = dst + dst_x;
+    for (int i = 0; i < src_w; ++i) {
+      const uint16_t c = palette_lut16[src[i]];
+      *out++ = c;
+      *out++ = c;
+    }
+    return;
+  }
+  SrcStep step{src_w, dst_w, 0, 0};
+  for (int i = 0; i < dst_w; ++i) {
+    int src_x = src_step_next(step);
+    if (src_x >= src_w) {
+      src_x = src_w - 1;
+    }
+    const int cur_x = dst_x + i;
+    if (cur_x >= 0 && cur_x < max_w) {
+      dst[cur_x] = palette_lut16[src[src_x]];
+    }
+  }
+}
+
+static auto copy_row3to2(const uint8_t* src, int src_w, uint16_t* dst,
+                         int dst_x, int dst_w, int max_w) -> void {
+  if (dst_w <= 0 || src_w <= 0 || !src || !dst) {
+    return;
+  }
+  if (dst_x >= max_w || dst_x + dst_w <= 0) {
+    return;
+  }
+  SrcStep step{src_w, dst_w, 0, 0};
+  for (int i = 0; i < dst_w; ++i) {
+    int src_x = src_step_next(step);
+    if (src_x >= src_w) {
+      src_x = src_w - 1;
+    }
+    const int cur_x = dst_x + i;
+    if (cur_x >= 0 && cur_x < max_w) {
+      const auto src_idx = static_cast<size_t>(src_x) * 3U;
+      const uint32_t rgb = (static_cast<uint32_t>(src[src_idx]) << 16) |
+                           (static_cast<uint32_t>(src[src_idx + 1]) << 8) |
+                           static_cast<uint32_t>(src[src_idx + 2]);
+      dst[cur_x] = pack_rgb565(rgb);
+    }
+  }
+}
+
+static auto copy_row2to4(const uint16_t* src, int src_w, uint32_t* dst,
+                         int dst_x, int dst_w, int max_w) -> void {
+  if (dst_w <= 0 || src_w <= 0 || !src || !dst) {
+    return;
+  }
+  if (dst_x >= max_w || dst_x + dst_w <= 0) {
+    return;
+  }
+  if (src_w == dst_w) {
+    for (int i = 0; i < dst_w; ++i) {
+      const int cur_x = dst_x + i;
+      if (cur_x >= 0 && cur_x < max_w) {
+        dst[cur_x] = unpack_rgb565(src[i]);
+      }
+    }
+    return;
+  }
+  SrcStep step{src_w, dst_w, 0, 0};
+  for (int i = 0; i < dst_w; ++i) {
+    int src_x = src_step_next(step);
+    if (src_x >= src_w) {
+      src_x = src_w - 1;
+    }
+    const int cur_x = dst_x + i;
+    if (cur_x >= 0 && cur_x < max_w) {
+      dst[cur_x] = unpack_rgb565(src[src_x]);
+    }
+  }
+}
+
+static auto copy_row_or1to2(const uint8_t* src, int src_w, uint16_t* dst,
+                            int dst_x, int dst_w, int max_w,
+                            const VideoColor* palette) -> void {
+  if (dst_w <= 0 || src_w <= 0 || !src || !dst) {
+    return;
+  }
+  if (dst_x >= max_w || dst_x + dst_w <= 0) {
+    return;
+  }
+  update_palette_lut(palette);
+  if (src_w == dst_w) {
+    for (int i = 0; i < dst_w; ++i) {
+      const int cur_x = dst_x + i;
+      if (cur_x >= 0 && cur_x < max_w) {
+        dst[cur_x] |= palette_lut16[src[i]];
+      }
+    }
+    return;
+  }
+  SrcStep step{src_w, dst_w, 0, 0};
+  for (int i = 0; i < dst_w; ++i) {
+    int src_x = src_step_next(step);
+    if (src_x >= src_w) {
+      src_x = src_w - 1;
+    }
+    const int cur_x = dst_x + i;
+    if (cur_x >= 0 && cur_x < max_w) {
+      dst[cur_x] |= palette_lut16[src[src_x]];
+    }
+  }
+}
+
+static auto copy_row_or3to2(const uint8_t* src, int src_w, uint16_t* dst,
+                            int dst_x, int dst_w, int max_w) -> void {
+  if (dst_w <= 0 || src_w <= 0 || !src || !dst) {
+    return;
+  }
+  if (dst_x >= max_w || dst_x + dst_w <= 0) {
+    return;
+  }
+  SrcStep step{src_w, dst_w, 0, 0};
+  for (int i = 0; i < dst_w; ++i) {
+    int src_x = src_step_next(step);
+    if (src_x >= src_w) {
+      src_x = src_w - 1;
+    }
+    const int cur_x = dst_x + i;
+    if (cur_x >= 0 && cur_x < max_w) {
+      const auto src_idx = static_cast<size_t>(src_x) * 3U;
+      const uint32_t rgb = (static_cast<uint32_t>(src[src_idx]) << 16) |
+                           (static_cast<uint32_t>(src[src_idx + 1]) << 8) |
+                           static_cast<uint32_t>(src[src_idx + 2]);
+      dst[cur_x] |= pack_rgb565(rgb);
+    }
+  }
+}
+
+static auto copy_row_or4to2(const uint32_t* src, int src_w, uint16_t* dst,
+                            int dst_x, int dst_w, int max_w) -> void {
+  if (dst_w <= 0 || src_w <= 0 || !src || !dst) {
+    return;
+  }
+  if (dst_x >= max_w || dst_x + dst_w <= 0) {
+    return;
+  }
+  if (src_w == dst_w) {
+    for (int i = 0; i < dst_w; ++i) {
+      const int cur_x = dst_x + i;
+      if (cur_x >= 0 && cur_x < max_w) {
+        dst[cur_x] |= pack_rgb565(src[i]);
+      }
+    }
+    return;
+  }
+  SrcStep step{src_w, dst_w, 0, 0};
+  for (int i = 0; i < dst_w; ++i) {
+    int src_x = src_step_next(step);
+    if (src_x >= src_w) {
+      src_x = src_w - 1;
+    }
+    const int cur_x = dst_x + i;
+    if (cur_x >= 0 && cur_x < max_w) {
+      dst[cur_x] |= pack_rgb565(src[src_x]);
+    }
+  }
 }
 
 static auto copy_row1to4(const uint8_t* src, int src_w, uint32_t* dst,
@@ -442,11 +701,29 @@ auto video_soft_stretch(VideoSurfaceView src, const VideoRect* srcrect,
           case 1:
             copy_row1(srcp, src_w, dst_row_base, dst_x, dst_w, max_w);
             break;
-          case 2:
-            copy_row2(reinterpret_cast<uint16_t*>(srcp), src_w,
-                      reinterpret_cast<uint16_t*>(dst_row_base), dst_x, dst_w,
-                      max_w);
+          case 2: {
+            auto* dst16 = reinterpret_cast<uint16_t*>(dst_row_base);
+            switch (src.bpp) {
+              case 1:
+                copy_row1to2(srcp, src_w, dst16, dst_x, dst_w, max_w,
+                             src.palette);
+                break;
+              case 2:
+                copy_row2(reinterpret_cast<uint16_t*>(srcp), src_w, dst16,
+                          dst_x, dst_w, max_w);
+                break;
+              case 3:
+                copy_row3to2(srcp, src_w, dst16, dst_x, dst_w, max_w);
+                break;
+              case 4:
+                copy_row4to2(reinterpret_cast<uint32_t*>(srcp), src_w, dst16,
+                             dst_x, dst_w, max_w);
+                break;
+              default:
+                break;
+            }
             break;
+          }
           case 3:
             copy_row3(srcp, src_w, dst_row_base, dst_x, dst_w, max_w);
             break;
@@ -456,6 +733,10 @@ auto video_soft_stretch(VideoSurfaceView src, const VideoRect* srcrect,
               case 1:
                 copy_row1to4(srcp, src_w, dst32, dst_x, dst_w, max_w,
                              src.palette);
+                break;
+              case 2:
+                copy_row2to4(reinterpret_cast<uint16_t*>(srcp), src_w, dst32,
+                             dst_x, dst_w, max_w);
                 break;
               case 3:
                 copy_row3to4(srcp, src_w, dst32, dst_x, dst_w, max_w);
@@ -505,11 +786,29 @@ auto video_soft_stretch_or(VideoSurfaceView src, const VideoRect* srcrect,
           case 1:
             copy_row_or1(srcp, src_w, dst_row_base, dst_x, dst_w, max_w);
             break;
-          case 2:
-            copy_row_or2(reinterpret_cast<uint16_t*>(srcp), src_w,
-                         reinterpret_cast<uint16_t*>(dst_row_base), dst_x,
-                         dst_w, max_w);
+          case 2: {
+            auto* dst16 = reinterpret_cast<uint16_t*>(dst_row_base);
+            switch (src.bpp) {
+              case 1:
+                copy_row_or1to2(srcp, src_w, dst16, dst_x, dst_w, max_w,
+                                src.palette);
+                break;
+              case 2:
+                copy_row_or2(reinterpret_cast<uint16_t*>(srcp), src_w, dst16,
+                             dst_x, dst_w, max_w);
+                break;
+              case 3:
+                copy_row_or3to2(srcp, src_w, dst16, dst_x, dst_w, max_w);
+                break;
+              case 4:
+                copy_row_or4to2(reinterpret_cast<uint32_t*>(srcp), src_w, dst16,
+                                dst_x, dst_w, max_w);
+                break;
+              default:
+                break;
+            }
             break;
+          }
           case 3:
             copy_row3(srcp, src_w, dst_row_base, dst_x, dst_w, max_w);
             break;

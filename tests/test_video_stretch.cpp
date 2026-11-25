@@ -289,3 +289,212 @@ TEST_CASE("Video: Incremental dirty-row conversion matches full redraw") {
   video_redraw_screen();
   CHECK(crc32_compute(buf, output_bytes) == tvemu_inc_crc);
 }
+
+TEST_CASE("VideoStretch - Direct 16-bit RGB565 Output") {
+  auto get_pixel16 = [](const VideoSurface* s, int x, int y) -> uint16_t {
+    const auto* row = reinterpret_cast<const uint16_t*>(
+        s->pixels + (static_cast<std::ptrdiff_t>(y) * s->pitch));
+    return row[x];
+  };
+  auto fill16 = [](VideoSurface* s, uint16_t val) -> void {
+    for (int y = 0; y < s->h; ++y) {
+      auto* row = reinterpret_cast<uint16_t*>(
+          s->pixels + (static_cast<std::ptrdiff_t>(y) * s->pitch));
+      for (int x = 0; x < s->w; ++x) {
+        row[x] = val;
+      }
+    }
+  };
+
+  SUBCASE("4->2 1:1, alpha ignore, and 2x RGB565 packing") {
+    UniqueSurface src = make_surface(4, 2, 4);
+    UniqueSurface dst1x = make_surface(4, 2, 2);
+    UniqueSurface dst2x = make_surface(8, 4, 2);
+    REQUIRE(src != nullptr);
+    REQUIRE(dst1x != nullptr);
+    REQUIRE(dst2x != nullptr);
+
+    set_pixel32(src.get(), 0, 0, 0xAAFF0000);  // Red (non-zero alpha) -> 0xF800
+    set_pixel32(src.get(), 1, 0, 0x0000FF00);  // Green -> 0x07E0
+    set_pixel32(src.get(), 2, 0, 0x000000FF);  // Blue  -> 0x001F
+    set_pixel32(src.get(), 3, 0, 0x00FFFFFF);  // White -> 0xFFFF
+    set_pixel32(src.get(), 0, 1, 0x00808080);  // Mid   -> 0x8410
+
+    CHECK(video_soft_stretch(src.get(), nullptr, dst1x.get(), nullptr) == 0);
+    CHECK(get_pixel16(dst1x.get(), 0, 0) == 0xF800);
+    CHECK(get_pixel16(dst1x.get(), 1, 0) == 0x07E0);
+    CHECK(get_pixel16(dst1x.get(), 2, 0) == 0x001F);
+    CHECK(get_pixel16(dst1x.get(), 3, 0) == 0xFFFF);
+    CHECK(get_pixel16(dst1x.get(), 0, 1) == 0x8410);
+
+    CHECK(video_soft_stretch(src.get(), nullptr, dst2x.get(), nullptr) == 0);
+    CHECK(get_pixel16(dst2x.get(), 0, 0) == 0xF800);
+    CHECK(get_pixel16(dst2x.get(), 1, 0) == 0xF800);
+    CHECK(get_pixel16(dst2x.get(), 0, 1) == 0xF800);
+    CHECK(get_pixel16(dst2x.get(), 2, 0) == 0x07E0);
+    CHECK(get_pixel16(dst2x.get(), 6, 1) == 0xFFFF);
+    CHECK(get_pixel16(dst2x.get(), 1, 3) == 0x8410);
+  }
+
+  SUBCASE("4->2 fractional 1.75x, left/right clipping, and off-screen rect") {
+    UniqueSurface src = make_surface(4, 2, 4);
+    UniqueSurface dst = make_surface(7, 4, 2);
+    REQUIRE(src != nullptr);
+    REQUIRE(dst != nullptr);
+
+    set_pixel32(src.get(), 0, 0, 0x00FF0000);
+    set_pixel32(src.get(), 1, 0, 0x0000FF00);
+    set_pixel32(src.get(), 2, 0, 0x000000FF);
+    set_pixel32(src.get(), 3, 0, 0x00FFFFFF);
+    set_pixel32(src.get(), 3, 1, 0x000000FF);
+
+    // 4 -> 7 mapping: floor(i * 4 / 7) = [0, 0, 1, 1, 2, 2, 3]
+    fill16(dst.get(), 0xAAAA);
+    CHECK(video_soft_stretch(src.get(), nullptr, dst.get(), nullptr) == 0);
+    CHECK(get_pixel16(dst.get(), 0, 0) == 0xF800);
+    CHECK(get_pixel16(dst.get(), 1, 0) == 0xF800);
+    CHECK(get_pixel16(dst.get(), 2, 0) == 0x07E0);
+    CHECK(get_pixel16(dst.get(), 4, 0) == 0x001F);
+    CHECK(get_pixel16(dst.get(), 6, 0) == 0xFFFF);
+    CHECK(get_pixel16(dst.get(), 6, 3) == 0x001F);
+
+    // Left-clipped 2x fallback (dst_x = -1 shifts output left by 1)
+    fill16(dst.get(), 0xAAAA);
+    VideoRect left_clipped = {-1, 0, 8, 4};
+    CHECK(video_soft_stretch(src.get(), nullptr, dst.get(), &left_clipped) ==
+          0);
+    CHECK(get_pixel16(dst.get(), 0, 0) == 0xF800);  // i=1 -> src 0
+    CHECK(get_pixel16(dst.get(), 1, 0) == 0x07E0);  // i=2 -> src 1
+    CHECK(get_pixel16(dst.get(), 3, 0) == 0x001F);  // i=4 -> src 2
+    CHECK(get_pixel16(dst.get(), 5, 0) == 0xFFFF);  // i=6 -> src 3
+    CHECK(get_pixel16(dst.get(), 6, 3) == 0x001F);  // i=7 -> src 3
+
+    // Right-clipped 2x fallback (dst_x = 1, dst_w = 8 > max_w = 7)
+    fill16(dst.get(), 0xAAAA);
+    VideoRect right_clipped = {1, 0, 8, 4};
+    CHECK(video_soft_stretch(src.get(), nullptr, dst.get(), &right_clipped) ==
+          0);
+    CHECK(get_pixel16(dst.get(), 0, 0) == 0xAAAA);  // untouched left column
+    CHECK(get_pixel16(dst.get(), 1, 0) == 0xF800);  // i=0 -> src 0
+    CHECK(get_pixel16(dst.get(), 3, 0) == 0x07E0);  // i=2 -> src 1
+    CHECK(get_pixel16(dst.get(), 5, 0) == 0x001F);  // i=4 -> src 2
+
+    // Completely off-screen destination leaves surface untouched
+    fill16(dst.get(), 0x5555);
+    VideoRect offscreen = {10, 0, 8, 4};
+    CHECK(video_soft_stretch(src.get(), nullptr, dst.get(), &offscreen) == 0);
+    CHECK(get_pixel16(dst.get(), 0, 0) == 0x5555);
+  }
+
+  SUBCASE("1->2 indexed palette (1:1, 2x, fractional, and palette swap)") {
+    UniqueSurface src_a = make_surface(2, 1, 1);
+    UniqueSurface src_b = make_surface(2, 1, 1);
+    UniqueSurface dst1x = make_surface(2, 1, 2);
+    UniqueSurface dst2x = make_surface(4, 2, 2);
+    UniqueSurface dst3x = make_surface(3, 1, 2);
+    REQUIRE(src_a != nullptr);
+    REQUIRE(src_b != nullptr);
+    REQUIRE(dst1x != nullptr);
+    REQUIRE(dst2x != nullptr);
+    REQUIRE(dst3x != nullptr);
+
+    src_a->palette[1] = VideoColor{0xFF, 0x00, 0x00, 0xFF};
+    src_a->palette[2] = VideoColor{0x00, 0xFF, 0x00, 0xFF};
+    src_a->pixels[0] = 1;
+    src_a->pixels[1] = 2;
+
+    CHECK(video_soft_stretch(src_a.get(), nullptr, dst1x.get(), nullptr) == 0);
+    CHECK(get_pixel16(dst1x.get(), 0, 0) == 0xF800);
+    CHECK(get_pixel16(dst1x.get(), 1, 0) == 0x07E0);
+
+    CHECK(video_soft_stretch(src_a.get(), nullptr, dst2x.get(), nullptr) == 0);
+    CHECK(get_pixel16(dst2x.get(), 0, 0) == 0xF800);
+    CHECK(get_pixel16(dst2x.get(), 1, 1) == 0xF800);
+    CHECK(get_pixel16(dst2x.get(), 2, 0) == 0x07E0);
+    CHECK(get_pixel16(dst2x.get(), 3, 1) == 0x07E0);
+
+    // 2 -> 3 fractional: floor(i * 2 / 3) = [0, 0, 1]
+    CHECK(video_soft_stretch(src_a.get(), nullptr, dst3x.get(), nullptr) == 0);
+    CHECK(get_pixel16(dst3x.get(), 0, 0) == 0xF800);
+    CHECK(get_pixel16(dst3x.get(), 1, 0) == 0xF800);
+    CHECK(get_pixel16(dst3x.get(), 2, 0) == 0x07E0);
+
+    // Switching to a different palette pointer must refresh palette_lut16
+    src_b->palette[1] = VideoColor{0x00, 0x00, 0xFF, 0xFF};
+    src_b->palette[2] = VideoColor{0xFF, 0xFF, 0xFF, 0xFF};
+    src_b->pixels[0] = 1;
+    src_b->pixels[1] = 2;
+    CHECK(video_soft_stretch(src_b.get(), nullptr, dst1x.get(), nullptr) == 0);
+    CHECK(get_pixel16(dst1x.get(), 0, 0) == 0x001F);
+    CHECK(get_pixel16(dst1x.get(), 1, 0) == 0xFFFF);
+  }
+
+  SUBCASE("3->2, 2->2, and 2->4 RGB565 conversions") {
+    UniqueSurface src3 = make_surface(2, 1, 3);
+    UniqueSurface dst2 = make_surface(2, 1, 2);
+    UniqueSurface dst2_copy = make_surface(2, 1, 2);
+    UniqueSurface dst4 = make_surface(2, 1, 4);
+    REQUIRE(src3 != nullptr);
+    REQUIRE(dst2 != nullptr);
+    REQUIRE(dst2_copy != nullptr);
+    REQUIRE(dst4 != nullptr);
+
+    src3->pixels[0] = 0xFF;
+    src3->pixels[1] = 0x00;
+    src3->pixels[2] = 0x00;
+    src3->pixels[3] = 0x00;
+    src3->pixels[4] = 0xFF;
+    src3->pixels[5] = 0x00;
+
+    CHECK(video_soft_stretch(src3.get(), nullptr, dst2.get(), nullptr) == 0);
+    CHECK(get_pixel16(dst2.get(), 0, 0) == 0xF800);
+    CHECK(get_pixel16(dst2.get(), 1, 0) == 0x07E0);
+
+    CHECK(video_soft_stretch(dst2.get(), nullptr, dst2_copy.get(), nullptr) ==
+          0);
+    CHECK(get_pixel16(dst2_copy.get(), 0, 0) == 0xF800);
+    CHECK(get_pixel16(dst2_copy.get(), 1, 0) == 0x07E0);
+
+    CHECK(video_soft_stretch(dst2.get(), nullptr, dst4.get(), nullptr) == 0);
+    CHECK(get_pixel32(dst4.get(), 0, 0) == 0x00FF0000);
+    CHECK(get_pixel32(dst4.get(), 1, 0) == 0x0000FF00);
+  }
+
+  SUBCASE("video_soft_stretch_or into 16-bit RGB565 (1->2, 3->2, 4->2)") {
+    UniqueSurface src1 = make_surface(2, 1, 1);
+    UniqueSurface src3 = make_surface(2, 1, 3);
+    UniqueSurface src4 = make_surface(2, 1, 4);
+    UniqueSurface dst = make_surface(2, 1, 2);
+    REQUIRE(src1 != nullptr);
+    REQUIRE(src3 != nullptr);
+    REQUIRE(src4 != nullptr);
+    REQUIRE(dst != nullptr);
+
+    src1->palette[1] = VideoColor{0xFF, 0x00, 0x00, 0xFF};
+    src1->pixels[0] = 1;
+    src1->pixels[1] = 0;
+
+    src3->pixels[0] = 0x00;
+    src3->pixels[1] = 0xFF;
+    src3->pixels[2] = 0x00;
+    src3->pixels[3] = 0x00;
+    src3->pixels[4] = 0x00;
+    src3->pixels[5] = 0xFF;
+
+    set_pixel32(src4.get(), 0, 0, 0x000000FF);
+    set_pixel32(src4.get(), 1, 0, 0x00FF0000);
+
+    fill16(dst.get(), 0x0000);
+    CHECK(video_soft_stretch_or(src1.get(), nullptr, dst.get(), nullptr) == 0);
+    CHECK(get_pixel16(dst.get(), 0, 0) == 0xF800);
+    CHECK(get_pixel16(dst.get(), 1, 0) == 0x0000);
+
+    CHECK(video_soft_stretch_or(src3.get(), nullptr, dst.get(), nullptr) == 0);
+    CHECK(get_pixel16(dst.get(), 0, 0) == (0xF800 | 0x07E0));
+    CHECK(get_pixel16(dst.get(), 1, 0) == 0x001F);
+
+    CHECK(video_soft_stretch_or(src4.get(), nullptr, dst.get(), nullptr) == 0);
+    CHECK(get_pixel16(dst.get(), 0, 0) == 0xFFFF);
+    CHECK(get_pixel16(dst.get(), 1, 0) == (0x001F | 0xF800));
+  }
+}

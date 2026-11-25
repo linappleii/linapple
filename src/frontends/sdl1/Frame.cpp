@@ -240,6 +240,35 @@ auto load_save_state() -> void {
   }
 }
 
+auto is_direct_rgb565(const SDL_Surface* surf) noexcept -> bool {
+  constexpr Uint32 rgb565_r_mask = 0xF800U;
+  constexpr Uint32 rgb565_g_mask = 0x07E0U;
+  constexpr Uint32 rgb565_b_mask = 0x001FU;
+  constexpr Uint8 rgb565_bits = 16U;
+  return surf != nullptr && surf->format != nullptr &&
+         surf->format->BitsPerPixel == rgb565_bits &&
+         surf->format->Rmask == rgb565_r_mask &&
+         surf->format->Gmask == rgb565_g_mask &&
+         surf->format->Bmask == rgb565_b_mask;
+}
+
+auto set_video_mode_with_fallback(int width, int height, Uint32 flags)
+    -> SDL_Surface* {
+  constexpr int bpp_16 = 16;
+  constexpr int bpp_32 = 32;
+  const SDL_VideoInfo* info = SDL_GetVideoInfo();
+  const int preferred = (info != nullptr && info->vfmt != nullptr &&
+                         info->vfmt->BitsPerPixel == bpp_16)
+                            ? bpp_16
+                            : bpp_32;
+  const int fallback = (preferred == bpp_16) ? bpp_32 : bpp_16;
+  SDL_Surface* surf = SDL_SetVideoMode(width, height, preferred, flags);
+  if (surf == nullptr) {
+    surf = SDL_SetVideoMode(width, height, fallback, flags);
+  }
+  return surf;
+}
+
 }  // namespace
 
 auto draw_apple_content() -> void {
@@ -280,10 +309,9 @@ auto draw_frame_window() -> void {
 
   {
     const SDL_Rect r{0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
-    ScopedSurfaceLock lock_texture(texture.get());
-    VideoRect src_rect =
+    const VideoRect src_rect =
         window_resized ? to_video_rect(orig_rect) : to_video_rect(r);
-    VideoRect dst_rect =
+    const VideoRect dst_rect =
         window_resized ? to_video_rect(new_rect) : to_video_rect(r);
 
     if (system_state.mode != app_mode_debug) {
@@ -293,11 +321,25 @@ auto draw_frame_window() -> void {
       }
       const VideoSurfaceView vs_output(output, SCREEN_WIDTH, SCREEN_HEIGHT,
                                        SCREEN_WIDTH * 4, 4);
+      if (is_direct_rgb565(screen)) {
+        // Stretch directly into a 16-bit RGB565 framebuffer to avoid an extra
+        // 32-bit intermediate copy and software 32->16 blit per frame.
+        {
+          const ScopedSurfaceLock lock_screen(screen);
+          video_soft_stretch(vs_output, &src_rect, lock_screen.view(),
+                             &dst_rect);
+        }
+        frame_refresh();
+        video_set_frame_ready(false);
+        return;
+      }
+      const ScopedSurfaceLock lock_texture(texture.get());
       video_soft_stretch(vs_output, &src_rect, lock_texture.view(), &dst_rect);
     } else {
 #if ENABLE_DEBUGGER
       extern VideoSurface* debug_screen;
       if (debug_screen != nullptr) {
+        const ScopedSurfaceLock lock_texture(texture.get());
         video_soft_stretch(debug_screen, &src_rect, lock_texture.view(),
                            &dst_rect);
       }
@@ -501,10 +543,16 @@ auto frame_show_help_screen(int sx, int sy) -> void {
   const int hdr_height = static_cast<int>(42.0f * facy_f);
 
   {
+    const Uint32 hdr_color =
+        (screen->format != nullptr) ? SDL_MapRGB(screen->format, 255, 255, 0)
+                                    : 0xFFFF00U;
+    const Uint32 body_color =
+        (screen->format != nullptr) ? SDL_MapRGB(screen->format, 255, 255, 255)
+                                    : 0xFFFFFFU;
     ScopedSurfaceLock lock_screen(screen);
     rectangle(lock_screen.view(), static_cast<int>(4.0f * facx_f), hdr_top,
               static_cast<int>(system_state.screen_width - (8.0f * facx_f)),
-              hdr_height, 0xFFFF00);
+              hdr_height, hdr_color);
 
     font_print_centered(sx / 2, hdr_top + static_cast<int>(4.0f * facy_f),
                         help_header_strings.at(0), lock_screen.view(), scale_x,
@@ -521,7 +569,7 @@ auto frame_show_help_screen(int sx, int sy) -> void {
                                              body_top - (4.0f * facy_f));
     rectangle(lock_screen.view(), static_cast<int>(4.0f * facx_f), body_top,
               static_cast<int>(system_state.screen_width - (8.0f * facx_f)),
-              body_height, 0xFFFFFF);
+              body_height, body_color);
 
     const float line_spacing = 13.0f * facy_f;
     for (size_t i = 0; i < help_body_lines.size(); ++i) {
@@ -622,7 +670,7 @@ auto frame_on_resize(int width, int height) -> void {
     flags |= SDL_FULLSCREEN;
   }
 
-  screen = SDL_SetVideoMode(width, height, 32, flags);
+  screen = set_video_mode_with_fallback(width, height, flags);
   if (screen == nullptr) {
     fprintf(stderr, "Could not resize video mode: %s\n", SDL_GetError());
     return;
@@ -875,9 +923,9 @@ auto frame_create_window() -> int {
     flags |= SDL_FULLSCREEN;
   }
 
-  screen =
-      SDL_SetVideoMode(static_cast<int>(system_state.screen_width),
-                       static_cast<int>(system_state.screen_height), 32, flags);
+  screen = set_video_mode_with_fallback(
+      static_cast<int>(system_state.screen_width),
+      static_cast<int>(system_state.screen_height), flags);
   if (screen == nullptr) {
     fprintf(stderr, "Could not set video mode: %s\n", SDL_GetError());
     return 1;
