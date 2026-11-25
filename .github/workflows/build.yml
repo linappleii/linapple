@@ -75,6 +75,19 @@ jobs:
           done
       - name: Install
         run: sudo cmake --install build
+      - name: Verify Install
+        env:
+          LD_LIBRARY_PATH: ${{ steps.sdl.outputs.prefix }}/lib
+        run: |
+          test -f /usr/local/share/linapple/icon.bmp
+          test -f /usr/local/share/linapple/Master.dsk
+          test -f /usr/local/etc/linapple/linapple.conf
+          test ! -e /usr/local/include/doctest
+          test ! -e /usr/local/lib/cmake/doctest
+          for fe in sdl3 sdl2 sdl1 tui headless; do
+            test -x "/usr/local/bin/linapple-${fe}"
+            (cd /tmp && "/usr/local/bin/linapple-${fe}" --help) | grep -q "Frontend: ${fe}"
+          done
 
   # 2. Multi-Distro Matrix (Fedora, Arch Linux, Debian / Pi OS x86)
   distro-matrix:
@@ -129,6 +142,7 @@ jobs:
           cmake -B build -G Ninja \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_INSTALL_PREFIX=/tmp/linapple-install \
             -DFRONTEND=${{ matrix.frontend }} \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5
       - name: Build
@@ -157,8 +171,18 @@ jobs:
             echo "### Failures in $f:" >> $GITHUB_STEP_SUMMARY
             grep -E -C 3 '(FAIL|Failed|ERROR:|values:)' "$f" | head -n 60 >> $GITHUB_STEP_SUMMARY || true
           done
-      - name: Install
-        run: cmake --install build
+      - name: Install and Verify Prefix
+        run: |
+          cmake --install build
+          test -x /tmp/linapple-install/bin/linapple
+          test -f /tmp/linapple-install/share/linapple/icon.bmp
+          test -f /tmp/linapple-install/share/linapple/Master.dsk
+          test -f /tmp/linapple-install/etc/linapple/linapple.conf
+          if find /tmp/linapple-install -iname '*doctest*' | grep -q .; then
+            echo "Unexpected doctest files installed under /tmp/linapple-install"
+            exit 1
+          fi
+          (cd /tmp && /tmp/linapple-install/bin/linapple --help) | grep -q "Frontend: ${{ matrix.frontend }}"
 
   # 3. Native ARM64 (Ubuntu / Raspberry Pi OS 64-bit Compatible)
   rpi-arm64:
@@ -201,6 +225,17 @@ jobs:
         run: ctest --test-dir build -j$(nproc) --output-on-failure
       - name: Install
         run: sudo cmake --install build
+      - name: Verify Install
+        env:
+          LD_LIBRARY_PATH: ${{ steps.sdl.outputs.prefix }}/lib
+        run: |
+          test -x /usr/local/bin/linapple
+          test -f /usr/local/share/linapple/icon.bmp
+          test -f /usr/local/share/linapple/Master.dsk
+          test -f /usr/local/etc/linapple/linapple.conf
+          test ! -e /usr/local/include/doctest
+          test ! -e /usr/local/lib/cmake/doctest
+          (cd /tmp && /usr/local/bin/linapple --help) | grep -q "Frontend: sdl3"
 
   # 4. Sanitizers (ASAN/UBSAN - All Frontends)
   sanitizers-build:
