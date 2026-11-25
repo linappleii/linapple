@@ -116,7 +116,7 @@ static_assert(sizeof(HostLocalTime) == 24,
 // The UTC instant beside local fields is what tells a pass-through from a
 // card that re-applied the zone.
 constexpr HostLocalTime frozen_thursday = {
-    1773340200, -14400, 2026, 3, 12, 4, 14, 30, 0,
+    1773340200, -14400, 2026, 3, 12, 4, 14, 30, 0, 0,
 };
 
 }  // namespace

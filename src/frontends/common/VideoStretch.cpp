@@ -10,6 +10,29 @@
 
 #include "frontends/common/VideoSurface.h"
 
+namespace {
+
+// Steps through floor(i * src_w / dst_w) for i = 0, 1, 2, ... with additions
+// only, because a 64-bit division per pixel is a __divdi3 call on i386.
+struct SrcStep {
+  int src_w;
+  int dst_w;
+  int x;
+  int rem;
+};
+
+auto src_step_next(SrcStep& step) -> int {
+  const int cur = step.x;
+  step.rem += step.src_w;
+  while (step.rem >= step.dst_w) {
+    step.rem -= step.dst_w;
+    ++step.x;
+  }
+  return cur;
+}
+
+}  // namespace
+
 template <typename T>
 static auto copy_row(const T* src, int src_w, T* dst, int dst_x, int dst_w,
                      int max_w) -> void {
@@ -28,8 +51,19 @@ static auto copy_row(const T* src, int src_w, T* dst, int dst_x, int dst_w,
     }
     return;
   }
+  // Exactly 2x and fully on the surface: the common zoomed case, without the
+  // per-pixel stepping and clipping.
+  if (dst_w == 2 * src_w && dst_x >= 0 && dst_x + dst_w <= max_w) {
+    T* out = dst + dst_x;
+    for (int i = 0; i < src_w; ++i) {
+      *out++ = src[i];
+      *out++ = src[i];
+    }
+    return;
+  }
+  SrcStep step{src_w, dst_w, 0, 0};
   for (int i = 0; i < dst_w; ++i) {
-    int src_x = static_cast<int>((static_cast<int64_t>(i) * src_w) / dst_w);
+    int src_x = src_step_next(step);
     if (src_x >= src_w) {
       src_x = src_w - 1;
     }
@@ -58,8 +92,9 @@ static auto copy_row_or(const T* src, int src_w, T* dst, int dst_x, int dst_w,
     }
     return;
   }
+  SrcStep step{src_w, dst_w, 0, 0};
   for (int i = 0; i < dst_w; ++i) {
-    int src_x = static_cast<int>((static_cast<int64_t>(i) * src_w) / dst_w);
+    int src_x = src_step_next(step);
     if (src_x >= src_w) {
       src_x = src_w - 1;
     }
@@ -132,8 +167,18 @@ static auto copy_row1to4(const uint8_t* src, int src_w, uint32_t* dst,
     }
     return;
   }
+  if (dst_w == 2 * src_w && dst_x >= 0 && dst_x + dst_w <= max_w) {
+    uint32_t* out = dst + dst_x;
+    for (int i = 0; i < src_w; ++i) {
+      const uint32_t c = palette_lut[src[i]];
+      *out++ = c;
+      *out++ = c;
+    }
+    return;
+  }
+  SrcStep step{src_w, dst_w, 0, 0};
   for (int i = 0; i < dst_w; ++i) {
-    int src_x = static_cast<int>((static_cast<int64_t>(i) * src_w) / dst_w);
+    int src_x = src_step_next(step);
     if (src_x >= src_w) {
       src_x = src_w - 1;
     }
@@ -163,8 +208,9 @@ static auto copy_row_or1to4(const uint8_t* src, int src_w, uint32_t* dst,
     }
     return;
   }
+  SrcStep step{src_w, dst_w, 0, 0};
   for (int i = 0; i < dst_w; ++i) {
-    int src_x = static_cast<int>((static_cast<int64_t>(i) * src_w) / dst_w);
+    int src_x = src_step_next(step);
     if (src_x >= src_w) {
       src_x = src_w - 1;
     }
@@ -183,8 +229,9 @@ static auto copy_row3(const uint8_t* src, int src_w, uint8_t* dst, int dst_x,
   if (dst_x >= max_w || dst_x + dst_w <= 0) {
     return;
   }
+  SrcStep step{src_w, dst_w, 0, 0};
   for (int i = 0; i < dst_w; ++i) {
-    int src_x = static_cast<int>((static_cast<int64_t>(i) * src_w) / dst_w);
+    int src_x = src_step_next(step);
     if (src_x >= src_w) {
       src_x = src_w - 1;
     }
@@ -207,8 +254,9 @@ static auto copy_row3to4(const uint8_t* src, int src_w, uint32_t* dst,
   if (dst_x >= max_w || dst_x + dst_w <= 0) {
     return;
   }
+  SrcStep step{src_w, dst_w, 0, 0};
   for (int i = 0; i < dst_w; ++i) {
-    int src_x = static_cast<int>((static_cast<int64_t>(i) * src_w) / dst_w);
+    int src_x = src_step_next(step);
     if (src_x >= src_w) {
       src_x = src_w - 1;
     }
@@ -231,8 +279,9 @@ static auto copy_row_or3to4(const uint8_t* src, int src_w, uint32_t* dst,
   if (dst_x >= max_w || dst_x + dst_w <= 0) {
     return;
   }
+  SrcStep step{src_w, dst_w, 0, 0};
   for (int i = 0; i < dst_w; ++i) {
-    int src_x = static_cast<int>((static_cast<int64_t>(i) * src_w) / dst_w);
+    int src_x = src_step_next(step);
     if (src_x >= src_w) {
       src_x = src_w - 1;
     }
@@ -256,8 +305,9 @@ static auto copy8mono(const uint8_t* src, int src_w, uint8_t* dst, int dst_x,
   if (dst_x >= max_w || dst_x + dst_w <= 0) {
     return;
   }
+  SrcStep step{src_w, dst_w, 0, 0};
   for (int i = 0; i < dst_w; ++i) {
-    int src_x = static_cast<int>((static_cast<int64_t>(i) * src_w) / dst_w);
+    int src_x = src_step_next(step);
     if (src_x >= src_w) {
       src_x = src_w - 1;
     }
@@ -277,8 +327,9 @@ static auto copy8mono4(const uint8_t* src, int src_w, uint32_t* dst, int dst_x,
   if (dst_x >= max_w || dst_x + dst_w <= 0) {
     return;
   }
+  SrcStep step{src_w, dst_w, 0, 0};
   for (int i = 0; i < dst_w; ++i) {
-    int src_x = static_cast<int>((static_cast<int64_t>(i) * src_w) / dst_w);
+    int src_x = src_step_next(step);
     if (src_x >= src_w) {
       src_x = src_w - 1;
     }
@@ -321,8 +372,8 @@ template <typename RowOp>
 static auto video_soft_stretch_impl(VideoSurfaceView src,
                                     const VideoRect* srcrect,
                                     VideoSurfaceView dst,
-                                    const VideoRect* dstrect, RowOp row_op)
-    -> int {
+                                    const VideoRect* dstrect, RowOp row_op,
+                                    bool reuse_rows = false) -> int {
   if (!src.pixels || !dst.pixels) {
     return -1;
   }
@@ -340,6 +391,14 @@ static auto video_soft_stretch_impl(VideoSurfaceView src,
   }
 
   const int sbpp = src.bpp;
+  // When scaling up, consecutive destination rows come from the same source
+  // row. If row_op only depends on the source, copy the finished row instead.
+  const int seg_x0 = std::max(full_dst.x, 0);
+  const int seg_x1 = std::min(full_dst.x + full_dst.w, dst.w);
+  const size_t seg_bytes =
+      seg_x1 > seg_x0 ? static_cast<size_t>(seg_x1 - seg_x0) * dst.bpp : 0;
+  int prev_src_row = -1;
+  const uint8_t* prev_dst_row = nullptr;
   for (int row_idx = 0; row_idx < full_dst.h; ++row_idx) {
     int cur_dst_row = full_dst.y + row_idx;
     if (cur_dst_row < 0 || cur_dst_row >= dst.h) {
@@ -360,7 +419,14 @@ static auto video_soft_stretch_impl(VideoSurfaceView src,
     uint8_t* dst_row_base =
         dst.pixels + (static_cast<ptrdiff_t>(cur_dst_row) * dst.pitch);
 
+    if (reuse_rows && cur_src_row == prev_src_row && seg_bytes > 0) {
+      const size_t off = static_cast<size_t>(seg_x0) * dst.bpp;
+      std::memcpy(dst_row_base + off, prev_dst_row + off, seg_bytes);
+      continue;
+    }
     row_op(srcp, full_src.w, dst_row_base, full_dst.x, full_dst.w, dst.w);
+    prev_src_row = cur_src_row;
+    prev_dst_row = dst_row_base;
   }
 
   return 0;
@@ -406,7 +472,8 @@ auto video_soft_stretch(VideoSurfaceView src, const VideoRect* srcrect,
           default:
             break;
         }
-      });
+      },
+      true);
 }
 
 auto video_soft_stretch_mono8(VideoSurfaceView src, const VideoRect* srcrect,
