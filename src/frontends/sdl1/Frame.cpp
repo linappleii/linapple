@@ -34,6 +34,7 @@
 #include "core/Registry.h"
 #include "frontends/common/AppController.h"
 #include "frontends/common/AudioMixer.h"
+#include "frontends/common/ChangedRows.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/common/HarddiskFrontend.h"
 #include "frontends/common/HelpText.h"
@@ -57,6 +58,14 @@ int buttondown = -1;
 bool window_resized = false;
 
 namespace {
+
+// SDL 1.2 has no GPU path, so every frame is scaled into texture and copied
+// to the screen by the CPU. texture always holds the last frame, so only the
+// rows that changed are scaled, copied and sent to the display.
+ChangedRows frame_rows;
+// False once something else (the help screen, the disk chooser, a clear or a
+// new video mode) drew on screen: the next frame is copied and shown whole.
+bool screen_holds_frame = false;
 
 static bool app_active = false;
 static DiskStatus last_disk_status{};
@@ -295,6 +304,7 @@ auto frame_refresh() -> void {
   if (screen != nullptr) {
     SDL_Flip(screen);
   }
+  screen_holds_frame = false;
 }
 
 auto draw_frame_window() -> void {
@@ -307,11 +317,14 @@ auto draw_frame_window() -> void {
     return;
   }
 
+  VideoRect band{0, 0, 0, 0};
+  // The frame was drawn straight into screen, not into texture.
+  bool direct = false;
   {
     const SDL_Rect r{0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
-    const VideoRect src_rect =
+    VideoRect src_rect =
         window_resized ? to_video_rect(orig_rect) : to_video_rect(r);
-    const VideoRect dst_rect =
+    VideoRect dst_rect =
         window_resized ? to_video_rect(new_rect) : to_video_rect(r);
 
     if (system_state.mode != app_mode_debug) {
@@ -321,20 +334,20 @@ auto draw_frame_window() -> void {
       }
       const VideoSurfaceView vs_output(output, SCREEN_WIDTH, SCREEN_HEIGHT,
                                        SCREEN_WIDTH * 4, 4);
-      if (is_direct_rgb565(screen)) {
+      direct = is_direct_rgb565(screen);
+      if (direct && !screen_holds_frame) {
+        // The screen itself holds the frame, and something else drew on it.
+        changed_rows_forget(&frame_rows);
+      }
+      if (changed_rows_narrow(&frame_rows, output, SCREEN_WIDTH, SCREEN_HEIGHT,
+                              &src_rect, &dst_rect)) {
         // Stretch directly into a 16-bit RGB565 framebuffer to avoid an extra
         // 32-bit intermediate copy and software 32->16 blit per frame.
-        {
-          const ScopedSurfaceLock lock_screen(screen);
-          video_soft_stretch(vs_output, &src_rect, lock_screen.view(),
-                             &dst_rect);
-        }
-        frame_refresh();
-        video_set_frame_ready(false);
-        return;
+        SDL_Surface* target = direct ? screen : texture.get();
+        const ScopedSurfaceLock lock_target(target);
+        video_soft_stretch(vs_output, &src_rect, lock_target.view(), &dst_rect);
+        band = changed_rows_clip(dst_rect, target->w, target->h);
       }
-      const ScopedSurfaceLock lock_texture(texture.get());
-      video_soft_stretch(vs_output, &src_rect, lock_texture.view(), &dst_rect);
     } else {
 #if ENABLE_DEBUGGER
       extern VideoSurface* debug_screen;
@@ -344,11 +357,29 @@ auto draw_frame_window() -> void {
                            &dst_rect);
       }
 #endif
+      changed_rows_forget(&frame_rows);
+      band = changed_rows_clip(dst_rect, texture->w, texture->h);
     }
   }
 
-  SDL_BlitSurface(texture.get(), nullptr, screen, nullptr);
-  frame_refresh();
+  frame_poll_activity();
+  if (!screen_holds_frame) {
+    if (!direct) {
+      SDL_BlitSurface(texture.get(), nullptr, screen, nullptr);
+    }
+    SDL_Flip(screen);
+    screen_holds_frame = true;
+  } else if (band.w > 0 && band.h > 0) {
+    if (!direct) {
+      SDL_Rect src_band{
+          static_cast<Sint16>(band.x), static_cast<Sint16>(band.y),
+          static_cast<Uint16>(band.w), static_cast<Uint16>(band.h)};
+      SDL_Rect dst_band = src_band;
+      SDL_BlitSurface(texture.get(), &src_band, screen, &dst_band);
+    }
+    SDL_UpdateRect(screen, band.x, band.y, static_cast<Uint32>(band.w),
+                   static_cast<Uint32>(band.h));
+  }
   video_set_frame_ready(false);
 }
 
@@ -626,6 +657,7 @@ auto frame_show_help_screen(int sx, int sy) -> void {
   if (screen != nullptr) {
     SDL_FillRect(screen, nullptr, 0);
   }
+  screen_holds_frame = false;
   video_set_frame_ready(true);
   draw_frame_window();
 }
@@ -671,6 +703,8 @@ auto frame_on_resize(int width, int height) -> void {
   }
 
   screen = set_video_mode_with_fallback(width, height, flags);
+  screen_holds_frame = false;
+  changed_rows_forget(&frame_rows);
   if (screen == nullptr) {
     fprintf(stderr, "Could not resize video mode: %s\n", SDL_GetError());
     return;
@@ -859,6 +893,7 @@ auto set_fullscreen_mode() -> void {
     windowed_height = system_state.screen_height;
   }
   SDL_WM_ToggleFullScreen(screen);
+  screen_holds_frame = false;
   if (system_state.mode != app_mode_debug) {
     SDL_ShowCursor(SDL_DISABLE);
   }
@@ -876,6 +911,7 @@ auto set_normal_mode() -> void {
 
   is_fullscreen = false;
   SDL_WM_ToggleFullScreen(screen);
+  screen_holds_frame = false;
   if (windowed_width > 0 && windowed_height > 0) {
     frame_on_resize(static_cast<int>(windowed_width),
                     static_cast<int>(windowed_height));
@@ -926,6 +962,8 @@ auto frame_create_window() -> int {
   screen = set_video_mode_with_fallback(
       static_cast<int>(system_state.screen_width),
       static_cast<int>(system_state.screen_height), flags);
+  screen_holds_frame = false;
+  changed_rows_forget(&frame_rows);
   if (screen == nullptr) {
     fprintf(stderr, "Could not set video mode: %s\n", SDL_GetError());
     return 1;

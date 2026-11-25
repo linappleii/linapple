@@ -3,6 +3,7 @@
 #include <linux/input-event-codes.h>
 #include <stdlib.h>
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -79,6 +80,128 @@ TEST_CASE("SDL1 Frontend Initialization and Screen Scaling") {
   CHECK(screen->w == 1120);
   CHECK(screen->h == 768);
   CHECK(window_resized == true);
+
+  frame_destroy_window();
+  asset_quit();
+  SDL_Quit();
+}
+
+// SDL 1.2 draws on the screen surface: after the first frame only the rows
+// that changed are scaled, copied and sent.
+TEST_CASE("SDL1 Frontend Draws Only Changed Rows") {
+  SDL_putenv(const_cast<char*>("SDL_VIDEODRIVER=dummy"));
+  REQUIRE(SDL_Init(SDL_INIT_VIDEO) == 0);
+  REQUIRE(asset_init());
+  system_state.screen_width = 1120;
+  system_state.screen_height = 768;
+  system_state.mode = app_mode_logo;
+  REQUIRE(frame_create_window() == 0);
+  SDL_Surface* shown = screen;
+  REQUIRE(shown != nullptr);
+
+  // At 2x, source row 100 is window rows 200 and 201. The marker sits far
+  // from them, so only a full redraw would paint over it.
+  constexpr int width = 1120;
+  constexpr int height = 768;
+  constexpr int changed_row = 100;
+  constexpr int marker_xy = 5;
+  constexpr int probe_x = 10;
+  constexpr uint32_t background = 0x00102030;
+  constexpr uint32_t changed = 0x00FF0000;
+  constexpr uint32_t marker = 0x00ABCDEF;
+  auto pixel_at = [](const SDL_Surface* s, int x, int y) -> uint32_t {
+    const auto* row = reinterpret_cast<const uint32_t*>(
+        static_cast<const uint8_t*>(s->pixels) +
+        (static_cast<ptrdiff_t>(y) * s->pitch));
+    return row[x];
+  };
+
+  uint32_t* output = video_get_output_buffer();
+  REQUIRE(output != nullptr);
+  const size_t pixels = static_cast<size_t>(SCREEN_WIDTH) * SCREEN_HEIGHT;
+  std::fill(output, output + pixels, background);
+  frame_ready = true;
+  draw_frame_window();
+  CHECK(pixel_at(shown, 0, 0) == background);
+  CHECK(pixel_at(shown, width - 1, height - 1) == background);
+
+  auto* marker_row = reinterpret_cast<uint32_t*>(
+      static_cast<uint8_t*>(shown->pixels) +
+      (static_cast<ptrdiff_t>(marker_xy) * shown->pitch));
+  marker_row[marker_xy] = marker;
+  std::fill(output + (static_cast<size_t>(changed_row) * SCREEN_WIDTH),
+            output + (static_cast<size_t>(changed_row + 1) * SCREEN_WIDTH),
+            changed);
+  frame_ready = true;
+  draw_frame_window();
+  CHECK(pixel_at(shown, probe_x, (2 * changed_row) - 1) == background);
+  CHECK(pixel_at(shown, probe_x, 2 * changed_row) == changed);
+  CHECK(pixel_at(shown, probe_x, (2 * changed_row) + 1) == changed);
+  CHECK(pixel_at(shown, probe_x, (2 * changed_row) + 2) == background);
+  CHECK(pixel_at(shown, marker_xy, marker_xy) == marker);
+
+  frame_destroy_window();
+  asset_quit();
+  SDL_Quit();
+}
+
+// On a 16-bit RGB565 screen the frame is scaled straight into the screen,
+// and after the first frame only the rows that changed are scaled and sent.
+TEST_CASE("SDL1 Frontend Draws Only Changed Rows Into a 16-bit Screen") {
+  SDL_putenv(const_cast<char*>("SDL_VIDEODRIVER=dummy"));
+  REQUIRE(SDL_Init(SDL_INIT_VIDEO) == 0);
+  REQUIRE(asset_init());
+  constexpr int width = 1120;
+  constexpr int height = 768;
+  system_state.screen_width = width;
+  system_state.screen_height = height;
+  system_state.mode = app_mode_logo;
+  REQUIRE(frame_create_window() == 0);
+  // As on embedded fbdev targets.
+  screen = SDL_SetVideoMode(width, height, 16, SDL_SWSURFACE);
+  REQUIRE(screen != nullptr);
+  REQUIRE(screen->format->BitsPerPixel == 16);
+  SDL_Surface* shown = screen;
+
+  constexpr int changed_row = 100;
+  constexpr int marker_xy = 5;
+  constexpr int probe_x = 10;
+  constexpr uint32_t background = 0x00102030;
+  constexpr uint32_t changed = 0x00FF0000;
+  constexpr uint16_t changed16 = 0xF800;
+  constexpr uint16_t marker = 0x1234;
+  auto pixel_at = [](const SDL_Surface* s, int x, int y) -> uint16_t {
+    const auto* row = reinterpret_cast<const uint16_t*>(
+        static_cast<const uint8_t*>(s->pixels) +
+        (static_cast<ptrdiff_t>(y) * s->pitch));
+    return row[x];
+  };
+
+  uint32_t* output = video_get_output_buffer();
+  REQUIRE(output != nullptr);
+  const size_t pixels = static_cast<size_t>(SCREEN_WIDTH) * SCREEN_HEIGHT;
+  std::fill(output, output + pixels, background);
+  frame_ready = true;
+  draw_frame_window();
+  const uint16_t background16 = pixel_at(shown, 0, 0);
+  CHECK(background16 != changed16);
+  CHECK(background16 != marker);
+  CHECK(pixel_at(shown, width - 1, height - 1) == background16);
+
+  auto* marker_row = reinterpret_cast<uint16_t*>(
+      static_cast<uint8_t*>(shown->pixels) +
+      (static_cast<ptrdiff_t>(marker_xy) * shown->pitch));
+  marker_row[marker_xy] = marker;
+  std::fill(output + (static_cast<size_t>(changed_row) * SCREEN_WIDTH),
+            output + (static_cast<size_t>(changed_row + 1) * SCREEN_WIDTH),
+            changed);
+  frame_ready = true;
+  draw_frame_window();
+  CHECK(pixel_at(shown, probe_x, (2 * changed_row) - 1) == background16);
+  CHECK(pixel_at(shown, probe_x, 2 * changed_row) == changed16);
+  CHECK(pixel_at(shown, probe_x, (2 * changed_row) + 1) == changed16);
+  CHECK(pixel_at(shown, probe_x, (2 * changed_row) + 2) == background16);
+  CHECK(pixel_at(shown, marker_xy, marker_xy) == marker);
 
   frame_destroy_window();
   asset_quit();
