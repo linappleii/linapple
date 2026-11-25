@@ -46,6 +46,9 @@ typedef struct {
   uint8_t hour;         /* 0..23 */
   uint8_t minute;       /* 0..59 */
   uint8_t second;       /* 0..59 */
+  // Keeps the struct 24 bytes on every target: 32-bit x86 aligns int64_t to
+  // 4 bytes, so without it the struct ends at 20 there and at 24 elsewhere.
+  uint32_t reserved;
 } HostLocalTime;
 
 typedef struct {
