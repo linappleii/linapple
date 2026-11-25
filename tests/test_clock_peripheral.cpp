@@ -81,18 +81,18 @@ constexpr Latches frozen_latches = {0, 3, 0, 4, 1, 2, 1, 4, 3, 0};
 
 // Host provides pre-offset local time; card ignores unix_seconds.
 constexpr HostLocalTime frozen_thursday = {
-    1773325800, 0, 2026, 3, 12, 4, 14, 30, 0,
+    1773325800, 0, 2026, 3, 12, 4, 14, 30, 0, 0,
 };
 
 // date -u -d @1795910340 -> Sat Nov 28 23:59:00 UTC 2026
 constexpr HostLocalTime frozen_saturday = {
-    1795910340, 0, 2026, 11, 28, 6, 23, 59, 0,
+    1795910340, 0, 2026, 11, 28, 6, 23, 59, 0, 0,
 };
 constexpr Latches saturday_latches = {1, 1, 0, 6, 2, 8, 2, 3, 5, 9};
 
 // date -u -d @1709164800 -> Thu Feb 29 00:00:00 UTC 2024, a leap day
 constexpr HostLocalTime frozen_leap_day = {
-    1709164800, 0, 2024, 2, 29, 4, 0, 0, 0,
+    1709164800, 0, 2024, 2, 29, 4, 0, 0, 0, 0,
 };
 constexpr Latches leap_day_latches = {0, 2, 0, 4, 2, 9, 0, 0, 0, 0};
 
@@ -441,37 +441,37 @@ constexpr std::array<CalendarRow, 7> calendar_edges = {
     {
         {
             "the epoch",
-            {0, 0, 1970, 1, 1, 4, 0, 0, 0},
+            {0, 0, 1970, 1, 1, 4, 0, 0, 0, 0},
             {0, 1, 0, 4, 0, 1, 0, 0, 0, 0},
         },
         {
             "the last minute of 1999",
-            {946684740, 0, 1999, 12, 31, 5, 23, 59, 0},
+            {946684740, 0, 1999, 12, 31, 5, 23, 59, 0, 0},
             {1, 2, 0, 5, 3, 1, 2, 3, 5, 9},
         },
         {
             "the first minute of 2000",
-            {946684800, 0, 2000, 1, 1, 6, 0, 0, 0},
+            {946684800, 0, 2000, 1, 1, 6, 0, 0, 0, 0},
             {0, 1, 0, 6, 0, 1, 0, 0, 0, 0},
         },
         {
             "the leap day of 2000",
-            {951782400, 0, 2000, 2, 29, 2, 0, 0, 0},
+            {951782400, 0, 2000, 2, 29, 2, 0, 0, 0, 0},
             {0, 2, 0, 2, 2, 9, 0, 0, 0, 0},
         },
         {
             "the last second of 32-bit time",
-            {2147483647, 0, 2038, 1, 19, 2, 3, 14, 7},
+            {2147483647, 0, 2038, 1, 19, 2, 3, 14, 7, 0},
             {0, 1, 0, 2, 1, 9, 0, 3, 1, 4},
         },
         {
             "the minute after 32-bit time",
-            {2147483700, 0, 2038, 1, 19, 2, 3, 15, 0},
+            {2147483700, 0, 2038, 1, 19, 2, 3, 15, 0, 0},
             {0, 1, 0, 2, 1, 9, 0, 3, 1, 5},
         },
         {
             "a Sunday at noon",
-            {1773576000, 0, 2026, 3, 15, 0, 12, 0, 0},
+            {1773576000, 0, 2026, 3, 15, 0, 12, 0, 0, 0},
             {0, 3, 0, 0, 1, 5, 1, 2, 0, 0},
         },
     },
@@ -481,11 +481,11 @@ constexpr std::array<CalendarRow, 7> calendar_edges = {
 constexpr int32_t jst_offset = 32400;
 constexpr int32_t edt_offset = -14400;
 constexpr HostLocalTime tokyo_sunday = {
-    1795910340, jst_offset, 2026, 11, 29, 0, 8, 59, 0,
+    1795910340, jst_offset, 2026, 11, 29, 0, 8, 59, 0, 0,
 };
 constexpr Latches tokyo_sunday_latches = {1, 1, 0, 0, 2, 9, 0, 8, 5, 9};
 constexpr HostLocalTime new_york_thursday = {
-    1773325800, edt_offset, 2026, 3, 12, 4, 10, 30, 0,
+    1773325800, edt_offset, 2026, 3, 12, 4, 10, 30, 0, 0,
 };
 constexpr Latches new_york_thursday_latches = {0, 3, 0, 4, 1, 2, 1, 0, 3, 0};
 
