@@ -375,6 +375,7 @@ set(SOURCES_CORE
     src/frontends/common/SaveStateManager.cpp
     src/frontends/common/VideoSurface.cpp
     src/frontends/common/VideoStretch.cpp
+    src/frontends/common/ChangedRows.cpp
     src/frontends/common/SuperSerialFrontend.cpp
     src/frontends/common/PrinterFrontend.cpp
     src/frontends/common/HostSink.cpp
@@ -805,6 +806,10 @@ if(BUILD_TESTING)
     add_executable(test-app-args tests/test_app_args.cpp src/frontends/common/AppArgs.cpp src/core/Registry.cpp src/core/Log.cpp)
     target_include_directories(test-app-args PRIVATE src src/core tests ${DOCTEST_INCLUDE_DIR})
     add_test(NAME AppArgs COMMAND test-app-args)
+
+    add_executable(test-changed-rows tests/test_changed_rows.cpp src/frontends/common/ChangedRows.cpp src/frontends/common/VideoStretch.cpp src/frontends/common/VideoSurface.cpp)
+    target_include_directories(test-changed-rows PRIVATE src tests ${DOCTEST_INCLUDE_DIR})
+    add_test(NAME test-changed-rows COMMAND test-changed-rows)
 
     add_executable(test-fixtures tests/test_fixtures.cpp)
     target_include_directories(test-fixtures PRIVATE tests ${DOCTEST_INCLUDE_DIR})
