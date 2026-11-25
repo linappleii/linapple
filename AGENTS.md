@@ -69,7 +69,7 @@ cmake --build --preset local
 ctest --preset local
 ```
 
-More on building in <!-- Imported from: INSTALL.md -->
+More on building in [BUILD.md](BUILD.md).
 
 ### Running
 
