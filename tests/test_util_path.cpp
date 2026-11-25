@@ -1,11 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include <stdlib.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <algorithm>
+#include <array>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "core/Util_Path.h"
 #include "doctest.h"
@@ -105,4 +111,115 @@ TEST_CASE("Util_Path: system paths return non-empty directory strings") {
 
   CHECK_FALSE(Path::get_plugin_search_paths().empty());
   CHECK_FALSE(Path::get_data_search_paths().empty());
+}
+
+namespace {
+
+struct ScopedEnvVar {
+  std::string name;
+  bool had_original = false;
+  std::string original_value;
+
+  ScopedEnvVar(std::string var_name, const std::string& new_value)
+      : name(std::move(var_name)) {
+    const char* current = std::getenv(name.c_str());
+    if (current != nullptr) {
+      had_original = true;
+      original_value = current;
+    }
+    setenv(name.c_str(), new_value.c_str(), 1);
+  }
+
+  ~ScopedEnvVar() {
+    if (had_original) {
+      setenv(name.c_str(), original_value.c_str(), 1);
+    } else {
+      unsetenv(name.c_str());
+    }
+  }
+
+  ScopedEnvVar(const ScopedEnvVar&) = delete;
+  auto operator=(const ScopedEnvVar&) -> ScopedEnvVar& = delete;
+  ScopedEnvVar(ScopedEnvVar&&) = delete;
+  auto operator=(ScopedEnvVar&&) -> ScopedEnvVar& = delete;
+};
+
+struct ScopedTempDataDir {
+  std::string root;
+  std::string app_dir;
+  std::string probe_file;
+
+  ScopedTempDataDir() {
+    std::array<char, 64> tmpl = {"/tmp/linapple_path_test_XXXXXX"};
+    const char* created = mkdtemp(tmpl.data());
+    if (created != nullptr) {
+      root = created;
+      app_dir = Path::join(root, "linapple");
+      Path::ensure_dir_exists(app_dir);
+      probe_file = Path::join(app_dir, "probe.dat");
+    }
+  }
+
+  ~ScopedTempDataDir() {
+    if (!probe_file.empty()) {
+      std::remove(probe_file.c_str());
+    }
+    if (!app_dir.empty()) {
+      rmdir(app_dir.c_str());
+    }
+    if (!root.empty()) {
+      rmdir(root.c_str());
+    }
+  }
+
+  ScopedTempDataDir(const ScopedTempDataDir&) = delete;
+  auto operator=(const ScopedTempDataDir&) -> ScopedTempDataDir& = delete;
+  ScopedTempDataDir(ScopedTempDataDir&&) = delete;
+  auto operator=(ScopedTempDataDir&&) -> ScopedTempDataDir& = delete;
+};
+
+}  // namespace
+
+TEST_CASE(
+    "Util_Path: get_data_search_paths includes ASSET_DIR and SYSCONF_DIR in "
+    "precedence order") {
+  const std::vector<std::string> paths = Path::get_data_search_paths();
+
+  const std::string last_relative =
+      Path::join(Path::get_executable_dir(), "../../etc/linapple/");
+  const auto it_relative = std::find(paths.begin(), paths.end(), last_relative);
+  const auto it_asset =
+      std::find(paths.begin(), paths.end(), "/opt/linapple-test-assets/");
+  const auto it_sysconf =
+      std::find(paths.begin(), paths.end(), "/etc/linapple-test-conf/");
+  const auto it_usr_local =
+      std::find(paths.begin(), paths.end(), "/usr/local/share/linapple/");
+
+  REQUIRE(it_relative != paths.end());
+  REQUIRE(it_asset != paths.end());
+  REQUIRE(it_sysconf != paths.end());
+  REQUIRE(it_usr_local != paths.end());
+
+  CHECK(it_relative < it_asset);
+  CHECK(it_asset < it_sysconf);
+  CHECK(it_sysconf < it_usr_local);
+}
+
+TEST_CASE(
+    "Util_Path: find_data_file resolves files in XDG_DATA_HOME and returns "
+    "empty for missing files") {
+  ScopedTempDataDir temp;
+  REQUIRE_FALSE(temp.root.empty());
+
+  {
+    const FilePtr file(std::fopen(temp.probe_file.c_str(), "wb"), std::fclose);
+    REQUIRE(file != nullptr);
+    const char payload[] = "ok";
+    REQUIRE(std::fwrite(payload, 1, sizeof(payload) - 1, file.get()) ==
+            sizeof(payload) - 1);
+  }
+
+  const ScopedEnvVar xdg_data_home("XDG_DATA_HOME", temp.root);
+  CHECK(Path::find_data_file("probe.dat") == temp.probe_file);
+  CHECK(Path::find_data_file("nonexistent_probe_file_xyz.dat").empty());
 }

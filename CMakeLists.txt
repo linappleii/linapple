@@ -699,7 +699,6 @@ function(add_linapple_executable TARGET_NAME FE_NAME FE_SOURCES DBG_SOURCES EXTR
     target_compile_definitions(${TARGET_NAME} PRIVATE
         ASSET_DIR="${CMAKE_INSTALL_FULL_DATADIR}/linapple"
         SYSCONF_DIR="${CMAKE_INSTALL_FULL_SYSCONFDIR}/linapple"
-        SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res"
         LINAPPLE_FRONTEND_NAME="${FE_NAME}"
         ${PERIPHERAL_DEFINITIONS}
         ${EXTRA_DEFS}
@@ -733,6 +732,17 @@ elseif(FRONTEND_LOWER STREQUAL "headless")
 elseif(FRONTEND_LOWER STREQUAL "tui")
     add_linapple_executable(linapple "tui" "${SOURCES_FE_TUI}" "${SOURCES_DBG}" "${PULSE_SIMPLE_LIBRARIES};${ALSA_LIBRARIES}" "" "${TUI_EXTRA_DEFS}")
 endif()
+
+# Stage runtime assets into the build tree so running from any build directory
+# (nested or out-of-tree) resolves them via exec_dir/res/ without embedding
+# source tree paths in the executable.
+foreach(RUNTIME_ASSET Master.dsk icon.bmp linapple.conf)
+    configure_file(
+        "${RES_DIR}/${RUNTIME_ASSET}"
+        "${CMAKE_CURRENT_BINARY_DIR}/res/${RUNTIME_ASSET}"
+        COPYONLY
+    )
+endforeach()
 
 # --- Installation ---
 if(PERIPHERAL_MODULES)
@@ -1109,6 +1119,10 @@ done
 
     add_executable(test-util-path tests/test_util_path.cpp)
     target_include_directories(test-util-path PRIVATE src src/core ${DOCTEST_INCLUDE_DIR})
+    target_compile_definitions(test-util-path PRIVATE
+        ASSET_DIR="/opt/linapple-test-assets"
+        SYSCONF_DIR="/etc/linapple-test-conf"
+    )
     add_test(NAME test-util-path COMMAND test-util-path)
 
     add_executable(test-util-text tests/test_util_text.cpp)

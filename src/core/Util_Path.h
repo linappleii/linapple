@@ -134,8 +134,23 @@ inline auto get_data_search_paths() -> std::vector<std::string> {
     paths.emplace_back(join(exec_dir, subpath));
   }
 
+#ifdef ASSET_DIR
+  const std::string asset_dir = ASSET_DIR;
+  if (!asset_dir.empty()) {
+    paths.emplace_back(join(asset_dir, "/"));
+  }
+#endif
+#ifdef SYSCONF_DIR
+  const std::string sysconf_dir = SYSCONF_DIR;
+  if (!sysconf_dir.empty()) {
+    paths.emplace_back(join(sysconf_dir, "/"));
+  }
+#endif
 #ifdef SOURCE_RES_DIR
-  paths.emplace_back(join(SOURCE_RES_DIR, "/"));
+  const std::string source_res_dir = SOURCE_RES_DIR;
+  if (!source_res_dir.empty()) {
+    paths.emplace_back(join(source_res_dir, "/"));
+  }
 #endif
 
   paths.emplace_back("/usr/local/share/linapple/");
