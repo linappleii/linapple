@@ -13,6 +13,7 @@
 #include <SDL3/SDL_surface.h>
 #include <SDL3/SDL_video.h>
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -137,16 +138,79 @@ TEST_CASE("SDL3 Frontend draw_frame_window Scaled Stretching") {
   frame_ready = true;
   draw_frame_window();
 
-  // Inspect scaled screen pixels (1120x768)
-  const auto* screen_pixels =
-      reinterpret_cast<const uint32_t*>(screen->pixels);
-  int pitch_pixels = screen->pitch / 4;
+  // Inspect the scaled pixels on show (1120x768): with a software renderer
+  // the frontend draws into the window surface and has no renderer.
+  SDL_Surface* shown =
+      renderer == nullptr ? SDL_GetWindowSurface(window.get()) : screen.get();
+  REQUIRE(shown != nullptr);
+  const auto* screen_pixels = reinterpret_cast<const uint32_t*>(shown->pixels);
+  int pitch_pixels = shown->pitch / 4;
 
   CHECK(screen_pixels[0] == 0x00FF0000);
   CHECK(screen_pixels[1119] == 0x0000FF00);
   CHECK(screen_pixels[static_cast<size_t>(767) * pitch_pixels] == 0x000000FF);
   CHECK(screen_pixels[(static_cast<size_t>(767) * pitch_pixels) + 1119] ==
         0x00FFFFFF);
+
+  frame_destroy_window();
+  asset_quit();
+  SDL_Quit();
+}
+
+// With only a software renderer (the dummy driver's), frames go into the
+// window surface, and after the first one only the rows that changed.
+TEST_CASE("SDL3 Frontend Draws Only Changed Rows Into the Window Surface") {
+  SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
+  REQUIRE(SDL_Init(SDL_INIT_VIDEO));
+  REQUIRE(asset_init());
+  system_state.screen_width = 1120;
+  system_state.screen_height = 768;
+  system_state.mode = app_mode_logo;
+  REQUIRE(frame_create_window() == 0);
+  REQUIRE(renderer == nullptr);
+  SDL_Surface* shown = SDL_GetWindowSurface(window.get());
+  REQUIRE(shown != nullptr);
+
+  // At 2x, source row 100 is window rows 200 and 201. The marker sits far
+  // from them, so only a full redraw would paint over it.
+  constexpr int width = 1120;
+  constexpr int height = 768;
+  constexpr int changed_row = 100;
+  constexpr int marker_xy = 5;
+  constexpr int probe_x = 10;
+  constexpr uint32_t background = 0x00102030;
+  constexpr uint32_t changed = 0x00FF0000;
+  constexpr uint32_t marker = 0x00ABCDEF;
+  auto pixel_at = [](const SDL_Surface* s, int x, int y) -> uint32_t {
+    const auto* row = reinterpret_cast<const uint32_t*>(
+        static_cast<const uint8_t*>(s->pixels) +
+        (static_cast<ptrdiff_t>(y) * s->pitch));
+    return row[x];
+  };
+
+  uint32_t* output = video_get_output_buffer();
+  REQUIRE(output != nullptr);
+  const size_t pixels = static_cast<size_t>(SCREEN_WIDTH) * SCREEN_HEIGHT;
+  std::fill(output, output + pixels, background);
+  frame_ready = true;
+  draw_frame_window();
+  CHECK(pixel_at(shown, 0, 0) == background);
+  CHECK(pixel_at(shown, width - 1, height - 1) == background);
+
+  auto* marker_row = reinterpret_cast<uint32_t*>(
+      static_cast<uint8_t*>(shown->pixels) +
+      (static_cast<ptrdiff_t>(marker_xy) * shown->pitch));
+  marker_row[marker_xy] = marker;
+  std::fill(output + (static_cast<size_t>(changed_row) * SCREEN_WIDTH),
+            output + (static_cast<size_t>(changed_row + 1) * SCREEN_WIDTH),
+            changed);
+  frame_ready = true;
+  draw_frame_window();
+  CHECK(pixel_at(shown, probe_x, (2 * changed_row) - 1) == background);
+  CHECK(pixel_at(shown, probe_x, 2 * changed_row) == changed);
+  CHECK(pixel_at(shown, probe_x, (2 * changed_row) + 1) == changed);
+  CHECK(pixel_at(shown, probe_x, (2 * changed_row) + 2) == background);
+  CHECK(pixel_at(shown, marker_xy, marker_xy) == marker);
 
   frame_destroy_window();
   asset_quit();
@@ -1667,8 +1731,12 @@ TEST_CASE("SDL3 Frontend Screenshot and Mode Transitions") {
   system_state.mode = app_mode_running;
   frame_ready = true;
   draw_frame_window();
-  const auto* screen_pixels =
-      reinterpret_cast<const uint32_t*>(screen->pixels);
+  // With a software renderer the frontend draws into the window surface and
+  // has no renderer.
+  SDL_Surface* shown =
+      renderer == nullptr ? SDL_GetWindowSurface(window.get()) : screen.get();
+  REQUIRE(shown != nullptr);
+  const auto* screen_pixels = reinterpret_cast<const uint32_t*>(shown->pixels);
   CHECK(screen_pixels[0] == 0x00FF0000);
 
   frame_destroy_window();
