@@ -140,6 +140,13 @@ auto draw_debugger_tui(VideoSurfaceView vs_screen, const SDL_Rect& r) -> void {
 }
 #endif
 
+// On accelerated renderers, upload the native 560x384 framebuffer directly to
+// the GPU and let SDL_RenderTexture scale it instead of CPU-stretching to
+// window size every frame.
+SdlTexturePtr native_texture;
+bool renderer_accelerated = false;
+bool frame_uses_native_texture = false;
+
 auto reset_machine_state() -> void {
   full_speed = false;
   linapple_reset_hard();
@@ -157,9 +164,39 @@ auto set_icon() -> void {
   SDL_SetWindowIcon(window.get(), icon_surf);
 }
 
+auto stretch_output_to_screen(uint32_t* output) -> void {
+  const ScopedSurfaceLock lock_screen(screen.get());
+  const VideoSurfaceView vs_output(output, SCREEN_WIDTH, SCREEN_HEIGHT,
+                                   SCREEN_WIDTH * 4, 4);
+  if (!window_resized) {
+    const SDL_Rect r = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
+    const VideoRect vr = to_video_rect(r);
+    video_soft_stretch(vs_output, &vr, lock_screen.view(), &vr);
+  } else {
+    const VideoRect vor = to_video_rect(orig_rect);
+    const VideoRect vnr = to_video_rect(new_rect);
+    video_soft_stretch(vs_output, &vor, lock_screen.view(), &vnr);
+  }
+}
+
+auto sync_screen_from_output() -> void {
+  const std::lock_guard<std::recursive_mutex> lock(video_draw_mutex);
+  uint32_t* output = video_get_output_buffer();
+  if (screen == nullptr || output == nullptr) {
+    return;
+  }
+  if (window_resized) {
+    frame_clear_screen();
+  }
+  stretch_output_to_screen(output);
+}
+
 auto frame_save_bmp() -> void {
   if (screen == nullptr) {
     return;
+  }
+  if (renderer_accelerated && system_state.mode != app_mode_debug) {
+    sync_screen_from_output();
   }
   struct stat bufp{};
   static int screenshot_index = 1;
@@ -455,6 +492,25 @@ auto draw_apple_content() -> void {
 
 auto frame_refresh() -> void {
   frame_poll_activity();
+  if (frame_uses_native_texture && native_texture != nullptr &&
+      renderer != nullptr) {
+    frame_uses_native_texture = false;
+    if (window_resized) {
+      SDL_SetRenderDrawColor(renderer.get(), 0, 0, 0, SDL_ALPHA_OPAQUE);
+      SDL_RenderClear(renderer.get());
+      const SDL_FRect dst{
+          static_cast<float>(new_rect.x),
+          static_cast<float>(new_rect.y),
+          static_cast<float>(new_rect.w),
+          static_cast<float>(new_rect.h),
+      };
+      SDL_RenderTexture(renderer.get(), native_texture.get(), nullptr, &dst);
+    } else {
+      SDL_RenderTexture(renderer.get(), native_texture.get(), nullptr, nullptr);
+    }
+    SDL_RenderPresent(renderer.get());
+    return;
+  }
   if (texture != nullptr && screen != nullptr && renderer != nullptr) {
     SDL_UpdateTexture(texture.get(), nullptr, screen->pixels,
                       screen->pitch);
@@ -482,19 +538,16 @@ auto draw_frame_window() -> void {
     const SDL_Rect r = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
 
     if (system_state.mode != app_mode_debug) {
-      ScopedSurfaceLock lock_screen(screen.get());
-      const VideoSurfaceView vs_output(output, SCREEN_WIDTH, SCREEN_HEIGHT,
-                                       SCREEN_WIDTH * 4, 4);
-
-      if (!window_resized) {
-        VideoRect vr = to_video_rect(r);
-        video_soft_stretch(vs_output, &vr, lock_screen.view(), &vr);
+      if (renderer_accelerated && native_texture != nullptr) {
+        SDL_UpdateTexture(native_texture.get(), nullptr, output,
+                          SCREEN_WIDTH * 4);
+        frame_uses_native_texture = true;
       } else {
-        VideoRect vor = to_video_rect(orig_rect);
-        VideoRect vnr = to_video_rect(new_rect);
-        video_soft_stretch(vs_output, &vor, lock_screen.view(), &vnr);
+        frame_uses_native_texture = false;
+        stretch_output_to_screen(output);
       }
     } else {
+      frame_uses_native_texture = false;
 #if ENABLE_DEBUGGER
       ScopedSurfaceLock lock_screen(screen.get());
       draw_debugger_tui(lock_screen.view(), r);
@@ -1059,6 +1112,21 @@ auto frame_create_window() -> int {
     return 1;
   }
 
+  const char* renderer_name = SDL_GetRendererName(renderer.get());
+  renderer_accelerated =
+      (renderer_name != nullptr) &&
+      (std::strcmp(renderer_name, SDL_SOFTWARE_RENDERER) != 0);
+  if (renderer_accelerated && native_texture == nullptr) {
+    native_texture.reset(SDL_CreateTexture(
+        renderer.get(), SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING,
+        SCREEN_WIDTH, SCREEN_HEIGHT));
+    if (native_texture != nullptr) {
+      SDL_SetTextureScaleMode(native_texture.get(), SDL_SCALEMODE_NEAREST);
+    } else {
+      renderer_accelerated = false;
+    }
+  }
+
   screen.reset(SDL_CreateSurface(static_cast<int>(system_state.screen_width),
                                    static_cast<int>(system_state.screen_height),
                                    SDL_PIXELFORMAT_XRGB8888));
@@ -1098,6 +1166,9 @@ auto frame_create_window() -> int {
 
 auto frame_destroy_window() -> void {
   harddisk_frontend_set_error_reporter(nullptr);
+  native_texture.reset();
+  renderer_accelerated = false;
+  frame_uses_native_texture = false;
   texture.reset();
   screen.reset();
   renderer.reset();

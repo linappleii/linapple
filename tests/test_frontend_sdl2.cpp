@@ -1392,3 +1392,109 @@ TEST_CASE(
 }
 
 #endif
+
+namespace {
+
+struct ScopedCwd {
+  std::array<char, 4096> prev{};
+  bool valid = false;
+
+  explicit ScopedCwd(const std::string& target) {
+    if (getcwd(prev.data(), prev.size()) != nullptr) {
+      valid = (chdir(target.c_str()) == 0);
+    }
+  }
+  ~ScopedCwd() {
+    if (valid) {
+      (void)chdir(prev.data());
+    }
+  }
+  ScopedCwd(const ScopedCwd&) = delete;
+  auto operator=(const ScopedCwd&) -> ScopedCwd& = delete;
+};
+
+}  // namespace
+
+TEST_CASE("SDL2 Frontend draw_frame_window Scaled Stretching") {
+  setenv("SDL_VIDEODRIVER", "dummy", 1);
+  REQUIRE(SDL_Init(SDL_INIT_VIDEO) == 0);
+  REQUIRE(asset_init());
+
+  system_state.screen_width = 1120;
+  system_state.screen_height = 768;
+  system_state.mode = app_mode_logo;
+
+  REQUIRE(frame_create_window() == 0);
+  REQUIRE(screen != nullptr);
+
+  uint32_t* output = video_get_output_buffer();
+  REQUIRE(output != nullptr);
+  output[0] = 0x00FF0000;
+  output[559] = 0x0000FF00;
+  output[static_cast<size_t>(383) * 560] = 0x000000FF;
+  output[(static_cast<size_t>(383) * 560) + 559] = 0x00FFFFFF;
+
+  frame_ready = true;
+  draw_frame_window();
+
+  const auto* screen_pixels =
+      reinterpret_cast<const uint32_t*>(screen->pixels);
+  const int pitch_pixels = screen->pitch / 4;
+  CHECK(screen_pixels[0] == 0x00FF0000);
+  CHECK(screen_pixels[1119] == 0x0000FF00);
+  CHECK(screen_pixels[static_cast<size_t>(767) * pitch_pixels] == 0x000000FF);
+  CHECK(screen_pixels[(static_cast<size_t>(767) * pitch_pixels) + 1119] ==
+        0x00FFFFFF);
+
+  frame_destroy_window();
+  asset_quit();
+  SDL_Quit();
+  SDL_ClearHints();
+}
+
+TEST_CASE("SDL2 Frontend Screenshot and Mode Transitions") {
+  setenv("SDL_VIDEODRIVER", "dummy", 1);
+  REQUIRE(SDL_Init(SDL_INIT_VIDEO) == 0);
+  REQUIRE(asset_init());
+
+  const TestFixtures::ScopedTempDir temp_dir("linapple_sdl2_bmp_");
+  const ScopedCwd cwd(temp_dir.path());
+  REQUIRE(cwd.valid);
+
+  system_state.screen_width = 1120;
+  system_state.screen_height = 768;
+  system_state.mode = app_mode_running;
+  REQUIRE(frame_create_window() == 0);
+
+  uint32_t* output = video_get_output_buffer();
+  REQUIRE(output != nullptr);
+  output[0] = 0x00FF0000;
+  output[559] = 0x0000FF00;
+
+  frame_ready = true;
+  draw_frame_window();
+  frame_refresh();  // Repeated refresh without intervening draw_frame_window
+
+  // F8 screenshot saves a valid BMP in the ephemeral working directory.
+  process_button_click(btn_setup, 0);
+  SdlSurfacePtr loaded(SDL_LoadBMP("linapple      1.bmp"));
+  REQUIRE(loaded != nullptr);
+  CHECK(loaded->w == 1120);
+  CHECK(loaded->h == 768);
+
+  // Transition running -> debug -> running cleanly.
+  system_state.mode = app_mode_debug;
+  frame_ready = true;
+  draw_frame_window();
+  system_state.mode = app_mode_running;
+  frame_ready = true;
+  draw_frame_window();
+  const auto* screen_pixels =
+      reinterpret_cast<const uint32_t*>(screen->pixels);
+  CHECK(screen_pixels[0] == 0x00FF0000);
+
+  frame_destroy_window();
+  asset_quit();
+  SDL_Quit();
+  SDL_ClearHints();
+}
