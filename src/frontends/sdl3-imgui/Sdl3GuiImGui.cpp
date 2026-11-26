@@ -6,7 +6,6 @@
 #include <SDL3/SDL_mouse.h>
 #include <SDL3/SDL_rect.h>
 #include <SDL3/SDL_render.h>
-#include <SDL3/SDL_scancode.h>
 #include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_timer.h>
 #include <SDL3/SDL_video.h>
@@ -33,8 +32,8 @@
 #include "frontends/common/imgui/ImGuiBackend.h"
 #include "frontends/common/sdl/JoystickFrontend.h"
 #include "frontends/common/sdl/MouseInput.h"
-#include "frontends/sdl3/Frame.h"
-#include "frontends/sdl3/Sdl3GuiBridge.h"
+#include "frontends/sdl3-imgui/Frame.h"
+#include "frontends/sdl3-imgui/Sdl3Gui.h"
 
 namespace {
 
@@ -62,7 +61,6 @@ struct Sdl3GuiState {
   bool initialized{false};
   SDL_Window* window{nullptr};
   std::shared_ptr<DialogSharedState> dialog_state;
-  std::array<bool, SDL_SCANCODE_COUNT> host_mapped_keys{};
 };
 
 Sdl3GuiState sdl3_gui{};
@@ -258,8 +256,6 @@ auto drain_pending_dialogs() -> void {
 
 }  // namespace
 
-auto sdl3_gui_is_compiled() noexcept -> bool { return true; }
-
 auto sdl3_gui_is_active() noexcept -> bool { return sdl3_gui.initialized; }
 
 auto sdl3_gui_init(SDL_Window* win, SDL_Renderer* ren) -> bool {
@@ -325,7 +321,6 @@ auto sdl3_gui_shutdown() -> void {
   ImGui::DestroyContext();
   sdl3_gui.initialized = false;
   sdl3_gui.window = nullptr;
-  sdl3_gui.host_mapped_keys.fill(false);
 }
 
 auto sdl3_gui_process_event(const SDL_Event* event) -> bool {
@@ -378,57 +373,28 @@ auto sdl3_gui_process_event(const SDL_Event* event) -> bool {
     return true;
   }
 
-  if (event->type == SDL_EVENT_WINDOW_FOCUS_LOST) {
-    sdl3_gui.host_mapped_keys.fill(false);
-    return false;
-  }
-
-  // Optional OS-layout translation for printable ASCII symbols (such as '"' on
-  // Shift+2 on Italian keyboards), without touching KeyboardTranslator.cpp.
-  if (imgui_app_get_host_keyboard_layout() &&
-      (system_state.mode == app_mode_running ||
-       system_state.mode == app_mode_stepping)) {
-    if (event->type == SDL_EVENT_KEY_DOWN && !event->key.repeat) {
-      const SDL_Scancode sc = event->key.scancode;
-      const SDL_Keymod mod = event->key.mod;
-      const bool has_ctrl_alt_gui =
-          (mod & (SDL_KMOD_CTRL | SDL_KMOD_ALT | SDL_KMOD_GUI)) != 0;
-      const bool is_keypad =
-          (sc >= SDL_SCANCODE_KP_DIVIDE && sc <= SDL_SCANCODE_KP_PERIOD);
-      const bool is_fkey =
-          (event->key.key >= SDLK_F1 && event->key.key <= SDLK_F12);
-      if (!has_ctrl_alt_gui && !is_keypad && !is_fkey &&
-          static_cast<size_t>(sc) < sdl3_gui.host_mapped_keys.size()) {
-        const SDL_Keycode translated = SDL_GetKeyFromScancode(sc, mod, false);
-        constexpr SDL_Keycode ascii_min = 0x20;
-        constexpr SDL_Keycode ascii_max = 0x7E;
-        if (translated >= ascii_min && translated <= ascii_max) {
-          uint8_t apple_code = static_cast<uint8_t>(translated);
-          if (keyboard_get_caps() && apple_code >= 'a' && apple_code <= 'z') {
-            apple_code = static_cast<uint8_t>(apple_code - 'a' + 'A');
-          }
-          sdl3_gui.host_mapped_keys.at(static_cast<size_t>(sc)) = true;
-          linapple_set_key(static_cast<uint32_t>(sc), apple_code, true);
-          return true;
-        }
-      }
-    } else if (event->type == SDL_EVENT_KEY_UP) {
-      const SDL_Scancode sc = event->key.scancode;
-      if (static_cast<size_t>(sc) < sdl3_gui.host_mapped_keys.size() &&
-          sdl3_gui.host_mapped_keys.at(static_cast<size_t>(sc))) {
-        sdl3_gui.host_mapped_keys.at(static_cast<size_t>(sc)) = false;
-        linapple_set_key(static_cast<uint32_t>(sc), 0, false);
-        return true;
-      }
-    }
-  }
-
   return false;
 }
 
 auto sdl3_gui_get_viewport_rect(int win_w, int win_h) noexcept -> SDL_FRect {
   const ImGuiViewportRect vp = imgui_app_get_content_rect(win_w, win_h);
   return SDL_FRect{vp.x, vp.y, vp.w, vp.h};
+}
+
+auto sdl3_gui_scale_viewport_rect(const SDL_FRect& logical_rect, int win_w,
+                                  int win_h, int out_w, int out_h) noexcept
+    -> SDL_FRect {
+  if (win_w <= 0 || win_h <= 0 || out_w <= 0 || out_h <= 0) {
+    return logical_rect;
+  }
+  const float scale_x = static_cast<float>(out_w) / static_cast<float>(win_w);
+  const float scale_y = static_cast<float>(out_h) / static_cast<float>(win_h);
+  return SDL_FRect{
+      logical_rect.x * scale_x,
+      logical_rect.y * scale_y,
+      logical_rect.w * scale_x,
+      logical_rect.h * scale_y,
+  };
 }
 
 auto sdl3_gui_sync_cursor(bool mouse_captured, bool is_fullscreen) -> void {

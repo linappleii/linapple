@@ -494,7 +494,7 @@ set(SOURCES_FE_COMMON_SDL
     src/core/services/ftp/FtpClient.cpp
 )
 
-set(SOURCES_FE_SDL3_BASE
+set(SOURCES_FE_SDL3
     ${SOURCES_FE_COMMON_SDL}
     src/frontends/sdl3/DiskChoose.cpp
     src/frontends/sdl3/Frame.cpp
@@ -504,11 +504,6 @@ set(SOURCES_FE_SDL3_BASE
     src/frontends/sdl3/SDL_Video.cpp
 )
 
-set(SOURCES_FE_SDL3
-    ${SOURCES_FE_SDL3_BASE}
-    src/frontends/sdl3/Sdl3GuiStub.cpp
-)
-
 set(SOURCES_FE_COMMON_IMGUI
     src/frontends/common/imgui/ImGuiApp.cpp
     src/frontends/common/imgui/ImGuiLauncher.cpp
@@ -516,9 +511,15 @@ set(SOURCES_FE_COMMON_IMGUI
 )
 
 set(SOURCES_FE_SDL3_IMGUI
-    ${SOURCES_FE_SDL3_BASE}
+    ${SOURCES_FE_COMMON_SDL}
     ${SOURCES_FE_COMMON_IMGUI}
-    src/frontends/sdl3/Sdl3GuiImGui.cpp
+    src/frontends/sdl3-imgui/DiskChoose.cpp
+    src/frontends/sdl3-imgui/Frame.cpp
+    src/frontends/sdl3-imgui/Main.cpp
+    src/frontends/sdl3-imgui/SDL_Asset.cpp
+    src/frontends/sdl3-imgui/SDL_Input.cpp
+    src/frontends/sdl3-imgui/SDL_Video.cpp
+    src/frontends/sdl3-imgui/Sdl3GuiImGui.cpp
 )
 
 set(SOURCES_FE_SDL2
@@ -759,8 +760,10 @@ function(add_linapple_executable TARGET_NAME FE_NAME FE_SOURCES DBG_SOURCES EXTR
         target_include_directories(${TARGET_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/sdl1")
     elseif(FE_NAME STREQUAL "sdl2")
         target_include_directories(${TARGET_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/sdl2")
-    elseif(FE_NAME STREQUAL "sdl3" OR FE_NAME STREQUAL "sdl3-imgui")
+    elseif(FE_NAME STREQUAL "sdl3")
         target_include_directories(${TARGET_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/sdl3")
+    elseif(FE_NAME STREQUAL "sdl3-imgui")
+        target_include_directories(${TARGET_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/sdl3-imgui")
     endif()
     target_compile_definitions(${TARGET_NAME} PRIVATE
         ASSET_DIR="${CMAKE_INSTALL_FULL_DATADIR}/linapple"
@@ -1503,11 +1506,11 @@ EOF
 
     if(FRONTEND_LOWER STREQUAL "sdl3-imgui")
         set(TEST_SOURCES_FE_SDL3_IMGUI ${SOURCES_FE_SDL3_IMGUI})
-        list(REMOVE_ITEM TEST_SOURCES_FE_SDL3_IMGUI src/frontends/sdl3/Main.cpp)
-        add_executable(test-frontend-sdl3-imgui tests/test_main.cpp tests/test_frontend_sdl3.cpp tests/test_fixtures_core.cpp ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} ${TEST_SOURCES_FE_SDL3_IMGUI})
+        list(REMOVE_ITEM TEST_SOURCES_FE_SDL3_IMGUI src/frontends/sdl3-imgui/Main.cpp)
+        add_executable(test-frontend-sdl3-imgui tests/test_main.cpp tests/test_frontend_sdl3_imgui.cpp tests/test_fixtures_core.cpp ${SOURCES_CORE} ${SOURCES_A2_MANDATORY} ${SOURCES_DBG} ${SOURCES_A2_OPTIONAL} ${TEST_SOURCES_FE_SDL3_IMGUI})
         add_dependencies(test-frontend-sdl3-imgui generate_xpms generate_embedded_roms)
-        target_include_directories(test-frontend-sdl3-imgui PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} tests src "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/sdl3")
-        target_compile_definitions(test-frontend-sdl3-imgui PRIVATE ${PERIPHERAL_DEFINITIONS} LINAPPLE_HAS_IMGUI=1 ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
+        target_include_directories(test-frontend-sdl3-imgui PRIVATE ${LINAPPLE_INCLUDES} ${DOCTEST_INCLUDE_DIR} tests src "${CMAKE_CURRENT_SOURCE_DIR}/src/frontends/sdl3-imgui")
+        target_compile_definitions(test-frontend-sdl3-imgui PRIVATE ${PERIPHERAL_DEFINITIONS} ENABLE_RIFF TEST_FIXTURES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures" SOURCE_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
         target_link_libraries(test-frontend-sdl3-imgui PRIVATE SDL3::SDL3 ${SDL3_IMGUI_LIBS} ${FTP_LIBRARIES} ${COMMON_LIBS} ${MEDIA_TARGETS})
         add_test(NAME test-frontend-sdl3-imgui COMMAND test-frontend-sdl3-imgui)
         linapple_test_home(test-frontend-sdl3-imgui frontend-sdl3-imgui)

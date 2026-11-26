@@ -14,11 +14,9 @@
 #include "frontends/common/AudioMixer.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/common/KeyboardTranslator.h"
-#include "frontends/common/MouseFrontend.h"
 #include "frontends/common/sdl/JoystickFrontend.h"
 #include "frontends/common/sdl/MouseInput.h"
 #include "frontends/sdl3/Frame.h"
-#include "frontends/sdl3/Sdl3GuiBridge.h"
 
 #if ENABLE_DEBUGGER
 #include "Debugger/Debug.h"
@@ -52,20 +50,8 @@ auto handle_mouse_button_down(const SDL_MouseButtonEvent& button,
       host_button(button.button), release_modifier, buttondown != -1);
 #if ENABLE_DEBUGGER
   if (debugger_click) {
-    int click_x = static_cast<int>(button.x);
-    int click_y = static_cast<int>(button.y);
-    if (sdl3_gui_is_active()) {
-      const MousePictureRect vp = frame_picture_rect();
-      if (vp.w > 0 && vp.h > 0) {
-        click_x = static_cast<int>(((button.x - static_cast<float>(vp.x)) *
-                                    static_cast<float>(SCREEN_WIDTH)) /
-                                   static_cast<float>(vp.w));
-        click_y = static_cast<int>(((button.y - static_cast<float>(vp.y)) *
-                                    static_cast<float>(SCREEN_HEIGHT)) /
-                                   static_cast<float>(vp.h));
-      }
-    }
-    debugger_mouse_click(click_x, click_y);
+    debugger_mouse_click(static_cast<int>(button.x),
+                         static_cast<int>(button.y));
   }
 #else
   (void)debugger_click;
@@ -95,10 +81,6 @@ auto handle_mouse_motion(const SDL_MouseMotionEvent& motion) -> void {
 
 auto sdl_handle_event(SDL_Event* event) -> void {
   if (event == nullptr) {
-    return;
-  }
-
-  if (sdl3_gui_process_event(event)) {
     return;
   }
 

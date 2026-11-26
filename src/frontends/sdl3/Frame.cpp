@@ -55,7 +55,6 @@
 #include "frontends/sdl3/DiskChoose.h"
 #include "frontends/sdl3/SDL_Asset.h"
 #include "frontends/sdl3/SDL_Video.h"
-#include "frontends/sdl3/Sdl3GuiBridge.h"
 #include "frontends/sdl3/SdlPtr.h"
 
 #if ENABLE_DEBUGGER
@@ -78,9 +77,10 @@ auto frame_clear_screen() -> void {
   if (screen == nullptr) {
     return;
   }
-  SDL_FillSurfaceRect(screen.get(), nullptr,
-                      SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format),
-                                 SDL_GetSurfacePalette(screen.get()), 0, 0, 0));
+  SDL_FillSurfaceRect(
+      screen.get(), nullptr,
+      SDL_MapRGB(SDL_GetPixelFormatDetails(screen->format),
+                 SDL_GetSurfacePalette(screen.get()), 0, 0, 0));
 }
 
 namespace {
@@ -109,7 +109,8 @@ auto report_harddisk_error(int drive, int error, const char* message) -> void {
   }
   const char* title =
       (drive == harddisk_drive_0) ? "Hard Disk 1 error" : "Hard Disk 2 error";
-  SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title, message, window.get());
+  SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title, message,
+                           window.get());
   last_reported = error;
 }
 
@@ -156,9 +157,9 @@ auto set_icon() -> void {
   SDL_SetWindowIcon(window.get(), icon_surf);
 }
 
-auto frame_save_bmp_internal() -> bool {
+auto frame_save_bmp() -> void {
   if (screen == nullptr) {
-    return false;
+    return;
   }
   struct stat bufp{};
   static int screenshot_index = 1;
@@ -174,11 +175,10 @@ auto frame_save_bmp_internal() -> bool {
 
   if (!SDL_SaveBMP(screen.get(), bmp_name.data())) {
     std::fprintf(stderr, "Failed to save screenshot: %s\n", SDL_GetError());
-    return false;
+  } else {
+    std::printf("File %s saved!\n", bmp_name.data());
   }
-  std::printf("File %s saved!\n", bmp_name.data());
   screenshot_index++;
-  return true;
 }
 
 auto handle_btn_run(int mod) -> void {
@@ -270,7 +270,7 @@ auto handle_btn_setup(int mod) -> void {
                                       system_state.fullscreen ? 1 : 0);
     Configuration::instance().save();
   } else {
-    (void)frame_save_bmp_internal();
+    frame_save_bmp();
   }
 }
 
@@ -453,37 +453,11 @@ auto draw_apple_content() -> void {
   }
 }
 
-auto frame_save_bmp() -> bool { return frame_save_bmp_internal(); }
-
-auto frame_present_gui() -> void {
-  frame_poll_activity();
-  if (texture == nullptr || renderer == nullptr || !sdl3_gui_is_active()) {
-    return;
-  }
-  constexpr Uint8 bg_r = 14;
-  constexpr Uint8 bg_g = 17;
-  constexpr Uint8 bg_b = 22;
-  constexpr Uint8 bg_a = 255;
-  sdl3_gui_sync_cursor(mouse_input_is_captured(), is_fullscreen);
-  SDL_SetRenderDrawColor(renderer.get(), bg_r, bg_g, bg_b, bg_a);
-  SDL_RenderClear(renderer.get());
-  int out_w = static_cast<int>(system_state.screen_width);
-  int out_h = static_cast<int>(system_state.screen_height);
-  SDL_GetCurrentRenderOutputSize(renderer.get(), &out_w, &out_h);
-  const SDL_FRect dst = sdl3_gui_get_viewport_rect(out_w, out_h);
-  SDL_RenderTexture(renderer.get(), texture.get(), nullptr, &dst);
-  sdl3_gui_render(renderer.get());
-  SDL_RenderPresent(renderer.get());
-}
-
 auto frame_refresh() -> void {
   frame_poll_activity();
   if (texture != nullptr && screen != nullptr && renderer != nullptr) {
-    SDL_UpdateTexture(texture.get(), nullptr, screen->pixels, screen->pitch);
-    if (sdl3_gui_is_active()) {
-      frame_present_gui();
-      return;
-    }
+    SDL_UpdateTexture(texture.get(), nullptr, screen->pixels,
+                      screen->pitch);
     SDL_RenderTexture(renderer.get(), texture.get(), nullptr, nullptr);
     SDL_RenderPresent(renderer.get());
   }
@@ -577,16 +551,18 @@ auto draw_status_area(int drawflags) -> void {
     int hdd_status = disk_status_off;
 
     if (last_disk_status.drive0_spinning != 0) {
-      drive1_status = (last_disk_status.drive0_writing != 0) ? disk_status_write
-                                                             : disk_status_read;
+      drive1_status = (last_disk_status.drive0_writing != 0)
+                          ? disk_status_write
+                          : disk_status_read;
     } else if (last_disk_status.drive0_loaded != 0 &&
                last_disk_status.drive0_write_protected != 0) {
       drive1_status = disk_status_prot;
     }
 
     if (last_disk_status.drive1_spinning != 0) {
-      drive2_status = (last_disk_status.drive1_writing != 0) ? disk_status_write
-                                                             : disk_status_read;
+      drive2_status = (last_disk_status.drive1_writing != 0)
+                          ? disk_status_write
+                          : disk_status_read;
     } else if (last_disk_status.drive1_loaded != 0 &&
                last_disk_status.drive1_write_protected != 0) {
       drive2_status = disk_status_prot;
@@ -864,21 +840,9 @@ auto frame_on_resize(int width, int height) -> void {
     windowed_height = static_cast<uint32_t>(height);
   }
 
-  // When the ImGui viewport is active, keep the emulator surface/texture at
-  // native Apple II resolution (560x384) and let SDL_RenderTexture scale it
-  // once into the GUI viewport rect to avoid double letterboxing in fullscreen.
-  if (sdl3_gui_is_active()) {
-    window_resized = false;
-    if ((system_state.mode != app_mode_logo) &&
-        (system_state.mode != app_mode_debug)) {
-      video_redraw_screen();
-    }
-    return;
-  }
-
   screen.reset(SDL_CreateSurface(static_cast<int>(system_state.screen_width),
-                                 static_cast<int>(system_state.screen_height),
-                                 SDL_PIXELFORMAT_XRGB8888));
+                                   static_cast<int>(system_state.screen_height),
+                                   SDL_PIXELFORMAT_XRGB8888));
   texture.reset(SDL_CreateTexture(
       renderer.get(), SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING,
       static_cast<int>(system_state.screen_width),
@@ -890,19 +854,20 @@ auto frame_on_resize(int width, int height) -> void {
   }
 
   window_resized = (system_state.screen_width != SCREEN_WIDTH) ||
-                   (system_state.screen_height != SCREEN_HEIGHT);
+                     (system_state.screen_height != SCREEN_HEIGHT);
   if (!window_resized) {
     return;
   }
 
   orig_rect = SDL_Rect{0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
-  new_rect = is_fullscreen ? compute_aspect_fit_rect(width, height)
-                           : SDL_Rect{
-                                 0,
-                                 0,
-                                 static_cast<int>(system_state.screen_width),
-                                 static_cast<int>(system_state.screen_height),
-                             };
+  new_rect = is_fullscreen
+                   ? compute_aspect_fit_rect(width, height)
+                   : SDL_Rect{
+                         0,
+                         0,
+                         static_cast<int>(system_state.screen_width),
+                         static_cast<int>(system_state.screen_height),
+                     };
 
   if ((system_state.mode != app_mode_logo) &&
       (system_state.mode != app_mode_debug)) {
@@ -1048,20 +1013,6 @@ auto frame_pointer_capture(bool captured, bool relative) -> void {
 
 // new_rect is set only on a resize, so until one the picture is the window.
 auto frame_picture_rect() -> MousePictureRect {
-  if (sdl3_gui_is_active()) {
-    int win_w = static_cast<int>(system_state.screen_width);
-    int win_h = static_cast<int>(system_state.screen_height);
-    if (window != nullptr) {
-      SDL_GetWindowSize(window.get(), &win_w, &win_h);
-    }
-    const SDL_FRect vp = sdl3_gui_get_viewport_rect(win_w, win_h);
-    return {
-        static_cast<int>(vp.x),
-        static_cast<int>(vp.y),
-        static_cast<int>(vp.w),
-        static_cast<int>(vp.h),
-    };
-  }
   if (window_resized) {
     return {new_rect.x, new_rect.y, new_rect.w, new_rect.h};
   }
@@ -1085,16 +1036,14 @@ auto frame_create_window() -> int {
   if (system_state.fullscreen) {
     flags |= SDL_WINDOW_FULLSCREEN;
   }
-  if (sdl3_gui_is_compiled()) {
-    flags |= SDL_WINDOW_RESIZABLE;
-  }
 
   if (window == nullptr) {
     window.reset(
         SDL_CreateWindow(app_title, static_cast<int>(system_state.screen_width),
                          static_cast<int>(system_state.screen_height), flags));
   } else {
-    SDL_SetWindowSize(window.get(), static_cast<int>(system_state.screen_width),
+    SDL_SetWindowSize(window.get(),
+                      static_cast<int>(system_state.screen_width),
                       static_cast<int>(system_state.screen_height));
   }
   if (window == nullptr) {
@@ -1110,23 +1059,18 @@ auto frame_create_window() -> int {
     return 1;
   }
 
-  const int surface_w = sdl3_gui_is_compiled()
-                            ? SCREEN_WIDTH
-                            : static_cast<int>(system_state.screen_width);
-  const int surface_h = sdl3_gui_is_compiled()
-                            ? SCREEN_HEIGHT
-                            : static_cast<int>(system_state.screen_height);
-
-  screen.reset(
-      SDL_CreateSurface(surface_w, surface_h, SDL_PIXELFORMAT_XRGB8888));
+  screen.reset(SDL_CreateSurface(static_cast<int>(system_state.screen_width),
+                                   static_cast<int>(system_state.screen_height),
+                                   SDL_PIXELFORMAT_XRGB8888));
   if (screen == nullptr) {
     std::fprintf(stderr, "Could not create SDL surface: %s\n", SDL_GetError());
     return 1;
   }
 
-  texture.reset(SDL_CreateTexture(renderer.get(), SDL_PIXELFORMAT_XRGB8888,
-                                  SDL_TEXTUREACCESS_STREAMING, surface_w,
-                                  surface_h));
+  texture.reset(SDL_CreateTexture(
+      renderer.get(), SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING,
+      static_cast<int>(system_state.screen_width),
+      static_cast<int>(system_state.screen_height)));
   if (texture == nullptr) {
     std::fprintf(stderr, "Could not create SDL texture: %s\n", SDL_GetError());
     return 1;
@@ -1134,11 +1078,9 @@ auto frame_create_window() -> int {
 
   SDL_ShowWindow(window.get());
   set_icon();
-  sdl3_gui_init(window.get(), renderer.get());
 
-  window_resized =
-      !sdl3_gui_is_active() && ((system_state.screen_width != SCREEN_WIDTH) ||
-                                (system_state.screen_height != SCREEN_HEIGHT));
+  window_resized = (system_state.screen_width != SCREEN_WIDTH) ||
+                     (system_state.screen_height != SCREEN_HEIGHT);
   if (window_resized) {
     orig_rect = SDL_Rect{0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
     new_rect = SDL_Rect{
@@ -1156,7 +1098,6 @@ auto frame_create_window() -> int {
 
 auto frame_destroy_window() -> void {
   harddisk_frontend_set_error_reporter(nullptr);
-  sdl3_gui_shutdown();
   texture.reset();
   screen.reset();
   renderer.reset();
@@ -1191,8 +1132,8 @@ auto report_disk_error(const char* title, int current_error,
 
 auto refresh_disk_status() -> void {
   size_t size = sizeof(last_disk_status);
-  if (peripheral_query(disk_default_slot, disk_query_status, &last_disk_status,
-                       &size) != peripheral_ok) {
+  if (peripheral_query(disk_default_slot, disk_query_status,
+                       &last_disk_status, &size) != peripheral_ok) {
     return;
   }
 

@@ -764,17 +764,6 @@ auto imgui_draw_settings_panel(bool* open) -> void {
 
     if (ImGui::BeginTabItem("Input")) {
       ImGui::TextUnformatted("Keyboard");
-      bool host_kbd = imgui_app_get_host_keyboard_layout();
-      if (ImGui::Checkbox("Use Host OS Keyboard Layout (International Symbols)",
-                          &host_kbd)) {
-        imgui_app_set_host_keyboard_layout(host_kbd);
-      }
-      if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "Translate shifted punctuation (e.g. \", =, :, ;, (, ) on Italian "
-            "and other layouts) directly from your OS keyboard layout.");
-      }
-
       bool caps_on = keyboard_get_caps();
       if (ImGui::Checkbox("Apple II Uppercase (Caps Lock)", &caps_on)) {
         keyboard_set_caps_mode(caps_mode_emulated);
