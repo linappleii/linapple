@@ -43,6 +43,7 @@
 #include "core/Util_Text.h"
 #include "frontends/common/AppController.h"
 #include "frontends/common/AudioMixer.h"
+#include "frontends/common/ChangedRows.h"
 #include "frontends/common/Frontend.h"
 #include "frontends/common/HarddiskFrontend.h"
 #include "frontends/common/HelpText.h"
@@ -71,6 +72,39 @@ SDL_Rect new_rect;
 
 int buttondown = -1;
 bool window_resized = false;
+
+namespace {
+
+// With SDL's software renderer, going through a texture copies every frame
+// twice more before it reaches the window surface. Drawing straight into the
+// window surface avoids that, which matters on slow CPUs without a GPU.
+bool use_window_surface = false;
+// draw_frame_window drew this frame into the window surface, not screen.
+bool frame_in_window_surface = false;
+// The next frame goes into screen, as without the window surface, so screen
+// holds the emulator's frame again (after the help screen drew over it).
+bool next_frame_to_screen = false;
+// The part of the window surface that frame changed; empty if none of it.
+SDL_Rect window_surface_dirty{};
+// Only the rows that changed are scaled into the window surface.
+ChangedRows window_surface_rows;
+
+// The window surface to draw a frame into directly, if its pixels match
+// screen's (32-bit 0x00RRGGBB), else nullptr.
+auto direct_window_surface() -> SDL_Surface* {
+  if (!use_window_surface || window == nullptr || screen == nullptr) {
+    return nullptr;
+  }
+  SDL_Surface* ws = SDL_GetWindowSurface(window.get());
+  if (ws == nullptr || ws->w != screen->w || ws->h != screen->h ||
+      (ws->format != SDL_PIXELFORMAT_XRGB8888 &&
+       ws->format != SDL_PIXELFORMAT_ARGB8888)) {
+    return nullptr;
+  }
+  return ws;
+}
+
+}  // namespace
 
 auto frame_clear_screen() -> void {
   const std::lock_guard<std::recursive_mutex> lock(video_draw_mutex);
@@ -179,6 +213,26 @@ auto stretch_output_to_screen(uint32_t* output) -> void {
   }
 }
 
+// Scales only the rows of output that changed since the last frame into the
+// window surface, and records the part of it they cover for frame_refresh.
+auto stretch_changed_rows_to_window_surface(SDL_Surface* target,
+                                            uint32_t* output) -> void {
+  const ScopedSurfaceLock lock_target(target);
+  const VideoSurfaceView vs_output(output, SCREEN_WIDTH, SCREEN_HEIGHT,
+                                   SCREEN_WIDTH * 4, 4);
+  const SDL_Rect r = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
+  VideoRect vor = to_video_rect(window_resized ? orig_rect : r);
+  VideoRect vnr = to_video_rect(window_resized ? new_rect : r);
+  if (changed_rows_narrow(&window_surface_rows, output, SCREEN_WIDTH,
+                          SCREEN_HEIGHT, &vor, &vnr)) {
+    video_soft_stretch(vs_output, &vor, lock_target.view(), &vnr);
+    const VideoRect band = changed_rows_clip(vnr, target->w, target->h);
+    window_surface_dirty = SDL_Rect{band.x, band.y, band.w, band.h};
+  } else {
+    window_surface_dirty = SDL_Rect{};
+  }
+}
+
 auto sync_screen_from_output() -> void {
   const std::lock_guard<std::recursive_mutex> lock(video_draw_mutex);
   uint32_t* output = video_get_output_buffer();
@@ -210,7 +264,10 @@ auto frame_save_bmp() -> void {
                   screenshot_index);
   }
 
-  if (!SDL_SaveBMP(screen.get(), bmp_name.data())) {
+  // With the window surface, frames are drawn there and screen isn't kept up
+  // to date; the window surface holds what is on show.
+  SDL_Surface* shown = direct_window_surface();
+  if (!SDL_SaveBMP(shown != nullptr ? shown : screen.get(), bmp_name.data())) {
     std::fprintf(stderr, "Failed to save screenshot: %s\n", SDL_GetError());
   } else {
     std::printf("File %s saved!\n", bmp_name.data());
@@ -511,6 +568,21 @@ auto frame_refresh() -> void {
     SDL_RenderPresent(renderer.get());
     return;
   }
+  if (use_window_surface) {
+    SDL_Surface* ws =
+        window != nullptr ? SDL_GetWindowSurface(window.get()) : nullptr;
+    if (ws != nullptr && screen != nullptr) {
+      if (!frame_in_window_surface) {
+        SDL_BlitSurface(screen.get(), nullptr, ws, nullptr);
+        changed_rows_forget(&window_surface_rows);
+        SDL_UpdateWindowSurface(window.get());
+      } else if (window_surface_dirty.w > 0 && window_surface_dirty.h > 0) {
+        SDL_UpdateWindowSurfaceRects(window.get(), &window_surface_dirty, 1);
+      }
+    }
+    frame_in_window_surface = false;
+    return;
+  }
   if (texture != nullptr && screen != nullptr && renderer != nullptr) {
     SDL_UpdateTexture(texture.get(), nullptr, screen->pixels,
                       screen->pitch);
@@ -526,7 +598,7 @@ auto draw_frame_window() -> void {
 
   {
     const std::lock_guard<std::recursive_mutex> lock(video_draw_mutex);
-    if (texture == nullptr || screen == nullptr) {
+    if ((texture == nullptr && !use_window_surface) || screen == nullptr) {
       return;
     }
 
@@ -544,7 +616,15 @@ auto draw_frame_window() -> void {
         frame_uses_native_texture = true;
       } else {
         frame_uses_native_texture = false;
-        stretch_output_to_screen(output);
+        SDL_Surface* target =
+            next_frame_to_screen ? nullptr : direct_window_surface();
+        next_frame_to_screen = false;
+        frame_in_window_surface = target != nullptr;
+        if (frame_in_window_surface) {
+          stretch_changed_rows_to_window_surface(target, output);
+        } else {
+          stretch_output_to_screen(output);
+        }
       }
     } else {
       frame_uses_native_texture = false;
@@ -845,6 +925,7 @@ auto frame_show_help_screen(int width, int height) -> void {
 
   frame_clear_screen();
   video_set_frame_ready(true);
+  next_frame_to_screen = true;
   draw_frame_window();
 }
 
@@ -896,12 +977,16 @@ auto frame_on_resize(int width, int height) -> void {
   screen.reset(SDL_CreateSurface(static_cast<int>(system_state.screen_width),
                                    static_cast<int>(system_state.screen_height),
                                    SDL_PIXELFORMAT_XRGB8888));
-  texture.reset(SDL_CreateTexture(
-      renderer.get(), SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING,
-      static_cast<int>(system_state.screen_width),
-      static_cast<int>(system_state.screen_height)));
+  changed_rows_forget(&window_surface_rows);
 
-  if (screen == nullptr || texture == nullptr) {
+  if (!use_window_surface) {
+    texture.reset(SDL_CreateTexture(
+        renderer.get(), SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING,
+        static_cast<int>(system_state.screen_width),
+        static_cast<int>(system_state.screen_height)));
+  }
+
+  if (screen == nullptr || (texture == nullptr && !use_window_surface)) {
     system_state.mode = app_mode_exit;
     return;
   }
@@ -1104,18 +1189,36 @@ auto frame_create_window() -> int {
     return 1;
   }
 
-  if (renderer == nullptr) {
+  if (renderer == nullptr && !use_window_surface) {
     renderer.reset(SDL_CreateRenderer(window.get(), nullptr));
   }
-  if (renderer == nullptr) {
+  if (renderer == nullptr && !use_window_surface) {
     std::fprintf(stderr, "Could not create SDL renderer: %s\n", SDL_GetError());
     return 1;
   }
+  const char* renderer_name =
+      renderer != nullptr ? SDL_GetRendererName(renderer.get()) : nullptr;
+  if (renderer_name != nullptr &&
+      std::strcmp(renderer_name, SDL_SOFTWARE_RENDERER) == 0) {
+    // A window can't have both a renderer and a window surface.
+    renderer.reset();
+    use_window_surface = SDL_GetWindowSurface(window.get()) != nullptr;
+    if (!use_window_surface) {
+      renderer.reset(SDL_CreateRenderer(window.get(), SDL_SOFTWARE_RENDERER));
+      if (renderer == nullptr) {
+        std::fprintf(stderr, "Could not create SDL renderer: %s\n",
+                     SDL_GetError());
+        return 1;
+      }
+    }
+  }
 
-  const char* renderer_name = SDL_GetRendererName(renderer.get());
+  // The renderer may have been replaced above, so ask again.
+  const char* active_renderer_name =
+      renderer != nullptr ? SDL_GetRendererName(renderer.get()) : nullptr;
   renderer_accelerated =
-      (renderer_name != nullptr) &&
-      (std::strcmp(renderer_name, SDL_SOFTWARE_RENDERER) != 0);
+      (active_renderer_name != nullptr) &&
+      (std::strcmp(active_renderer_name, SDL_SOFTWARE_RENDERER) != 0);
   if (renderer_accelerated && native_texture == nullptr) {
     native_texture.reset(SDL_CreateTexture(
         renderer.get(), SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING,
@@ -1135,11 +1238,13 @@ auto frame_create_window() -> int {
     return 1;
   }
 
-  texture.reset(SDL_CreateTexture(
-      renderer.get(), SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING,
-      static_cast<int>(system_state.screen_width),
-      static_cast<int>(system_state.screen_height)));
-  if (texture == nullptr) {
+  if (!use_window_surface) {
+    texture.reset(SDL_CreateTexture(
+        renderer.get(), SDL_PIXELFORMAT_XRGB8888, SDL_TEXTUREACCESS_STREAMING,
+        static_cast<int>(system_state.screen_width),
+        static_cast<int>(system_state.screen_height)));
+  }
+  if (texture == nullptr && !use_window_surface) {
     std::fprintf(stderr, "Could not create SDL texture: %s\n", SDL_GetError());
     return 1;
   }
@@ -1173,6 +1278,8 @@ auto frame_destroy_window() -> void {
   screen.reset();
   renderer.reset();
   window.reset();
+  use_window_surface = false;
+  changed_rows_forget(&window_surface_rows);
   sdl_asset_free_icon();
 }
 
